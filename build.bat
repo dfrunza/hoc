@@ -9,7 +9,13 @@ set LinkerFlags=-incremental:no -opt:ref -subsystem:console user32.lib
 set Program=test
 cl %CompilerFlags% ..\hocc.cpp /link %LinkerFlags%
 hocc.exe %cd%\..\%Program%.hoc
+
+if %errorlevel% neq 0 goto :build_failed
 cl /Fe:%Program%.exe %CompilerFlags% ..\vm.cpp %Program%.res /link %LinkerFlags% 
 
+echo Build successful
+exit
+
+:build_failed
+echo Build failed
 popd
-echo Build finished

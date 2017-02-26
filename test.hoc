@@ -1,24 +1,15 @@
-proc Baz()
-{
-  var a;
-  a = 99;
-  return a;
-}
-
 proc Foo()
 {
-  var a;
-  a = 12;
-  return a;
-}
-
-proc Bar()
-{
-  return Baz()*Foo();
+  return 123;
 }
 
 proc Main()
 {
-  return Bar()+Foo();
+  var a;
+  var b;
+  a=1;
+  b=2;
+  a=(a+(b=Foo()));
+  return b;
 }
 

@@ -412,20 +412,19 @@ bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTab
 bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
               AstNode** out_factor)
 {/*>>>*/
-  bool32 result = true;
   *out_factor = 0;
 
   if(input->tokenClass == Token_OpenParens)
   {
     ConsumeToken(input, symbolTable);
-    result = Expression(arena, input, symbolTable, out_factor);
-    if(result)
+    if(Expression(arena, input, symbolTable, out_factor))
     {
-      result = input->tokenClass == Token_CloseParens;
-      if(result)
+      if(input->tokenClass == Token_CloseParens)
         ConsumeToken(input, symbolTable);
-      else
+      else {
         SyntaxError(input, "Missing ')'");
+        return false;
+      }
     }
   }
   else if(input->tokenClass == Token_IntNum)
@@ -449,46 +448,44 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
       {
         idNode->id.symbol = symbol;
         *out_factor = idNode;
+
+        ConsumeToken(input, symbolTable);
+        if(input->tokenClass == Token_OpenParens)
+        {
+          // This is a procedure call
+          ConsumeToken(input, symbolTable);
+          //TODO: Parse the argument list.
+          if(input->tokenClass == Token_CloseParens)
+          {
+            ConsumeToken(input, symbolTable);
+            AstNode* exprNode = PushElement(arena, AstNode, 1);
+            exprNode->kind = Ast_Expr;
+            exprNode->expr.op = Operator_Call;
+            exprNode->expr.leftOperand = idNode;
+            idNode->kind = Ast_Call;
+
+            *out_factor = exprNode;
+          } else {
+            SyntaxError(input, "Missing ')'");
+            return false;
+          }
+        }
       } else {
         SyntaxError(input, "Keyword '%s' used as identifier", input->lexval.id);
-        result = false;
+        return false;
       }
     } else {
       SyntaxError(input, "Unknown identifier");
       return false;
     }
-
-    ConsumeToken(input, symbolTable);
-    if(input->tokenClass == Token_OpenParens)
-    {
-      // This is a procedure call
-      ConsumeToken(input, symbolTable);
-      //TODO: Parse the argument list.
-      if(input->tokenClass == Token_CloseParens)
-      {
-        ConsumeToken(input, symbolTable);
-        AstNode* exprNode = PushElement(arena, AstNode, 1);
-        exprNode->kind = Ast_Expr;
-        exprNode->expr.op = Operator_Call;
-        exprNode->expr.leftOperand = idNode;
-        idNode->kind = Ast_Call;
-
-        *out_factor = exprNode;
-      } else {
-        SyntaxError(input, "Missing ')'");
-        return false;
-      }
-    }
   }
 
-  return result;
+  return true;
 }/*<<<*/
 
 bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                      AstNode* in_nodeIn, AstNode** out_nodeOut)
 {/*>>>*/
-  bool32 result = true;
-
   if(input->tokenClass == Token_Star ||
      input->tokenClass == Token_FwdSlash)
   {
@@ -503,18 +500,20 @@ bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
 
     ConsumeToken(input, symbolTable);
     AstNode* factorNode = 0;
-    result = Factor(arena, input, symbolTable, &factorNode);
-    if(result)
+    if(Factor(arena, input, symbolTable, &factorNode) && factorNode)
     {
-      opNode->expr.rightOperand = factorNode;
-      opNode->expr.leftOperand = in_nodeIn;
-      result = RestOfFactors(arena, input, symbolTable, opNode, out_nodeOut);
+        opNode->expr.rightOperand = factorNode;
+        opNode->expr.leftOperand = in_nodeIn;
+        return RestOfFactors(arena, input, symbolTable, opNode, out_nodeOut);
+    } else {
+      SyntaxError(input, "Factor expected");
+      return false;
     }
   }
   else
     *out_nodeOut = in_nodeIn;
 
-  return result;
+  return true;
 }/*<<<*/
 
 bool32 Term(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
@@ -523,19 +522,17 @@ bool32 Term(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
   AstNode* factorNode = 0;
   AstNode* exprNode = 0;
 
-  bool32 result = Factor(arena, input, symbolTable, &factorNode);
-  if(result && factorNode)
-    result = RestOfFactors(arena, input, symbolTable, factorNode, &exprNode);
+  bool32 success = Factor(arena, input, symbolTable, &factorNode);
+  if(success && factorNode)
+    success = RestOfFactors(arena, input, symbolTable, factorNode, &exprNode);
 
   *nodeOut = exprNode;
-  return result;
+  return success;
 }/*<<<*/
 
 bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                    AstNode* nodeIn, AstNode** nodeOut)
 {/*>>>*/
-  bool32 result = true;
-
   if(input->tokenClass == Token_Plus ||
      input->tokenClass == Token_Minus)
   {
@@ -550,24 +547,20 @@ bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
 
     ConsumeToken(input, symbolTable);
     AstNode* termNode = 0;
-    result = Term(arena, input, symbolTable, &termNode);
-    if(result)
+    if(Term(arena, input, symbolTable, &termNode) && termNode)
     {
-      if(termNode)
-      {
         opNode->expr.rightOperand = termNode;
         opNode->expr.leftOperand = nodeIn;
-        result = RestOfTerms(arena, input, symbolTable, opNode, nodeOut);
-      } else {
-        SyntaxError(input, "Term expected");
-        result = false;
-      }
+        return RestOfTerms(arena, input, symbolTable, opNode, nodeOut);
+    } else {
+      SyntaxError(input, "Term expected");
+      return false;
     }
   }
   else
    *nodeOut = nodeIn;
 
-  return result;
+  return true;
 }/*<<<*/
 
 bool32 AssignmentTerm(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
@@ -576,26 +569,23 @@ bool32 AssignmentTerm(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
   AstNode* termNode = 0;
   AstNode* exprNode = 0;
 
-  bool32 result = Term(arena, input, symbolTable, &termNode);
-  if(result && termNode)
-    result = RestOfTerms(arena, input, symbolTable, termNode, &exprNode);
+  bool32 success = Term(arena, input, symbolTable, &termNode);
+  if(success && termNode)
+    success = RestOfTerms(arena, input, symbolTable, termNode, &exprNode);
 
   *nodeOut = exprNode;
-  return result;
+  return success;
 }/*<<<*/
 
 bool32 RestOfAssignmentTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                              AstNode* in_leftSide, AstNode** out_nodeOut)
 {/*>>>*/
-  bool32 result = true;
-
   if(input->tokenClass == Token_Equals)
   {
     ConsumeToken(input, symbolTable);
 
     AstNode* rightSide = 0;
-    result = Expression(arena, input, symbolTable, &rightSide);
-    if(result)
+    if(Expression(arena, input, symbolTable, &rightSide))
     {
       if(rightSide)
       {
@@ -610,17 +600,17 @@ bool32 RestOfAssignmentTerms(MemoryArena* arena, TokenStream* input, SymbolTable
           *out_nodeOut = assgnNode;
         } else {
           SyntaxError(input, "Variable expected on the left side of assignment");
-          result = false;
+          return false;
         }
       } else {
         SyntaxError(input, "Right side of assignment expected");
-        result = false;
+        return false;
       }
     }
   } else
     *out_nodeOut = in_leftSide;
 
-  return result;
+  return true;
 }/*<<<*/
 
 bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
@@ -629,18 +619,17 @@ bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTab
   AstNode* assgnNode = 0;
   AstNode* exprNode = 0;
 
-  bool32 result = AssignmentTerm(arena, input, symbolTable, &assgnNode);
-  if(result && assgnNode)
-    result = RestOfAssignmentTerms(arena, input, symbolTable, assgnNode, &exprNode);
+  bool32 success = AssignmentTerm(arena, input, symbolTable, &assgnNode);
+  if(success && assgnNode)
+    success = RestOfAssignmentTerms(arena, input, symbolTable, assgnNode, &exprNode);
 
   *nodeOut = exprNode;
-  return result;
+  return success;
 }
 
 bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                    AstNode** stmtOut)
 {
-  bool32 result = true;
   *stmtOut = 0;
 
   if(input->tokenClass == Token_If)
@@ -648,7 +637,7 @@ bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
     //yada yada
   }
 
-  return result;
+  return true;
 }
 
 bool32 Scope(MemoryArena* arena, TokenStream* input,
@@ -657,7 +646,6 @@ bool32 Scope(MemoryArena* arena, TokenStream* input,
 bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                        AstNode** out_nodeOut)
 {/*>>>*/
-  bool32 result = true;
   *out_nodeOut = 0;
 
   if(input->tokenClass == Token_Proc)
@@ -690,8 +678,7 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
               // body
               ConsumeToken(input, symbolTable);
               AstList* stmtList = 0, *varList = 0;
-              result = Scope(arena, input, symbolTable, &stmtList, &varList);
-              if(result)
+              if(Scope(arena, input, symbolTable, &stmtList, &varList))
               {
                 AstNode* scopeAst = PushElement(arena, AstNode, 1);
                 scopeAst->kind = Ast_Scope;
@@ -726,14 +713,15 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
           SyntaxError(input, "Keyword '%s' used as identifier", symbol->name);
         else
           SyntaxError(input, "Name used in a previous declaration", symbol->name);
-        result = false;
+        return false;
       }
     } else {
       SyntaxError(input, "Missing identifier");
       return false;
     }
   }
-  return result;
+
+  return true;
 }/*<<<*/
 
 bool32 Program(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
@@ -742,25 +730,24 @@ bool32 Program(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
   *out_procList = 0;
 
   AstNode* procAst = 0;
-  bool32 result = ProcDeclaration(arena, input, symbolTable, &procAst);
-  if(result && procAst)
+  bool32 success = ProcDeclaration(arena, input, symbolTable, &procAst);
+  if(success && procAst)
   {
     AstList* procItem = PushElement(arena, AstList, 1);
     procItem->ast = procAst;
 
     AstList* nextProcItem = 0;
-    result = Program(arena, input, symbolTable, &nextProcItem);
-    if(result)
+    success = Program(arena, input, symbolTable, &nextProcItem);
+    if(success)
       procItem->nextListItem = nextProcItem;
     *out_procList = procItem;
   }
-  return result;
+  return success;
 }/*<<<*/
 
 bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                         AstNode** stmtOut)
 {/*>>>*/
-  bool32 result = true;
   *stmtOut = 0;
 
   if(input->tokenClass == Token_Var)
@@ -786,20 +773,19 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
           SyntaxError(input, "Keyword '%s' used as identifier", symbol->name);
         else
           SyntaxError(input, "Name used in a previous declaration", symbol->name);
-        result = false;
+        return false;
       }
     } else {
       SyntaxError(input, "Missing identifier");
       return false;
     }
   }
-  return result;
+  return true;
 }/*<<<*/
 
 bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                        AstNode** out_stmt)
 {
-  bool32 result = true;
   *out_stmt = 0;
 
   if(input->tokenClass == Token_Return)
@@ -807,23 +793,24 @@ bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
     ConsumeToken(input, symbolTable);
     
     AstNode* expr = 0;
-    result = Expression(arena, input, symbolTable, &expr);
-    if(result)
+    if(Expression(arena, input, symbolTable, &expr) && expr)
     {
       AstNode* retNode = PushElement(arena, AstNode, 1);
       retNode->kind = Ast_Return;
       retNode->ret.expr = expr;
       *out_stmt = retNode;
+    } else {
+      SyntaxError(input, "Invalid expression after the 'return' keyword");
+      return false;
     }
   }
 
-  return result;
+  return true;
 }
 
 bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                  AstNode** stmtOut)
 {/*>>>*/
-  bool32 result = true;
   AstNode* stmtNode = 0;
 
   enum Alternative
@@ -841,8 +828,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
     switch(alt) {
       case Alt_Expr:
         {
-          result = Expression(arena, input, symbolTable, &stmtNode);
-          if(result)
+          if(Expression(arena, input, symbolTable, &stmtNode))
           {
             if(stmtNode)
             {
@@ -850,11 +836,16 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
               if(input->tokenClass == Token_Semicolon)
               {
                 ConsumeToken(input, symbolTable);
-                stmtNode->expr.isStatement = true;
+                if(stmtNode->expr.op == Operator_Assign)
+                  stmtNode->expr.isStatement = true;
+                else {
+                  SyntaxError(input, "Assignment expression required");
+                  return false;
+                }
               }
               else {
                 SyntaxError(input, "Missing ';'");
-                result = false;
+                return false;
               }
             } else
               alt = (Alternative)((int)alt+1);
@@ -864,8 +855,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_If:
         {
-          result = IfStatement(arena, input, symbolTable, &stmtNode);
-          if(result)
+          if(IfStatement(arena, input, symbolTable, &stmtNode))
           {
             if(stmtNode)
             {
@@ -873,7 +863,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
               if(input->tokenClass == Token_Semicolon)
               {
                 SyntaxError(input, "Unexpected ';'");
-                result = false;
+                return false;
               }
             } else
               alt = (Alternative)((int)alt+1);
@@ -883,8 +873,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_Return:
         {
-          result = ReturnStatement(arena, input, symbolTable, &stmtNode);
-          if(result)
+          if(ReturnStatement(arena, input, symbolTable, &stmtNode))
           {
             if(stmtNode)
             {
@@ -893,7 +882,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
                 ConsumeToken(input, symbolTable);
               else {
                 SyntaxError(input, "Missing ';'");
-                result = false;
+                return false;
               }
             } else
               alt = (Alternative)((int)alt+1);
@@ -903,8 +892,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_Var:
         {
-          result = VarStatement(arena, input, symbolTable, &stmtNode);
-          if(result)
+          if(VarStatement(arena, input, symbolTable, &stmtNode))
           {
             if(stmtNode)
             {
@@ -913,7 +901,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
                 ConsumeToken(input, symbolTable);
               else {
                 SyntaxError(input, "Missing ';'");
-                result = false;
+                return false;
               }
             } else
               alt = (Alternative)((int)alt+1);
@@ -930,7 +918,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
   if(stmtNode)
     *stmtOut = stmtNode;
 
-  return result;
+  return true;
 }/*<<<*/
 
 bool32 Scope(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
@@ -939,8 +927,8 @@ bool32 Scope(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
   *out_stmtList = *out_varList = 0;
 
   AstNode* stmtAst = 0;
-  bool32 result = Statement(arena, input, symbolTable, &stmtAst);
-  if(result && stmtAst)
+  bool32 success = Statement(arena, input, symbolTable, &stmtAst);
+  if(success && stmtAst)
   {
     AstList* stmtItem = PushElement(arena, AstList, 1);
     stmtItem->ast = stmtAst;
@@ -956,8 +944,8 @@ bool32 Scope(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
       ConsumeToken(input, symbolTable);
 
     AstList* nextStmtItem = 0, *nextVarItem = 0;
-    result = Scope(arena, input, symbolTable, &nextStmtItem, &nextVarItem);
-    if(result)
+    success = Scope(arena, input, symbolTable, &nextStmtItem, &nextVarItem);
+    if(success)
     {
       if(varItem)
       {
@@ -973,19 +961,16 @@ bool32 Scope(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
     *out_stmtList = stmtItem;
     *out_varList = varItem;
   }
-  return result;
+  return success;
 }/*<<<*/
 
 bool32 SyntacticAnalysis(MemoryArena* arena, TokenStream* input,
                          SymbolTable* symbolTable, AstNode** out_programAst)
 {/*>>>*/
-  bool32 result = true;
   *out_programAst = 0;
 
   AstList* procList = 0;
-  result = Program(arena, input, symbolTable, &procList);
-
-  if(result)
+  if(Program(arena, input, symbolTable, &procList))
   {
     AstNode* programAst = PushElement(arena, AstNode, 1);
     programAst->kind = Ast_Program;
@@ -995,10 +980,10 @@ bool32 SyntacticAnalysis(MemoryArena* arena, TokenStream* input,
       *out_programAst = programAst;
     else {
       SyntaxError(input, "End of file expected");
-      result = false;
+      return false;
     }
   }
-  return result;
+  return true;
 }/*<<<*/
 
 void Emit(ProgramText* irProgram, char* code, ...)

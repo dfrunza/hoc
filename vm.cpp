@@ -5,17 +5,12 @@
 
 struct Machine
 {
-  //SourceProgram* source;
   int32 memorySize;
   int32 sp;
   int32 fp;
   int32 ip;
   uint8 memory[2048];
   IrCode* code;
-
-//  int32 instrArraySize;
-//  int32 instrCount;
-//  Instruction instrArray[1024];
 };
 
 enum ExecResult
@@ -401,7 +396,7 @@ ExecResult RunProgram(Machine* machine)
     switch(execResult)
     {
       case ExecResult_InvalidMemoryAccess:
-        Error("Invalid memory location");
+        Error("Access to invalid memory location");
         break;
       case ExecResult_InvalidInstructionAddress:
         Error("Invalid instruction address");

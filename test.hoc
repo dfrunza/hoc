@@ -1,0 +1,24 @@
+proc Baz()
+{
+  var a;
+  a = 99;
+  return a;
+}
+
+proc Foo()
+{
+  var a;
+  a = 12;
+  return a;
+}
+
+proc Bar()
+{
+  return Baz()*Foo();
+}
+
+proc Main()
+{
+  return Bar()+Foo();
+}
+

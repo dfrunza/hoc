@@ -3,11 +3,16 @@
 if not exist .\bin mkdir .\bin
 pushd .\bin
 
-set CompilerFlags=-Od -W4 -wd4201 -wd4127 -wd4100 -MTd -Zo -Zi -Gm- -GR- -EHa- -FC -D_CRT_SECURE_NO_WARNINGS -nologo 
+rem wd4706 : assignment within conditional expression
+set CompilerFlags=-Od -W4 -nologo -MTd -Zo -Zi -Gm- -GR- -EHa- -FC -D_CRT_SECURE_NO_WARNINGS ^
+                  -wd4201 -wd4127 -wd4100 -wd4706
 set LinkerFlags=-incremental:no -opt:ref -subsystem:console user32.lib
 
 set Program=test
+
 cl %CompilerFlags% ..\hocc.cpp /link %LinkerFlags%
+
+if %errorlevel% neq 0 goto :build_failed
 hocc.exe %cd%\..\%Program%.hoc
 
 if %errorlevel% neq 0 goto :build_failed

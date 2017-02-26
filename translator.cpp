@@ -164,8 +164,10 @@ struct TokenStream
   char* text;
   char* cursor;
   MemoryArena* arena;
+
   char* filePath;
   int lineNr;
+  char* srcLine;
 
   union {
     int* intNum;
@@ -198,8 +200,7 @@ void SyntaxError(TokenStream* input, char* message, ...)
 {
   va_list args;
 
-  int charPos = (int)(input->cursor - input->text);
-  fprintf(stderr, "%s(%d) : ", input->filePath, charPos);
+  fprintf(stderr, "%s(%d) : ", input->filePath, input->lineNr);
 
   va_start(args, message);
   vfprintf(stderr, message, args);
@@ -277,10 +278,17 @@ void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
   input->tokenClass = Token__Null;
   input->lexval = {};
 
+  input->srcLine = input->cursor;
   char c = *input->cursor;
 
-  while(c == ' ' || c == '\r' || c == '\n')
+  while(c == ' ' || c == '\t' ||
+        c == '\r' || c == '\n')
+  {
+    if(c == '\n')
+      input->lineNr++;
     c = *(++input->cursor);
+    input->srcLine = input->cursor;
+  }
 
   if(IsLetterChar(c) || c == '_')
   {
@@ -413,17 +421,18 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
               AstNode** out_factor)
 {/*>>>*/
   *out_factor = 0;
+  bool32 success = true;
 
   if(input->tokenClass == Token_OpenParens)
   {
     ConsumeToken(input, symbolTable);
-    if(Expression(arena, input, symbolTable, out_factor))
+    if(success = Expression(arena, input, symbolTable, out_factor))
     {
       if(input->tokenClass == Token_CloseParens)
         ConsumeToken(input, symbolTable);
       else {
         SyntaxError(input, "Missing ')'");
-        return false;
+        success = false;
       }
     }
   }
@@ -467,25 +476,27 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
             *out_factor = exprNode;
           } else {
             SyntaxError(input, "Missing ')'");
-            return false;
+            success = false;
           }
         }
       } else {
         SyntaxError(input, "Keyword '%s' used as identifier", input->lexval.id);
-        return false;
+        success = false;
       }
     } else {
       SyntaxError(input, "Unknown identifier");
-      return false;
+      success = false;
     }
   }
 
-  return true;
+  return success;
 }/*<<<*/
 
 bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                      AstNode* in_nodeIn, AstNode** out_nodeOut)
 {/*>>>*/
+  bool32 success = true;
+
   if(input->tokenClass == Token_Star ||
      input->tokenClass == Token_FwdSlash)
   {
@@ -500,20 +511,20 @@ bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
 
     ConsumeToken(input, symbolTable);
     AstNode* factorNode = 0;
-    if(Factor(arena, input, symbolTable, &factorNode) && factorNode)
+    if(success = Factor(arena, input, symbolTable, &factorNode) && factorNode)
     {
         opNode->expr.rightOperand = factorNode;
         opNode->expr.leftOperand = in_nodeIn;
         return RestOfFactors(arena, input, symbolTable, opNode, out_nodeOut);
     } else {
       SyntaxError(input, "Factor expected");
-      return false;
+      success = false;
     }
   }
   else
     *out_nodeOut = in_nodeIn;
 
-  return true;
+  return success;
 }/*<<<*/
 
 bool32 Term(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
@@ -533,6 +544,8 @@ bool32 Term(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
 bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                    AstNode* nodeIn, AstNode** nodeOut)
 {/*>>>*/
+  bool32 success = true;
+
   if(input->tokenClass == Token_Plus ||
      input->tokenClass == Token_Minus)
   {
@@ -547,20 +560,20 @@ bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
 
     ConsumeToken(input, symbolTable);
     AstNode* termNode = 0;
-    if(Term(arena, input, symbolTable, &termNode) && termNode)
+    if(success = Term(arena, input, symbolTable, &termNode) && termNode)
     {
-        opNode->expr.rightOperand = termNode;
-        opNode->expr.leftOperand = nodeIn;
-        return RestOfTerms(arena, input, symbolTable, opNode, nodeOut);
+      opNode->expr.rightOperand = termNode;
+      opNode->expr.leftOperand = nodeIn;
+      return RestOfTerms(arena, input, symbolTable, opNode, nodeOut);
     } else {
-      SyntaxError(input, "Term expected");
-      return false;
+      SyntaxError(input, "Expression term expected");
+      success = false;
     }
   }
   else
    *nodeOut = nodeIn;
 
-  return true;
+  return success;
 }/*<<<*/
 
 bool32 AssignmentTerm(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
@@ -580,42 +593,41 @@ bool32 AssignmentTerm(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
 bool32 RestOfAssignmentTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                              AstNode* in_leftSide, AstNode** out_nodeOut)
 {/*>>>*/
+  bool32 success = true;
+
   if(input->tokenClass == Token_Equals)
   {
     ConsumeToken(input, symbolTable);
 
     AstNode* rightSide = 0;
-    if(Expression(arena, input, symbolTable, &rightSide))
+    if(success = Expression(arena, input, symbolTable, &rightSide) && rightSide)
     {
-      if(rightSide)
+      if(in_leftSide->kind == Ast_Id)
       {
-        if(in_leftSide->kind == Ast_Id)
-        {
-          //TODO: Validate that the left side is an L-value
-          AstNode* assgnNode = PushElement(arena, AstNode, 1);
-          assgnNode->kind = Ast_Expr;
-          assgnNode->expr.op = Operator_Assign;
-          assgnNode->expr.leftOperand = in_leftSide;
-          assgnNode->expr.rightOperand = rightSide;
-          *out_nodeOut = assgnNode;
-        } else {
-          SyntaxError(input, "Variable expected on the left side of assignment");
-          return false;
-        }
+        //TODO: Validate that the left side is an L-value
+        AstNode* assgnNode = PushElement(arena, AstNode, 1);
+        assgnNode->kind = Ast_Expr;
+        assgnNode->expr.op = Operator_Assign;
+        assgnNode->expr.leftOperand = in_leftSide;
+        assgnNode->expr.rightOperand = rightSide;
+        *out_nodeOut = assgnNode;
       } else {
-        SyntaxError(input, "Right side of assignment expected");
-        return false;
+        SyntaxError(input, "Variable is required on the left side of assignment");
+        success = false;
       }
+    } else {
+      SyntaxError(input, "Invalid right side of assignment");
+      success = false;
     }
   } else
     *out_nodeOut = in_leftSide;
 
-  return true;
+  return success;
 }/*<<<*/
 
 bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                   AstNode** nodeOut)
-{
+{/*>>>*/
   AstNode* assgnNode = 0;
   AstNode* exprNode = 0;
 
@@ -625,7 +637,7 @@ bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTab
 
   *nodeOut = exprNode;
   return success;
-}
+}/*<<<*/
 
 bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                    AstNode** stmtOut)
@@ -647,6 +659,7 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
                        AstNode** out_nodeOut)
 {/*>>>*/
   *out_nodeOut = 0;
+  bool32 success = true;
 
   if(input->tokenClass == Token_Proc)
   {
@@ -678,7 +691,7 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
               // body
               ConsumeToken(input, symbolTable);
               AstList* stmtList = 0, *varList = 0;
-              if(Scope(arena, input, symbolTable, &stmtList, &varList))
+              if(success = Scope(arena, input, symbolTable, &stmtList, &varList))
               {
                 AstNode* scopeAst = PushElement(arena, AstNode, 1);
                 scopeAst->kind = Ast_Scope;
@@ -693,35 +706,35 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
                   CloseScope(symbolTable);
                 } else {
                   SyntaxError(input, "Missing '}'");
-                  return false;
+                  success = false;
                 }
               }
             } else {
               SyntaxError(input, "Missing '{'");
-              return false;
+              success = false;
             }
           } else {
             SyntaxError(input, "Missing ')'");
-            return false;
+            success = false;
           }
         } else {
           SyntaxError(input, "Missing '('");
-          return false;
+          success = false;
         }
       } else {
         if(symbol->kind == Symbol_Keyword)
           SyntaxError(input, "Keyword '%s' used as identifier", symbol->name);
         else
           SyntaxError(input, "Name used in a previous declaration", symbol->name);
-        return false;
+        success = false;
       }
     } else {
       SyntaxError(input, "Missing identifier");
-      return false;
+      success = false;
     }
   }
 
-  return true;
+  return success;
 }/*<<<*/
 
 bool32 Program(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
@@ -737,8 +750,7 @@ bool32 Program(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
     procItem->ast = procAst;
 
     AstList* nextProcItem = 0;
-    success = Program(arena, input, symbolTable, &nextProcItem);
-    if(success)
+    if(success = Program(arena, input, symbolTable, &nextProcItem))
       procItem->nextListItem = nextProcItem;
     *out_procList = procItem;
   }
@@ -749,6 +761,7 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
                         AstNode** stmtOut)
 {/*>>>*/
   *stmtOut = 0;
+  bool32 success = true;
 
   if(input->tokenClass == Token_Var)
   {
@@ -773,27 +786,29 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
           SyntaxError(input, "Keyword '%s' used as identifier", symbol->name);
         else
           SyntaxError(input, "Name used in a previous declaration", symbol->name);
-        return false;
+        success = false;
       }
     } else {
       SyntaxError(input, "Missing identifier");
-      return false;
+      success = false;
     }
   }
-  return true;
+  
+  return success;
 }/*<<<*/
 
 bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                        AstNode** out_stmt)
-{
+{/*>>>*/
   *out_stmt = 0;
+  bool32 success = true;
 
   if(input->tokenClass == Token_Return)
   {
     ConsumeToken(input, symbolTable);
     
     AstNode* expr = 0;
-    if(Expression(arena, input, symbolTable, &expr) && expr)
+    if(success = Expression(arena, input, symbolTable, &expr) && expr)
     {
       AstNode* retNode = PushElement(arena, AstNode, 1);
       retNode->kind = Ast_Return;
@@ -801,17 +816,18 @@ bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
       *out_stmt = retNode;
     } else {
       SyntaxError(input, "Invalid expression after the 'return' keyword");
-      return false;
+      success = false;
     }
   }
 
-  return true;
-}
+  return success;
+}/*<<<*/
 
 bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                  AstNode** stmtOut)
 {/*>>>*/
   AstNode* stmtNode = 0;
+  bool32 success = true;
 
   enum Alternative
   {
@@ -828,7 +844,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
     switch(alt) {
       case Alt_Expr:
         {
-          if(Expression(arena, input, symbolTable, &stmtNode))
+          if(success = Expression(arena, input, symbolTable, &stmtNode))
           {
             if(stmtNode)
             {
@@ -840,12 +856,12 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
                   stmtNode->expr.isStatement = true;
                 else {
                   SyntaxError(input, "Assignment expression required");
-                  return false;
+                  success = false;
                 }
               }
               else {
                 SyntaxError(input, "Missing ';'");
-                return false;
+                success = false;
               }
             } else
               alt = (Alternative)((int)alt+1);
@@ -855,7 +871,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_If:
         {
-          if(IfStatement(arena, input, symbolTable, &stmtNode))
+          if(success = IfStatement(arena, input, symbolTable, &stmtNode))
           {
             if(stmtNode)
             {
@@ -873,7 +889,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_Return:
         {
-          if(ReturnStatement(arena, input, symbolTable, &stmtNode))
+          if(success = ReturnStatement(arena, input, symbolTable, &stmtNode))
           {
             if(stmtNode)
             {
@@ -882,7 +898,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
                 ConsumeToken(input, symbolTable);
               else {
                 SyntaxError(input, "Missing ';'");
-                return false;
+                success = false;
               }
             } else
               alt = (Alternative)((int)alt+1);
@@ -892,7 +908,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_Var:
         {
-          if(VarStatement(arena, input, symbolTable, &stmtNode))
+          if(success = VarStatement(arena, input, symbolTable, &stmtNode))
           {
             if(stmtNode)
             {
@@ -901,7 +917,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
                 ConsumeToken(input, symbolTable);
               else {
                 SyntaxError(input, "Missing ';'");
-                return false;
+                success = false;
               }
             } else
               alt = (Alternative)((int)alt+1);
@@ -918,7 +934,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
   if(stmtNode)
     *stmtOut = stmtNode;
 
-  return true;
+  return success;
 }/*<<<*/
 
 bool32 Scope(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
@@ -968,9 +984,10 @@ bool32 SyntacticAnalysis(MemoryArena* arena, TokenStream* input,
                          SymbolTable* symbolTable, AstNode** out_programAst)
 {/*>>>*/
   *out_programAst = 0;
+  bool32 success = true;
 
   AstList* procList = 0;
-  if(Program(arena, input, symbolTable, &procList))
+  if(success = Program(arena, input, symbolTable, &procList))
   {
     AstNode* programAst = PushElement(arena, AstNode, 1);
     programAst->kind = Ast_Program;
@@ -980,14 +997,15 @@ bool32 SyntacticAnalysis(MemoryArena* arena, TokenStream* input,
       *out_programAst = programAst;
     else {
       SyntaxError(input, "End of file expected");
-      return false;
+      success = false;
     }
   }
-  return true;
+
+  return success;
 }/*<<<*/
 
 void Emit(ProgramText* irProgram, char* code, ...)
-{
+{/*>>>*/
   static char strbuf[128] = {};
   va_list args;
 
@@ -998,10 +1016,10 @@ void Emit(ProgramText* irProgram, char* code, ...)
   AppendString(&irProgram->text, strbuf);
   AppendString(&irProgram->text, "\n");
   irProgram->textLen++;
-}
+}/*<<<*/
 
 void SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast)
-{
+{/*>>>*/
   switch(ast->kind)
   {
     case Ast_ProcDecl:
@@ -1042,10 +1060,10 @@ void SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast
     default:
       assert(false);
   }
-}
+}/*<<<*/
 
 void GenCodeLValue(ProgramText* irProgram, AstNode* ast)
-{
+{/*>>>*/
   switch(ast->kind)
   {
     case Ast_Id:
@@ -1061,10 +1079,10 @@ void GenCodeLValue(ProgramText* irProgram, AstNode* ast)
     default:
       assert(false);
   }
-}
+}/*<<<*/
 
 void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
-{
+{/*>>>*/
   switch(ast->kind)
   {
     case Ast_Id:
@@ -1138,10 +1156,10 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
     default:
       assert(false);
   }
-}
+}/*<<<*/
 
 void GenCode(ProgramText* irProgram, AstNode* ast)
-{
+{/*>>>*/
   switch(ast->kind)
   {
     case Ast_Return:
@@ -1208,7 +1226,7 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
     default:
       assert(false);
   }
-}
+}/*<<<*/
 
 uint WriteBytesToFile(char* fileName, char* text, int count)
 {
@@ -1251,6 +1269,7 @@ bool32 TranslateHocToIr(Translator* trans, char* filePath, char* hocProgram, Pro
   TokenStream* tokenStream = &trans->tokenStream;
   tokenStream->text = hocProgram;
   tokenStream->cursor = tokenStream->text;
+  tokenStream->lineNr = 1;
 
   SymbolTable* symbolTable = &trans->symbolTable;
 

@@ -6,10 +6,12 @@ proc Foo()
 proc Main()
 {
   var a;
-  var b;
+  var c;
+
+
   a=1;
-  b=2;
-  a=(a+(b=Foo()));
-  return b;
+  c=2;
+  a=(a+(c=Foo()))*Foo();
+  return a;
 }
 

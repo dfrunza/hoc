@@ -1,4 +1,5 @@
 #include "translator.cpp"
+#include "asm.cpp"
 
 // User-defined PE resource:
 //   nameId  typeId  fileName
@@ -12,8 +13,9 @@ struct FileName
 
 struct OutFileNames
 {
-  char strings[330];
+  char strings[4*80 + 4*10];
   FileName ir;
+  FileName irc;
   FileName rc;
   FileName res;
 };
@@ -47,7 +49,7 @@ bool32 MakeFileNames(OutFileNames* outFiles, char* stem)
 {
   int stemLen = StrLen(stem);
   assert(stemLen > 0);
-  bool32 success = (stemLen > 0 && stemLen < 100);
+  bool32 success = (stemLen > 0 && stemLen < 80);
 
   if(success)
   {
@@ -57,6 +59,11 @@ bool32 MakeFileNames(OutFileNames* outFiles, char* stem)
     outFiles->ir.name = str;
     outFiles->ir.len = StrLen(outFiles->ir.name);
     str = outFiles->ir.name + outFiles->ir.len + 1;
+
+    sprintf(str, "%s.irc", stem);
+    outFiles->irc.name = str;
+    outFiles->irc.len = StrLen(outFiles->irc.name);
+    str = outFiles->irc.name + outFiles->irc.len + 1;
 
     sprintf(str, "%s.rc", stem);
     outFiles->rc.name = str;
@@ -74,18 +81,17 @@ bool32 MakeFileNames(OutFileNames* outFiles, char* stem)
 bool32 WriteResFile(OutFileNames* outFiles)
 {
   char buf[200];
-  sprintf(buf, OUT_RC, outFiles->ir.name);
+  sprintf(buf, OUT_RC, outFiles->irc.name);
   int textLen = StrLen(buf);
-  int bytesWritten = WriteTextToFile(buf, outFiles->rc.name, textLen);
+  int bytesWritten = WriteBytesToFile(outFiles->rc.name, buf, textLen);
   bool32 success = (bytesWritten == textLen);
   if(success)
   {
     STARTUPINFO startInfo = {};
-    startInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    startInfo.dwFlags = STARTF_USESTDHANDLES;
     startInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
     startInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
     startInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-    startInfo.wShowWindow = SW_SHOW;
 
     PROCESS_INFORMATION procInfo = {};
     sprintf(buf, "rc.exe /nologo /fo%s %s", outFiles->res.name, outFiles->rc.name);
@@ -106,12 +112,21 @@ bool32 WriteResFile(OutFileNames* outFiles)
   return success;
 }
 
-bool32 WriteIrFile(OutFileNames* outFiles, IrProgram* irProgram)
+bool32 WriteIrFile(OutFileNames* outFiles, ProgramText* irProgram)
 {
-  int bytesWritten = WriteTextToFile(irProgram->text.start, outFiles->ir.name, irProgram->textLen);
+  int bytesWritten = WriteBytesToFile(outFiles->ir.name, irProgram->text.start, irProgram->textLen);
   bool32 success = (bytesWritten == irProgram->textLen);
   if(!success)
     Error("IR file '%s' incompletely written", outFiles->ir.name);
+  return success;
+}
+
+bool32 WriteIrcFile(OutFileNames* outFiles, IrCode* irCode)
+{
+  int bytesWritten = WriteBytesToFile(outFiles->irc.name, (char*)irCode->codeStart, irCode->codeSize);
+  bool32 success = (bytesWritten == irCode->codeSize);
+  if(!success)
+    Error("IRC file '%s' incompletely written", outFiles->irc.name);
   return success;
 }
 
@@ -127,26 +142,37 @@ int main(int argc, char* argv[])
     InitTranslator(&trans, &arena);
 
     char* filePath = argv[1];
-    char* text = ReadTextFromFile(&arena, filePath);
-    if(text)
+    char* hocProgram = ReadTextFromFile(&arena, filePath);
+    if(hocProgram)
     {
-      IrProgram irProgram = {};
-      bool32 success = Translate(&trans, filePath, text, &irProgram);
+      ProgramText irProgram = {};
+      bool32 success = TranslateHocToIr(&trans, filePath, hocProgram, &irProgram);
       if(success)
       {
-        OutFileNames outFiles = {};
-        char* fileStem = GetFileStem(filePath);
-
-        success = MakeFileNames(&outFiles, fileStem) &&
-          WriteIrFile(&outFiles, &irProgram) &&
-          WriteResFile(&outFiles);
         if(success)
-          ret = 0;
+        {
+          OutFileNames outFiles = {};
+          char* fileStem = GetFileStem(filePath);
+
+          success = MakeFileNames(&outFiles, fileStem) &&
+            WriteIrFile(&outFiles, &irProgram);
+          if(success)
+          {
+            IrCode* irCode = 0;
+            char* irText = irProgram.text.start;
+            bool32 success = TranslateIrToCode(&arena, irText, &irCode);
+
+            success = WriteIrcFile(&outFiles, irCode) &&
+              WriteResFile(&outFiles);
+            if(success)
+              ret = 0;
+          }
+        }
       }
     } else
       Error("File '%s' could not be read", filePath);
   } else
-    Error("Insufficient number of program arguments");
+    Error("Missing argument: input source file");
 
-  return 0;
+  return ret;
 }

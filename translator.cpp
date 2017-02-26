@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-
 #include "lib.cpp"
 
 enum TokenClass
@@ -185,11 +181,10 @@ struct SymbolTable
   MemoryArena* arena;
 };
 
-struct IrProgram
+struct ProgramText
 {
   String text;
   int textLen;
-  int instrCount;
 };
 
 struct Translator
@@ -198,17 +193,6 @@ struct Translator
   TokenStream tokenStream;
   SymbolTable symbolTable;
 };
-
-void Error(char* message, ...)
-{
-  va_list args;
-  fprintf(stdout, "Error : ");
-
-  va_start(args, message);
-  vfprintf(stderr, message, args);
-  fprintf(stderr, "\n");
-  va_end(args);
-}
 
 void SyntaxError(TokenStream* input, char* message, ...)
 {
@@ -1017,7 +1001,7 @@ bool32 SyntacticAnalysis(MemoryArena* arena, TokenStream* input,
   return result;
 }/*<<<*/
 
-void Emit(IrProgram* irProgram, char* code, ...)
+void Emit(ProgramText* irProgram, char* code, ...)
 {
   static char strbuf[128] = {};
   va_list args;
@@ -1029,8 +1013,6 @@ void Emit(IrProgram* irProgram, char* code, ...)
   AppendString(&irProgram->text, strbuf);
   AppendString(&irProgram->text, "\n");
   irProgram->textLen++;
-
-  irProgram->instrCount++;
 }
 
 void SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast)
@@ -1077,7 +1059,7 @@ void SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast
   }
 }
 
-void GenCodeLValue(IrProgram* irProgram, AstNode* ast)
+void GenCodeLValue(ProgramText* irProgram, AstNode* ast)
 {
   switch(ast->kind)
   {
@@ -1096,7 +1078,7 @@ void GenCodeLValue(IrProgram* irProgram, AstNode* ast)
   }
 }
 
-void GenCodeRValue(IrProgram* irProgram, AstNode* ast)
+void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
 {
   switch(ast->kind)
   {
@@ -1173,7 +1155,7 @@ void GenCodeRValue(IrProgram* irProgram, AstNode* ast)
   }
 }
 
-void GenCode(IrProgram* irProgram, AstNode* ast)
+void GenCode(ProgramText* irProgram, AstNode* ast)
 {
   switch(ast->kind)
   {
@@ -1243,7 +1225,7 @@ void GenCode(IrProgram* irProgram, AstNode* ast)
   }
 }
 
-uint WriteTextToFile(char* text, char* fileName, int count)
+uint WriteBytesToFile(char* fileName, char* text, int count)
 {
   uint bytesWritten = 0;
   FILE* hFile = fopen(fileName, "wb");
@@ -1279,10 +1261,10 @@ void InitTranslator(Translator* trans, MemoryArena* arena)
   AddKeyword(symbolTable, "return", Token_Return);
 }
 
-bool32 Translate(Translator* trans, char* filePath, char* text, IrProgram* irProgram)
+bool32 TranslateHocToIr(Translator* trans, char* filePath, char* hocProgram, ProgramText* irProgram)
 {
   TokenStream* tokenStream = &trans->tokenStream;
-  tokenStream->text = text;
+  tokenStream->text = hocProgram;
   tokenStream->cursor = tokenStream->text;
 
   SymbolTable* symbolTable = &trans->symbolTable;

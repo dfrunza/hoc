@@ -1,3 +1,6 @@
+#pragma once
+#include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <windows.h>
 
@@ -49,6 +52,17 @@ void DebugPrint(char* message, ...)
   va_end(args);
 
   OutputDebugString(strbuf);
+}
+
+void Error(char* message, ...)
+{
+  va_list args;
+  fprintf(stdout, "Error : ");
+
+  va_start(args, message);
+  vfprintf(stderr, message, args);
+  fprintf(stderr, "\n");
+  va_end(args);
 }
 
 int Max(int a, int b)

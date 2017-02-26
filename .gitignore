@@ -30,5 +30,6 @@ _ReSharper*/
 packages/
 
 *.ir
+*.irc
 *.rc
 *.res

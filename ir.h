@@ -1,4 +1,4 @@
-enum Opcode : uint8
+enum Opcode
 {
   Opcode__Nul,
   Opcode_PUSH,
@@ -33,7 +33,7 @@ struct InstructionLine
   char* string;
 };
 
-enum ParamType : uint8
+enum ParamType
 {
   Param__Null,
   Param_Int32,
@@ -41,7 +41,7 @@ enum ParamType : uint8
   Param_Reg,
 };
 
-enum RegName : uint8
+enum RegName
 {
   Reg__Nul,
   Reg_IP,

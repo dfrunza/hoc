@@ -101,7 +101,7 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           }
           else if(instr->paramType == Param_Int32)
           {
-            machine->sp += instr->param.intNum;
+            machine->sp -= instr->param.intNum;
             machine->ip++;
           }
           else if(instr->paramType == Param_Reg)
@@ -442,17 +442,16 @@ bool32 LoadIrCode(IrCode* code)
 
 int main(int argc, char* argv[])
 {
+  int ret = -1;
   Machine machine = {};
 
   IrCode code = {};
   if(LoadIrCode(&code))
   {
-      machine.ip = 0;
-      machine.sp = 0;
       machine.memorySize = SizeofArray(machine.memory);
       machine.code = &code;
 
-      RunProgram(&machine);
+      ret = (int)RunProgram(&machine);
   }
-  return 0;
+  return ret;
 }

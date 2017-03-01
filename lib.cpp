@@ -57,7 +57,7 @@ void DebugPrint(char* message, ...)
 void Error(char* message, ...)
 {
   va_list args;
-  fprintf(stdout, "Error : ");
+  fprintf(stdout, "P(0): Error : ");
 
   va_start(args, message);
   vfprintf(stderr, message, args);

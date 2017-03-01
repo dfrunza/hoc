@@ -1,17 +1,14 @@
-proc Foo()
+proc Foo(var a, var d)
 {
-  return 123;
+  var c;
+  c = a*d;
+  return c;
 }
 
 proc Main()
 {
   var a;
-  var c;
-
-
-  a=1;
-  c=2;
-  a=(a+(c=Foo()))*Foo();
-  return a;
+  a = Foo(5, 8);
+  return a + Foo(6, 7);
 }
 

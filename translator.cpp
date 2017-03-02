@@ -1,6 +1,6 @@
 #include "lib.cpp"
 
-enum TokenClass
+enum Token
 {
   Token__Null,
   Token_EndOfInput,
@@ -87,7 +87,7 @@ struct Symbol
     } proc;
 
     struct {
-      TokenClass tokenClass;
+      Token token;
     } kw;
   };
 };
@@ -104,6 +104,7 @@ enum AstKind
   Ast_Scope,
   Ast_Program,
   Ast_IfStmt,
+  Ast_WhileStmt,
   Ast_Return,
 };
 
@@ -171,12 +172,18 @@ struct AstNode
       AstNode* body;
       AstNode* bodyElse;
     } ifStmt;
+
+    struct {
+      AstNode* expr;
+      AstNode* body;
+    } whileStmt;
   };
 };
 
 struct TokenStream
 {
-  TokenClass tokenClass;
+  Token prevToken;
+  Token token;
   char* text;
   char* cursor;
   MemoryArena* arena;
@@ -276,10 +283,10 @@ Symbol* AddSymbol(SymbolTable* symbolTable, char* name, SymbolKind kind)
   return symbol;
 }/*<<<*/
 
-Symbol* AddKeyword(SymbolTable* symbolTable, char* name, TokenClass tokenClass)
+Symbol* AddKeyword(SymbolTable* symbolTable, char* name, Token token)
 {
   Symbol* symbol = AddSymbol(symbolTable, name, Symbol_Keyword);
-  symbol->kw.tokenClass = tokenClass;
+  symbol->kw.token = token;
   return symbol;
 }
 
@@ -315,13 +322,13 @@ void CloseScope(SymbolTable* symbolTable)
 
 char* MakeUniqueLabel(ProgramText* irProgram)
 {
-  sprintf(irProgram->label, "%d", irProgram->lastLabelId++);
+  sprintf(irProgram->label, "L%d", irProgram->lastLabelId++);
   return irProgram->label;
 }
 
-bool32 IsKeyword(TokenClass tokenClass)
+bool32 IsKeyword(Token token)
 {
-  return tokenClass > Token__KeywordBegin && tokenClass < Token__KeywordEnd;
+  return token > Token__KeywordBegin && token < Token__KeywordEnd;
 }
 
 char* InstallLexeme(TokenStream* input, char* beginChar, char* endChar)
@@ -335,7 +342,7 @@ char* InstallLexeme(TokenStream* input, char* beginChar, char* endChar)
 
 void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
 {/*>>>*/
-  input->tokenClass = Token__Null;
+  input->token = Token__Null;
   input->lexval = {};
 
   input->srcLine = input->cursor;
@@ -366,9 +373,9 @@ void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
 
     Symbol* symbol = LookupSymbol(symbolTable, lexeme);
     if(symbol && symbol->kind == Symbol_Keyword)
-      input->tokenClass = symbol->kw.tokenClass;
+      input->token = symbol->kw.token;
     else
-      input->tokenClass = Token_Id;
+      input->token = Token_Id;
   }
   else if(IsNumericChar(c))
   {
@@ -383,7 +390,7 @@ void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
 
     int* value = PushElement(input->arena, int, 1);
     *value = num;
-    input->tokenClass = Token_IntNum;
+    input->token = Token_IntNum;
     input->lexval.intNum = value;
   }
   else if(c == '-')
@@ -391,89 +398,89 @@ void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
     c = *(++input->cursor);
     if(c == '>')
     {
-      input->tokenClass = Token_RightArrow;
+      input->token = Token_RightArrow;
       ++input->cursor;
     }
     else
-      input->tokenClass = Token_Minus;
+      input->token = Token_Minus;
   } 
   else if(c == '*')
   {
-    input->tokenClass = Token_Star;
+    input->token = Token_Star;
     ++input->cursor;
   }
   else if(c == '.')
   {
-    input->tokenClass = Token_Dot;
+    input->token = Token_Dot;
     ++input->cursor;
   }
   else if(c == '}')
   {
-    input->tokenClass = Token_CloseBrace;
+    input->token = Token_CloseBrace;
     ++input->cursor;
   }
   else if(c == '{')
   {
-    input->tokenClass = Token_OpenBrace;
+    input->token = Token_OpenBrace;
     ++input->cursor;
   }
   else if(c == '=')
   {
-    input->tokenClass = Token_Equals;
+    input->token = Token_Equals;
     ++input->cursor;
   }
   else if(c == '+')
   {
-    input->tokenClass = Token_Plus;
+    input->token = Token_Plus;
     ++input->cursor;
   }
   else if(c == '/')
   {
-    input->tokenClass = Token_FwdSlash;
+    input->token = Token_FwdSlash;
     ++input->cursor;
   }
   else if(c == '(')
   {
-    input->tokenClass = Token_OpenParens;
+    input->token = Token_OpenParens;
     ++input->cursor;
   }
   else if(c == ')')
   {
-    input->tokenClass = Token_CloseParens;
+    input->token = Token_CloseParens;
     ++input->cursor;
   }
   else if(c == ';')
   {
-    input->tokenClass = Token_Semicolon;
+    input->token = Token_Semicolon;
     ++input->cursor;
   }
   else if(c == ',')
   {
-    input->tokenClass = Token_Comma;
+    input->token = Token_Comma;
     ++input->cursor;
   }
   else if(c == ':')
   {
-    input->tokenClass = Token_Colon;
+    input->token = Token_Colon;
     ++input->cursor;
   }
   else if(c == '[')
   {
-    input->tokenClass = Token_OpenParens;
+    input->token = Token_OpenParens;
     ++input->cursor;
   }
   else if(c == ']')
   {
-    input->tokenClass = Token_CloseBracket;
+    input->token = Token_CloseBracket;
     ++input->cursor;
   }
   else if(c == '^')
   {
-    input->tokenClass = Token_UpArrow;
+    input->token = Token_UpArrow;
     ++input->cursor;
   }
   else if(c == '\0')
-    input->tokenClass = Token_EndOfInput;
+    input->token = Token_EndOfInput;
 }/*<<<*/
 
 bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
@@ -488,13 +495,13 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
   *out_factorAst = 0;
   bool32 success = true;
 
-  if(input->tokenClass == Token_OpenParens)
+  if(input->token == Token_OpenParens)
   {
     ConsumeToken(input, symbolTable);
     success = Expression(arena, input, symbolTable, out_factorAst);
     if(success)
     {
-      if(input->tokenClass == Token_CloseParens)
+      if(input->token == Token_CloseParens)
         ConsumeToken(input, symbolTable);
       else {
         SyntaxError(input, "Missing ')'");
@@ -502,7 +509,7 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
       }
     }
   }
-  else if(input->tokenClass == Token_IntNum)
+  else if(input->token == Token_IntNum)
   {
     AstNode* numAst = PushElement(arena, AstNode, 1);
     numAst->kind = Ast_IntNum;
@@ -510,7 +517,7 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
     *out_factorAst = numAst;
     ConsumeToken(input, symbolTable);
   }
-  else if(input->tokenClass == Token_Id)
+  else if(input->token == Token_Id)
   {
     AstNode* idAst = PushElement(arena, AstNode, 1);
     idAst->kind = Ast_Id; // tentative
@@ -528,14 +535,14 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
         if(symbol->kind == Symbol_Proc)
         {
           // This is a procedure call
-          if(input->tokenClass == Token_OpenParens)
+          if(input->token == Token_OpenParens)
           {
             ConsumeToken(input, symbolTable);
             AstList* argList = 0;
             success = ActualArgumentsList(arena, input, symbolTable, 0, &argList);
             if(success)
             {
-              if(input->tokenClass == Token_CloseParens)
+              if(input->token == Token_CloseParens)
               {
                 ConsumeToken(input, symbolTable);
                 idAst->kind = Ast_Call;
@@ -566,11 +573,11 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
       success = false;
     }
   }
-  else if(input->tokenClass == Token_True || input->tokenClass == Token_False)
+  else if(input->token == Token_True || input->token == Token_False)
   {
     AstNode* numAst = PushElement(arena, AstNode, 1);
     numAst->kind = Ast_IntNum;
-    numAst->literal.intNum = (input->tokenClass == Token_True ? 1 : 0);
+    numAst->literal.intNum = (input->token == Token_True ? 1 : 0);
     *out_factorAst = numAst;
     ConsumeToken(input, symbolTable);
   }
@@ -583,14 +590,14 @@ bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
 {/*>>>*/
   bool32 success = true;
 
-  if(input->tokenClass == Token_Star ||
-     input->tokenClass == Token_FwdSlash)
+  if(input->token == Token_Star ||
+     input->token == Token_FwdSlash)
   {
     AstNode* astNode = PushElement(arena, AstNode, 1);
     astNode->kind = Ast_Expr;
-    if(input->tokenClass == Token_Star)
+    if(input->token == Token_Star)
       astNode->expr.op = Operator_Mul;
-    else if(input->tokenClass == Token_FwdSlash)
+    else if(input->token == Token_FwdSlash)
       astNode->expr.op = Operator_Div;
     else
       assert(false);
@@ -633,14 +640,14 @@ bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
 {/*>>>*/
   bool32 success = true;
 
-  if(input->tokenClass == Token_Plus ||
-     input->tokenClass == Token_Minus)
+  if(input->token == Token_Plus ||
+     input->token == Token_Minus)
   {
     AstNode* opAst = PushElement(arena, AstNode, 1);
     opAst->kind = Ast_Expr;
-    if(input->tokenClass == Token_Plus)
+    if(input->token == Token_Plus)
       opAst->expr.op = Operator_Add;
-    else if(input->tokenClass == Token_Minus)
+    else if(input->token == Token_Minus)
       opAst->expr.op = Operator_Sub;
     else
       assert(false);
@@ -683,7 +690,7 @@ bool32 RestOfAssignmentTerms(MemoryArena* arena, TokenStream* input, SymbolTable
 {/*>>>*/
   bool32 success = true;
 
-  if(input->tokenClass == Token_Equals)
+  if(input->token == Token_Equals)
   {
     ConsumeToken(input, symbolTable);
 
@@ -737,10 +744,10 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
   *out_varStmt = 0;
   bool32 success = true;
 
-  if(input->tokenClass == Token_Var)
+  if(input->token == Token_Var)
   {
     ConsumeToken(input, symbolTable);
-    if(input->tokenClass == Token_Id)
+    if(input->token == Token_Id)
     {
       AstNode* varStmt = PushElement(arena, AstNode, 1);
       varStmt->kind = Ast_VarDecl;
@@ -784,7 +791,7 @@ bool32 FormalArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
     AstList* varItem = PushElement(arena, AstList, 1);
     varItem->ast = varAst;
 
-    if(input->tokenClass == Token_Comma)
+    if(input->token == Token_Comma)
     {
       ConsumeToken(input, symbolTable);
       AstList* nextItem = 0;
@@ -814,7 +821,7 @@ bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
     argItem->nextListItem = in_prevItem;
     *out_argList = argItem;
 
-    if(input->tokenClass == Token_Comma)
+    if(input->token == Token_Comma)
     {
       ConsumeToken(input, symbolTable);
       AstList* nextItem = 0;
@@ -828,13 +835,63 @@ bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
 bool32 Scope(MemoryArena* arena, TokenStream* input,
              SymbolTable* symbolTable, AstNode** out_scopeAst);
 
+bool32 WhileStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
+                      AstNode** out_whileAst)
+{/*>>>*/
+  *out_whileAst = 0;
+  bool32 success = true;
+
+  if(input->token == Token_While)
+  {
+    ConsumeToken(input, symbolTable);
+
+    AstNode* whileAst = PushElement(arena, AstNode, 1);
+    whileAst->kind = Ast_WhileStmt;
+
+    AstNode* expr = 0;
+    success = Expression(arena, input, symbolTable, &expr);
+    if(success)
+    {
+      whileAst->whileStmt.expr = expr;
+
+      if(input->token == Token_OpenBrace)
+      {
+        ConsumeToken(input, symbolTable);
+
+        AstNode* scope = 0;
+        success = OpenScope(symbolTable) &&
+          Scope(arena, input, symbolTable, &scope);
+        if(success)
+        {
+          whileAst->whileStmt.body = scope;
+
+          if(input->token == Token_CloseBrace)
+          {
+            ConsumeToken(input, symbolTable);
+            CloseScope(symbolTable);
+            *out_whileAst = whileAst;
+          } else {
+            SyntaxError(input, "Missing '}'");
+            success = false;
+          }
+        }
+      } else {
+        SyntaxError(input, "Missing '}'");
+        success = false;
+      }
+    }
+  }
+
+  return success;
+}/*<<<*/
+
 bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                    AstNode** out_ifAst)
 {/*>>>*/
   *out_ifAst = 0;
   bool32 success = true;
 
-  if(input->tokenClass == Token_If)
+  if(input->token == Token_If)
   {
     ConsumeToken(input, symbolTable);
 
@@ -847,7 +904,7 @@ bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
     {
       ifAst->ifStmt.expr = expr;
 
-      if(input->tokenClass == Token_OpenBrace)
+      if(input->token == Token_OpenBrace)
       {
         ConsumeToken(input, symbolTable);
 
@@ -858,17 +915,17 @@ bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
         {
           ifAst->ifStmt.body = scope;
 
-          if(input->tokenClass == Token_CloseBrace)
+          if(input->token == Token_CloseBrace)
           {
             ConsumeToken(input, symbolTable);
             CloseScope(symbolTable);
             *out_ifAst = ifAst;
 
-            if(input->tokenClass == Token_Else)
+            if(input->token == Token_Else)
             {
               ConsumeToken(input, symbolTable);
 
-              if(input->tokenClass == Token_OpenBrace)
+              if(input->token == Token_OpenBrace)
               {
                 ConsumeToken(input, symbolTable);
 
@@ -879,7 +936,7 @@ bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
                 {
                   ifAst->ifStmt.bodyElse = scope;
 
-                  if(input->tokenClass == Token_CloseBrace)
+                  if(input->token == Token_CloseBrace)
                   {
                     ConsumeToken(input, symbolTable);
                     CloseScope(symbolTable);
@@ -914,10 +971,10 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
   *out_procAst = 0;
   bool32 success = true;
 
-  if(input->tokenClass == Token_Proc)
+  if(input->token == Token_Proc)
   {
     ConsumeToken(input, symbolTable);
-    if(input->tokenClass == Token_Id)
+    if(input->token == Token_Id)
     {
       AstNode* proc = PushElement(arena, AstNode, 1);
       proc->kind = Ast_ProcDecl;
@@ -930,7 +987,7 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
         proc->proc.name = symbol->name;
 
         ConsumeToken(input, symbolTable);
-        if(input->tokenClass == Token_OpenParens)
+        if(input->token == Token_OpenParens)
         {
           ConsumeToken(input, symbolTable);
 
@@ -942,11 +999,11 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
           {
             proc->proc.argList = argList;
 
-            if(input->tokenClass == Token_CloseParens)
+            if(input->token == Token_CloseParens)
             {
               ConsumeToken(input, symbolTable);
 
-              if(input->tokenClass == Token_OpenBrace)
+              if(input->token == Token_OpenBrace)
               {
                 // body
                 ConsumeToken(input, symbolTable);
@@ -958,7 +1015,7 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
                   proc->proc.body = scope;
                   *out_procAst = proc;
 
-                  if(input->tokenClass == Token_CloseBrace)
+                  if(input->token == Token_CloseBrace)
                   {
                     ConsumeToken(input, symbolTable);
                     CloseScope(symbolTable);
@@ -1023,7 +1080,7 @@ bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
   *out_stmtAst = 0;
   bool32 success = true;
 
-  if(input->tokenClass == Token_Return)
+  if(input->token == Token_Return)
   {
     ConsumeToken(input, symbolTable);
     
@@ -1061,6 +1118,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
     Alt_Var,
     Alt_Expr,
     Alt_If,
+    Alt_While,
     Alt_Return,
   };
 
@@ -1076,7 +1134,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
             if(stmtAst)
             {
               alt = Alt__Null;
-              if(input->tokenClass == Token_Semicolon)
+              if(input->token == Token_Semicolon)
               {
                 ConsumeToken(input, symbolTable);
                 if(stmtAst->expr.op == Operator_Assign)
@@ -1110,6 +1168,20 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
             alt = Alt__Null;
         } break;
 
+      case Alt_While:
+        {
+          success = WhileStatement(arena, input, symbolTable, &stmtAst);
+          if(success)
+          {
+            if(stmtAst)
+            {
+              alt = Alt__Null;
+            } else
+              alt = (Alternative)((int)alt+1);
+          } else
+            alt = Alt__Null;
+        } break;
+
       case Alt_Return:
         {
           success = ReturnStatement(arena, input, symbolTable, &stmtAst);
@@ -1118,7 +1190,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
             if(stmtAst)
             {
               alt = Alt__Null;
-              if(input->tokenClass == Token_Semicolon)
+              if(input->token == Token_Semicolon)
                 ConsumeToken(input, symbolTable);
               else {
                 SyntaxError(input, "Missing ';'");
@@ -1138,7 +1210,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
             if(stmtAst)
             {
               alt = Alt__Null;
-              if(input->tokenClass == Token_Semicolon)
+              if(input->token == Token_Semicolon)
                 ConsumeToken(input, symbolTable);
               else {
                 SyntaxError(input, "Missing ';'");
@@ -1185,7 +1257,7 @@ bool32 ScopeStatementList(MemoryArena* arena, TokenStream* input, SymbolTable* s
     if(stmt->kind == Ast_Return)
       stmt->ret.scopeId = symbolTable->currScopeId;
 
-    while(input->tokenClass == Token_Semicolon)
+    while(input->token == Token_Semicolon)
       ConsumeToken(input, symbolTable);
 
     AstList* nextStmtItem = 0, *nextVarItem = 0;
@@ -1245,7 +1317,7 @@ bool32 SyntacticAnalysis(MemoryArena* arena, TokenStream* input,
     programAst->kind = Ast_Program;
     programAst->program.procList = procList;
 
-    if(input->tokenClass == Token_EndOfInput)
+    if(input->token == Token_EndOfInput)
       *out_programAst = programAst;
     else {
       SyntaxError(input, "End of file expected");
@@ -1379,6 +1451,7 @@ bool32 SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* a
       } break;
 
     case Ast_IfStmt:
+    case Ast_WhileStmt:
     case Ast_Id:
     case Ast_IntNum:
       {} break;
@@ -1396,7 +1469,7 @@ bool32 SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* a
       } break;
 
     default:
-      assert(false);
+      assert(false && !"Not implemented");
   }
 
   return success;
@@ -1594,24 +1667,29 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
         char* label = MakeUniqueLabel(irProgram);
 
         if(ast->ifStmt.bodyElse)
-          Emit(irProgram, "jumpz else.%s", label);
+          Emit(irProgram, "jumpz %s.else", label);
         else
-          Emit(irProgram, "jumpz if-end.%s", label);
+          Emit(irProgram, "jumpz %s.if-end", label);
 
         GenCode(irProgram, ast->ifStmt.body);
         if(ast->ifStmt.bodyElse)
         {
-          Emit(irProgram, "goto if-end.%s", label);
-          Emit(irProgram, "label else.%s", label);
+          Emit(irProgram, "goto %s.if-end", label);
+          Emit(irProgram, "label %s.else", label);
           GenCode(irProgram, ast->ifStmt.bodyElse);
         }
 
-        Emit(irProgram, "label if-end.%s", label);
+        Emit(irProgram, "label %s.if-end", label);
 
       } break;
 
+    case Ast_WhileStmt:
+      {
+        assert(!"FIXME!!");
+      } break;
+
     default:
-      assert(false);
+      assert(false && !"Not implemented");
   }
 }/*<<<*/
 

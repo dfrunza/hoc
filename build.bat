@@ -26,7 +26,7 @@ echo Build failed
 goto :end
 
 :hocc_exe_error
-echo hocc.exe exited with error
+echo hocc.exe exited with code 'error'
 goto :end
 
 :end

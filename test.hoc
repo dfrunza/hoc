@@ -1,35 +1,10 @@
-proc Foo(var a, var d, var c)
-{
-  var result;
-  if(a) {
-    result = d+c;
-  } else {
-    result = d-c;
-  }
-
-  return result;
-}
-
-proc IsAwesome()
-{
-  return false;
-}
-
 proc Main()
 {
   var a;
-  var b;
 
-  a = 11;
-  b = 22;
-
-  if(false)
+  while(true)
   {
-    a = a+Foo(true, 13, 17);
-    return a;
-  } else {
-    b = Foo(false, 8, 101)*5;
-    return b;
+    a = a+1;
   }
 }
 

@@ -19,11 +19,15 @@ if %errorlevel% neq 0 goto :hocc_exe_error
 cl /Fe:%Program%.exe %CompilerFlags% ..\vm.cpp %Program%.res /link %LinkerFlags% 
 
 echo Build successful
-exit
+goto :end
 
 :build_failed
 echo Build failed
+goto :end
 
 :hocc_exe_error
 echo hocc.exe exited with error
+goto :end
+
+:end
 popd

@@ -747,28 +747,6 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
 bool32 FormalArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                            AstList* in_prevItem, AstList** out_argList)
 {/*>>>*/
-#if 1
-  *out_argList = 0;
-  bool32 success = true;
-
-  AstNode* varAst = 0;
-  success = VarStatement(arena, input, symbolTable, &varAst);
-  if(success && varAst)
-  {
-    AstList* varItem = PushElement(arena, AstList, 1);
-    varItem->ast = varAst;
-    varItem->nextListItem = in_prevItem;
-    *out_argList = varItem;
-
-    if(input->tokenClass == Token_Comma)
-    {
-      ConsumeToken(input, symbolTable);
-      AstList* nextItem = 0;
-      success = FormalArgumentsList(arena, input, symbolTable, varItem, &nextItem);
-      *out_argList = nextItem;
-    }
-  }
-#else
   *out_argList = 0;
   bool32 success = true;
 
@@ -783,14 +761,14 @@ bool32 FormalArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
     {
       ConsumeToken(input, symbolTable);
       AstList* nextItem = 0;
-      success = FormalArgumentsList(arena, input, symbolTable, &nextItem);
+      success = FormalArgumentsList(arena, input, symbolTable, 0, &nextItem);
 
       varItem->nextListItem = nextItem;
     }
 
     *out_argList = varItem;
   }
-#endif
+
   return success;
 }/*<<<*/
 

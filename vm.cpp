@@ -28,7 +28,7 @@ enum ExecResult
 
 bool32 CheckStackBounds(Machine* machine, int sp)
 {
-  return sp >= 0 && sp*VMWORD < machine->memorySize;
+  return sp >= 0 && sp*(int)VMWORD < machine->memorySize;
 }
 
 bool32 CheckMemoryBounds(Machine* machine, int location)

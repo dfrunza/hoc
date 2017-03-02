@@ -87,6 +87,12 @@ Label* FindLabel(SourceProgram* source, char* labelString)
   return result;
 }
 
+bool32 IsValidLabel(char *label)
+{
+  char startChar = *label;
+  return ('A' <= startChar && startChar <= 'Z') || ('a' <= startChar && startChar <= 'z') || startChar == '.';
+}
+
 void ProcessSourceLines(SourceProgram* source)
 {/*>>>*/
   source->lineCount = 0;
@@ -210,13 +216,13 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
           case Opcode_JUMPZ:
           case Opcode_CALL:
             {
-              if(IsLetterChar(*components[1]))
+              if(IsValidLabel(components[1]))
               {
                 instr.paramType = Param_String;
                 instr.param.str = components[1];
               }
               else {
-                Error("Label '%s' does not begin with a letter", components[1]);
+                Error("Label must begin with a letter : %s", components[1]);
                 return false;
               }
             } break;
@@ -255,7 +261,7 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
 
           case Opcode_LABEL:
             {
-              if(IsLetterChar(*components[1]))
+              if(IsValidLabel(components[1]))
               {
                 instr.paramType = Param_String;
                 instr.param.str = components[1];

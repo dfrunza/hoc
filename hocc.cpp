@@ -149,21 +149,20 @@ int main(int argc, char* argv[])
       bool32 success = TranslateHocToIr(&trans, filePath, hocProgram, &irProgram);
       if(success)
       {
+        OutFileNames outFiles = {};
+        char* fileStem = GetFileStem(filePath);
+
+        success = MakeFileNames(&outFiles, fileStem) &&
+          WriteIrFile(&outFiles, &irProgram);
         if(success)
         {
-          OutFileNames outFiles = {};
-          char* fileStem = GetFileStem(filePath);
+          IrCode* irCode = 0;
+          char* irText = irProgram.text.start;
+          bool32 success = TranslateIrToCode(&arena, irText, &irCode);
 
-          success = MakeFileNames(&outFiles, fileStem) &&
-            WriteIrFile(&outFiles, &irProgram);
           if(success)
           {
-            IrCode* irCode = 0;
-            char* irText = irProgram.text.start;
-            bool32 success = TranslateIrToCode(&arena, irText, &irCode);
-
-            success = WriteIrcFile(&outFiles, irCode) &&
-              WriteResFile(&outFiles);
+            success = WriteIrcFile(&outFiles, irCode) && WriteResFile(&outFiles);
             if(success)
               ret = 0;
           }

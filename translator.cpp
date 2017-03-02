@@ -20,6 +20,8 @@ enum TokenClass
   Token_Proc,
   Token_Struct,
   Token_Return,
+  Token_True,
+  Token_False,
   Token__KeywordEnd,
 
   Token_Id,
@@ -310,6 +312,13 @@ void CloseScope(SymbolTable* symbolTable)
   symbolTable->currSymbol = symbol;
 }/*<<<*/
 
+char* MakeUniqueLabel(ProgramText* irProgram)
+{
+  //TODO: Reserve the namespace of labels starting with '.'
+  sprintf(irProgram->label, ".L%d", irProgram->lastLabelId++);
+  return irProgram->label;
+}
+
 bool32 IsKeyword(TokenClass tokenClass)
 {
   return tokenClass > Token__KeywordBegin && tokenClass < Token__KeywordEnd;
@@ -556,6 +565,14 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
       SyntaxError(input, "Unknown identifier");
       success = false;
     }
+  }
+  else if(input->tokenClass == Token_True || input->tokenClass == Token_False)
+  {
+    AstNode* numAst = PushElement(arena, AstNode, 1);
+    numAst->kind = Ast_IntNum;
+    numAst->literal.intNum = (input->tokenClass == Token_True ? 1 : 0);
+    *out_factorAst = numAst;
+    ConsumeToken(input, symbolTable);
   }
 
   return success;
@@ -1385,12 +1402,6 @@ bool32 SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* a
   return success;
 }/*<<<*/
 
-char* MakeUniqueLabel(ProgramText* irProgram)
-{
-  sprintf(irProgram->label, "L%d", irProgram->lastLabelId++);
-  return irProgram->label;
-}
-
 void GenCodeLValue(ProgramText* irProgram, AstNode* ast)
 {/*>>>*/
   switch(ast->kind)
@@ -1520,6 +1531,8 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
         Emit(irProgram, "push %d", -retOffset);
         Emit(irProgram, "add");
         Emit(irProgram, "store ;retval");
+
+        Emit(irProgram, "goto .L%s.end", procSymbol->name);
       } break;
 
     case Ast_IntNum:
@@ -1551,6 +1564,7 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
         Emit(irProgram, "label %s", procSymbol->name); // entry point
         AstNode* scopeAst = ast->proc.body;
         GenCode(irProgram, scopeAst);
+        Emit(irProgram, "label .L%s.end", procSymbol->name); // exit point
         Emit(irProgram, "return");
       } break;
 
@@ -1635,6 +1649,8 @@ void InitTranslator(Translator* trans, MemoryArena* arena)
   AddKeyword(symbolTable, "else", Token_Else);
   AddKeyword(symbolTable, "while", Token_While);
   AddKeyword(symbolTable, "return", Token_Return);
+  AddKeyword(symbolTable, "true", Token_True);
+  AddKeyword(symbolTable, "false", Token_False);
 }
 
 bool32 TranslateHocToIr(Translator* trans, char* filePath, char* hocProgram, ProgramText* irProgram)

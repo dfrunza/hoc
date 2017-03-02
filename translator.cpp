@@ -162,6 +162,12 @@ struct AstNode
       Symbol* proc;
       AstNode* expr;
     } ret;
+
+    struct {
+      AstNode* expr;
+      AstNode* body;
+      AstNode* bodyElse;
+    } ifStmt;
   };
 };
 
@@ -186,8 +192,9 @@ struct SymbolTable
 {
   Symbol* currSymbol;
   int currScopeId;
-  Symbol* lastAddedSymbol;
   int lastScopeId;
+  int currOpenIndex;
+  int openedScopes[32];
   MemoryArena* arena;
 };
 
@@ -195,6 +202,8 @@ struct ProgramText
 {
   String text;
   int textLen;
+  char label[64];
+  int lastLabelId;
 };
 
 struct Translator
@@ -261,7 +270,6 @@ Symbol* AddSymbol(SymbolTable* symbolTable, char* name, SymbolKind kind)
   symbol->kind = kind;
   symbol->nextSymbol = symbolTable->currSymbol;
   symbolTable->currSymbol = symbol;
-  symbolTable->lastAddedSymbol = symbol;
   return symbol;
 }/*<<<*/
 
@@ -272,20 +280,35 @@ Symbol* AddKeyword(SymbolTable* symbolTable, char* name, TokenClass tokenClass)
   return symbol;
 }
 
-void OpenScope(SymbolTable* symbolTable)
-{
-  symbolTable->currScopeId = ++symbolTable->lastScopeId;
-}
+bool32 OpenScope(SymbolTable* symbolTable)
+{/*>>>*/
+  int currScopeId = ++symbolTable->lastScopeId;
+  symbolTable->currScopeId = currScopeId;
+
+  int currOpenIndex = ++symbolTable->currOpenIndex;
+  if(currOpenIndex < SizeofArray(symbolTable->openedScopes))
+  {
+    symbolTable->openedScopes[currOpenIndex] = currScopeId;
+  } else {
+    Error("Reached the maximum scope nesting depth");
+    return false;
+  }
+
+  return true;
+}/*<<<*/
 
 void CloseScope(SymbolTable* symbolTable)
-{
-  symbolTable->currScopeId--;
-  assert(symbolTable->currScopeId >= 0);
+{/*>>>*/
+  int currOpenIndex = --symbolTable->currOpenIndex;
+  int currScopeId = symbolTable->openedScopes[currOpenIndex];
+  assert(currScopeId >= 0);
+  symbolTable->currScopeId = currScopeId;
+
   Symbol* symbol = symbolTable->currSymbol;
   while(symbol && symbol->scopeId > symbolTable->currScopeId)
     symbol = symbol->nextSymbol;
   symbolTable->currSymbol = symbol;
-}
+}/*<<<*/
 
 bool32 IsKeyword(TokenClass tokenClass)
 {
@@ -691,19 +714,6 @@ bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTab
   return success;
 }/*<<<*/
 
-bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                   AstNode** out_stmtAst)
-{
-  *out_stmtAst = 0;
-
-  if(input->tokenClass == Token_If)
-  {
-    //yada yada
-  }
-
-  return true;
-}
-
 bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                     AstNode** out_varStmt)
 {/*>>>*/
@@ -799,7 +809,87 @@ bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
 }/*<<<*/
 
 bool32 Scope(MemoryArena* arena, TokenStream* input,
-             SymbolTable* symbolTable, AstList** stmtList, AstList** varList);
+             SymbolTable* symbolTable, AstNode** out_scopeAst);
+
+bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
+                   AstNode** out_ifAst)
+{/*>>>*/
+  *out_ifAst = 0;
+  bool32 success = true;
+
+  if(input->tokenClass == Token_If)
+  {
+    ConsumeToken(input, symbolTable);
+
+    AstNode* ifAst = PushElement(arena, AstNode, 1);
+    ifAst->kind = Ast_IfStmt;
+
+    AstNode* expr = 0;
+    success = Expression(arena, input, symbolTable, &expr);
+    if(success)
+    {
+      ifAst->ifStmt.expr = expr;
+
+      if(input->tokenClass == Token_OpenBrace)
+      {
+        ConsumeToken(input, symbolTable);
+
+        AstNode* scope = 0;
+        success = OpenScope(symbolTable) &&
+          Scope(arena, input, symbolTable, &scope);
+        if(success)
+        {
+          ifAst->ifStmt.body = scope;
+
+          if(input->tokenClass == Token_CloseBrace)
+          {
+            ConsumeToken(input, symbolTable);
+            CloseScope(symbolTable);
+            *out_ifAst = ifAst;
+
+            if(input->tokenClass == Token_Else)
+            {
+              ConsumeToken(input, symbolTable);
+
+              if(input->tokenClass == Token_OpenBrace)
+              {
+                ConsumeToken(input, symbolTable);
+
+                AstNode* scope = 0;
+                success = OpenScope(symbolTable) &&
+                  Scope(arena, input, symbolTable, &scope);
+                if(success)
+                {
+                  ifAst->ifStmt.bodyElse = scope;
+
+                  if(input->tokenClass == Token_CloseBrace)
+                  {
+                    ConsumeToken(input, symbolTable);
+                    CloseScope(symbolTable);
+                  } else {
+                    SyntaxError(input, "Missing '}'");
+                    success = false;
+                  }
+                }
+              } else {
+                SyntaxError(input, "Missing '{'");
+                success = false;
+              }
+            }
+          } else {
+            SyntaxError(input, "Missing '}'");
+            success = false;
+          }
+        }
+      } else {
+        SyntaxError(input, "Missing '{'");
+        success = false;
+      }
+    }
+  }
+
+  return success;
+}/*<<<*/
 
 bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                        AstNode** out_procAst)
@@ -825,11 +915,12 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
         ConsumeToken(input, symbolTable);
         if(input->tokenClass == Token_OpenParens)
         {
-          OpenScope(symbolTable);
           ConsumeToken(input, symbolTable);
+
           // arguments
           AstList *argList = 0;
-          success = FormalArgumentsList(arena, input, symbolTable, 0, &argList);
+          success = OpenScope(symbolTable) &&
+            FormalArgumentsList(arena, input, symbolTable, 0, &argList);
           if(success)
           {
             proc->proc.argList = argList;
@@ -842,15 +933,11 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
               {
                 // body
                 ConsumeToken(input, symbolTable);
-                AstList* stmtList = 0, *varList = 0;
-                success = Scope(arena, input, symbolTable, &stmtList, &varList);
+
+                AstNode* scope = 0;
+                success = Scope(arena, input, symbolTable, &scope);
                 if(success)
                 {
-                  AstNode* scope = PushElement(arena, AstNode, 1);
-                  scope->kind = Ast_Scope;
-                  scope->scope.statements = stmtList;
-                  scope->scope.localVars = varList;
-                  scope->scope.scopeId = symbolTable->currScopeId;
                   proc->proc.body = scope;
                   *out_procAst = proc;
 
@@ -1000,11 +1087,6 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
             if(stmtAst)
             {
               alt = Alt__Null;
-              if(input->tokenClass == Token_Semicolon)
-              {
-                SyntaxError(input, "Unexpected ';'");
-                success = false;
-              }
             } else
               alt = (Alternative)((int)alt+1);
           } else
@@ -1063,8 +1145,8 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
   return success;
 }/*<<<*/
 
-bool32 Scope(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-             AstList** out_stmtList, AstList** out_varList)
+bool32 ScopeStatementList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
+                          AstList** out_stmtList, AstList** out_varList)
 {/*>>>*/
   *out_stmtList = *out_varList = 0;
   bool32 success = true;
@@ -1090,7 +1172,7 @@ bool32 Scope(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
       ConsumeToken(input, symbolTable);
 
     AstList* nextStmtItem = 0, *nextVarItem = 0;
-    success = Scope(arena, input, symbolTable, &nextStmtItem, &nextVarItem);
+    success = ScopeStatementList(arena, input, symbolTable, &nextStmtItem, &nextVarItem);
     if(success)
     {
       if(varItem)
@@ -1107,6 +1189,28 @@ bool32 Scope(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
     *out_stmtList = stmtItem;
     *out_varList = varItem;
   }
+  return success;
+}/*<<<*/
+
+bool32 Scope(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
+             AstNode** out_scopeAst)
+{/*>>>*/
+  *out_scopeAst = 0;
+  bool32 success = true;
+
+  AstList* stmtList = 0, *varList = 0;
+  success = ScopeStatementList(arena, input, symbolTable, &stmtList, &varList);
+  if(success)
+  {
+    AstNode* scope = PushElement(arena, AstNode, 1);
+    scope->kind = Ast_Scope;
+    scope->scope.statements = stmtList;
+    scope->scope.localVars = varList;
+    scope->scope.scopeId = symbolTable->currScopeId;
+
+    *out_scopeAst = scope;
+  }
+
   return success;
 }/*<<<*/
 
@@ -1257,6 +1361,7 @@ bool32 SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* a
           success &= SemanticAnalysis(arena, symbolTable, rightOperand);
       } break;
 
+    case Ast_IfStmt:
     case Ast_Id:
     case Ast_IntNum:
       {} break;
@@ -1280,6 +1385,12 @@ bool32 SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* a
   return success;
 }/*<<<*/
 
+char* MakeUniqueLabel(ProgramText* irProgram)
+{
+  sprintf(irProgram->label, "L%d", irProgram->lastLabelId++);
+  return irProgram->label;
+}
+
 void GenCodeLValue(ProgramText* irProgram, AstNode* ast)
 {/*>>>*/
   switch(ast->kind)
@@ -1287,11 +1398,11 @@ void GenCodeLValue(ProgramText* irProgram, AstNode* ast)
     case Ast_Id:
       {
         Symbol* varSymbol = ast->id.symbol;
-        Emit(irProgram, "; load l-value of '%s'", varSymbol->name);
+        Emit(irProgram, ";begin load l-value of '%s'", varSymbol->name);
         Emit(irProgram, "push fp");
         Emit(irProgram, "push %d", varSymbol->var.storageLocation);
         Emit(irProgram, "add");
-        Emit(irProgram, "; end load");
+        Emit(irProgram, ";end load");
       } break;
 
     default:
@@ -1306,12 +1417,12 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
     case Ast_Id:
       {
         Symbol* varSymbol = ast->id.symbol;
-        Emit(irProgram, "; load r-value of '%s'", varSymbol->name);
+        Emit(irProgram, ";load r-value of '%s'", varSymbol->name);
         Emit(irProgram, "push fp");
         Emit(irProgram, "push %d", varSymbol->var.storageLocation);
         Emit(irProgram, "add");
         Emit(irProgram, "load");
-        Emit(irProgram, "; end load");
+        Emit(irProgram, ";end load");
       } break;
 
     case Ast_Expr:
@@ -1326,9 +1437,9 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
               assert(callAst->kind == Ast_Call);
               assert(procSymbol->kind == Symbol_Proc);
 
-              Emit(irProgram, "push 0 ; retval of %s", callAst->call.name);
+              Emit(irProgram, "push 0 ;retval of %s", callAst->call.name);
 
-              Emit(irProgram, "; begin evaluate arguments");
+              Emit(irProgram, ";begin arg-eval");
               AstList* argList = callAst->call.argList;
               while(argList)
               {
@@ -1336,7 +1447,7 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
                 GenCodeRValue(irProgram, argAst);
                 argList = argList->nextListItem;
               }
-              Emit(irProgram, "; end evaluate arguments");
+              Emit(irProgram, ";end arg-eval");
 
               Emit(irProgram, "call %s", callAst->call.name);
 
@@ -1344,7 +1455,7 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
               if(ast->expr.isStatement)
                 restoreSp += 1; // discard retval
               if(restoreSp > 0)
-                Emit(irProgram, "pop %d ; restore callee sp", restoreSp);
+                Emit(irProgram, "pop %d ;restore callee sp", restoreSp);
             } break;
 
           case Operator_Assign:
@@ -1355,7 +1466,7 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
               AstNode* leftSide = ast->expr.leftOperand;
               assert(leftSide->kind == Ast_Id);
               GenCodeLValue(irProgram, leftSide);
-              Emit(irProgram, "store ; '%s'", leftSide->id.name);
+              Emit(irProgram, "store ;'%s'", leftSide->id.name);
             } break;
 
           case Operator_Mul:
@@ -1406,9 +1517,9 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
           procSymbol->proc.retAreaSize;
 
         Emit(irProgram, "push fp");
-        Emit(irProgram, "push %d", retOffset);
-        Emit(irProgram, "sub");
-        Emit(irProgram, "store ; retval");
+        Emit(irProgram, "push %d", -retOffset);
+        Emit(irProgram, "add");
+        Emit(irProgram, "store ;retval");
       } break;
 
     case Ast_IntNum:
@@ -1422,7 +1533,7 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
       {
         int localDataSize = ast->scope.localsAreaSize;
         if(localDataSize > 0)
-          Emit(irProgram, "alloc %d ; locals", localDataSize);
+          Emit(irProgram, "alloc %d ;locals", localDataSize);
 
         AstList* stmtList = ast->scope.statements;
         while(stmtList)
@@ -1445,7 +1556,7 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
 
     case Ast_Program:
       {
-        Emit(irProgram, "push 0 ; main retval");
+        Emit(irProgram, "push 0 ;main retval");
         Emit(irProgram, "call Main");
         Emit(irProgram, "halt");
 
@@ -1457,6 +1568,32 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
 
           procList = procList->nextListItem;
         }
+      } break;
+
+    case Ast_IfStmt:
+      {
+        Emit(irProgram, ";if-begin");
+
+        // conditional expression
+        GenCodeRValue(irProgram, ast->ifStmt.expr);
+
+        char* label = MakeUniqueLabel(irProgram);
+
+        if(ast->ifStmt.bodyElse)
+          Emit(irProgram, "jumpz %s.else", label);
+        else
+          Emit(irProgram, "jumpz %s.if-end", label);
+
+        GenCode(irProgram, ast->ifStmt.body);
+        if(ast->ifStmt.bodyElse)
+        {
+          Emit(irProgram, "goto %s.if-end", label);
+          Emit(irProgram, "label %s.else ;else-begin", label);
+          GenCode(irProgram, ast->ifStmt.bodyElse);
+        }
+
+        Emit(irProgram, "label %s.if-end", label);
+
       } break;
 
     default:

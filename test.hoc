@@ -1,12 +1,17 @@
 proc Foo(var a, var d, var c)
 {
-  return (a+d)*c;
+  var result;
+  if(a) {
+    result = d+c;
+  } else {
+    result = d-c;
+  }
+
+  return result;
 }
 
 proc Main()
 {
-  var a;
-  a = Foo(5, 8, 1);
-  return a + Foo(6, 7, 2);
+  return Foo(0, 1, 2);
 }
 

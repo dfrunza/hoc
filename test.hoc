@@ -23,12 +23,12 @@ proc Main()
   a = 11;
   b = 22;
 
-  if(true)
+  if(false)
   {
-    a = a+4;
+    a = a+Foo(true, 13, 17);
     return a;
   } else {
-    b = b+5;
+    b = Foo(false, 8, 101)*5;
     return b;
   }
 }

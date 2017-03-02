@@ -39,6 +39,7 @@ enum TokenClass
   Token_FwdSlash,
   Token_Plus,
   Token_Minus,
+  Token_UnaryMinus,
   Token_Equals,
   Token_OpenParens,
   Token_CloseParens,
@@ -204,7 +205,7 @@ struct ProgramText
 {
   String text;
   int textLen;
-  char label[64];
+  char label[32];
   int lastLabelId;
 };
 
@@ -314,8 +315,7 @@ void CloseScope(SymbolTable* symbolTable)
 
 char* MakeUniqueLabel(ProgramText* irProgram)
 {
-  //TODO: Reserve the namespace of labels starting with '.'
-  sprintf(irProgram->label, ".L%d", irProgram->lastLabelId++);
+  sprintf(irProgram->label, "%d", irProgram->lastLabelId++);
   return irProgram->label;
 }
 
@@ -1532,7 +1532,7 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
         Emit(irProgram, "add");
         Emit(irProgram, "store ;retval");
 
-        Emit(irProgram, "goto .L%s.end", procSymbol->name);
+        Emit(irProgram, "goto %s.end", procSymbol->name);
       } break;
 
     case Ast_IntNum:
@@ -1564,7 +1564,7 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
         Emit(irProgram, "label %s", procSymbol->name); // entry point
         AstNode* scopeAst = ast->proc.body;
         GenCode(irProgram, scopeAst);
-        Emit(irProgram, "label .L%s.end", procSymbol->name); // exit point
+        Emit(irProgram, "label %s.end", procSymbol->name); // exit point
         Emit(irProgram, "return");
       } break;
 
@@ -1594,19 +1594,19 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
         char* label = MakeUniqueLabel(irProgram);
 
         if(ast->ifStmt.bodyElse)
-          Emit(irProgram, "jumpz %s.else", label);
+          Emit(irProgram, "jumpz else.%s", label);
         else
-          Emit(irProgram, "jumpz %s.if-end", label);
+          Emit(irProgram, "jumpz if-end.%s", label);
 
         GenCode(irProgram, ast->ifStmt.body);
         if(ast->ifStmt.bodyElse)
         {
-          Emit(irProgram, "goto %s.if-end", label);
-          Emit(irProgram, "label %s.else ;else-begin", label);
+          Emit(irProgram, "goto if-end.%s", label);
+          Emit(irProgram, "label else.%s", label);
           GenCode(irProgram, ast->ifStmt.bodyElse);
         }
 
-        Emit(irProgram, "label %s.if-end", label);
+        Emit(irProgram, "label if-end.%s", label);
 
       } break;
 

@@ -368,7 +368,7 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
 }/*<<<*/
 
 ExecResult RunProgram(Machine* machine)
-{
+{/*>>>*/
   IrCode* code = machine->code;
 
   Instruction* instr;
@@ -417,7 +417,7 @@ ExecResult RunProgram(Machine* machine)
   }
 
   return execResult;
-}
+}/*<<<*/
 
 bool32 LoadIrCode(IrCode* code)
 {
@@ -443,15 +443,15 @@ bool32 LoadIrCode(IrCode* code)
 int main(int argc, char* argv[])
 {
   int ret = -1;
-  Machine machine = {};
 
+  Machine machine = {};
   IrCode code = {};
   if(LoadIrCode(&code))
   {
-      machine.memorySize = SizeofArray(machine.memory);
-      machine.code = &code;
+    machine.memorySize = SizeofArray(machine.memory);
+    machine.code = &code;
 
-      ret = (int)RunProgram(&machine);
+    ret = (int)RunProgram(&machine);
   }
   return ret;
 }

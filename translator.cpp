@@ -63,24 +63,24 @@ enum SymbolKind
   Symbol__Null,
   Symbol_Keyword,
   Symbol_Proc,
-  Symbol_Var,
+  Symbol_DataObj,
 };
 
 struct Symbol
 {
   SymbolKind kind;
   char* name;
-  int scopeId;
+  int blockId;
+  int nestingDepth;
   Symbol* nextSymbol;
 
   union {
     struct {
       int dataSize;
-      int storageLocation; // relative to FP
-    } var;
+      int storageLocation;
+    } dataObj;
 
     struct {
-      int scopeId;
       int retAreaSize;
       int argAreaSize;
       int argCount;
@@ -97,14 +97,10 @@ enum AstKind
   Ast__Null,
   Ast_Expr,
   Ast_IntNum,
-  Ast_Id,
-  Ast_VarDecl,
-  Ast_ProcDecl,
-  Ast_Call,
-  Ast_Scope,
-  Ast_Program,
-  Ast_IfStmt,
-  Ast_WhileStmt,
+  Ast_Var,
+  Ast_Id, // occurrence of a variable
+  Ast_Call, // occurrence of a procedure
+  Ast_Block,
   Ast_Return,
 };
 
@@ -114,6 +110,84 @@ struct AstList
 {
   AstNode* ast;
   AstList* nextListItem;
+};
+
+enum BlockKind
+{
+  Block__Null,
+  Block_Module,
+  Block_Proc,
+  Block_WhileStmt,
+  Block_IfStmt,
+  Block_Anonymous,
+};
+
+struct AccessLink
+{
+  int actvRecordOffset;
+  int index;
+  AccessLink* nextLink;
+};
+
+struct Block;
+
+struct IrNonLocal
+{
+  int accessLinkIndex;
+  IrNonLocal* nextNonLocal;
+};
+
+enum IrActivationRecordKind
+{
+  ActvRecord__Null,
+  ActvRecord_Proc,
+  ActvRecord_Block,
+};
+
+struct IrActivationRecord
+{
+  IrActivationRecordKind kind;
+  IrActivationRecord* parentRecord;
+  IrNonLocal* nonLocals;
+  AccessLink* accessLinks;
+  int         accessLinkCount;
+};
+
+struct Block
+{
+  BlockKind   kind;
+  int         blockId;
+  int         nestingDepth;
+  Block*      enclosingBlock;
+  AstList*    localVars;
+  int         localsAreaSize;
+  AstList*    nonLocalVars;
+  AstList*    stmtList;
+  IrActivationRecord* actvRecord;
+
+  union {
+    struct {
+      Symbol* symbol;
+      char* name;
+      AstList* argList;
+    } proc;
+
+    struct {
+      AstList* procList;
+    } module;
+
+    struct {
+      Symbol* procSymbol;
+      char* procName;
+      AstNode* expr;
+      AstNode* elseStmtList;
+    } ifStmt;
+
+    struct {
+      char* procName;
+      AstNode* expr;
+    } whileStmt;
+  };
 };
 
 struct AstNode
@@ -131,18 +205,17 @@ struct AstNode
     struct {
       Symbol* symbol;
       char* name;
+      int declBlockOffset;
     } id;
-
-    struct {
-      int32 intNum;
-    } literal;
 
     struct {
       Symbol* symbol;
       char* name;
-      AstList* argList;
-      AstNode* body;
-    } proc;
+    } var;
+
+    struct {
+      int32 intNum;
+    } literal;
 
     struct {
       Symbol* proc;
@@ -151,32 +224,12 @@ struct AstNode
     } call;
 
     struct {
-      int scopeId;
-      AstList* localVars;
-      AstList* statements;
-      int localsAreaSize;
-    } scope;
-
-    struct {
-      AstList* procList;
-    } program;
-
-    struct {
-      int scopeId;
+      int blockId;
       Symbol* proc;
       AstNode* expr;
     } ret;
 
-    struct {
-      AstNode* expr;
-      AstNode* body;
-      AstNode* bodyElse;
-    } ifStmt;
-
-    struct {
-      AstNode* expr;
-      AstNode* body;
-    } whileStmt;
+    Block* block;
   };
 };
 
@@ -201,10 +254,12 @@ struct TokenStream
 struct SymbolTable
 {
   Symbol* currSymbol;
-  int currScopeId;
-  int lastScopeId;
-  int currOpenIndex;
-  int openedScopes[32];
+  int currBlockId;
+  int lastBlockId;
+  int nestingDepth;
+  int activeBlocks[32];
+  char label[64];
+  int lastLabelId;
   MemoryArena* arena;
 };
 
@@ -212,8 +267,6 @@ struct ProgramText
 {
   String text;
   int textLen;
-  char label[32];
-  int lastLabelId;
 };
 
 struct Translator
@@ -224,7 +277,7 @@ struct Translator
 };
 
 /* old_ip + old_sp + old_fp */
-#define CONTROL_AREA_SIZE 3
+#define MACHINE_STATUS_AREA_SIZE 3
 
 void SyntaxError(TokenStream* input, char* message, ...)
 {
@@ -236,6 +289,26 @@ void SyntaxError(TokenStream* input, char* message, ...)
   vfprintf(stderr, message, args);
   fprintf(stderr, "\n");
   va_end(args);
+}
+
+bool32 IdListContainsSymbol(AstList* astList, AstNode* idAst)
+{
+  assert(idAst->kind == Ast_Id);
+
+  bool32 result = false;
+  AstList* listItem = astList;
+  while(listItem)
+  {
+    AstNode* ast = listItem->ast;
+    assert(ast->kind == Ast_Id);
+    if(ast->id.symbol == idAst->id.symbol)
+    {
+      result = true;
+      break;
+    }
+    listItem = listItem->nextListItem;
+  }
+  return result;
 }
 
 Symbol* LookupEnclosingProc(SymbolTable* symbolTable)
@@ -276,8 +349,9 @@ Symbol* AddSymbol(SymbolTable* symbolTable, char* name, SymbolKind kind)
 {/*>>>*/
   Symbol* symbol = PushElement(symbolTable->arena, Symbol, 1);
   symbol->name = name;
-  symbol->scopeId = symbolTable->currScopeId;
   symbol->kind = kind;
+  symbol->blockId = symbolTable->currBlockId;
+  symbol->nestingDepth = symbolTable->nestingDepth;
   symbol->nextSymbol = symbolTable->currSymbol;
   symbolTable->currSymbol = symbol;
   return symbol;
@@ -290,40 +364,54 @@ Symbol* AddKeyword(SymbolTable* symbolTable, char* name, Token token)
   return symbol;
 }
 
-bool32 OpenScope(SymbolTable* symbolTable)
+bool32 BeginBlock(SymbolTable* symbolTable)
 {/*>>>*/
-  int currScopeId = ++symbolTable->lastScopeId;
-  symbolTable->currScopeId = currScopeId;
+  int currBlockId = ++symbolTable->lastBlockId;
+  symbolTable->currBlockId = currBlockId;
 
-  int currOpenIndex = ++symbolTable->currOpenIndex;
-  if(currOpenIndex < SizeofArray(symbolTable->openedScopes))
+  int nestingDepth = ++symbolTable->nestingDepth;
+  if(nestingDepth < SizeofArray(symbolTable->activeBlocks))
   {
-    symbolTable->openedScopes[currOpenIndex] = currScopeId;
+    symbolTable->activeBlocks[nestingDepth] = currBlockId;
   } else {
-    Error("Reached the maximum scope nesting depth");
+    Error("Reached the maximum block nesting depth");
     return false;
   }
 
   return true;
 }/*<<<*/
 
-void CloseScope(SymbolTable* symbolTable)
+void EndBlock(SymbolTable* symbolTable)
 {/*>>>*/
-  int currOpenIndex = --symbolTable->currOpenIndex;
-  int currScopeId = symbolTable->openedScopes[currOpenIndex];
-  assert(currScopeId >= 0);
-  symbolTable->currScopeId = currScopeId;
+  int nestingDepth = --symbolTable->nestingDepth;
+  int currBlockId = symbolTable->activeBlocks[nestingDepth];
+  assert(currBlockId >= 0);
+  symbolTable->currBlockId = currBlockId;
 
   Symbol* symbol = symbolTable->currSymbol;
-  while(symbol && symbol->scopeId > symbolTable->currScopeId)
+  while(symbol && symbol->blockId > symbolTable->currBlockId)
     symbol = symbol->nextSymbol;
   symbolTable->currSymbol = symbol;
 }/*<<<*/
 
-char* MakeUniqueLabel(ProgramText* irProgram)
+char* MakeUniqueLabel(SymbolTable* symbolTable)
 {
-  sprintf(irProgram->label, "L%d", irProgram->lastLabelId++);
-  return irProgram->label;
+  sprintf(symbolTable->label, "L%d", symbolTable->lastLabelId++);
+  return symbolTable->label;
+}
+
+char* MakeProcLabel(SymbolTable* symbolTable, BlockKind blockKind)
+{
+  char* blockTag = 0;
+  switch(blockKind)
+  {
+    case Block_WhileStmt:
+      blockTag = "while"; break;
+    default:
+      assert(false && !"Not implemented");
+  }
+  sprintf(symbolTable->label, "B%d.%s", symbolTable->currBlockId, blockTag);
+  return symbolTable->label;
 }
 
 bool32 IsKeyword(Token token)
@@ -484,13 +572,13 @@ void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
 }/*<<<*/
 
 bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                  AstNode** out_exprAst);
+                  AstNode** out_exprAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock);
 
 bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                           AstList* in_tailItem, AstList** out_argList);
+                           AstList* in_tailItem, AstList** out_argList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock);
 
 bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-              AstNode** out_factorAst)
+              AstNode** out_factorAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
   *out_factorAst = 0;
   bool32 success = true;
@@ -498,7 +586,8 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
   if(input->token == Token_OpenParens)
   {
     ConsumeToken(input, symbolTable);
-    success = Expression(arena, input, symbolTable, out_factorAst);
+    success = Expression(arena, input, symbolTable,
+                         out_factorAst, inOut_nonLocalsList, in_enclosingBlock);
     if(success)
     {
       if(input->token == Token_CloseParens)
@@ -520,56 +609,79 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
   else if(input->token == Token_Id)
   {
     AstNode* idAst = PushElement(arena, AstNode, 1);
-    idAst->kind = Ast_Id; // tentative
+    idAst->kind = Ast_Id;
     idAst->id.name = input->lexval.id;
 
     Symbol* symbol = LookupSymbol(symbolTable, input->lexval.id);
     if(symbol)
     {
-      if(symbol->kind != Symbol_Keyword)
-      {
-        idAst->id.symbol = symbol;
-        *out_factorAst = idAst;
-        ConsumeToken(input, symbolTable);
+      idAst->id.symbol = symbol;
+      *out_factorAst = idAst;
+      ConsumeToken(input, symbolTable);
 
-        if(symbol->kind == Symbol_Proc)
+      if(symbol->kind == Symbol_Proc)
+      {
+        ConsumeToken(input, symbolTable);
+        if(input->token == Token_OpenParens)
         {
           // This is a procedure call
-          if(input->token == Token_OpenParens)
+          ConsumeToken(input, symbolTable);
+          AstList* argList = 0;
+          success = ActualArgumentsList(arena, input, symbolTable,
+                                        0, &argList, inOut_nonLocalsList, in_enclosingBlock);
+          if(success)
           {
-            ConsumeToken(input, symbolTable);
-            AstList* argList = 0;
-            success = ActualArgumentsList(arena, input, symbolTable, 0, &argList);
-            if(success)
+            if(input->token == Token_CloseParens)
             {
-              if(input->token == Token_CloseParens)
-              {
-                ConsumeToken(input, symbolTable);
-                idAst->kind = Ast_Call;
-                idAst->call.argList = argList;
+              ConsumeToken(input, symbolTable);
+              idAst->kind = Ast_Call;
+              idAst->call.argList = argList;
 
-                AstNode* exprAst = PushElement(arena, AstNode, 1);
-                exprAst->kind = Ast_Expr;
-                exprAst->expr.op = Operator_Call;
-                exprAst->expr.leftOperand = idAst;
+              AstNode* exprAst = PushElement(arena, AstNode, 1);
+              exprAst->kind = Ast_Expr;
+              exprAst->expr.op = Operator_Call;
+              exprAst->expr.leftOperand = idAst;
 
-                *out_factorAst = exprAst;
-              } else {
-                SyntaxError(input, "Missing ')' in procedure call");
-                success = false;
-              }
+              *out_factorAst = exprAst;
+            } else {
+              SyntaxError(input, "Missing ')' in procedure call");
+              success = false;
             }
-          } else {
-            SyntaxError(input, "Missing '(' in procedure call");
-            success = false;
           }
+        } else {
+          SyntaxError(input, "Missing '(' in procedure call");
+          success = false;
         }
-      } else {
-        SyntaxError(input, "Keyword '%s' used as identifier", input->lexval.id);
+      }
+      else if(symbol->kind == Symbol_DataObj)
+      {
+        idAst->id.declBlockOffset = (in_enclosingBlock->nestingDepth - symbol->nestingDepth);
+        if(idAst->id.declBlockOffset > 0)
+        {
+          AstList* nonLocalItem = PushElement(arena, AstList, 1);
+          nonLocalItem->ast = idAst;
+          nonLocalItem->nextListItem = *inOut_nonLocalsList;
+          *inOut_nonLocalsList = nonLocalItem;
+        }
+        /*
+        idAst->id.isLocal = (in_enclosingBlock->blockId == symbol->blockId);
+        if(!idAst->id.isLocal && !IdListContainsSymbol(*inOut_nonLocalsList, idAst))
+        {
+          AstList* nonLocalItem = PushElement(arena, AstList, 1);
+          nonLocalItem->ast = idAst;
+          nonLocalItem->nextListItem = *inOut_nonLocalsList;
+          *inOut_nonLocalsList = nonLocalItem;
+        }*/
+      }
+      else if(symbol->kind == Symbol_Keyword)
+      {
+        SyntaxError(input, "Keyword used as identifier: '%s'", input->lexval.id);
         success = false;
       }
+      else
+        assert(false);
     } else {
-      SyntaxError(input, "Unknown identifier");
+      SyntaxError(input, "Unknown identifier: '%s'", input->lexval.id);
       success = false;
     }
   }
@@ -586,7 +698,7 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
 }/*<<<*/
 
 bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                     AstNode* in_leftFactorAst, AstNode** out_factorAst)
+                     AstNode* in_leftFactorAst, AstNode** out_factorAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
   bool32 success = true;
 
@@ -604,12 +716,14 @@ bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
 
     ConsumeToken(input, symbolTable);
     AstNode* factorNode = 0;
-    success = Factor(arena, input, symbolTable, &factorNode);
+    success = Factor(arena, input, symbolTable,
+                     &factorNode, inOut_nonLocalsList, in_enclosingBlock);
     if(success && factorNode)
     {
         astNode->expr.rightOperand = factorNode;
         astNode->expr.leftOperand = in_leftFactorAst;
-        success = RestOfFactors(arena, input, symbolTable, astNode, out_factorAst);
+        success = RestOfFactors(arena, input, symbolTable,
+                                astNode, out_factorAst, inOut_nonLocalsList, in_enclosingBlock);
     } else {
       SyntaxError(input, "Factor expected");
       success = false;
@@ -622,21 +736,23 @@ bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
 }/*<<<*/
 
 bool32 Term(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-            AstNode** out_termAst)
+            AstNode** out_termAst, AstList** out_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
-  AstNode* factorNode = 0;
-  AstNode* exprAst = 0;
+  AstNode* factor = 0;
+  AstNode* expr = 0;
 
-  bool32 success = Factor(arena, input, symbolTable, &factorNode);
-  if(success && factorNode)
-    success = RestOfFactors(arena, input, symbolTable, factorNode, &exprAst);
+  bool32 success = Factor(arena, input, symbolTable,
+                          &factor, out_nonLocalsList, in_enclosingBlock);
+  if(success && factor)
+    success = RestOfFactors(arena, input, symbolTable,
+                            factor, &expr, out_nonLocalsList, in_enclosingBlock);
 
-  *out_termAst = exprAst;
+  *out_termAst = expr;
   return success;
 }/*<<<*/
 
 bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                   AstNode* in_leftTermAst, AstNode** out_termAst)
+                   AstNode* in_leftTermAst, AstNode** out_termAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
   bool32 success = true;
 
@@ -654,12 +770,14 @@ bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
 
     ConsumeToken(input, symbolTable);
     AstNode* termAst = 0;
-    success = Term(arena, input, symbolTable, &termAst);
+    success = Term(arena, input, symbolTable,
+                   &termAst, inOut_nonLocalsList, in_enclosingBlock);
     if(success && termAst)
     {
       opAst->expr.rightOperand = termAst;
       opAst->expr.leftOperand = in_leftTermAst;
-      return RestOfTerms(arena, input, symbolTable, opAst, out_termAst);
+      success = RestOfTerms(arena, input, symbolTable,
+                            opAst, out_termAst, inOut_nonLocalsList, in_enclosingBlock);
     } else {
       SyntaxError(input, "Expression term expected");
       success = false;
@@ -672,21 +790,23 @@ bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
 }/*<<<*/
 
 bool32 AssignmentTerm(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                      AstNode** out_termAst)
+                      AstNode** out_termAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
   AstNode* termAst = 0;
   AstNode* exprAst = 0;
 
-  bool32 success = Term(arena, input, symbolTable, &termAst);
+  bool32 success = Term(arena, input, symbolTable,
+                        &termAst, inOut_nonLocalsList, in_enclosingBlock);
   if(success && termAst)
-    success = RestOfTerms(arena, input, symbolTable, termAst, &exprAst);
+    success = RestOfTerms(arena, input, symbolTable,
+                          termAst, &exprAst, inOut_nonLocalsList, in_enclosingBlock);
 
   *out_termAst = exprAst;
   return success;
 }/*<<<*/
 
 bool32 RestOfAssignmentTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                             AstNode* in_leftTermAst, AstNode** out_termAst)
+                             AstNode* in_leftTermAst, AstNode** out_termAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
   bool32 success = true;
 
@@ -695,7 +815,8 @@ bool32 RestOfAssignmentTerms(MemoryArena* arena, TokenStream* input, SymbolTable
     ConsumeToken(input, symbolTable);
 
     AstNode* rightSide = 0;
-    success = Expression(arena, input, symbolTable, &rightSide);
+    success = Expression(arena, input, symbolTable,
+                         &rightSide, inOut_nonLocalsList, in_enclosingBlock);
     if(success)
     {
       if(rightSide)
@@ -725,21 +846,23 @@ bool32 RestOfAssignmentTerms(MemoryArena* arena, TokenStream* input, SymbolTable
 }/*<<<*/
 
 bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                  AstNode** out_exprAst)
+                  AstNode** out_exprAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
   AstNode* assgnAst = 0;
   AstNode* exprAst = 0;
 
-  bool32 success = AssignmentTerm(arena, input, symbolTable, &assgnAst);
+  bool32 success = AssignmentTerm(arena, input, symbolTable,
+                                  &assgnAst, inOut_nonLocalsList, in_enclosingBlock);
   if(success && assgnAst)
-    success = RestOfAssignmentTerms(arena, input, symbolTable, assgnAst, &exprAst);
+    success = RestOfAssignmentTerms(arena, input, symbolTable,
+                                    assgnAst, &exprAst, inOut_nonLocalsList, in_enclosingBlock);
 
   *out_exprAst = exprAst;
   return success;
 }/*<<<*/
 
 bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                    AstNode** out_varStmt)
+                    AstNode** out_varStmt, Block* in_enclosingBlock)
 {/*>>>*/
   *out_varStmt = 0;
   bool32 success = true;
@@ -750,15 +873,15 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
     if(input->token == Token_Id)
     {
       AstNode* varStmt = PushElement(arena, AstNode, 1);
-      varStmt->kind = Ast_VarDecl;
+      varStmt->kind = Ast_Var;
 
       Symbol* symbol = LookupSymbol(symbolTable, input->lexval.id);
       if(!symbol)
       {
-        symbol = AddSymbol(symbolTable, input->lexval.id, Symbol_Var);
-        symbol->var.dataSize = 1;
-        varStmt->id.symbol = symbol;
-        varStmt->id.name = symbol->name;
+        symbol = AddSymbol(symbolTable, input->lexval.id, Symbol_DataObj);
+        symbol->dataObj.dataSize = 1;
+        varStmt->var.symbol = symbol;
+        varStmt->var.name = symbol->name;
         ConsumeToken(input, symbolTable);
 
         *out_varStmt = varStmt;
@@ -766,7 +889,7 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
         if(symbol->kind == Symbol_Keyword)
           SyntaxError(input, "Keyword '%s' used as identifier", symbol->name);
         else
-          SyntaxError(input, "Name used in a previous declaration", symbol->name);
+          SyntaxError(input, "Name is used in a previous declaration: '%s'", symbol->name);
         success = false;
       }
     } else {
@@ -779,13 +902,13 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
 }/*<<<*/
 
 bool32 FormalArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                           AstList* in_prevItem, AstList** out_argList)
+                           AstList* in_prevItem, AstList** out_argList, Block* in_enclosingBlock)
 {/*>>>*/
   *out_argList = 0;
   bool32 success = true;
 
   AstNode* varAst = 0;
-  success = VarStatement(arena, input, symbolTable, &varAst);
+  success = VarStatement(arena, input, symbolTable, &varAst, in_enclosingBlock);
   if(success && varAst)
   {
     AstList* varItem = PushElement(arena, AstList, 1);
@@ -795,7 +918,8 @@ bool32 FormalArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
     {
       ConsumeToken(input, symbolTable);
       AstList* nextItem = 0;
-      success = FormalArgumentsList(arena, input, symbolTable, 0, &nextItem);
+      success = FormalArgumentsList(arena, input, symbolTable,
+                                    0, &nextItem, in_enclosingBlock);
 
       varItem->nextListItem = nextItem;
     }
@@ -807,13 +931,14 @@ bool32 FormalArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
 }/*<<<*/
 
 bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                           AstList* in_prevItem, AstList** out_argList)
+                           AstList* in_prevItem, AstList** out_argList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
   *out_argList = 0;
   bool32 success = true;
 
   AstNode* argAst = 0;
-  success = Expression(arena, input, symbolTable, &argAst);
+  success = Expression(arena, input, symbolTable,
+                       &argAst, inOut_nonLocalsList, in_enclosingBlock);
   if(success && argAst)
   {
     AstList* argItem = PushElement(arena, AstList, 1);
@@ -825,18 +950,19 @@ bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
     {
       ConsumeToken(input, symbolTable);
       AstList* nextItem = 0;
-      success = ActualArgumentsList(arena, input, symbolTable, argItem, &nextItem);
+      success = ActualArgumentsList(arena, input, symbolTable,
+                                    argItem, &nextItem, inOut_nonLocalsList, in_enclosingBlock);
       *out_argList = nextItem;
     }
   }
   return success;
 }/*<<<*/
 
-bool32 Scope(MemoryArena* arena, TokenStream* input,
-             SymbolTable* symbolTable, AstNode** out_scopeAst);
+bool32 Block_(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
+              BlockKind blockKind, Block** out_block, Block* in_enclosingBlock);
 
 bool32 WhileStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                      AstNode** out_whileAst)
+                      AstNode** out_whileAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
   *out_whileAst = 0;
   bool32 success = true;
@@ -845,30 +971,32 @@ bool32 WhileStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
   {
     ConsumeToken(input, symbolTable);
 
-    AstNode* whileAst = PushElement(arena, AstNode, 1);
-    whileAst->kind = Ast_WhileStmt;
-
     AstNode* expr = 0;
-    success = Expression(arena, input, symbolTable, &expr);
+    success = Expression(arena, input, symbolTable,
+                         &expr, inOut_nonLocalsList, in_enclosingBlock);
     if(success)
     {
-      whileAst->whileStmt.expr = expr;
-
       if(input->token == Token_OpenBrace)
       {
         ConsumeToken(input, symbolTable);
 
-        AstNode* scope = 0;
-        success = OpenScope(symbolTable) &&
-          Scope(arena, input, symbolTable, &scope);
+        Block* block = 0;
+        success = BeginBlock(symbolTable) &&
+          Block_(arena, input, symbolTable, Block_WhileStmt, &block, in_enclosingBlock);
         if(success)
         {
-          whileAst->whileStmt.body = scope;
+          char* procName = MakeProcLabel(symbolTable, Block_WhileStmt);
+          block->whileStmt.procName = procName;
+          block->whileStmt.expr = expr;
+
+          AstNode* whileAst = PushElement(arena, AstNode, 1);
+          whileAst->kind = Ast_Block;
+          whileAst->block = block;
 
           if(input->token == Token_CloseBrace)
           {
             ConsumeToken(input, symbolTable);
-            CloseScope(symbolTable);
+            EndBlock(symbolTable);
             *out_whileAst = whileAst;
           } else {
             SyntaxError(input, "Missing '}'");
@@ -886,11 +1014,12 @@ bool32 WhileStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
 }/*<<<*/
 
 bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                   AstNode** out_ifAst)
+                   AstNode** out_ifAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
   *out_ifAst = 0;
   bool32 success = true;
 
+#if 0
   if(input->token == Token_If)
   {
     ConsumeToken(input, symbolTable);
@@ -908,17 +1037,17 @@ bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
       {
         ConsumeToken(input, symbolTable);
 
-        AstNode* scope = 0;
-        success = OpenScope(symbolTable) &&
-          Scope(arena, input, symbolTable, &scope);
+        AstNode* block = 0;
+        success = BeginBlock(symbolTable) &&
+          Block(arena, input, symbolTable, &block);
         if(success)
         {
-          ifAst->ifStmt.body = scope;
+          ifAst->ifStmt.body = block;
 
           if(input->token == Token_CloseBrace)
           {
             ConsumeToken(input, symbolTable);
-            CloseScope(symbolTable);
+            EndBlock(symbolTable);
             *out_ifAst = ifAst;
 
             if(input->token == Token_Else)
@@ -929,17 +1058,17 @@ bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
               {
                 ConsumeToken(input, symbolTable);
 
-                AstNode* scope = 0;
-                success = OpenScope(symbolTable) &&
-                  Scope(arena, input, symbolTable, &scope);
+                AstNode* block = 0;
+                success = BeginBlock(symbolTable) &&
+                  Block(arena, input, symbolTable, &block);
                 if(success)
                 {
-                  ifAst->ifStmt.bodyElse = scope;
+                  ifAst->ifStmt.bodyElse = block;
 
                   if(input->token == Token_CloseBrace)
                   {
                     ConsumeToken(input, symbolTable);
-                    CloseScope(symbolTable);
+                    EndBlock(symbolTable);
                   } else {
                     SyntaxError(input, "Missing '}'");
                     success = false;
@@ -961,12 +1090,13 @@ bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
       }
     }
   }
+#endif
 
   return success;
 }/*<<<*/
 
-bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                       AstNode** out_procAst)
+bool32 Procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
+                 AstNode** out_procAst, Block* in_enclosingBlock)
 {/*>>>*/
   *out_procAst = 0;
   bool32 success = true;
@@ -976,15 +1106,10 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
     ConsumeToken(input, symbolTable);
     if(input->token == Token_Id)
     {
-      AstNode* proc = PushElement(arena, AstNode, 1);
-      proc->kind = Ast_ProcDecl;
-
       Symbol* symbol = LookupSymbol(symbolTable, input->lexval.id);
       if(!symbol)
       {
         symbol = AddSymbol(symbolTable, input->lexval.id, Symbol_Proc);
-        proc->proc.symbol = symbol;
-        proc->proc.name = symbol->name;
 
         ConsumeToken(input, symbolTable);
         if(input->token == Token_OpenParens)
@@ -993,12 +1118,11 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 
           // arguments
           AstList *argList = 0;
-          success = OpenScope(symbolTable) &&
-            FormalArgumentsList(arena, input, symbolTable, 0, &argList);
+          success = BeginBlock(symbolTable) &&
+            FormalArgumentsList(arena, input, symbolTable,
+                                0, &argList, in_enclosingBlock);
           if(success)
           {
-            proc->proc.argList = argList;
-
             if(input->token == Token_CloseParens)
             {
               ConsumeToken(input, symbolTable);
@@ -1008,17 +1132,24 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
                 // body
                 ConsumeToken(input, symbolTable);
 
-                AstNode* scope = 0;
-                success = Scope(arena, input, symbolTable, &scope);
+                Block* block = 0;
+                success = Block_(arena, input, symbolTable, Block_Proc, &block, in_enclosingBlock);
                 if(success)
                 {
-                  proc->proc.body = scope;
-                  *out_procAst = proc;
+                  block->proc.symbol = symbol;
+                  block->proc.name = symbol->name;
+                  block->proc.argList = argList;
+
+                  AstNode* procAst = PushElement(arena, AstNode, 1);
+                  procAst->kind = Ast_Block;
+                  procAst->block = block;
+
+                  *out_procAst = procAst;
 
                   if(input->token == Token_CloseBrace)
                   {
                     ConsumeToken(input, symbolTable);
-                    CloseScope(symbolTable);
+                    EndBlock(symbolTable);
                   } else {
                     SyntaxError(input, "Missing '}'");
                     success = false;
@@ -1029,7 +1160,10 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
                 success = false;
               }
             } else {
-              SyntaxError(input, "Missing ')'");
+              if(input->token == Token_Id)
+                SyntaxError(input, "Missing 'var' keyword", input->lexval.id);
+              else
+                SyntaxError(input, "Missing ')'");
               success = false;
             }
           }
@@ -1041,7 +1175,7 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
         if(symbol->kind == Symbol_Keyword)
           SyntaxError(input, "Keyword '%s' used as identifier", symbol->name);
         else
-          SyntaxError(input, "Name used in a previous declaration", symbol->name);
+          SyntaxError(input, "Name '%s' used in a previous declaration", symbol->name);
         success = false;
       }
     } else {
@@ -1053,20 +1187,20 @@ bool32 ProcDeclaration(MemoryArena* arena, TokenStream* input, SymbolTable* symb
   return success;
 }/*<<<*/
 
-bool32 Program(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-               AstList** out_procList)
+bool32 ProcedureList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
+                     AstList** out_procList, Block* in_enclosingBlock)
 {/*>>>*/
   *out_procList = 0;
 
   AstNode* procAst = 0;
-  bool32 success = ProcDeclaration(arena, input, symbolTable, &procAst);
+  bool32 success = Procedure(arena, input, symbolTable, &procAst, in_enclosingBlock);
   if(success && procAst)
   {
     AstList* procItem = PushElement(arena, AstList, 1);
     procItem->ast = procAst;
 
     AstList* nextProcItem = 0;
-    success = Program(arena, input, symbolTable, &nextProcItem);
+    success = ProcedureList(arena, input, symbolTable, &nextProcItem, in_enclosingBlock);
     if(success)
       procItem->nextListItem = nextProcItem;
     *out_procList = procItem;
@@ -1075,7 +1209,7 @@ bool32 Program(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
 }/*<<<*/
 
 bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                       AstNode** out_stmtAst)
+                       AstNode** out_stmtAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
   *out_stmtAst = 0;
   bool32 success = true;
@@ -1085,7 +1219,8 @@ bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
     ConsumeToken(input, symbolTable);
     
     AstNode* expr = 0;
-    success = Expression(arena, input, symbolTable, &expr);
+    success = Expression(arena, input, symbolTable,
+                         &expr, inOut_nonLocalsList, in_enclosingBlock);
     if(success)
     {
       if(expr)
@@ -1107,9 +1242,8 @@ bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 }/*<<<*/
 
 bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                 AstNode** out_stmtAst)
+                 AstNode** out_stmtAst, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
-  AstNode* stmtAst = 0;
   bool32 success = true;
 
   enum Alternative
@@ -1123,12 +1257,14 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
   };
 
   Alternative alt = (Alternative)1;
+  AstNode* stmtAst = 0;
 
   while(alt) {
     switch(alt) {
       case Alt_Expr:
         {
-          success = Expression(arena, input, symbolTable, &stmtAst);
+          success = Expression(arena, input, symbolTable,
+                               &stmtAst, inOut_nonLocalsList, in_enclosingBlock);
           if(success)
           {
             if(stmtAst)
@@ -1156,7 +1292,8 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_If:
         {
-          success = IfStatement(arena, input, symbolTable, &stmtAst);
+          success = IfStatement(arena, input, symbolTable,
+                                &stmtAst, inOut_nonLocalsList, in_enclosingBlock);
           if(success)
           {
             if(stmtAst)
@@ -1170,7 +1307,8 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_While:
         {
-          success = WhileStatement(arena, input, symbolTable, &stmtAst);
+          success = WhileStatement(arena, input, symbolTable,
+                                   &stmtAst, inOut_nonLocalsList, in_enclosingBlock);
           if(success)
           {
             if(stmtAst)
@@ -1184,7 +1322,8 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_Return:
         {
-          success = ReturnStatement(arena, input, symbolTable, &stmtAst);
+          success = ReturnStatement(arena, input, symbolTable,
+                                    &stmtAst, inOut_nonLocalsList, in_enclosingBlock);
           if(success)
           {
             if(stmtAst)
@@ -1204,7 +1343,8 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_Var:
         {
-          success = VarStatement(arena, input, symbolTable, &stmtAst);
+          success = VarStatement(arena, input, symbolTable,
+                                 &stmtAst, in_enclosingBlock);
           if(success)
           {
             if(stmtAst)
@@ -1234,94 +1374,115 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
   return success;
 }/*<<<*/
 
-bool32 ScopeStatementList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                          AstList** out_stmtList, AstList** out_varList)
+bool32 StatementList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
+                          AstList** out_stmtList, AstList** out_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
 {/*>>>*/
-  *out_stmtList = *out_varList = 0;
+  *out_stmtList = *out_localsList = 0;
   bool32 success = true;
 
   AstNode* stmt = 0;
-  success = Statement(arena, input, symbolTable, &stmt);
+  success = Statement(arena, input, symbolTable,
+                      &stmt, inOut_nonLocalsList, in_enclosingBlock);
   if(success && stmt)
   {
     AstList* stmtItem = PushElement(arena, AstList, 1);
     stmtItem->ast = stmt;
 
-    AstList* varItem = 0;
-    if(stmt->kind == Ast_VarDecl)
+    AstList* localItem = 0;
+    if(stmt->kind == Ast_Var)
     {
-      varItem = stmtItem;
+      localItem = stmtItem;
       stmtItem = 0;
     }
 
     if(stmt->kind == Ast_Return)
-      stmt->ret.scopeId = symbolTable->currScopeId;
+      stmt->ret.blockId = symbolTable->currBlockId;
 
     while(input->token == Token_Semicolon)
       ConsumeToken(input, symbolTable);
 
     AstList* nextStmtItem = 0, *nextVarItem = 0;
-    success = ScopeStatementList(arena, input, symbolTable, &nextStmtItem, &nextVarItem);
+    success = StatementList(arena, input, symbolTable,
+                            &nextStmtItem, &nextVarItem, inOut_nonLocalsList, in_enclosingBlock);
     if(success)
     {
-      if(varItem)
+      if(localItem)
       {
         stmtItem = nextStmtItem;
-        varItem->nextListItem = nextVarItem;
+        localItem->nextListItem = nextVarItem;
       }
       else
       {
-        varItem = nextVarItem;
+        localItem = nextVarItem;
         stmtItem->nextListItem = nextStmtItem;
       }
     }
     *out_stmtList = stmtItem;
-    *out_varList = varItem;
+    *out_localsList = localItem;
   }
   return success;
 }/*<<<*/
 
-bool32 Scope(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-             AstNode** out_scopeAst)
+bool32 Block_(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
+             BlockKind blockKind, Block** out_block, Block* in_enclosingBlock)
 {/*>>>*/
-  *out_scopeAst = 0;
+  *out_block = 0;
   bool32 success = true;
 
-  AstList* stmtList = 0, *varList = 0;
-  success = ScopeStatementList(arena, input, symbolTable, &stmtList, &varList);
+  Block* block = PushElement(arena, Block, 1);
+  block->blockId = symbolTable->currBlockId;
+  block->kind = blockKind;
+  block->nestingDepth = symbolTable->nestingDepth;
+  block->enclosingBlock = in_enclosingBlock;
+
+  AstList* stmtList = 0, *localsList = 0, *nonLocalsList = 0;
+  success = StatementList(arena, input, symbolTable,
+                          &stmtList, &localsList, &nonLocalsList, block);
   if(success)
   {
-    AstNode* scope = PushElement(arena, AstNode, 1);
-    scope->kind = Ast_Scope;
-    scope->scope.statements = stmtList;
-    scope->scope.localVars = varList;
-    scope->scope.scopeId = symbolTable->currScopeId;
+    block->localVars = localsList;
+    block->nonLocalVars = nonLocalsList;
+    block->stmtList = stmtList;
 
-    *out_scopeAst = scope;
+    *out_block = block;
   }
 
   return success;
 }/*<<<*/
 
-bool32 SyntacticAnalysis(MemoryArena* arena, TokenStream* input,
-                         SymbolTable* symbolTable, AstNode** out_programAst)
+bool32 Module(MemoryArena* arena, TokenStream* input,
+              SymbolTable* symbolTable, AstNode** out_module, Block* in_enclosingBlock)
 {/*>>>*/
-  *out_programAst = 0;
+  *out_module = 0;
   bool32 success = true;
 
   AstList* procList = 0;
-  success = Program(arena, input, symbolTable, &procList);
+  success = BeginBlock(symbolTable);
   if(success)
   {
-    AstNode* programAst = PushElement(arena, AstNode, 1);
-    programAst->kind = Ast_Program;
-    programAst->program.procList = procList;
+    Block* block = PushElement(arena, Block, 1);
+    block->kind = Block_Module;
+    block->blockId = symbolTable->currBlockId;
+    block->nestingDepth = symbolTable->nestingDepth;
+    block->enclosingBlock = in_enclosingBlock;
 
-    if(input->token == Token_EndOfInput)
-      *out_programAst = programAst;
-    else {
-      SyntaxError(input, "End of file expected");
-      success = false;
+    success = ProcedureList(arena, input, symbolTable, &procList, block);
+    if(success)
+    {
+      block->module.procList = procList;
+
+      AstNode* module = PushElement(arena, AstNode, 1);
+      module->kind = Ast_Block;
+      module->block = block;
+
+      EndBlock(symbolTable);
+
+      if(input->token == Token_EndOfInput)
+        *out_module = module;
+      else {
+        SyntaxError(input, "End of file expected");
+        success = false;
+      }
     }
   }
 
@@ -1342,53 +1503,48 @@ void Emit(ProgramText* irProgram, char* code, ...)
   irProgram->textLen++;
 }/*<<<*/
 
+struct BlockList
+{
+  Block* block;
+  BlockList* nextListItem;
+};
+
+bool32 BlockListContainsBlock(BlockList* blockList, Block* block)
+{
+  BlockList* listItem = blockList;
+  while(listItem)
+  {
+    Block* b = listItem->block;
+    if(b == block)
+      return true;
+    listItem = listItem->nextListItem;
+  }
+  return false;
+}
+
+BlockList* BlockListAddNewBlock(MemoryArena* arena, BlockList* blockList, Block* block)
+{
+  BlockList* newListItem = PushElement(arena, BlockList, 1);
+  newListItem->block = block;
+  newListItem->nextListItem = blockList;
+  return newListItem;
+}
+
+struct IrFrame
+{
+  int ret;
+  int args;
+  int accessLinks;
+  int machineStatus;
+  int locals;
+};
+
 bool32 SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast)
 {/*>>>*/
   bool32 success = true;
 
   switch(ast->kind)
   {
-    case Ast_ProcDecl:
-      {
-        AstNode* scopeAst = ast->proc.body;
-        Symbol* procSymbol = ast->proc.symbol;
-        procSymbol->proc.retAreaSize = 1;
-
-        AstList* argList = ast->proc.argList;
-        int argAreaSize = 0;
-        int argCount = 0;
-        while(argList)
-        {
-          AstNode* argAst = argList->ast;
-          Symbol* argSymbol = argAst->id.symbol;
-
-          assert(argAst->kind == Ast_VarDecl);
-          assert(argSymbol->kind == Symbol_Var);
-
-          // Note that the storage location is a negative value
-          argAreaSize += argSymbol->var.dataSize;
-          argSymbol->var.storageLocation = -(argAreaSize + CONTROL_AREA_SIZE);
-
-          argList = argList->nextListItem;
-          argCount++;
-        }
-        procSymbol->proc.argAreaSize = argAreaSize;
-        procSymbol->proc.argCount = argCount;
-
-        //FIXME Looks like a hack
-        if(StrMatch(procSymbol->name, "Main"))
-        {
-          if(ast->proc.argList)
-          {
-            Error("Main() must not have arguments");
-            success = false;
-          }
-        }
-
-        if(success)
-          success = SemanticAnalysis(arena, symbolTable, scopeAst);
-      } break;
-
     case Ast_Call:
       {
         AstList* actualArgList = ast->call.argList;
@@ -1407,31 +1563,147 @@ bool32 SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* a
         }
       } break;
 
-    case Ast_Scope:
+    case Ast_Block:
       {
-        AstList* varList = ast->scope.localVars;
+        Block* block = ast->block;
+
+        // Process the local vars
+        AstList* localsList = block->localVars;
         int localsAreaSize = 0;
-        while(varList)
+        while(localsList)
         {
-          AstNode* varAst = varList->ast;
+          AstNode* varAst = localsList->ast;
+          Symbol* varSymbol = varAst->var.symbol;
+
+          assert(varAst->kind == Ast_Var);
+          assert(varSymbol->kind == Symbol_DataObj);
+
+          varSymbol->dataObj.storageLocation = localsAreaSize;
+          localsAreaSize += varSymbol->dataObj.dataSize;
+
+          localsList = localsList->nextListItem;
+        }
+        block->localsAreaSize = localsAreaSize;
+
+        // Process the non-local vars
+        AstList* nonLocalsList = block->nonLocalVars;
+        IrNonLocal* irNonLocals = 0;
+        int accessLinkCount = 0;
+        AccessLink* accessLinks = 0;
+        while(nonLocalsList)
+        {
+          AstNode* varAst = nonLocalsList->ast;
           Symbol* varSymbol = varAst->id.symbol;
 
-          assert(varAst->kind == Ast_VarDecl);
-          assert(varSymbol->kind == Symbol_Var);
+          assert(varAst->kind == Ast_Id);
+          assert(varAst->id.declBlockOffset > 0);
+          assert(varSymbol->kind == Symbol_DataObj);
 
-          varSymbol->var.storageLocation = localsAreaSize;
-          localsAreaSize += varSymbol->var.dataSize;
+          AccessLink* accessLink = 0;
+          {
+            AccessLink* link = accessLinks;
+            while(link)
+            {
+              if(link->actvRecordOffset == varAst->id.declBlockOffset)
+              {
+                accessLink = link;
+                break;
+              }
+              link = link->nextLink;
+            }
+            if(!accessLink)
+            {
+              accessLink = PushElement(arena, AccessLink, 1);
+              accessLink->actvRecordOffset = varAst->id.declBlockOffset;
+              accessLink->index = accessLinkCount++;
+              accessLink->nextLink = accessLinks;
+              accessLinks = accessLink;
+            }
+          }
 
-          varList = varList->nextListItem;
+          IrNonLocal* irNonLocal = PushElement(arena, IrNonLocal, 1);
+          irNonLocal->accessLinkIndex = accessLink->index;
+          irNonLocal->nextNonLocal = irNonLocals;
+          irNonLocals = irNonLocal;
+
+          nonLocalsList = nonLocalsList->nextListItem;
         }
-        ast->scope.localsAreaSize = localsAreaSize;
 
-        AstList* stmtList = ast->scope.statements;
-        while(stmtList && success)
+        IrActivationRecord* actvRecord = PushElement(arena, IrActivationRecord, 1);
+        actvRecord->kind = ActvRecord_Block;
+        actvRecord->nonLocals = irNonLocals;
+        actvRecord->accessLinks = accessLinks;
+        actvRecord->accessLinkCount = accessLinkCount;
+
+        switch(block->kind)
         {
-          AstNode* stmtAst = stmtList->ast;
-          success = SemanticAnalysis(arena, symbolTable, stmtAst);
-          stmtList = stmtList->nextListItem;
+          case Block_Module:
+            {
+              AstList* procList = block->module.procList;
+              while(procList && success)
+              {
+                AstNode* procAst = procList->ast;
+                success = SemanticAnalysis(arena, symbolTable, procAst);
+
+                procList = procList->nextListItem;
+              }
+            } break;
+
+          case Block_Proc:
+            {
+              Symbol* procSymbol = block->proc.symbol;
+              procSymbol->proc.retAreaSize = 1;
+
+              AstList* argList = block->proc.argList;
+              int argAreaSize = 0;
+              int argCount = 0;
+              while(argList)
+              {
+                AstNode* argAst = argList->ast;
+                Symbol* argSymbol = argAst->id.symbol;
+
+                assert(argAst->kind == Ast_Id);
+                assert(argSymbol->kind == Symbol_DataObj);
+
+                // Note that the storage locations for arguments are negative
+                argAreaSize += argSymbol->dataObj.dataSize;
+                argSymbol->dataObj.storageLocation = -(argAreaSize + MACHINE_STATUS_AREA_SIZE);
+
+                argList = argList->nextListItem;
+                argCount++;
+              }
+              procSymbol->proc.argAreaSize = argAreaSize;
+              procSymbol->proc.argCount = argCount;
+
+              //FIXME Looks like a hack
+              if(StrMatch(procSymbol->name, "Main"))
+              {
+                if(block->proc.argList)
+                {
+                  Error("Main() must not have arguments");
+                  success = false;
+                }
+              }
+            } break;
+
+          case Block_WhileStmt:
+            {
+              success = SemanticAnalysis(arena, symbolTable, block->whileStmt.expr);
+            } break;
+
+          default:
+            assert(false && !"Not implemented");
+        }
+
+        if(success)
+        {
+          AstList* stmtList = block->stmtList;
+          while(stmtList && success)
+          {
+            AstNode* stmtAst = stmtList->ast;
+            success = SemanticAnalysis(arena, symbolTable, stmtAst);
+            stmtList = stmtList->nextListItem;
+          }
         }
       } break;
 
@@ -1450,23 +1722,10 @@ bool32 SemanticAnalysis(MemoryArena* arena, SymbolTable* symbolTable, AstNode* a
           success &= SemanticAnalysis(arena, symbolTable, rightOperand);
       } break;
 
-    case Ast_IfStmt:
-    case Ast_WhileStmt:
     case Ast_Id:
+    case Ast_Var:
     case Ast_IntNum:
       {} break;
-
-    case Ast_Program:
-      {
-        AstList* procList = ast->program.procList;
-        while(procList && success)
-        {
-          AstNode* procAst = procList->ast;
-          success = SemanticAnalysis(arena, symbolTable, procAst);
-
-          procList = procList->nextListItem;
-        }
-      } break;
 
     default:
       assert(false && !"Not implemented");
@@ -1484,7 +1743,7 @@ void GenCodeLValue(ProgramText* irProgram, AstNode* ast)
         Symbol* varSymbol = ast->id.symbol;
         Emit(irProgram, ";begin load l-value of '%s'", varSymbol->name);
         Emit(irProgram, "push fp");
-        Emit(irProgram, "push %d", varSymbol->var.storageLocation);
+        Emit(irProgram, "push %d", varSymbol->dataObj.storageLocation);
         Emit(irProgram, "add");
         Emit(irProgram, ";end load");
       } break;
@@ -1494,7 +1753,7 @@ void GenCodeLValue(ProgramText* irProgram, AstNode* ast)
   }
 }/*<<<*/
 
-void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
+void GenCodeRValue(ProgramText* irProgram, Block* block, AstNode* ast)
 {/*>>>*/
   switch(ast->kind)
   {
@@ -1503,7 +1762,7 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
         Symbol* varSymbol = ast->id.symbol;
         Emit(irProgram, ";load r-value of '%s'", varSymbol->name);
         Emit(irProgram, "push fp");
-        Emit(irProgram, "push %d", varSymbol->var.storageLocation);
+        Emit(irProgram, "push %d", varSymbol->dataObj.storageLocation);
         Emit(irProgram, "add");
         Emit(irProgram, "load");
         Emit(irProgram, ";end load");
@@ -1528,7 +1787,7 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
               while(argList)
               {
                 AstNode* argAst = argList->ast;
-                GenCodeRValue(irProgram, argAst);
+                GenCodeRValue(irProgram, block, argAst);
                 argList = argList->nextListItem;
               }
               Emit(irProgram, ";end arg-eval");
@@ -1545,7 +1804,7 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
           case Operator_Assign:
             {
               AstNode* rightSide = ast->expr.rightOperand;
-              GenCodeRValue(irProgram, rightSide);
+              GenCodeRValue(irProgram, block, rightSide);
 
               AstNode* leftSide = ast->expr.leftOperand;
               assert(leftSide->kind == Ast_Id);
@@ -1559,9 +1818,9 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
           case Operator_Sub:
             {
               AstNode* leftOperand = ast->expr.leftOperand;
-              GenCodeRValue(irProgram, leftOperand);
+              GenCodeRValue(irProgram, block, leftOperand);
               AstNode* rightOperand = ast->expr.rightOperand;
-              GenCodeRValue(irProgram, rightOperand);
+              GenCodeRValue(irProgram, block, rightOperand);
 
               if(ast->expr.op == Operator_Mul)
                 Emit(irProgram, "mul");
@@ -1587,17 +1846,113 @@ void GenCodeRValue(ProgramText* irProgram, AstNode* ast)
   }
 }/*<<<*/
 
-void GenCode(ProgramText* irProgram, AstNode* ast)
+void GenCode(ProgramText* irProgram, SymbolTable* symbolTable,
+             Block* block, AstNode* ast)
 {/*>>>*/
   switch(ast->kind)
   {
+    case Ast_IntNum:
+    case Ast_Expr:
+    case Ast_Id:
+      {
+        GenCodeRValue(irProgram, block, ast);
+      } break;
+
+    case Ast_Var:
+      {} break;
+
+    case Ast_Block:
+      {
+        Block* block = ast->block;
+
+        switch(block->kind)
+        {
+          case Block_Module:
+            {
+              Emit(irProgram, "push 0 ;main retval");
+              Emit(irProgram, "call Main");
+              Emit(irProgram, "halt");
+
+              AstList* procList = block->module.procList;
+              while(procList)
+              {
+                AstNode* procAst = procList->ast;
+                GenCode(irProgram, symbolTable, block, procAst);
+
+                procList = procList->nextListItem;
+              }
+            } break;
+
+          case Block_Proc:
+            {
+              Symbol* procSymbol = block->proc.symbol;
+              Emit(irProgram, "label %s", procSymbol->name); // entry point
+
+              int localDataSize = block->localsAreaSize;
+              if(localDataSize > 0)
+                Emit(irProgram, "alloc %d ;locals", localDataSize);
+
+              AstList* stmtList = block->stmtList;
+              while(stmtList)
+              {
+                AstNode* stmt = stmtList->ast;
+                GenCode(irProgram, symbolTable, block, stmt);
+
+                stmtList = stmtList->nextListItem;
+              }
+
+              Emit(irProgram, "return");
+            } break;
+
+          case Block_WhileStmt:
+            {
+              // conditional
+              char* label = MakeUniqueLabel(symbolTable);
+              Emit(irProgram, "label %s.while-eval", label);
+
+              GenCodeRValue(irProgram, block, block->whileStmt.expr);
+              Emit(irProgram, "jumpz %s.while-break", label);
+
+              Emit(irProgram, "call %s", block->whileStmt.procName); // enter while block
+              Emit(irProgram, "goto %s.while-eval", label);
+
+              // while block
+              Emit(irProgram, "label %s", block->whileStmt.procName);
+
+              int localDataSize = block->localsAreaSize;
+              if(localDataSize > 0)
+                Emit(irProgram, "alloc %d ;locals", localDataSize);
+
+              AstList* stmtList = block->stmtList;
+              while(stmtList)
+              {
+                AstNode* stmt = stmtList->ast;
+                GenCode(irProgram, symbolTable, block, stmt);
+
+                stmtList = stmtList->nextListItem;
+              }
+
+              Emit(irProgram, "return");
+              Emit(irProgram, "label %s.while-break", label);
+            } break;
+
+          default:
+            assert(false && !"Not implemented");
+        }
+      } break;
+
+    case Ast_Call:
+      {
+        Emit(irProgram, "call %s", ast->call.name);
+      } break;
+
     case Ast_Return:
       {
-        GenCodeRValue(irProgram, ast->ret.expr);
+        GenCodeRValue(irProgram, block, ast->ret.expr);
 
         Symbol* procSymbol = ast->ret.proc;
 
-        int retOffset = CONTROL_AREA_SIZE + procSymbol->proc.argAreaSize +
+        int retOffset = MACHINE_STATUS_AREA_SIZE + procSymbol->proc.argAreaSize +
           procSymbol->proc.retAreaSize;
 
         Emit(irProgram, "push fp");
@@ -1605,78 +1960,29 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
         Emit(irProgram, "add");
         Emit(irProgram, "store ;retval");
 
-        Emit(irProgram, "goto %s.end", procSymbol->name);
-      } break;
-
-    case Ast_IntNum:
-    case Ast_Expr:
-    case Ast_Id:
-      {
-        GenCodeRValue(irProgram, ast);
-      } break;
-
-    case Ast_Scope:
-      {
-        int localDataSize = ast->scope.localsAreaSize;
-        if(localDataSize > 0)
-          Emit(irProgram, "alloc %d ;locals", localDataSize);
-
-        AstList* stmtList = ast->scope.statements;
-        while(stmtList)
-        {
-          AstNode* stmt = stmtList->ast;
-          GenCode(irProgram, stmt);
-
-          stmtList = stmtList->nextListItem;
-        }
-      } break;
-
-    case Ast_ProcDecl:
-      {
-        Symbol* procSymbol = ast->proc.symbol;
-        Emit(irProgram, "label %s", procSymbol->name); // entry point
-        AstNode* scopeAst = ast->proc.body;
-        GenCode(irProgram, scopeAst);
-        Emit(irProgram, "label %s.end", procSymbol->name); // exit point
         Emit(irProgram, "return");
       } break;
-
-    case Ast_Program:
-      {
-        Emit(irProgram, "push 0 ;main retval");
-        Emit(irProgram, "call Main");
-        Emit(irProgram, "halt");
-
-        AstList* procList = ast->program.procList;
-        while(procList)
-        {
-          AstNode* procAst = procList->ast;
-          GenCode(irProgram, procAst);
-
-          procList = procList->nextListItem;
-        }
-      } break;
-
+#if 0
     case Ast_IfStmt:
       {
         Emit(irProgram, ";if-begin");
 
-        // conditional expression
+        // conditional
         GenCodeRValue(irProgram, ast->ifStmt.expr);
 
-        char* label = MakeUniqueLabel(irProgram);
+        char* label = MakeUniqueLabel(symbolTable);
 
         if(ast->ifStmt.bodyElse)
           Emit(irProgram, "jumpz %s.else", label);
         else
           Emit(irProgram, "jumpz %s.if-end", label);
 
-        GenCode(irProgram, ast->ifStmt.body);
+        GenCode(irProgram, symbolTable, ast->ifStmt.body);
         if(ast->ifStmt.bodyElse)
         {
           Emit(irProgram, "goto %s.if-end", label);
           Emit(irProgram, "label %s.else", label);
-          GenCode(irProgram, ast->ifStmt.bodyElse);
+          GenCode(irProgram, symbolTable, ast->ifStmt.bodyElse);
         }
 
         Emit(irProgram, "label %s.if-end", label);
@@ -1685,9 +1991,8 @@ void GenCode(ProgramText* irProgram, AstNode* ast)
 
     case Ast_WhileStmt:
       {
-        assert(!"FIXME!!");
       } break;
-
+#endif
     default:
       assert(false && !"Not implemented");
   }
@@ -1705,58 +2010,54 @@ uint WriteBytesToFile(char* fileName, char* text, int count)
   return bytesWritten;
 }
 
-void InitTranslator(Translator* trans, MemoryArena* arena)
+bool32 TranslateHocToIr(MemoryArena* arena, char* filePath, char* hocProgram, ProgramText* irProgram)
 {
-  trans->arena = arena;
-  trans->tokenStream.arena = arena;
+  SymbolTable symbolTable = {};
+  symbolTable.arena = arena;
 
-  SymbolTable* symbolTable = &trans->symbolTable;
-  symbolTable->arena = arena;
-
-  AddKeyword(symbolTable, "int", Token_If);
-  AddKeyword(symbolTable, "float", Token_Float);
-  AddKeyword(symbolTable, "void", Token_Void);
-  AddKeyword(symbolTable, "char", Token_Char);
-  AddKeyword(symbolTable, "var", Token_Var);
-  AddKeyword(symbolTable, "proc", Token_Proc);
-  AddKeyword(symbolTable, "type", Token_Type);
-  AddKeyword(symbolTable, "struct", Token_Type);
-  AddKeyword(symbolTable, "array", Token_Array);
-  AddKeyword(symbolTable, "of", Token_Of);
-  AddKeyword(symbolTable, "if", Token_If);
-  AddKeyword(symbolTable, "else", Token_Else);
-  AddKeyword(symbolTable, "while", Token_While);
-  AddKeyword(symbolTable, "return", Token_Return);
-  AddKeyword(symbolTable, "true", Token_True);
-  AddKeyword(symbolTable, "false", Token_False);
-}
-
-bool32 TranslateHocToIr(Translator* trans, char* filePath, char* hocProgram, ProgramText* irProgram)
-{
-  TokenStream* tokenStream = &trans->tokenStream;
-  tokenStream->text = hocProgram;
-  tokenStream->cursor = tokenStream->text;
-  tokenStream->lineNr = 1;
-
-  SymbolTable* symbolTable = &trans->symbolTable;
-
+  TokenStream tokenStream = {};
+  tokenStream.arena = arena;
+  tokenStream.text = hocProgram;
+  tokenStream.cursor = tokenStream.text;
+  tokenStream.lineNr = 1;
   //TODO: Compute the absolute path to the file, so that Vim could properly
   // jump from the QuickFix window to the error line in the file.
-  tokenStream->filePath = filePath;
+  tokenStream.filePath = filePath;
 
-  ConsumeToken(tokenStream, symbolTable);
+  AddKeyword(&symbolTable, "int", Token_If);
+  AddKeyword(&symbolTable, "float", Token_Float);
+  AddKeyword(&symbolTable, "void", Token_Void);
+  AddKeyword(&symbolTable, "char", Token_Char);
+  AddKeyword(&symbolTable, "var", Token_Var);
+  AddKeyword(&symbolTable, "proc", Token_Proc);
+  AddKeyword(&symbolTable, "type", Token_Type);
+  AddKeyword(&symbolTable, "struct", Token_Type);
+  AddKeyword(&symbolTable, "array", Token_Array);
+  AddKeyword(&symbolTable, "of", Token_Of);
+  AddKeyword(&symbolTable, "if", Token_If);
+  AddKeyword(&symbolTable, "else", Token_Else);
+  AddKeyword(&symbolTable, "while", Token_While);
+  AddKeyword(&symbolTable, "return", Token_Return);
+  AddKeyword(&symbolTable, "true", Token_True);
+  AddKeyword(&symbolTable, "false", Token_False);
 
-  MemoryArena* arena = trans->arena;
-  AstNode* ast = 0;
-  bool32 success = SyntacticAnalysis(arena, tokenStream, symbolTable, &ast) &&
-    SemanticAnalysis(arena, symbolTable, ast);
+  ConsumeToken(&tokenStream, &symbolTable);
+
+  // BuildAst() && BuildIr() ??
+  AstNode* moduleAst = 0;
+  bool32 success = Module(arena, &tokenStream, &symbolTable, &moduleAst, 0) &&
+    SemanticAnalysis(arena, &symbolTable, moduleAst);
   if(success)
   {
     StringInit(&irProgram->text, arena);
 
-    assert(ast->kind == Ast_Program);
-    GenCode(irProgram, ast);
+    assert(moduleAst->kind == Ast_Block);
+    Block* block = moduleAst->block;
+    GenCode(irProgram, &symbolTable, block, moduleAst);
   }
+
+  assert(symbolTable.currBlockId == 0);
+  assert(symbolTable.nestingDepth == 0);
 
   return success;
 }

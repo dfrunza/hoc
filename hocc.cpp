@@ -138,15 +138,12 @@ int main(int argc, char* argv[])
   {
     MemoryArena arena = NewArena(10*MEGABYTE);
 
-    Translator trans = {};
-    InitTranslator(&trans, &arena);
-
     char* filePath = argv[1];
     char* hocProgram = ReadTextFromFile(&arena, filePath);
     if(hocProgram)
     {
       ProgramText irProgram = {};
-      bool32 success = TranslateHocToIr(&trans, filePath, hocProgram, &irProgram);
+      bool32 success = TranslateHocToIr(&arena, filePath, hocProgram, &irProgram);
       if(success)
       {
         OutFileNames outFiles = {};

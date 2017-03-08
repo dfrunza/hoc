@@ -1836,11 +1836,15 @@ void GenCodeLValue(IrProgram* irProgram, AstNode* ast)
         if(dataObj->accessLinkIndex >= 0)
         {
           // non-local
-          assert(false);
+          Emit(irProgram, ";begin load l-value of non-local '%s'", symbol->name);
+          Emit(irProgram, "push fp");
+          int accessLinkLocation = MACHINE_STATUS_AREA_SIZE + dataObj->accessLinkIndex;
+          Emit(irProgram, "push -%d", accessLinkLocation);
+          Emit(irProgram, "add");
         } else
         {
           // local
-          Emit(irProgram, ";begin load l-value of '%s'", symbol->name);
+          Emit(irProgram, ";begin load l-value of local '%s'", symbol->name);
           Emit(irProgram, "push fp");
           Emit(irProgram, "push %d", dataObj->storageLocation);
           Emit(irProgram, "add");
@@ -1859,23 +1863,8 @@ void GenCodeRValue(IrProgram* irProgram, Block* block, AstNode* ast)
   {
     case Ast_Id:
       {
-        Symbol* symbol = ast->id.symbol;
-        IrDataObject* dataObj = ast->id.dataObj;
-
-        if(dataObj->accessLinkIndex >= 0)
-        {
-          // non-local
-          assert(false);
-        } else
-        {
-          // local
-          Emit(irProgram, ";load r-value of '%s'", symbol->name);
-          Emit(irProgram, "push fp");
-          Emit(irProgram, "push %d", dataObj->storageLocation);
-          Emit(irProgram, "add");
-          Emit(irProgram, "load");
-          Emit(irProgram, ";end load");
-        }
+        GenCodeLValue(irProgram, ast);
+        Emit(irProgram, "load ; load r-value");
       } break;
 
     case Ast_Expr:
@@ -2038,10 +2027,9 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
                 accessLink = accessLink->nextLink;
               }
 
-              char procName[32];
-              MakeProcLabel(symbolTable, procName, block);
-              Emit(irProgram, "call %s", procName); // enter while block
-              Emit(irProgram, "label %s", procName);
+              Emit(irProgram, "push fp ; while-begin");
+              if(actvRecord->localsAreaSize > 0)
+                Emit(irProgram, "alloc %d ;locals", actvRecord->localsAreaSize);
 
               char whileLabel[32] = {};
               MakeUniqueLabel(symbolTable, whileLabel);
@@ -2052,10 +2040,6 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
               Emit(irProgram, "jumpz %s.while-break", whileLabel);
 
               // body
-              int localDataSize = actvRecord->localsAreaSize;
-              if(localDataSize > 0)
-                Emit(irProgram, "alloc %d ;locals", localDataSize);
-
               AstList* stmtList = block->stmtList;
               while(stmtList)
               {
@@ -2067,7 +2051,7 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
 
               Emit(irProgram, "goto %s.while-eval", whileLabel);
               Emit(irProgram, "label %s.while-break", whileLabel);
-              Emit(irProgram, "return");
+              Emit(irProgram, "pop fp");
               Emit(irProgram, "pop %d ; discard access links", actvRecord->accessLinkCount);
             } break;
 

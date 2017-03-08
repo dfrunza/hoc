@@ -112,7 +112,7 @@ bool32 WriteResFile(OutFileNames* outFiles)
   return success;
 }
 
-bool32 WriteIrFile(OutFileNames* outFiles, ProgramText* irProgram)
+bool32 WriteIrFile(OutFileNames* outFiles, IrProgram* irProgram)
 {
   int bytesWritten = WriteBytesToFile(outFiles->ir.name, irProgram->text.start, irProgram->textLen);
   bool32 success = (bytesWritten == irProgram->textLen);
@@ -142,7 +142,7 @@ int main(int argc, char* argv[])
     char* hocProgram = ReadTextFromFile(&arena, filePath);
     if(hocProgram)
     {
-      ProgramText irProgram = {};
+      IrProgram irProgram = {};
       bool32 success = TranslateHocToIr(&arena, filePath, hocProgram, &irProgram);
       if(success)
       {

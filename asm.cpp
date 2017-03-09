@@ -200,6 +200,10 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
         instr.opcode = Opcode_CALL;
       else if(StrEquals(mnemonic, "return"))
         instr.opcode = Opcode_RETURN;
+      else if(StrEquals(mnemonic, "enter"))
+        instr.opcode = Opcode_ENTER;
+      else if(StrEquals(mnemonic, "leave"))
+        instr.opcode = Opcode_LEAVE;
       else if(StrEquals(mnemonic, "alloc"))
         instr.opcode = Opcode_ALLOC;
       else {

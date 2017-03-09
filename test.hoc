@@ -1,11 +1,18 @@
 proc Main()
 {
   var a;
-  a = 3;
+  a = 31;
+  var b;
+  b = 19;
   while(a)
   {
     var c;
-    c = a;
-    a = c-1;
+    c=a+b;
+    a=a-1;
+    while(c)
+    {
+      var d;
+      c=c-1;
+    }
   }
 }

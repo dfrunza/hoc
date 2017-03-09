@@ -282,13 +282,6 @@ struct IrProgram
   MemoryArena* arena;
 };
 
-struct Translator
-{
-  MemoryArena* arena;
-  TokenStream tokenStream;
-  SymbolTable symbolTable;
-};
-
 void SyntaxError(TokenStream* input, char* message, ...)
 {
   va_list args;
@@ -997,8 +990,8 @@ bool32 WhileStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
         ConsumeToken(input, symbolTable);
 
         Block* block = 0;
-        success = BeginBlock(symbolTable);
-        success &= Block_(arena, input, symbolTable, Block_WhileStmt, &block);
+        success = BeginBlock(symbolTable) &&
+          Block_(arena, input, symbolTable, Block_WhileStmt, &block);
         if(success)
         {
           block->whileStmt.expr = expr;
@@ -1133,8 +1126,8 @@ bool32 Procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
           // arguments
           AstList *argList = 0;
-          success = BeginBlock(symbolTable);
-          success &= FormalArgumentsList(arena, input, symbolTable, 0, &argList);
+          success = BeginBlock(symbolTable) &&
+            FormalArgumentsList(arena, input, symbolTable, 0, &argList);
           if(success)
           {
             if(input->token == Token_CloseParens)
@@ -1832,9 +1825,10 @@ void GenCodeLValue(IrProgram* irProgram, AstNode* ast)
           // non-local
           Emit(irProgram, ";begin load l-value of non-local '%s'", symbol->name);
           Emit(irProgram, "push fp");
-          int accessLinkLocation = 3 + dataObj->accessLinkIndex; // magic!
+          int accessLinkLocation = 2 + dataObj->storageLocation; // magic!
           Emit(irProgram, "push -%d", accessLinkLocation);
           Emit(irProgram, "add");
+          Emit(irProgram, "load"); // acess link is on the stack now
         } else
         {
           // local
@@ -2016,7 +2010,7 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
               GenCodeRValue(irProgram, block, block->whileStmt.expr);
               Emit(irProgram, "jumpz %s.while-break", whileLabel);
 
-              Emit(irProgram, "; set-up access links");
+              Emit(irProgram, "; begin set-up access links");
               AccessLink* accessLink = actvRecord->accessLinks;
               while(accessLink)
               {
@@ -2032,11 +2026,9 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
                 }
                 accessLink = accessLink->nextLink;
               }
+              Emit(irProgram, "; end set-up access links");
 
-              Emit(irProgram, "; enter 'while' frame");
-              Emit(irProgram, "push fp"); // save fp
-              Emit(irProgram, "push sp");
-              Emit(irProgram, "pop fp"); // set new fp
+              Emit(irProgram, "enter");
 
               if(actvRecord->localsAreaSize > 0)
                 Emit(irProgram, "alloc %d ;locals", actvRecord->localsAreaSize);
@@ -2051,10 +2043,7 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
                 stmtList = stmtList->nextListItem;
               }
 
-              Emit(irProgram, "; exit 'while' frame");
-              Emit(irProgram, "push fp"); // restore old sp
-              Emit(irProgram, "pop sp");
-              Emit(irProgram, "pop fp"); // restore old fp
+              Emit(irProgram, "leave");
               Emit(irProgram, "pop %d ; discard access links", actvRecord->accessLinkCount);
 
               Emit(irProgram, "goto %s.while-eval", whileLabel);
@@ -2170,8 +2159,8 @@ bool32 TranslateHocToIr(MemoryArena* arena, char* filePath, char* hocProgram, Ir
 
   // BuildAst() && BuildIr() ??
   AstNode* moduleAst = 0;
-  bool32 success = BuildAst(arena, &tokenStream, &symbolTable, &moduleAst);
-  success &= BuildIr(arena, &symbolTable, moduleAst);
+  bool32 success = BuildAst(arena, &tokenStream, &symbolTable, &moduleAst) &&
+    BuildIr(arena, &symbolTable, moduleAst);
   if(success)
   {
     StringInit(&irProgram->text, arena);
@@ -2179,10 +2168,10 @@ bool32 TranslateHocToIr(MemoryArena* arena, char* filePath, char* hocProgram, Ir
     assert(moduleAst->kind == Ast_Block);
     Block* block = moduleAst->block;
     GenCode(irProgram, &symbolTable, block, moduleAst);
-  }
 
-  assert(symbolTable.currBlockId == 0);
-  assert(symbolTable.nestingDepth == 0);
+    assert(symbolTable.currBlockId == 0);
+    assert(symbolTable.nestingDepth == 0);
+  }
 
   return success;
 }

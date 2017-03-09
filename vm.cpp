@@ -272,7 +272,7 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           int32 jumpAddress = instr->param.intNum;
           machine->ip = jumpAddress;
           machine->sp = topSp;
-          machine->fp = machine->sp;
+          machine->fp = topSp;
         } else
           return ExecResult_InvalidMemoryAccess;
       } break;
@@ -285,6 +285,31 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           machine->ip = *(int32*)&memory[argSp*VMWORD];
           machine->fp = *(int32*)&memory[(argSp+1)*VMWORD];
           machine->sp = *(int32*)&memory[(argSp+2)*VMWORD];
+        } else
+          return ExecResult_InvalidMemoryAccess;
+      } break;
+
+    case Opcode_ENTER:
+      {
+        int32 topSp = machine->sp+1;
+        if(CheckStackBounds(machine, topSp))
+        {
+          *(int32*)&memory[machine->sp*VMWORD] = machine->fp;
+          machine->fp = topSp;
+          machine->sp = topSp;
+          machine->ip++;
+        } else
+          return ExecResult_InvalidMemoryAccess;
+      } break;
+
+    case Opcode_LEAVE:
+      {
+        int32 argSp = machine->fp-1;
+        if(CheckStackBounds(machine, argSp))
+        {
+          machine->fp = *(int32*)&memory[argSp*VMWORD];
+          machine->sp = argSp;
+          machine->ip++;
         } else
           return ExecResult_InvalidMemoryAccess;
       } break;

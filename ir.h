@@ -24,6 +24,8 @@ enum Opcode
   Opcode_NOOP,
   Opcode_CALL,
   Opcode_RETURN,
+  Opcode_ENTER,
+  Opcode_LEAVE,
   Opcode_ALLOC,
 };
 

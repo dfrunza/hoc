@@ -168,7 +168,6 @@ struct Block
   BlockKind   kind;
   int         blockId;
   int         nestingDepth;
-  Block*      enclosingBlock;
   AstList*    declIds;
   AstList*    localIds;
   AstList*    nonLocalIds;
@@ -583,15 +582,15 @@ void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
 
 bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                   AstNode** out_exprAst,
-                  AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock);
+                  AstList** inOut_localsList, AstList** inOut_nonLocalsList);
 
 bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                            AstList* in_tailItem, AstList** out_argList,
-                           AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock);
+                           AstList** inOut_localsList, AstList** inOut_nonLocalsList);
 
 bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
               AstNode** out_factorAst,
-              AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+              AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   *out_factorAst = 0;
   bool32 success = true;
@@ -600,7 +599,7 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
   {
     ConsumeToken(input, symbolTable);
     success = Expression(arena, input, symbolTable,
-                         out_factorAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                         out_factorAst, inOut_localsList, inOut_nonLocalsList);
     if(success)
     {
       if(input->token == Token_CloseParens)
@@ -641,7 +640,7 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
           ConsumeToken(input, symbolTable);
           AstList* argList = 0;
           success = ActualArgumentsList(arena, input, symbolTable,
-                                        0, &argList, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                                        0, &argList, inOut_localsList, inOut_nonLocalsList);
           if(success)
           {
             if(input->token == Token_CloseParens)
@@ -668,7 +667,7 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
       }
       else if(symbol->kind == Symbol_DataObj)
       {
-        idAst->id.declBlockOffset = (in_enclosingBlock->nestingDepth - symbol->nestingDepth);
+        idAst->id.declBlockOffset = (symbolTable->nestingDepth - symbol->nestingDepth);
         AstList* idItem = PushElement(arena, AstList, 1);
         idItem->ast = idAst;
         if(idAst->id.declBlockOffset > 0)
@@ -709,7 +708,7 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
 
 bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                      AstNode* in_leftFactorAst, AstNode** out_factorAst,
-                     AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+                     AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   bool32 success = true;
 
@@ -728,13 +727,13 @@ bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
     ConsumeToken(input, symbolTable);
     AstNode* factorNode = 0;
     success = Factor(arena, input, symbolTable,
-                     &factorNode, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                     &factorNode, inOut_localsList, inOut_nonLocalsList);
     if(success && factorNode)
     {
         astNode->expr.rightOperand = factorNode;
         astNode->expr.leftOperand = in_leftFactorAst;
         success = RestOfFactors(arena, input, symbolTable,
-                                astNode, out_factorAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                                astNode, out_factorAst, inOut_localsList, inOut_nonLocalsList);
     } else {
       SyntaxError(input, "Factor expected");
       success = false;
@@ -747,16 +746,16 @@ bool32 RestOfFactors(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
 }/*<<<*/
 
 bool32 Term(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-            AstNode** out_termAst, AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+            AstNode** out_termAst, AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   AstNode* factor = 0;
   AstNode* expr = 0;
 
   bool32 success = Factor(arena, input, symbolTable,
-                          &factor, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                          &factor, inOut_localsList, inOut_nonLocalsList);
   if(success && factor)
     success = RestOfFactors(arena, input, symbolTable,
-                            factor, &expr, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                            factor, &expr, inOut_localsList, inOut_nonLocalsList);
 
   *out_termAst = expr;
   return success;
@@ -764,7 +763,7 @@ bool32 Term(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
 
 bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                    AstNode* in_leftTermAst, AstNode** out_termAst,
-                   AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+                   AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   bool32 success = true;
 
@@ -783,13 +782,13 @@ bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
     ConsumeToken(input, symbolTable);
     AstNode* termAst = 0;
     success = Term(arena, input, symbolTable,
-                   &termAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                   &termAst, inOut_localsList, inOut_nonLocalsList);
     if(success && termAst)
     {
       opAst->expr.rightOperand = termAst;
       opAst->expr.leftOperand = in_leftTermAst;
       success = RestOfTerms(arena, input, symbolTable,
-                            opAst, out_termAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                            opAst, out_termAst, inOut_localsList, inOut_nonLocalsList);
     } else {
       SyntaxError(input, "Expression term expected");
       success = false;
@@ -803,16 +802,16 @@ bool32 RestOfTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
 
 bool32 AssignmentTerm(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                       AstNode** out_termAst,
-                      AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+                      AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   AstNode* termAst = 0;
   AstNode* exprAst = 0;
 
   bool32 success = Term(arena, input, symbolTable,
-                        &termAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                        &termAst, inOut_localsList, inOut_nonLocalsList);
   if(success && termAst)
     success = RestOfTerms(arena, input, symbolTable,
-                          termAst, &exprAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                          termAst, &exprAst, inOut_localsList, inOut_nonLocalsList);
 
   *out_termAst = exprAst;
   return success;
@@ -820,7 +819,7 @@ bool32 AssignmentTerm(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
 
 bool32 RestOfAssignmentTerms(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                              AstNode* in_leftTermAst, AstNode** out_termAst,
-                             AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+                             AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   bool32 success = true;
 
@@ -830,7 +829,7 @@ bool32 RestOfAssignmentTerms(MemoryArena* arena, TokenStream* input, SymbolTable
 
     AstNode* rightSide = 0;
     success = Expression(arena, input, symbolTable,
-                         &rightSide, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                         &rightSide, inOut_localsList, inOut_nonLocalsList);
     if(success)
     {
       if(rightSide)
@@ -861,23 +860,23 @@ bool32 RestOfAssignmentTerms(MemoryArena* arena, TokenStream* input, SymbolTable
 
 bool32 Expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                   AstNode** out_exprAst,
-                  AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+                  AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   AstNode* assgnAst = 0;
   AstNode* exprAst = 0;
 
   bool32 success = AssignmentTerm(arena, input, symbolTable,
-                                  &assgnAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                                  &assgnAst, inOut_localsList, inOut_nonLocalsList);
   if(success && assgnAst)
     success = RestOfAssignmentTerms(arena, input, symbolTable,
-                                    assgnAst, &exprAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                                    assgnAst, &exprAst, inOut_localsList, inOut_nonLocalsList);
 
   *out_exprAst = exprAst;
   return success;
 }/*<<<*/
 
 bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                    AstNode** out_varStmt, Block* in_enclosingBlock)
+                    AstNode** out_varStmt)
 {/*>>>*/
   *out_varStmt = 0;
   bool32 success = true;
@@ -917,13 +916,13 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
 }/*<<<*/
 
 bool32 FormalArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                           AstList* in_prevItem, AstList** out_argList, Block* in_enclosingBlock)
+                           AstList* in_prevItem, AstList** out_argList)
 {/*>>>*/
   *out_argList = 0;
   bool32 success = true;
 
   AstNode* varAst = 0;
-  success = VarStatement(arena, input, symbolTable, &varAst, in_enclosingBlock);
+  success = VarStatement(arena, input, symbolTable, &varAst);
   if(success && varAst)
   {
     AstList* varItem = PushElement(arena, AstList, 1);
@@ -934,7 +933,7 @@ bool32 FormalArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
       ConsumeToken(input, symbolTable);
       AstList* nextItem = 0;
       success = FormalArgumentsList(arena, input, symbolTable,
-                                    0, &nextItem, in_enclosingBlock);
+                                    0, &nextItem);
 
       varItem->nextListItem = nextItem;
     }
@@ -947,14 +946,14 @@ bool32 FormalArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
 
 bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                            AstList* in_prevItem, AstList** out_argList,
-                           AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+                           AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   *out_argList = 0;
   bool32 success = true;
 
   AstNode* argAst = 0;
   success = Expression(arena, input, symbolTable,
-                       &argAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                       &argAst, inOut_localsList, inOut_nonLocalsList);
   if(success && argAst)
   {
     AstList* argItem = PushElement(arena, AstList, 1);
@@ -967,7 +966,7 @@ bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
       ConsumeToken(input, symbolTable);
       AstList* nextItem = 0;
       success = ActualArgumentsList(arena, input, symbolTable,
-                                    argItem, &nextItem, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                                    argItem, &nextItem, inOut_localsList, inOut_nonLocalsList);
       *out_argList = nextItem;
     }
   }
@@ -975,11 +974,11 @@ bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
 }/*<<<*/
 
 bool32 Block_(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-              BlockKind blockKind, Block** out_block, Block* in_enclosingBlock);
+              BlockKind blockKind, Block** out_block);
 
 bool32 WhileStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                       AstNode** out_whileAst,
-                      AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+                      AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   *out_whileAst = 0;
   bool32 success = true;
@@ -990,7 +989,7 @@ bool32 WhileStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
 
     AstNode* expr = 0;
     success = Expression(arena, input, symbolTable,
-                         &expr, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                         &expr, inOut_localsList, inOut_nonLocalsList);
     if(success)
     {
       if(input->token == Token_OpenBrace)
@@ -998,8 +997,8 @@ bool32 WhileStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
         ConsumeToken(input, symbolTable);
 
         Block* block = 0;
-        success = BeginBlock(symbolTable) &&
-          Block_(arena, input, symbolTable, Block_WhileStmt, &block, in_enclosingBlock);
+        success = BeginBlock(symbolTable);
+        success &= Block_(arena, input, symbolTable, Block_WhileStmt, &block);
         if(success)
         {
           block->whileStmt.expr = expr;
@@ -1030,7 +1029,7 @@ bool32 WhileStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
 
 bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                    AstNode** out_ifAst,
-                   AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+                   AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   *out_ifAst = 0;
   bool32 success = true;
@@ -1112,7 +1111,7 @@ bool32 IfStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
 }/*<<<*/
 
 bool32 Procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                 AstNode** out_procAst, Block* in_enclosingBlock)
+                 AstNode** out_procAst)
 {/*>>>*/
   *out_procAst = 0;
   bool32 success = true;
@@ -1134,9 +1133,8 @@ bool32 Procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
           // arguments
           AstList *argList = 0;
-          success = BeginBlock(symbolTable) &&
-            FormalArgumentsList(arena, input, symbolTable,
-                                0, &argList, in_enclosingBlock);
+          success = BeginBlock(symbolTable);
+          success &= FormalArgumentsList(arena, input, symbolTable, 0, &argList);
           if(success)
           {
             if(input->token == Token_CloseParens)
@@ -1149,7 +1147,7 @@ bool32 Procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
                 ConsumeToken(input, symbolTable);
 
                 Block* block = 0;
-                success = Block_(arena, input, symbolTable, Block_Proc, &block, in_enclosingBlock);
+                success = Block_(arena, input, symbolTable, Block_Proc, &block);
                 if(success)
                 {
                   block->proc.symbol = symbol;
@@ -1204,19 +1202,19 @@ bool32 Procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 }/*<<<*/
 
 bool32 ProcedureList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                     AstList** out_procList, Block* in_enclosingBlock)
+                     AstList** out_procList)
 {/*>>>*/
   *out_procList = 0;
 
   AstNode* procAst = 0;
-  bool32 success = Procedure(arena, input, symbolTable, &procAst, in_enclosingBlock);
+  bool32 success = Procedure(arena, input, symbolTable, &procAst);
   if(success && procAst)
   {
     AstList* procItem = PushElement(arena, AstList, 1);
     procItem->ast = procAst;
 
     AstList* nextProcItem = 0;
-    success = ProcedureList(arena, input, symbolTable, &nextProcItem, in_enclosingBlock);
+    success = ProcedureList(arena, input, symbolTable, &nextProcItem);
     if(success)
       procItem->nextListItem = nextProcItem;
     *out_procList = procItem;
@@ -1226,7 +1224,7 @@ bool32 ProcedureList(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
 
 bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                        AstNode** out_stmtAst,
-                       AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+                       AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   *out_stmtAst = 0;
   bool32 success = true;
@@ -1237,7 +1235,7 @@ bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
     
     AstNode* expr = 0;
     success = Expression(arena, input, symbolTable,
-                         &expr, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                         &expr, inOut_localsList, inOut_nonLocalsList);
     if(success)
     {
       if(expr)
@@ -1260,7 +1258,7 @@ bool32 ReturnStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 
 bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                  AstNode** out_stmtAst,
-                 AstList** inOut_localsList, AstList** inOut_nonLocalsList, Block* in_enclosingBlock)
+                 AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   bool32 success = true;
 
@@ -1282,7 +1280,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
       case Alt_Expr:
         {
           success = Expression(arena, input, symbolTable,
-                               &stmtAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                               &stmtAst, inOut_localsList, inOut_nonLocalsList);
           if(success)
           {
             if(stmtAst)
@@ -1311,7 +1309,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
       case Alt_If:
         {
           success = IfStatement(arena, input, symbolTable,
-                                &stmtAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                                &stmtAst, inOut_localsList, inOut_nonLocalsList);
           if(success)
           {
             if(stmtAst)
@@ -1326,7 +1324,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
       case Alt_While:
         {
           success = WhileStatement(arena, input, symbolTable,
-                                   &stmtAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                                   &stmtAst, inOut_localsList, inOut_nonLocalsList);
           if(success)
           {
             if(stmtAst)
@@ -1341,7 +1339,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
       case Alt_Return:
         {
           success = ReturnStatement(arena, input, symbolTable,
-                                    &stmtAst, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                                    &stmtAst, inOut_localsList, inOut_nonLocalsList);
           if(success)
           {
             if(stmtAst)
@@ -1361,7 +1359,7 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
       case Alt_Var:
         {
-          success = VarStatement(arena, input, symbolTable, &stmtAst, in_enclosingBlock);
+          success = VarStatement(arena, input, symbolTable, &stmtAst);
           if(success)
           {
             if(stmtAst)
@@ -1393,15 +1391,14 @@ bool32 Statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 
 bool32 StatementList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
                           AstList** out_stmtList, AstList** out_declList,
-                          AstList** inOut_localsList, AstList** inOut_nonLocalsList,
-                          Block* in_enclosingBlock)
+                          AstList** inOut_localsList, AstList** inOut_nonLocalsList)
 {/*>>>*/
   *out_stmtList = *out_declList = 0;
   bool32 success = true;
 
   AstNode* stmt = 0;
   success = Statement(arena, input, symbolTable,
-                      &stmt, inOut_localsList, inOut_nonLocalsList, in_enclosingBlock);
+                      &stmt, inOut_localsList, inOut_nonLocalsList);
   if(success && stmt)
   {
     AstList* stmtItem = PushElement(arena, AstList, 1);
@@ -1423,8 +1420,7 @@ bool32 StatementList(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
     AstList* nextStmtItem = 0, *nextVarItem = 0;
     success = StatementList(arena, input, symbolTable,
                             &nextStmtItem, &nextVarItem,
-                            inOut_localsList, inOut_nonLocalsList,
-                            in_enclosingBlock);
+                            inOut_localsList, inOut_nonLocalsList);
     if(success)
     {
       if(declItem)
@@ -1445,7 +1441,7 @@ bool32 StatementList(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
 }/*<<<*/
 
 bool32 Block_(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-             BlockKind blockKind, Block** out_block, Block* in_enclosingBlock)
+             BlockKind blockKind, Block** out_block)
 {/*>>>*/
   *out_block = 0;
   bool32 success = true;
@@ -1454,14 +1450,13 @@ bool32 Block_(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
   block->blockId = symbolTable->currBlockId;
   block->kind = blockKind;
   block->nestingDepth = symbolTable->nestingDepth;
-  block->enclosingBlock = in_enclosingBlock;
 
   AstList *stmtList = 0,
           *declList = 0,
           *localsList = 0,
           *nonLocalsList = 0;
   success = StatementList(arena, input, symbolTable,
-                          &stmtList, &declList, &localsList, &nonLocalsList, block);
+                          &stmtList, &declList, &localsList, &nonLocalsList);
   if(success)
   {
     block->declIds = declList;
@@ -1476,7 +1471,7 @@ bool32 Block_(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
 }/*<<<*/
 
 bool32 BuildAst(MemoryArena* arena, TokenStream* input,
-              SymbolTable* symbolTable, AstNode** out_module, Block* in_enclosingBlock)
+              SymbolTable* symbolTable, AstNode** out_module)
 {/*>>>*/
   *out_module = 0;
   bool32 success = true;
@@ -1489,9 +1484,8 @@ bool32 BuildAst(MemoryArena* arena, TokenStream* input,
     block->kind = Block_Module;
     block->blockId = symbolTable->currBlockId;
     block->nestingDepth = symbolTable->nestingDepth;
-    block->enclosingBlock = in_enclosingBlock;
 
-    success = ProcedureList(arena, input, symbolTable, &procList, block);
+    success = ProcedureList(arena, input, symbolTable, &procList);
     if(success)
     {
       block->module.procList = procList;
@@ -1838,7 +1832,7 @@ void GenCodeLValue(IrProgram* irProgram, AstNode* ast)
           // non-local
           Emit(irProgram, ";begin load l-value of non-local '%s'", symbol->name);
           Emit(irProgram, "push fp");
-          int accessLinkLocation = MACHINE_STATUS_AREA_SIZE + dataObj->accessLinkIndex;
+          int accessLinkLocation = 3 + dataObj->accessLinkIndex; // magic!
           Emit(irProgram, "push -%d", accessLinkLocation);
           Emit(irProgram, "add");
         } else
@@ -1912,6 +1906,9 @@ void GenCodeRValue(IrProgram* irProgram, Block* block, AstNode* ast)
               assert(leftSide->kind == Ast_Id);
               GenCodeLValue(irProgram, leftSide);
               Emit(irProgram, "store ;'%s'", leftSide->id.name);
+
+              if(ast->expr.isStatement)
+                Emit(irProgram, "pop"); // discard the r-value
             } break;
 
           case Operator_Mul:
@@ -2011,26 +2008,6 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
             {
               IrActivationRecord* actvRecord = block->actvRecord;
 
-              Emit(irProgram, "; set-up access links");
-              AccessLink* accessLink = actvRecord->accessLinks;
-              while(accessLink)
-              {
-                assert(accessLink->actvRecordOffset > 0);
-                int offset = accessLink->actvRecordOffset;
-                Emit(irProgram, "push fp");
-                while(offset--)
-                {
-                  Emit(irProgram, "push -%d", MACHINE_STATUS_AREA_SIZE); // offset to the fp of actv. record n-1
-                  Emit(irProgram, "add");
-                  Emit(irProgram, "load");
-                }
-                accessLink = accessLink->nextLink;
-              }
-
-              Emit(irProgram, "push fp ; while-begin");
-              if(actvRecord->localsAreaSize > 0)
-                Emit(irProgram, "alloc %d ;locals", actvRecord->localsAreaSize);
-
               char whileLabel[32] = {};
               MakeUniqueLabel(symbolTable, whileLabel);
               Emit(irProgram, "label %s.while-eval", whileLabel);
@@ -2038,6 +2015,31 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
               // conditional expr
               GenCodeRValue(irProgram, block, block->whileStmt.expr);
               Emit(irProgram, "jumpz %s.while-break", whileLabel);
+
+              Emit(irProgram, "; set-up access links");
+              AccessLink* accessLink = actvRecord->accessLinks;
+              while(accessLink)
+              {
+                assert(accessLink->actvRecordOffset > 0);
+                int offset = accessLink->actvRecordOffset;
+                Emit(irProgram, "push fp");
+                offset--;
+                while(offset--)
+                {
+                  Emit(irProgram, "push fp");
+                  Emit(irProgram, "dec"); // offset to the fp of actv. record n-1
+                  Emit(irProgram, "load");
+                }
+                accessLink = accessLink->nextLink;
+              }
+
+              Emit(irProgram, "; enter 'while' frame");
+              Emit(irProgram, "push fp"); // save fp
+              Emit(irProgram, "push sp");
+              Emit(irProgram, "pop fp"); // set new fp
+
+              if(actvRecord->localsAreaSize > 0)
+                Emit(irProgram, "alloc %d ;locals", actvRecord->localsAreaSize);
 
               // body
               AstList* stmtList = block->stmtList;
@@ -2049,10 +2051,14 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
                 stmtList = stmtList->nextListItem;
               }
 
+              Emit(irProgram, "; exit 'while' frame");
+              Emit(irProgram, "push fp"); // restore old sp
+              Emit(irProgram, "pop sp");
+              Emit(irProgram, "pop fp"); // restore old fp
+              Emit(irProgram, "pop %d ; discard access links", actvRecord->accessLinkCount);
+
               Emit(irProgram, "goto %s.while-eval", whileLabel);
               Emit(irProgram, "label %s.while-break", whileLabel);
-              Emit(irProgram, "pop fp");
-              Emit(irProgram, "pop %d ; discard access links", actvRecord->accessLinkCount);
             } break;
 
           default:
@@ -2164,8 +2170,8 @@ bool32 TranslateHocToIr(MemoryArena* arena, char* filePath, char* hocProgram, Ir
 
   // BuildAst() && BuildIr() ??
   AstNode* moduleAst = 0;
-  bool32 success = BuildAst(arena, &tokenStream, &symbolTable, &moduleAst, 0) &&
-    BuildIr(arena, &symbolTable, moduleAst);
+  bool32 success = BuildAst(arena, &tokenStream, &symbolTable, &moduleAst);
+  success &= BuildIr(arena, &symbolTable, moduleAst);
   if(success)
   {
     StringInit(&irProgram->text, arena);

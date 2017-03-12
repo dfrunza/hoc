@@ -5,12 +5,12 @@
 
 struct Machine
 {
+  IrCode* code;
   int32 memorySize;
-  int32 sp;
   int32 fp;
+  int32 sp;
   int32 ip;
   uint8 memory[2048];
-  IrCode* code;
 };
 
 enum ExecResult
@@ -167,15 +167,15 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_INC:
-    case Opcode_DEC:
+    case Opcode_INCR:
+    case Opcode_DECR:
       {
         int32 argSp = machine->sp-1;
         if(CheckStackBounds(machine, argSp))
         {
           int32 arg = *(int32*)&memory[argSp*VMWORD];
           int32 result = arg;
-          if(opcode == Opcode_INC)
+          if(opcode == Opcode_INCR)
             result++;
           else
             result--;
@@ -340,10 +340,10 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
         int32 argSp = machine->sp-1;
         if(CheckStackBounds(machine, argSp))
         {
-          uint32 value = *(uint32*)&memory[argSp*VMWORD];
+          int32 value = *(int32*)&memory[argSp*VMWORD];
           if(CheckStackBounds(machine, machine->sp))
           {
-            *(uint32*)&memory[machine->sp] = value;
+            *(int32*)&memory[machine->sp*VMWORD] = value;
             machine->sp++;
             machine->ip++;
           } else

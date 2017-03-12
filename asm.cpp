@@ -176,10 +176,10 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
         instr.opcode = Opcode_DIV;
       else if(StrEquals(mnemonic, "mod"))
         instr.opcode = Opcode_MOD;
-      else if(StrEquals(mnemonic, "inc"))
-        instr.opcode = Opcode_INC;
-      else if(StrEquals(mnemonic, "dec"))
-        instr.opcode = Opcode_DEC;
+      else if(StrEquals(mnemonic, "incr"))
+        instr.opcode = Opcode_INCR;
+      else if(StrEquals(mnemonic, "decr"))
+        instr.opcode = Opcode_DECR;
       else if(StrEquals(mnemonic, "halt"))
         instr.opcode = Opcode_HALT;
       else if(StrEquals(mnemonic, "print"))

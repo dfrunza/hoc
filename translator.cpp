@@ -883,18 +883,28 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
         IrDataObj* dataObj = &symbol->dataObj;
         dataObj->size   = 1;
         symbol->ast     = varStmt;
+      }
+      else {
+        if(symbol->kind != Symbol_Keyword)
+        {
+          if(symbol->blockId == symbolTable->currScopeId)
+          {
+            SyntaxError(input, "Name is used in a previous declaration: '%s'", symbol->name);
+            success = false;
+          }
+        } else {
+          SyntaxError(input, "Keyword '%s' used as identifier", symbol->name);
+          success = false;
+        }
+      }
 
+      if(success)
+      {
         varStmt->var.symbol = symbol;
         varStmt->var.name = symbol->name;
         ConsumeToken(input, symbolTable);
 
         *out_varStmt = varStmt;
-      } else {
-        if(symbol->kind == Symbol_Keyword)
-          SyntaxError(input, "Keyword '%s' used as identifier", symbol->name);
-        else
-          SyntaxError(input, "Name is used in a previous declaration: '%s'", symbol->name);
-        success = false;
       }
     } else {
       SyntaxError(input, "Missing identifier");

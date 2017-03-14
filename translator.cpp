@@ -76,6 +76,7 @@ enum AstKind
   Ast_Call, // occurrence of a procedure
   Ast_Block,
   Ast_Return,
+  Ast_Neg,
 };
 
 enum BlockKind
@@ -123,7 +124,7 @@ struct Symbol
 struct AstList
 {
   AstNode* ast;
-  AstList* nextListItem;
+  AstList* nextItem;
 };
 
 struct IrAccessLink
@@ -246,6 +247,10 @@ struct AstNode
       IrActivationRecord* actvRecord;
     } ret;
 
+    struct {
+      AstNode* expr;
+    } neg;
+
     Block* block;
   };
 };
@@ -284,7 +289,6 @@ struct IrProgram
 {
   String text;
   int    textLen;
-  char*  labels;
   MemoryArena* arena;
 };
 
@@ -298,26 +302,6 @@ void SyntaxError(TokenStream* input, char* message, ...)
   vfprintf(stderr, message, args);
   fprintf(stderr, "\n");
   va_end(args);
-}
-
-bool32 IdListContainsSymbol(AstList* astList, AstNode* idAst)
-{
-  assert(idAst->kind == Ast_Id);
-
-  bool32 result = false;
-  AstList* listItem = astList;
-  while(listItem)
-  {
-    AstNode* ast = listItem->ast;
-    assert(ast->kind == Ast_Id);
-    if(ast->id.symbol == idAst->id.symbol)
-    {
-      result = true;
-      break;
-    }
-    listItem = listItem->nextListItem;
-  }
-  return result;
 }
 
 Symbol* LookupSymbol(SymbolTable* symbolTable, char* name)
@@ -407,6 +391,7 @@ char* InstallLexeme(TokenStream* input, char* beginChar, char* endChar)
 
 void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
 {/*>>>*/
+  input->prevToken = input->token;
   input->token = Token__Null;
   input->lexval = {};
 
@@ -429,7 +414,7 @@ void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
     char* beginChar = input->cursor;
     c = *(++input->cursor);
 
-    while(IsLetterChar(c) || IsNumericChar(c))
+    while(IsLetterChar(c) || IsNumericChar(c) || c == '_')
       c = *(++input->cursor);
 
     char* endChar = input->cursor - 1;
@@ -466,6 +451,10 @@ void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
       input->token = Token_RightArrow;
       ++input->cursor;
     }
+    else if(input->prevToken == Token_Equals ||
+            input->prevToken == Token_OpenParens ||
+            input->prevToken == Token_Return)
+      input->token = Token_UnaryMinus;
     else
       input->token = Token_Minus;
   }
@@ -581,12 +570,34 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
       }
     }
   }
+  else if(input->token == Token_UnaryMinus)
+  {
+    ConsumeToken(input, symbolTable);
+
+    AstNode* exprAst = 0;
+    success = Expression(arena, input, symbolTable,
+                         &exprAst, inOut_localsList, inOut_nonLocalsList);
+    if(success)
+    {
+      if(exprAst)
+      {
+        AstNode* negAst = PushElement(arena, AstNode, 1);
+        negAst->kind = Ast_Neg;
+        negAst->neg.expr = exprAst;
+        *out_factorAst = negAst;
+      } else {
+        SyntaxError(input, "Expression expected after '-'");
+        success = false;
+      }
+    }
+  }
   else if(input->token == Token_IntNum)
   {
     AstNode* numAst = PushElement(arena, AstNode, 1);
     numAst->kind = Ast_IntNum;
     numAst->literal.intNum = *(int32*)input->lexval.intNum;
     *out_factorAst = numAst;
+
     ConsumeToken(input, symbolTable);
   }
   else if(input->token == Token_Id)
@@ -658,13 +669,13 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
         idAst->id.isNonLocal = (idAst->id.declBlockOffset > 0);
         if(idAst->id.isNonLocal)
         {
-          idItem->nextListItem = *inOut_nonLocalsList;
+          idItem->nextItem = *inOut_nonLocalsList;
           *inOut_nonLocalsList = idItem;
         }
         else
         {
           assert(idAst->id.declBlockOffset == 0);
-          idItem->nextListItem = *inOut_localsList;
+          idItem->nextItem = *inOut_localsList;
           *inOut_localsList = idItem;
         }
       }
@@ -686,6 +697,7 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
     numAst->kind = Ast_IntNum;
     numAst->literal.intNum = (input->token == Token_True ? 1 : 0);
     *out_factorAst = numAst;
+
     ConsumeToken(input, symbolTable);
   }
 
@@ -887,8 +899,15 @@ bool32 VarStatement(MemoryArena* arena, TokenStream* input, SymbolTable* symbolT
       else {
         if(symbol->kind != Symbol_Keyword)
         {
-          if(symbol->blockId == symbolTable->currScopeId)
+          if(symbol->blockId != symbolTable->currScopeId)
           {
+            assert(symbol->nestingDepth <= symbolTable->nestingDepth);
+
+            symbol = AddSymbol(symbolTable, input->lexval.id, Symbol_DataObj);
+            IrDataObj* dataObj = &symbol->dataObj;
+            dataObj->size   = 1;
+            symbol->ast     = varStmt;
+          } else {
             SyntaxError(input, "Name is used in a previous declaration: '%s'", symbol->name);
             success = false;
           }
@@ -936,7 +955,7 @@ bool32 FormalArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
       success = FormalArgumentsList(arena, input, symbolTable,
                                     0, &nextItem, out_argCount);
 
-      varItem->nextListItem = nextItem;
+      varItem->nextItem = nextItem;
     }
 
     *out_argList = varItem;
@@ -959,7 +978,7 @@ bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
   {
     AstList* argItem = PushElement(arena, AstList, 1);
     argItem->ast = argAst;
-    argItem->nextListItem = in_prevItem;
+    argItem->nextItem = in_prevItem;
     (*out_argCount)++;
     *out_argList = argItem;
 
@@ -1220,7 +1239,7 @@ bool32 ProcedureList(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
     AstList* nextProcItem = 0;
     success = ProcedureList(arena, input, symbolTable, in_enclosingBlock, &nextProcItem);
     if(success)
-      procItem->nextListItem = nextProcItem;
+      procItem->nextItem = nextProcItem;
     *out_procList = procItem;
   }
   return success;
@@ -1440,12 +1459,12 @@ bool32 StatementList(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
       if(declItem)
       {
         stmtItem = nextStmtItem;
-        declItem->nextListItem = nextVarItem;
+        declItem->nextItem = nextVarItem;
       }
       else
       {
         declItem = nextVarItem;
-        stmtItem->nextListItem = nextStmtItem;
+        stmtItem->nextItem = nextStmtItem;
       }
     }
     *out_stmtList = stmtItem;
@@ -1568,7 +1587,7 @@ bool32 BuildIr(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast)
                 AstNode* procAst = procList->ast;
                 success = BuildIr(arena, symbolTable, procAst);
 
-                procList = procList->nextListItem;
+                procList = procList->nextItem;
               }
             } break;
 
@@ -1601,7 +1620,7 @@ bool32 BuildIr(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast)
                 irArgItem->nextItem = irArgs;
                 irArgs = irArgItem;
 
-                argList = argList->nextListItem;
+                argList = argList->nextItem;
                 argsCount++;
               }
               actvRecord->proc.args = irArgs;
@@ -1651,7 +1670,7 @@ bool32 BuildIr(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast)
           irLocalItem->nextItem = irLocalsList;
           irLocalsList = irLocalItem;
 
-          declList = declList->nextListItem;
+          declList = declList->nextItem;
         }
         actvRecord->localObjects = irLocalsList;
         actvRecord->localAreaSize = localAreaSize;
@@ -1694,7 +1713,7 @@ bool32 BuildIr(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast)
 
           idAst->id.accessLink = accessLink;
 
-          nonLocalsList = nonLocalsList->nextListItem;
+          nonLocalsList = nonLocalsList->nextItem;
         }
         actvRecord->accessLinks = accessLinks;
         actvRecord->accessLinkCount = accessLinkCount;
@@ -1706,7 +1725,7 @@ bool32 BuildIr(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast)
           {
             AstNode* stmtAst = stmtList->ast;
             success = BuildIr(arena, symbolTable, stmtAst);
-            stmtList = stmtList->nextListItem;
+            stmtList = stmtList->nextItem;
           }
         }
       } break;
@@ -1731,6 +1750,7 @@ bool32 BuildIr(MemoryArena* arena, SymbolTable* symbolTable, AstNode* ast)
     case Ast_Id:
     case Ast_Var:
     case Ast_IntNum:
+    case Ast_Neg:
       {} break;
 
     default:
@@ -1804,7 +1824,7 @@ void GenCodeRValue(IrProgram* irProgram, AstNode* ast)
               {
                 AstNode* argAst = argList->ast;
                 GenCodeRValue(irProgram, argAst);
-                argList = argList->nextListItem;
+                argList = argList->nextItem;
               }
               Emit(irProgram, ";end arg-eval");
 
@@ -1863,6 +1883,19 @@ void GenCodeRValue(IrProgram* irProgram, AstNode* ast)
         Emit(irProgram, "push %d", ast->literal.intNum);
       } break;
 
+    case Ast_Neg:
+      {
+        AstNode* expr = ast->neg.expr;
+        if(expr->kind == Ast_IntNum)
+        {
+          Emit(irProgram, "push -%d", expr->literal.intNum);
+        } else {
+          GenCodeRValue(irProgram, expr);
+          Emit(irProgram, "push -1");
+          Emit(irProgram, "mul");
+        }
+      } break;
+
     default:
       assert(false);
   }
@@ -1901,7 +1934,7 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
                 AstNode* procAst = procList->ast;
                 GenCode(irProgram, symbolTable, block, procAst);
 
-                procList = procList->nextListItem;
+                procList = procList->nextItem;
               }
             } break;
 
@@ -1921,7 +1954,7 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
                 AstNode* stmt = stmtList->ast;
                 GenCode(irProgram, symbolTable, block, stmt);
 
-                stmtList = stmtList->nextListItem;
+                stmtList = stmtList->nextItem;
               }
 
               Emit(irProgram, "label %s.end-proc", procSymbol->name);
@@ -1940,25 +1973,29 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
               GenCodeRValue(irProgram, block->whileStmt.expr);
               Emit(irProgram, "jumpz %s.while-break", label);
 
-              // Highest indexed access link is first from the top
-              Emit(irProgram, ";begin set-up of access links");
-              IrAccessLink* accessLink = actvRecord->accessLinks;
-              while(accessLink)
+              if(actvRecord->accessLinkCount > 0)
               {
-                Emit(irProgram, "push fp"); // first level up is the caller's activ. record
+                // Highest indexed access link is first from the top
+                Emit(irProgram, ";begin set-up of access links");
 
-                assert(accessLink->actvRecordOffset > 0);
-                int offset = accessLink->actvRecordOffset;
-                offset--;
-                while(offset--)
+                IrAccessLink* accessLink = actvRecord->accessLinks;
+                while(accessLink)
                 {
-                  Emit(irProgram, "decr"); // offset to the fp of actv. record n-1
-                  Emit(irProgram, "load");
-                }
+                  Emit(irProgram, "push fp"); // first level up is the caller's activ. record
 
-                accessLink = accessLink->nextLink;
+                  assert(accessLink->actvRecordOffset > 0);
+                  int offset = accessLink->actvRecordOffset;
+                  offset--;
+                  while(offset--)
+                  {
+                    Emit(irProgram, "decr"); // offset to the fp of actv. record n-1
+                    Emit(irProgram, "load");
+                  }
+
+                  accessLink = accessLink->nextLink;
+                }
+                Emit(irProgram, ";end set-up of access links");
               }
-              Emit(irProgram, ";end set-up of access links");
 
               Emit(irProgram, "enter");
 
@@ -1972,7 +2009,7 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
                 AstNode* stmt = stmtList->ast;
                 GenCode(irProgram, symbolTable, block, stmt);
 
-                stmtList = stmtList->nextListItem;
+                stmtList = stmtList->nextItem;
               }
 
               Emit(irProgram, "leave");
@@ -1998,6 +2035,8 @@ void GenCode(IrProgram* irProgram, SymbolTable* symbolTable,
 
         IrActivationRecord* actvRecord = ast->ret.actvRecord;
         assert(actvRecord->kind == ActvRecord_Proc);
+
+        //FIXME: 'retval' is a IrDataObj
         int retValLocation = MACHINE_STATUS_AREA_SIZE + actvRecord->proc.argsAreaSize +
           actvRecord->proc.retAreaSize;
 

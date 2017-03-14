@@ -1,25 +1,12 @@
-proc Foo(var i, var j)
+proc Foo(var d, var e)
 {
-  return i+j;
-}
-
-proc Boo(var i, var j)
-{
-  var r; r = 44;
-
-  while(i)
-  {
-    var r; r = 100;
-    r = r+1;
-    i = i-1;
-  }
-  return r;
+  var z; z = -11;
+  return z;
 }
 
 proc Main()
 {
-  var a; a = 1;
-  var b;
-  b = Boo(2, 88);
-  return b;
+  var a; a = -0;
+  a = -Foo(3, 2);
+  return a;
 }

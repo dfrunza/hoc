@@ -292,6 +292,24 @@ struct IrProgram
   MemoryArena* arena;
 };
 
+struct ModuleAstAttrbs
+{
+  struct {
+    AstNode* moduleAst;
+  } out;
+};
+
+struct ProcedureListAstAttrbs
+{
+  struct {
+    AstList* procList;
+  } out;
+
+  struct {
+    Block* enclosingBlock;
+  } in;
+};
+
 void SyntaxError(TokenStream* input, char* message, ...)
 {
   va_list args;
@@ -453,6 +471,10 @@ void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
     }
     else if(input->prevToken == Token_Equals ||
             input->prevToken == Token_OpenParens ||
+            input->prevToken == Token_Star ||
+            input->prevToken == Token_Plus ||
+            input->prevToken == Token_Comma ||
+            input->prevToken == Token_FwdSlash ||
             input->prevToken == Token_Return)
       input->token = Token_UnaryMinus;
     else
@@ -548,6 +570,10 @@ bool32 ActualArgumentsList(MemoryArena* arena, TokenStream* input, SymbolTable* 
                            AstList* in_tailItem, AstList** out_argList, int* out_argCount,
                            AstList** inOut_localsList, AstList** inOut_nonLocalsList);
 
+bool32 Term(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
+            AstNode** out_termAst,
+            AstList** inOut_localsList, AstList** inOut_nonLocalsList);
+
 bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
               AstNode** out_factorAst,
               AstList** inOut_localsList, AstList** inOut_nonLocalsList)
@@ -575,8 +601,8 @@ bool32 Factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
     ConsumeToken(input, symbolTable);
 
     AstNode* exprAst = 0;
-    success = Expression(arena, input, symbolTable,
-                         &exprAst, inOut_localsList, inOut_nonLocalsList);
+    success = Term(arena, input, symbolTable,
+                   &exprAst, inOut_localsList, inOut_nonLocalsList);
     if(success)
     {
       if(exprAst)
@@ -1225,22 +1251,26 @@ bool32 Procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
 }/*<<<*/
 
 bool32 ProcedureList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                     Block* in_enclosingBlock, AstList** out_procList)
+                     ProcedureListAstAttrbs* attrbs)
 {/*>>>*/
-  *out_procList = 0;
+  attrbs->out.procList = 0;
 
   AstNode* procAst = 0;
-  bool32 success = Procedure(arena, input, symbolTable, in_enclosingBlock, &procAst);
+  bool32 success = Procedure(arena, input, symbolTable, attrbs->in.enclosingBlock, &procAst);
   if(success && procAst)
   {
     AstList* procItem = PushElement(arena, AstList, 1);
     procItem->ast = procAst;
 
-    AstList* nextProcItem = 0;
-    success = ProcedureList(arena, input, symbolTable, in_enclosingBlock, &nextProcItem);
+    ProcedureListAstAttrbs nextAttrbs = {};
+    nextAttrbs.in = attrbs->in;
+    success = ProcedureList(arena, input, symbolTable, &nextAttrbs);
     if(success)
+    {
+      AstList* nextProcItem = nextAttrbs.out.procList;
       procItem->nextItem = nextProcItem;
-    *out_procList = procItem;
+    }
+    attrbs->out.procList = procItem;
   }
   return success;
 }/*<<<*/
@@ -1504,10 +1534,9 @@ bool32 BlockAst(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable
   return success;
 }/*<<<*/
 
-bool32 ModuleAst(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                 AstNode** out_module)
+bool32 ModuleAst(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable, ModuleAstAttrbs* attrbs)
 {/*>>>*/
-  *out_module = 0;
+  attrbs->out.moduleAst = 0;
   bool32 success = true;
 
   AstList* procList = 0;
@@ -1519,7 +1548,9 @@ bool32 ModuleAst(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
     block->blockId = symbolTable->currScopeId;
     block->nestingDepth = symbolTable->nestingDepth;
 
-    success = ProcedureList(arena, input, symbolTable, block, &procList);
+    ProcedureListAstAttrbs procListAttrbs = {};
+    procListAttrbs.in.enclosingBlock = block;
+    success = ProcedureList(arena, input, symbolTable, &procListAttrbs);
     if(success)
     {
       block->module.procList = procList;
@@ -1531,7 +1562,7 @@ bool32 ModuleAst(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTabl
       EndScope(symbolTable);
 
       if(input->token == Token_EndOfInput)
-        *out_module = module;
+        attrbs->out.moduleAst = module;
       else {
         SyntaxError(input, "End of file expected");
         success = false;
@@ -2145,9 +2176,12 @@ bool32 TranslateHocToIr(MemoryArena* arena, char* filePath, char* hocProgram, Ir
 
   ConsumeToken(&tokenStream, &symbolTable);
 
-  AstNode* moduleAst = 0;
-  bool32 success = ModuleAst(arena, &tokenStream, &symbolTable, &moduleAst) &&
-    BuildIr(arena, &symbolTable, moduleAst);
+  ModuleAstAttrbs moduleAttrbs = {};
+  bool32 success = ModuleAst(arena, &tokenStream, &symbolTable, &moduleAttrbs);
+  AstNode* moduleAst = moduleAttrbs.out.moduleAst;
+  if(success)
+    success = BuildIr(arena, &symbolTable, moduleAst);
+
   if(success)
   {
     StringInit(&irProgram->text, arena);

@@ -1,12 +1,13 @@
 proc Foo(var d, var e)
 {
-  var z; z = -11;
-  return z;
+  var z; z = 11;
+  var w; w = 99;
+  return z*-1;
 }
 
 proc Main()
 {
   var a; a = -0;
-  a = -Foo(3, 2);
-  return a;
+  a = Foo(3, 2);
+  return -Foo(3,2)-a;
 }

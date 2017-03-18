@@ -151,6 +151,7 @@ int main(int argc, char* argv[])
 
         success = MakeFileNames(&outFiles, fileStem) &&
           WriteIrFile(&outFiles, &irProgram);
+#if 0
         if(success)
         {
           IrCode* irCode = 0;
@@ -164,6 +165,9 @@ int main(int argc, char* argv[])
               ret = 0;
           }
         }
+#else
+        ret = 0;
+#endif
       }
     } else
       Error("File '%s' could not be read", filePath);

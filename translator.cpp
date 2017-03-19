@@ -80,54 +80,23 @@ struct SymbolTable
   MemoryArena* arena;
 };
 
-//namespace AccessLink
-//{/*>>>*/
-//  struct Link
-//  {
-//    int actvRecordOffset;
-//    int index;
-//    Link* nextLink;
-//    Link* prevLink;
-//  };
-//
-//  struct LinkList
-//  {
-//    Link  sentinel;
-//    Link* lastLink;
-//    int count;
-//
-//    static void Add(LinkList* list, Link* link)
-//    {/*>>>*/
-//      list->lastLink->nextLink = link;
-//      link->prevLink = list->lastLink;
-//      list->lastLink = link;
-//      list->count++;
-//    }/*<<<*/
-//
-//    static void Init(LinkList* list)
-//    {/*>>>*/
-//      list->lastLink = &list->sentinel;
-//    }/*<<<*/
-//  };
-//}/*<<<*/
-
 template<typename T>
-struct TListItem
+struct ListItem
 {
   T* elem;
-  TListItem* nextItem;
-  TListItem* prevItem;
+  ListItem* nextItem;
+  ListItem* prevItem;
 };
 
 template<typename T>
-struct TList
+struct List
 {
-  TListItem<T>  sentinel;
-  TListItem<T>* lastItem;
-  int           count;
+  ListItem<T>  sentinel;
+  ListItem<T>* lastItem;
+  int          count;
 
   template<typename T>
-  static void Add(TList<T>* list, TListItem<T>* item)
+  static void Add(List<T>* list, ListItem<T>* item)
   {/*>>>*/
     list->lastItem->nextItem = item;
     item->prevItem = list->lastItem;
@@ -136,7 +105,7 @@ struct TList
   }/*<<<*/
 
   template<typename T>
-  static void Init(TList<T>* list)
+  static void Init(List<T>* list)
   {/*>>>*/
     list->lastItem = &list->sentinel;
   }/*<<<*/
@@ -174,8 +143,8 @@ namespace Ast
   };
 
   struct Node;
-  using List = TList<Node>;
-  using ListItem = TListItem<Node>;
+  using NodeList = List<Node>;
+  using NodeItem = ListItem<Node>;
   
   struct AccessLink
   {
@@ -185,8 +154,8 @@ namespace Ast
 
   struct Module
   {
-    List  procList;
-    Node* body;
+    NodeList procList;
+    Node*    body;
   };
 
   struct VarDecl
@@ -199,10 +168,10 @@ namespace Ast
 
   struct Call
   {
-    Symbol* symbol;
-    char*   name;
-    List    argList;
-    Node*   proc;
+    Symbol*  symbol;
+    char*    name;
+    NodeList argList;
+    Node*    proc;
   };
 
   struct BinExpr
@@ -243,11 +212,11 @@ namespace Ast
 
   struct Proc
   {
-    Symbol* symbol;
-    char*   name;
-    List    argList;
-    Node*   body;
-    int     argsDataSize;
+    Symbol*  symbol;
+    char*    name;
+    NodeList argList;
+    Node*    body;
+    int      argsDataSize;
   };
 
   struct IfStmt
@@ -265,18 +234,17 @@ namespace Ast
 
   struct Block
   {
-    using LinkList = TList<AccessLink>;
-    using List = TList<Node>;
+    using LinkList = List<AccessLink>;
 
     Node* owner;
     int   blockId;
     int   nestingDepth;
 
-    TList<Node> declVars;
-    TList<Node> localOccurs;
-    TList<Node> nonLocalOccurs;
-    TList<Node> stmtList;
-    Block*      enclosingBlock;
+    NodeList declVars;
+    NodeList localOccurs;
+    NodeList nonLocalOccurs;
+    NodeList stmtList;
+    Block*   enclosingBlock;
 
     int      localsDataSize;
     LinkList accessLinks;
@@ -286,10 +254,10 @@ namespace Ast
       block->blockId      = symbolTable->currScopeId;
       block->nestingDepth = symbolTable->nestingDepth;
 
-      List::Init(&block->localOccurs);
-      List::Init(&block->nonLocalOccurs);
-      List::Init(&block->stmtList);
-      List::Init(&block->declVars);
+      NodeList::Init(&block->localOccurs);
+      NodeList::Init(&block->nonLocalOccurs);
+      NodeList::Init(&block->stmtList);
+      NodeList::Init(&block->declVars);
       LinkList::Init(&block->accessLinks);
     }/*<<<*/
   };
@@ -684,7 +652,7 @@ void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
 }/*<<<*/
 
 namespace Parse
-{
+{/*>>>*/
   using namespace Ast;
 
   bool32 Expression(MemoryArena*, TokenStream*, SymbolTable*, Block*, Node**);
@@ -764,10 +732,8 @@ namespace Parse
 
         if(symbol->kind == SymbolKind::Var)
         {
-          using ListItem = TListItem<Node>;
-
           VarOccur* varOccur = 0;
-          ListItem* idItem = 0;
+          NodeItem* idItem = 0;
 
           idNode->kind = NodeKind::VarOccur;
           varOccur = &idNode->varOccur;
@@ -776,28 +742,28 @@ namespace Parse
           varOccur->declBlockOffset = (symbolTable->nestingDepth - symbol->nestingDepth);
           varOccur->isNonLocal      = (varOccur->declBlockOffset > 0);
 
-          idItem = PushElement(arena, ListItem, 1);
+          idItem = PushElement(arena, NodeItem, 1);
           idItem->elem = idNode;
           if(varOccur->isNonLocal)
           {
-            List* nonLocalOccurs = 0;
+            NodeList* nonLocalOccurs = 0;
 
             nonLocalOccurs = &enclosingBlock->nonLocalOccurs;
-            List::Add(nonLocalOccurs, idItem);
+            NodeList::Add(nonLocalOccurs, idItem);
           }
           else
           {
-            List* localOccurs = 0;
+            NodeList* localOccurs = 0;
 
             assert(varOccur->declBlockOffset == 0);
             localOccurs = &enclosingBlock->localOccurs;
-            List::Add(localOccurs, idItem);
+            NodeList::Add(localOccurs, idItem);
           }
         }
         else if(symbol->kind == SymbolKind::Proc)
         {
-          Call*    call = 0;
-          List* argList = 0;
+          Call*     call = 0;
+          NodeList* argList = 0;
 
           idNode->kind = NodeKind::Call;
           call         = &idNode->call;
@@ -814,8 +780,8 @@ namespace Parse
             {
               if(input->token == Token::CloseParens)
               {
-                Node* procNode = 0;
-                List* procArgList = 0, *callArgList = 0;
+                Node*     procNode = 0;
+                NodeList* procArgList = 0, *callArgList = 0;
 
                 ConsumeToken(input, symbolTable);
                 procNode = symbol->astNode;
@@ -1123,15 +1089,13 @@ namespace Parse
     success = FormalArgument(arena, input, symbolTable, enclosingBlock, &argNode);
     if(success && argNode)
     {
-      using ListItem = TListItem<Node>;
-      using List = TList<Node>;
-      ListItem* argItem = 0;
-      List* argList = 0;
+      NodeItem* argItem = 0;
+      NodeList* argList = 0;
 
-      argItem = PushElement(arena, ListItem, 1);
+      argItem = PushElement(arena, NodeItem, 1);
       argItem->elem  = argNode;
       argList = &proc->argList;
-      List::Add(argList, argItem);
+      NodeList::Add(argList, argItem);
 
       if(input->token == Token::Comma)
       {
@@ -1152,13 +1116,11 @@ namespace Parse
     success = Expression(arena, input, symbolTable, enclosingBlock, &argNode);
     if(success && argNode)
     {
-      using ListItem = TListItem<Node>;
-      using List = TList<Node>;
-      ListItem* argItem = 0;
+      NodeItem* argItem = 0;
 
-      argItem = PushElement(arena, ListItem, 1);
+      argItem = PushElement(arena, NodeItem, 1);
       argItem->elem  = argNode;
-      List::Add(&call->argList, argItem);
+      NodeList::Add(&call->argList, argItem);
 
       if(input->token == Token::Comma)
       {
@@ -1363,8 +1325,8 @@ namespace Parse
         symbol = Symbol::RegisterNew(symbolTable, input, SymbolKind::Proc);
         if(symbol)
         {
-          Proc* proc = 0;
-          List* argList = 0;
+          Proc*     proc = 0;
+          NodeList* argList = 0;
 
           symbol->astNode = procNode;
           proc = &procNode->proc;
@@ -1395,7 +1357,7 @@ namespace Parse
               success = FormalArgumentList(arena, input, symbolTable, block, proc);
               if(success)
               {
-                ListItem* argItem = 0;
+                NodeItem* argItem = 0;
 
                 argItem = proc->argList.sentinel.nextItem;
                 while(argItem)
@@ -1429,7 +1391,7 @@ namespace Parse
                     if(success)
                     {
                       /*>>> Process the local vars */
-                      ListItem* listItem = 0;
+                      NodeItem* listItem = 0;
 
                       listItem = block->declVars.sentinel.nextItem;
                       while(listItem)
@@ -1451,8 +1413,8 @@ namespace Parse
                       listItem = block->nonLocalOccurs.sentinel.nextItem;
                       while(listItem)
                       {
-                        using LinkList = TList<AccessLink>;
-                        using LinkItem = TListItem<AccessLink>;
+                        using LinkList = List<AccessLink>;
+                        using LinkItem = ListItem<AccessLink>;
 
                         Node*       node = 0;
                         VarOccur*   varOccur = 0;
@@ -1530,14 +1492,11 @@ namespace Parse
     success = Procedure(arena, input, symbolTable, enclosingBlock, &procNode);
     if(success && procNode)
     {
-      ListItem* procItem = 0;
+      NodeItem* procItem = 0;
 
-      procItem = PushElement(arena, ListItem, 1);
+      procItem = PushElement(arena, NodeItem, 1);
       procItem->elem = procNode;
-      List::Add(&module->procList, procItem);
-//      procList->lastItem->nextItem = procItem;
-//      procList->lastItem = procItem;
-//      procList->count++;
+      NodeList::Add(&module->procList, procItem);
 
       success = ProcedureList(arena, input, symbolTable, enclosingBlock, module);
     }
@@ -1731,18 +1690,18 @@ namespace Parse
     success = Statement(arena, input, symbolTable, block, &stmtNode);
     if(success && stmtNode)
     {
-      ListItem* stmtItem = 0;
+      NodeItem* stmtItem = 0;
 
-      stmtItem = PushElement(arena, ListItem, 1);
+      stmtItem = PushElement(arena, NodeItem, 1);
       stmtItem->elem = stmtNode;
 
       while(input->token == Token::Semicolon)
         ConsumeToken(input, symbolTable);
 
       if(stmtNode->kind == NodeKind::VarDecl)
-        List::Add(&block->declVars, stmtItem);
+        NodeList::Add(&block->declVars, stmtItem);
       else
-        List::Add(&block->stmtList, stmtItem);
+        NodeList::Add(&block->stmtList, stmtItem);
 
       success = StatementList(arena, input, symbolTable, block); //FIXME: Is this tail-recursion - can it be optimized?
     }
@@ -1761,7 +1720,7 @@ namespace Parse
       Node*        blockNode = 0;
       Block*       block = 0;
       Ast::Module* module = 0;
-      List*        procList = 0;
+      NodeList*    procList = 0;
 
       moduleNode = PushElement(arena, Node, 1);
       moduleNode->kind = NodeKind::Module;
@@ -1793,7 +1752,7 @@ namespace Parse
 
     return success;
   }/*<<<*/
-}
+}/*<<<*/
 
 void Emit(IrProgram* irProgram, char* code, ...)
 {/*>>>*/

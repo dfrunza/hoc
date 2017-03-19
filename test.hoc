@@ -7,7 +7,14 @@ proc Foo(var d, var e)
 
 proc Main()
 {
-  var a; a = -0;
+  var a; a = 0;
+  var b; b = 10;
   a = Foo(3, 2);
+  while(b)
+  {
+    var c; c = 0;
+    a = a+b;
+    b = b-1;
+  }
   return -Foo(3,2)-a;
 }

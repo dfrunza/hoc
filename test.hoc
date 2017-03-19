@@ -10,11 +10,11 @@ proc Main()
   var a; a = 0;
   var b; b = 10;
   a = Foo(3, 2);
-  while(b)
-  {
-    var c; c = 0;
-    a = a+b;
-    b = b-1;
+  if(a+1) {
+    b = b-2;
+  }
+  else if(Foo(1, 1)) {
+    b = b+2;
   }
   return -Foo(3,2)-a;
 }

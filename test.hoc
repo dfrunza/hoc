@@ -10,7 +10,7 @@ proc Main()
   var a; a = 0;
   var b; b = 10;
   a = Foo(3, 2);
-  if(a+1) {
+  if(0) {
     b = b-2;
   }
   else if(Foo(1, 1)) {

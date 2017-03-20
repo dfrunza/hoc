@@ -8,8 +8,6 @@ set CompilerFlags=-Od -W4 -nologo -MTd -Zo -Zi -Gm- -GR- -EHa- -FC -D_CRT_SECURE
                   -wd4201 -wd4127 -wd4100 -wd4706
 set LinkerFlags=-incremental:no -opt:ref -subsystem:console
 
-rem cl %CompilerFlags% ..\time.cpp /link %LinkerFlags%
-
 set Program=test
 
 cl %CompilerFlags% ..\hocc.cpp /link %LinkerFlags%
@@ -20,7 +18,7 @@ hocc.exe %cd%\..\%Program%.hoc
 if %errorlevel% neq 0 goto :hocc_exe_error
 cl /Fe:%Program%.exe %CompilerFlags% ..\vm.cpp %Program%.res /link %LinkerFlags% 
 
-echo Build successful
+rem echo Build successful
 goto :end
 
 :build_failed
@@ -33,3 +31,5 @@ goto :end
 
 :end
 popd
+
+cloc.exe ir.h hocc.cpp asm.cpp lib.cpp translator.cpp vm.cpp

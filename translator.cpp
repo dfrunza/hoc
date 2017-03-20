@@ -16,8 +16,10 @@ struct List
   int          count;
 
   template<typename T>
-  static void Add(List<T>* list, ListItem<T>* item)
+  static void Add(MemoryArena* arena, List<T>* list, T* elem)
   {/*>>>*/
+    ListItem<T>* item = PushElement(arena, ListItem<T>, 1);
+    item->elem = elem;
     list->lastItem->nextItem = item;
     item->prevItem = list->lastItem;
     list->lastItem = item;
@@ -150,6 +152,8 @@ namespace Sym
 namespace Ast
 {/*>>>*/
   using namespace Sym;
+  using NodeList = List<Node>;
+  using NodeItem = ListItem<Node>;
 
   enum struct OperatorKind
   {
@@ -179,9 +183,6 @@ namespace Ast
     ReturnStmt,
     Module,
   };
-
-  using NodeList = List<Node>;
-  using NodeItem = ListItem<Node>;
   
   struct AccessLink
   {
@@ -244,7 +245,6 @@ namespace Ast
     Node* expr;
     int   interveningBlockCount;
     Node* proc;
-    //ActivationRecord* actvRecord; // <-- can this be taken from the block?
   };
 
   struct Proc
@@ -254,6 +254,7 @@ namespace Ast
     NodeList argList;
     Node*    body;
     int      argsDataSize;
+    int      retDataSize;
   };
 
   struct IfStmt
@@ -272,6 +273,7 @@ namespace Ast
   struct Block
   {
     using LinkList = List<AccessLink>;
+    using LinkItem = ListItem<AccessLink>;
 
     Node* owner;
     int   blockId;
@@ -286,17 +288,8 @@ namespace Ast
     int      localsDataSize;
     LinkList accessLinks;
 
-    static void Init(SymbolTable* symbolTable, Block* block)
-    {/*>>>*/
-      block->blockId      = symbolTable->scopeId;
-      block->nestingDepth = symbolTable->nestingDepth;
-
-      NodeList::Init(&block->localOccurs);
-      NodeList::Init(&block->nonLocalOccurs);
-      NodeList::Init(&block->stmtList);
-      NodeList::Init(&block->declVars);
-      LinkList::Init(&block->accessLinks);
-    }/*<<<*/
+    static void Init(SymbolTable*, Block*);
+    static void Process(MemoryArena*, Block*);
   };
 
   struct Node
@@ -318,37 +311,79 @@ namespace Ast
       IfStmt     ifStmt;
     };
   };
+
+  void Block::Init(SymbolTable* symbolTable, Block* block)
+  {/*>>>*/
+    block->blockId      = symbolTable->scopeId;
+    block->nestingDepth = symbolTable->nestingDepth;
+
+    NodeList::Init(&block->localOccurs);
+    NodeList::Init(&block->nonLocalOccurs);
+    NodeList::Init(&block->stmtList);
+    NodeList::Init(&block->declVars);
+    LinkList::Init(&block->accessLinks);
+  }/*<<<*/
+
+  void Block::Process(MemoryArena* arena, Block* block)
+  {/*>>>*/
+    NodeItem* nodeItem = 0;
+
+    /*>>> Process declared vars */
+    nodeItem = NodeList::First(&block->declVars);
+    while(nodeItem)
+    {
+      Node* node = 0;
+      VarDecl* varDecl = 0;
+      Symbol*  symbol = 0;
+
+      node    = nodeItem->elem;
+      varDecl = &node->varDecl;
+      symbol  = node->varDecl.symbol;
+
+      varDecl->location = block->localsDataSize;
+      block->localsDataSize += varDecl->dataSize;
+
+      nodeItem = nodeItem->nextItem;
+    }
+    /*<<<*/
+    /*>>> Process non-local var occurrences */
+    nodeItem = NodeList::First(&block->nonLocalOccurs);
+    while(nodeItem)
+    {
+      Node*       node = 0;
+      VarOccur*   varOccur = 0;
+      Symbol*     symbol = 0;
+      AccessLink* link = 0;
+      LinkItem*   linkItem = 0;
+      LinkList*   linksList = 0;
+
+      node      = nodeItem->elem;
+      varOccur  = &node->varOccur;
+      symbol    = node->varOccur.symbol;
+      linksList = &block->accessLinks;
+
+      linkItem = LinkList::First(&block->accessLinks);
+      while(linkItem)
+      {
+        link = linkItem->elem;
+        if(link->actvRecordOffset == varOccur->declBlockOffset)
+          break;
+        linkItem = linkItem->nextItem;
+      }
+      if(!link)
+      {
+        link = PushElement(arena, AccessLink, 1);
+        link->actvRecordOffset = varOccur->declBlockOffset;
+        link->index = linksList->count;
+        LinkList::Add(arena, linksList, link);
+      }
+    }
+    /*<<<*/
+  }/*<<<*/
 }/*<<<*/
 
 /* old_ip + old_sp + old_fp */
 #define MACHINE_STATUS_DATA_SIZE 3
-
-//enum ActivationRecordKind
-//{
-//  ActvRecord__Null,
-//  ActvRecord_Proc,
-//  ActvRecord_Block,
-//};
-
-//struct ActivationRecord
-//{
-//  ActivationRecordKind kind;
-//
-////  DataObjList* localObjects;
-//  int          localAreaSize;
-//
-//  AccessLink* accessLinks;
-//  int         accessLinkCount;
-//
-//  struct {
-////    DataObjList* args;
-//    int argsCount;
-//    int argsAreaSize;
-//
-////    DataObj* ret;
-//    int      retAreaSize;
-//  } proc;
-//};
 
 struct IrProgram
 {
@@ -370,7 +405,9 @@ void SyntaxError(Lex::TokenStream* input, char* message, ...)
 }
 
 namespace Sym
-{
+{/*>>>*/
+  using namespace Lex;
+
   Symbol* Lookup(SymbolTable* symbolTable, char* name)
   {/*>>>*/
     Symbol* result = 0;
@@ -401,7 +438,7 @@ namespace Sym
     return symbol;
   }/*<<<*/
 
-  Symbol* RegisterNew(SymbolTable* symbolTable, Lex::TokenStream* input, SymbolKind kind)
+  Symbol* RegisterNew(SymbolTable* symbolTable, TokenStream* input, SymbolKind kind)
   {/*>>>*/
     assert(input->token == Lex::Token::Id);
 
@@ -429,7 +466,7 @@ namespace Sym
     return result;
   }/*<<<*/
 
-  Symbol* AddKeyword(SymbolTable* symbolTable, char* name, Lex::Token token)
+  Symbol* AddKeyword(SymbolTable* symbolTable, char* name, Token token)
   {/*>>>*/
     Symbol* symbol = Add(symbolTable, name, SymbolKind::Keyword);
     symbol->kwToken = token;
@@ -438,8 +475,6 @@ namespace Sym
 
   void RegisterKeywords(SymbolTable* symbolTable)
   {/*>>>*/
-    using Lex::Token;
-
     AddKeyword(symbolTable, "int", Token::If);
     AddKeyword(symbolTable, "float", Token::Float);
     AddKeyword(symbolTable, "void", Token::Void);
@@ -457,7 +492,7 @@ namespace Sym
     AddKeyword(symbolTable, "true", Token::True);
     AddKeyword(symbolTable, "false", Token::False);
   }/*<<<*/
-}
+}/*<<<*/
 
 bool32 BeginScope(Sym::SymbolTable* symbolTable)
 {/*>>>*/
@@ -502,7 +537,7 @@ void MakeUniqueLabel(Sym::SymbolTable* symbolTable, char* label)
 }
 
 namespace Lex
-{
+{/*>>>*/
   using namespace Sym;
 
   bool32 IsKeyword(Token token)
@@ -682,7 +717,7 @@ namespace Lex
     else if(c == '\0')
       input->token = Token::EndOfInput;
   }/*<<<*/
-}
+}/*<<<*/
 
 namespace Parse
 {/*>>>*/
@@ -767,7 +802,6 @@ namespace Parse
         if(symbol->kind == SymbolKind::Var)
         {
           VarOccur* varOccur = 0;
-          NodeItem* idItem = 0;
 
           idNode->kind = NodeKind::VarOccur;
           varOccur = &idNode->varOccur;
@@ -776,22 +810,14 @@ namespace Parse
           varOccur->declBlockOffset = (symbolTable->nestingDepth - symbol->nestingDepth);
           varOccur->isNonLocal      = (varOccur->declBlockOffset > 0);
 
-          idItem = PushElement(arena, NodeItem, 1);
-          idItem->elem = idNode;
           if(varOccur->isNonLocal)
           {
-            NodeList* nonLocalOccurs = 0;
-
-            nonLocalOccurs = &enclosingBlock->nonLocalOccurs;
-            NodeList::Add(nonLocalOccurs, idItem);
+            NodeList::Add(arena, &enclosingBlock->nonLocalOccurs, idNode);
           }
           else
           {
-            NodeList* localOccurs = 0;
-
             assert(varOccur->declBlockOffset == 0);
-            localOccurs = &enclosingBlock->localOccurs;
-            NodeList::Add(localOccurs, idItem);
+            NodeList::Add(arena, &enclosingBlock->localOccurs, idNode);
           }
         }
         else if(symbol->kind == SymbolKind::Proc)
@@ -995,7 +1021,7 @@ namespace Parse
             Node* exprNode = 0;
             BinExpr* expr = 0;
 
-            exprNode       = PushElement(arena, Node, 1);
+            exprNode = PushElement(arena, Node, 1);
             exprNode->kind = NodeKind::BinExpr;
             expr = &exprNode->binExpr;
             expr->op = OperatorKind::Assign;
@@ -1121,13 +1147,7 @@ namespace Parse
     success = FormalArgument(arena, input, symbolTable, enclosingBlock, &argNode);
     if(success && argNode)
     {
-      NodeItem* argItem = 0;
-      NodeList* argList = 0;
-
-      argItem = PushElement(arena, NodeItem, 1);
-      argItem->elem  = argNode;
-      argList = &proc->argList;
-      NodeList::Add(argList, argItem);
+      NodeList::Add(arena, &proc->argList, argNode);
 
       if(input->token == Token::Comma)
       {
@@ -1148,11 +1168,7 @@ namespace Parse
     success = Expression(arena, input, symbolTable, enclosingBlock, &argNode);
     if(success && argNode)
     {
-      NodeItem* argItem = 0;
-
-      argItem = PushElement(arena, NodeItem, 1);
-      argItem->elem  = argNode;
-      NodeList::Add(&call->argList, argItem);
+      NodeList::Add(arena, &call->argList, argNode);
 
       if(input->token == Token::Comma)
       {
@@ -1363,6 +1379,7 @@ namespace Parse
           proc = &procNode->proc;
           proc->symbol = symbol;
           proc->name   = symbol->name;
+          proc->retDataSize = 1;
           NodeList::Init(&proc->argList);
 
           ConsumeToken(input, symbolTable);
@@ -1420,67 +1437,8 @@ namespace Parse
                     success = StatementList(arena, input, symbolTable, block);
                     if(success)
                     {
-                      /*>>> Process local var occurrences */
-                      NodeItem* nodeItem = 0;
+                      Block::Process(arena, block);
 
-                      nodeItem = NodeList::First(&block->declVars);
-                      while(nodeItem)
-                      {
-                        Node* node = 0;
-                        VarDecl* varDecl = 0;
-                        Symbol*  symbol = 0;
-
-                        node    = nodeItem->elem;
-                        varDecl = &node->varDecl;
-                        symbol  = node->varDecl.symbol;
-
-                        varDecl->location = block->localsDataSize;
-                        block->localsDataSize += varDecl->dataSize;
-
-                        nodeItem = nodeItem->nextItem;
-                      }
-                      /*<<<*/
-                      /*>>> Process non-local var occurrences */
-                      nodeItem = NodeList::First(&block->nonLocalOccurs);
-                      while(nodeItem)
-                      {
-                        using LinkList = List<AccessLink>;
-                        using LinkItem = ListItem<AccessLink>;
-
-                        Node*       node = 0;
-                        VarOccur*   varOccur = 0;
-                        Symbol*     symbol = 0;
-                        AccessLink* link = 0;
-                        LinkItem*   linkItem = 0;
-                        LinkList*   linksList = 0;
-
-                        node      = nodeItem->elem;
-                        varOccur  = &node->varOccur;
-                        symbol    = node->varOccur.symbol;
-                        linksList = &block->accessLinks;
-
-                        linkItem = LinkList::First(&block->accessLinks);
-                        while(linkItem)
-                        {
-                          link = linkItem->elem;
-                          if(link->actvRecordOffset == varOccur->declBlockOffset)
-                            break;
-                          linkItem = linkItem->nextItem;
-                        }
-                        if(!link)
-                        {
-                          link = PushElement(arena, AccessLink, 1);
-                          link->actvRecordOffset = varOccur->declBlockOffset;
-                          link->index = linksList->count;
-                          linkItem = PushElement(arena, LinkItem, 1);
-                          linkItem->elem = link;
-                          LinkList::Add(linksList, linkItem);
-                        }
-                      }
-                      /*<<<*/
-                      /*>>> Process declared vars */
-                      nodeItem = NodeList::First(&block->declVars);
-                      /*<<<*/
                       if(input->token == Token::CloseBrace)
                       {
                         ConsumeToken(input, symbolTable);
@@ -1518,7 +1476,7 @@ namespace Parse
   }/*<<<*/
 
   bool32 ProcedureList(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTable,
-                       Block* enclosingBlock, Ast::Module* module)
+                       Block* enclosingBlock, Module* module)
   {/*>>>*/
     bool32 success = true;
     Node* procNode = 0;
@@ -1526,11 +1484,7 @@ namespace Parse
     success = Procedure(arena, input, symbolTable, enclosingBlock, &procNode);
     if(success && procNode)
     {
-      NodeItem* procItem = 0;
-
-      procItem = PushElement(arena, NodeItem, 1);
-      procItem->elem = procNode;
-      NodeList::Add(&module->procList, procItem);
+      NodeList::Add(arena, &module->procList, procNode);
 
       success = ProcedureList(arena, input, symbolTable, enclosingBlock, module);
     }
@@ -1553,11 +1507,11 @@ namespace Parse
       {
         if(exprNode)
         {
-          Node* retNode = 0;
-          ReturnStmt* retStmt = 0; 
-          Block* block = 0;
+          Node*       retNode = 0;
+          ReturnStmt* retStmt = 0;
+          Block*      block = 0;
 
-          retNode       = PushElement(arena, Node, 1);
+          retNode = PushElement(arena, Node, 1);
           retNode->kind = NodeKind::ReturnStmt;
           retStmt       = &retNode->retStmt;
           retStmt->expr = exprNode;
@@ -1594,11 +1548,11 @@ namespace Parse
     enum Alternative
     {
       Alt__Null,
-        Alt_Var,
-        Alt_Expr,
-        Alt_If,
-        Alt_While,
-        Alt_Return,
+      Alt_Var,
+      Alt_Expr,
+      Alt_If,
+      Alt_While,
+      Alt_Return,
     };
 
     Alternative alt = (Alternative)1;
@@ -1724,18 +1678,13 @@ namespace Parse
     success = Statement(arena, input, symbolTable, block, &stmtNode);
     if(success && stmtNode)
     {
-      NodeItem* stmtItem = 0;
-
-      stmtItem = PushElement(arena, NodeItem, 1);
-      stmtItem->elem = stmtNode;
-
       while(input->token == Token::Semicolon)
         ConsumeToken(input, symbolTable);
 
       if(stmtNode->kind == NodeKind::VarDecl)
-        NodeList::Add(&block->declVars, stmtItem);
+        NodeList::Add(arena, &block->declVars, stmtNode);
       else
-        NodeList::Add(&block->stmtList, stmtItem);
+        NodeList::Add(arena, &block->stmtList, stmtNode);
 
       success = StatementList(arena, input, symbolTable, block); //FIXME: Is this tail-recursion - can it be optimized?
     }
@@ -1785,6 +1734,16 @@ namespace Parse
     return success;
   }/*<<<*/
 }/*<<<*/
+
+namespace Gen
+{
+  using namespace Ast;
+
+  void Code(Node* node)
+  {
+
+  }
+}
 
 void Emit(IrProgram* irProgram, char* code, ...)
 {/*>>>*/

@@ -1,85 +1,5 @@
 #include "lib.cpp"
 
-enum struct Token
-{/*>>>*/
-  _Null,
-  EndOfInput,
-
-  _KeywordBegin,
-  If,
-  Else,
-  While,
-  Type,
-  Of,
-  Array,
-  Char,
-  Float,
-  Void,
-  Int,
-  Var,
-  Proc,
-  Struct,
-  Return,
-  True,
-  False,
-  _KeywordEnd,
-
-  Id,
-  Dot,
-  IntNum,
-  UpArrow,
-  RightArrow,
-  Literal,
-  OpenBracket,
-  CloseBracket,
-  Semicolon,
-  Colon,
-  Comma,
-  Star,
-  FwdSlash,
-  Plus,
-  Minus,
-  UnaryMinus,
-  Equals,
-  OpenParens,
-  CloseParens,
-  OpenBrace,
-  CloseBrace,
-};/*<<<*/
-
-enum struct SymbolKind
-{
-  _Null,
-  Keyword,
-  Proc,
-  Var,
-};
-
-//enum BlockKind
-//{
-//  Block__Null,
-//  Block_Module,
-//  Block_Proc,
-//  Block_Stmt,
-//  Block_Anonymous,
-//};
-
-//struct ActivationRecord;
-struct Symbol;
-struct TokenStream;
-
-struct SymbolTable
-{
-  Symbol* currSymbol;
-  int     currScopeId;
-  int     lastScopeId;
-  int     nestingDepth;
-  int     activeScopes[32];
-  char    label[64];
-  int     lastLabelId;
-  MemoryArena* arena;
-};
-
 template<typename T>
 struct ListItem
 {
@@ -109,10 +29,128 @@ struct List
   {/*>>>*/
     list->lastItem = &list->sentinel;
   }/*<<<*/
+
+  template<typename T>
+  static ListItem<T>* First(List<T>* list)
+  {/*>>>*/
+    ListItem<T>* first = list->sentinel.nextItem;
+    return first;
+  }/*<<<*/
 };
 
 namespace Ast
+{
+  struct Node;
+}
+
+namespace Lex
 {/*>>>*/
+  enum struct Token
+  {/*>>>*/
+    _Null,
+    EndOfInput,
+
+    _KeywordBegin,
+    If,
+    Else,
+    While,
+    Type,
+    Of,
+    Array,
+    Char,
+    Float,
+    Void,
+    Int,
+    Var,
+    Proc,
+    Struct,
+    Return,
+    True,
+    False,
+    _KeywordEnd,
+
+    Id,
+    Dot,
+    IntNum,
+    UpArrow,
+    RightArrow,
+    Literal,
+    OpenBracket,
+    CloseBracket,
+    Semicolon,
+    Colon,
+    Comma,
+    Star,
+    FwdSlash,
+    Plus,
+    Minus,
+    UnaryMinus,
+    Equals,
+    OpenParens,
+    CloseParens,
+    OpenBrace,
+    CloseBrace,
+  };/*<<<*/
+
+  struct TokenStream
+  {
+    Token prevToken;
+    Token token;
+    char* text;
+    char* cursor;
+    MemoryArena* arena;
+
+    char* filePath;
+    int   lineNr;
+    char* srcLine;
+
+    union {
+      int*  intNum;
+      char* id;
+    } lexval;
+  };
+}/*<<<*/
+
+namespace Sym
+{/*>>>*/
+  struct Symbol;
+
+  enum struct SymbolKind
+  {
+    _Null,
+    Keyword,
+    Proc,
+    Var,
+  };
+
+  struct SymbolTable
+  {
+    Symbol* symbol;
+    int     scopeId;
+    int     lastScopeId;
+    int     nestingDepth;
+    int     activeScopes[32];
+    char    label[64];
+    int     lastLabelId;
+    MemoryArena* arena;
+  };
+
+  struct Symbol
+  {
+    SymbolKind kind;
+    char*      name;
+    int        blockId;
+    int        nestingDepth;
+    Ast::Node* astNode;
+    Lex::Token kwToken;
+    Symbol*    nextSymbol;
+  };
+}/*<<<*/
+
+namespace Ast
+{/*>>>*/
+  using namespace Sym;
+
   enum struct OperatorKind
   {
     _Null,
@@ -142,7 +180,6 @@ namespace Ast
     Module,
   };
 
-  struct Node;
   using NodeList = List<Node>;
   using NodeItem = ListItem<Node>;
   
@@ -251,7 +288,7 @@ namespace Ast
 
     static void Init(SymbolTable* symbolTable, Block* block)
     {/*>>>*/
-      block->blockId      = symbolTable->currScopeId;
+      block->blockId      = symbolTable->scopeId;
       block->nestingDepth = symbolTable->nestingDepth;
 
       NodeList::Init(&block->localOccurs);
@@ -283,23 +320,6 @@ namespace Ast
   };
 }/*<<<*/
 
-struct Symbol
-{
-  SymbolKind kind;
-  char*      name;
-  int        blockId;
-  int        nestingDepth;
-  Ast::Node* astNode;
-  Token      kwToken;
-
-  Symbol*    nextSymbol;
-
-  static Symbol* Lookup(SymbolTable*, char*);
-  static Symbol* Add(SymbolTable*, char*, SymbolKind);
-  static Symbol* RegisterNew(SymbolTable*, TokenStream*, SymbolKind);
-  static Symbol* AddKeyword(SymbolTable*, char*, Token);
-};
-
 /* old_ip + old_sp + old_fp */
 #define MACHINE_STATUS_DATA_SIZE 3
 
@@ -330,24 +350,6 @@ struct Symbol
 //  } proc;
 //};
 
-struct TokenStream
-{
-  Token prevToken;
-  Token token;
-  char* text;
-  char* cursor;
-  MemoryArena* arena;
-
-  char* filePath;
-  int   lineNr;
-  char* srcLine;
-
-  union {
-    int*  intNum;
-    char* id;
-  } lexval;
-};
-
 struct IrProgram
 {
   String text;
@@ -355,7 +357,7 @@ struct IrProgram
   MemoryArena* arena;
 };
 
-void SyntaxError(TokenStream* input, char* message, ...)
+void SyntaxError(Lex::TokenStream* input, char* message, ...)
 {
   va_list args;
 
@@ -367,82 +369,108 @@ void SyntaxError(TokenStream* input, char* message, ...)
   va_end(args);
 }
 
-Symbol* Symbol::Lookup(SymbolTable* symbolTable, char* name)
-{/*>>>*/
-   Symbol* result = 0;
-   Symbol *symbol = symbolTable->currSymbol;
+namespace Sym
+{
+  Symbol* Lookup(SymbolTable* symbolTable, char* name)
+  {/*>>>*/
+    Symbol* result = 0;
+    Symbol* symbol = 0;
 
-   while(symbol)
-   {
+    symbol = symbolTable->symbol;
+    while(symbol)
+    {
       if(StrMatch(symbol->name, name))
       {
-         result = symbol;
-         break;
+        result = symbol;
+        break;
       }
       symbol = symbol->nextSymbol;
-   }
-   return result;
-}/*<<<*/
+    }
+    return result;
+  }/*<<<*/
 
-Symbol* Symbol::Add(SymbolTable* symbolTable, char* name, SymbolKind kind)
-{/*>>>*/
-  Symbol* symbol = PushElement(symbolTable->arena, Symbol, 1);
-  symbol->name = name;
-  symbol->kind = kind;
-  symbol->blockId = symbolTable->currScopeId;
-  symbol->nestingDepth = symbolTable->nestingDepth;
-  symbol->nextSymbol = symbolTable->currSymbol;
-  symbolTable->currSymbol = symbol;
-  return symbol;
-}/*<<<*/
+  Symbol* Add(SymbolTable* symbolTable, char* name, SymbolKind kind)
+  {/*>>>*/
+    Symbol* symbol = PushElement(symbolTable->arena, Symbol, 1);
+    symbol->name = name;
+    symbol->kind = kind;
+    symbol->blockId = symbolTable->scopeId;
+    symbol->nestingDepth = symbolTable->nestingDepth;
+    symbol->nextSymbol = symbolTable->symbol;
+    symbolTable->symbol = symbol;
+    return symbol;
+  }/*<<<*/
 
-Symbol* Symbol::RegisterNew(SymbolTable* symbolTable, TokenStream* input, SymbolKind kind)
-{/*>>>*/
-  assert(input->token == Token::Id);
+  Symbol* RegisterNew(SymbolTable* symbolTable, Lex::TokenStream* input, SymbolKind kind)
+  {/*>>>*/
+    assert(input->token == Lex::Token::Id);
 
-  Symbol* result = 0;
-  Symbol* symbol = 0;
+    Symbol* result = 0;
+    Symbol* symbol = 0;
 
-  symbol = Lookup(symbolTable, input->lexval.id);
-  if(!symbol)
-  {
-    result = Add(symbolTable, input->lexval.id, kind);
-  } else {
-    if(symbol->kind != SymbolKind::Keyword)
+    symbol = Lookup(symbolTable, input->lexval.id);
+    if(!symbol)
     {
-      if(symbol->blockId != symbolTable->currScopeId ||
-         symbol->kind != kind)
+      result = Add(symbolTable, input->lexval.id, kind);
+    } else {
+      if(symbol->kind != SymbolKind::Keyword)
       {
-        assert(symbol->nestingDepth <= symbolTable->nestingDepth);
+        if(symbol->blockId != symbolTable->scopeId ||
+           symbol->kind != kind)
+        {
+          assert(symbol->nestingDepth <= symbolTable->nestingDepth);
 
-        result = Add(symbolTable, input->lexval.id, kind);
+          result = Add(symbolTable, input->lexval.id, kind);
+        } else
+          SyntaxError(input, "Redeclaration of identifier: %s", symbol->name);
       } else
-        SyntaxError(input, "Redeclaration of identifier: %s", symbol->name);
-    } else
-      SyntaxError(input, "Keyword used as identifier: %s", symbol->name);
-  }
-  return result;
-}/*<<<*/
+        SyntaxError(input, "Keyword used as identifier: %s", symbol->name);
+    }
+    return result;
+  }/*<<<*/
 
-Symbol* Symbol::AddKeyword(SymbolTable* symbolTable, char* name, Token token)
-{/*>>>*/
-  Symbol* symbol = Add(symbolTable, name, SymbolKind::Keyword);
-  symbol->kwToken = token;
-  return symbol;
-}/*<<<*/
+  Symbol* AddKeyword(SymbolTable* symbolTable, char* name, Lex::Token token)
+  {/*>>>*/
+    Symbol* symbol = Add(symbolTable, name, SymbolKind::Keyword);
+    symbol->kwToken = token;
+    return symbol;
+  }/*<<<*/
 
-bool32 BeginScope(SymbolTable* symbolTable)
+  void RegisterKeywords(SymbolTable* symbolTable)
+  {/*>>>*/
+    using Lex::Token;
+
+    AddKeyword(symbolTable, "int", Token::If);
+    AddKeyword(symbolTable, "float", Token::Float);
+    AddKeyword(symbolTable, "void", Token::Void);
+    AddKeyword(symbolTable, "char", Token::Char);
+    AddKeyword(symbolTable, "var", Token::Var);
+    AddKeyword(symbolTable, "proc", Token::Proc);
+    AddKeyword(symbolTable, "type", Token::Type);
+    AddKeyword(symbolTable, "struct", Token::Type);
+    AddKeyword(symbolTable, "array", Token::Array);
+    AddKeyword(symbolTable, "of", Token::Of);
+    AddKeyword(symbolTable, "if", Token::If);
+    AddKeyword(symbolTable, "else", Token::Else);
+    AddKeyword(symbolTable, "while", Token::While);
+    AddKeyword(symbolTable, "return", Token::Return);
+    AddKeyword(symbolTable, "true", Token::True);
+    AddKeyword(symbolTable, "false", Token::False);
+  }/*<<<*/
+}
+
+bool32 BeginScope(Sym::SymbolTable* symbolTable)
 {/*>>>*/
   int nestingDepth = 0;
-  int currScopeId = 0;
+  int scopeId = 0;
   
-  currScopeId = ++symbolTable->lastScopeId;
-  symbolTable->currScopeId = currScopeId;
+  scopeId = ++symbolTable->lastScopeId;
+  symbolTable->scopeId = scopeId;
 
   nestingDepth = ++symbolTable->nestingDepth;
   if(nestingDepth < SizeofArray(symbolTable->activeScopes))
   {
-    symbolTable->activeScopes[nestingDepth] = currScopeId;
+    symbolTable->activeScopes[nestingDepth] = scopeId;
   } else {
     Error("Reached the maximum scope nesting depth");
     return false;
@@ -451,209 +479,215 @@ bool32 BeginScope(SymbolTable* symbolTable)
   return true;
 }/*<<<*/
 
-void EndScope(SymbolTable* symbolTable)
+void EndScope(Sym::SymbolTable* symbolTable)
 {/*>>>*/
   int nestingDepth = 0;
-  int currScopeId = 0;
-  Symbol* symbol = 0;
+  int scopeId = 0;
+  Sym::Symbol* symbol = 0;
   
   nestingDepth = --symbolTable->nestingDepth;
-  currScopeId = symbolTable->activeScopes[nestingDepth];
-  assert(currScopeId >= 0);
-  symbolTable->currScopeId = currScopeId;
+  scopeId = symbolTable->activeScopes[nestingDepth];
+  assert(scopeId >= 0);
+  symbolTable->scopeId = scopeId;
 
-  symbol = symbolTable->currSymbol;
-  while(symbol && symbol->blockId > symbolTable->currScopeId)
+  symbol = symbolTable->symbol;
+  while(symbol && symbol->blockId > symbolTable->scopeId)
     symbol = symbol->nextSymbol;
-  symbolTable->currSymbol = symbol;
+  symbolTable->symbol = symbol;
 }/*<<<*/
 
-void MakeUniqueLabel(SymbolTable* symbolTable, char* label)
+void MakeUniqueLabel(Sym::SymbolTable* symbolTable, char* label)
 {
   sprintf(label, "L%d", symbolTable->lastLabelId++);
 }
 
-bool32 IsKeyword(Token token)
+namespace Lex
 {
-  return token > Token::_KeywordBegin && token < Token::_KeywordEnd;
-}
+  using namespace Sym;
 
-char* InstallLexeme(TokenStream* input, char* beginChar, char* endChar)
-{/*>>>*/
-  //FIXME: If the lexeme had been previously installed then return it.
-  int len = 0;
-  char* lexeme = 0;
-  
-  len = (int)(endChar - beginChar + 1);
-  lexeme = PushElement(input->arena, char, len + 1);
-  CopySubstr(lexeme, beginChar, endChar);
-  return lexeme;
-}/*<<<*/
+  bool32 IsKeyword(Token token)
+  {/*>>>*/
+    return token > Token::_KeywordBegin && token < Token::_KeywordEnd;
+  }/*<<<*/
 
-void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
-{/*>>>*/
-  char c = 0;
-
-  input->prevToken = input->token;
-  input->token = Token::_Null;
-  input->lexval = {};
-
-  input->srcLine = input->cursor;
-  c = *input->cursor;
-
-  while(c == ' ' || c == '\t' ||
-        c == '\r' || c == '\n')
-  {
-    if(c == '\n')
-    {
-      input->lineNr++;
-      input->srcLine = input->cursor;
-    }
-    c = *(++input->cursor);
-  }
-
-  if(IsLetterChar(c) || c == '_')
-  {
-    char* beginChar = 0, *endChar = 0;
+  char* InstallLexeme(TokenStream* input, char* beginChar, char* endChar)
+  {/*>>>*/
+    //FIXME: If the lexeme had been previously installed then return it.
+    int len = 0;
     char* lexeme = 0;
-    Symbol* symbol = 0;
-   
-    beginChar = input->cursor;
-    c = *(++input->cursor);
 
-    while(IsLetterChar(c) || IsNumericChar(c) || c == '_')
-      c = *(++input->cursor);
+    len = (int)(endChar - beginChar + 1);
+    lexeme = PushElement(input->arena, char, len + 1);
+    CopySubstr(lexeme, beginChar, endChar);
+    return lexeme;
+  }/*<<<*/
 
-    endChar = input->cursor - 1;
-    lexeme = InstallLexeme(input, beginChar, endChar);
-    input->lexval.id = lexeme;
+  void ConsumeToken(TokenStream* input, SymbolTable* symbolTable)
+  {/*>>>*/
+    char c = 0;
 
-    symbol = Symbol::Lookup(symbolTable, lexeme);
-    if(symbol && symbol->kind == SymbolKind::Keyword)
-      input->token = symbol->kwToken;
-    else
-      input->token = Token::Id;
-  }
-  else if(IsNumericChar(c))
-  {
-    int num = 0;
-    int *value = 0;
+    input->prevToken = input->token;
+    input->token = Token::_Null;
+    input->lexval = {};
 
-    num = c - '0';
-    c = *(++input->cursor);
+    input->srcLine = input->cursor;
+    c = *input->cursor;
 
-    while(IsNumericChar(c))
+    while(c == ' ' || c == '\t' ||
+          c == '\r' || c == '\n')
     {
-      num = (10 * num) + (c - '0');
+      if(c == '\n')
+      {
+        input->lineNr++;
+        input->srcLine = input->cursor;
+      }
       c = *(++input->cursor);
     }
 
-    value = PushElement(input->arena, int, 1);
-    *value = num;
-    input->token = Token::IntNum;
-    input->lexval.intNum = value;
-  }
-  else if(c == '-')
-  {
-    c = *(++input->cursor);
-    if(c == '>')
+    if(IsLetterChar(c) || c == '_')
     {
-      input->token = Token::RightArrow;
+      char* beginChar = 0, *endChar = 0;
+      char* lexeme = 0;
+      Symbol* symbol = 0;
+
+      beginChar = input->cursor;
+      c = *(++input->cursor);
+
+      while(IsLetterChar(c) || IsNumericChar(c) || c == '_')
+        c = *(++input->cursor);
+
+      endChar = input->cursor - 1;
+      lexeme = InstallLexeme(input, beginChar, endChar);
+      input->lexval.id = lexeme;
+
+      symbol = Lookup(symbolTable, lexeme);
+      if(symbol && symbol->kind == SymbolKind::Keyword)
+        input->token = symbol->kwToken;
+      else
+        input->token = Token::Id;
+    }
+    else if(IsNumericChar(c))
+    {
+      int num = 0;
+      int *value = 0;
+
+      num = c - '0';
+      c = *(++input->cursor);
+
+      while(IsNumericChar(c))
+      {
+        num = (10 * num) + (c - '0');
+        c = *(++input->cursor);
+      }
+
+      value = PushElement(input->arena, int, 1);
+      *value = num;
+      input->token = Token::IntNum;
+      input->lexval.intNum = value;
+    }
+    else if(c == '-')
+    {
+      c = *(++input->cursor);
+      if(c == '>')
+      {
+        input->token = Token::RightArrow;
+        ++input->cursor;
+      }
+      else if(input->prevToken == Token::Equals ||
+              input->prevToken == Token::OpenParens ||
+              input->prevToken == Token::Star ||
+              input->prevToken == Token::Plus ||
+              input->prevToken == Token::Comma ||
+              input->prevToken == Token::FwdSlash ||
+              input->prevToken == Token::Return)
+        input->token = Token::UnaryMinus;
+      else
+        input->token = Token::Minus;
+    }
+    else if(c == '*')
+    {
+      input->token = Token::Star;
       ++input->cursor;
     }
-    else if(input->prevToken == Token::Equals ||
-            input->prevToken == Token::OpenParens ||
-            input->prevToken == Token::Star ||
-            input->prevToken == Token::Plus ||
-            input->prevToken == Token::Comma ||
-            input->prevToken == Token::FwdSlash ||
-            input->prevToken == Token::Return)
-      input->token = Token::UnaryMinus;
-    else
-      input->token = Token::Minus;
-  }
-  else if(c == '*')
-  {
-    input->token = Token::Star;
-    ++input->cursor;
-  }
-  else if(c == '.')
-  {
-    input->token = Token::Dot;
-    ++input->cursor;
-  }
-  else if(c == '}')
-  {
-    input->token = Token::CloseBrace;
-    ++input->cursor;
-  }
-  else if(c == '{')
-  {
-    input->token = Token::OpenBrace;
-    ++input->cursor;
-  }
-  else if(c == '=')
-  {
-    input->token = Token::Equals;
-    ++input->cursor;
-  }
-  else if(c == '+')
-  {
-    input->token = Token::Plus;
-    ++input->cursor;
-  }
-  else if(c == '/')
-  {
-    input->token = Token::FwdSlash;
-    ++input->cursor;
-  }
-  else if(c == '(')
-  {
-    input->token = Token::OpenParens;
-    ++input->cursor;
-  }
-  else if(c == ')')
-  {
-    input->token = Token::CloseParens;
-    ++input->cursor;
-  }
-  else if(c == ';')
-  {
-    input->token = Token::Semicolon;
-    ++input->cursor;
-  }
-  else if(c == ',')
-  {
-    input->token = Token::Comma;
-    ++input->cursor;
-  }
-  else if(c == ':')
-  {
-    input->token = Token::Colon;
-    ++input->cursor;
-  }
-  else if(c == '[')
-  {
-    input->token = Token::OpenParens;
-    ++input->cursor;
-  }
-  else if(c == ']')
-  {
-    input->token = Token::CloseBracket;
-    ++input->cursor;
-  }
-  else if(c == '^')
-  {
-    input->token = Token::UpArrow;
-    ++input->cursor;
-  }
-  else if(c == '\0')
-    input->token = Token::EndOfInput;
-}/*<<<*/
+    else if(c == '.')
+    {
+      input->token = Token::Dot;
+      ++input->cursor;
+    }
+    else if(c == '}')
+    {
+      input->token = Token::CloseBrace;
+      ++input->cursor;
+    }
+    else if(c == '{')
+    {
+      input->token = Token::OpenBrace;
+      ++input->cursor;
+    }
+    else if(c == '=')
+    {
+      input->token = Token::Equals;
+      ++input->cursor;
+    }
+    else if(c == '+')
+    {
+      input->token = Token::Plus;
+      ++input->cursor;
+    }
+    else if(c == '/')
+    {
+      input->token = Token::FwdSlash;
+      ++input->cursor;
+    }
+    else if(c == '(')
+    {
+      input->token = Token::OpenParens;
+      ++input->cursor;
+    }
+    else if(c == ')')
+    {
+      input->token = Token::CloseParens;
+      ++input->cursor;
+    }
+    else if(c == ';')
+    {
+      input->token = Token::Semicolon;
+      ++input->cursor;
+    }
+    else if(c == ',')
+    {
+      input->token = Token::Comma;
+      ++input->cursor;
+    }
+    else if(c == ':')
+    {
+      input->token = Token::Colon;
+      ++input->cursor;
+    }
+    else if(c == '[')
+    {
+      input->token = Token::OpenParens;
+      ++input->cursor;
+    }
+    else if(c == ']')
+    {
+      input->token = Token::CloseBracket;
+      ++input->cursor;
+    }
+    else if(c == '^')
+    {
+      input->token = Token::UpArrow;
+      ++input->cursor;
+    }
+    else if(c == '\0')
+      input->token = Token::EndOfInput;
+  }/*<<<*/
+}
 
 namespace Parse
 {/*>>>*/
   using namespace Ast;
+  using namespace Lex;
 
   bool32 Expression(MemoryArena*, TokenStream*, SymbolTable*, Block*, Node**);
   bool32 StatementList(MemoryArena*, TokenStream*, SymbolTable*, Block*);
@@ -720,7 +754,7 @@ namespace Parse
     {
       Symbol* symbol = 0;
 
-      symbol = Symbol::Lookup(symbolTable, input->lexval.id);
+      symbol = Lookup(symbolTable, input->lexval.id);
       if(symbol)
       {
         Node* idNode = 0;
@@ -763,14 +797,12 @@ namespace Parse
         else if(symbol->kind == SymbolKind::Proc)
         {
           Call*     call = 0;
-          NodeList* argList = 0;
 
           idNode->kind = NodeKind::Call;
           call         = &idNode->call;
           call->symbol = symbol;
           call->name   = symbol->name;
-          argList = &call->argList;
-          argList->lastItem = &argList->sentinel;
+          NodeList::Init(&call->argList);
 
           if(input->token == Token::OpenParens)
           {
@@ -1018,7 +1050,7 @@ namespace Parse
         varNode->kind = NodeKind::VarDecl;
         *node = varNode;
 
-        symbol = Symbol::RegisterNew(symbolTable, input, SymbolKind::Var);
+        symbol = RegisterNew(symbolTable, input, SymbolKind::Var);
         if(symbol)
         {
           VarDecl* varDecl = 0;
@@ -1056,7 +1088,7 @@ namespace Parse
         varNode->kind = NodeKind::VarDecl;
         *node = varNode;
 
-        symbol = Symbol::RegisterNew(symbolTable, input, SymbolKind::Var);
+        symbol = RegisterNew(symbolTable, input, SymbolKind::Var);
         if(symbol)
         {
           VarDecl* varDecl = 0;
@@ -1322,18 +1354,16 @@ namespace Parse
       {
         Symbol* symbol = 0;
 
-        symbol = Symbol::RegisterNew(symbolTable, input, SymbolKind::Proc);
+        symbol = RegisterNew(symbolTable, input, SymbolKind::Proc);
         if(symbol)
         {
-          Proc*     proc = 0;
-          NodeList* argList = 0;
+          Proc* proc = 0;
 
           symbol->astNode = procNode;
           proc = &procNode->proc;
           proc->symbol = symbol;
           proc->name   = symbol->name;
-          argList = &proc->argList;
-          argList->lastItem = &argList->sentinel;
+          NodeList::Init(&proc->argList);
 
           ConsumeToken(input, symbolTable);
           if(input->token == Token::OpenParens)
@@ -1344,10 +1374,10 @@ namespace Parse
             success = BeginScope(symbolTable);
             if(success)
             {
-              Node* blockNode = 0;
-              Block*   block = 0;
+              Node*  blockNode = 0;
+              Block* block = 0;
 
-              blockNode       = PushElement(arena, Node, 1);
+              blockNode = PushElement(arena, Node, 1);
               blockNode->kind = NodeKind::Block;
               proc->body = blockNode;
               block        = &blockNode->block;
@@ -1359,7 +1389,7 @@ namespace Parse
               {
                 NodeItem* argItem = 0;
 
-                argItem = proc->argList.sentinel.nextItem;
+                argItem = NodeList::First(&proc->argList);
                 while(argItem)
                 {
                   Node*    node = 0;
@@ -1390,28 +1420,29 @@ namespace Parse
                     success = StatementList(arena, input, symbolTable, block);
                     if(success)
                     {
-                      /*>>> Process the local vars */
-                      NodeItem* listItem = 0;
+                      /*>>> Process local var occurrences */
+                      NodeItem* nodeItem = 0;
 
-                      listItem = block->declVars.sentinel.nextItem;
-                      while(listItem)
+                      nodeItem = NodeList::First(&block->declVars);
+                      while(nodeItem)
                       {
                         Node* node = 0;
                         VarDecl* varDecl = 0;
                         Symbol*  symbol = 0;
 
-                        node = listItem->elem;
+                        node    = nodeItem->elem;
                         varDecl = &node->varDecl;
-                        symbol = node->varDecl.symbol;
+                        symbol  = node->varDecl.symbol;
 
                         varDecl->location = block->localsDataSize;
                         block->localsDataSize += varDecl->dataSize;
 
-                        listItem = listItem->nextItem;
-                      }/*<<<*/
-
-                      listItem = block->nonLocalOccurs.sentinel.nextItem;
-                      while(listItem)
+                        nodeItem = nodeItem->nextItem;
+                      }
+                      /*<<<*/
+                      /*>>> Process non-local var occurrences */
+                      nodeItem = NodeList::First(&block->nonLocalOccurs);
+                      while(nodeItem)
                       {
                         using LinkList = List<AccessLink>;
                         using LinkItem = ListItem<AccessLink>;
@@ -1423,12 +1454,12 @@ namespace Parse
                         LinkItem*   linkItem = 0;
                         LinkList*   linksList = 0;
 
-                        node      = listItem->elem;
+                        node      = nodeItem->elem;
                         varOccur  = &node->varOccur;
                         symbol    = node->varOccur.symbol;
                         linksList = &block->accessLinks;
 
-                        linkItem = block->accessLinks.sentinel.nextItem;
+                        linkItem = LinkList::First(&block->accessLinks);
                         while(linkItem)
                         {
                           link = linkItem->elem;
@@ -1446,7 +1477,10 @@ namespace Parse
                           LinkList::Add(linksList, linkItem);
                         }
                       }
-
+                      /*<<<*/
+                      /*>>> Process declared vars */
+                      nodeItem = NodeList::First(&block->declVars);
+                      /*<<<*/
                       if(input->token == Token::CloseBrace)
                       {
                         ConsumeToken(input, symbolTable);
@@ -1720,7 +1754,6 @@ namespace Parse
       Node*        blockNode = 0;
       Block*       block = 0;
       Ast::Module* module = 0;
-      NodeList*    procList = 0;
 
       moduleNode = PushElement(arena, Node, 1);
       moduleNode->kind = NodeKind::Module;
@@ -1733,8 +1766,7 @@ namespace Parse
 
       module = &moduleNode->module;
       module->body = blockNode;
-      procList = &module->procList;
-      procList->lastItem = &procList->sentinel;
+      NodeList::Init(&module->procList);
 
       success = ProcedureList(arena, input, symbolTable, block, module);
       if(success)
@@ -2326,41 +2358,25 @@ uint WriteBytesToFile(char* fileName, char* text, int count)
   return bytesWritten;
 }
 
-bool32 TranslateHocToIr(MemoryArena* arena, char* filePath, char* hocProgram, IrProgram* irProgram)
+bool32 TranslateHoc(MemoryArena* arena, char* filePath, char* hocProgram, IrProgram* irProgram)
 {/*>>>*/
-  SymbolTable symbolTable = {};
-  TokenStream tokenStream = {};
-  Ast::Node* module = 0;
-  bool32 success = false;
+  Sym::SymbolTable symbolTable = {};
+  Lex::TokenStream tokenStream = {};
+  Ast::Node*       module = 0;
+  bool32           success = false;
 
   symbolTable.arena = arena;
 
-  tokenStream.arena = arena;
-  tokenStream.text = hocProgram;
+  tokenStream.arena  = arena;
+  tokenStream.text   = hocProgram;
   tokenStream.cursor = tokenStream.text;
   tokenStream.lineNr = 1;
   //TODO: Compute the absolute path to the file, so that Vim could properly
   // jump from the QuickFix window to the error line in the file.
   tokenStream.filePath = filePath;
 
-  Symbol::AddKeyword(&symbolTable, "int", Token::If);
-  Symbol::AddKeyword(&symbolTable, "float", Token::Float);
-  Symbol::AddKeyword(&symbolTable, "void", Token::Void);
-  Symbol::AddKeyword(&symbolTable, "char", Token::Char);
-  Symbol::AddKeyword(&symbolTable, "var", Token::Var);
-  Symbol::AddKeyword(&symbolTable, "proc", Token::Proc);
-  Symbol::AddKeyword(&symbolTable, "type", Token::Type);
-  Symbol::AddKeyword(&symbolTable, "struct", Token::Type);
-  Symbol::AddKeyword(&symbolTable, "array", Token::Array);
-  Symbol::AddKeyword(&symbolTable, "of", Token::Of);
-  Symbol::AddKeyword(&symbolTable, "if", Token::If);
-  Symbol::AddKeyword(&symbolTable, "else", Token::Else);
-  Symbol::AddKeyword(&symbolTable, "while", Token::While);
-  Symbol::AddKeyword(&symbolTable, "return", Token::Return);
-  Symbol::AddKeyword(&symbolTable, "true", Token::True);
-  Symbol::AddKeyword(&symbolTable, "false", Token::False);
-
-  ConsumeToken(&tokenStream, &symbolTable);
+  Sym::RegisterKeywords(&symbolTable);
+  Lex::ConsumeToken(&tokenStream, &symbolTable);
 
   success = Parse::Module(arena, &tokenStream, &symbolTable, &module);
 //  if(success)
@@ -2372,7 +2388,7 @@ bool32 TranslateHocToIr(MemoryArena* arena, char* filePath, char* hocProgram, Ir
 
     //GenCode(irProgram, &symbolTable, block, moduleAst);
 
-    assert(symbolTable.currScopeId == 0);
+    assert(symbolTable.scopeId == 0);
     assert(symbolTable.nestingDepth == 0);
   }
 

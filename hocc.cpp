@@ -143,7 +143,7 @@ int main(int argc, char* argv[])
     if(hocProgram)
     {
       IrProgram irProgram = {};
-      bool32 success = TranslateHocToIr(&arena, filePath, hocProgram, &irProgram);
+      bool32 success = TranslateHoc(&arena, filePath, hocProgram, &irProgram);
       if(success)
       {
         OutFileNames outFiles = {};

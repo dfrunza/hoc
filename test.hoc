@@ -2,6 +2,10 @@ proc Foo(var d, var e)
 {
   var z; z = 11;
   var w; w = 99;
+  while(0)
+  {
+    w = w-1;
+  }
   return z*-1;
 }
 

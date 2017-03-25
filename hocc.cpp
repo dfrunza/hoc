@@ -1,5 +1,5 @@
-#include "translator.cpp"
 #include "asm.cpp"
+#include "translator.cpp"
 
 // User-defined PE resource:
 //   nameId  typeId  fileName

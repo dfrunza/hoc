@@ -1,32 +1,34 @@
-enum Opcode
+#pragma once
+
+enum struct Opcode
 {
-  Opcode__Nul,
-  Opcode_PUSH,
-  Opcode_POP,
-  Opcode_LOAD,
-  Opcode_LOAD8,
-  Opcode_STORE,
-  Opcode_STORE8,
-  Opcode_ADD,
-  Opcode_SUB,
-  Opcode_MUL,
-  Opcode_DIV,
-  Opcode_MOD,
-  Opcode_INCR,
-  Opcode_DECR,
-  Opcode_JUMPNZ,
-  Opcode_JUMPZ,
-  Opcode_GOTO,
-  Opcode_HALT,
-  Opcode_PRINT,
-  Opcode_DUP,
-  Opcode_LABEL,
-  Opcode_NOOP,
-  Opcode_CALL,
-  Opcode_RETURN,
-  Opcode_ENTER,
-  Opcode_LEAVE,
-  Opcode_ALLOC,
+  _Null,
+  PUSH,
+  POP,
+  LOAD,
+  LOAD8,
+  STORE,
+  STORE8,
+  ADD,
+  SUB,
+  MUL,
+  DIV,
+  MOD,
+  INCR,
+  DECR,
+  JUMPNZ,
+  JUMPZ,
+  GOTO,
+  HALT,
+  PRINT,
+  DUP,
+  LABEL,
+  NOOP,
+  CALL,
+  RETURN,
+  ENTER,
+  LEAVE,
+  ALLOC,
 };
 
 struct InstructionLine
@@ -35,31 +37,31 @@ struct InstructionLine
   char* string;
 };
 
-enum ParamType
+enum struct ParamType
 {
-  Param__Null,
-  Param_Int32,
-  Param_String,
-  Param_Reg,
+  _Null,
+  Int32,
+  String,
+  Reg,
 };
 
-enum RegName
+enum struct RegName
 {
-  Reg__Nul,
-  Reg_IP,
-  Reg_SP,
-  Reg_FP
+  _Null,
+  IP,
+  SP,
+  FP
 };
 
 struct Instruction
 {
-  Opcode opcode;
+  Opcode    opcode;
   ParamType paramType;
 
   union {
-    int32 intNum;
+    int32   intNum;
     RegName reg;
-    char* str;
+    char*   str;
   } param;
 
   int sourceLineNr;

@@ -155,57 +155,57 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
       char* mnemonic = components[0];
 
       if(StrEquals(mnemonic, "pop"))
-        instr.opcode = Opcode_POP;
+        instr.opcode = Opcode::POP;
       else if(StrEquals(mnemonic, "push"))
-        instr.opcode = Opcode_PUSH;
+        instr.opcode = Opcode::PUSH;
       else if(StrEquals(mnemonic, "store"))
-        instr.opcode = Opcode_STORE;
+        instr.opcode = Opcode::STORE;
       else if(StrEquals(mnemonic, "store8"))
-        instr.opcode = Opcode_STORE8;
+        instr.opcode = Opcode::STORE8;
       else if(StrEquals(mnemonic, "load"))
-        instr.opcode = Opcode_LOAD;
+        instr.opcode = Opcode::LOAD;
       else if(StrEquals(mnemonic, "load8"))
-        instr.opcode = Opcode_LOAD8;
+        instr.opcode = Opcode::LOAD8;
       else if(StrEquals(mnemonic, "add"))
-        instr.opcode = Opcode_ADD;
+        instr.opcode = Opcode::ADD;
       else if(StrEquals(mnemonic, "sub"))
-        instr.opcode = Opcode_SUB;
+        instr.opcode = Opcode::SUB;
       else if(StrEquals(mnemonic, "mul"))
-        instr.opcode = Opcode_MUL;
+        instr.opcode = Opcode::MUL;
       else if(StrEquals(mnemonic, "div"))
-        instr.opcode = Opcode_DIV;
+        instr.opcode = Opcode::DIV;
       else if(StrEquals(mnemonic, "mod"))
-        instr.opcode = Opcode_MOD;
+        instr.opcode = Opcode::MOD;
       else if(StrEquals(mnemonic, "incr"))
-        instr.opcode = Opcode_INCR;
+        instr.opcode = Opcode::INCR;
       else if(StrEquals(mnemonic, "decr"))
-        instr.opcode = Opcode_DECR;
+        instr.opcode = Opcode::DECR;
       else if(StrEquals(mnemonic, "halt"))
-        instr.opcode = Opcode_HALT;
+        instr.opcode = Opcode::HALT;
       else if(StrEquals(mnemonic, "print"))
-        instr.opcode = Opcode_PRINT;
+        instr.opcode = Opcode::PRINT;
       else if(StrEquals(mnemonic, "dup"))
-        instr.opcode = Opcode_DUP;
+        instr.opcode = Opcode::DUP;
       else if(StrEquals(mnemonic, "goto"))
-        instr.opcode = Opcode_GOTO;
+        instr.opcode = Opcode::GOTO;
       else if(StrEquals(mnemonic, "jumpnz"))
-        instr.opcode = Opcode_JUMPNZ;
+        instr.opcode = Opcode::JUMPNZ;
       else if(StrEquals(mnemonic, "jumpz"))
-        instr.opcode = Opcode_JUMPZ;
+        instr.opcode = Opcode::JUMPZ;
       else if(StrEquals(mnemonic, "label"))
-        instr.opcode = Opcode_LABEL;
+        instr.opcode = Opcode::LABEL;
       else if(StrEquals(mnemonic, "noop"))
-        instr.opcode = Opcode_NOOP;
+        instr.opcode = Opcode::NOOP;
       else if(StrEquals(mnemonic, "call"))
-        instr.opcode = Opcode_CALL;
+        instr.opcode = Opcode::CALL;
       else if(StrEquals(mnemonic, "return"))
-        instr.opcode = Opcode_RETURN;
+        instr.opcode = Opcode::RETURN;
       else if(StrEquals(mnemonic, "enter"))
-        instr.opcode = Opcode_ENTER;
+        instr.opcode = Opcode::ENTER;
       else if(StrEquals(mnemonic, "leave"))
-        instr.opcode = Opcode_LEAVE;
+        instr.opcode = Opcode::LEAVE;
       else if(StrEquals(mnemonic, "alloc"))
-        instr.opcode = Opcode_ALLOC;
+        instr.opcode = Opcode::ALLOC;
       else {
         Error("Invalid instruction: %s", mnemonic);
         return false;
@@ -215,14 +215,14 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
       {
         switch(instr.opcode)
         {
-          case Opcode_GOTO:
-          case Opcode_JUMPNZ:
-          case Opcode_JUMPZ:
-          case Opcode_CALL:
+          case Opcode::GOTO:
+          case Opcode::JUMPNZ:
+          case Opcode::JUMPZ:
+          case Opcode::CALL:
             {
               if(IsValidLabel(components[1]))
               {
-                instr.paramType = Param_String;
+                instr.paramType = ParamType::String;
                 instr.param.str = components[1];
               }
               else {
@@ -231,21 +231,21 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
               }
             } break;
 
-          case Opcode_POP:
-          case Opcode_PUSH:
+          case Opcode::POP:
+          case Opcode::PUSH:
             {
               if(StrToInt(components[1], &instr.param.intNum))
-                instr.paramType = Param_Int32;
+                instr.paramType = ParamType::Int32;
               else {
-                instr.paramType = Param_Reg;
+                instr.paramType = ParamType::Reg;
                 char* reg = components[1];
 
                 if(StrMatch(reg, "sp"))
-                  instr.param.reg = Reg_SP;
+                  instr.param.reg = RegName::SP;
                 else if(StrMatch(reg, "fp"))
-                  instr.param.reg = Reg_FP;
+                  instr.param.reg = RegName::FP;
                 else if(StrMatch(reg, "ip"))
-                  instr.param.reg = Reg_IP;
+                  instr.param.reg = RegName::IP;
                 else {
                   Error("Invalid register '%s'", components[1]);
                   return false;
@@ -253,21 +253,21 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
               }
             } break;
 
-          case Opcode_ALLOC:
+          case Opcode::ALLOC:
             {
               if(StrToInt(components[1], &instr.param.intNum))
-                instr.paramType = Param_Int32;
+                instr.paramType = ParamType::Int32;
               else {
                 Error("Invalid parameter '%s'", components[1]);
                 return false;
               }
             } break;
 
-          case Opcode_LABEL:
+          case Opcode::LABEL:
             {
               if(IsValidLabel(components[1]))
               {
-                instr.paramType = Param_String;
+                instr.paramType = ParamType::String;
                 instr.param.str = components[1];
 
                 Label label = {};
@@ -308,13 +308,13 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
     for(; targetInstrAddress < code->instrCount; targetInstrAddress++)
     {
       Instruction* instr = &code->instrArray[targetInstrAddress];
-      if(instr->opcode != Opcode_LABEL)
+      if(instr->opcode != Opcode::LABEL)
         break;
     }
     if(targetInstrAddress < code->instrCount)
     {
       Instruction* labelInstr = &code->instrArray[label->instrAddress];
-      labelInstr->paramType = Param_Int32;
+      labelInstr->paramType = ParamType::Int32;
       labelInstr->param.intNum = targetInstrAddress;
       label->instrAddress = targetInstrAddress;
     }
@@ -327,16 +327,16 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
   for(int instrAddress = 0; instrAddress < code->instrCount; instrAddress++)
   {
     Instruction* instr = &code->instrArray[instrAddress];
-    if(instr->opcode == Opcode_GOTO ||
-       instr->opcode == Opcode_JUMPNZ ||
-       instr->opcode == Opcode_JUMPZ ||
-       instr->opcode == Opcode_CALL)
+    if(instr->opcode == Opcode::GOTO ||
+       instr->opcode == Opcode::JUMPNZ ||
+       instr->opcode == Opcode::JUMPZ ||
+       instr->opcode == Opcode::CALL)
     {
-      assert(instr->paramType == Param_String);
+      assert(instr->paramType == ParamType::String);
       Label* label = FindLabel(source, instr->param.str);
       if(label)
       {
-        instr->paramType = Param_Int32;
+        instr->paramType = ParamType::Int32;
         instr->param.intNum = label->instrAddress;
       }
       else {

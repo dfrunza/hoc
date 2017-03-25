@@ -48,9 +48,9 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
 
   switch(opcode)
   {
-    case Opcode_ALLOC:
+    case Opcode::ALLOC:
       {
-        assert(instr->paramType == Param_Int32);
+        assert(instr->paramType == ParamType::Int32);
         int32 topSp = machine->sp + instr->param.intNum;
         if(CheckStackBounds(machine, topSp))
         {
@@ -62,21 +62,21 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_PUSH:
+    case Opcode::PUSH:
       {
         int32 topSp = machine->sp+1;
         if(CheckStackBounds(machine, topSp))
         {
-          if(instr->paramType == Param_Int32)
+          if(instr->paramType == ParamType::Int32)
             *(int32*)&memory[machine->sp*VMWORD] = instr->param.intNum;
-          else if(instr->paramType == Param_Reg)
+          else if(instr->paramType == ParamType::Reg)
           {
             RegName regName = instr->param.reg;
-            if(regName == Reg_SP)
+            if(regName == RegName::SP)
               *(int32*)&memory[machine->sp*VMWORD] = machine->sp;
-            else if(regName == Reg_IP)
+            else if(regName == RegName::IP)
               *(int32*)&memory[machine->sp*VMWORD] = machine->ip;
-            else if(regName == Reg_FP)
+            else if(regName == RegName::FP)
               *(int32*)&memory[machine->sp*VMWORD] = machine->fp;
             else
               assert(false);
@@ -89,36 +89,36 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_POP:
+    case Opcode::POP:
       {
         int32 argSp = machine->sp-1;
         if(CheckStackBounds(machine, argSp))
         {
-          if(instr->paramType == Param__Null)
+          if(instr->paramType == ParamType::_Null)
           {
             machine->sp--;
             machine->ip++;
           }
-          else if(instr->paramType == Param_Int32)
+          else if(instr->paramType == ParamType::Int32)
           {
             machine->sp -= instr->param.intNum;
             machine->ip++;
           }
-          else if(instr->paramType == Param_Reg)
+          else if(instr->paramType == ParamType::Reg)
           {
             RegName regName = instr->param.reg;
-            if(regName == Reg_SP)
+            if(regName == RegName::SP)
             {
               machine->sp = *(int32*)&memory[argSp*VMWORD];
               machine->ip++;
             }
-            else if(regName == Reg_IP)
+            else if(regName == RegName::IP)
             {
               int32 ip = *(int32*)&memory[argSp*VMWORD];
               machine->sp--;
               machine->ip = ip;
             }
-            else if(regName == Reg_FP)
+            else if(regName == RegName::FP)
             {
               machine->fp = *(int32*)&memory[argSp*VMWORD];
               machine->sp--;
@@ -131,10 +131,10 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_ADD:
-    case Opcode_DIV:
-    case Opcode_MUL:
-    case Opcode_SUB:
+    case Opcode::ADD:
+    case Opcode::DIV:
+    case Opcode::MUL:
+    case Opcode::SUB:
       {
         int32 argSp = machine->sp-2;
         if(CheckStackBounds(machine, argSp))
@@ -144,16 +144,16 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           int32 result = 0;
           switch(opcode)
           {
-            case Opcode_ADD:
+            case Opcode::ADD:
               result = arg1+arg2;
               break;
-            case Opcode_SUB:
+            case Opcode::SUB:
               result = arg1-arg2;
               break;
-            case Opcode_MUL:
+            case Opcode::MUL:
               result = arg1*arg2;
               break;
-            case Opcode_DIV:
+            case Opcode::DIV:
               if(arg2 != 0)
                 result = arg1/arg2;
               else
@@ -167,15 +167,15 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_INCR:
-    case Opcode_DECR:
+    case Opcode::INCR:
+    case Opcode::DECR:
       {
         int32 argSp = machine->sp-1;
         if(CheckStackBounds(machine, argSp))
         {
           int32 arg = *(int32*)&memory[argSp*VMWORD];
           int32 result = arg;
-          if(opcode == Opcode_INCR)
+          if(opcode == Opcode::INCR)
             result++;
           else
             result--;
@@ -184,8 +184,8 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
         }
       } break;
 
-    case Opcode_LOAD:
-    case Opcode_LOAD8:
+    case Opcode::LOAD:
+    case Opcode::LOAD8:
       {
         int32 argSp = machine->sp-1;
         if(CheckStackBounds(machine, argSp))
@@ -193,12 +193,12 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           int32 location = *(int32*)&memory[argSp*VMWORD];
           if(CheckMemoryBounds(machine, location))
           {
-            if(opcode == Opcode_LOAD)
+            if(opcode == Opcode::LOAD)
             {
               uint32 value = *(uint32*)&memory[location*VMWORD];
               *(uint32*)&memory[argSp*VMWORD] = (uint32)value;
             }
-            else if(opcode == Opcode_LOAD8)
+            else if(opcode == Opcode::LOAD8)
             {
               uint8 value = *(uint8*)&memory[location];
               *(uint32*)&memory[argSp] = (uint32)value;
@@ -213,8 +213,8 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_STORE:
-    case Opcode_STORE8:
+    case Opcode::STORE:
+    case Opcode::STORE8:
       {
         int32 locationArgSp = machine->sp-1;
         if(CheckStackBounds(machine, locationArgSp))
@@ -226,14 +226,14 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
             if(CheckStackBounds(machine, valueArgSp))
             {
               uint32 value = *(uint32*)&memory[valueArgSp*VMWORD];
-              if(opcode == Opcode_STORE)
+              if(opcode == Opcode::STORE)
               {
                 if(value <= 0xffffffff)
                   *((uint32*)&memory[location*VMWORD]) = (uint32)value;
                 else
                   return ExecResult_InvalidOperandSize;
               }
-              else if(opcode == Opcode_STORE8)
+              else if(opcode == Opcode::STORE8)
               {
                 if(value <= 0xff)
                   *((uint8*)&memory[location]) = (uint8)value;
@@ -253,15 +253,15 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_GOTO:
+    case Opcode::GOTO:
       {
-        assert(instr->paramType == Param_Int32);
+        assert(instr->paramType == ParamType::Int32);
         machine->ip = instr->param.intNum;
       } break;
 
-    case Opcode_CALL:
+    case Opcode::CALL:
       {
-        assert(instr->paramType == Param_Int32);
+        assert(instr->paramType == ParamType::Int32);
         int32 topSp = machine->sp+3;
         if(CheckStackBounds(machine, topSp))
         {
@@ -277,7 +277,7 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_RETURN:
+    case Opcode::RETURN:
       {
         int32 argSp = machine->fp-3;
         if(CheckStackBounds(machine, argSp))
@@ -289,7 +289,7 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_ENTER:
+    case Opcode::ENTER:
       {
         int32 topSp = machine->sp+1;
         if(CheckStackBounds(machine, topSp))
@@ -302,7 +302,7 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_LEAVE:
+    case Opcode::LEAVE:
       {
         int32 argSp = machine->fp-1;
         if(CheckStackBounds(machine, argSp))
@@ -314,17 +314,17 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_JUMPNZ:
-    case Opcode_JUMPZ:
+    case Opcode::JUMPNZ:
+    case Opcode::JUMPZ:
       {
-        assert(instr->paramType == Param_Int32);
+        assert(instr->paramType == ParamType::Int32);
         int32 argSp = machine->sp-1;
         if(CheckStackBounds(machine, argSp))
         {
           int32 jumpAddress = instr->param.intNum;
           int32 check = *(int32*)&memory[argSp*VMWORD];
-          if((check && opcode == Opcode_JUMPNZ) ||
-              (!check && opcode == Opcode_JUMPZ))
+          if((check && opcode == Opcode::JUMPNZ) ||
+              (!check && opcode == Opcode::JUMPZ))
           {
             machine->ip = jumpAddress;
           }
@@ -335,7 +335,7 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-    case Opcode_DUP:
+    case Opcode::DUP:
       {
         int32 argSp = machine->sp-1;
         if(CheckStackBounds(machine, argSp))
@@ -352,7 +352,7 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
           return ExecResult_InvalidMemoryAccess;
       } break;
 
-//    case Opcode_PRINT:
+//    case Opcode::PRINT:
 //      {/*>>>*/
 //        int32 sp = machine->sp-VMWORD;
 //        if(CheckStackBounds(machine, sp))
@@ -370,17 +370,17 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
 //          return ExecResult_InvalidMemoryAccess;
 //      } break;/*<<<*/
 
-    case Opcode_HALT:
+    case Opcode::HALT:
         return ExecResult_EndOfProgram;
 
-    case Opcode_LABEL:
+    case Opcode::LABEL:
       {
-        assert(instr->paramType == Param_Int32);
+        assert(instr->paramType == ParamType::Int32);
         int32 jumpAddress = instr->param.intNum;
         machine->ip = jumpAddress;
       } break;
 
-    case Opcode_NOOP:
+    case Opcode::NOOP:
       {
         machine->ip++;
       } break;

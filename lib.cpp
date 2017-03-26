@@ -339,30 +339,30 @@ void AppendString(String* string, char* cstr)
   string->end = (char*)arena->free-1;
 }
 
-typedef void MListElem;
+typedef void ListElem;
 
-struct MListItem
+struct ListItem
 {
-  MListElem* elem;
-  MListItem* next;
-  MListItem* prev;
+  ListElem* elem;
+  ListItem* next;
+  ListItem* prev;
 };
 
-struct MListHeader
+struct ListHeader
 {
-  MListItem* last;
+  ListItem* last;
   int        count;
-  MListItem  sentinel;
+  ListItem  sentinel;
 };
 
-void MListHeaderInit(MListHeader* header)
+void ListHeaderInit(ListHeader* header)
 {
   header->last = &header->sentinel;
 }
 
-void MListAppend(MemoryArena* arena, MListHeader* header, MListElem* elem)
+void ListAppend(MemoryArena* arena, ListHeader* header, ListElem* elem)
 {
-  MListItem* item = PushElement(arena, MListItem, 1);
+  ListItem* item = PushElement(arena, ListItem, 1);
   item->elem = elem;
   header->last->next = item;
   item->prev = header->last;
@@ -370,7 +370,7 @@ void MListAppend(MemoryArena* arena, MListHeader* header, MListElem* elem)
   header->count++;
 }
 
-MListItem* MListFirstItem(MListHeader* header)
+ListItem* ListFirstItem(ListHeader* header)
 {
   return header->sentinel.next;
 }

@@ -1,4 +1,9 @@
 proc Main()
 {
-  var a; a = 0;
+  var a;
+  var b;
+  var c;
+  a = b;
+  b = c;
+  c = a;
 }

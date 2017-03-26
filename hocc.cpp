@@ -112,10 +112,10 @@ bool32 WriteResFile(OutFileNames* outFiles)
   return success;
 }
 
-bool32 WriteIrFile(OutFileNames* outFiles, IrProgram* irProgram)
+bool32 WriteIrFile(OutFileNames* outFiles, VmProgram* vmProgram)
 {
-  int bytesWritten = WriteBytesToFile(outFiles->ir.name, irProgram->text.start, irProgram->textLen);
-  bool32 success = (bytesWritten == irProgram->textLen);
+  int bytesWritten = WriteBytesToFile(outFiles->ir.name, vmProgram->text.start, vmProgram->textLen);
+  bool32 success = (bytesWritten == vmProgram->textLen);
   if(!success)
     Error("IR file '%s' incompletely written", outFiles->ir.name);
   return success;
@@ -142,20 +142,20 @@ int main(int argc, char* argv[])
     char* hocProgram = ReadTextFromFile(&arena, filePath);
     if(hocProgram)
     {
-      IrProgram irProgram = {};
-      bool32 success = TranslateHoc(&arena, filePath, hocProgram, &irProgram);
+      VmProgram vmProgram = {};
+      bool32 success = TranslateHoc(&arena, filePath, hocProgram, &vmProgram);
       if(success)
       {
         OutFileNames outFiles = {};
         char* fileStem = GetFileStem(filePath);
 
         success = MakeFileNames(&outFiles, fileStem) &&
-          WriteIrFile(&outFiles, &irProgram);
+          WriteIrFile(&outFiles, &vmProgram);
 #if 0
         if(success)
         {
           IrCode* irCode = 0;
-          char* irText = irProgram.text.start;
+          char* irText = vmProgram.text.start;
           bool32 success = TranslateIrToCode(&arena, irText, &irCode);
 
           if(success)

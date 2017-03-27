@@ -348,29 +348,29 @@ struct ListItem
   ListItem* prev;
 };
 
-struct ListHeader
+struct List
 {
   ListItem* last;
-  int        count;
+  int       count;
   ListItem  sentinel;
 };
 
-void ListHeaderInit(ListHeader* header)
+void ListInit(List* list)
 {
-  header->last = &header->sentinel;
+  list->last = &list->sentinel;
 }
 
-void ListAppend(MemoryArena* arena, ListHeader* header, ListElem* elem)
+void ListAppend(MemoryArena* arena, List* list, ListElem* elem)
 {
   ListItem* item = PushElement(arena, ListItem, 1);
   item->elem = elem;
-  header->last->next = item;
-  item->prev = header->last;
-  header->last = item;
-  header->count++;
+  list->last->next = item;
+  item->prev = list->last;
+  list->last = item;
+  list->count++;
 }
 
-ListItem* ListFirstItem(ListHeader* header)
+ListItem* ListFirstItem(List* list)
 {
-  return header->sentinel.next;
+  return list->sentinel.next;
 }

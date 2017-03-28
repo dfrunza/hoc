@@ -165,6 +165,7 @@ struct ReturnStmt
   AstNode* proc;
 };
 
+struct IrProc;
 struct Proc
 {
   Symbol*  symbol;
@@ -173,6 +174,7 @@ struct Proc
   AstNode* body;
   int      argsDataSize;
   int      retDataSize;
+  IrProc   *irProc;
 };
 
 struct Call
@@ -1573,6 +1575,7 @@ enum struct IrNodeKind
   BinOp,
   Proc,
   Module,
+  Call,
 };
 
 enum struct IrOpKind
@@ -1595,18 +1598,27 @@ enum struct IrValueKind
   Call,
 };
 
+struct IrVar
+{
+  bool32 isNonLocal;
+  int    accessLinkLocation;
+  int    dataLocation;
+};
+
+struct IrCall
+{
+  IrProc* proc;
+  List    actualArgs;
+};
+
 struct IrValue
 {
   IrValueKind kind;
 
   union {
-    struct {
-      bool32 isNonLocal;
-      int    accessLinkLocation;
-      int    dataLocation;
-    } var;
-
-    int32 intNum;
+    int32   intNum;
+    IrVar   var;
+    IrCall* call;
   };
 };
 
@@ -1627,7 +1639,7 @@ struct IrActivationRecord
   int spLoc;
 };
 
-struct IrOp
+struct IrBinOp
 {
   IrOpKind op;
   IrNode*  leftOperand;
@@ -1654,23 +1666,25 @@ struct IrNode
 
   union {
     IrValue  value;
-    IrOp     op;
+    IrBinOp  op;
     IrProc   proc;
     IrModule module;
+    IrCall   call;
   };
 };
 
-void IrSetValue(IrValue* irValue, IrActivationRecord* actvRecord, VarOccur* varOccur)
+void IrSetVarValue(IrValue* irValue, IrActivationRecord* actvRecord, VarOccur* varOccur)
 {
   Symbol* symbol = varOccur->symbol;
-  irValue->var.isNonLocal = varOccur->isNonLocal;
-  if(irValue->var.isNonLocal)
+  IrVar* irVar = &irValue->var;
+  irVar->isNonLocal = varOccur->isNonLocal;
+  if(irVar->isNonLocal)
   {
     AccessLink* link = varOccur->accessLink;
     IrStackArea* accessLinksArea = &actvRecord->accessLinks;
     irValue->var.accessLinkLocation = -(actvRecord->fpLoc - accessLinksArea->loc + 1) + link->index;
   }
-  irValue->var.dataLocation = symbol->var->location;
+  irVar->dataLocation = symbol->var->location;
 }
 
 IrNode* IrBuildLValue(MemoryArena* arena, IrActivationRecord* actvRecord, VarOccur* varOccur)
@@ -1679,7 +1693,7 @@ IrNode* IrBuildLValue(MemoryArena* arena, IrActivationRecord* actvRecord, VarOcc
   irNode->kind = IrNodeKind::LoadLValue;
   IrValue* irValue = &irNode->value;
   irValue->kind = IrValueKind::Var;
-  IrSetValue(irValue, actvRecord, varOccur);
+  IrSetVarValue(irValue, actvRecord, varOccur);
   return irNode;
 }
 
@@ -1693,7 +1707,7 @@ IrNode* IrBuildRValue(MemoryArena* arena, IrActivationRecord* actvRecord, AstNod
     irNode->kind = IrNodeKind::LoadRValue;
     IrValue* irValue = &irNode->value;
     irValue->kind = IrValueKind::Var;
-    IrSetValue(irValue, actvRecord, varOccur);
+    IrSetVarValue(irValue, actvRecord, varOccur);
   }
   else if(astNode->kind == AstNodeKind::IntNum)
   {
@@ -1716,12 +1730,46 @@ IrNode* IrBuildBinExpr(MemoryArena* arena, IrActivationRecord* actvRecord, BinEx
     
     irNode = PushElement(arena, IrNode, 1);
     irNode->kind = IrNodeKind::BinOp;
-    IrOp* irOp = &irNode->op;
+    IrBinOp* irOp = &irNode->op;
     irOp->op = IrOpKind::Store;
     irOp->leftOperand = IrBuildLValue(arena, actvRecord, &leftOperand->varOccur);
     irOp->rightOperand = IrBuildRValue(arena, actvRecord, rightOperand);
   }
   return irNode;
+}
+
+IrNode* IrBuildCall(MemoryArena* arena, IrActivationRecord* actvRecord, Call* astCall)
+{
+  IrNode* irCallNode = PushElement(arena, IrNode, 1);
+  irCallNode->kind = IrNodeKind::Call;
+  IrCall* irCall = &irCallNode->call;
+  IrProc* irProc = astCall->proc->irProc;
+  irCall->proc = irProc;
+
+  IrActivationRecord* callActvRecord = irProc->actvRecord;
+
+  ListInit(&irCall->actualArgs);
+  ListItem* argItem = ListFirstItem(&astCall->actualArgs);
+  while(argItem)
+  {
+    AstNode* astArgNode = (AstNode*)argItem->elem;
+    IrNode* irArgValue = IrBuildRValue(arena, actvRecord, astArgNode);
+    ListAppend(arena, &irCall->actualArgs, irArgValue);
+    argItem = argItem->next;
+  }
+
+  return irCallNode;
+}
+
+IrNode* IrBuildCallValue(MemoryArena* arena, IrActivationRecord* actvRecord, Call* astCall)
+{
+  IrNode* irCallNode = IrBuildCall(arena, actvRecord, astCall);
+  IrNode* irValueNode = PushElement(arena, IrNode, 1);
+  irValueNode->kind = IrNodeKind::LoadRValue;
+  IrValue* irValue = &irValueNode->value;
+  irValue->kind = IrValueKind::Call;
+  irValue->call = &irCallNode->call;
+  return irValueNode;
 }
 
 IrNode* IrBuildProc(MemoryArena* arena, Proc* proc)
@@ -1740,7 +1788,7 @@ IrNode* IrBuildProc(MemoryArena* arena, Proc* proc)
 
   area = &actvRecord->args;
   area->loc = offset;
-  area->size = proc->retDataSize;
+  area->size = proc->argsDataSize;
   offset += area->size;
 
   area = &actvRecord->accessLinks;
@@ -1786,6 +1834,12 @@ IrNode* IrBuildProc(MemoryArena* arena, Proc* proc)
       IrNode* irExpr = IrBuildBinExpr(arena, actvRecord, binExpr);
       ListAppend(arena, &irProc->instrList, irExpr);
     }
+    else if(astNode->kind == AstNodeKind::Call)
+    {
+      Call* call = &astNode->call;
+      IrNode* irCall = IrBuildCall(arena, actvRecord, call);
+      ListAppend(arena, &irProc->instrList, irCall);
+    }
     nodeItem = nodeItem->next;
   }
 
@@ -1802,11 +1856,13 @@ IrNode* IrBuildModule(MemoryArena* arena, Module* module)
   ListItem* procItem = ListFirstItem(&module->procList);
   while(procItem)
   {
-    AstNode* procNode = (AstNode*)procItem->elem;
-    assert(procNode->kind == AstNodeKind::Proc);
-    IrNode* irProcNode = IrBuildProc(arena, &procNode->proc);
+    AstNode* astProcNode = (AstNode*)procItem->elem;
+    assert(astProcNode->kind == AstNodeKind::Proc);
+    Proc* astProc = &astProcNode->proc;
+    IrNode* irProcNode = IrBuildProc(arena, &astProcNode->proc);
+    astProc->irProc = &irProcNode->proc;
     ListAppend(arena, &irModule->procList, irProcNode);
-    if(StrMatch(procNode->proc.name, "Main"))
+    if(StrMatch(astProcNode->proc.name, "Main"))
       irModule->mainProc = &irProcNode->proc;
 
     procItem = procItem->next;
@@ -1864,6 +1920,23 @@ void EmitInstrStr(MemoryArena* arena, List* instrList, Opcode opcode, char* str)
   ListAppend(arena, instrList, instr);
 }
 
+void GenLoadRValue(MemoryArena*, List*, IrValue*);
+
+void GenCall(MemoryArena* arena, List* code, IrCall* call)
+{
+  IrProc* proc = call->proc;
+  IrActivationRecord* actvRecord = proc->actvRecord;
+  EmitInstrInt(arena, code, Opcode::ALLOC, actvRecord->ret.size);
+
+  ListItem* argItem = ListFirstItem(&call->actualArgs);
+  while(argItem)
+  {
+    IrValue* argValue = (IrValue*)argItem->elem;
+    GenLoadRValue(arena, code, argValue);
+    argItem = argItem->next;
+  }
+}
+
 void GenLoadLValue(MemoryArena* arena, List* code, IrValue* value)
 {
   assert(value->kind == IrValueKind::Var);
@@ -1881,6 +1954,23 @@ void GenLoadLValue(MemoryArena* arena, List* code, IrValue* value)
   EmitInstr(arena, code, Opcode::ADD);
 }
 
+void GenLoadRValue(MemoryArena* arena, List* code, IrValue* value)
+{
+  if(value->kind == IrValueKind::Var)
+  {
+    GenLoadLValue(arena, code, value);
+    EmitInstr(arena, code, Opcode::LOAD);
+  }
+  else if(value->kind == IrValueKind::Call)
+  {
+    GenCall(arena, code, value->call);
+  }
+  else if(value->kind == IrValueKind::IntNum)
+  {
+    EmitInstrInt(arena, code, Opcode::PUSH, value->intNum);
+  }
+}
+
 void GenCode(MemoryArena* arena, List* code, IrNode* irNode)
 {
   switch(irNode->kind)
@@ -1896,6 +1986,7 @@ void GenCode(MemoryArena* arena, List* code, IrNode* irNode)
         item = item->next;
       }
     } break;
+
     case(IrNodeKind::Proc):
     {
       IrProc* proc = &irNode->proc;
@@ -1914,30 +2005,35 @@ void GenCode(MemoryArena* arena, List* code, IrNode* irNode)
       EmitInstrStr(arena, code, Opcode::LABEL, proc->endLabel);
       EmitInstr(arena, code, Opcode::RETURN);
     } break;
+
     case(IrNodeKind::LoadLValue):
     {
       IrValue* value = &irNode->value;
-      if(value->kind == IrValueKind::Var)
-        GenLoadLValue(arena, code, value);
-      else
-        assert(false);
+      GenLoadLValue(arena, code, value);
     } break;
+
     case(IrNodeKind::LoadRValue):
     {
       IrValue* value = &irNode->value;
-      if(value->kind == IrValueKind::Var)
-        GenLoadLValue(arena, code, value);
-      EmitInstr(arena, code, Opcode::LOAD);
+      GenLoadRValue(arena, code, value);
     } break;
+
     case(IrNodeKind::BinOp):
     {
-      IrOp* op = &irNode->op;
+      IrBinOp* op = &irNode->op;
       GenCode(arena, code, op->leftOperand);
       GenCode(arena, code, op->rightOperand);
       if(op->op == IrOpKind::Store)
         EmitInstr(arena, code, Opcode::STORE);
       else
         assert(false);
+    } break;
+
+    case(IrNodeKind::Call):
+    {
+      IrCall* call = &irNode->call;
+      GenCall(arena, code, call);
+      //Discard ret val
     } break;
   }
 }
@@ -2603,12 +2699,12 @@ uint WriteBytesToFile(char* fileName, char* text, int count)
 
 bool32 TranslateHoc(MemoryArena* arena, char* filePath, char* hocProgram, VmProgram* vmProgram)
 {/*>>>*/
-  SymbolTable symbolTable = {};
-  TokenStream tokenStream = {};
-  bool32      success = false;
+  bool32 success = false;
 
+  SymbolTable symbolTable = {};
   symbolTable.arena = arena;
 
+  TokenStream tokenStream = {};
   tokenStream.arena = arena;
   tokenStream.text = hocProgram;
   tokenStream.cursor = tokenStream.text;
@@ -2626,6 +2722,8 @@ bool32 TranslateHoc(MemoryArena* arena, char* filePath, char* hocProgram, VmProg
   if(success)
   {
     assert(astNode->kind == AstNodeKind::Module);
+    assert(symbolTable.scopeId == 0);
+    assert(symbolTable.nestingDepth == 0);
 
     IrNode* irModuleNode = IrBuildModule(arena, &astNode->module);
 
@@ -2634,9 +2732,6 @@ bool32 TranslateHoc(MemoryArena* arena, char* filePath, char* hocProgram, VmProg
 
     StringInit(&vmProgram->text, arena);
     PrintCode(vmProgram);
-
-    assert(symbolTable.scopeId == 0);
-    assert(symbolTable.nestingDepth == 0);
   }
 
   return success;

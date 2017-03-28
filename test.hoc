@@ -1,9 +1,10 @@
-proc Main()
+proc Foo(var b)
 {
   var a;
-  var b;
-  var c;
-  a = b;
-  b = c;
-  c = a;
+  a = 99;
+}
+
+proc Main()
+{
+  Foo(88);
 }

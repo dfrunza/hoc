@@ -1,59 +1,63 @@
 #pragma once
 
-enum struct Opcode
+typedef enum
 {
-  _Null,
-  PUSH,
-  POP,
-  LOAD,
-  LOAD8,
-  STORE,
-  STORE8,
-  ADD,
-  SUB,
-  MUL,
-  DIV,
-  MOD,
-  INCR,
-  DECR,
-  JUMPNZ,
-  JUMPZ,
-  GOTO,
-  HALT,
-  PRINT,
-  DUP,
-  LABEL,
-  NOOP,
-  CALL,
-  RETURN,
-  ENTER,
-  LEAVE,
-  ALLOC,
-};
+  Opcode__Null,
+  Opcode_PUSH,
+  Opcode_POP,
+  Opcode_LOAD,
+  Opcode_LOAD8,
+  Opcode_STORE,
+  Opcode_STORE8,
+  Opcode_ADD,
+  Opcode_SUB,
+  Opcode_MUL,
+  Opcode_DIV,
+  Opcode_MOD,
+  Opcode_INCR,
+  Opcode_DECR,
+  Opcode_JUMPNZ,
+  Opcode_JUMPZ,
+  Opcode_GOTO,
+  Opcode_HALT,
+  Opcode_PRINT,
+  Opcode_DUP,
+  Opcode_LABEL,
+  Opcode_NOOP,
+  Opcode_CALL,
+  Opcode_RETURN,
+  Opcode_ENTER,
+  Opcode_LEAVE,
+  Opcode_ALLOC,
+}
+Opcode;
 
-struct InstructionLine
+typedef struct
 {
   int sourceLineNr;
   char* string;
-};
+}
+InstructionLine;
 
-enum struct ParamType
+typedef enum
 {
-  _Null,
-  Int32,
-  String,
-  Reg,
-};
+  ParamType__Null,
+  ParamType_Int32,
+  ParamType_String,
+  ParamType_Reg,
+}
+ParamType;
 
-enum struct RegName
+typedef enum
 {
-  _Null,
-  IP,
-  SP,
-  FP
-};
+  RegName__Null,
+  RegName_IP,
+  RegName_SP,
+  RegName_FP
+}
+RegName;
 
-struct Instruction
+typedef struct
 {
   Opcode    opcode;
   ParamType paramType;
@@ -65,13 +69,15 @@ struct Instruction
   } param;
 
   int sourceLineNr;
-};
+}
+Instruction;
 
-struct IrCode
+typedef struct
 {
   char groove[4];
   int instrCount;
   uint8* codeStart;
   int codeSize;
   Instruction* instrArray;
-};
+}
+IrCode;

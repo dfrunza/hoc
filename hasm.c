@@ -1,13 +1,14 @@
-#include "lib.cpp"
+#include "lib.c"
 #include "ir.h"
 
-struct Label
+typedef struct
 {
   char* string;
   int instrAddress;
-};
+}
+Label;
 
-struct SourceProgram
+typedef struct
 {
   char* text;
 
@@ -18,7 +19,8 @@ struct SourceProgram
   int maxLabels;
   int labelCount;
   Label labels[512]; //FIXME: Unchecked bounds
-};
+}
+SourceProgram;
 
 int BreakInstructionIntoComponents(char* str, char* components[], int maxComponentCount)
 {/*>>>*/
@@ -103,7 +105,7 @@ void ProcessSourceLines(SourceProgram* source)
 
     if(*charPtr != '\n' && *charPtr != ';')
     {
-      InstructionLine instrLine = {};
+      InstructionLine instrLine = {0};
       instrLine.sourceLineNr = sourceLineNr;
       instrLine.string = charPtr;
       source->lines[source->lineCount++] = instrLine;
@@ -118,7 +120,7 @@ void ProcessSourceLines(SourceProgram* source)
           char* nextCharPtr = charPtr+1;
           if(*nextCharPtr != '\0' && *nextCharPtr != '\n' && *nextCharPtr != ';')
           {
-            instrLine = {};
+            memset(&instrLine, 0, sizeof(instrLine));
             instrLine.sourceLineNr = sourceLineNr;
             instrLine.string = nextCharPtr;
             source->lines[source->lineCount++] = instrLine;
@@ -134,7 +136,7 @@ void ProcessSourceLines(SourceProgram* source)
 bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
 {/*>>>*/
   IrCode* code = PushElement(arena, IrCode, 1);
-  CopyStr(code->groove, "IRC");
+  CopyCStr(code->groove, "IRC");
   code->codeStart = (uint8*)code;
   code->instrCount = source->lineCount;
   code->instrArray = PushElement(arena, Instruction, code->instrCount);
@@ -143,11 +145,11 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
 
   for(int instrAddress = 0; instrAddress < code->instrCount; instrAddress++)
   {
-    Instruction instr = {};
+    Instruction instr = {0};
     InstructionLine* instrLine = &source->lines[instrAddress];
     instr.sourceLineNr = instrLine->sourceLineNr;
 
-    char* components[2] = {};
+    char* components[2] = {0};
     int componentCount = BreakInstructionIntoComponents(instrLine->string,
                                                         components, SizeofArray(components));
     if(componentCount >= 1 && componentCount <= SizeofArray(components))
@@ -155,57 +157,57 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
       char* mnemonic = components[0];
 
       if(StrEquals(mnemonic, "pop"))
-        instr.opcode = Opcode::POP;
+        instr.opcode = Opcode_POP;
       else if(StrEquals(mnemonic, "push"))
-        instr.opcode = Opcode::PUSH;
+        instr.opcode = Opcode_PUSH;
       else if(StrEquals(mnemonic, "store"))
-        instr.opcode = Opcode::STORE;
+        instr.opcode = Opcode_STORE;
       else if(StrEquals(mnemonic, "store8"))
-        instr.opcode = Opcode::STORE8;
+        instr.opcode = Opcode_STORE8;
       else if(StrEquals(mnemonic, "load"))
-        instr.opcode = Opcode::LOAD;
+        instr.opcode = Opcode_LOAD;
       else if(StrEquals(mnemonic, "load8"))
-        instr.opcode = Opcode::LOAD8;
+        instr.opcode = Opcode_LOAD8;
       else if(StrEquals(mnemonic, "add"))
-        instr.opcode = Opcode::ADD;
+        instr.opcode = Opcode_ADD;
       else if(StrEquals(mnemonic, "sub"))
-        instr.opcode = Opcode::SUB;
+        instr.opcode = Opcode_SUB;
       else if(StrEquals(mnemonic, "mul"))
-        instr.opcode = Opcode::MUL;
+        instr.opcode = Opcode_MUL;
       else if(StrEquals(mnemonic, "div"))
-        instr.opcode = Opcode::DIV;
+        instr.opcode = Opcode_DIV;
       else if(StrEquals(mnemonic, "mod"))
-        instr.opcode = Opcode::MOD;
+        instr.opcode = Opcode_MOD;
       else if(StrEquals(mnemonic, "incr"))
-        instr.opcode = Opcode::INCR;
+        instr.opcode = Opcode_INCR;
       else if(StrEquals(mnemonic, "decr"))
-        instr.opcode = Opcode::DECR;
+        instr.opcode = Opcode_DECR;
       else if(StrEquals(mnemonic, "halt"))
-        instr.opcode = Opcode::HALT;
+        instr.opcode = Opcode_HALT;
       else if(StrEquals(mnemonic, "print"))
-        instr.opcode = Opcode::PRINT;
+        instr.opcode = Opcode_PRINT;
       else if(StrEquals(mnemonic, "dup"))
-        instr.opcode = Opcode::DUP;
+        instr.opcode = Opcode_DUP;
       else if(StrEquals(mnemonic, "goto"))
-        instr.opcode = Opcode::GOTO;
+        instr.opcode = Opcode_GOTO;
       else if(StrEquals(mnemonic, "jumpnz"))
-        instr.opcode = Opcode::JUMPNZ;
+        instr.opcode = Opcode_JUMPNZ;
       else if(StrEquals(mnemonic, "jumpz"))
-        instr.opcode = Opcode::JUMPZ;
+        instr.opcode = Opcode_JUMPZ;
       else if(StrEquals(mnemonic, "label"))
-        instr.opcode = Opcode::LABEL;
+        instr.opcode = Opcode_LABEL;
       else if(StrEquals(mnemonic, "noop"))
-        instr.opcode = Opcode::NOOP;
+        instr.opcode = Opcode_NOOP;
       else if(StrEquals(mnemonic, "call"))
-        instr.opcode = Opcode::CALL;
+        instr.opcode = Opcode_CALL;
       else if(StrEquals(mnemonic, "return"))
-        instr.opcode = Opcode::RETURN;
+        instr.opcode = Opcode_RETURN;
       else if(StrEquals(mnemonic, "enter"))
-        instr.opcode = Opcode::ENTER;
+        instr.opcode = Opcode_ENTER;
       else if(StrEquals(mnemonic, "leave"))
-        instr.opcode = Opcode::LEAVE;
+        instr.opcode = Opcode_LEAVE;
       else if(StrEquals(mnemonic, "alloc"))
-        instr.opcode = Opcode::ALLOC;
+        instr.opcode = Opcode_ALLOC;
       else {
         Error("Invalid instruction: %s", mnemonic);
         return false;
@@ -215,14 +217,14 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
       {
         switch(instr.opcode)
         {
-          case Opcode::GOTO:
-          case Opcode::JUMPNZ:
-          case Opcode::JUMPZ:
-          case Opcode::CALL:
+          case Opcode_GOTO:
+          case Opcode_JUMPNZ:
+          case Opcode_JUMPZ:
+          case Opcode_CALL:
             {
               if(IsValidLabel(components[1]))
               {
-                instr.paramType = ParamType::String;
+                instr.paramType = ParamType_String;
                 instr.param.str = components[1];
               }
               else {
@@ -231,21 +233,21 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
               }
             } break;
 
-          case Opcode::POP:
-          case Opcode::PUSH:
+          case Opcode_POP:
+          case Opcode_PUSH:
             {
               if(StrToInt(components[1], &instr.param.intNum))
-                instr.paramType = ParamType::Int32;
+                instr.paramType = ParamType_Int32;
               else {
-                instr.paramType = ParamType::Reg;
+                instr.paramType = ParamType_Reg;
                 char* reg = components[1];
 
                 if(StrMatch(reg, "sp"))
-                  instr.param.reg = RegName::SP;
+                  instr.param.reg = RegName_SP;
                 else if(StrMatch(reg, "fp"))
-                  instr.param.reg = RegName::FP;
+                  instr.param.reg = RegName_FP;
                 else if(StrMatch(reg, "ip"))
-                  instr.param.reg = RegName::IP;
+                  instr.param.reg = RegName_IP;
                 else {
                   Error("Invalid register '%s'", components[1]);
                   return false;
@@ -253,24 +255,24 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
               }
             } break;
 
-          case Opcode::ALLOC:
+          case Opcode_ALLOC:
             {
               if(StrToInt(components[1], &instr.param.intNum))
-                instr.paramType = ParamType::Int32;
+                instr.paramType = ParamType_Int32;
               else {
                 Error("Invalid parameter '%s'", components[1]);
                 return false;
               }
             } break;
 
-          case Opcode::LABEL:
+          case Opcode_LABEL:
             {
               if(IsValidLabel(components[1]))
               {
-                instr.paramType = ParamType::String;
+                instr.paramType = ParamType_String;
                 instr.param.str = components[1];
 
-                Label label = {};
+                Label label = {0};
                 label.string = components[1];
                 label.instrAddress = instrAddress;
 
@@ -308,13 +310,13 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
     for(; targetInstrAddress < code->instrCount; targetInstrAddress++)
     {
       Instruction* instr = &code->instrArray[targetInstrAddress];
-      if(instr->opcode != Opcode::LABEL)
+      if(instr->opcode != Opcode_LABEL)
         break;
     }
     if(targetInstrAddress < code->instrCount)
     {
       Instruction* labelInstr = &code->instrArray[label->instrAddress];
-      labelInstr->paramType = ParamType::Int32;
+      labelInstr->paramType = ParamType_Int32;
       labelInstr->param.intNum = targetInstrAddress;
       label->instrAddress = targetInstrAddress;
     }
@@ -327,16 +329,16 @@ bool32 BuildIrCode(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
   for(int instrAddress = 0; instrAddress < code->instrCount; instrAddress++)
   {
     Instruction* instr = &code->instrArray[instrAddress];
-    if(instr->opcode == Opcode::GOTO ||
-       instr->opcode == Opcode::JUMPNZ ||
-       instr->opcode == Opcode::JUMPZ ||
-       instr->opcode == Opcode::CALL)
+    if(instr->opcode == Opcode_GOTO ||
+       instr->opcode == Opcode_JUMPNZ ||
+       instr->opcode == Opcode_JUMPZ ||
+       instr->opcode == Opcode_CALL)
     {
-      assert(instr->paramType == ParamType::String);
+      assert(instr->paramType == ParamType_String);
       Label* label = FindLabel(source, instr->param.str);
       if(label)
       {
-        instr->paramType = ParamType::Int32;
+        instr->paramType = ParamType_Int32;
         instr->param.intNum = label->instrAddress;
       }
       else {
@@ -353,7 +355,7 @@ bool32 TranslateIrToCode(MemoryArena* arena, char* text, IrCode** code)
 {
   bool32 success = true;
 
-  SourceProgram source = {};
+  SourceProgram source = {0};
   source.text = text;
   ProcessSourceLines(&source);
 

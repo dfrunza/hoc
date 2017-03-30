@@ -22,20 +22,24 @@ typedef double float64;
 
 #define KILOBYTE (1024ll)
 #define MEGABYTE (1024*KILOBYTE)
+#define false 0
+#define true  1
 
-struct MemoryArena
+typedef struct
 {
   void* base;
   void* free;
   void* limit;
-};
+}
+MemoryArena;
 
-struct String
+typedef struct
 {
   char* start;
   char* end;
   MemoryArena* arena;
-};
+}
+String;
 
 //FIXME: Obsolete
 typedef MemoryArena StringArena;
@@ -44,7 +48,7 @@ typedef MemoryArena StringArena;
 
 void DebugPrint(char* message, ...)
 {
-  static char strbuf[128] = {};
+  static char strbuf[128] = {0};
   va_list args;
 
   va_start(args, message);
@@ -155,7 +159,7 @@ int StrLen(char* str)
   return len;
 }
 
-char* CopyStr(char* destStr, char* srcStr)
+char* CopyCStr(char* destStr, char* srcStr)
 {
   do
   {
@@ -168,8 +172,8 @@ char* CopyStr(char* destStr, char* srcStr)
 
 char* CopyStr(StringArena* dest, char* srcStr)
 {
-  char* newTail = CopyStr((char* )dest->free, srcStr);
-  assert(newTail < dest->limit);
+  char* newTail = CopyCStr((char* )dest->free, srcStr);
+  assert(newTail < (char*)dest->limit);
   dest->free = newTail;
   return newTail;
 }
@@ -201,7 +205,7 @@ void* AllocStack_(int elementSize, int count)
 void CheckMemoryBounds_(MemoryArena* arena, int elementSize, void* ptr)
 {
   assert(arena->base <= ptr);
-  assert((uint8*)arena->free + elementSize <= arena->limit);
+  assert((uint8*)arena->free + elementSize <= (uint8*)arena->limit);
 }
 
 void ClearToZero(void* first, void* onePastLast)
@@ -231,11 +235,11 @@ void SetWatermark(MemoryArena* arena, void* ptr)
 #define PushArena(ARENA, TYPE, COUNT) PushArena_(ARENA, sizeof(TYPE), COUNT, true)
 #define PushArenaDontClear(ARENA, TYPE, COUNT) PushArena_(ARENA, sizeof(TYPE), COUNT, false)
 
-MemoryArena PushArena_(MemoryArena* arena, int elementSize, int count, bool clearToZero)
+MemoryArena PushArena_(MemoryArena* arena, int elementSize, int count, bool32 clearToZero)
 {
   assert(count > 0);
 
-  MemoryArena subArena = {};
+  MemoryArena subArena = {0};
   subArena.base = arena->free;
   subArena.free = subArena.base;
   arena->free = (uint8* )subArena.base + elementSize*count;
@@ -265,7 +269,7 @@ void* PushElement_(MemoryArena* arena, int elementSize, int count)
 
 MemoryArena NewArena(int size)
 {
-  MemoryArena arena = {};
+  MemoryArena arena = {0};
   arena.free = malloc(size);
   arena.limit = (uint8* )arena.free + size;
   return arena;
@@ -335,25 +339,27 @@ void AppendString(String* string, char* cstr)
   assert(string->end == (char*)arena->free-1);
   int len = StrLen(cstr);
   PushElement(arena, char, len);
-  CopyStr(string->end, cstr);
+  CopyCStr(string->end, cstr);
   string->end = (char*)arena->free-1;
 }
 
 typedef void ListElem;
 
-struct ListItem
+typedef struct ListItem_
 {
   ListElem* elem;
-  ListItem* next;
-  ListItem* prev;
-};
+  struct ListItem_* next;
+  struct ListItem_* prev;
+}
+ListItem;
 
-struct List
+typedef struct
 {
   ListItem* last;
   int       count;
   ListItem  sentinel;
-};
+}
+List;
 
 void ListInit(List* list)
 {

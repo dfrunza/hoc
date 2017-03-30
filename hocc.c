@@ -1,24 +1,26 @@
-#include "asm.cpp"
-#include "translator.cpp"
+#include "hasm.c"
+#include "translate.c"
 
 // User-defined PE resource:
 //   nameId  typeId  fileName
 #define OUT_RC "CODE  VM  \"%s\""
 
-struct FileName
+typedef struct
 {
   char* name;
   int len;
-};
+}
+FileName;
 
-struct OutFileNames
+typedef struct
 {
   char strings[4*80 + 4*10];
   FileName ir;
   FileName irc;
   FileName rc;
   FileName res;
-};
+}
+OutFileNames;
 
 char* GetFileStem(char* filePath)
 {
@@ -87,13 +89,13 @@ bool32 WriteResFile(OutFileNames* outFiles)
   bool32 success = (bytesWritten == textLen);
   if(success)
   {
-    STARTUPINFO startInfo = {};
+    STARTUPINFO startInfo = {0};
     startInfo.dwFlags = STARTF_USESTDHANDLES;
     startInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
     startInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
     startInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 
-    PROCESS_INFORMATION procInfo = {};
+    PROCESS_INFORMATION procInfo = {0};
     sprintf(buf, "rc.exe /nologo /fo%s %s", outFiles->res.name, outFiles->rc.name);
     DWORD exitCode = 0;
     success = CreateProcess(0, buf, 0, 0, true, 0, 0, 0, &startInfo, &procInfo);
@@ -142,11 +144,11 @@ int main(int argc, char* argv[])
     char* hocProgram = ReadTextFromFile(&arena, filePath);
     if(hocProgram)
     {
-      VmProgram vmProgram = {};
+      VmProgram vmProgram = {0};
       bool32 success = TranslateHoc(&arena, filePath, hocProgram, &vmProgram);
       if(success)
       {
-        OutFileNames outFiles = {};
+        OutFileNames outFiles = {0};
         char* fileStem = GetFileStem(filePath);
 
         success = MakeFileNames(&outFiles, fileStem) &&

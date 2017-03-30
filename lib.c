@@ -210,8 +210,8 @@ void CheckMemoryBounds_(MemoryArena* arena, int elementSize, void* ptr)
 
 void ClearToZero(void* first, void* onePastLast)
 {
-  uint8* byte = (uint8* )first;
-  for(; byte < (uint8* )onePastLast; byte++)
+  uint8* byte = first;
+  for(; byte < (uint8*)onePastLast; byte++)
   {
     *byte = 0;
   }
@@ -242,7 +242,7 @@ MemoryArena PushArena_(MemoryArena* arena, int elementSize, int count, bool32 cl
   MemoryArena subArena = {0};
   subArena.base = arena->free;
   subArena.free = subArena.base;
-  arena->free = (uint8* )subArena.base + elementSize*count;
+  arena->free = (uint8*)subArena.base + elementSize*count;
   CheckArenaBounds(arena);
   subArena.limit = arena->free;
   if(clearToZero)
@@ -261,7 +261,7 @@ void* PushElement_(MemoryArena* arena, int elementSize, int count)
   assert(count > 0);
 
   void* element = arena->free;
-  arena->free = (uint8* )arena->free + elementSize*count;
+  arena->free = (uint8*)arena->free + elementSize*count;
   CheckArenaBounds(arena);
   ClearToZero(element, arena->free);
   return element;
@@ -271,7 +271,7 @@ MemoryArena NewArena(int size)
 {
   MemoryArena arena = {0};
   arena.free = malloc(size);
-  arena.limit = (uint8* )arena.free + size;
+  arena.limit = (uint8*)arena.free + size;
   return arena;
 }
 

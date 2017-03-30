@@ -3,7 +3,7 @@ proc Foo(var b)
   var a;
   var c;
   a = 99;
-  c = 101;
+  c = a;
 }
 
 proc Main()

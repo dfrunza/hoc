@@ -153,7 +153,7 @@ int main(int argc, char* argv[])
 
         success = MakeFileNames(&outFiles, fileStem) &&
           WriteIrFile(&outFiles, &vmProgram);
-#if 0
+#if 1
         if(success)
         {
           IrCode* irCode = 0;

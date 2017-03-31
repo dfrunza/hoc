@@ -218,37 +218,34 @@ ExecResult ExecuteInstruction(Machine* machine, Instruction* instr)
     case Opcode_STORE:
     case Opcode_STORE8:
       {
-        int32 locationArgSp = machine->sp-1;
+        int32 locationArgSp = machine->sp-2;
         if(CheckStackBounds(machine, locationArgSp))
         {
           int32 location = *(int32*)&memory[locationArgSp*VMWORD];
           if(CheckMemoryBounds(machine, location))
           {
-            int32 valueArgSp = machine->sp-2;
-            if(CheckStackBounds(machine, valueArgSp))
+            int32 valueArgSp = machine->sp-1;
+            uint32 value = *(uint32*)&memory[valueArgSp*VMWORD];
+            if(opcode == Opcode_STORE)
             {
-              uint32 value = *(uint32*)&memory[valueArgSp*VMWORD];
-              if(opcode == Opcode_STORE)
-              {
-                if(value <= 0xffffffff)
-                  *((uint32*)&memory[location*VMWORD]) = (uint32)value;
-                else
-                  return ExecResult_InvalidOperandSize;
-              }
-              else if(opcode == Opcode_STORE8)
-              {
-                if(value <= 0xff)
-                  *((uint8*)&memory[location]) = (uint8)value;
-                else
-                  return ExecResult_InvalidOperandSize;
-              }
+              if(value <= 0xffffffff)
+                *((uint32*)&memory[location*VMWORD]) = (uint32)value;
               else
-                assert(false);
+                return ExecResult_InvalidOperandSize;
+            }
+            else if(opcode == Opcode_STORE8)
+            {
+              if(value <= 0xff)
+                *((uint8*)&memory[location]) = (uint8)value;
+              else
+                return ExecResult_InvalidOperandSize;
+            }
+            else
+              assert(false);
 
-              machine->sp--;
-              machine->ip++;
-            } else
-              return ExecResult_InvalidMemoryAccess;
+            *(int32*)&memory[locationArgSp*VMWORD] = value;
+            machine->sp--;
+            machine->ip++;
           } else
             return ExecResult_InvalidMemoryAccess;
         } else

@@ -132,6 +132,7 @@ typedef struct
 {
   Symbol* symbol;
   char*   name;
+  bool32  isArgument;
   int     location; // relative to fp
   int     dataSize;
 }
@@ -159,6 +160,7 @@ typedef struct
   char*       name;
   int         declBlockOffset;
   bool32      isNonLocal;
+  bool32      isArgument;
   AccessLink* accessLink; // if non-local
   VarDecl*    varDecl;
 }
@@ -715,6 +717,8 @@ bool32 ParseFactor(MemoryArena* arena, TokenStream* input, SymbolTable* symbolTa
         VarOccur* varOccur = &idNode->varOccur;
         varOccur->symbol = symbol;
         varOccur->name = symbol->name;
+        varOccur->varDecl = symbol->var;
+        varOccur->isArgument = symbol->var->isArgument;
         varOccur->declBlockOffset = (symbolTable->nestingDepth - symbol->nestingDepth);
         varOccur->isNonLocal = (varOccur->declBlockOffset > 0);
 
@@ -1002,7 +1006,8 @@ bool32 ParseFormalArgument(MemoryArena* arena, TokenStream* input, SymbolTable* 
       {
         VarDecl* varDecl = &varNode->varDecl;
         varDecl->symbol = symbol;
-        varDecl->name   = symbol->name;
+        varDecl->name = symbol->name;
+        varDecl->isArgument = true;
         symbol->var = varDecl;
 
         ConsumeToken(input, symbolTable);
@@ -1728,6 +1733,7 @@ IrProc;
 typedef struct
 {
   IrProc* mainProc;
+  IrCall* mainCall;
   List    procList;
 }
 IrModule;
@@ -1750,16 +1756,27 @@ void IrSetVarValue(IrValue* irValue, IrExecutionContext* execContext, VarOccur* 
   Symbol* symbol = varOccur->symbol;
   IrVar* irVar = &irValue->var;
   irVar->isNonLocal = varOccur->isNonLocal;
-  if(irVar->isNonLocal)
+  IrActivationRecord* actvRecord = execContext->avRecord;
+
+  if(varOccur->isNonLocal)
   {
     AccessLink* link = varOccur->accessLink;
-    IrActivationRecord* actvRecord = execContext->avRecord;
     assert(actvRecord->kind == IrAvRecord_Block);
     IrBlockAvRecord* blockAv = &actvRecord->block;
     IrStackArea* accessLinksArea = &blockAv->accessLinks;
-    irValue->var.accessLinkLocation = -(actvRecord->fp - accessLinksArea->loc + 1) + link->index;
+    irVar->accessLinkLocation = -(actvRecord->fp - accessLinksArea->loc) + link->index;
+  } else 
+  {
+    if(varOccur->isArgument)
+    {
+      IrProcAvRecord* procAv = &actvRecord->proc;
+      IrStackArea* argsArea = &procAv->args;
+      irValue->var.dataLocation = -(actvRecord->fp - argsArea->loc);
+    } else
+    {
+      irVar->dataLocation = symbol->var->location;
+    }
   }
-  irVar->dataLocation = symbol->var->location;
 }
 
 IrNode* IrBuildLValue(MemoryArena* arena, IrExecutionContext* execContext, VarOccur* varOccur)
@@ -1851,9 +1868,9 @@ IrNode* IrBuildProc(MemoryArena* arena, IrExecutionContext* execContext, Proc* p
   assert(bodyNode->kind == AstNodeKind_Block);
   Block* bodyBlock = &bodyNode->block;
 
-  IrActivationRecord* newActvRecord = PushElement(arena, IrActivationRecord, 1);
-  newActvRecord->kind = IrAvRecord_Proc;
-  IrProcAvRecord* procAv = &newActvRecord->proc;
+  IrActivationRecord* actvRecord = PushElement(arena, IrActivationRecord, 1);
+  actvRecord->kind = IrAvRecord_Proc;
+  IrProcAvRecord* procAv = &actvRecord->proc;
   int offset = 0;
 
   IrStackArea* area = &procAv->ret;
@@ -1871,16 +1888,16 @@ IrNode* IrBuildProc(MemoryArena* arena, IrExecutionContext* execContext, Proc* p
   area->size = 3; // ip+sp+fp
   offset += area->size;
 
-  newActvRecord->fp = offset;
+  actvRecord->fp = offset;
 
   area = &procAv->locals;
   area->loc = offset;
   area->size = bodyBlock->localsDataSize;
   offset += area->size;
 
-  newActvRecord->sp = offset;
+  actvRecord->sp = offset;
 
-//  ListInit(&newActvRecord->foreignAvRecords);
+//  ListInit(&actvRecord->foreignAvRecords);
 //  {/*>>> access links are not for procs! */
 //    ListItem* item = ListFirstItem(&bodyBlock->accessLinks);
 //    while(item)
@@ -1890,16 +1907,19 @@ IrNode* IrBuildProc(MemoryArena* arena, IrExecutionContext* execContext, Proc* p
 //      int offset = link->actvRecordOffset - 1;
 //      while(offset-- > 0)
 //        avItem = avItem->prev;
-//      ListAppend(arena, &newActvRecord->foreignAvRecords, avItem->elem);
+//      ListAppend(arena, &actvRecord->foreignAvRecords, avItem->elem);
 //
 //      item = item->next;
 //    }
 //  }/*<<<*/
 
+  ListAppend(arena, &execContext->avRecordStack, actvRecord);
+  execContext->avRecord = actvRecord;
+
   IrNode* irNode = PushElement(arena, IrNode, 1);
   irNode->kind = IrNodeKind_Proc;
   IrProc* irProc = &irNode->proc;
-  irProc->actvRecord = newActvRecord;
+  irProc->actvRecord = actvRecord;
   irProc->label = proc->name;
   ListInit(&irProc->instrList);
 
@@ -1931,7 +1951,7 @@ IrNode* IrBuildProc(MemoryArena* arena, IrExecutionContext* execContext, Proc* p
 
   return irNode;
 }
-
+ 
 IrNode* IrBuildModule(MemoryArena* arena, IrExecutionContext* execContext, Module* module)
 {
   IrNode* irModuleNode = PushElement(arena, IrNode, 1);
@@ -1953,6 +1973,18 @@ IrNode* IrBuildModule(MemoryArena* arena, IrExecutionContext* execContext, Modul
 
     procItem = procItem->next;
   }
+
+  if(irModule->mainProc)
+  {
+    IrNode* irCallNode = PushElement(arena, IrNode, 1);
+    irCallNode->kind = IrNodeKind_Call;
+    IrCall* irCall = &irCallNode->call;
+    irCall->proc = irModule->mainProc;
+    ListInit(&irCall->actualArgs);
+    irModule->mainCall = irCall;
+  } else
+    Error("Missing Main() procedure");
+
   return irModuleNode;
 }
 /*<<<*/
@@ -2075,6 +2107,8 @@ void GenCode(MemoryArena* arena, List* code, IrNode* irNode)
         GenCode(arena, code, irNode);
         item = item->next;
       }
+      GenCall(arena, code, module->mainCall);
+      EmitInstr(arena, code, Opcode_HALT);
     } break;
 
     case(IrNodeKind_Proc):
@@ -2240,6 +2274,12 @@ void PrintCode(VmProgram* vmProgram)
       {
         assert(instr->paramType == ParamType_String);
         PrintInstruction(vmProgram, "call %s", instr->param.str);
+      } break;
+
+      case(Opcode_HALT):
+      {
+        assert(instr->paramType == ParamType__Null);
+        PrintInstruction(vmProgram, "halt");
       } break;
 
       default:
@@ -2835,10 +2875,10 @@ bool32 TranslateHoc(MemoryArena* arena, char* filePath, char* hocProgram, VmProg
     assert(symbolTable.scopeId == 0);
     assert(symbolTable.nestingDepth == 0);
 
-    IrActivationRecord topActvRecord = {0};
+    //IrActivationRecord topActvRecord = {0};
     IrExecutionContext execContext = {0};
     ListInit(&execContext.avRecordStack);
-    ListAppend(arena, &execContext.avRecordStack, &topActvRecord);
+    //ListAppend(arena, &execContext.avRecordStack, &topActvRecord);
     IrNode* irModuleNode = IrBuildModule(arena, &execContext, &astNode->module);
 
     ListInit(&vmProgram->instrList);

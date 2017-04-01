@@ -22,7 +22,7 @@ typedef struct
 }
 OutFileNames;
 
-char* GetFileStem(char* filePath)
+char* get_file_stem(char* filePath)
 {
   char* pChar = filePath;
   char* stem = pChar;
@@ -47,9 +47,9 @@ char* GetFileStem(char* filePath)
   return stem;
 }
 
-bool32 MakeFileNames(OutFileNames* outFiles, char* stem)
+bool32 make_file_names(OutFileNames* outFiles, char* stem)
 {
-  int stemLen = StrLen(stem);
+  int stemLen = str_len(stem);
   assert(stemLen > 0);
   bool32 success = (stemLen > 0 && stemLen < 80);
 
@@ -59,34 +59,34 @@ bool32 MakeFileNames(OutFileNames* outFiles, char* stem)
 
     sprintf(str, "%s.ir", stem);
     outFiles->ir.name = str;
-    outFiles->ir.len = StrLen(outFiles->ir.name);
+    outFiles->ir.len = str_len(outFiles->ir.name);
     str = outFiles->ir.name + outFiles->ir.len + 1;
 
     sprintf(str, "%s.irc", stem);
     outFiles->irc.name = str;
-    outFiles->irc.len = StrLen(outFiles->irc.name);
+    outFiles->irc.len = str_len(outFiles->irc.name);
     str = outFiles->irc.name + outFiles->irc.len + 1;
 
     sprintf(str, "%s.rc", stem);
     outFiles->rc.name = str;
-    outFiles->rc.len = StrLen(outFiles->rc.name);
+    outFiles->rc.len = str_len(outFiles->rc.name);
     str = outFiles->rc.name + outFiles->rc.len + 1;
 
     sprintf(str, "%s.res", stem);
     outFiles->res.name = str;
-    outFiles->res.len = StrLen(outFiles->res.name);
+    outFiles->res.len = str_len(outFiles->res.name);
   } else
-    Error("Length of file name out of range : '%s'", stem);
+    error("Length of file name out of range : '%s'", stem);
   return success;
 }
 
-bool32 WriteResFile(OutFileNames* outFiles)
+bool32 write_res_file(OutFileNames* outFiles)
 {
   char buf[200];
   sprintf(buf, OUT_RC, outFiles->irc.name);
-  int textLen = StrLen(buf);
-  int bytesWritten = WriteBytesToFile(outFiles->rc.name, buf, textLen);
-  bool32 success = (bytesWritten == textLen);
+  int text_len = str_len(buf);
+  int bytesWritten = write_bytes_to_file(outFiles->rc.name, buf, text_len);
+  bool32 success = (bytesWritten == text_len);
   if(success)
   {
     STARTUPINFO startInfo = {0};
@@ -108,27 +108,27 @@ bool32 WriteResFile(OutFileNames* outFiles)
       CloseHandle(procInfo.hProcess);
       CloseHandle(procInfo.hThread);
     } else
-      Error("Process could not be launched : %s", buf);
+      error("Process could not be launched : %s", buf);
   } else
-    Error("RC file '%s' incompletely written", outFiles->rc.name);
+    error("RC file '%s' incompletely written", outFiles->rc.name);
   return success;
 }
 
-bool32 WriteIrFile(OutFileNames* outFiles, VmProgram* vmProgram)
+bool32 write_ir_file(OutFileNames* outFiles, VmProgram* vm_program)
 {
-  int bytesWritten = WriteBytesToFile(outFiles->ir.name, vmProgram->text.start, vmProgram->textLen);
-  bool32 success = (bytesWritten == vmProgram->textLen);
+  int bytesWritten = write_bytes_to_file(outFiles->ir.name, vm_program->text.start, vm_program->text_len);
+  bool32 success = (bytesWritten == vm_program->text_len);
   if(!success)
-    Error("IR file '%s' incompletely written", outFiles->ir.name);
+    error("IR file '%s' incompletely written", outFiles->ir.name);
   return success;
 }
 
-bool32 WriteIrcFile(OutFileNames* outFiles, IrCode* irCode)
+bool32 write_irc_file(OutFileNames* outFiles, IrCode* irCode)
 {
-  int bytesWritten = WriteBytesToFile(outFiles->irc.name, (char*)irCode->codeStart, irCode->codeSize);
+  int bytesWritten = write_bytes_to_file(outFiles->irc.name, (char*)irCode->codeStart, irCode->codeSize);
   bool32 success = (bytesWritten == irCode->codeSize);
   if(!success)
-    Error("IRC file '%s' incompletely written", outFiles->irc.name);
+    error("IRC file '%s' incompletely written", outFiles->irc.name);
   return success;
 }
 
@@ -138,31 +138,31 @@ int main(int argc, char* argv[])
 
   if(argc >= 2)
   {
-    MemoryArena arena = NewArena(10*MEGABYTE);
+    MemoryArena arena = new_arena(10*MEGABYTE);
 
     char* filePath = argv[1];
-    char* hocProgram = ReadTextFromFile(&arena, filePath);
+    char* hocProgram = read_text_from_file(&arena, filePath);
     if(hocProgram)
     {
-      VmProgram vmProgram = {0};
-      bool32 success = TranslateHoc(&arena, filePath, hocProgram, &vmProgram);
+      VmProgram vm_program = {0};
+      bool32 success = translate_hoc(&arena, filePath, hocProgram, &vm_program);
       if(success)
       {
         OutFileNames outFiles = {0};
-        char* fileStem = GetFileStem(filePath);
+        char* fileStem = get_file_stem(filePath);
 
-        success = MakeFileNames(&outFiles, fileStem) &&
-          WriteIrFile(&outFiles, &vmProgram);
+        success = make_file_names(&outFiles, fileStem) &&
+          write_ir_file(&outFiles, &vm_program);
 #if 1
         if(success)
         {
           IrCode* irCode = 0;
-          char* irText = vmProgram.text.start;
-          bool32 success = TranslateIrToCode(&arena, irText, &irCode);
+          char* irText = vm_program.text.start;
+          bool32 success = translate_ir_to_code(&arena, irText, &irCode);
 
           if(success)
           {
-            success = WriteIrcFile(&outFiles, irCode) && WriteResFile(&outFiles);
+            success = write_irc_file(&outFiles, irCode) && write_res_file(&outFiles);
             if(success)
               ret = 0;
           }
@@ -172,9 +172,9 @@ int main(int argc, char* argv[])
 #endif
       }
     } else
-      Error("File '%s' could not be read", filePath);
+      error("File '%s' could not be read", filePath);
   } else
-    Error("Missing argument: input source file");
+    error("Missing argument: input source file");
 
   return ret;
 }

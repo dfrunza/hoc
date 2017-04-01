@@ -60,10 +60,10 @@ RegName;
 typedef struct
 {
   Opcode    opcode;
-  ParamType paramType;
+  ParamType param_type;
 
   union {
-    int32   intNum;
+    int32   int_num;
     RegName reg;
     char*   str;
   } param;
@@ -74,10 +74,10 @@ Instruction;
 
 typedef struct
 {
-  char groove[4];
-  int instrCount;
-  uint8* codeStart;
-  int codeSize;
+  char         groove[4];
+  int          instrCount;
+  uint8*       codeStart;
+  int          codeSize;
   Instruction* instrArray;
 }
 IrCode;

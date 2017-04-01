@@ -44,9 +44,9 @@ String;
 //FIXME: Obsolete
 typedef MemoryArena StringArena;
 
-#define SizeofArray(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
+#define sizeof_array(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
 
-void DebugPrint(char* message, ...)
+void debug_print(char* message, ...)
 {
   static char strbuf[128] = {0};
   va_list args;
@@ -58,10 +58,10 @@ void DebugPrint(char* message, ...)
   OutputDebugString(strbuf);
 }
 
-void Error(char* message, ...)
+void error(char* message, ...)
 {
   va_list args;
-  fprintf(stdout, "P(0): Error : ");
+  fprintf(stdout, "error : ");
 
   va_start(args, message);
   vfprintf(stderr, message, args);
@@ -69,27 +69,27 @@ void Error(char* message, ...)
   va_end(args);
 }
 
-int Max(int a, int b)
+int maxi(int a, int b)
 {
-  int max = a;
+  int m = a;
   if(a < b)
-    max = b;
-  return max;
+    m = b;
+  return m;
 }
 
-bool32 IsLetterChar(char ch)
+bool32 is_letter_char(char ch)
 {
   return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z');
 }
 
-bool32 IsNumericChar(char c)
+bool32 is_numeric_char(char c)
 {
   return '0' <= c && c <= '9';
 }
 
 // The function assumes that all characters in the input string are digits,
 // except for the first, which could be the negative sign '-'
-bool32 StrToInt(char* string, int* integer)
+bool32 str_to_int(char* string, int* integer)
 {/*>>>*/
   bool32 negative = false;
 
@@ -100,13 +100,13 @@ bool32 StrToInt(char* string, int* integer)
   }
 
   char c = *string++;
-  if(IsNumericChar(c))
+  if(is_numeric_char(c))
   {
     int result = (int)(c - '0');
 
     for(c = *string++; c != '\0'; c = *string++)
     {
-      if(IsNumericChar(c))
+      if(is_numeric_char(c))
       {
         int digit = (int)(c - '0');
         result = result*10 + digit;
@@ -124,7 +124,7 @@ bool32 StrToInt(char* string, int* integer)
   return true;
 }/*<<<*/
 
-bool32 StrStartsWith(char* strA, char* prefix)
+bool32 str_start_with(char* strA, char* prefix)
 {/*>>>*/
   while(*strA == *prefix)
   {
@@ -137,8 +137,8 @@ bool32 StrStartsWith(char* strA, char* prefix)
   return result;
 }/*<<<*/
 
-#define StrMatch StrEquals
-bool32 StrEquals(char* strA, char* strB)
+#define str_match str_equals
+bool32 str_equals(char* strA, char* strB)
 {/*>>>*/
   while(*strA == *strB)
   {
@@ -151,7 +151,7 @@ bool32 StrEquals(char* strA, char* strB)
   return result;
 }/*<<<*/
 
-int StrLen(char* str)
+int str_len(char* str)
 {
   int len = 0;
   while(*str++ != 0)
@@ -159,7 +159,7 @@ int StrLen(char* str)
   return len;
 }
 
-char* CopyCStr(char* destStr, char* srcStr)
+char* copy_cstr(char* destStr, char* srcStr)
 {
   do
   {
@@ -170,15 +170,15 @@ char* CopyCStr(char* destStr, char* srcStr)
   return destStr;
 }
 
-char* CopyStr(StringArena* dest, char* srcStr)
+char* copy_str(StringArena* dest, char* srcStr)
 {
-  char* newTail = CopyCStr((char* )dest->free, srcStr);
+  char* newTail = copy_cstr((char* )dest->free, srcStr);
   assert(newTail < (char*)dest->limit);
   dest->free = newTail;
   return newTail;
 }
 
-void CopySubstr(char* destStr, char* beginChar, char* endChar)
+void copy_substr(char* destStr, char* beginChar, char* endChar)
 {
   char* srcStr = beginChar;
 
@@ -199,10 +199,10 @@ void* AllocStack_(int elementSize, int count)
 }
 #endif
 
-#define CheckElementBounds(ARENA, TYPE, STRUCT) CheckMemoryBounds_(ARENA, sizeof(TYPE), STRUCT)
-#define CheckArenaBounds(ARENA) CheckMemoryBounds_((ARENA), 0, (ARENA)->free)
+#define check_element_bounds(ARENA, TYPE, STRUCT) check_memory_bounds_(ARENA, sizeof(TYPE), STRUCT)
+#define check_arena_bounds(ARENA) check_memory_bounds_((ARENA), 0, (ARENA)->free)
 
-void CheckMemoryBounds_(MemoryArena* arena, int elementSize, void* ptr)
+void check_memory_bounds_(MemoryArena* arena, int elementSize, void* ptr)
 {
   assert(arena->base <= ptr);
   assert((uint8*)arena->free + elementSize <= (uint8*)arena->limit);
@@ -224,18 +224,18 @@ void ResetArena(MemoryArena* arena)
 
 void SetWatermark(MemoryArena* arena, void* ptr)
 {
-  CheckMemoryBounds_(arena, 0, ptr);
+  check_memory_bounds_(arena, 0, ptr);
   arena->free = ptr;
 }
 
-#define FirstElement(ARENA, TYPE) ((TYPE* )(ARENA)->base)
-#define LastElement(ARENA, TYPE) ((TYPE* )(ARENA)->free - 1);
-#define OnePastLastElement(ARENA, TYPE) ((TYPE* )(ARENA)->free);
-#define ElementAt(ARENA, TYPE, INDEX) ((TYPE* )(ARENA)->base + INDEX)
-#define PushArena(ARENA, TYPE, COUNT) PushArena_(ARENA, sizeof(TYPE), COUNT, true)
-#define PushArenaDontClear(ARENA, TYPE, COUNT) PushArena_(ARENA, sizeof(TYPE), COUNT, false)
+#define first_element(ARENA, TYPE) ((TYPE* )(ARENA)->base)
+#define last_element(ARENA, TYPE) ((TYPE* )(ARENA)->free - 1);
+#define one_past_last_element(ARENA, TYPE) ((TYPE* )(ARENA)->free);
+#define element_at(ARENA, TYPE, INDEX) ((TYPE* )(ARENA)->base + INDEX)
+#define push_arena(ARENA, TYPE, COUNT) push_arena_(ARENA, sizeof(TYPE), COUNT, true)
+#define push_arena_no_clear(ARENA, TYPE, COUNT) push_arena_(ARENA, sizeof(TYPE), COUNT, false)
 
-MemoryArena PushArena_(MemoryArena* arena, int elementSize, int count, bool32 clearToZero)
+MemoryArena push_arena_(MemoryArena* arena, int elementSize, int count, bool32 clearToZero)
 {
   assert(count > 0);
 
@@ -243,7 +243,7 @@ MemoryArena PushArena_(MemoryArena* arena, int elementSize, int count, bool32 cl
   subArena.base = arena->free;
   subArena.free = subArena.base;
   arena->free = (uint8*)subArena.base + elementSize*count;
-  CheckArenaBounds(arena);
+  check_arena_bounds(arena);
   subArena.limit = arena->free;
   if(clearToZero)
   {
@@ -252,22 +252,22 @@ MemoryArena PushArena_(MemoryArena* arena, int elementSize, int count, bool32 cl
   return subArena;
 }
 
-#define PushOneElement(ARENA, TYPE) ((TYPE* )PushElement_(ARENA, sizeof(TYPE), 1))
-#define PushElement(ARENA, TYPE, COUNT) ((TYPE*)PushElement_(ARENA, sizeof(TYPE), COUNT))
-#define PushSize(ARENA, COUNT) ((uint8* )PushElement_(ARENA, sizeof(uint8), COUNT))
+#define push_one_element(ARENA, TYPE) ((TYPE* )push_element_(ARENA, sizeof(TYPE), 1))
+#define push_element(ARENA, TYPE, COUNT) ((TYPE*)push_element_(ARENA, sizeof(TYPE), COUNT))
+#define push_size(ARENA, COUNT) ((uint8* )push_element_(ARENA, sizeof(uint8), COUNT))
 
-void* PushElement_(MemoryArena* arena, int elementSize, int count)
+void* push_element_(MemoryArena* arena, int elementSize, int count)
 {
   assert(count > 0);
 
   void* element = arena->free;
   arena->free = (uint8*)arena->free + elementSize*count;
-  CheckArenaBounds(arena);
+  check_arena_bounds(arena);
   ClearToZero(element, arena->free);
   return element;
 }
 
-MemoryArena NewArena(int size)
+MemoryArena new_arena(int size)
 {
   MemoryArena arena = {0};
   arena.free = malloc(size);
@@ -275,7 +275,7 @@ MemoryArena NewArena(int size)
   return arena;
 }
 
-char* ReadTextFromFile(MemoryArena* arena, char* fileName)
+char* read_text_from_file(MemoryArena* arena, char* fileName)
 {
   char* text = 0;
   FILE* file = fopen(fileName, "rb");
@@ -284,7 +284,7 @@ char* ReadTextFromFile(MemoryArena* arena, char* fileName)
     fseek(file, 0, SEEK_END);
     uint32 fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
-    text = (char*)PushSize(arena, fileSize+1); // + NULL-terminator
+    text = (char*)push_size(arena, fileSize+1); // + NULL-terminator
     fread(text, fileSize, 1, file);
     fclose(file);
     text[fileSize] = '\0';
@@ -292,7 +292,7 @@ char* ReadTextFromFile(MemoryArena* arena, char* fileName)
   return text;
 }
 
-int ReadStdin(char buf[], int bufSize)
+int read_stdin(char buf[], int bufSize)
 {
   HANDLE hStd = GetStdHandle(STD_INPUT_HANDLE);
   DWORD bytesRead = 0;
@@ -316,30 +316,30 @@ int ReadStdin(char buf[], int bufSize)
   return (int)bytesRead;
 }
 
-void StringInit(String* string, MemoryArena* arena)
+void string_init(String* string, MemoryArena* arena)
 {
   string->arena = arena;
-  string->start = PushElement(arena, char, 1);
+  string->start = push_element(arena, char, 1);
   *string->start = '\0';
   string->end = string->start;
 }
 
 //NOTE: The 0-terminator is not counted.
-uint StringLen(String* string)
+uint string_len(String* string)
 {
   assert(string->start <= string->end);
   uint len = (uint)(string->end - string->start);
   return len;
 }
 
-void AppendString(String* string, char* cstr)
+void append_string(String* string, char* cstr)
 {
   MemoryArena* arena = string->arena;
   assert(string->start <= string->end);
   assert(string->end == (char*)arena->free-1);
-  int len = StrLen(cstr);
-  PushElement(arena, char, len);
-  CopyCStr(string->end, cstr);
+  int len = str_len(cstr);
+  push_element(arena, char, len);
+  copy_cstr(string->end, cstr);
   string->end = (char*)arena->free-1;
 }
 
@@ -361,14 +361,14 @@ typedef struct
 }
 List;
 
-void ListInit(List* list)
+void list_init(List* list)
 {
   list->last = &list->sentinel;
 }
 
-void ListAppend(MemoryArena* arena, List* list, ListElem* elem)
+void list_append(MemoryArena* arena, List* list, ListElem* elem)
 {
-  ListItem* item = PushElement(arena, ListItem, 1);
+  ListItem* item = push_element(arena, ListItem, 1);
   item->elem = elem;
   list->last->next = item;
   item->prev = list->last;
@@ -376,7 +376,7 @@ void ListAppend(MemoryArena* arena, List* list, ListElem* elem)
   list->count++;
 }
 
-ListItem* ListFirstItem(List* list)
+ListItem* list_first_item(List* list)
 {
   return list->sentinel.next;
 }

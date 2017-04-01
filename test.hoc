@@ -1,4 +1,4 @@
-proc Foo(var b, var d)
+proc foo(var b, var d)
 {
   var a;
   var c;
@@ -6,9 +6,11 @@ proc Foo(var b, var d)
   c = b;
 }
 
-proc Main()
+proc main()
 {
   var a;
-  a = 77;
-  Foo(88, a);
+  a = 66;
+  var b;
+  b = 77;
+  foo(a, b);
 }

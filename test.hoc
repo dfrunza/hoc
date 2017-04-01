@@ -1,4 +1,4 @@
-proc Foo(var b)
+proc Foo(var b, var d)
 {
   var a;
   var c;
@@ -8,5 +8,7 @@ proc Foo(var b)
 
 proc Main()
 {
-  Foo(88);
+  var a;
+  a = 77;
+  Foo(88, a);
 }

@@ -1697,17 +1697,10 @@ typedef struct
 }
 IrActivationRecord;
 
-//typedef struct IrProcActivation_
-//{
-//  struct IrProcActivation_*  parent;
-//  IrActivationRecord* actvRecord;
-//}
-//IrProcActivation;
-
 typedef struct
 {
-  List avRecordStack;
-  IrActivationRecord* avRecord;
+  List actvRecordStack;
+  IrActivationRecord* actvRecord;
   int fp;
   int sp;
 }
@@ -1756,7 +1749,7 @@ void IrSetVarValue(IrValue* irValue, IrExecutionContext* execContext, VarOccur* 
   Symbol* symbol = varOccur->symbol;
   IrVar* irVar = &irValue->var;
   irVar->isNonLocal = varOccur->isNonLocal;
-  IrActivationRecord* actvRecord = execContext->avRecord;
+  IrActivationRecord* actvRecord = execContext->actvRecord;
 
   if(varOccur->isNonLocal)
   {
@@ -1783,9 +1776,8 @@ IrNode* IrBuildLValue(MemoryArena* arena, IrExecutionContext* execContext, VarOc
 {
   IrNode* irNode = PushElement(arena, IrNode, 1);
   irNode->kind = IrNodeKind_LoadLValue;
-  IrValue* irValue = &irNode->value;
-  irValue->kind = IrValueKind_Var;
-  IrSetVarValue(irValue, execContext, varOccur);
+  irNode->value.kind = IrValueKind_Var;
+  IrSetVarValue(&irNode->value, execContext, varOccur);
   return irNode;
 }
 
@@ -1797,16 +1789,14 @@ IrNode* IrBuildRValue(MemoryArena* arena, IrExecutionContext* execContext, AstNo
     VarOccur* varOccur = &astNode->varOccur;
 
     irNode->kind = IrNodeKind_LoadRValue;
-    IrValue* irValue = &irNode->value;
-    irValue->kind = IrValueKind_Var;
-    IrSetVarValue(irValue, execContext, varOccur);
+    irNode->value.kind = IrValueKind_Var;
+    IrSetVarValue(&irNode->value, execContext, varOccur);
   }
   else if(astNode->kind == AstNodeKind_IntNum)
   {
     irNode->kind = IrNodeKind_LoadRValue;
-    IrValue* irValue = &irNode->value;
-    irValue->kind = IrValueKind_IntNum;
-    irValue->intNum = astNode->intNum.value;
+    irNode->value.kind = IrValueKind_IntNum;
+    irNode->value.intNum = astNode->intNum.value;
   }
   return irNode;
 }
@@ -1913,8 +1903,8 @@ IrNode* IrBuildProc(MemoryArena* arena, IrExecutionContext* execContext, Proc* p
 //    }
 //  }/*<<<*/
 
-  ListAppend(arena, &execContext->avRecordStack, actvRecord);
-  execContext->avRecord = actvRecord;
+  ListAppend(arena, &execContext->actvRecordStack, actvRecord);
+  execContext->actvRecord = actvRecord;
 
   IrNode* irNode = PushElement(arena, IrNode, 1);
   irNode->kind = IrNodeKind_Proc;
@@ -1964,9 +1954,8 @@ IrNode* IrBuildModule(MemoryArena* arena, IrExecutionContext* execContext, Modul
   {
     AstNode* astProcNode = procItem->elem;
     assert(astProcNode->kind == AstNodeKind_Proc);
-    Proc* astProc = &astProcNode->proc;
     IrNode* irProcNode = IrBuildProc(arena, execContext, &astProcNode->proc);
-    astProc->irProc = &irProcNode->proc;
+    astProcNode->proc.irProc = &irProcNode->proc;
     ListAppend(arena, &irModule->procList, irProcNode);
     if(StrMatch(astProcNode->proc.name, "Main"))
       irModule->mainProc = &irProcNode->proc;
@@ -1978,10 +1967,9 @@ IrNode* IrBuildModule(MemoryArena* arena, IrExecutionContext* execContext, Modul
   {
     IrNode* irCallNode = PushElement(arena, IrNode, 1);
     irCallNode->kind = IrNodeKind_Call;
-    IrCall* irCall = &irCallNode->call;
-    irCall->proc = irModule->mainProc;
-    ListInit(&irCall->actualArgs);
-    irModule->mainCall = irCall;
+    irCallNode->call.proc = irModule->mainProc;
+    ListInit(&irCallNode->call.actualArgs);
+    irModule->mainCall = &irCallNode->call;
   } else
     Error("Missing Main() procedure");
 
@@ -2045,14 +2033,15 @@ void GenCall(MemoryArena* arena, List* code, IrCall* call)
   IrProc* proc = call->proc;
   IrActivationRecord* actvRecord = proc->actvRecord;
   assert(actvRecord->kind == IrAvRecord_Proc);
-  IrProcAvRecord* procAv = &actvRecord->proc;
-  EmitInstrInt(arena, code, Opcode_ALLOC, procAv->ret.size);
+  if(actvRecord->proc.ret.size > 0)
+    EmitInstrInt(arena, code, Opcode_ALLOC, actvRecord->proc.ret.size);
 
   ListItem* argItem = ListFirstItem(&call->actualArgs);
   while(argItem)
   {
-    IrValue* argValue = argItem->elem;
-    GenLoadRValue(arena, code, argValue);
+    IrNode* argNode = argItem->elem;
+    assert(argNode->kind == IrNodeKind_LoadRValue);
+    GenLoadRValue(arena, code, &argNode->value);
     argItem = argItem->next;
   }
 
@@ -2100,6 +2089,10 @@ void GenCode(MemoryArena* arena, List* code, IrNode* irNode)
     case(IrNodeKind_Module):
     {
       IrModule* module = &irNode->module;
+
+      GenCall(arena, code, module->mainCall);
+      EmitInstr(arena, code, Opcode_HALT);
+
       ListItem* item = ListFirstItem(&module->procList);
       while(item)
       {
@@ -2107,8 +2100,6 @@ void GenCode(MemoryArena* arena, List* code, IrNode* irNode)
         GenCode(arena, code, irNode);
         item = item->next;
       }
-      GenCall(arena, code, module->mainCall);
-      EmitInstr(arena, code, Opcode_HALT);
     } break;
 
     case(IrNodeKind_Proc):
@@ -2129,10 +2120,10 @@ void GenCode(MemoryArena* arena, List* code, IrNode* irNode)
 //        }
 //      }/*<<<*/
 
-      IrActivationRecord* avRecord = proc->actvRecord;
-      IrProcAvRecord* procAv = &avRecord->proc;
-      IrStackArea* localsArea = &procAv->locals;
-      EmitInstrInt(arena, code, Opcode_ALLOC, localsArea->size);
+      IrActivationRecord* actvRecord = proc->actvRecord;
+      IrStackArea* localsArea = &actvRecord->proc.locals;
+      if(localsArea->size > 0)
+        EmitInstrInt(arena, code, Opcode_ALLOC, localsArea->size);
 
       {
         ListItem* item = ListFirstItem(&proc->instrList);
@@ -2877,7 +2868,7 @@ bool32 TranslateHoc(MemoryArena* arena, char* filePath, char* hocProgram, VmProg
 
     //IrActivationRecord topActvRecord = {0};
     IrExecutionContext execContext = {0};
-    ListInit(&execContext.avRecordStack);
+    ListInit(&execContext.actvRecordStack);
     //ListAppend(arena, &execContext.avRecordStack, &topActvRecord);
     IrNode* irModuleNode = IrBuildModule(arena, &execContext, &astNode->module);
 

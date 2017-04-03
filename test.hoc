@@ -1,8 +1,13 @@
-proc main()
+proc foo(var a)
 {
-  var a;
-  a = 129;
   var c;
   c = a+13+21;
+  return c;
+}
+
+proc main()
+{
+  var c;
+  c = foo(129);
   return -c-1;
 }

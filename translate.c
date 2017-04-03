@@ -198,7 +198,6 @@ typedef struct
   char*    name;
   List     actual_args;
   AstProc* proc;
-//  bool32   is_statement;
 }
 AstCall;
 
@@ -1611,6 +1610,7 @@ typedef enum
 IrOpKind;
 
 typedef struct IrNode_ IrNode;
+typedef struct IrValue_ IrValue;
 
 typedef enum
 {
@@ -1641,15 +1641,15 @@ IrCall;
 typedef struct
 {
   IrOpKind op;
-  IrNode*  left_operand;
-  IrNode*  right_operand;
+  IrValue* left_operand;
+  IrValue* right_operand;
 }
 IrBinExpr;
 
 typedef struct
 {
   IrOpKind op;
-  IrNode*  operand;
+  IrValue* operand;
 }
 IrUnrExpr;
 
@@ -1661,13 +1661,13 @@ typedef struct
 }
 IrReturn;
 
-typedef struct
+typedef struct IrValue_
 {
   IrValueKind kind;
 
   union {
     int32      int_num;
-    IrVar*     var; // should it be a pointer?
+    IrVar*     var;
     IrCall*    call;
     IrBinExpr* bin_expr;
     IrUnrExpr* unr_expr;
@@ -1794,8 +1794,10 @@ IrNode* ir_build_bin_expr(MemoryArena* arena, IrActivationRecord* actv_rec, AstB
 
   AstNode* left_operand = bin_expr->left_operand;
   AstNode* right_operand = bin_expr->right_operand;
-  ir_op->right_operand = ir_build_value(arena, actv_rec, right_operand);
-  ir_op->left_operand = ir_build_value(arena, actv_rec, left_operand);
+  IrNode* val_node = ir_build_value(arena, actv_rec, right_operand);
+  ir_op->right_operand = &val_node->value;
+  val_node = ir_build_value(arena, actv_rec, left_operand);
+  ir_op->left_operand = &val_node->value;
 
   if(bin_expr->op == AstOperatorKind_Assign)
   {
@@ -1821,10 +1823,31 @@ IrNode* ir_build_unr_expr(MemoryArena* arena, IrActivationRecord* actv_rec, AstU
   IrNode* ir_node = push_element(arena, IrNode, 1);
   ir_node->kind = IrNodeKind_UnrExpr;
   IrUnrExpr* ir_op = &ir_node->unr_expr;
-  ir_op->operand = ir_build_value(arena, actv_rec, unr_expr->operand);
+  IrNode* val_node = ir_build_value(arena, actv_rec, unr_expr->operand);
+  ir_op->operand = &val_node->value;
   if(unr_expr->op == AstOperatorKind_Neg)
     ir_op->op = IrOpKind_Neg;
   return ir_node;
+}/*<<<*/
+
+IrNode* ir_build_call(MemoryArena* arena, IrActivationRecord* actv_rec, AstCall* ast_call)
+{/*>>>*/
+  IrNode* ir_call_node = push_element(arena, IrNode, 1);
+  ir_call_node->kind = IrNodeKind_Call;
+  IrCall* ir_call = &ir_call_node->call;
+  IrProc* ir_proc = ast_call->proc->ir_proc;
+  ir_call->proc = ir_proc;
+
+  list_init(&ir_call->actual_args);
+  ListItem* argItem = list_first_item(&ast_call->actual_args);
+  while(argItem)
+  {
+    IrNode* val_node = ir_build_value(arena, actv_rec, (AstNode*)argItem->elem);
+    list_append(arena, &ir_call->actual_args, &val_node->value);
+    argItem = argItem->next;
+  }
+
+  return ir_call_node;
 }/*<<<*/
 
 IrNode* ir_build_value(MemoryArena* arena, IrActivationRecord* actv_rec, AstNode* ast_node)
@@ -1854,30 +1877,15 @@ IrNode* ir_build_value(MemoryArena* arena, IrActivationRecord* actv_rec, AstNode
     IrNode* op_node = ir_build_unr_expr(arena, actv_rec, &ast_node->unr_expr);
     ir_node->value.unr_expr = &op_node->unr_expr;
   }
+  else if(ast_node->kind == AstNodeKind_Call)
+  {
+    ir_node->value.kind = IrValueKind_Call;
+    IrNode* call_node = ir_build_call(arena, actv_rec, &ast_node->call);
+    ir_node->value.call = &call_node->call;
+  }
   else
     assert(false);
   return ir_node;
-}/*<<<*/
-
-IrNode* ir_build_call(MemoryArena* arena, IrActivationRecord* actv_rec, AstCall* ast_call)
-{/*>>>*/
-  IrNode* ir_call_node = push_element(arena, IrNode, 1);
-  ir_call_node->kind = IrNodeKind_Call;
-  IrCall* ir_call = &ir_call_node->call;
-  IrProc* ir_proc = ast_call->proc->ir_proc;
-  ir_call->proc = ir_proc;
-
-  list_init(&ir_call->actual_args);
-  ListItem* argItem = list_first_item(&ast_call->actual_args);
-  while(argItem)
-  {
-    AstNode* astArgNode = argItem->elem;
-    IrNode* irArgValue = ir_build_value(arena, actv_rec, astArgNode);
-    list_append(arena, &ir_call->actual_args, irArgValue);
-    argItem = argItem->next;
-  }
-
-  return ir_call_node;
 }/*<<<*/
 
 IrNode* ir_build_return(MemoryArena* arena, IrActivationRecord* actv_rec, AstReturnStmt* ast_ret)
@@ -1903,12 +1911,11 @@ IrNode* ir_build_return(MemoryArena* arena, IrActivationRecord* actv_rec, AstRet
   assgn_op->op = IrOpKind_Store;
   assert(actv_rec->kind == IrAvRecord_Proc);
   IrProcAvRecord* proc_actv_rec = &actv_rec->proc;
-  IrNode* left_operand = push_element(arena, IrNode, 1);
-  left_operand->kind = IrNodeKind_Value;
-  left_operand->value.kind = IrValueKind_Var;
-  left_operand->value.var = &proc_actv_rec->ret_var;
+  IrValue* left_operand = push_element(arena, IrValue, 1);
+  left_operand->kind = IrValueKind_Var;
+  left_operand->var = &proc_actv_rec->ret_var;
   assgn_op->left_operand = left_operand;
-  assgn_op->right_operand = ret_val;
+  assgn_op->right_operand = &ret_val->value;
   ir_ret->assgn_expr = assgn_op;
 
   ir_ret->proc = ast_ret->proc->ir_proc;
@@ -2104,8 +2111,8 @@ void emit_instr_str(MemoryArena* arena, List* instr_list, Opcode opcode, char* s
   list_append(arena, instr_list, instr);
 }/*<<<*/
 
-void gen_load_rvalue(MemoryArena*, List*, IrNode*);
-void gen_load_lvalue(MemoryArena*, List*, IrNode*);
+void gen_load_rvalue(MemoryArena*, List*, IrValue*);
+void gen_load_lvalue(MemoryArena*, List*, IrValue*);
 
 void gen_bin_expr(MemoryArena* arena, List* code, IrBinExpr* bin_expr)
 {/*>>>*/
@@ -2152,27 +2159,27 @@ void gen_call(MemoryArena* arena, List* code, IrCall* call)
   IrProc* proc = call->proc;
   IrActivationRecord* actv_rec = proc->actv_rec;
   assert(actv_rec->kind == IrAvRecord_Proc);
-  if(actv_rec->proc.ret.size > 0)
-    emit_instr_int(arena, code, Opcode_ALLOC, actv_rec->proc.ret.size);
+  IrProcAvRecord* proc_actv_rec = &actv_rec->proc;
+  if(proc_actv_rec->ret.size > 0)
+    emit_instr_int(arena, code, Opcode_ALLOC, proc_actv_rec->ret.size);
 
   ListItem* argItem = list_first_item(&call->actual_args);
   while(argItem)
   {
-    IrNode* argNode = argItem->elem;
-    assert(argNode->kind == IrNodeKind_Value);
-    gen_load_rvalue(arena, code, argNode);
+    IrValue* arg_val = argItem->elem;
+    gen_load_rvalue(arena, code, arg_val);
     argItem = argItem->next;
   }
 
   emit_instr_str(arena, code, Opcode_CALL, proc->label);
+  if(proc_actv_rec->args.size > 0)
+    emit_instr_int(arena, code, Opcode_POP, proc_actv_rec->args.size); // discard args
 }/*<<<*/
 
-void gen_load_lvalue(MemoryArena* arena, List* code, IrNode* ir_node)
+void gen_load_lvalue(MemoryArena* arena, List* code, IrValue* ir_value)
 {/*>>>*/
-  assert(ir_node->kind == IrNodeKind_Value);
-  IrValue* value = &ir_node->value;
-  assert(value->kind == IrValueKind_Var);
-  IrVar* var = value->var;
+  assert(ir_value->kind == IrValueKind_Var);
+  IrVar* var = ir_value->var;
   if(var->is_non_local)
   {
     emit_instr_reg(arena, code, Opcode_PUSH, RegName_FP);
@@ -2187,30 +2194,28 @@ void gen_load_lvalue(MemoryArena* arena, List* code, IrNode* ir_node)
   emit_instr(arena, code, Opcode_ADD);
 }/*<<<*/
 
-void gen_load_rvalue(MemoryArena* arena, List* code, IrNode* ir_node)
+void gen_load_rvalue(MemoryArena* arena, List* code, IrValue* ir_value)
 {/*>>>*/
-  assert(ir_node->kind == IrNodeKind_Value);
-  IrValue* value = &ir_node->value;
-  if(value->kind == IrValueKind_Var)
+  if(ir_value->kind == IrValueKind_Var)
   {
-    gen_load_lvalue(arena, code, ir_node);
+    gen_load_lvalue(arena, code, ir_value);
     emit_instr(arena, code, Opcode_LOAD);
   }
-  else if(value->kind == IrValueKind_Call)
+  else if(ir_value->kind == IrValueKind_Call)
   {
-    gen_call(arena, code, value->call);
+    gen_call(arena, code, ir_value->call);
   }
-  else if(value->kind == IrValueKind_IntNum)
+  else if(ir_value->kind == IrValueKind_IntNum)
   {
-    emit_instr_int(arena, code, Opcode_PUSH, value->int_num);
+    emit_instr_int(arena, code, Opcode_PUSH, ir_value->int_num);
   }
-  else if(value->kind == IrValueKind_BinExpr)
+  else if(ir_value->kind == IrValueKind_BinExpr)
   {
-    gen_bin_expr(arena, code, value->bin_expr);
+    gen_bin_expr(arena, code, ir_value->bin_expr);
   }
-  else if(value->kind == IrValueKind_UnrExpr)
+  else if(ir_value->kind == IrValueKind_UnrExpr)
   {
-    gen_unr_expr(arena, code, value->unr_expr);
+    gen_unr_expr(arena, code, ir_value->unr_expr);
   }
   else
     assert(false);
@@ -2340,6 +2345,8 @@ void print_code(VmProgram* vm_program)
           print_instruction(vm_program, "pop %s", get_regname_str(instr->param.reg));
         else if(instr->param_type == ParamType__Null)
           print_instruction(vm_program, "pop");
+        else if(instr->param_type == ParamType_Int32)
+          print_instruction(vm_program, "pop %d", instr->param.int_num);
         else
           assert(false);
       } break;

@@ -1,10 +1,10 @@
 #include "lib.c"
-#include "ir.h"
+#include "hasm.h"
 
 typedef struct
 {
   char* string;
-  int instrAddress;
+  int instr_address;
 }
 Label;
 
@@ -12,61 +12,61 @@ typedef struct
 {
   char* text;
 
-  int maxLines;
-  int lineCount;
+  int max_lines;
+  int line_count;
   InstructionLine lines[1024];
 
-  int maxLabels;
-  int labelCount;
+  int max_labels;
+  int labesl_count;
   Label labels[512]; //FIXME: Unchecked bounds
 }
 SourceProgram;
 
-int break_instr_into_components(char* str, char* components[], int maxComponentCount)
+int break_instr_into_components(char* str, char* components[], int max_component_count)
 {/*>>>*/
-  int componentCount = 0;
+  int component_count = 0;
 
   char* component = str;
-  char* charPtr = str;
+  char* char_ptr = str;
 
   do
   {
-    while(*charPtr != '\0' && *charPtr != ' ' && *charPtr != ';')
-      charPtr++;
+    while(*char_ptr != '\0' && *char_ptr != ' ' && *char_ptr != ';')
+      char_ptr++;
 
-    if(componentCount < maxComponentCount)
-      components[componentCount++] = component;
+    if(component_count < max_component_count)
+      components[component_count++] = component;
     else
-      return maxComponentCount+1;
+      return max_component_count+1;
 
-    if(*charPtr != '\0')
+    if(*char_ptr != '\0')
     {
-      if(*charPtr == ';')
+      if(*char_ptr == ';')
       {
-        while(*charPtr != '\0')
-          *charPtr++ = '\0';
+        while(*char_ptr != '\0')
+          *char_ptr++ = '\0';
       }
       else
       {
-        while(*charPtr == ' ')
-          *charPtr++ = '\0';
-        component = charPtr;
+        while(*char_ptr == ' ')
+          *char_ptr++ = '\0';
+        component = char_ptr;
       }
     }
-  } while(*charPtr != '\0' && *charPtr != ';');
+  } while(*char_ptr != '\0' && *char_ptr != ';');
 
-  return componentCount;
+  return component_count;
 }/*<<<*/
 
 int find_instr_address_at_line(SourceProgram* source, int lineNr)
 {
   int result = -1;
   InstructionLine* line = source->lines;
-  for(int lineIndex = 0; lineIndex < source->lineCount; lineIndex++)
+  for(int line_index = 0; line_index < source->line_count; line_index++)
   {
-    if(line->sourceLineNr == lineNr)
+    if(line->source_line_nr == lineNr)
     {
-      result = lineIndex;
+      result = line_index;
       break;
     }
     line++;
@@ -74,13 +74,13 @@ int find_instr_address_at_line(SourceProgram* source, int lineNr)
   return result;
 }
 
-Label* find_label(SourceProgram* source, char* labelString)
+Label* find_label(SourceProgram* source, char* label_string)
 {
   Label* result = 0;
-  for(int i = 0; i < source->labelCount; i++)
+  for(int i = 0; i < source->labesl_count; i++)
   {
     Label* label = &source->labels[i];
-    if(str_equals(label->string, labelString))
+    if(str_equals(label->string, label_string))
     {
       result = label;
       break;
@@ -91,68 +91,67 @@ Label* find_label(SourceProgram* source, char* labelString)
 
 bool32 is_valid_label(char *label)
 {
-  char startChar = *label;
-  return ('A' <= startChar && startChar <= 'Z') || ('a' <= startChar && startChar <= 'z') || startChar == '.';
+  char start_char = *label;
+  return ('A' <= start_char && start_char <= 'Z') || ('a' <= start_char && start_char <= 'z') || start_char == '.';
 }
 
 void process_source_lines(SourceProgram* source)
 {/*>>>*/
-  source->lineCount = 0;
-  char* charPtr = &source->text[0];
-  if(*charPtr != '\0')
+  source->line_count = 0;
+  char* char_ptr = &source->text[0];
+  if(*char_ptr != '\0')
   {
-    int sourceLineNr = 1;
+    int source_line_nr = 1;
 
-    if(*charPtr != '\n' && *charPtr != ';')
+    if(*char_ptr != '\n' && *char_ptr != ';')
     {
-      InstructionLine instrLine = {0};
-      instrLine.sourceLineNr = sourceLineNr;
-      instrLine.string = charPtr;
-      source->lines[source->lineCount++] = instrLine;
+      InstructionLine instr_line = {0};
+      instr_line.source_line_nr = source_line_nr;
+      instr_line.string = char_ptr;
+      source->lines[source->line_count++] = instr_line;
 
-      charPtr++;
-      while(*charPtr != '\0')
+      char_ptr++;
+      while(*char_ptr != '\0')
       {
-        if(*charPtr == '\n')
+        if(*char_ptr == '\n')
         {
-          sourceLineNr++;
+          source_line_nr++;
 
-          char* nextCharPtr = charPtr+1;
-          if(*nextCharPtr != '\0' && *nextCharPtr != '\n' && *nextCharPtr != ';')
+          char* next_char_ptr = char_ptr+1;
+          if(*next_char_ptr != '\0' && *next_char_ptr != '\n' && *next_char_ptr != ';')
           {
-            memset(&instrLine, 0, sizeof(instrLine));
-            instrLine.sourceLineNr = sourceLineNr;
-            instrLine.string = nextCharPtr;
-            source->lines[source->lineCount++] = instrLine;
+            memset(&instr_line, 0, sizeof(instr_line));
+            instr_line.source_line_nr = source_line_nr;
+            instr_line.string = next_char_ptr;
+            source->lines[source->line_count++] = instr_line;
           }
-          *charPtr = '\0';
+          *char_ptr = '\0';
         }
-        charPtr++;
+        char_ptr++;
       }
     }
   }
 }/*<<<*/
 
-bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, IrCode** out_code)
+bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
 {/*>>>*/
-  IrCode* code = push_element(arena, IrCode, 1);
+  HasmCode* code = push_element(arena, HasmCode, 1);
   copy_cstr(code->groove, "IRC");
-  code->codeStart = (uint8*)code;
-  code->instrCount = source->lineCount;
-  code->instrArray = push_element(arena, Instruction, code->instrCount);
-  code->codeSize = (int)((uint8*)arena->free - code->codeStart);
+  code->code_start = (uint8*)code;
+  code->instr_count = source->line_count;
+  code->instr_array = push_element(arena, Instruction, code->instr_count);
+  code->code_size = (int)((uint8*)arena->free - code->code_start);
   *out_code = code;
 
-  for(int instrAddress = 0; instrAddress < code->instrCount; instrAddress++)
+  for(int instr_address = 0; instr_address < code->instr_count; instr_address++)
   {
     Instruction instr = {0};
-    InstructionLine* instrLine = &source->lines[instrAddress];
-    instr.sourceLineNr = instrLine->sourceLineNr;
+    InstructionLine* instr_line = &source->lines[instr_address];
+    instr.source_line_nr = instr_line->source_line_nr;
 
     char* components[2] = {0};
-    int componentCount = break_instr_into_components(instrLine->string,
-                                                     components, sizeof_array(components));
-    if(componentCount >= 1 && componentCount <= sizeof_array(components))
+    int component_count = break_instr_into_components(instr_line->string, components, sizeof_array(components));
+    if(component_count >= 1 && component_count <= sizeof_array(components))
     {
       char* mnemonic = components[0];
 
@@ -213,7 +212,7 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, IrCode** out_cod
         return false;
       }
 
-      if(componentCount == 2)
+      if(component_count == 2)
       {
         switch(instr.opcode)
         {
@@ -274,10 +273,10 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, IrCode** out_cod
 
                 Label label = {0};
                 label.string = components[1];
-                label.instrAddress = instrAddress;
+                label.instr_address = instr_address;
 
                 if(!find_label(source, label.string))
-                  source->labels[source->labelCount++] = label;
+                  source->labels[source->labesl_count++] = label;
                 else {
                   error("Duplicate label declaration '%s'", label.string);
                   return false;
@@ -294,7 +293,7 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, IrCode** out_cod
         }
       }
 
-      code->instrArray[instrAddress] = instr;
+      code->instr_array[instr_address] = instr;
     }
     else
     {
@@ -303,22 +302,22 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, IrCode** out_cod
     }
   }
 
-  for(int labelIndex = 0; labelIndex < source->labelCount; labelIndex++)
+  for(int labelIndex = 0; labelIndex < source->labesl_count; labelIndex++)
   {
     Label* label = &source->labels[labelIndex];
-    int targetInstrAddress = label->instrAddress+1;
-    for(; targetInstrAddress < code->instrCount; targetInstrAddress++)
+    int target_instr_address = label->instr_address+1;
+    for(; target_instr_address < code->instr_count; target_instr_address++)
     {
-      Instruction* instr = &code->instrArray[targetInstrAddress];
+      Instruction* instr = &code->instr_array[target_instr_address];
       if(instr->opcode != Opcode_LABEL)
         break;
     }
-    if(targetInstrAddress < code->instrCount)
+    if(target_instr_address < code->instr_count)
     {
-      Instruction* labelInstr = &code->instrArray[label->instrAddress];
-      labelInstr->param_type = ParamType_Int32;
-      labelInstr->param.int_num = targetInstrAddress;
-      label->instrAddress = targetInstrAddress;
+      Instruction* label_instr = &code->instr_array[label->instr_address];
+      label_instr->param_type = ParamType_Int32;
+      label_instr->param.int_num = target_instr_address;
+      label->instr_address = target_instr_address;
     }
     else {
       error("Could not find a non-label instruction following the label %s", label->string);
@@ -326,9 +325,9 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, IrCode** out_cod
     }
   }
 
-  for(int instrAddress = 0; instrAddress < code->instrCount; instrAddress++)
+  for(int instr_address = 0; instr_address < code->instr_count; instr_address++)
   {
-    Instruction* instr = &code->instrArray[instrAddress];
+    Instruction* instr = &code->instr_array[instr_address];
     if(instr->opcode == Opcode_GOTO ||
        instr->opcode == Opcode_JUMPNZ ||
        instr->opcode == Opcode_JUMPZ ||
@@ -339,7 +338,7 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, IrCode** out_cod
       if(label)
       {
         instr->param_type = ParamType_Int32;
-        instr->param.int_num = label->instrAddress;
+        instr->param.int_num = label->instr_address;
       }
       else {
         error("Label '%s' not found", instr->param.str);
@@ -351,7 +350,7 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, IrCode** out_cod
   return true;
 }/*<<<*/
 
-bool32 translate_ir_to_code(MemoryArena* arena, char* text, IrCode** code)
+bool32 translate_ir_to_code(MemoryArena* arena, char* text, HasmCode** code)
 {
   bool32 success = true;
 

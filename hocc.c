@@ -22,71 +22,71 @@ typedef struct
 }
 OutFileNames;
 
-char* get_file_stem(char* filePath)
+char* get_file_stem(char* file_path)
 {
-  char* pChar = filePath;
-  char* stem = pChar;
+  char* p_char = file_path;
+  char* stem = p_char;
 
   // Get the file name part
-  while(pChar && *pChar)
+  while(p_char && *p_char)
   {
-    while(*pChar && *pChar != '\\')
-      pChar++;
-    if(*pChar == '\\')
-      stem = ++pChar;
+    while(*p_char && *p_char != '\\')
+      p_char++;
+    if(*p_char == '\\')
+      stem = ++p_char;
   }
 
   // Remove the extension
   if(stem)
   {
-    char* pChar = stem;
-    while(*pChar && *pChar != '.')
-      pChar++;
-    *pChar = '\0';
+    char* p_char = stem;
+    while(*p_char && *p_char != '.')
+      p_char++;
+    *p_char = '\0';
   }
   return stem;
 }
 
-bool32 make_file_names(OutFileNames* outFiles, char* stem)
+bool32 make_file_names(OutFileNames* out_files, char* stem)
 {
-  int stemLen = str_len(stem);
-  assert(stemLen > 0);
-  bool32 success = (stemLen > 0 && stemLen < 80);
+  int stem_len = str_len(stem);
+  assert(stem_len > 0);
+  bool32 success = (stem_len > 0 && stem_len < 80);
 
   if(success)
   {
-    char* str = outFiles->strings;
+    char* str = out_files->strings;
 
     sprintf(str, "%s.ir", stem);
-    outFiles->ir.name = str;
-    outFiles->ir.len = str_len(outFiles->ir.name);
-    str = outFiles->ir.name + outFiles->ir.len + 1;
+    out_files->ir.name = str;
+    out_files->ir.len = str_len(out_files->ir.name);
+    str = out_files->ir.name + out_files->ir.len + 1;
 
     sprintf(str, "%s.irc", stem);
-    outFiles->irc.name = str;
-    outFiles->irc.len = str_len(outFiles->irc.name);
-    str = outFiles->irc.name + outFiles->irc.len + 1;
+    out_files->irc.name = str;
+    out_files->irc.len = str_len(out_files->irc.name);
+    str = out_files->irc.name + out_files->irc.len + 1;
 
     sprintf(str, "%s.rc", stem);
-    outFiles->rc.name = str;
-    outFiles->rc.len = str_len(outFiles->rc.name);
-    str = outFiles->rc.name + outFiles->rc.len + 1;
+    out_files->rc.name = str;
+    out_files->rc.len = str_len(out_files->rc.name);
+    str = out_files->rc.name + out_files->rc.len + 1;
 
     sprintf(str, "%s.res", stem);
-    outFiles->res.name = str;
-    outFiles->res.len = str_len(outFiles->res.name);
+    out_files->res.name = str;
+    out_files->res.len = str_len(out_files->res.name);
   } else
     error("Length of file name out of range : '%s'", stem);
   return success;
 }
 
-bool32 write_res_file(OutFileNames* outFiles)
+bool32 write_res_file(OutFileNames* out_files)
 {
   char buf[200];
-  sprintf(buf, OUT_RC, outFiles->irc.name);
+  sprintf(buf, OUT_RC, out_files->irc.name);
   int text_len = str_len(buf);
-  int bytesWritten = write_bytes_to_file(outFiles->rc.name, buf, text_len);
-  bool32 success = (bytesWritten == text_len);
+  int bytes_written = write_bytes_to_file(out_files->rc.name, buf, text_len);
+  bool32 success = (bytes_written == text_len);
   if(success)
   {
     STARTUPINFO startInfo = {0};
@@ -95,40 +95,40 @@ bool32 write_res_file(OutFileNames* outFiles)
     startInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
     startInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 
-    PROCESS_INFORMATION procInfo = {0};
-    sprintf(buf, "rc.exe /nologo /fo%s %s", outFiles->res.name, outFiles->rc.name);
-    DWORD exitCode = 0;
-    success = CreateProcess(0, buf, 0, 0, true, 0, 0, 0, &startInfo, &procInfo);
+    PROCESS_INFORMATION proc_info = {0};
+    sprintf(buf, "rc.exe /nologo /fo%s %s", out_files->res.name, out_files->rc.name);
+    DWORD exit_code = 0;
+    success = CreateProcess(0, buf, 0, 0, true, 0, 0, 0, &startInfo, &proc_info);
     if(success)
     {
-      WaitForSingleObject(procInfo.hProcess, INFINITE);
-      GetExitCodeProcess(procInfo.hProcess, &exitCode);
-      success = (exitCode == 0);
+      WaitForSingleObject(proc_info.hProcess, INFINITE);
+      GetExitCodeProcess(proc_info.hProcess, &exit_code);
+      success = (exit_code == 0);
 
-      CloseHandle(procInfo.hProcess);
-      CloseHandle(procInfo.hThread);
+      CloseHandle(proc_info.hProcess);
+      CloseHandle(proc_info.hThread);
     } else
       error("Process could not be launched : %s", buf);
   } else
-    error("RC file '%s' incompletely written", outFiles->rc.name);
+    error("RC file '%s' incompletely written", out_files->rc.name);
   return success;
 }
 
-bool32 write_ir_file(OutFileNames* outFiles, VmProgram* vm_program)
+bool32 write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
 {
-  int bytesWritten = write_bytes_to_file(outFiles->ir.name, vm_program->text.start, vm_program->text_len);
-  bool32 success = (bytesWritten == vm_program->text_len);
+  int bytes_written = write_bytes_to_file(out_files->ir.name, vm_program->text.start, vm_program->text_len);
+  bool32 success = (bytes_written == vm_program->text_len);
   if(!success)
-    error("IR file '%s' incompletely written", outFiles->ir.name);
+    error("IR file '%s' incompletely written", out_files->ir.name);
   return success;
 }
 
-bool32 write_irc_file(OutFileNames* outFiles, IrCode* irCode)
+bool32 write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
 {
-  int bytesWritten = write_bytes_to_file(outFiles->irc.name, (char*)irCode->codeStart, irCode->codeSize);
-  bool32 success = (bytesWritten == irCode->codeSize);
+  int bytes_written = write_bytes_to_file(out_files->irc.name, (char*)hasm_code->code_start, hasm_code->code_size);
+  bool32 success = (bytes_written == hasm_code->code_size);
   if(!success)
-    error("IRC file '%s' incompletely written", outFiles->irc.name);
+    error("IRC file '%s' incompletely written", out_files->irc.name);
   return success;
 }
 
@@ -140,29 +140,29 @@ int main(int argc, char* argv[])
   {
     MemoryArena arena = new_arena(10*MEGABYTE);
 
-    char* filePath = argv[1];
-    char* hocProgram = read_text_from_file(&arena, filePath);
-    if(hocProgram)
+    char* file_path = argv[1];
+    char* hoc_program = read_text_from_file(&arena, file_path);
+    if(hoc_program)
     {
       VmProgram vm_program = {0};
-      bool32 success = translate_hoc(&arena, filePath, hocProgram, &vm_program);
+      bool32 success = translate_hoc(&arena, file_path, hoc_program, &vm_program);
       if(success)
       {
-        OutFileNames outFiles = {0};
-        char* fileStem = get_file_stem(filePath);
+        OutFileNames out_files = {0};
+        char* fileStem = get_file_stem(file_path);
 
-        success = make_file_names(&outFiles, fileStem) &&
-          write_ir_file(&outFiles, &vm_program);
+        success = make_file_names(&out_files, fileStem) &&
+          write_ir_file(&out_files, &vm_program);
 #if 1
         if(success)
         {
-          IrCode* irCode = 0;
-          char* irText = vm_program.text.start;
-          bool32 success = translate_ir_to_code(&arena, irText, &irCode);
+          HasmCode* hasm_code = 0;
+          char* hasm_text = vm_program.text.start;
+          bool32 success = translate_ir_to_code(&arena, hasm_text, &hasm_code);
 
           if(success)
           {
-            success = write_irc_file(&outFiles, irCode) && write_res_file(&outFiles);
+            success = write_irc_file(&out_files, hasm_code) && write_res_file(&out_files);
             if(success)
               ret = 0;
           }
@@ -172,7 +172,7 @@ int main(int argc, char* argv[])
 #endif
       }
     } else
-      error("File '%s' could not be read", filePath);
+      error("File could not be read: %s", file_path);
   } else
     error("Missing argument: input source file");
 

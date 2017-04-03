@@ -1,16 +1,8 @@
-proc foo(var b, var d)
-{
-  var a;
-  var c;
-  a = 99;
-  c = b;
-}
-
 proc main()
 {
   var a;
-  a = 66;
-  var b;
-  b = 77;
-  foo(a, b);
+  a = 129;
+  var c;
+  c = a+13+21;
+  return -c-1;
 }

@@ -34,7 +34,7 @@ Opcode;
 
 typedef struct
 {
-  int sourceLineNr;
+  int   source_line_nr;
   char* string;
 }
 InstructionLine;
@@ -68,16 +68,17 @@ typedef struct
     char*   str;
   } param;
 
-  int sourceLineNr;
+  int source_line_nr;
 }
 Instruction;
 
 typedef struct
 {
   char         groove[4];
-  int          instrCount;
-  uint8*       codeStart;
-  int          codeSize;
-  Instruction* instrArray;
+  int          instr_count;
+  uint8*       code_start;
+  int          code_size;
+  Instruction* instr_array;
 }
-IrCode;
+HasmCode;
+

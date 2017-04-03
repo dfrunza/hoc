@@ -85,16 +85,16 @@ SymbolTable;
 
 typedef enum
 {
-  OperatorKind__Null,
-  OperatorKind_Add,
-  OperatorKind_Sub,
-  OperatorKind_Assign,
-  OperatorKind_Div,
-  OperatorKind_Mul,
-  OperatorKind_Call,
-  OperatorKind_Neg,
+  AstOperatorKind__Null,
+  AstOperatorKind_Add,
+  AstOperatorKind_Sub,
+  AstOperatorKind_Assign,
+  AstOperatorKind_Div,
+  AstOperatorKind_Mul,
+  AstOperatorKind_Call,
+  AstOperatorKind_Neg,
 }
-OperatorKind;
+AstOperatorKind;
 
 typedef enum
 {
@@ -119,40 +119,39 @@ typedef struct
   int actv_rec_offset; // must be greater than zero
   int index;
 }
-AccessLink;
+AstAccessLink;
 
 typedef struct
 {
   List     proc_list;
   AstNode* body;
 }
-Module;
+AstModule;
 
 typedef struct
 {
   Symbol* symbol;
   char*   name;
   bool32  is_argument;
-  int     location; // relative to fp
+  int     loc; // relative to fp
   int     data_size;
 }
-VarDecl;
+AstVarDecl;
 
 typedef struct
 {
-  OperatorKind op;
+  AstOperatorKind op;
   AstNode* left_operand;
   AstNode* right_operand;
-  bool32   is_statement;
 }
-BinExpr;
+AstBinExpr;
 
 typedef struct
 {
-  OperatorKind op;
+  AstOperatorKind op;
   AstNode* operand;
 }
-UnrExpr;
+AstUnrExpr;
 
 typedef struct
 {
@@ -161,24 +160,16 @@ typedef struct
   int         decl_block_offset;
   bool32      is_non_local;
   bool32      is_argument;
-  AccessLink* access_link; // if non-local
-  VarDecl*    var_decl;
+  AstAccessLink* access_link; // if non-local
+  AstVarDecl*    var_decl;
 }
-VarOccur;
+AstVarOccur;
 
 typedef struct
 {
   int32 value;
 }
-IntNum;
-
-typedef struct
-{
-  AstNode* expr;
-  int      intervening_block_count;
-  AstNode* proc;
-}
-ReturnStmt;
+AstIntNum;
 
 typedef struct IrProc_ IrProc;
 typedef struct
@@ -191,17 +182,25 @@ typedef struct
   int      ret_data_size;
   IrProc   *ir_proc;
 }
-Proc;
+AstProc;
 
 typedef struct
 {
-  Symbol* symbol;
-  char*   name;
-  List    actual_args;
-  Proc*   proc;
-  bool32  is_statement;
+  AstNode* expr;
+  int      intervening_block_count;
+  AstProc* proc;
 }
-Call;
+AstReturnStmt;
+
+typedef struct
+{
+  Symbol*  symbol;
+  char*    name;
+  List     actual_args;
+  AstProc* proc;
+//  bool32   is_statement;
+}
+AstCall;
 
 typedef struct
 {
@@ -209,14 +208,14 @@ typedef struct
   AstNode* body;
   AstNode* else_node;
 }
-IfStmt;
+AstIfStmt;
 
 typedef struct
 {
   AstNode* expr;
   AstNode* body;
 }
-WhileStmt;
+AstWhileStmt;
 
 typedef struct Block_
 {
@@ -232,25 +231,25 @@ typedef struct Block_
   List     access_links;
   int      access_links_area_size;
 }
-Block;
+AstBlock;
 
 typedef struct AstNode_
 {
   AstNodeKind  kind;
 
   union {
-    BinExpr    bin_expr;
-    UnrExpr    unr_expr;
-    VarDecl    var_decl;
-    VarOccur   var_occur;
-    IntNum     int_num;
-    Call       call;
-    Proc       proc;
-    Module     module;
-    Block      block;
-    ReturnStmt ret_stmt;
-    WhileStmt  while_stmt;
-    IfStmt     if_stmt;
+    AstBinExpr    bin_expr;
+    AstUnrExpr    unr_expr;
+    AstVarDecl    var_decl;
+    AstVarOccur   var_occur;
+    AstIntNum     int_num;
+    AstCall       call;
+    AstProc       proc;
+    AstModule     module;
+    AstBlock      block;
+    AstReturnStmt ret_stmt;
+    AstWhileStmt  while_stmt;
+    AstIfStmt     if_stmt;
   };
 }
 AstNode;
@@ -273,8 +272,8 @@ typedef struct Symbol_
   Symbol*    next_symbol;
 
   union {
-    VarDecl* var;
-    Proc*    proc;
+    AstVarDecl* var;
+    AstProc*    proc;
     Token    kw_token;
   };
 }
@@ -289,7 +288,7 @@ typedef struct
 }
 VmProgram;
 
-void block_init(SymbolTable* symbol_table, Block* block)
+void block_init(SymbolTable* symbol_table, AstBlock* block)
 {/*>>>*/
   block->block_id = symbol_table->scope_id;
   block->nesting_depth = symbol_table->nesting_depth;
@@ -301,31 +300,31 @@ void block_init(SymbolTable* symbol_table, Block* block)
   list_init(&block->access_links);
 }/*<<<*/
 
-void block_process_vars(MemoryArena* arena, Block* block)
+void block_process_vars(MemoryArena* arena, AstBlock* block)
 {/*>>>*/
   /*>>> Process declared vars */
-  ListItem* nodeItem = list_first_item(&block->decl_vars);
-  while(nodeItem)
+  ListItem* node_item = list_first_item(&block->decl_vars);
+  while(node_item)
   {
-    AstNode* node = nodeItem->elem;
-    VarDecl* var_decl = &node->var_decl;
+    AstNode* node = node_item->elem;
+    AstVarDecl* var_decl = &node->var_decl;
 
-    var_decl->location = block->locals_data_size;
+    var_decl->loc = block->locals_data_size;
     block->locals_data_size += var_decl->data_size;
 
-    nodeItem = nodeItem->next;
+    node_item = node_item->next;
   }
   /*<<<*/
   /*>>> Process non-local var occurrences */
-  nodeItem = list_first_item(&block->non_local_occurs);
-  while(nodeItem)
+  node_item = list_first_item(&block->non_local_occurs);
+  while(node_item)
   {
-    AstNode* node = nodeItem->elem;
-    VarOccur* var_occur = &node->var_occur;
+    AstNode* node = node_item->elem;
+    AstVarOccur* var_occur = &node->var_occur;
     List* linksList = &block->access_links;
 
     ListItem* link_item = list_first_item(&block->access_links);
-    AccessLink* link = 0;
+    AstAccessLink* link = 0;
     while(link_item)
     {
       link = link_item->elem;
@@ -335,7 +334,7 @@ void block_process_vars(MemoryArena* arena, Block* block)
     }
     if(!link)
     {
-      link = push_element(arena, AccessLink, 1);
+      link = push_element(arena, AstAccessLink, 1);
       link->actv_rec_offset = var_occur->decl_block_offset;
       link->index = linksList->count;
       list_append(arena, linksList, link);
@@ -358,7 +357,7 @@ void syntax_error(TokenStream* input, char* message, ...)
 }
 
 /*>>> Symbol table */
-Symbol* SymbolLookup(SymbolTable* symbol_table, char* name)
+Symbol* symbol_lookup(SymbolTable* symbol_table, char* name)
 {/*>>>*/
   Symbol* result = 0;
 
@@ -375,7 +374,7 @@ Symbol* SymbolLookup(SymbolTable* symbol_table, char* name)
   return result;
 }/*<<<*/
 
-Symbol* SymbolAdd(SymbolTable* symbol_table, char* name, SymbolKind kind)
+Symbol* symbol_add(SymbolTable* symbol_table, char* name, SymbolKind kind)
 {/*>>>*/
   Symbol* symbol = push_element(symbol_table->arena, Symbol, 1);
   symbol->name = name;
@@ -387,16 +386,16 @@ Symbol* SymbolAdd(SymbolTable* symbol_table, char* name, SymbolKind kind)
   return symbol;
 }/*<<<*/
 
-Symbol* SymbolRegisterNew(SymbolTable* symbol_table, TokenStream* input, SymbolKind kind)
+Symbol* symbol_register_new(SymbolTable* symbol_table, TokenStream* input, SymbolKind kind)
 {/*>>>*/
   assert(input->token == Token_Id);
 
   Symbol* result = 0;
 
-  Symbol* symbol = SymbolLookup(symbol_table, input->lexval.id);
+  Symbol* symbol = symbol_lookup(symbol_table, input->lexval.id);
   if(!symbol)
   {
-    result = SymbolAdd(symbol_table, input->lexval.id, kind);
+    result = symbol_add(symbol_table, input->lexval.id, kind);
   } else {
     if(symbol->kind != SymbolKind_Keyword)
     {
@@ -405,7 +404,7 @@ Symbol* SymbolRegisterNew(SymbolTable* symbol_table, TokenStream* input, SymbolK
       {
         assert(symbol->nesting_depth <= symbol_table->nesting_depth);
 
-        result = SymbolAdd(symbol_table, input->lexval.id, kind);
+        result = symbol_add(symbol_table, input->lexval.id, kind);
       } else
         syntax_error(input, "Redeclaration of identifier: %s", symbol->name);
     } else
@@ -414,34 +413,34 @@ Symbol* SymbolRegisterNew(SymbolTable* symbol_table, TokenStream* input, SymbolK
   return result;
 }/*<<<*/
 
-Symbol* AddKeyword(SymbolTable* symbol_table, char* name, Token token)
+Symbol* add_keyword(SymbolTable* symbol_table, char* name, Token token)
 {/*>>>*/
-  Symbol* symbol = SymbolAdd(symbol_table, name, SymbolKind_Keyword);
+  Symbol* symbol = symbol_add(symbol_table, name, SymbolKind_Keyword);
   symbol->kw_token = token;
   return symbol;
 }/*<<<*/
 
-void RegisterKeywords(SymbolTable* symbol_table)
+void register_keywords(SymbolTable* symbol_table)
 {/*>>>*/
-  AddKeyword(symbol_table, "int", Token_If);
-  AddKeyword(symbol_table, "float", Token_Float);
-  AddKeyword(symbol_table, "void", Token_Void);
-  AddKeyword(symbol_table, "char", Token_Char);
-  AddKeyword(symbol_table, "var", Token_Var);
-  AddKeyword(symbol_table, "proc", Token_Proc);
-  AddKeyword(symbol_table, "type", Token_Type);
-  AddKeyword(symbol_table, "struct", Token_Type);
-  AddKeyword(symbol_table, "array", Token_Array);
-  AddKeyword(symbol_table, "of", Token_Of);
-  AddKeyword(symbol_table, "if", Token_If);
-  AddKeyword(symbol_table, "else", Token_Else);
-  AddKeyword(symbol_table, "while", Token_While);
-  AddKeyword(symbol_table, "return", Token_Return);
-  AddKeyword(symbol_table, "true", Token_True);
-  AddKeyword(symbol_table, "false", Token_False);
+  add_keyword(symbol_table, "int", Token_If);
+  add_keyword(symbol_table, "float", Token_Float);
+  add_keyword(symbol_table, "void", Token_Void);
+  add_keyword(symbol_table, "char", Token_Char);
+  add_keyword(symbol_table, "var", Token_Var);
+  add_keyword(symbol_table, "proc", Token_Proc);
+  add_keyword(symbol_table, "type", Token_Type);
+  add_keyword(symbol_table, "struct", Token_Type);
+  add_keyword(symbol_table, "array", Token_Array);
+  add_keyword(symbol_table, "of", Token_Of);
+  add_keyword(symbol_table, "if", Token_If);
+  add_keyword(symbol_table, "else", Token_Else);
+  add_keyword(symbol_table, "while", Token_While);
+  add_keyword(symbol_table, "return", Token_Return);
+  add_keyword(symbol_table, "true", Token_True);
+  add_keyword(symbol_table, "false", Token_False);
 }/*<<<*/
 
-bool32 ScopeBegin(SymbolTable* symbol_table)
+bool32 scope_begin(SymbolTable* symbol_table)
 {/*>>>*/
   int scope_id = ++symbol_table->last_scope_id;
   symbol_table->scope_id = scope_id;
@@ -458,7 +457,7 @@ bool32 ScopeBegin(SymbolTable* symbol_table)
   return true;
 }/*<<<*/
 
-void ScopeEnd(SymbolTable* symbol_table)
+void scope_end(SymbolTable* symbol_table)
 {/*>>>*/
   int nesting_depth = --symbol_table->nesting_depth;
   int scope_id = symbol_table->active_scopes[nesting_depth];
@@ -524,7 +523,7 @@ void consume_token(TokenStream* input, SymbolTable* symbol_table)
     char* lexeme = install_lexeme(input, beginChar, endChar);
     input->lexval.id = lexeme;
 
-    Symbol* symbol = SymbolLookup(symbol_table, lexeme);
+    Symbol* symbol = symbol_lookup(symbol_table, lexeme);
     if(symbol && symbol->kind == SymbolKind_Keyword)
       input->token = symbol->kw_token;
     else
@@ -646,13 +645,13 @@ void consume_token(TokenStream* input, SymbolTable* symbol_table)
 /*<<<*/
 
 /*>>> Parse */
-bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, Block*, AstNode**);
-bool32 parse_statement_list(MemoryArena*, TokenStream*, SymbolTable*, Block*);
-bool32 parse_actual_argument_list(MemoryArena*, TokenStream*, SymbolTable*, Block*, Call*);
-bool32 parse_term(MemoryArena*, TokenStream*, SymbolTable*, Block*, AstNode**);
+bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
+bool32 parse_statement_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*);
+bool32 parse_actual_argument_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstCall*);
+bool32 parse_term(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 
 bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                   Block* enclosing_block, AstNode** node)
+                    AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -682,8 +681,8 @@ bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
       {
         AstNode* negNode = push_element(arena, AstNode, 1);
         negNode->kind = AstNodeKind_UnrExpr;
-        UnrExpr* expr = &negNode->unr_expr;
-        expr->op = OperatorKind_Neg;
+        AstUnrExpr* expr = &negNode->unr_expr;
+        expr->op = AstOperatorKind_Neg;
         expr->operand = operand;
         *node = negNode;
       } else {
@@ -703,7 +702,7 @@ bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
   }
   else if(input->token == Token_Id)
   {
-    Symbol* symbol = SymbolLookup(symbol_table, input->lexval.id);
+    Symbol* symbol = symbol_lookup(symbol_table, input->lexval.id);
     if(symbol)
     {
       AstNode* idNode = push_element(arena, AstNode, 1);
@@ -714,7 +713,7 @@ bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
       if(symbol->kind == SymbolKind_Var)
       {
         idNode->kind = AstNodeKind_VarOccur;
-        VarOccur* var_occur = &idNode->var_occur;
+        AstVarOccur* var_occur = &idNode->var_occur;
         var_occur->symbol = symbol;
         var_occur->name = symbol->name;
         var_occur->var_decl = symbol->var;
@@ -735,7 +734,7 @@ bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
       else if(symbol->kind == SymbolKind_Proc)
       {
         idNode->kind = AstNodeKind_Call;
-        Call* call = &idNode->call;
+        AstCall* call = &idNode->call;
         call->symbol = symbol;
         call->name = symbol->name;
         call->proc = symbol->proc;
@@ -794,7 +793,7 @@ bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 }/*<<<*/
 
 bool32 parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                          Block* enclosing_block, AstNode* leftNode, AstNode** node)
+                             AstBlock* enclosing_block, AstNode* leftNode, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -803,11 +802,11 @@ bool32 parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable
   {
     AstNode* exprNode = push_element(arena, AstNode, 1);
     exprNode->kind = AstNodeKind_BinExpr;
-    BinExpr* expr = &exprNode->bin_expr;
+    AstBinExpr* expr = &exprNode->bin_expr;
     if(input->token == Token_Star)
-      expr->op = OperatorKind_Mul;
+      expr->op = AstOperatorKind_Mul;
     else if(input->token == Token_FwdSlash)
-      expr->op = OperatorKind_Div;
+      expr->op = AstOperatorKind_Div;
     else
       assert(false);
 
@@ -833,7 +832,7 @@ bool32 parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable
 }/*<<<*/
 
 bool32 parse_term(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                 Block* enclosing_block, AstNode** node)
+                  AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   AstNode* factorNode = 0;
   AstNode* exprNode = 0;
@@ -848,7 +847,7 @@ bool32 parse_term(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
 }/*<<<*/
 
 bool32 parse_rest_of_terms(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                        Block* enclosing_block, AstNode* leftNode, AstNode** node)
+                           AstBlock* enclosing_block, AstNode* leftNode, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -857,11 +856,11 @@ bool32 parse_rest_of_terms(MemoryArena* arena, TokenStream* input, SymbolTable* 
   {
     AstNode* exprNode = push_element(arena, AstNode, 1);
     exprNode->kind = AstNodeKind_BinExpr;
-    BinExpr* expr = &exprNode->bin_expr;
+    AstBinExpr* expr = &exprNode->bin_expr;
     if(input->token == Token_Plus)
-      expr->op = OperatorKind_Add;
+      expr->op = AstOperatorKind_Add;
     else if(input->token == Token_Minus)
-      expr->op = OperatorKind_Sub;
+      expr->op = AstOperatorKind_Sub;
     else
       assert(false);
 
@@ -886,7 +885,7 @@ bool32 parse_rest_of_terms(MemoryArena* arena, TokenStream* input, SymbolTable* 
 }/*<<<*/
 
 bool32 parse_assignment_term(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                           Block* enclosing_block, AstNode** node)
+                             AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   AstNode* termNode = 0;
   AstNode* exprNode = 0;
@@ -900,7 +899,7 @@ bool32 parse_assignment_term(MemoryArena* arena, TokenStream* input, SymbolTable
 }/*<<<*/
 
 bool32 parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                                  Block* enclosing_block, AstNode* leftNode, AstNode** node)
+                                      AstBlock* enclosing_block, AstNode* leftNode, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -917,8 +916,8 @@ bool32 parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input, Sy
         {
           AstNode* exprNode = push_element(arena, AstNode, 1);
           exprNode->kind = AstNodeKind_BinExpr;
-          BinExpr* expr = &exprNode->bin_expr;
-          expr->op = OperatorKind_Assign;
+          AstBinExpr* expr = &exprNode->bin_expr;
+          expr->op = AstOperatorKind_Assign;
           expr->left_operand = leftNode;
           expr->right_operand = rightSide;
 
@@ -939,7 +938,7 @@ bool32 parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input, Sy
 }/*<<<*/
 
 bool32 parse_expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                       Block* enclosing_block, AstNode** node)
+                        AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   AstNode* assgnNode = 0;
   AstNode* exprNode = 0;
@@ -954,7 +953,7 @@ bool32 parse_expression(MemoryArena* arena, TokenStream* input, SymbolTable* sym
 }/*<<<*/
 
 bool32 parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                         Block* enclosing_block, AstNode** node)
+                           AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -967,10 +966,10 @@ bool32 parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* 
       varNode->kind = AstNodeKind_VarDecl;
       *node = varNode;
 
-      Symbol* symbol = SymbolRegisterNew(symbol_table, input, SymbolKind_Var);
+      Symbol* symbol = symbol_register_new(symbol_table, input, SymbolKind_Var);
       if(symbol)
       {
-        VarDecl* var_decl = &varNode->var_decl;
+        AstVarDecl* var_decl = &varNode->var_decl;
         var_decl->symbol = symbol;
         var_decl->name = symbol->name;
         var_decl->data_size = 1;
@@ -988,7 +987,7 @@ bool32 parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* 
 }/*<<<*/
 
 bool32 parse_formal_argument(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                           Block* enclosing_block, AstNode** node)
+                             AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -1001,10 +1000,10 @@ bool32 parse_formal_argument(MemoryArena* arena, TokenStream* input, SymbolTable
       varNode->kind = AstNodeKind_VarDecl;
       *node = varNode;
 
-      Symbol* symbol = SymbolRegisterNew(symbol_table, input, SymbolKind_Var);
+      Symbol* symbol = symbol_register_new(symbol_table, input, SymbolKind_Var);
       if(symbol)
       {
-        VarDecl* var_decl = &varNode->var_decl;
+        AstVarDecl* var_decl = &varNode->var_decl;
         var_decl->symbol = symbol;
         var_decl->name = symbol->name;
         var_decl->is_argument = true;
@@ -1024,8 +1023,8 @@ bool32 parse_formal_argument(MemoryArena* arena, TokenStream* input, SymbolTable
   return success;
 }/*<<<*/
 
-bool32 parse_formal_argumentList(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                               Block* enclosing_block, Proc* proc)
+bool32 parse_formal_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+                                 AstBlock* enclosing_block, AstProc* proc)
 {/*>>>*/
   bool32 success = true;
 
@@ -1038,7 +1037,7 @@ bool32 parse_formal_argumentList(MemoryArena* arena, TokenStream* input, SymbolT
     if(input->token == Token_Comma)
     {
       consume_token(input, symbol_table);
-      success = parse_formal_argumentList(arena, input, symbol_table, enclosing_block, proc);
+      success = parse_formal_argument_list(arena, input, symbol_table, enclosing_block, proc);
     }
   }
 
@@ -1046,7 +1045,7 @@ bool32 parse_formal_argumentList(MemoryArena* arena, TokenStream* input, SymbolT
 }/*<<<*/
 
 bool32 parse_actual_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                               Block* enclosing_block, Call* call)
+                                  AstBlock* enclosing_block, AstCall* call)
 {/*>>>*/
   bool32 success = true;
 
@@ -1067,7 +1066,7 @@ bool32 parse_actual_argument_list(MemoryArena* arena, TokenStream* input, Symbol
 }/*<<<*/
 
 bool32 parse_while_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                           Block* enclosing_block, AstNode** node)
+                             AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -1080,7 +1079,7 @@ bool32 parse_while_statement(MemoryArena* arena, TokenStream* input, SymbolTable
     {
       AstNode* whileNode = push_element(arena, AstNode, 1);
       whileNode->kind = AstNodeKind_WhileStmt;
-      WhileStmt* while_stmt = &whileNode->while_stmt;
+      AstWhileStmt* while_stmt = &whileNode->while_stmt;
       while_stmt->expr = exprNode;
       *node = whileNode;
 
@@ -1088,12 +1087,12 @@ bool32 parse_while_statement(MemoryArena* arena, TokenStream* input, SymbolTable
       {
         consume_token(input, symbol_table);
 
-        success = ScopeBegin(symbol_table);
+        success = scope_begin(symbol_table);
         if(success)
         {
           AstNode* blockNode = push_element(arena, AstNode, 1);
           blockNode->kind = AstNodeKind_Block;
-          Block* block = &blockNode->block;
+          AstBlock* block = &blockNode->block;
           block->owner = whileNode;
           block_init(symbol_table, block);
 
@@ -1105,7 +1104,7 @@ bool32 parse_while_statement(MemoryArena* arena, TokenStream* input, SymbolTable
             if(input->token == Token_CloseBrace)
             {
               consume_token(input, symbol_table);
-              ScopeEnd(symbol_table);
+              scope_end(symbol_table);
             } else {
               syntax_error(input, "Missing '}'");
               success = false;
@@ -1123,7 +1122,7 @@ bool32 parse_while_statement(MemoryArena* arena, TokenStream* input, SymbolTable
 }/*<<<*/
 
 bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                        Block* enclosing_block, AstNode** node)
+                          AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -1136,7 +1135,7 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
     {
       AstNode* ifNode = push_element(arena, AstNode, 1);
       ifNode->kind = AstNodeKind_IfStmt;
-      IfStmt* if_stmt = &ifNode->if_stmt;
+      AstIfStmt* if_stmt = &ifNode->if_stmt;
       if_stmt->expr = exprNode;
       *node = ifNode;
 
@@ -1144,12 +1143,12 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
       {
         consume_token(input, symbol_table);
 
-        success = ScopeBegin(symbol_table);
+        success = scope_begin(symbol_table);
         if(success)
         {
           AstNode* blockNode = push_element(arena, AstNode, 1);
           blockNode->kind = AstNodeKind_Block;
-          Block* block = &blockNode->block;
+          AstBlock* block = &blockNode->block;
           block->owner = ifNode;
           block_init(symbol_table, block);
 
@@ -1161,7 +1160,7 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
             if(input->token == Token_CloseBrace)
             {
               consume_token(input, symbol_table);
-              ScopeEnd(symbol_table);
+              scope_end(symbol_table);
 
               if(input->token == Token_Else)
               {
@@ -1176,12 +1175,12 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
                   {
                     consume_token(input, symbol_table);
 
-                    success = ScopeBegin(symbol_table);
+                    success = scope_begin(symbol_table);
                     if(success)
                     {
                       AstNode* blockNode = push_element(arena, AstNode, 1);
                       blockNode->kind = AstNodeKind_Block;
-                      Block* block = &blockNode->block;
+                      AstBlock* block = &blockNode->block;
                       block->owner = ifNode;
                       block_init(symbol_table, block);
 
@@ -1192,7 +1191,7 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
                         if(input->token == Token_CloseBrace)
                         {
                           consume_token(input, symbol_table);
-                          ScopeEnd(symbol_table);
+                          scope_end(symbol_table);
                         } else {
                           syntax_error(input, "Missing '}'");
                           success = false;
@@ -1221,7 +1220,7 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
 }/*<<<*/
 
 bool32 parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                      Block* enclosing_block, AstNode** node)
+                       AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -1234,10 +1233,10 @@ bool32 parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symb
     consume_token(input, symbol_table);
     if(input->token == Token_Id)
     {
-      Symbol* symbol = SymbolRegisterNew(symbol_table, input, SymbolKind_Proc);
+      Symbol* symbol = symbol_register_new(symbol_table, input, SymbolKind_Proc);
       if(symbol)
       {
-        Proc* proc = &procNode->proc;
+        AstProc* proc = &procNode->proc;
         proc->symbol = symbol;
         proc->name   = symbol->name;
         proc->ret_data_size = 1;
@@ -1250,17 +1249,17 @@ bool32 parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symb
           consume_token(input, symbol_table);
 
           // arguments
-          success = ScopeBegin(symbol_table);
+          success = scope_begin(symbol_table);
           if(success)
           {
             AstNode* blockNode = push_element(arena, AstNode, 1);
             blockNode->kind = AstNodeKind_Block;
             proc->body = blockNode;
-            Block* block = &blockNode->block;
+            AstBlock* block = &blockNode->block;
             block->owner = procNode;
             block_init(symbol_table, block);
 
-            success = parse_formal_argumentList(arena, input, symbol_table, block, proc);
+            success = parse_formal_argument_list(arena, input, symbol_table, block, proc);
             if(success)
             {
               ListItem* argItem = list_first_item(&proc->formal_args);
@@ -1268,11 +1267,11 @@ bool32 parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symb
               {
                 AstNode* node = argItem->elem;
                 assert(node->kind == AstNodeKind_VarDecl);
-                VarDecl* arg = &node->var_decl;
+                AstVarDecl* arg = &node->var_decl;
                 Symbol* symbol = node->var_decl.symbol;
                 symbol->var = arg;
 
-                arg->location = proc->args_data_size;
+                arg->loc = proc->args_data_size;
                 arg->data_size = 1;
                 proc->args_data_size += arg->data_size;
 
@@ -1296,7 +1295,7 @@ bool32 parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symb
                     if(input->token == Token_CloseBrace)
                     {
                       consume_token(input, symbol_table);
-                      ScopeEnd(symbol_table); // body
+                      scope_end(symbol_table); // body
                     } else {
                       syntax_error(input, "Missing '}'");
                       success = false;
@@ -1330,7 +1329,7 @@ bool32 parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 }/*<<<*/
 
 bool32 parse_procedureList(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                          Block* enclosing_block, Module* module)
+                           AstBlock* enclosing_block, AstModule* module)
 {/*>>>*/
   bool32 success = true;
 
@@ -1347,7 +1346,7 @@ bool32 parse_procedureList(MemoryArena* arena, TokenStream* input, SymbolTable* 
 }/*<<<*/
 
 bool32 parse_return_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                            Block* enclosing_block, AstNode** node)
+                              AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -1362,12 +1361,12 @@ bool32 parse_return_statement(MemoryArena* arena, TokenStream* input, SymbolTabl
       {
         AstNode* retNode = push_element(arena, AstNode, 1);
         retNode->kind = AstNodeKind_ReturnStmt;
-        ReturnStmt* ret_stmt = &retNode->ret_stmt;
+        AstReturnStmt* ret_stmt = &retNode->ret_stmt;
         ret_stmt->expr = exprNode;
         *node = retNode;
 
         int depth = 0;
-        Block* block = enclosing_block;
+        AstBlock* block = enclosing_block;
         while(block)
         {
           AstNode* owner = block->owner;
@@ -1377,7 +1376,7 @@ bool32 parse_return_statement(MemoryArena* arena, TokenStream* input, SymbolTabl
           block = block->enclosing_block;
         }
         assert(block);
-        ret_stmt->proc = block->owner;
+        ret_stmt->proc = &block->owner->proc;
         ret_stmt->intervening_block_count = depth;
       } else {
         syntax_error(input, "Expression required after the 'return' keyword");
@@ -1390,7 +1389,7 @@ bool32 parse_return_statement(MemoryArena* arena, TokenStream* input, SymbolTabl
 }/*<<<*/
 
 bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                      Block* enclosing_block, AstNode** node)
+                       AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
@@ -1405,38 +1404,33 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
   } Alternative;
 
   Alternative alt = (Alternative)1;
-  AstNode* stmtNode = 0;
+  AstNode* stmt_node = 0;
 
   while(alt) {
     switch(alt) {
       case Alt_Expr:
       {
-        success = parse_expression(arena, input, symbol_table, enclosing_block, &stmtNode);
+        success = parse_expression(arena, input, symbol_table, enclosing_block, &stmt_node);
         if(success)
         {
-          if(stmtNode)
+          if(stmt_node)
           {
             alt = Alt__Null;
             if(input->token == Token_Semicolon)
             {
               consume_token(input, symbol_table);
 
-              if(stmtNode->kind == AstNodeKind_BinExpr)
+              if(stmt_node->kind == AstNodeKind_BinExpr)
               {
-                BinExpr* expr = &stmtNode->bin_expr;
-                if(expr->op == OperatorKind_Assign)
-                  expr->is_statement = true;
-                else {
+                AstBinExpr* expr = &stmt_node->bin_expr;
+                if(expr->op != AstOperatorKind_Assign)
+                {
                   syntax_error(input, "Assignment expression required");
                   success = false;
                 }
               }
-              else if(stmtNode->kind == AstNodeKind_Call)
+              else if(stmt_node->kind != AstNodeKind_Call)
               {
-                Call* call = &stmtNode->call;
-                call->is_statement = true;
-              }
-              else {
                 syntax_error(input, "Expression is not a statement");
                 success = false;
               }
@@ -1453,10 +1447,10 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 
       case Alt_If:
       {
-        success = parse_if_statement(arena, input, symbol_table, enclosing_block, &stmtNode);
+        success = parse_if_statement(arena, input, symbol_table, enclosing_block, &stmt_node);
         if(success)
         {
-          if(stmtNode)
+          if(stmt_node)
           {
             alt = Alt__Null;
           } else
@@ -1467,10 +1461,10 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 
       case Alt_While:
       {
-        success = parse_while_statement(arena, input, symbol_table, enclosing_block, &stmtNode);
+        success = parse_while_statement(arena, input, symbol_table, enclosing_block, &stmt_node);
         if(success)
         {
-          if(stmtNode)
+          if(stmt_node)
           {
             alt = Alt__Null;
           } else
@@ -1481,10 +1475,10 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 
       case Alt_Return:
       {
-        success = parse_return_statement(arena, input, symbol_table, enclosing_block, &stmtNode);
+        success = parse_return_statement(arena, input, symbol_table, enclosing_block, &stmt_node);
         if(success)
         {
-          if(stmtNode)
+          if(stmt_node)
           {
             alt = Alt__Null;
             if(input->token == Token_Semicolon)
@@ -1501,10 +1495,10 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 
       case Alt_Var:
       {
-        success = parse_var_statement(arena, input, symbol_table, enclosing_block, &stmtNode);
+        success = parse_var_statement(arena, input, symbol_table, enclosing_block, &stmt_node);
         if(success)
         {
-          if(stmtNode)
+          if(stmt_node)
           {
             alt = Alt__Null;
             if(input->token == Token_Semicolon)
@@ -1525,26 +1519,26 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
     }
   }
 
-  *node = stmtNode;
+  *node = stmt_node;
   return success;
 }/*<<<*/
 
 bool32 parse_statement_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                          Block* block)
+                            AstBlock* block)
 {/*>>>*/
   bool32 success = true;
 
-  AstNode* stmtNode = 0;
-  success = parse_statement(arena, input, symbol_table, block, &stmtNode);
-  if(success && stmtNode)
+  AstNode* stmt_node = 0;
+  success = parse_statement(arena, input, symbol_table, block, &stmt_node);
+  if(success && stmt_node)
   {
     while(input->token == Token_Semicolon)
       consume_token(input, symbol_table);
 
-    if(stmtNode->kind == AstNodeKind_VarDecl)
-      list_append(arena, &block->decl_vars, stmtNode);
+    if(stmt_node->kind == AstNodeKind_VarDecl)
+      list_append(arena, &block->decl_vars, stmt_node);
     else
-      list_append(arena, &block->stmtList, stmtNode);
+      list_append(arena, &block->stmtList, stmt_node);
 
     success = parse_statement_list(arena, input, symbol_table, block); //FIXME: Is this tail-recursion - can it be optimized?
   }
@@ -1552,11 +1546,11 @@ bool32 parse_statement_list(MemoryArena* arena, TokenStream* input, SymbolTable*
 }/*<<<*/
 
 bool32 parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                   AstNode** node)
+                    AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
-  success = ScopeBegin(symbol_table);
+  success = scope_begin(symbol_table);
   if(success)
   {
     AstNode* moduleNode = push_element(arena, AstNode, 1);
@@ -1564,18 +1558,18 @@ bool32 parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 
     AstNode* blockNode = push_element(arena, AstNode, 1);
     blockNode->kind = AstNodeKind_Block;
-    Block* block = &blockNode->block;
+    AstBlock* block = &blockNode->block;
     block->owner = moduleNode;
     block_init(symbol_table, block);
 
-    Module* module = &moduleNode->module;
+    AstModule* module = &moduleNode->module;
     module->body = blockNode;
     list_init(&module->proc_list);
 
     success = parse_procedureList(arena, input, symbol_table, block, module);
     if(success)
     {
-      ScopeEnd(symbol_table);
+      scope_end(symbol_table);
 
       if(input->token == Token_EndOfInput)
         *node = moduleNode;
@@ -1594,12 +1588,13 @@ bool32 parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 typedef enum
 {
   IrNodeKind__Null,
-  IrNodeKind_LoadRValue,
-  IrNodeKind_LoadLValue,
-  IrNodeKind_BinOp,
+  IrNodeKind_Value,
+  IrNodeKind_BinExpr,
+  IrNodeKind_UnrExpr,
   IrNodeKind_Proc,
   IrNodeKind_Module,
   IrNodeKind_Call,
+  IrNodeKind_Return,
 }
 IrNodeKind;
 
@@ -1611,6 +1606,7 @@ typedef enum
   IrOpKind_Sub,
   IrOpKind_Div,
   IrOpKind_Store,
+  IrOpKind_Neg,
 }
 IrOpKind;
 
@@ -1622,14 +1618,16 @@ typedef enum
   IrValueKind_Var,
   IrValueKind_IntNum,
   IrValueKind_Call,
+  IrValueKind_BinExpr,
+  IrValueKind_UnrExpr,
 }
 IrValueKind;
 
 typedef struct
 {
   bool32 is_non_local;
-  int    access_linkLocation;
-  int    data_location;
+  int    access_link_loc;
+  int    data_loc;
 }
 IrVar;
 
@@ -1642,12 +1640,37 @@ IrCall;
 
 typedef struct
 {
+  IrOpKind op;
+  IrNode*  left_operand;
+  IrNode*  right_operand;
+}
+IrBinExpr;
+
+typedef struct
+{
+  IrOpKind op;
+  IrNode*  operand;
+}
+IrUnrExpr;
+
+typedef struct
+{
+  IrBinExpr* assgn_expr;
+  IrProc*    proc;
+  int        depth;
+}
+IrReturn;
+
+typedef struct
+{
   IrValueKind kind;
 
   union {
-    int32   int_num;
-    IrVar   var;
-    IrCall* call;
+    int32      int_num;
+    IrVar*     var; // should it be a pointer?
+    IrCall*    call;
+    IrBinExpr* bin_expr;
+    IrUnrExpr* unr_expr;
   };
 }
 IrValue;
@@ -1682,6 +1705,8 @@ typedef struct
   IrStackArea args;
   IrStackArea ctrlLinks;
   IrStackArea locals;
+
+  IrVar ret_var;
 }
 IrProcAvRecord;
 
@@ -1697,27 +1722,10 @@ typedef struct
 }
 IrActivationRecord;
 
-typedef struct
-{
-  List actv_recStack;
-  IrActivationRecord* actv_rec;
-  int fp;
-  int sp;
-}
-IrExecutionContext;
-
-typedef struct
-{
-  IrOpKind op;
-  IrNode*  left_operand;
-  IrNode*  right_operand;
-}
-IrBinOp;
-
 typedef struct IrProc_
 {
   char* label;
-  char* endLabel;
+  char* end_label;
   List  instr_list;
   IrActivationRecord* actv_rec;
 }
@@ -1736,104 +1744,135 @@ typedef struct IrNode_
   IrNodeKind kind;
 
   union {
-    IrValue  value;
-    IrBinOp  op;
-    IrProc   proc;
-    IrModule module;
-    IrCall   call;
+    IrVar     var;
+    IrValue   value;
+    IrBinExpr bin_expr;
+    IrUnrExpr unr_expr;
+    IrProc    proc;
+    IrModule  module;
+    IrCall    call;
+    IrReturn  ret;
   };
 } IrNode;
 
-void ir_set_var_value(IrValue* irValue, IrExecutionContext* execContext, VarOccur* var_occur)
+IrNode* ir_build_value(MemoryArena*, IrActivationRecord*, AstNode*);
+
+IrNode* ir_build_var(MemoryArena* arena, IrActivationRecord* actv_rec, AstVarOccur* var_occur)
 {/*>>>*/
   Symbol* symbol = var_occur->symbol;
-  IrVar* ir_var = &irValue->var;
+  IrNode* ir_node = push_element(arena, IrNode, 1);
+  IrVar* ir_var = &ir_node->var;
   ir_var->is_non_local = var_occur->is_non_local;
-  IrActivationRecord* actv_rec = execContext->actv_rec;
 
   if(var_occur->is_non_local)
   {
-    AccessLink* link = var_occur->access_link;
+    AstAccessLink* link = var_occur->access_link;
     assert(actv_rec->kind == IrAvRecord_Block);
     IrBlockAvRecord* block_av = &actv_rec->block;
     IrStackArea* access_links_area = &block_av->access_links;
-    ir_var->access_linkLocation = -(actv_rec->fp - access_links_area->loc) + link->index;
+    ir_var->access_link_loc = -(actv_rec->fp - access_links_area->loc) + link->index;
   } else 
   {
     if(var_occur->is_argument)
     {
       IrProcAvRecord* proc_av = &actv_rec->proc;
       IrStackArea* args_area = &proc_av->args;
-      irValue->var.data_location = -(actv_rec->fp - args_area->loc);
+      ir_var->data_loc = -(actv_rec->fp - args_area->loc);
     } else
     {
-      ir_var->data_location = symbol->var->location;
+      ir_var->data_loc = symbol->var->loc;
     }
   }
+  return ir_node;
 }/*<<<*/
 
-IrNode* ir_build_lvalue(MemoryArena* arena, IrExecutionContext* execContext, VarOccur* var_occur)
+IrNode* ir_build_bin_expr(MemoryArena* arena, IrActivationRecord* actv_rec, AstBinExpr* bin_expr)
 {/*>>>*/
-  IrNode* is_node = push_element(arena, IrNode, 1);
-  is_node->kind = IrNodeKind_LoadLValue;
-  is_node->value.kind = IrValueKind_Var;
-  ir_set_var_value(&is_node->value, execContext, var_occur);
-  return is_node;
+  IrNode* ir_node = push_element(arena, IrNode, 1);
+  ir_node->kind = IrNodeKind_BinExpr;
+  IrBinExpr* ir_op = &ir_node->bin_expr;
+
+  AstNode* left_operand = bin_expr->left_operand;
+  AstNode* right_operand = bin_expr->right_operand;
+  ir_op->right_operand = ir_build_value(arena, actv_rec, right_operand);
+  ir_op->left_operand = ir_build_value(arena, actv_rec, left_operand);
+
+  if(bin_expr->op == AstOperatorKind_Assign)
+  {
+    assert(left_operand->kind == AstNodeKind_VarOccur);
+    ir_op->op = IrOpKind_Store;
+  }
+  else if(bin_expr->op == AstOperatorKind_Add)
+    ir_op->op = IrOpKind_Add;
+  else if(bin_expr->op == AstOperatorKind_Sub)
+    ir_op->op = IrOpKind_Sub;
+  else if(bin_expr->op == AstOperatorKind_Mul)
+    ir_op->op = IrOpKind_Mul;
+  else if(bin_expr->op == AstOperatorKind_Div)
+    ir_op->op = IrOpKind_Div;
+  else
+    assert(false);
+
+  return ir_node;
 }/*<<<*/
 
-IrNode* ir_build_rvalue(MemoryArena* arena, IrExecutionContext* execContext, AstNode* ast_node)
+IrNode* ir_build_unr_expr(MemoryArena* arena, IrActivationRecord* actv_rec, AstUnrExpr* unr_expr)
 {/*>>>*/
-  IrNode* is_node = push_element(arena, IrNode, 1);
+  IrNode* ir_node = push_element(arena, IrNode, 1);
+  ir_node->kind = IrNodeKind_UnrExpr;
+  IrUnrExpr* ir_op = &ir_node->unr_expr;
+  ir_op->operand = ir_build_value(arena, actv_rec, unr_expr->operand);
+  if(unr_expr->op == AstOperatorKind_Neg)
+    ir_op->op = IrOpKind_Neg;
+  return ir_node;
+}/*<<<*/
+
+IrNode* ir_build_value(MemoryArena* arena, IrActivationRecord* actv_rec, AstNode* ast_node)
+{/*>>>*/
+  IrNode* ir_node = push_element(arena, IrNode, 1);
+  ir_node->kind = IrNodeKind_Value;
   if(ast_node->kind == AstNodeKind_VarOccur)
   {
-    VarOccur* var_occur = &ast_node->var_occur;
-
-    is_node->kind = IrNodeKind_LoadRValue;
-    is_node->value.kind = IrValueKind_Var;
-    ir_set_var_value(&is_node->value, execContext, var_occur);
+    ir_node->value.kind = IrValueKind_Var;
+    IrNode* var_node = ir_build_var(arena, actv_rec, &ast_node->var_occur);
+    ir_node->value.var = &var_node->var;
   }
   else if(ast_node->kind == AstNodeKind_IntNum)
   {
-    is_node->kind = IrNodeKind_LoadRValue;
-    is_node->value.kind = IrValueKind_IntNum;
-    is_node->value.int_num = ast_node->int_num.value;
+    ir_node->value.kind = IrValueKind_IntNum;
+    ir_node->value.int_num = ast_node->int_num.value;
   }
-  return is_node;
-}/*<<<*/
-
-IrNode* ir_build_bin_expr(MemoryArena* arena, IrExecutionContext* execContext, BinExpr* bin_expr)
-{/*>>>*/
-  IrNode* is_node = 0;
-  AstNode* left_operand = bin_expr->left_operand;
-  AstNode* right_operand = bin_expr->right_operand;
-  if(bin_expr->op == OperatorKind_Assign)
+  else if(ast_node->kind == AstNodeKind_BinExpr)
   {
-    assert(left_operand->kind == AstNodeKind_VarOccur);
-    
-    is_node = push_element(arena, IrNode, 1);
-    is_node->kind = IrNodeKind_BinOp;
-    IrBinOp* ir_op = &is_node->op;
-    ir_op->op = IrOpKind_Store;
-    ir_op->left_operand = ir_build_lvalue(arena, execContext, &left_operand->var_occur);
-    ir_op->right_operand = ir_build_rvalue(arena, execContext, right_operand);
+    ir_node->value.kind = IrValueKind_BinExpr;
+    IrNode* op_node = ir_build_bin_expr(arena, actv_rec, &ast_node->bin_expr);
+    ir_node->value.bin_expr = &op_node->bin_expr;
   }
-  return is_node;
+  else if(ast_node->kind == AstNodeKind_UnrExpr)
+  {
+    ir_node->value.kind = IrValueKind_UnrExpr;
+    IrNode* op_node = ir_build_unr_expr(arena, actv_rec, &ast_node->unr_expr);
+    ir_node->value.unr_expr = &op_node->unr_expr;
+  }
+  else
+    assert(false);
+  return ir_node;
 }/*<<<*/
 
-IrNode* ir_build_call(MemoryArena* arena, IrExecutionContext* execContext, Call* astCall)
+IrNode* ir_build_call(MemoryArena* arena, IrActivationRecord* actv_rec, AstCall* ast_call)
 {/*>>>*/
   IrNode* ir_call_node = push_element(arena, IrNode, 1);
   ir_call_node->kind = IrNodeKind_Call;
   IrCall* ir_call = &ir_call_node->call;
-  IrProc* ir_proc = astCall->proc->ir_proc;
+  IrProc* ir_proc = ast_call->proc->ir_proc;
   ir_call->proc = ir_proc;
 
   list_init(&ir_call->actual_args);
-  ListItem* argItem = list_first_item(&astCall->actual_args);
+  ListItem* argItem = list_first_item(&ast_call->actual_args);
   while(argItem)
   {
     AstNode* astArgNode = argItem->elem;
-    IrNode* irArgValue = ir_build_rvalue(arena, execContext, astArgNode);
+    IrNode* irArgValue = ir_build_value(arena, actv_rec, astArgNode);
     list_append(arena, &ir_call->actual_args, irArgValue);
     argItem = argItem->next;
   }
@@ -1841,22 +1880,48 @@ IrNode* ir_build_call(MemoryArena* arena, IrExecutionContext* execContext, Call*
   return ir_call_node;
 }/*<<<*/
 
-IrNode* ir_build_call_lvalue(MemoryArena* arena, IrExecutionContext* execContext, Call* astCall)
+IrNode* ir_build_return(MemoryArena* arena, IrActivationRecord* actv_rec, AstReturnStmt* ast_ret)
 {/*>>>*/
-  IrNode* ir_call_node = ir_build_call(arena, execContext, astCall);
-  IrNode* irValueNode = push_element(arena, IrNode, 1);
-  irValueNode->kind = IrNodeKind_LoadRValue;
-  IrValue* irValue = &irValueNode->value;
-  irValue->kind = IrValueKind_Call;
-  irValue->call = &ir_call_node->call;
-  return irValueNode;
+  IrNode* ir_node = push_element(arena, IrNode, 1);
+  ir_node->kind = IrNodeKind_Return;
+  IrReturn* ir_ret = &ir_node->ret;
+  IrNode* ret_val = ir_build_value(arena, actv_rec, ast_ret->expr);
+//  AstNode* ast_expr = ast_ret->expr;
+//  IrNode* retval_expr = 0;
+//  if(ast_expr->kind == AstNodeKind_BinExpr)
+//    retval_expr = ir_build_bin_expr(arena, actv_rec, &ast_expr->bin_expr);
+//  else if(ast_expr->kind == AstNodeKind_UnrExpr)
+//    retval_expr = ir_build_unr_expr(arena, actv_rec, &ast_expr->unr_expr);
+//  else if(ast_expr->kind == AstNodeKind_VarOccur)
+//    retval_expr = ir_build_value(arena, actv_rec, ast_expr);
+//  else if(ast_expr->kind == AstNodeKind_Call)
+//    retval_expr = ir_build_call(arena, actv_rec, &ast_expr->call);
+//  else
+//    assert(false);
+
+  IrBinExpr* assgn_op = push_element(arena, IrBinExpr, 1);
+  assgn_op->op = IrOpKind_Store;
+  assert(actv_rec->kind == IrAvRecord_Proc);
+  IrProcAvRecord* proc_actv_rec = &actv_rec->proc;
+  IrNode* left_operand = push_element(arena, IrNode, 1);
+  left_operand->kind = IrNodeKind_Value;
+  left_operand->value.kind = IrValueKind_Var;
+  left_operand->value.var = &proc_actv_rec->ret_var;
+  assgn_op->left_operand = left_operand;
+  assgn_op->right_operand = ret_val;
+  ir_ret->assgn_expr = assgn_op;
+
+  ir_ret->proc = ast_ret->proc->ir_proc;
+  ir_ret->depth = ast_ret->intervening_block_count;
+
+  return ir_node;
 }/*<<<*/
 
-IrNode* ir_build_proc(MemoryArena* arena, IrExecutionContext* execContext, Proc* proc)
+IrNode* ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
 {/*>>>*/
-  AstNode* bodyNode = proc->body;
-  assert(bodyNode->kind == AstNodeKind_Block);
-  Block* bodyBlock = &bodyNode->block;
+  AstNode* body_node = ast_proc->body;
+  assert(body_node->kind == AstNodeKind_Block);
+  AstBlock* bodyBlock = &body_node->block;
 
   IrActivationRecord* actv_rec = push_element(arena, IrActivationRecord, 1);
   actv_rec->kind = IrAvRecord_Proc;
@@ -1865,12 +1930,12 @@ IrNode* ir_build_proc(MemoryArena* arena, IrExecutionContext* execContext, Proc*
 
   IrStackArea* area = &proc_av->ret;
   area->loc = offset;
-  area->size = proc->ret_data_size;
+  area->size = ast_proc->ret_data_size;
   offset += area->size;
 
   area = &proc_av->args;
   area->loc = offset;
-  area->size = proc->args_data_size;
+  area->size = ast_proc->args_data_size;
   offset += area->size;
 
   area = &proc_av->ctrlLinks;
@@ -1887,13 +1952,17 @@ IrNode* ir_build_proc(MemoryArena* arena, IrExecutionContext* execContext, Proc*
 
   actv_rec->sp = offset;
 
+  IrVar* ret_var = &proc_av->ret_var;
+  ret_var->is_non_local = false;
+  ret_var->data_loc = proc_av->ret.loc - actv_rec->fp;
+
 //  list_init(&actv_rec->foreignAvRecords);
 //  {/*>>> access links are not for procs! */
 //    ListItem* item = list_first_item(&bodyBlock->access_links);
 //    while(item)
 //    {
 //      AccessLink* link = item->elem;
-//      ListItem* avItem = list_first_item(&execContext->avRecordStack);
+//      ListItem* avItem = list_first_item(&exec_context->avRecordStack);
 //      int offset = link->actv_rec_offset - 1;
 //      while(offset-- > 0)
 //        avItem = avItem->prev;
@@ -1903,46 +1972,52 @@ IrNode* ir_build_proc(MemoryArena* arena, IrExecutionContext* execContext, Proc*
 //    }
 //  }/*<<<*/
 
-  list_append(arena, &execContext->actv_recStack, actv_rec);
-  execContext->actv_rec = actv_rec;
-
-  IrNode* is_node = push_element(arena, IrNode, 1);
-  is_node->kind = IrNodeKind_Proc;
-  IrProc* ir_proc = &is_node->proc;
+  IrNode* ir_node = push_element(arena, IrNode, 1);
+  ir_node->kind = IrNodeKind_Proc;
+  IrProc* ir_proc = &ir_node->proc;
   ir_proc->actv_rec = actv_rec;
-  ir_proc->label = proc->name;
+  ir_proc->label = ast_proc->name;
   list_init(&ir_proc->instr_list);
 
-  String endLabel = {0};
-  string_init(&endLabel, arena);
-  append_string(&endLabel, proc->name);
-  append_string(&endLabel, ".proc-end");
-  ir_proc->endLabel = endLabel.start;
+  String end_label = {0};
+  string_init(&end_label, arena);
+  append_string(&end_label, ast_proc->name);
+  append_string(&end_label, ".proc-end");
+  ir_proc->end_label = end_label.start;
+  ast_proc->ir_proc = ir_proc; // the pointer must be set before building the statement list
 
-  ListItem* nodeItem = list_first_item(&bodyBlock->stmtList);
-  while(nodeItem)
+  ListItem* node_item = list_first_item(&bodyBlock->stmtList);
+  while(node_item)
   {
-    AstNode* ast_node = nodeItem->elem;
+    AstNode* ast_node = node_item->elem;
     if(ast_node->kind == AstNodeKind_BinExpr)
     {
-      BinExpr* bin_expr = &ast_node->bin_expr;
-      assert(bin_expr->op == OperatorKind_Assign);
-      IrNode* ir_expr = ir_build_bin_expr(arena, execContext, bin_expr);
+      AstBinExpr* bin_expr = &ast_node->bin_expr;
+      assert(bin_expr->op == AstOperatorKind_Assign);
+      IrNode* ir_expr = ir_build_bin_expr(arena, actv_rec, bin_expr);
       list_append(arena, &ir_proc->instr_list, ir_expr);
     }
     else if(ast_node->kind == AstNodeKind_Call)
     {
-      Call* call = &ast_node->call;
-      IrNode* ir_call = ir_build_call(arena, execContext, call);
+      AstCall* call = &ast_node->call;
+      IrNode* ir_call = ir_build_call(arena, actv_rec, call);
       list_append(arena, &ir_proc->instr_list, ir_call);
     }
-    nodeItem = nodeItem->next;
+    else if(ast_node->kind == AstNodeKind_ReturnStmt)
+    {
+      AstReturnStmt* ret_stmt = &ast_node->ret_stmt;
+      IrNode* ir_ret = ir_build_return(arena, actv_rec, ret_stmt);
+      list_append(arena, &ir_proc->instr_list, ir_ret);
+    }
+    else
+      assert(false);
+    node_item = node_item->next;
   }
 
-  return is_node;
+  return ir_node;
 }/*<<<*/
  
-IrNode* ir_build_module(MemoryArena* arena, IrExecutionContext* execContext, Module* module)
+IrNode* ir_build_module(MemoryArena* arena, AstModule* module)
 {/*>>>*/
   IrNode* ir_module_node = push_element(arena, IrNode, 1);
   ir_module_node->kind = IrNodeKind_Module;
@@ -1954,7 +2029,7 @@ IrNode* ir_build_module(MemoryArena* arena, IrExecutionContext* execContext, Mod
   {
     AstNode* ast_proc_node = proc_item->elem;
     assert(ast_proc_node->kind == AstNodeKind_Proc);
-    IrNode* ir_procNode = ir_build_proc(arena, execContext, &ast_proc_node->proc);
+    IrNode* ir_procNode = ir_build_proc(arena, &ast_proc_node->proc);
     ast_proc_node->proc.ir_proc = &ir_procNode->proc;
     list_append(arena, &ir_module->proc_list, ir_procNode);
     if(str_match(ast_proc_node->proc.name, "main"))
@@ -1980,18 +2055,18 @@ IrNode* ir_build_module(MemoryArena* arena, IrExecutionContext* execContext, Mod
 }/*<<<*/
 /*<<<*/
 
-void print_instruction(VmProgram* vmProgram, char* code, ...)
+void print_instruction(VmProgram* vm_program, char* code, ...)
 {/*>>>*/
   static char strbuf[128] = {0};
   va_list args;
 
   va_start(args, code);
-  vmProgram->text_len += vsprintf(strbuf, code, args);
+  vm_program->text_len += vsprintf(strbuf, code, args);
   va_end(args);
 
-  append_string(&vmProgram->text, strbuf);
-  append_string(&vmProgram->text, "\n");
-  vmProgram->text_len++;
+  append_string(&vm_program->text, strbuf);
+  append_string(&vm_program->text, "\n");
+  vm_program->text_len++;
 }/*<<<*/
 
 void emit_instr_reg(MemoryArena* arena, List* instr_list, Opcode opcode, RegName reg)
@@ -2029,7 +2104,48 @@ void emit_instr_str(MemoryArena* arena, List* instr_list, Opcode opcode, char* s
   list_append(arena, instr_list, instr);
 }/*<<<*/
 
-void gen_load_rvalue(MemoryArena*, List*, IrValue*);
+void gen_load_rvalue(MemoryArena*, List*, IrNode*);
+void gen_load_lvalue(MemoryArena*, List*, IrNode*);
+
+void gen_bin_expr(MemoryArena* arena, List* code, IrBinExpr* bin_expr)
+{/*>>>*/
+  if(bin_expr->op == IrOpKind_Store)
+  {
+    gen_load_rvalue(arena, code, bin_expr->right_operand);
+    gen_load_lvalue(arena, code, bin_expr->left_operand);
+
+    emit_instr(arena, code, Opcode_STORE);
+  }
+  else
+  {
+    gen_load_rvalue(arena, code, bin_expr->left_operand);
+    gen_load_rvalue(arena, code, bin_expr->right_operand);
+
+    if(bin_expr->op == IrOpKind_Add)
+      emit_instr(arena, code, Opcode_ADD);
+    else if(bin_expr->op == IrOpKind_Sub)
+      emit_instr(arena, code, Opcode_SUB);
+    else if(bin_expr->op == IrOpKind_Mul)
+      emit_instr(arena, code, Opcode_MUL);
+    else if(bin_expr->op == IrOpKind_Div)
+      emit_instr(arena, code, Opcode_DIV);
+    else
+      assert(false);
+  }
+}/*<<<*/
+
+void gen_unr_expr(MemoryArena* arena, List* code, IrUnrExpr* unr_expr)
+{/*>>>*/
+  gen_load_rvalue(arena, code, unr_expr->operand);
+  if(unr_expr->op == IrOpKind_Neg)
+  {
+    // emulated instruction
+    emit_instr_int(arena, code, Opcode_PUSH, -1);
+    emit_instr(arena, code, Opcode_MUL);
+  }
+  else
+    assert(false);
+}/*<<<*/
 
 void gen_call(MemoryArena* arena, List* code, IrCall* call)
 {/*>>>*/
@@ -2043,36 +2159,41 @@ void gen_call(MemoryArena* arena, List* code, IrCall* call)
   while(argItem)
   {
     IrNode* argNode = argItem->elem;
-    assert(argNode->kind == IrNodeKind_LoadRValue);
-    gen_load_rvalue(arena, code, &argNode->value);
+    assert(argNode->kind == IrNodeKind_Value);
+    gen_load_rvalue(arena, code, argNode);
     argItem = argItem->next;
   }
 
   emit_instr_str(arena, code, Opcode_CALL, proc->label);
 }/*<<<*/
 
-void gen_load_lvalue(MemoryArena* arena, List* code, IrValue* value)
+void gen_load_lvalue(MemoryArena* arena, List* code, IrNode* ir_node)
 {/*>>>*/
+  assert(ir_node->kind == IrNodeKind_Value);
+  IrValue* value = &ir_node->value;
   assert(value->kind == IrValueKind_Var);
-  if(value->var.is_non_local)
+  IrVar* var = value->var;
+  if(var->is_non_local)
   {
     emit_instr_reg(arena, code, Opcode_PUSH, RegName_FP);
-    emit_instr_int(arena, code, Opcode_PUSH, value->var.access_linkLocation);
+    emit_instr_int(arena, code, Opcode_PUSH, var->access_link_loc);
     emit_instr(arena, code, Opcode_ADD);
     emit_instr(arena, code, Opcode_LOAD);
   } else
   {
     emit_instr_reg(arena, code, Opcode_PUSH, RegName_FP);
   }
-  emit_instr_int(arena, code, Opcode_PUSH, value->var.data_location);
+  emit_instr_int(arena, code, Opcode_PUSH, var->data_loc);
   emit_instr(arena, code, Opcode_ADD);
 }/*<<<*/
 
-void gen_load_rvalue(MemoryArena* arena, List* code, IrValue* value)
+void gen_load_rvalue(MemoryArena* arena, List* code, IrNode* ir_node)
 {/*>>>*/
+  assert(ir_node->kind == IrNodeKind_Value);
+  IrValue* value = &ir_node->value;
   if(value->kind == IrValueKind_Var)
   {
-    gen_load_lvalue(arena, code, value);
+    gen_load_lvalue(arena, code, ir_node);
     emit_instr(arena, code, Opcode_LOAD);
   }
   else if(value->kind == IrValueKind_Call)
@@ -2083,32 +2204,53 @@ void gen_load_rvalue(MemoryArena* arena, List* code, IrValue* value)
   {
     emit_instr_int(arena, code, Opcode_PUSH, value->int_num);
   }
+  else if(value->kind == IrValueKind_BinExpr)
+  {
+    gen_bin_expr(arena, code, value->bin_expr);
+  }
+  else if(value->kind == IrValueKind_UnrExpr)
+  {
+    gen_unr_expr(arena, code, value->unr_expr);
+  }
+  else
+    assert(false);
 }/*<<<*/
 
-void gen_code(MemoryArena* arena, List* code, IrNode* is_node)
+void gen_return(MemoryArena* arena, List* code, IrReturn* ir_ret)
 {/*>>>*/
-  switch(is_node->kind)
+  gen_bin_expr(arena, code, ir_ret->assgn_expr);
+  IrProc* proc = ir_ret->proc;
+  int level = ir_ret->depth;
+  while(level--)
   {
-    case(IrNodeKind_Module):
-    {
-      IrModule* module = &is_node->module;
+    emit_instr(arena, code, Opcode_DECR); // offset to the fp of actv. record n-1
+    emit_instr(arena, code, Opcode_LOAD);
+  }
+  emit_instr_str(arena, code, Opcode_GOTO, proc->end_label);
+}/*<<<*/
 
-      gen_call(arena, code, module->main_call);
-      emit_instr(arena, code, Opcode_HALT);
+void gen_statement(MemoryArena* arena, List* code, IrNode* stmt_node)
+{/*>>>*/
+  if(stmt_node->kind == IrNodeKind_BinExpr)
+  {
+    assert(stmt_node->bin_expr.op == IrOpKind_Store);
+    gen_bin_expr(arena, code, &stmt_node->bin_expr);
+    emit_instr(arena, code, Opcode_POP);
+  }
+  else if(stmt_node->kind == IrNodeKind_Call)
+  {
+    gen_call(arena, code, &stmt_node->call);
+    emit_instr(arena, code, Opcode_POP);
+  }
+  else if(stmt_node->kind == IrNodeKind_Return)
+    gen_return(arena, code, &stmt_node->ret);
+  else
+    assert(false);
+}/*<<<*/
 
-      ListItem* item = list_first_item(&module->proc_list);
-      while(item)
-      {
-        IrNode* is_node = item->elem;
-        gen_code(arena, code, is_node);
-        item = item->next;
-      }
-    } break;
-
-    case(IrNodeKind_Proc):
-    {
-      IrProc* proc = &is_node->proc;
-      emit_instr_str(arena, code, Opcode_LABEL, proc->label);
+void gen_proc(MemoryArena* arena, List* code, IrProc* proc)
+{/*>>>*/
+  emit_instr_str(arena, code, Opcode_LABEL, proc->label);
 
 //      {/*>>> Access links - are not for procs! */
 //        IrActivationRecord* actv_rec = proc->actv_rec;
@@ -2123,86 +2265,60 @@ void gen_code(MemoryArena* arena, List* code, IrNode* is_node)
 //        }
 //      }/*<<<*/
 
-      IrActivationRecord* actv_rec = proc->actv_rec;
-      IrStackArea* localsArea = &actv_rec->proc.locals;
-      if(localsArea->size > 0)
-        emit_instr_int(arena, code, Opcode_ALLOC, localsArea->size);
+  IrActivationRecord* actv_rec = proc->actv_rec;
+  IrStackArea* localsArea = &actv_rec->proc.locals;
+  if(localsArea->size > 0)
+    emit_instr_int(arena, code, Opcode_ALLOC, localsArea->size);
 
-      {
-        ListItem* item = list_first_item(&proc->instr_list);
-        while(item)
-        {
-          IrNode* is_node = item->elem;
-          gen_code(arena, code, is_node);
-          item = item->next;
-        }
-      }
-
-      emit_instr_str(arena, code, Opcode_LABEL, proc->endLabel);
-      emit_instr(arena, code, Opcode_RETURN);
-    } break;
-
-    case(IrNodeKind_LoadLValue):
+  {
+    ListItem* item = list_first_item(&proc->instr_list);
+    while(item)
     {
-      IrValue* value = &is_node->value;
-      gen_load_lvalue(arena, code, value);
-    } break;
+      IrNode* ir_node = item->elem;
+      gen_statement(arena, code, ir_node);
+      item = item->next;
+    }
+  }
 
-    case(IrNodeKind_LoadRValue):
-    {
-      IrValue* value = &is_node->value;
-      gen_load_rvalue(arena, code, value);
-    } break;
+  emit_instr_str(arena, code, Opcode_LABEL, proc->end_label);
+  emit_instr(arena, code, Opcode_RETURN);
+}/*<<<*/
 
-    case(IrNodeKind_BinOp):
-    {
-      IrBinOp* op = &is_node->op;
-      gen_code(arena, code, op->left_operand);
-      gen_code(arena, code, op->right_operand);
-      if(op->op == IrOpKind_Store)
-        emit_instr(arena, code, Opcode_STORE);
-      else if(op->op == IrOpKind_Add)
-        emit_instr(arena, code, Opcode_ADD);
-      else if(op->op == IrOpKind_Sub)
-        emit_instr(arena, code, Opcode_SUB);
-      else if(op->op == IrOpKind_Mul)
-        emit_instr(arena, code, Opcode_MUL);
-      else if(op->op == IrOpKind_Div)
-        emit_instr(arena, code, Opcode_DIV);
-      else
-        assert(false);
-    } break;
+void gen_module(MemoryArena* arena, List* code, IrModule* module)
+{/*>>>*/
+  gen_call(arena, code, module->main_call);
+  emit_instr(arena, code, Opcode_HALT);
 
-    case(IrNodeKind_Call):
-    {
-      IrCall* call = &is_node->call;
-      gen_call(arena, code, call);
-      emit_instr(arena, code, Opcode_POP);
-    } break;
+  ListItem* item = list_first_item(&module->proc_list);
+  while(item)
+  {
+    IrNode* ir_node = item->elem;
+    gen_proc(arena, code, &ir_node->proc);
+    item = item->next;
   }
 }/*<<<*/
 
 char* get_regname_str(RegName reg)
 {/*>>>*/
-  static char* regFP = "fp";
-  static char* regSP = "sp";
-  static char* regIP = "ip";
-  char* regStr = 0;
+  static char* reg_fp = "fp";
+  static char* reg_sp = "sp";
+  static char* reg_ip = "ip";
+  char* regname = 0;
 
   if(reg == RegName_FP)
-    regStr = regFP;
+    regname = reg_fp;
   else if(reg == RegName_SP)
-    regStr = regSP;
+    regname = reg_sp;
   else if(reg == RegName_IP)
-    regStr = regIP;
+    regname = reg_ip;
   else
     assert(false);
-  return regStr;
+  return regname;
 }/*<<<*/
 
-void print_code(VmProgram* vmProgram)
+void print_code(VmProgram* vm_program)
 {/*>>>*/
-  ListItem* item = list_first_item(&vmProgram->instr_list);
+  ListItem* item = list_first_item(&vm_program->instr_list);
   while(item)
   {
     Instruction* instr = item->elem;
@@ -2211,9 +2327,9 @@ void print_code(VmProgram* vmProgram)
       case(Opcode_PUSH):
       {
         if(instr->param_type == ParamType_Reg)
-          print_instruction(vmProgram, "push %s", get_regname_str(instr->param.reg));
+          print_instruction(vm_program, "push %s", get_regname_str(instr->param.reg));
         else if(instr->param_type == ParamType_Int32)
-          print_instruction(vmProgram, "push %d", instr->param.int_num);
+          print_instruction(vm_program, "push %d", instr->param.int_num);
         else
           assert(false);
       } break;
@@ -2221,9 +2337,9 @@ void print_code(VmProgram* vmProgram)
       case(Opcode_POP):
       {
         if(instr->param_type == ParamType_Reg)
-          print_instruction(vmProgram, "pop %s", get_regname_str(instr->param.reg));
+          print_instruction(vm_program, "pop %s", get_regname_str(instr->param.reg));
         else if(instr->param_type == ParamType__Null)
-          print_instruction(vmProgram, "pop");
+          print_instruction(vm_program, "pop");
         else
           assert(false);
       } break;
@@ -2231,49 +2347,73 @@ void print_code(VmProgram* vmProgram)
       case(Opcode_ADD):
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vmProgram, "add");
+        print_instruction(vm_program, "add");
+      } break;
+
+      case(Opcode_SUB):
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "sub");
+      } break;
+
+      case(Opcode_MUL):
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "mul");
+      } break;
+
+      case(Opcode_DIV):
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "div");
       } break;
 
       case(Opcode_LOAD):
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vmProgram, "load");
+        print_instruction(vm_program, "load");
       } break;
 
       case(Opcode_STORE):
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vmProgram, "store");
+        print_instruction(vm_program, "store");
       } break;
 
       case(Opcode_LABEL):
       {
         assert(instr->param_type == ParamType_String);
-        print_instruction(vmProgram, "label %s", instr->param.str);
+        print_instruction(vm_program, "label %s", instr->param.str);
       } break;
 
       case(Opcode_RETURN):
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vmProgram, "return");
+        print_instruction(vm_program, "return");
       } break;
 
       case(Opcode_ALLOC):
       {
         assert(instr->param_type == ParamType_Int32);
-        print_instruction(vmProgram, "alloc %d", instr->param.int_num);
+        print_instruction(vm_program, "alloc %d", instr->param.int_num);
       } break;
 
       case(Opcode_CALL):
       {
         assert(instr->param_type == ParamType_String);
-        print_instruction(vmProgram, "call %s", instr->param.str);
+        print_instruction(vm_program, "call %s", instr->param.str);
       } break;
 
       case(Opcode_HALT):
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vmProgram, "halt");
+        print_instruction(vm_program, "halt");
+      } break;
+
+      case(Opcode_GOTO):
+      {
+        assert(instr->param_type == ParamType_String);
+        print_instruction(vm_program, "goto %s", instr->param.str);
       } break;
 
       default:
@@ -2337,8 +2477,8 @@ void print_code(VmProgram* vmProgram)
 //              assert(argSymbol->kind == SymbolKind_Var);
 //
 //              DataObj* irArg = &argSymbol->dataObj;
-//              // Note that the storage locations for arguments are negative
-//              irArg->location = -(args_areaSize + CONTROL_LINKS_DATA_SIZE + 1);
+//              // Note that the storage locs for arguments are negative
+//              irArg->loc = -(args_areaSize + CONTROL_LINKS_DATA_SIZE + 1);
 //              irArg->size     = 1;
 //
 //              args_areaSize += irArg->size;
@@ -2390,7 +2530,7 @@ void print_code(VmProgram* vmProgram)
 //        assert(varSymbol->kind == SymbolKind_Var);
 //
 //        DataObj* dataObj = &varSymbol->dataObj;
-//        dataObj->location = localAreaSize;
+//        dataObj->loc = localAreaSize;
 //        localAreaSize += dataObj->size;
 //
 //        DataObjList* irLocalItem = push_element(arena, DataObjList, 1);
@@ -2488,7 +2628,7 @@ void print_code(VmProgram* vmProgram)
 //  return success;
 //}/*<<<*/
 //
-//void gen_codeLValue(VmProgram* vmProgram, AstNode* ast)
+//void gen_codeLValue(VmProgram* vm_program, AstNode* ast)
 //{/*>>>*/
 //  switch(ast->kind)
 //  {
@@ -2501,20 +2641,20 @@ void print_code(VmProgram* vmProgram)
 //        {
 //          AccessLink* access_link = ast->id.access_link;
 //
-//          Emit(vmProgram, ";begin load l-value of non-local '%s'", symbol->name);
-//          Emit(vmProgram, "push fp");
-//          int access_linkLocation = 2 + access_link->index;
-//          Emit(vmProgram, "push -%d", access_linkLocation);
-//          Emit(vmProgram, "add");
-//          Emit(vmProgram, "load ;access link"); // access link is on the stack now
+//          Emit(vm_program, ";begin load l-value of non-local '%s'", symbol->name);
+//          Emit(vm_program, "push fp");
+//          int access_link_loc = 2 + access_link->index;
+//          Emit(vm_program, "push -%d", access_link_loc);
+//          Emit(vm_program, "add");
+//          Emit(vm_program, "load ;access link"); // access link is on the stack now
 //        } else
 //        {
-//          Emit(vmProgram, ";begin load l-value of local '%s'", symbol->name);
-//          Emit(vmProgram, "push fp");
+//          Emit(vm_program, ";begin load l-value of local '%s'", symbol->name);
+//          Emit(vm_program, "push fp");
 //        }
-//        Emit(vmProgram, "push %d", dataObj->location);
-//        Emit(vmProgram, "add");
-//        Emit(vmProgram, ";end load of l-value");
+//        Emit(vm_program, "push %d", dataObj->loc);
+//        Emit(vm_program, "add");
+//        Emit(vm_program, ";end load of l-value");
 //      } break;
 //
 //    default:
@@ -2522,14 +2662,14 @@ void print_code(VmProgram* vmProgram)
 //  }
 //}/*<<<*/
 //
-//void gen_codeRValue(VmProgram* vmProgram, AstNode* ast)
+//void gen_codeRValue(VmProgram* vm_program, AstNode* ast)
 //{/*>>>*/
 //  switch(ast->kind)
 //  {
 //    case Ast_Id:
 //      {
-//        gen_codeLValue(vmProgram, ast);
-//        Emit(vmProgram, "load ;r-value");
+//        gen_codeLValue(vm_program, ast);
+//        Emit(vm_program, "load ;r-value");
 //      } break;
 //
 //    case Ast_Expr:
@@ -2544,19 +2684,19 @@ void print_code(VmProgram* vmProgram)
 //              assert(callAst->kind == Ast_Call);
 //              assert(procSymbol->kind == SymbolKind_Proc);
 //
-//              Emit(vmProgram, "push 0 ;retval of %s", callAst->call.name);
+//              Emit(vm_program, "push 0 ;retval of %s", callAst->call.name);
 //
-//              Emit(vmProgram, ";begin arg-eval");
+//              Emit(vm_program, ";begin arg-eval");
 //              Ast_ListItem* argList = callAst->call.argList;
 //              while(argList)
 //              {
 //                AstNode* argAst = argList->ast;
-//                gen_codeRValue(vmProgram, argAst);
+//                gen_codeRValue(vm_program, argAst);
 //                argList = argList->nextItem;
 //              }
-//              Emit(vmProgram, ";end arg-eval");
+//              Emit(vm_program, ";end arg-eval");
 //
-//              Emit(vmProgram, "call %s", callAst->call.name);
+//              Emit(vm_program, "call %s", callAst->call.name);
 //
 //              ActivationRecord* actv_rec = callAst->call.actv_rec;
 //              assert(actv_rec->kind == ActvRecord_Proc);
@@ -2565,21 +2705,21 @@ void print_code(VmProgram* vmProgram)
 //              if(ast->expr.is_statement)
 //                restoreSp += 1; // discard retval
 //              if(restoreSp > 0)
-//                Emit(vmProgram, "pop %d ;restore callee sp", restoreSp);
+//                Emit(vm_program, "pop %d ;restore callee sp", restoreSp);
 //            } break;
 //
 //          case Operator_Assign:
 //            {
 //              AstNode* rightSide = ast->expr.right_operand;
-//              gen_codeRValue(vmProgram, rightSide);
+//              gen_codeRValue(vm_program, rightSide);
 //
 //              AstNode* leftSide = ast->expr.left_operand;
 //              assert(leftSide->kind == Ast_Id);
-//              gen_codeLValue(vmProgram, leftSide);
-//              Emit(vmProgram, "store ;'%s'", leftSide->id.name);
+//              gen_codeLValue(vm_program, leftSide);
+//              Emit(vm_program, "store ;'%s'", leftSide->id.name);
 //
 //              if(ast->expr.is_statement)
-//                Emit(vmProgram, "pop"); // discard the r-value
+//                Emit(vm_program, "pop"); // discard the r-value
 //            } break;
 //
 //          case Operator_Mul:
@@ -2588,18 +2728,18 @@ void print_code(VmProgram* vmProgram)
 //          case Operator_Sub:
 //            {
 //              AstNode* left_operand = ast->expr.left_operand;
-//              gen_codeRValue(vmProgram, left_operand);
+//              gen_codeRValue(vm_program, left_operand);
 //              AstNode* right_operand = ast->expr.right_operand;
-//              gen_codeRValue(vmProgram, right_operand);
+//              gen_codeRValue(vm_program, right_operand);
 //
 //              if(ast->expr.op == Operator_Mul)
-//                Emit(vmProgram, "mul");
+//                Emit(vm_program, "mul");
 //              else if(ast->expr.op == Operator_Add)
-//                Emit(vmProgram, "add");
+//                Emit(vm_program, "add");
 //              else if(ast->expr.op == Operator_Div)
-//                Emit(vmProgram, "div");
+//                Emit(vm_program, "div");
 //              else if(ast->expr.op == Operator_Sub)
-//                Emit(vmProgram, "sub");
+//                Emit(vm_program, "sub");
 //              else
 //                assert(false);
 //            } break;
@@ -2608,7 +2748,7 @@ void print_code(VmProgram* vmProgram)
 //
 //    case Ast_IntNum:
 //      {
-//        Emit(vmProgram, "push %d", ast->literal.int_num);
+//        Emit(vm_program, "push %d", ast->literal.int_num);
 //      } break;
 //
 //    case Ast_Neg:
@@ -2616,11 +2756,11 @@ void print_code(VmProgram* vmProgram)
 //        AstNode* expr = ast->neg.expr;
 //        if(expr->kind == Ast_IntNum)
 //        {
-//          Emit(vmProgram, "push -%d", expr->literal.int_num);
+//          Emit(vm_program, "push -%d", expr->literal.int_num);
 //        } else {
-//          gen_codeRValue(vmProgram, expr);
-//          Emit(vmProgram, "push -1");
-//          Emit(vmProgram, "mul");
+//          gen_codeRValue(vm_program, expr);
+//          Emit(vm_program, "push -1");
+//          Emit(vm_program, "mul");
 //        }
 //      } break;
 //
@@ -2629,7 +2769,7 @@ void print_code(VmProgram* vmProgram)
 //  }
 //}/*<<<*/
 //
-//void gen_code(VmProgram* vmProgram, SymbolTable* symbol_table,
+//void gen_code(VmProgram* vm_program, SymbolTable* symbol_table,
 //             Block* block, AstNode* ast)
 //{/*>>>*/
 //  switch(ast->kind)
@@ -2638,7 +2778,7 @@ void print_code(VmProgram* vmProgram)
 //    case Ast_Expr:
 //    case Ast_Id:
 //      {
-//        gen_codeRValue(vmProgram, ast);
+//        gen_codeRValue(vm_program, ast);
 //      } break;
 //
 //    case Ast_Var:
@@ -2652,15 +2792,15 @@ void print_code(VmProgram* vmProgram)
 //        {
 //          case Block_Module:
 //            {
-//              Emit(vmProgram, "push 0 ;main retval");
-//              Emit(vmProgram, "call main");
-//              Emit(vmProgram, "halt");
+//              Emit(vm_program, "push 0 ;main retval");
+//              Emit(vm_program, "call main");
+//              Emit(vm_program, "halt");
 //
 //              Ast_ListItem* proc_list = block->module.proc_list;
 //              while(proc_list)
 //              {
 //                AstNode* procAst = proc_list->ast;
-//                gen_code(vmProgram, symbol_table, block, procAst);
+//                gen_code(vm_program, symbol_table, block, procAst);
 //
 //                proc_list = proc_list->nextItem;
 //              }
@@ -2669,24 +2809,24 @@ void print_code(VmProgram* vmProgram)
 //          case Block_Proc:
 //            {
 //              Symbol* procSymbol = block->proc.symbol;
-//              Emit(vmProgram, "label %s", procSymbol->name); // entry point
+//              Emit(vm_program, "label %s", procSymbol->name); // entry point
 //
 //              ActivationRecord* actv_rec = &block->actv_rec;
 //              int dataAreaSize = actv_rec->localAreaSize;
 //              if(dataAreaSize > 0)
-//                Emit(vmProgram, "alloc %d ;local storage", dataAreaSize);
+//                Emit(vm_program, "alloc %d ;local storage", dataAreaSize);
 //
 //              Ast_ListItem* stmtList = block->stmtList;
 //              while(stmtList)
 //              {
 //                AstNode* stmt = stmtList->ast;
-//                gen_code(vmProgram, symbol_table, block, stmt);
+//                gen_code(vm_program, symbol_table, block, stmt);
 //
 //                stmtList = stmtList->nextItem;
 //              }
 //
-//              Emit(vmProgram, "label %s.end-proc", procSymbol->name);
-//              Emit(vmProgram, "return");
+//              Emit(vm_program, "label %s.end-proc", procSymbol->name);
+//              Emit(vm_program, "return");
 //            } break;
 //
 //          case Block_WhileStmt:
@@ -2695,56 +2835,56 @@ void print_code(VmProgram* vmProgram)
 //
 //              char label[32] = {};
 //              make_unique_label(symbol_table, label);
-//              Emit(vmProgram, "label %s.while-expr", label);
+//              Emit(vm_program, "label %s.while-expr", label);
 //
 //              // conditional expr
-//              gen_codeRValue(vmProgram, block->while_stmt.expr);
-//              Emit(vmProgram, "jumpz %s.while-break", label);
+//              gen_codeRValue(vm_program, block->while_stmt.expr);
+//              Emit(vm_program, "jumpz %s.while-break", label);
 //
 //              if(actv_rec->access_linkCount > 0)
 //              {
 //                // Highest indexed access link is first from the top
-//                Emit(vmProgram, ";begin set-up of access links");
+//                Emit(vm_program, ";begin set-up of access links");
 //
 //                AccessLink* access_link = actv_rec->access_links;
 //                while(access_link)
 //                {
-//                  Emit(vmProgram, "push fp"); // first level up is the caller's activ. record
+//                  Emit(vm_program, "push fp"); // first level up is the caller's activ. record
 //
 //                  assert(access_link->actv_rec_offset > 0);
 //                  int offset = access_link->actv_rec_offset;
 //                  offset--;
 //                  while(offset--)
 //                  {
-//                    Emit(vmProgram, "decr"); // offset to the fp of actv. record n-1
-//                    Emit(vmProgram, "load");
+//                    Emit(vm_program, "decr"); // offset to the fp of actv. record n-1
+//                    Emit(vm_program, "load");
 //                  }
 //
 //                  access_link = access_link->nextLink;
 //                }
-//                Emit(vmProgram, ";end set-up of access links");
+//                Emit(vm_program, ";end set-up of access links");
 //              }
 //
-//              Emit(vmProgram, "enter");
+//              Emit(vm_program, "enter");
 //
 //              if(actv_rec->localAreaSize > 0)
-//                Emit(vmProgram, "alloc %d ;local storage", actv_rec->localAreaSize);
+//                Emit(vm_program, "alloc %d ;local storage", actv_rec->localAreaSize);
 //
 //              // body
 //              Ast_ListItem* stmtList = block->stmtList;
 //              while(stmtList)
 //              {
 //                AstNode* stmt = stmtList->ast;
-//                gen_code(vmProgram, symbol_table, block, stmt);
+//                gen_code(vm_program, symbol_table, block, stmt);
 //
 //                stmtList = stmtList->nextItem;
 //              }
 //
-//              Emit(vmProgram, "leave");
-//              Emit(vmProgram, "pop %d ;discard access links", actv_rec->access_linkCount);
+//              Emit(vm_program, "leave");
+//              Emit(vm_program, "pop %d ;discard access links", actv_rec->access_linkCount);
 //
-//              Emit(vmProgram, "goto %s.while-expr", label);
-//              Emit(vmProgram, "label %s.while-break", label);
+//              Emit(vm_program, "goto %s.while-expr", label);
+//              Emit(vm_program, "label %s.while-break", label);
 //            } break;
 //
 //          default:
@@ -2754,34 +2894,34 @@ void print_code(VmProgram* vmProgram)
 //
 //    case Ast_Call:
 //      {
-//        Emit(vmProgram, "call %s", ast->call.name);
+//        Emit(vm_program, "call %s", ast->call.name);
 //      } break;
 //
 //    case Ast_Return:
 //      {
-//        gen_codeRValue(vmProgram, ast->ret.expr);
+//        gen_codeRValue(vm_program, ast->ret.expr);
 //
 //        ActivationRecord* actv_rec = ast->ret.actv_rec;
 //        assert(actv_rec->kind == ActvRecord_Proc);
 //
 //        //FIXME: 'retval' is a DataObj
-//        int retValLocation = CONTROL_LINKS_DATA_SIZE + actv_rec->proc.args_areaSize +
+//        int retValloc = CONTROL_LINKS_DATA_SIZE + actv_rec->proc.args_areaSize +
 //          actv_rec->proc.retAreaSize;
 //
 //        // Load l-value of the 'ret' data object
-//        Emit(vmProgram, "push fp");
+//        Emit(vm_program, "push fp");
 //        assert(ast->ret.intervening_block_count >= 0);
 //        int level = ast->ret.intervening_block_count;
 //        while(level--)
 //        {
-//          Emit(vmProgram, "decr"); // offset to the fp of actv. record n-1
-//          Emit(vmProgram, "load");
+//          Emit(vm_program, "decr"); // offset to the fp of actv. record n-1
+//          Emit(vm_program, "load");
 //        }
 //        //--
 //
-//        Emit(vmProgram, "push %d ;location of retval", -retValLocation); // note the negative sign
-//        Emit(vmProgram, "add");
-//        Emit(vmProgram, "store ;retval");
+//        Emit(vm_program, "push %d ;loc of retval", -retValloc); // note the negative sign
+//        Emit(vm_program, "add");
+//        Emit(vm_program, "store ;retval");
 //
 //        // Exit from the enclosing procedure and any of the intervening blocks
 //        Block* block = ast->ret.block; 
@@ -2789,33 +2929,33 @@ void print_code(VmProgram* vmProgram)
 //        int depth = ast->ret.intervening_block_count;
 //        assert(depth >= 0);
 //        while(depth--)
-//          Emit(vmProgram, "leave");
-//        Emit(vmProgram, "goto %s.end-proc", procSymbol->name);
+//          Emit(vm_program, "leave");
+//        Emit(vm_program, "goto %s.end-proc", procSymbol->name);
 //      } break;
 //#if 0
 //    case Ast_IfStmt:
 //      {
-//        Emit(vmProgram, ";if-begin");
+//        Emit(vm_program, ";if-begin");
 //
 //        // conditional
-//        gen_codeRValue(vmProgram, ast->if_stmt.expr);
+//        gen_codeRValue(vm_program, ast->if_stmt.expr);
 //
 //        char* label = make_unique_label(symbol_table);
 //
 //        if(ast->if_stmt.bodyElse)
-//          Emit(vmProgram, "jumpz %s.else", label);
+//          Emit(vm_program, "jumpz %s.else", label);
 //        else
-//          Emit(vmProgram, "jumpz %s.if-end", label);
+//          Emit(vm_program, "jumpz %s.if-end", label);
 //
-//        gen_code(vmProgram, symbol_table, ast->if_stmt.body);
+//        gen_code(vm_program, symbol_table, ast->if_stmt.body);
 //        if(ast->if_stmt.bodyElse)
 //        {
-//          Emit(vmProgram, "goto %s.if-end", label);
-//          Emit(vmProgram, "label %s.else", label);
-//          gen_code(vmProgram, symbol_table, ast->if_stmt.bodyElse);
+//          Emit(vm_program, "goto %s.if-end", label);
+//          Emit(vm_program, "label %s.else", label);
+//          gen_code(vm_program, symbol_table, ast->if_stmt.bodyElse);
 //        }
 //
-//        Emit(vmProgram, "label %s.if-end", label);
+//        Emit(vm_program, "label %s.if-end", label);
 //
 //      } break;
 //
@@ -2841,7 +2981,7 @@ uint write_bytes_to_file(char* fileName, char* text, int count)
   return bytesWritten;
 }/*<<<*/
 
-bool32 translate_hoc(MemoryArena* arena, char* file_path, char* hocProgram, VmProgram* vmProgram)
+bool32 translate_hoc(MemoryArena* arena, char* file_path, char* hocProgram, VmProgram* vm_program)
 {/*>>>*/
   bool32 success = false;
 
@@ -2857,7 +2997,7 @@ bool32 translate_hoc(MemoryArena* arena, char* file_path, char* hocProgram, VmPr
   // jump from the QuickFix window to the error line in the file.
   tokenStream.file_path = file_path;
 
-  RegisterKeywords(&symbol_table);
+  register_keywords(&symbol_table);
   consume_token(&tokenStream, &symbol_table);
 
   AstNode* ast_node = 0;
@@ -2869,18 +3009,14 @@ bool32 translate_hoc(MemoryArena* arena, char* file_path, char* hocProgram, VmPr
     assert(symbol_table.scope_id == 0);
     assert(symbol_table.nesting_depth == 0);
 
-    //IrActivationRecord topActvRecord = {0};
-    IrExecutionContext execContext = {0};
-    list_init(&execContext.actv_recStack);
-    //list_append(arena, &execContext.avRecordStack, &topActvRecord);
-    IrNode* ir_module_node = ir_build_module(arena, &execContext, &ast_node->module);
+    IrNode* ir_module_node = ir_build_module(arena, &ast_node->module);
     if(ir_module_node)
     {
-      list_init(&vmProgram->instr_list);
-      gen_code(arena, &vmProgram->instr_list, ir_module_node);
+      list_init(&vm_program->instr_list);
+      gen_module(arena, &vm_program->instr_list, &ir_module_node->module);
 
-      string_init(&vmProgram->text, arena);
-      print_code(vmProgram);
+      string_init(&vm_program->text, arena);
+      print_code(vm_program);
     }
     else
       success = false;

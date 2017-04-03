@@ -124,11 +124,11 @@ bool32 str_to_int(char* string, int* integer)
   return true;
 }/*<<<*/
 
-bool32 str_start_with(char* strA, char* prefix)
+bool32 str_start_with(char* str_a, char* prefix)
 {/*>>>*/
-  while(*strA == *prefix)
+  while(*str_a == *prefix)
   {
-    strA++;
+    str_a++;
     prefix++;
     if(*prefix == '\0')
       break;
@@ -138,16 +138,16 @@ bool32 str_start_with(char* strA, char* prefix)
 }/*<<<*/
 
 #define str_match str_equals
-bool32 str_equals(char* strA, char* strB)
+bool32 str_equals(char* str_a, char* str_b)
 {/*>>>*/
-  while(*strA == *strB)
+  while(*str_a == *str_b)
   {
-    strA++;
-    strB++;
-    if(*strA == '\0')
+    str_a++;
+    str_b++;
+    if(*str_a == '\0')
       break;
   }
-  bool32 result = (*strA == *strB);
+  bool32 result = (*str_a == *str_b);
   return result;
 }/*<<<*/
 
@@ -159,34 +159,34 @@ int str_len(char* str)
   return len;
 }
 
-char* copy_cstr(char* destStr, char* srcStr)
+char* copy_cstr(char* dest_str, char* src_str)
 {
   do
   {
-    *destStr++ = *srcStr++;
+    *dest_str++ = *src_str++;
   }
-  while(*srcStr);
+  while(*src_str);
 
-  return destStr;
+  return dest_str;
 }
 
-char* copy_str(StringArena* dest, char* srcStr)
+char* copy_str(StringArena* dest, char* src_str)
 {
-  char* newTail = copy_cstr((char* )dest->free, srcStr);
-  assert(newTail < (char*)dest->limit);
-  dest->free = newTail;
-  return newTail;
+  char* new_tail = copy_cstr((char* )dest->free, src_str);
+  assert(new_tail < (char*)dest->limit);
+  dest->free = new_tail;
+  return new_tail;
 }
 
-void copy_substr(char* destStr, char* beginChar, char* endChar)
+void copy_substr(char* dest_str, char* begin_char, char* end_char)
 {
-  char* srcStr = beginChar;
+  char* src_str = begin_char;
 
   do
-    *destStr++ = *srcStr++;
-  while(srcStr <= endChar);
+    *dest_str++ = *src_str++;
+  while(src_str <= end_char);
 
-  destStr = 0;
+  dest_str = 0;
 }
 
 #if 0
@@ -208,7 +208,7 @@ void check_memory_bounds_(MemoryArena* arena, int elementSize, void* ptr)
   assert((uint8*)arena->free + elementSize <= (uint8*)arena->limit);
 }
 
-void ClearToZero(void* first, void* onePastLast)
+void clear_to_zero(void* first, void* onePastLast)
 {
   uint8* byte = first;
   for(; byte < (uint8*)onePastLast; byte++)
@@ -217,12 +217,12 @@ void ClearToZero(void* first, void* onePastLast)
   }
 }
 
-void ResetArena(MemoryArena* arena)
+void reset_arena(MemoryArena* arena)
 {
   arena->free = arena->base;
 }
 
-void SetWatermark(MemoryArena* arena, void* ptr)
+void set_watermark(MemoryArena* arena, void* ptr)
 {
   check_memory_bounds_(arena, 0, ptr);
   arena->free = ptr;
@@ -239,17 +239,17 @@ MemoryArena push_arena_(MemoryArena* arena, int elementSize, int count, bool32 c
 {
   assert(count > 0);
 
-  MemoryArena subArena = {0};
-  subArena.base = arena->free;
-  subArena.free = subArena.base;
-  arena->free = (uint8*)subArena.base + elementSize*count;
+  MemoryArena sub_arena = {0};
+  sub_arena.base = arena->free;
+  sub_arena.free = sub_arena.base;
+  arena->free = (uint8*)sub_arena.base + elementSize*count;
   check_arena_bounds(arena);
-  subArena.limit = arena->free;
+  sub_arena.limit = arena->free;
   if(clearToZero)
   {
-    ClearToZero(subArena.base, subArena.limit);
+    clear_to_zero(sub_arena.base, sub_arena.limit);
   }
-  return subArena;
+  return sub_arena;
 }
 
 #define push_one_element(ARENA, TYPE) ((TYPE* )push_element_(ARENA, sizeof(TYPE), 1))
@@ -263,7 +263,7 @@ void* push_element_(MemoryArena* arena, int elementSize, int count)
   void* element = arena->free;
   arena->free = (uint8*)arena->free + elementSize*count;
   check_arena_bounds(arena);
-  ClearToZero(element, arena->free);
+  clear_to_zero(element, arena->free);
   return element;
 }
 
@@ -294,10 +294,10 @@ char* read_text_from_file(MemoryArena* arena, char* fileName)
 
 int read_stdin(char buf[], int bufSize)
 {
-  HANDLE hStd = GetStdHandle(STD_INPUT_HANDLE);
+  HANDLE h_std = GetStdHandle(STD_INPUT_HANDLE);
   DWORD bytesRead = 0;
 
-  if(hStd && ReadFile(hStd, buf, bufSize, &bytesRead, 0))
+  if(h_std && ReadFile(h_std, buf, bufSize, &bytesRead, 0))
   {
     if(bytesRead)
     {

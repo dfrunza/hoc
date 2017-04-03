@@ -1,18 +1,18 @@
 #include "lib.c"
-#include "ir.h"
+#include "hasm.h"
 
 #define VMWORD (sizeof(int32))
 
 typedef struct
 {
-  IrCode* code;
-  int32 memorySize;
+  HasmCode* code;
+  int32 mem_size;
   int32 fp;
   int32 sp;
   int32 ip;
   uint8 memory[2048];
 }
-Machine;
+HocMachine;
 
 typedef enum
 {
@@ -28,22 +28,22 @@ typedef enum
 }
 ExecResult;
 
-bool32 check_stack_bounds(Machine* machine, int sp)
+bool32 check_stack_bounds(HocMachine* machine, int sp)
 {
-  return sp >= 0 && sp*(int)VMWORD < machine->memorySize;
+  return sp >= 0 && sp*(int)VMWORD < machine->mem_size;
 }
 
-bool32 check_memory_bounds(Machine* machine, int location)
+bool32 check_memory_bounds(HocMachine* machine, int location)
 {
-  return location >= 0 && location < machine->memorySize;
+  return location >= 0 && location < machine->mem_size;
 }
 
-bool32 check_instr_bounds(IrCode* code, int address)
+bool32 check_instr_bounds(HasmCode* code, int address)
 {
-  return address >= 0 && address < code->instrCount;
+  return address >= 0 && address < code->instr_count;
 }
 
-ExecResult execute_instr(Machine* machine, Instruction* instr)
+ExecResult execute_instr(HocMachine* machine, Instruction* instr)
 {/*>>>*/
   uint8* memory = machine->memory;
   Opcode opcode = instr->opcode;
@@ -73,12 +73,12 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
             *(int32*)&memory[machine->sp*VMWORD] = instr->param.int_num;
           else if(instr->param_type == ParamType_Reg)
           {
-            RegName regName = instr->param.reg;
-            if(regName == RegName_SP)
+            RegName regname = instr->param.reg;
+            if(regname == RegName_SP)
               *(int32*)&memory[machine->sp*VMWORD] = machine->sp;
-            else if(regName == RegName_IP)
+            else if(regname == RegName_IP)
               *(int32*)&memory[machine->sp*VMWORD] = machine->ip;
-            else if(regName == RegName_FP)
+            else if(regname == RegName_FP)
               *(int32*)&memory[machine->sp*VMWORD] = machine->fp;
             else
               assert(false);
@@ -93,8 +93,8 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
 
     case Opcode_POP:
       {
-        int32 argSp = machine->sp-1;
-        if(check_stack_bounds(machine, argSp))
+        int32 arg_sp = machine->sp-1;
+        if(check_stack_bounds(machine, arg_sp))
         {
           if(instr->param_type == ParamType__Null)
           {
@@ -108,21 +108,21 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
           }
           else if(instr->param_type == ParamType_Reg)
           {
-            RegName regName = instr->param.reg;
-            if(regName == RegName_SP)
+            RegName regname = instr->param.reg;
+            if(regname == RegName_SP)
             {
-              machine->sp = *(int32*)&memory[argSp*VMWORD];
+              machine->sp = *(int32*)&memory[arg_sp*VMWORD];
               machine->ip++;
             }
-            else if(regName == RegName_IP)
+            else if(regname == RegName_IP)
             {
-              int32 ip = *(int32*)&memory[argSp*VMWORD];
+              int32 ip = *(int32*)&memory[arg_sp*VMWORD];
               machine->sp--;
               machine->ip = ip;
             }
-            else if(regName == RegName_FP)
+            else if(regname == RegName_FP)
             {
-              machine->fp = *(int32*)&memory[argSp*VMWORD];
+              machine->fp = *(int32*)&memory[arg_sp*VMWORD];
               machine->sp--;
               machine->ip++;
             } else
@@ -138,11 +138,11 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
     case Opcode_MUL:
     case Opcode_SUB:
       {
-        int32 argSp = machine->sp-2;
-        if(check_stack_bounds(machine, argSp))
+        int32 arg_sp = machine->sp-2;
+        if(check_stack_bounds(machine, arg_sp))
         {
-          int32 arg1 = *(int32*)&memory[argSp*VMWORD];
-          int32 arg2 = *(int32*)&memory[(argSp+1)*VMWORD];
+          int32 arg1 = *(int32*)&memory[arg_sp*VMWORD];
+          int32 arg2 = *(int32*)&memory[(arg_sp+1)*VMWORD];
           int32 result = 0;
           switch(opcode)
           {
@@ -162,7 +162,7 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
                 return ExecResult_DivByZero;
               break;
           }
-          *(int32*)&memory[argSp*VMWORD] = result;
+          *(int32*)&memory[arg_sp*VMWORD] = result;
           machine->sp--;
           machine->ip++;
         } else
@@ -172,16 +172,16 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
     case Opcode_INCR:
     case Opcode_DECR:
       {
-        int32 argSp = machine->sp-1;
-        if(check_stack_bounds(machine, argSp))
+        int32 arg_sp = machine->sp-1;
+        if(check_stack_bounds(machine, arg_sp))
         {
-          int32 arg = *(int32*)&memory[argSp*VMWORD];
+          int32 arg = *(int32*)&memory[arg_sp*VMWORD];
           int32 result = arg;
           if(opcode == Opcode_INCR)
             result++;
           else
             result--;
-          *(int32*)&memory[argSp*VMWORD] = result;
+          *(int32*)&memory[arg_sp*VMWORD] = result;
           machine->ip++;
         }
       } break;
@@ -189,21 +189,21 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
     case Opcode_LOAD:
     case Opcode_LOAD8:
       {
-        int32 argSp = machine->sp-1;
-        if(check_stack_bounds(machine, argSp))
+        int32 arg_sp = machine->sp-1;
+        if(check_stack_bounds(machine, arg_sp))
         {
-          int32 location = *(int32*)&memory[argSp*VMWORD];
+          int32 location = *(int32*)&memory[arg_sp*VMWORD];
           if(check_memory_bounds(machine, location))
           {
             if(opcode == Opcode_LOAD)
             {
               uint32 value = *(uint32*)&memory[location*VMWORD];
-              *(uint32*)&memory[argSp*VMWORD] = (uint32)value;
+              *(uint32*)&memory[arg_sp*VMWORD] = (uint32)value;
             }
             else if(opcode == Opcode_LOAD8)
             {
               uint8 value = *(uint8*)&memory[location];
-              *(uint32*)&memory[argSp] = (uint32)value;
+              *(uint32*)&memory[arg_sp] = (uint32)value;
             }
             else
               assert(false);
@@ -218,14 +218,14 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
     case Opcode_STORE:
     case Opcode_STORE8:
       {
-        int32 locationArgSp = machine->sp-2;
-        if(check_stack_bounds(machine, locationArgSp))
+        int32 loc_arg_sp = machine->sp-1;
+        int32 val_arg_sp = machine->sp-2;
+        if(check_stack_bounds(machine, val_arg_sp))
         {
-          int32 location = *(int32*)&memory[locationArgSp*VMWORD];
+          int32 location = *(int32*)&memory[loc_arg_sp*VMWORD];
           if(check_memory_bounds(machine, location))
           {
-            int32 valueArgSp = machine->sp-1;
-            uint32 value = *(uint32*)&memory[valueArgSp*VMWORD];
+            uint32 value = *(uint32*)&memory[val_arg_sp*VMWORD];
             if(opcode == Opcode_STORE)
             {
               if(value <= 0xffffffff)
@@ -243,7 +243,6 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
             else
               assert(false);
 
-            *(int32*)&memory[locationArgSp*VMWORD] = value;
             machine->sp--;
             machine->ip++;
           } else
@@ -268,8 +267,8 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
           *(int32*)&memory[(machine->sp+1)*VMWORD] = machine->fp;
           *(int32*)&memory[(machine->sp+2)*VMWORD] = machine->sp;
 
-          int32 jumpAddress = instr->param.int_num;
-          machine->ip = jumpAddress;
+          int32 jump_address = instr->param.int_num;
+          machine->ip = jump_address;
           machine->sp = topSp;
           machine->fp = topSp;
         } else
@@ -278,12 +277,12 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
 
     case Opcode_RETURN:
       {
-        int32 argSp = machine->fp-3;
-        if(check_stack_bounds(machine, argSp))
+        int32 arg_sp = machine->fp-3;
+        if(check_stack_bounds(machine, arg_sp))
         {
-          machine->ip = *(int32*)&memory[argSp*VMWORD];
-          machine->fp = *(int32*)&memory[(argSp+1)*VMWORD];
-          machine->sp = *(int32*)&memory[(argSp+2)*VMWORD];
+          machine->ip = *(int32*)&memory[arg_sp*VMWORD];
+          machine->fp = *(int32*)&memory[(arg_sp+1)*VMWORD];
+          machine->sp = *(int32*)&memory[(arg_sp+2)*VMWORD];
         } else
           return ExecResult_InvalidMemoryAccess;
       } break;
@@ -303,11 +302,11 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
 
     case Opcode_LEAVE:
       {
-        int32 argSp = machine->fp-1;
-        if(check_stack_bounds(machine, argSp))
+        int32 arg_sp = machine->fp-1;
+        if(check_stack_bounds(machine, arg_sp))
         {
-          machine->fp = *(int32*)&memory[argSp*VMWORD];
-          machine->sp = argSp;
+          machine->fp = *(int32*)&memory[arg_sp*VMWORD];
+          machine->sp = arg_sp;
           machine->ip++;
         } else
           return ExecResult_InvalidMemoryAccess;
@@ -317,15 +316,15 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
     case Opcode_JUMPZ:
       {
         assert(instr->param_type == ParamType_Int32);
-        int32 argSp = machine->sp-1;
-        if(check_stack_bounds(machine, argSp))
+        int32 arg_sp = machine->sp-1;
+        if(check_stack_bounds(machine, arg_sp))
         {
-          int32 jumpAddress = instr->param.int_num;
-          int32 check = *(int32*)&memory[argSp*VMWORD];
+          int32 jump_address = instr->param.int_num;
+          int32 check = *(int32*)&memory[arg_sp*VMWORD];
           if((check && opcode == Opcode_JUMPNZ) ||
               (!check && opcode == Opcode_JUMPZ))
           {
-            machine->ip = jumpAddress;
+            machine->ip = jump_address;
           }
           else
             machine->ip++;
@@ -336,10 +335,10 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
 
     case Opcode_DUP:
       {
-        int32 argSp = machine->sp-1;
-        if(check_stack_bounds(machine, argSp))
+        int32 arg_sp = machine->sp-1;
+        if(check_stack_bounds(machine, arg_sp))
         {
-          int32 value = *(int32*)&memory[argSp*VMWORD];
+          int32 value = *(int32*)&memory[arg_sp*VMWORD];
           if(check_stack_bounds(machine, machine->sp))
           {
             *(int32*)&memory[machine->sp*VMWORD] = value;
@@ -375,8 +374,8 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
     case Opcode_LABEL:
       {
         assert(instr->param_type == ParamType_Int32);
-        int32 jumpAddress = instr->param.int_num;
-        machine->ip = jumpAddress;
+        int32 jump_address = instr->param.int_num;
+        machine->ip = jump_address;
       } break;
 
     case Opcode_NOOP:
@@ -391,33 +390,33 @@ ExecResult execute_instr(Machine* machine, Instruction* instr)
   return ExecResult_OK;
 }/*<<<*/
 
-ExecResult run_program(Machine* machine)
+ExecResult run_program(HocMachine* machine)
 {/*>>>*/
-  IrCode* code = machine->code;
+  HasmCode* code = machine->code;
 
   Instruction* instr;
-  ExecResult execResult = ExecResult_OK;
+  ExecResult exec_result = ExecResult_OK;
   do
   {
     int ip = machine->ip;
     if(check_instr_bounds(code, ip))
     {
-      instr = &code->instrArray[ip];
-      execResult = execute_instr(machine, instr);
+      instr = &code->instr_array[ip];
+      exec_result = execute_instr(machine, instr);
     }
     else
-      execResult = ExecResult_InvalidInstructionAddress;
+      exec_result = ExecResult_InvalidInstructionAddress;
   }
-  while(execResult == ExecResult_OK);
+  while(exec_result == ExecResult_OK);
 
-  if(execResult == ExecResult_EndOfProgram)
+  if(exec_result == ExecResult_EndOfProgram)
   {
     //Memory dump
     for(int i = 0; i <= VMWORD*30; i += VMWORD)
       printf("%d ", *(int32*)&machine->memory[i]);
   }
   else {
-    switch(execResult)
+    switch(exec_result)
     {
       case ExecResult_InvalidMemoryAccess:
         error("Access to invalid memory location");
@@ -440,22 +439,22 @@ ExecResult run_program(Machine* machine)
     }
   }
 
-  return execResult;
+  return exec_result;
 }/*<<<*/
 
-bool32 load_ir_code(IrCode* code)
+bool32 load_ir_code(HasmCode* code)
 {
   HRSRC res = FindResource(0, "CODE", "VM");
   if(res)
   {
-    HGLOBAL resData = LoadResource(0, res);
-    IrCode* resCode = (IrCode*)LockResource(resData);
-    if(str_match(resCode->groove, "IRC"))
+    HGLOBAL res_data = LoadResource(0, res);
+    HasmCode* res_code = (HasmCode*)LockResource(res_data);
+    if(str_match(res_code->groove, "IRC"))
     {
       // Fix the pointers
-      *code = *resCode;
-      code->codeStart = (uint8*)resCode;
-      code->instrArray = (Instruction*)(code->codeStart + sizeof(IrCode));
+      *code = *res_code;
+      code->code_start = (uint8*)res_code;
+      code->instr_array = (Instruction*)(code->code_start + sizeof(HasmCode));
       return true;
     } else
       error("Resource does not appear to be valid IR code");
@@ -468,11 +467,11 @@ int main(int argc, char* argv[])
 {
   int ret = -1;
 
-  Machine machine = {0};
-  IrCode code = {0};
+  HocMachine machine = {0};
+  HasmCode code = {0};
   if(load_ir_code(&code))
   {
-    machine.memorySize = sizeof_array(machine.memory);
+    machine.mem_size = sizeof_array(machine.memory);
     machine.code = &code;
 
     ret = (int)run_program(&machine);

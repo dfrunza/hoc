@@ -1,13 +1,13 @@
-proc foo(var a)
+proc foo(var a, var b)
 {
   var c;
-  c = a+13+21;
+  c = (a+b)*21;
   return c;
 }
 
 proc main()
 {
   var c;
-  c = foo(129);
-  return -c-1;
+  c = foo(13, -12);
+  return -(c-1);
 }

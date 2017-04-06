@@ -53,12 +53,12 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_ALLOC:
       {
         assert(instr->param_type == ParamType_Int32);
-        int32 topSp = machine->sp + instr->param.int_num;
-        if(check_stack_bounds(machine, topSp))
+        int32 top_sp = machine->sp + instr->param.int_num;
+        if(check_stack_bounds(machine, top_sp))
         {
-          for(int i = machine->sp; i < topSp; i++)
+          for(int i = machine->sp; i < top_sp; i++)
             *((int32*)memory+i) = 0;
-          machine->sp = topSp;
+          machine->sp = top_sp;
           machine->ip++;
         } else
           return ExecResult_InvalidMemoryAccess;
@@ -66,8 +66,8 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
 
     case Opcode_PUSH:
       {
-        int32 topSp = machine->sp+1;
-        if(check_stack_bounds(machine, topSp))
+        int32 top_sp = machine->sp+1;
+        if(check_stack_bounds(machine, top_sp))
         {
           if(instr->param_type == ParamType_Int32)
             *(int32*)&memory[machine->sp*VMWORD] = instr->param.int_num;
@@ -85,7 +85,7 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
           } else
             assert(false);
 
-          machine->sp = topSp;
+          machine->sp = top_sp;
           machine->ip++;
         } else
           return ExecResult_InvalidMemoryAccess;
@@ -260,8 +260,8 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_CALL:
       {
         assert(instr->param_type == ParamType_Int32);
-        int32 topSp = machine->sp+3;
-        if(check_stack_bounds(machine, topSp))
+        int32 top_sp = machine->sp+3;
+        if(check_stack_bounds(machine, top_sp))
         {
           *(int32*)&memory[machine->sp*VMWORD] = machine->ip+1;
           *(int32*)&memory[(machine->sp+1)*VMWORD] = machine->fp;
@@ -269,8 +269,8 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
 
           int32 jump_address = instr->param.int_num;
           machine->ip = jump_address;
-          machine->sp = topSp;
-          machine->fp = topSp;
+          machine->sp = top_sp;
+          machine->fp = top_sp;
         } else
           return ExecResult_InvalidMemoryAccess;
       } break;
@@ -289,12 +289,12 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
 
     case Opcode_ENTER:
       {
-        int32 topSp = machine->sp+1;
-        if(check_stack_bounds(machine, topSp))
+        int32 top_sp = machine->sp+1;
+        if(check_stack_bounds(machine, top_sp))
         {
           *(int32*)&memory[machine->sp*VMWORD] = machine->fp;
-          machine->fp = topSp;
-          machine->sp = topSp;
+          machine->fp = top_sp;
+          machine->sp = top_sp;
           machine->ip++;
         } else
           return ExecResult_InvalidMemoryAccess;

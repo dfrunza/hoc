@@ -1,9 +1,13 @@
 proc main()
 {
   var a = 1111;
-  if(a)
+    var b = 3;
+  if(91)
   {
-    a = 10;
+    if(1)
+    {
+      a = a*b;
+    }
   }
   return a;
 }

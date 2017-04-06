@@ -117,13 +117,6 @@ AstNodeKind;
 
 typedef struct
 {
-  int actv_rec_offset; // must be greater than zero
-  int index;
-}
-AstAccessLink;
-
-typedef struct
-{
   List     proc_list;
   AstNode* body;
 }
@@ -1909,13 +1902,9 @@ IrNode* ir_build_block(MemoryArena* arena, AstBlock* ast_block)
   ir_block->actv_rec = actv_rec;
   IrBlockAvRecord* block_av = &actv_rec->block;
   list_init(&ir_block->instr_list);
+  list_init(&ir_block->access_links);
 
-  IrStackArea* area = &block_av->old_fp;
-  area->loc = actv_rec->sp;
-  area->size = 1; // fp
-  actv_rec->sp += area->size;
-
-  area = &block_av->access_links;
+  IrStackArea* area = &block_av->access_links;
   area->loc = actv_rec->sp;
   {/*>>> non-locals */
     ListItem* occur_item = list_first_item(&ast_block->non_local_occurs);
@@ -1924,7 +1913,6 @@ IrNode* ir_build_block(MemoryArena* arena, AstBlock* ast_block)
       AstNode* node = occur_item->elem;
       AstVarOccur* var_occur = &node->var_occur;
       List* links_list = &ir_block->access_links;
-      list_init(links_list);
 
       ListItem* link_item = list_first_item(links_list);
       IrAccessLink* link = 0;
@@ -1949,14 +1937,22 @@ IrNode* ir_build_block(MemoryArena* arena, AstBlock* ast_block)
   }/*<<<*/
   area->size = actv_rec->sp - area->loc;
 
+  area = &block_av->old_fp;
+  area->loc = actv_rec->sp;
+  area->size = 1; // fp
+  actv_rec->sp += area->size;
+
   actv_rec->fp = actv_rec->sp;
 
   {/*>>> correct the offsets of access links */
-    ListItem* link_item = list_first_item(&ir_block->access_links);
-    IrAccessLink* link = link_item->elem;
-    link->loc = -(actv_rec->fp - link->loc);
+    if(ir_block->access_links.count > 0)
+    {
+      ListItem* link_item = list_first_item(&ir_block->access_links);
+      IrAccessLink* link = link_item->elem;
+      link->loc = -(actv_rec->fp - link->loc);
 
-    link_item = link_item->next;
+      link_item = link_item->next;
+    }
   }/*<<<*/
 
   // correct the offset of old_fp
@@ -2349,7 +2345,7 @@ void gen_block(MemoryArena* arena, List* code, IrBlock* block)
   {
     IrAccessLink* link = link_item->elem;
     emit_instr_reg(arena, code, Opcode_PUSH, RegName_FP);
-    int offset = link->actv_rec_offset;
+    int offset = link->actv_rec_offset - 1;
     while(offset--)
     {
       emit_instr(arena, code, Opcode_DECR); // todo: explain why

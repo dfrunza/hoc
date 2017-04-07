@@ -1,14 +1,20 @@
+proc foo(var a, var b)
+{
+  var result = 0;
+  if(a)
+  {
+    result = b;
+  }
+  return result;
+}
+
 proc main()
 {
-  var a = 1111;
-    var b = 3;
-  if(91)
+  var result = 0;
+  if(foo(0, 131))
   {
-    if(1)
-    {
-      a = a*b;
-    }
+    result = 313;
   }
-  return a;
+  return result;
 }
 

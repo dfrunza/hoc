@@ -1922,6 +1922,7 @@ IrNode* ir_build_block(MemoryArena* arena, AstBlock* ast_block)
         if(link->actv_rec_offset == var_occur->decl_block_offset)
           break;
         link_item = link_item->next;
+        link = 0;
       }
       if(!link)
       {
@@ -1948,10 +1949,13 @@ IrNode* ir_build_block(MemoryArena* arena, AstBlock* ast_block)
     if(ir_block->access_links.count > 0)
     {
       ListItem* link_item = list_first_item(&ir_block->access_links);
-      IrAccessLink* link = link_item->elem;
-      link->loc = -(actv_rec->fp - link->loc);
+      while(link_item)
+      {
+        IrAccessLink* link = link_item->elem;
+        link->loc = -(actv_rec->fp - link->loc);
 
-      link_item = link_item->next;
+        link_item = link_item->next;
+      }
     }
   }/*<<<*/
 

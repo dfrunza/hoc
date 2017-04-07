@@ -138,7 +138,7 @@ IrStackArea;
 
 typedef struct IrVar_
 {
-  IrStackArea* data;
+  IrStackArea*  data;
   IrAccessLink* link;
 }
 IrVar;
@@ -169,10 +169,10 @@ AstUnrExpr;
 
 typedef struct
 {
-  Symbol*     symbol;
-  char*       name;
-  int         decl_block_offset;
-  AstVarDecl* var_decl;
+  Symbol*       symbol;
+  char*         name;
+  int           decl_block_offset;
+  AstVarDecl*   var_decl;
   IrAccessLink* link;
 }
 AstVarOccur;
@@ -215,7 +215,7 @@ typedef struct
 {
   AstNode* expr;
   AstNode* body;
-  AstNode* else_node;
+  AstNode* else_body;
 }
 AstIfStmt;
 
@@ -1151,7 +1151,7 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
                 if(success)
                 {
                   if(else_node)
-                    if_stmt->else_node = else_node;
+                    if_stmt->else_body = else_node;
                   else if(input->token == Token_OpenBrace)
                   {
                     consume_token(input, symbol_table);
@@ -1168,7 +1168,7 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
                       success = parse_statement_list(arena, input, symbol_table, block);
                       if(success)
                       {
-                        if_stmt->else_node = block_node;
+                        if_stmt->else_body = block_node;
                         if(input->token == Token_CloseBrace)
                         {
                           consume_token(input, symbol_table);
@@ -1663,6 +1663,7 @@ typedef struct
 {
   IrValue* expr;
   IrNode*  body;
+  IrNode*  else_body;
   char*    label_else;
   char*    label_end;
 }
@@ -1871,7 +1872,7 @@ IrNode* ir_build_return(MemoryArena* arena, IrActivationRecord* actv_rec, AstRet
   return ir_node;
 }/*<<<*/
 
-void ir_block_compute_address_decl_vars(IrActivationRecord* actv_rec, IrStackArea* locals_area, List* decl_vars)
+void ir_block_decl_vars_compute_address(IrActivationRecord* actv_rec, IrStackArea* locals_area, List* decl_vars)
 {
   locals_area->loc = actv_rec->sp;
   {/*>>> locals*/
@@ -1962,8 +1963,7 @@ IrNode* ir_build_block(MemoryArena* arena, AstBlock* ast_block)
   // correct the offset of old_fp
   block_av->old_fp.loc = actv_rec->fp - block_av->old_fp.loc;
 
-  area = &actv_rec->locals;
-  ir_block_compute_address_decl_vars(actv_rec, area, &ast_block->decl_vars);
+  ir_block_decl_vars_compute_address(actv_rec, &actv_rec->locals, &ast_block->decl_vars);
 
   ir_block_build_statements(arena, actv_rec, &ir_block->instr_list, &ast_block->stmt_list);
 
@@ -1999,6 +1999,25 @@ IrNode* ir_build_if(MemoryArena* arena, IrActivationRecord* actv_rec, AstIfStmt*
     AstBlock* ast_block = &ast_if->body->block;
     IrNode* ir_block = ir_build_block(arena, ast_block);
     ir_if->body = ir_block;
+  }
+  else
+    assert(false);
+
+  if(ast_if->else_body)
+  {
+    AstNode* else_node = ast_if->else_body;
+    if(else_node->kind == AstNodeKind_Block)
+    {
+      IrNode* ir_block = ir_build_block(arena, &else_node->block);
+      ir_if->else_body = ir_block;
+    }
+    else if(else_node->kind == AstNodeKind_IfStmt)
+    {
+      IrNode* ir_stmt = ir_build_if(arena, actv_rec, &else_node->if_stmt);
+      ir_if->else_body = ir_stmt;
+    }
+    else
+      assert(false);
   }
   return ir_node;
 }/*<<<*/
@@ -2087,8 +2106,7 @@ IrNode* ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
 
   actv_rec->fp = actv_rec->sp;
 
-  area = &actv_rec->locals;
-  ir_block_compute_address_decl_vars(actv_rec, area, &ast_block->decl_vars);
+  ir_block_decl_vars_compute_address(actv_rec, &actv_rec->locals, &ast_block->decl_vars);
 
   {/*>>> These vars have negative locations : retval and arguments */
     IrStackArea* var_data = proc_av->ret_var.data;
@@ -2417,11 +2435,29 @@ void gen_statement(MemoryArena* arena, List* code, IrNode* stmt_node)
   {
     IrIfStmt* ir_if = &stmt_node->if_stmt;
     gen_load_rvalue(arena, code, ir_if->expr);
-    emit_instr_str(arena, code, Opcode_JUMPZ, ir_if->label_end);
+    if(ir_if->else_body)
+      emit_instr_str(arena, code, Opcode_JUMPZ, ir_if->label_else);
+    else
+      emit_instr_str(arena, code, Opcode_JUMPZ, ir_if->label_end);
+
     if(ir_if->body->kind == IrNodeKind_Block)
       gen_block(arena, code, &ir_if->body->block);
     else
       assert(false);
+
+    emit_instr_str(arena, code, Opcode_GOTO, ir_if->label_end);
+
+    if(ir_if->else_body)
+    {
+      emit_instr_str(arena, code, Opcode_LABEL, ir_if->label_else);
+      IrNode* else_body = ir_if->else_body;
+      if(else_body->kind == IrNodeKind_Block)
+        gen_block(arena, code, &else_body->block);
+      else if(else_body->kind == IrNodeKind_IfStmt)
+        gen_statement(arena, code, else_body);
+      else
+        assert(false);
+    }
     emit_instr_str(arena, code, Opcode_LABEL, ir_if->label_end);
   }
   else

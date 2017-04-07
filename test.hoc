@@ -1,19 +1,25 @@
-proc foo(var a, var b)
-{
-  var result = 0;
-  if(a)
-  {
-    result = b;
-  }
-  return result;
-}
-
 proc main()
 {
+  var a = 0;
   var result = 0;
-  if(foo(0, 131))
+  if(1)
   {
-    result = 313;
+    result = 111;
+    if(0) {
+      result = 2*result;
+    }
+    else if(1) {
+      result = 3*result;
+    }
+    else 
+    {
+      if(1) {
+        result = 4*result;
+      }
+    }
+  }
+  else {
+    result = 1234;
   }
   return result;
 }

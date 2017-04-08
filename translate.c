@@ -451,12 +451,12 @@ bool32 token_is_keyword(Token token)
   return token > Token__KeywordBegin && token < Token__KeywordEnd;
 }/*<<<*/
 
-char* install_lexeme(TokenStream* input, char* beginChar, char* endChar)
+char* install_lexeme(TokenStream* input, char* begin_char, char* end_char)
 {/*>>>*/
   //FIXME: If the lexeme had been previously installed then return it.
-  int len = (int)(endChar - beginChar + 1);
+  int len = (int)(end_char - begin_char + 1);
   char* lexeme = push_element(input->arena, char, len + 1);
-  copy_substr(lexeme, beginChar, endChar);
+  copy_substr(lexeme, begin_char, end_char);
   return lexeme;
 }/*<<<*/
 
@@ -482,14 +482,14 @@ void consume_token(TokenStream* input, SymbolTable* symbol_table)
 
   if(is_letter_char(c) || c == '_')
   {
-    char* beginChar = input->cursor;
+    char* begin_char = input->cursor;
     c = *(++input->cursor);
 
     while(is_letter_char(c) || is_numeric_char(c) || c == '_')
       c = *(++input->cursor);
 
-    char* endChar = input->cursor - 1;
-    char* lexeme = install_lexeme(input, beginChar, endChar);
+    char* end_char = input->cursor - 1;
+    char* lexeme = install_lexeme(input, begin_char, end_char);
     input->lexval.id = lexeme;
 
     Symbol* symbol = symbol_lookup(symbol_table, lexeme);
@@ -1251,56 +1251,49 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
             if(stmt_node->kind != AstNodeKind_VarDecl)
             {
               if_stmt->body = stmt_node;
-
-              if(input->token == Token_Else)
-              {
-                consume_token(input, symbol_table);
-
-                AstNode* else_node = 0;
-                success = parse_if_statement(arena, input, symbol_table, enclosing_block, &else_node);
-                if(success)
-                {
-                  if(else_node)
-                  {
-                    if_stmt->else_body = else_node;
-                  } else
-                  {
-                    success = parse_block(arena, input, symbol_table, enclosing_block, &else_node);
-                    if(success)
-                    {
-                      if(else_node)
-                      {
-                        if_stmt->else_body = else_node;
-
-                        AstBlock* block = &else_node->block;
-                        block->owner = if_node;
-                      } else
-                      {
-                        success = parse_statement(arena, input, symbol_table, enclosing_block, &else_node);
-                        if(success)
-                        {
-                          if(else_node)
-                          {
-                            if_stmt->else_body = else_node;
-                          } else {
-                            syntax_error(input, "Non-empty statement list required");
-                            success = false;
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
             } else
             {
               syntax_error(input, "Var statement not allowed here");
               success = false;
             }
-          } else
+          }
+
+          if(success && input->token == Token_Else)
           {
-            syntax_error(input, "Non-empty statement required");
-            success = false;
+            consume_token(input, symbol_table);
+
+            AstNode* else_node = 0;
+            success = parse_if_statement(arena, input, symbol_table, enclosing_block, &else_node);
+            if(success)
+            {
+              if(else_node)
+              {
+                if_stmt->else_body = else_node;
+              } else
+              {
+                success = parse_block(arena, input, symbol_table, enclosing_block, &else_node);
+                if(success)
+                {
+                  if(else_node)
+                  {
+                    if_stmt->else_body = else_node;
+
+                    AstBlock* block = &else_node->block;
+                    block->owner = if_node;
+                  } else
+                  {
+                    success = parse_statement(arena, input, symbol_table, enclosing_block, &else_node);
+                    if(success)
+                    {
+                      if(else_node)
+                      {
+                        if_stmt->else_body = else_node;
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -2121,14 +2114,17 @@ IrNode* ir_build_if_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstIf
     ir_if->label_end = label.start;
   }/*<<<*/
 
-  if(ast_if->body->kind == AstNodeKind_Block)
+  if(ast_if->body)
   {
-    AstBlock* ast_block = &ast_if->body->block;
-    IrNode* ir_block = ir_build_block(arena, ast_block);
-    ir_if->body = ir_block;
+    if(ast_if->body->kind == AstNodeKind_Block)
+    {
+      AstBlock* ast_block = &ast_if->body->block;
+      IrNode* ir_block = ir_build_block(arena, ast_block);
+      ir_if->body = ir_block;
+    }
+    else
+      ir_if->body = ir_build_statement(arena, actv_rec, ast_if->body);
   }
-  else
-    ir_if->body = ir_build_statement(arena, actv_rec, ast_if->body);
 
   if(ast_if->else_body)
   {
@@ -2146,6 +2142,7 @@ IrNode* ir_build_if_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstIf
     else
       ir_if->else_body = ir_build_statement(arena, actv_rec, else_node);
   }
+
   return ir_node;
 }/*<<<*/
 
@@ -2561,10 +2558,13 @@ void gen_statement(MemoryArena* arena, List* code, IrNode* stmt_node)
     else
       emit_instr_str(arena, code, Opcode_JUMPZ, ir_if->label_end);
 
-    if(ir_if->body->kind == IrNodeKind_Block)
-      gen_block(arena, code, &ir_if->body->block);
-    else
-      gen_statement(arena, code, ir_if->body);
+    if(ir_if->body)
+    {
+      if(ir_if->body->kind == IrNodeKind_Block)
+        gen_block(arena, code, &ir_if->body->block);
+      else
+        gen_statement(arena, code, ir_if->body);
+    }
 
     emit_instr_str(arena, code, Opcode_GOTO, ir_if->label_end);
 

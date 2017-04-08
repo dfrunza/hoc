@@ -191,6 +191,7 @@ typedef struct
   List      formal_args;
   AstBlock* body;
   IrProc*   ir_proc;
+  AstVarDecl ret_var;
 }
 AstProc;
 
@@ -199,6 +200,7 @@ typedef struct
   AstNode* expr;
   int      intervening_block_count;
   AstProc* proc;
+  AstNode* ret_var;
 }
 AstReturnStmt;
 
@@ -462,7 +464,7 @@ void consume_token(TokenStream* input, SymbolTable* symbol_table)
 {/*>>>*/
   input->prev_token = input->token;
   input->token = Token__Null;
-  memset(&input->lexval, 0, sizeof(input->lexval));
+  mem_zero(&input->lexval);
 
   input->src_line = input->cursor;
   char c = *input->cursor;
@@ -616,6 +618,7 @@ bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, Ast
 bool32 parse_statement_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*);
 bool32 parse_actual_argument_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstCall*);
 bool32 parse_term(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
+bool32 parse_statement(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 
 bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                     AstBlock* enclosing_block, AstNode** node)
@@ -672,15 +675,15 @@ bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
     Symbol* symbol = symbol_lookup(symbol_table, input->lexval.id);
     if(symbol)
     {
-      AstNode* idNode = push_element(arena, AstNode, 1);
-      *node = idNode;
+      AstNode* id_node = push_element(arena, AstNode, 1);
+      *node = id_node;
 
       consume_token(input, symbol_table);
 
       if(symbol->kind == SymbolKind_Var)
       {
-        idNode->kind = AstNodeKind_VarOccur;
-        AstVarOccur* var_occur = &idNode->var_occur;
+        id_node->kind = AstNodeKind_VarOccur;
+        AstVarOccur* var_occur = &id_node->var_occur;
         var_occur->symbol = symbol;
         var_occur->name = symbol->name;
         var_occur->var_decl = symbol->var;
@@ -688,18 +691,18 @@ bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 
         if(var_occur->decl_block_offset > 0)
         {
-          list_append(arena, &enclosing_block->non_local_occurs, idNode);
+          list_append(arena, &enclosing_block->non_local_occurs, id_node);
         }
         else
         {
           assert(var_occur->decl_block_offset == 0);
-          list_append(arena, &enclosing_block->local_occurs, idNode);
+          list_append(arena, &enclosing_block->local_occurs, id_node);
         }
       }
       else if(symbol->kind == SymbolKind_Proc)
       {
-        idNode->kind = AstNodeKind_Call;
-        AstCall* call = &idNode->call;
+        id_node->kind = AstNodeKind_Call;
+        AstCall* call = &id_node->call;
         call->symbol = symbol;
         call->name = symbol->name;
         call->proc = symbol->proc;
@@ -927,14 +930,14 @@ bool32 parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* 
     consume_token(input, symbol_table);
     if(input->token == Token_Id)
     {
-      AstNode* varNode = push_element(arena, AstNode, 1);
-      varNode->kind = AstNodeKind_VarDecl;
-      *node = varNode;
+      AstNode* var_node = push_element(arena, AstNode, 1);
+      var_node->kind = AstNodeKind_VarDecl;
+      *node = var_node;
 
       Symbol* symbol = symbol_register_new(symbol_table, input, SymbolKind_Var);
       if(symbol)
       {
-        AstVarDecl* var_decl = &varNode->var_decl;
+        AstVarDecl* var_decl = &var_node->var_decl;
         var_decl->symbol = symbol;
         var_decl->name = symbol->name;
         var_decl->var_data.size = 1;
@@ -978,14 +981,14 @@ bool32 parse_formal_argument(MemoryArena* arena, TokenStream* input, SymbolTable
     consume_token(input, symbol_table);
     if(input->token == Token_Id)
     {
-      AstNode* varNode = push_element(arena, AstNode, 1);
-      varNode->kind = AstNodeKind_VarDecl;
-      *node = varNode;
+      AstNode* var_node = push_element(arena, AstNode, 1);
+      var_node->kind = AstNodeKind_VarDecl;
+      *node = var_node;
 
       Symbol* symbol = symbol_register_new(symbol_table, input, SymbolKind_Var);
       if(symbol)
       {
-        AstVarDecl* var_decl = &varNode->var_decl;
+        AstVarDecl* var_decl = &var_node->var_decl;
         var_decl->symbol = symbol;
         var_decl->name = symbol->name;
         symbol->var = var_decl;
@@ -1102,6 +1105,44 @@ bool32 parse_while_statement(MemoryArena* arena, TokenStream* input, SymbolTable
   return success;
 }/*<<<*/
 
+bool32 parse_block(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+                   AstBlock* enclosing_block, AstNode** node)
+{
+  bool32 success = true;
+
+  if(input->token == Token_OpenBrace)
+  {
+    consume_token(input, symbol_table);
+
+    success = scope_begin(symbol_table);
+    if(success)
+    {
+      AstNode* block_node = push_element(arena, AstNode, 1);
+      block_node->kind = AstNodeKind_Block;
+      AstBlock* block = &block_node->block;
+      block->enclosing_block = enclosing_block;
+      block_init(symbol_table, block);
+
+      success = parse_statement_list(arena, input, symbol_table, block);
+      if(success)
+      {
+        *node = block_node;
+
+        if(input->token == Token_CloseBrace)
+        {
+          consume_token(input, symbol_table);
+          scope_end(symbol_table);
+        } else {
+          syntax_error(input, "Missing '}'");
+          success = false;
+        }
+      }
+    }
+  }
+
+  return success;
+}
+
 bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                           AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
@@ -1114,11 +1155,11 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
     success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
     if(success)
     {
-      AstNode* ifNode = push_element(arena, AstNode, 1);
-      ifNode->kind = AstNodeKind_IfStmt;
-      AstIfStmt* if_stmt = &ifNode->if_stmt;
+      AstNode* if_node = push_element(arena, AstNode, 1);
+      if_node->kind = AstNodeKind_IfStmt;
+      AstIfStmt* if_stmt = &if_node->if_stmt;
       if_stmt->expr = expr_node;
-      *node = ifNode;
+      *node = if_node;
 
       if(input->token == Token_OpenBrace)
       {
@@ -1130,7 +1171,8 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
           AstNode* block_node = push_element(arena, AstNode, 1);
           block_node->kind = AstNodeKind_Block;
           AstBlock* block = &block_node->block;
-          block->owner = ifNode;
+          block->enclosing_block = enclosing_block;
+          block->owner = if_node;
           block_init(symbol_table, block);
 
           success = parse_statement_list(arena, input, symbol_table, block);
@@ -1151,7 +1193,9 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
                 if(success)
                 {
                   if(else_node)
+                  {
                     if_stmt->else_body = else_node;
+                  }
                   else if(input->token == Token_OpenBrace)
                   {
                     consume_token(input, symbol_table);
@@ -1162,13 +1206,15 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
                       AstNode* block_node = push_element(arena, AstNode, 1);
                       block_node->kind = AstNodeKind_Block;
                       AstBlock* block = &block_node->block;
-                      block->owner = ifNode;
+                      block->enclosing_block = enclosing_block;
+                      block->owner = if_node;
                       block_init(symbol_table, block);
 
                       success = parse_statement_list(arena, input, symbol_table, block);
                       if(success)
                       {
                         if_stmt->else_body = block_node;
+
                         if(input->token == Token_CloseBrace)
                         {
                           consume_token(input, symbol_table);
@@ -1191,9 +1237,72 @@ bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* s
             }
           }
         }
-      } else {
-        syntax_error(input, "Missing '{'");
-        success = false;
+      } else // single-statement
+      {
+        AstNode* stmt_node = 0;
+        success = parse_statement(arena, input, symbol_table, enclosing_block, &stmt_node);
+        if(success)
+        {
+          while(input->token == Token_Semicolon)
+            consume_token(input, symbol_table);
+
+          if(stmt_node)
+          {
+            if(stmt_node->kind != AstNodeKind_VarDecl)
+            {
+              if_stmt->body = stmt_node;
+
+              if(input->token == Token_Else)
+              {
+                consume_token(input, symbol_table);
+
+                AstNode* else_node = 0;
+                success = parse_if_statement(arena, input, symbol_table, enclosing_block, &else_node);
+                if(success)
+                {
+                  if(else_node)
+                  {
+                    if_stmt->else_body = else_node;
+                  } else
+                  {
+                    success = parse_block(arena, input, symbol_table, enclosing_block, &else_node);
+                    if(success)
+                    {
+                      if(else_node)
+                      {
+                        if_stmt->else_body = else_node;
+
+                        AstBlock* block = &else_node->block;
+                        block->owner = if_node;
+                      } else
+                      {
+                        success = parse_statement(arena, input, symbol_table, enclosing_block, &else_node);
+                        if(success)
+                        {
+                          if(else_node)
+                          {
+                            if_stmt->else_body = else_node;
+                          } else {
+                            syntax_error(input, "Non-empty statement list required");
+                            success = false;
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            } else
+            {
+              syntax_error(input, "Var statement not allowed here");
+              success = false;
+            }
+          } else
+          {
+            syntax_error(input, "Non-empty statement required");
+            success = false;
+          }
+        }
       }
     }
   }
@@ -1349,8 +1458,20 @@ bool32 parse_return_statement(MemoryArena* arena, TokenStream* input, SymbolTabl
           block = block->enclosing_block;
         }
         assert(block);
-        ret_stmt->proc = &block->owner->proc;
+        AstProc* ret_proc = &block->owner->proc;
+        ret_stmt->proc = ret_proc;
         ret_stmt->intervening_block_count = depth;
+
+        AstNode* var_node = push_element(arena, AstNode, 1);
+        var_node->kind = AstNodeKind_VarOccur;
+        AstVarOccur* var_occur = &var_node->var_occur;
+        var_occur->var_decl = &ret_proc->ret_var;
+        var_occur->decl_block_offset = depth;
+        if(depth > 0)
+          list_append(arena, &enclosing_block->non_local_occurs, var_node);
+        else
+          list_append(arena, &enclosing_block->local_occurs, var_node);
+        ret_stmt->ret_var = var_node;
       } else {
         syntax_error(input, "Expression required after the 'return' keyword");
         success = false;
@@ -1501,13 +1622,13 @@ bool32 parse_statement_list(MemoryArena* arena, TokenStream* input, SymbolTable*
 {/*>>>*/
   bool32 success = true;
 
+  while(input->token == Token_Semicolon)
+    consume_token(input, symbol_table);
+
   AstNode* stmt_node = 0;
   success = parse_statement(arena, input, symbol_table, block, &stmt_node);
   if(success && stmt_node)
   {
-    while(input->token == Token_Semicolon)
-      consume_token(input, symbol_table);
-
     if(stmt_node->kind == AstNodeKind_VarDecl)
     {
       list_append(arena, &block->decl_vars, stmt_node);
@@ -1629,6 +1750,7 @@ IrUnrExpr;
 typedef struct
 {
   IrBinExpr* assgn_expr;
+  IrVar      ret_var;
   IrProc*    proc;
   int        depth;
 }
@@ -1654,8 +1776,6 @@ typedef struct
   IrStackArea ret;
   IrStackArea args;
   IrStackArea ctrl_links;
-
-  IrVar ret_var;
 }
 IrProcAvRecord;
 
@@ -1740,6 +1860,7 @@ typedef struct IrNode_
 } IrNode;
 
 IrNode* ir_build_value(MemoryArena*, IrActivationRecord*, AstNode*);
+IrNode* ir_build_statement(MemoryArena*, IrActivationRecord*, AstNode*);
 void ir_block_build_statements(MemoryArena*, IrActivationRecord*, List*, List*);
 
 IrNode* ir_build_bin_expr(MemoryArena* arena, IrActivationRecord* actv_rec, AstBinExpr* bin_expr)
@@ -1853,16 +1974,22 @@ IrNode* ir_build_return(MemoryArena* arena, IrActivationRecord* actv_rec, AstRet
   IrNode* ir_node = push_element(arena, IrNode, 1);
   ir_node->kind = IrNodeKind_Return;
   IrReturn* ir_ret = &ir_node->ret;
-  IrNode* ret_val = ir_build_value(arena, actv_rec, ast_ret->expr);
 
   IrBinExpr* assgn_expr = push_element(arena, IrBinExpr, 1);
   assgn_expr->op = IrOpKind_Store;
-  assert(actv_rec->kind == IrAvRecord_Proc);
-  IrProcAvRecord* proc_actv_rec = &actv_rec->proc;
+
+  assert(ast_ret->ret_var->kind == AstNodeKind_VarOccur);
+  AstVarOccur* var_occur = &ast_ret->ret_var->var_occur;
+  AstVarDecl* var_decl = var_occur->var_decl;
+  IrVar* ret_var = &ir_ret->ret_var;
+  ret_var->data = &var_decl->var_data;
+  ret_var->link = var_occur->link;
   IrValue* left_operand = push_element(arena, IrValue, 1);
   left_operand->kind = IrValueKind_Var;
-  left_operand->var = &proc_actv_rec->ret_var;
+  left_operand->var = &ir_ret->ret_var;
   assgn_expr->left_operand = left_operand;
+
+  IrNode* ret_val = ir_build_value(arena, actv_rec, ast_ret->expr);
   assgn_expr->right_operand = &ret_val->value;
   ir_ret->assgn_expr = assgn_expr;
 
@@ -1894,7 +2021,7 @@ void ir_block_decl_vars_compute_address(IrActivationRecord* actv_rec, IrStackAre
 }
 
 IrNode* ir_build_block(MemoryArena* arena, AstBlock* ast_block)
-{
+{/*>>>*/
   IrNode* ir_node = push_element(arena, IrNode, 1);
   ir_node->kind = IrNodeKind_Block;
   IrBlock* ir_block = &ir_node->block;
@@ -1968,9 +2095,9 @@ IrNode* ir_build_block(MemoryArena* arena, AstBlock* ast_block)
   ir_block_build_statements(arena, actv_rec, &ir_block->instr_list, &ast_block->stmt_list);
 
   return ir_node;
-}
+}/*<<<*/
 
-IrNode* ir_build_if(MemoryArena* arena, IrActivationRecord* actv_rec, AstIfStmt* ast_if)
+IrNode* ir_build_if_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstIfStmt* ast_if)
 {/*>>>*/
   IrNode* ir_node = push_element(arena, IrNode, 1);
   ir_node->kind = IrNodeKind_IfStmt;
@@ -2001,7 +2128,7 @@ IrNode* ir_build_if(MemoryArena* arena, IrActivationRecord* actv_rec, AstIfStmt*
     ir_if->body = ir_block;
   }
   else
-    assert(false);
+    ir_if->body = ir_build_statement(arena, actv_rec, ast_if->body);
 
   if(ast_if->else_body)
   {
@@ -2013,52 +2140,47 @@ IrNode* ir_build_if(MemoryArena* arena, IrActivationRecord* actv_rec, AstIfStmt*
     }
     else if(else_node->kind == AstNodeKind_IfStmt)
     {
-      IrNode* ir_stmt = ir_build_if(arena, actv_rec, &else_node->if_stmt);
+      IrNode* ir_stmt = ir_build_if_stmt(arena, actv_rec, &else_node->if_stmt);
       ir_if->else_body = ir_stmt;
     }
     else
-      assert(false);
+      ir_if->else_body = ir_build_statement(arena, actv_rec, else_node);
   }
   return ir_node;
 }/*<<<*/
 
-void ir_block_build_statements(MemoryArena* arena, IrActivationRecord* actv_rec,
-                               List* instr_list, List* stmt_list)
-{
-  ListItem* node_item = list_first_item(stmt_list);
-  while(node_item)
+IrNode* ir_build_statement(MemoryArena* arena, IrActivationRecord* actv_rec, AstNode* ast_node)
+{/*>>>*/
+  IrNode* ir_node = 0;
+  if(ast_node->kind == AstNodeKind_BinExpr)
   {
-    AstNode* ast_node = node_item->elem;
-    if(ast_node->kind == AstNodeKind_BinExpr)
-    {
-      AstBinExpr* bin_expr = &ast_node->bin_expr;
-      assert(bin_expr->op == AstOperatorKind_Assign);
-      IrNode* ir_expr = ir_build_bin_expr(arena, actv_rec, bin_expr);
-      list_append(arena, instr_list, ir_expr);
-    }
-    else if(ast_node->kind == AstNodeKind_Call)
-    {
-      AstCall* call = &ast_node->call;
-      IrNode* ir_call = ir_build_call(arena, actv_rec, call);
-      list_append(arena, instr_list, ir_call);
-    }
-    else if(ast_node->kind == AstNodeKind_ReturnStmt)
-    {
-      AstReturnStmt* ret_stmt = &ast_node->ret_stmt;
-      IrNode* ir_ret = ir_build_return(arena, actv_rec, ret_stmt);
-      list_append(arena, instr_list, ir_ret);
-    }
-    else if(ast_node->kind == AstNodeKind_IfStmt)
-    {
-      AstIfStmt* if_stmt = &ast_node->if_stmt;
-      IrNode* ir_if = ir_build_if(arena, actv_rec, if_stmt);
-      list_append(arena, instr_list, ir_if);
-    }
-    else
-      assert(false);
-    node_item = node_item->next;
+    AstBinExpr* bin_expr = &ast_node->bin_expr;
+    assert(bin_expr->op == AstOperatorKind_Assign);
+    ir_node = ir_build_bin_expr(arena, actv_rec, bin_expr);
   }
-}
+  else if(ast_node->kind == AstNodeKind_Call)
+    ir_node = ir_build_call(arena, actv_rec, &ast_node->call);
+  else if(ast_node->kind == AstNodeKind_ReturnStmt)
+    ir_node = ir_build_return(arena, actv_rec, &ast_node->ret_stmt);
+  else if(ast_node->kind == AstNodeKind_IfStmt)
+    ir_node = ir_build_if_stmt(arena, actv_rec, &ast_node->if_stmt);
+  else
+    assert(false);
+
+  return ir_node;
+}/*<<<*/
+
+void ir_block_build_statements(MemoryArena* arena, IrActivationRecord* actv_rec,
+                               List* instr_list, List* ast_stmt_list)
+{/*>>>*/
+  ListItem* ast_node_item = list_first_item(ast_stmt_list);
+  while(ast_node_item)
+  {
+    IrNode* ir_node = ir_build_statement(arena, actv_rec, (AstNode*)ast_node_item->elem);
+    list_append(arena, instr_list, ir_node);
+    ast_node_item = ast_node_item->next;
+  }
+}/*<<<*/
 
 IrNode* ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
 {/*>>>*/
@@ -2072,10 +2194,10 @@ IrNode* ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
   IrStackArea* area = &proc_av->ret;
   area->loc = actv_rec->sp;
   {/*>>> ret val*/
-    IrStackArea* var_data = push_element(arena, IrStackArea, 1);
+    AstVarDecl* var_decl = &ast_proc->ret_var;
+    IrStackArea* var_data = &var_decl->var_data;
     var_data->loc = actv_rec->sp;
     var_data->size = 1;
-    proc_av->ret_var.data = var_data;
     actv_rec->sp += var_data->size;
   }/*<<<*/
   area->size = actv_rec->sp - area->loc;
@@ -2109,7 +2231,7 @@ IrNode* ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
   ir_block_decl_vars_compute_address(actv_rec, &actv_rec->locals, &ast_block->decl_vars);
 
   {/*>>> These vars have negative locations : retval and arguments */
-    IrStackArea* var_data = proc_av->ret_var.data;
+    IrStackArea* var_data = &ast_proc->ret_var.var_data;
     var_data->loc = -(actv_rec->fp - var_data->loc);
 
     ListItem* node_item = list_first_item(&ast_proc->formal_args);
@@ -2350,13 +2472,12 @@ void gen_load_rvalue(MemoryArena* arena, List* code, IrValue* ir_value)
 void gen_return(MemoryArena* arena, List* code, IrReturn* ir_ret)
 {/*>>>*/
   gen_bin_expr(arena, code, ir_ret->assgn_expr);
+  emit_instr(arena, code, Opcode_POP);
+
   IrProc* proc = ir_ret->proc;
   int level = ir_ret->depth;
   while(level--)
-  {
-    emit_instr(arena, code, Opcode_DECR); // offset to the fp of actv. record n-1
-    emit_instr(arena, code, Opcode_LOAD);
-  }
+    emit_instr(arena, code, Opcode_LEAVE);
   emit_instr_str(arena, code, Opcode_GOTO, proc->end_label);
 }/*<<<*/
 
@@ -2443,7 +2564,7 @@ void gen_statement(MemoryArena* arena, List* code, IrNode* stmt_node)
     if(ir_if->body->kind == IrNodeKind_Block)
       gen_block(arena, code, &ir_if->body->block);
     else
-      assert(false);
+      gen_statement(arena, code, ir_if->body);
 
     emit_instr_str(arena, code, Opcode_GOTO, ir_if->label_end);
 
@@ -2456,7 +2577,7 @@ void gen_statement(MemoryArena* arena, List* code, IrNode* stmt_node)
       else if(else_body->kind == IrNodeKind_IfStmt)
         gen_statement(arena, code, else_body);
       else
-        assert(false);
+        gen_statement(arena, code, else_body);
     }
     emit_instr_str(arena, code, Opcode_LABEL, ir_if->label_end);
   }

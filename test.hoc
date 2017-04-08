@@ -1,25 +1,18 @@
 proc main()
 {
-  var a = 0;
-  var result = 0;
-  if(1)
+  var result = 9;
+  var a = 1;
+  if(a)
   {
-    result = 111;
-    if(0) {
-      result = 2*result;
-    }
-    else if(1) {
-      result = 3*result;
-    }
-    else 
+    var b;
+    if(a)
     {
-      if(1) {
-        result = 4*result;
-      }
+      b = 34;
+      var b;
+      if(a)
+        a = 11;
+      return 882;
     }
-  }
-  else {
-    result = 1234;
   }
   return result;
 }

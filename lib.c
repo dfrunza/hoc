@@ -193,28 +193,33 @@ void copy_substr(char* dest_str, char* begin_char, char* end_char)
 #define AllocStack1(TYPE) (TYPE*)AllocStack_(sizeof(TYPE), 1)
 #define AllocStack(TYPE, COUNT) (TYPE*)AllocStack_(sizeof(TYPE), COUNT)
 
-void* AllocStack_(int elementSize, int count)
+void* AllocStack_(int elem_size, int count)
 {
-  return alloca(elementSize * count);
+  return alloca(elem_size * count);
 }
 #endif
 
 #define check_element_bounds(ARENA, TYPE, STRUCT) check_memory_bounds_(ARENA, sizeof(TYPE), STRUCT)
 #define check_arena_bounds(ARENA) check_memory_bounds_((ARENA), 0, (ARENA)->free)
 
-void check_memory_bounds_(MemoryArena* arena, int elementSize, void* ptr)
+void check_memory_bounds_(MemoryArena* arena, int elem_size, void* ptr)
 {
   assert(arena->base <= ptr);
-  assert((uint8*)arena->free + elementSize <= (uint8*)arena->limit);
+  assert((uint8*)arena->free + elem_size <= (uint8*)arena->limit);
 }
 
-void clear_to_zero(void* first, void* onePastLast)
+#define mem_zero(VAR) mem_zero_(VAR, sizeof(VAR))
+
+void mem_zero_(void* mem, size_t len)
 {
-  uint8* byte = first;
-  for(; byte < (uint8*)onePastLast; byte++)
-  {
-    *byte = 0;
-  }
+  memset(mem, 0, len);
+}
+
+void mem_zero_range(void* start, void* one_past_end)
+{
+  size_t len = (uint8*)one_past_end - (uint8*)start;
+  assert(len >= 0);
+  mem_zero_(start, len);
 }
 
 void reset_arena(MemoryArena* arena)
@@ -235,19 +240,22 @@ void set_watermark(MemoryArena* arena, void* ptr)
 #define push_arena(ARENA, TYPE, COUNT) push_arena_(ARENA, sizeof(TYPE), COUNT, true)
 #define push_arena_no_clear(ARENA, TYPE, COUNT) push_arena_(ARENA, sizeof(TYPE), COUNT, false)
 
-MemoryArena push_arena_(MemoryArena* arena, int elementSize, int count, bool32 clearToZero)
+MemoryArena push_arena_(MemoryArena* arena, int elem_size, int count, bool32 clear_to_zero)
 {
   assert(count > 0);
 
   MemoryArena sub_arena = {0};
   sub_arena.base = arena->free;
   sub_arena.free = sub_arena.base;
-  arena->free = (uint8*)sub_arena.base + elementSize*count;
+  arena->free = (uint8*)sub_arena.base + elem_size*count;
   check_arena_bounds(arena);
   sub_arena.limit = arena->free;
-  if(clearToZero)
+  if(clear_to_zero)
   {
-    clear_to_zero(sub_arena.base, sub_arena.limit);
+    size_t size = (uint8*)sub_arena.limit - (uint8*)sub_arena.base;
+    assert(size >= 0);
+    //clear_to_zero(sub_arena.base, sub_arena.limit);
+    mem_zero_(sub_arena.base, size);
   }
   return sub_arena;
 }
@@ -256,14 +264,14 @@ MemoryArena push_arena_(MemoryArena* arena, int elementSize, int count, bool32 c
 #define push_element(ARENA, TYPE, COUNT) ((TYPE*)push_element_(ARENA, sizeof(TYPE), COUNT))
 #define push_size(ARENA, COUNT) ((uint8* )push_element_(ARENA, sizeof(uint8), COUNT))
 
-void* push_element_(MemoryArena* arena, int elementSize, int count)
+void* push_element_(MemoryArena* arena, int elem_size, int count)
 {
   assert(count > 0);
 
   void* element = arena->free;
-  arena->free = (uint8*)arena->free + elementSize*count;
+  arena->free = (uint8*)arena->free + elem_size*count;
   check_arena_bounds(arena);
-  clear_to_zero(element, arena->free);
+  mem_zero_range(element, arena->free);
   return element;
 }
 
@@ -275,10 +283,10 @@ MemoryArena new_arena(int size)
   return arena;
 }
 
-char* read_text_from_file(MemoryArena* arena, char* fileName)
+char* read_text_from_file(MemoryArena* arena, char* file_name)
 {
   char* text = 0;
-  FILE* file = fopen(fileName, "rb");
+  FILE* file = fopen(file_name, "rb");
   if(file)
   {
     fseek(file, 0, SEEK_END);
@@ -292,19 +300,19 @@ char* read_text_from_file(MemoryArena* arena, char* fileName)
   return text;
 }
 
-int read_stdin(char buf[], int bufSize)
+int read_stdin(char buf[], int buf_size)
 {
   HANDLE h_std = GetStdHandle(STD_INPUT_HANDLE);
-  DWORD bytesRead = 0;
+  DWORD bytes_read = 0;
 
-  if(h_std && ReadFile(h_std, buf, bufSize, &bytesRead, 0))
+  if(h_std && ReadFile(h_std, buf, buf_size, &bytes_read, 0))
   {
-    if(bytesRead)
+    if(bytes_read)
     {
-      if(bytesRead < (uint)bufSize)
-        buf[bytesRead] = '\0';
+      if(bytes_read < (uint)buf_size)
+        buf[bytes_read] = '\0';
       else
-        assert(!"bytesRead = bufSize");
+        assert(!"bytes_read = buf_size");
     }
   }
   else
@@ -313,7 +321,7 @@ int read_stdin(char buf[], int bufSize)
     printf("Win32 error %d\n", err);
   }
 
-  return (int)bytesRead;
+  return (int)bytes_read;
 }
 
 void string_init(String* string, MemoryArena* arena)

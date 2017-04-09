@@ -421,7 +421,7 @@ IrActivationRecord;
 typedef struct IrProc_
 {
   char* label;
-  char* label_return;
+  char* label_end;
   List  instr_list;
   IrActivationRecord* actv_rec;
 }
@@ -534,7 +534,8 @@ void syntax_error(TokenStream* input, char* message, ...)
   va_end(args);
 }
 
-/*>>> Symbol table */
+/* Symbol table */
+
 Symbol* symbol_lookup(SymbolTable* symbol_table, char* name)
 {/*>>>*/
   Symbol* result = 0;
@@ -564,16 +565,15 @@ Symbol* symbol_add(SymbolTable* symbol_table, char* name, SymbolKind kind)
   return symbol;
 }/*<<<*/
 
-Symbol* symbol_register_new(SymbolTable* symbol_table, TokenStream* input, SymbolKind kind)
+bool32 symbol_register_new(SymbolTable* symbol_table, TokenStream* input, Symbol** new_symbol, SymbolKind kind)
 {/*>>>*/
   assert(input->token == Token_Id);
-
-  Symbol* result = 0;
+  bool32 success = true;
 
   Symbol* symbol = symbol_lookup(symbol_table, input->lexval.id);
   if(!symbol)
   {
-    result = symbol_add(symbol_table, input->lexval.id, kind);
+    symbol = symbol_add(symbol_table, input->lexval.id, kind);
   } else {
     if(symbol->kind != SymbolKind_Keyword)
     {
@@ -582,13 +582,20 @@ Symbol* symbol_register_new(SymbolTable* symbol_table, TokenStream* input, Symbo
       {
         assert(symbol->nesting_depth <= symbol_table->nesting_depth);
 
-        result = symbol_add(symbol_table, input->lexval.id, kind);
+        symbol = symbol_add(symbol_table, input->lexval.id, kind);
       } else
-        syntax_error(input, "Redeclaration of identifier: %s", symbol->name);
+      {
+        syntax_error(input, "Re-declaraion of identifier: %s", symbol->name);
+        success = false;
+      }
     } else
+    {
       syntax_error(input, "Keyword used as identifier: %s", symbol->name);
+      success = false;
+    }
   }
-  return result;
+  *new_symbol = symbol;
+  return success;
 }/*<<<*/
 
 Symbol* add_keyword(SymbolTable* symbol_table, char* name, Token token)
@@ -648,7 +655,6 @@ void scope_end(SymbolTable* symbol_table)
     symbol = symbol->next_symbol;
   symbol_table->symbol = symbol;
 }/*<<<*/
-/*<<<*/
 
 static int last_label_id; // todo: got no idea where to stick this
 
@@ -661,7 +667,8 @@ void make_unique_label(String* label)
   arena->free = label->end + 1;
 }
 
-/*>>> Lex procs */
+/* Lex */
+
 bool32 token_is_keyword(Token token)
 {/*>>>*/
   return token > Token__KeywordBegin && token < Token__KeywordEnd;
@@ -683,8 +690,10 @@ void consume_token(TokenStream* input, SymbolTable* symbol_table)
   mem_zero(&input->lexval);
 
   input->src_line = input->cursor;
-  char c = *input->cursor;
+  char c;
 
+loop:
+  c = *input->cursor;
   while(c == ' ' || c == '\t' ||
         c == '\r' || c == '\n')
   {
@@ -749,6 +758,35 @@ void consume_token(TokenStream* input, SymbolTable* symbol_table)
     else
       input->token = Token_Minus;
   }
+  else if(c == '/')
+  {
+    char* fwd_cursor = input->cursor;
+    c = *(++fwd_cursor);
+    if(c == '*')
+    {
+      c = *(++fwd_cursor);
+
+      bool32 inside_comment = true;
+      while(inside_comment)
+      {
+        while(c != '*' && c != '\0')
+          c = *(++fwd_cursor);
+        if(c == '*')
+        {
+          c = *(++fwd_cursor);
+          if(c == '/')
+            inside_comment = false;
+        } else if(c == '\0')
+          inside_comment = false;
+      }
+      input->cursor = ++fwd_cursor;
+      goto loop;
+    } else
+    {
+      input->token = Token_FwdSlash;
+      ++input->cursor;
+    }
+  }
   else if(c == '*')
   {
     input->token = Token_Star;
@@ -777,11 +815,6 @@ void consume_token(TokenStream* input, SymbolTable* symbol_table)
   else if(c == '+')
   {
     input->token = Token_Plus;
-    ++input->cursor;
-  }
-  else if(c == '/')
-  {
-    input->token = Token_FwdSlash;
     ++input->cursor;
   }
   else if(c == '(')
@@ -827,9 +860,8 @@ void consume_token(TokenStream* input, SymbolTable* symbol_table)
   else if(c == '\0')
     input->token = Token_EndOfInput;
 }/*<<<*/
-/*<<<*/
 
-/*>>> Parse procs */
+/* Parse */
 bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse_statement_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*);
 bool32 parse_actual_argument_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstCall*);
@@ -1108,7 +1140,7 @@ bool32 parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input, Sy
 
           *node = expr_node;
         } else {
-          syntax_error(input, "Variable is required on the left side of assignment");
+          syntax_error(input, "Variable required on the left side of assignment");
           success = false;
         }
       } else {
@@ -1151,8 +1183,9 @@ bool32 parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* 
       var_node->kind = AstNodeKind_VarDecl;
       *node = var_node;
 
-      Symbol* symbol = symbol_register_new(symbol_table, input, SymbolKind_Var);
-      if(symbol)
+      Symbol* symbol = 0;
+      success = symbol_register_new(symbol_table, input, &symbol, SymbolKind_Var);
+      if(success && symbol)
       {
         AstVarDecl* var_decl = &var_node->var_decl;
         var_decl->symbol = symbol;
@@ -1201,8 +1234,9 @@ bool32 parse_formal_argument(MemoryArena* arena, TokenStream* input, SymbolTable
       var_node->kind = AstNodeKind_VarDecl;
       *node = var_node;
 
-      Symbol* symbol = symbol_register_new(symbol_table, input, SymbolKind_Var);
-      if(symbol)
+      Symbol* symbol = 0;
+      success = symbol_register_new(symbol_table, input, &symbol, SymbolKind_Var);
+      if(success && symbol)
       {
         AstVarDecl* var_decl = &var_node->var_decl;
         var_decl->symbol = symbol;
@@ -1210,9 +1244,6 @@ bool32 parse_formal_argument(MemoryArena* arena, TokenStream* input, SymbolTable
         symbol->var = var_decl;
 
         consume_token(input, symbol_table);
-      } else {
-        syntax_error(input, "Identifier re-declared : %s", input->lexval.id);
-        success = false;
       }
     } else {
       syntax_error(input, "Expecting an identifier token");
@@ -1456,8 +1487,9 @@ bool32 parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symb
     consume_token(input, symbol_table);
     if(input->token == Token_Id)
     {
-      Symbol* symbol = symbol_register_new(symbol_table, input, SymbolKind_Proc);
-      if(symbol)
+      Symbol* symbol = 0;
+      success = symbol_register_new(symbol_table, input, &symbol, SymbolKind_Proc);
+      if(success && symbol)
       {
         AstProc* proc = &proc_node->proc;
         proc->symbol = symbol;
@@ -1888,9 +1920,9 @@ bool32 parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 
   return success;
 }/*<<<*/
-/*<<<*/
 
-/*>>> IR procs */
+/* IR procs */
+
 IrNode* ir_build_value(MemoryArena*, IrActivationRecord*, AstNode*);
 IrNode* ir_build_statement(MemoryArena*, IrActivationRecord*, AstNode*);
 void ir_block_build_statements(MemoryArena*, IrActivationRecord*, List*, List*);
@@ -2032,7 +2064,7 @@ IrNode* ir_build_return_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, A
 }/*<<<*/
 
 IrNode* ir_build_break_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstBreakStmt* ast_break)
-{
+{/*>>>*/
   IrNode* ir_node = push_element(arena, IrNode, 1);
   ir_node->kind = IrNodeKind_BreakStmt;
   IrBreakStmt* ir_break = &ir_node->break_stmt;
@@ -2040,7 +2072,7 @@ IrNode* ir_build_break_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, As
   ir_break->while_stmt = ast_while->ir_while;
   ir_break->depth = ast_break->block_count;
   return ir_node;
-}
+}/*<<<*/
 
 void ir_block_decl_vars_compute_address(IrActivationRecord* actv_rec, IrStackArea* locals_area, List* decl_vars)
 {
@@ -2141,7 +2173,7 @@ IrNode* ir_build_block(MemoryArena* arena, AstBlock* ast_block)
 }/*<<<*/
 
 IrNode* ir_build_while_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstWhileStmt* ast_while)
-{
+{/*>>>*/
   IrNode* ir_node = push_element(arena, IrNode, 1);
   ir_node->kind = IrNodeKind_WhileStmt;
   IrWhileStmt* ir_while = &ir_node->while_stmt;
@@ -2175,7 +2207,7 @@ IrNode* ir_build_while_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, As
     ir_while->body = ir_build_statement(arena, actv_rec, ast_while->body);
 
   return ir_node;
-}
+}/*<<<*/
 
 IrNode* ir_build_if_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstIfStmt* ast_if)
 {/*>>>*/
@@ -2352,9 +2384,9 @@ IrNode* ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
   String label = {0};
   string_init(&label, arena);
   append_string(&label, ast_proc->name);
-  append_string(&label, ".proc-return");
-  ir_proc->label_return = label.start;
-  ast_proc->ir_proc = ir_proc; // the pointer must be set before building the statement list
+  append_string(&label, ".proc-end");
+  ir_proc->label_end = label.start;
+  ast_proc->ir_proc = ir_proc; // must be set before building the statement list
 
   ir_block_build_statements(arena, actv_rec, &ir_proc->instr_list, &ast_block->stmt_list);
 
@@ -2397,9 +2429,9 @@ IrNode* ir_build_module(MemoryArena* arena, AstModule* module)
 
   return ir_module_node;
 }/*<<<*/
-/*<<<*/
 
-/*>>> Code gen procs */
+/* Code gen */
+
 void print_instruction(VmProgram* vm_program, char* code, ...)
 {/*>>>*/
   static char strbuf[128] = {0};
@@ -2573,7 +2605,7 @@ void gen_return_stmt(MemoryArena* arena, List* code, IrReturnStmt* ir_ret)
   int depth = ir_ret->depth;
   while(depth--)
     emit_instr(arena, code, Opcode_LEAVE);
-  emit_instr_str(arena, code, Opcode_GOTO, proc->label_return);
+  emit_instr_str(arena, code, Opcode_GOTO, proc->label_end);
 }/*<<<*/
 
 void gen_break_stmt(MemoryArena* arena, List* code, IrBreakStmt* ir_break)
@@ -2635,7 +2667,7 @@ void gen_proc(MemoryArena* arena, List* code, IrProc* proc)
     item = item->next;
   }
 
-  emit_instr_str(arena, code, Opcode_LABEL, proc->label_return);
+  emit_instr_str(arena, code, Opcode_LABEL, proc->label_end);
   emit_instr(arena, code, Opcode_RETURN);
 }/*<<<*/
 
@@ -2881,7 +2913,6 @@ void print_code(VmProgram* vm_program)
     item = item->next;
   }
 }/*<<<*/
-/*<<<*/
 
 uint write_bytes_to_file(char* fileName, char* text, int count)
 {/*>>>*/

@@ -89,7 +89,7 @@ char_is_numeric(char c)
   return '0' <= c && c <= '9';
 }
 
-#define element_check_bounds(ARENA, TYPE, STRUCT) mem_check_bounds_(ARENA, sizeof(TYPE), STRUCT)
+#define struct_check_bounds(ARENA, TYPE, STRUCT) mem_check_bounds_(ARENA, sizeof(TYPE), STRUCT)
 #define arena_check_bounds(ARENA) mem_check_bounds_((ARENA), 0, (ARENA)->free)
 
 void

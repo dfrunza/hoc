@@ -1,10 +1,9 @@
 import "lib.hoc"
-import "max.hoc"
 
 proc main()
 {
-  var a = power(2, 10);
-  a = max(1, 1);
-  return a;
+  var ma = min(10, 20);
+  var mi = max(99, -78);
+  return (ma == 10) && (mi = 10);
 }
 

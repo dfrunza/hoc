@@ -55,304 +55,381 @@ execute_instr(HocMachine* machine, Instruction* instr)
   switch(opcode)
   {
     case Opcode_ALLOC:
+    {/*>>>*/
+      assert(instr->param_type == ParamType_Int32);
+      int32 top_sp = machine->sp + instr->param.int_num;
+      if(check_stack_bounds(machine, top_sp))
       {
-        assert(instr->param_type == ParamType_Int32);
-        int32 top_sp = machine->sp + instr->param.int_num;
-        if(check_stack_bounds(machine, top_sp))
-        {
-          for(int i = machine->sp; i < top_sp; i++)
-            *((int32*)memory+i) = 0;
-          machine->sp = top_sp;
-          machine->ip++;
-        } else
-          return ExecResult_InvalidMemoryAccess;
-      } break;
+        for(int i = machine->sp; i < top_sp; i++)
+          *((int32*)memory+i) = 0;
+        machine->sp = top_sp;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
 
     case Opcode_PUSH:
+    {/*>>>*/
+      int32 top_sp = machine->sp+1;
+      if(check_stack_bounds(machine, top_sp))
       {
-        int32 top_sp = machine->sp+1;
-        if(check_stack_bounds(machine, top_sp))
+        if(instr->param_type == ParamType_Int32)
+          *(int32*)&memory[machine->sp*VMWORD] = instr->param.int_num;
+        else if(instr->param_type == ParamType_Reg)
         {
-          if(instr->param_type == ParamType_Int32)
-            *(int32*)&memory[machine->sp*VMWORD] = instr->param.int_num;
-          else if(instr->param_type == ParamType_Reg)
-          {
-            RegName regname = instr->param.reg;
-            if(regname == RegName_SP)
-              *(int32*)&memory[machine->sp*VMWORD] = machine->sp;
-            else if(regname == RegName_IP)
-              *(int32*)&memory[machine->sp*VMWORD] = machine->ip;
-            else if(regname == RegName_FP)
-              *(int32*)&memory[machine->sp*VMWORD] = machine->fp;
-            else
-              assert(false);
-          } else
+          RegName regname = instr->param.reg;
+          if(regname == RegName_SP)
+            *(int32*)&memory[machine->sp*VMWORD] = machine->sp;
+          else if(regname == RegName_IP)
+            *(int32*)&memory[machine->sp*VMWORD] = machine->ip;
+          else if(regname == RegName_FP)
+            *(int32*)&memory[machine->sp*VMWORD] = machine->fp;
+          else
             assert(false);
-
-          machine->sp = top_sp;
-          machine->ip++;
         } else
-          return ExecResult_InvalidMemoryAccess;
-      } break;
+          assert(false);
+
+        machine->sp = top_sp;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
 
     case Opcode_POP:
+    {/*>>>*/
+      int32 arg_sp = machine->sp-1;
+      if(check_stack_bounds(machine, arg_sp))
       {
-        int32 arg_sp = machine->sp-1;
-        if(check_stack_bounds(machine, arg_sp))
+        if(instr->param_type == ParamType__Null)
         {
-          if(instr->param_type == ParamType__Null)
+          machine->sp--;
+          machine->ip++;
+        }
+        else if(instr->param_type == ParamType_Int32)
+        {
+          machine->sp -= instr->param.int_num;
+          machine->ip++;
+        }
+        else if(instr->param_type == ParamType_Reg)
+        {
+          RegName regname = instr->param.reg;
+          if(regname == RegName_SP)
           {
+            machine->sp = *(int32*)&memory[arg_sp*VMWORD];
+            machine->ip++;
+          }
+          else if(regname == RegName_IP)
+          {
+            int32 ip = *(int32*)&memory[arg_sp*VMWORD];
+            machine->sp--;
+            machine->ip = ip;
+          }
+          else if(regname == RegName_FP)
+          {
+            machine->fp = *(int32*)&memory[arg_sp*VMWORD];
             machine->sp--;
             machine->ip++;
-          }
-          else if(instr->param_type == ParamType_Int32)
-          {
-            machine->sp -= instr->param.int_num;
-            machine->ip++;
-          }
-          else if(instr->param_type == ParamType_Reg)
-          {
-            RegName regname = instr->param.reg;
-            if(regname == RegName_SP)
-            {
-              machine->sp = *(int32*)&memory[arg_sp*VMWORD];
-              machine->ip++;
-            }
-            else if(regname == RegName_IP)
-            {
-              int32 ip = *(int32*)&memory[arg_sp*VMWORD];
-              machine->sp--;
-              machine->ip = ip;
-            }
-            else if(regname == RegName_FP)
-            {
-              machine->fp = *(int32*)&memory[arg_sp*VMWORD];
-              machine->sp--;
-              machine->ip++;
-            } else
-              assert(false);
           } else
             assert(false);
         } else
-          return ExecResult_InvalidMemoryAccess;
-      } break;
+          assert(false);
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
 
     case Opcode_ADD:
     case Opcode_DIV:
     case Opcode_MUL:
     case Opcode_SUB:
+    {/*>>>*/
+      int32 arg_sp = machine->sp-2;
+      if(check_stack_bounds(machine, arg_sp))
       {
-        int32 arg_sp = machine->sp-2;
-        if(check_stack_bounds(machine, arg_sp))
+        int32 arg1 = *(int32*)&memory[arg_sp*VMWORD];
+        int32 arg2 = *(int32*)&memory[(arg_sp+1)*VMWORD];
+
+        int32 result = 0;
+        if(opcode == Opcode_ADD) {
+          result = arg1 + arg2;
+        }
+        else if(opcode == Opcode_SUB) {
+          result = arg1 - arg2;
+        }
+        else if(opcode == Opcode_MUL) {
+          result = arg1 * arg2;
+        }
+        else if(opcode == Opcode_DIV)
         {
-          int32 arg1 = *(int32*)&memory[arg_sp*VMWORD];
-          int32 arg2 = *(int32*)&memory[(arg_sp+1)*VMWORD];
-          int32 result = 0;
-          switch(opcode)
-          {
-            case Opcode_ADD:
-              result = arg1+arg2;
-              break;
-            case Opcode_SUB:
-              result = arg1-arg2;
-              break;
-            case Opcode_MUL:
-              result = arg1*arg2;
-              break;
-            case Opcode_DIV:
-              if(arg2 != 0)
-                result = arg1/arg2;
-              else
-                return ExecResult_DivByZero;
-              break;
-          }
-          *(int32*)&memory[arg_sp*VMWORD] = result;
-          machine->sp--;
-          machine->ip++;
-        } else
-          return ExecResult_InvalidMemoryAccess;
-      } break;
+          if(arg2 != 0)
+            result = arg1 / arg2;
+          else
+            return ExecResult_DivByZero;
+        }
+        else
+          assert(false);
+
+        *(int32*)&memory[arg_sp*VMWORD] = result;
+        machine->sp--;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
+
+    case Opcode_AND:
+    case Opcode_OR:
+    {/*>>>*/
+      int32 arg_sp = machine->sp-2;
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        int32 arg1 = *(int32*)&memory[arg_sp*VMWORD];
+        int32 arg2 = *(int32*)&memory[(arg_sp+1)*VMWORD];
+
+        bool32 result = 0;
+        if(opcode == Opcode_AND) {
+          result = arg1 && arg2;
+        }
+        else if(opcode == Opcode_OR) {
+          result = arg1 || arg2;
+        }
+        else
+          assert(false);
+
+        *(int32*)&memory[arg_sp*VMWORD] = result;
+        machine->sp--;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
+
+    case Opcode_NOT:
+    {/*>>>*/
+      int32 arg_sp = machine->sp-1;
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        int32 arg = *(int32*)&memory[arg_sp*VMWORD];
+        bool32 result = !arg;
+        *(int32*)&memory[arg_sp*VMWORD] = result;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
 
     case Opcode_INCR:
     case Opcode_DECR:
+    {/*>>>*/
+      int32 arg_sp = machine->sp-1;
+      if(check_stack_bounds(machine, arg_sp))
       {
-        int32 arg_sp = machine->sp-1;
-        if(check_stack_bounds(machine, arg_sp))
-        {
-          int32 arg = *(int32*)&memory[arg_sp*VMWORD];
-          int32 result = arg;
-          if(opcode == Opcode_INCR)
-            result++;
-          else
-            result--;
-          *(int32*)&memory[arg_sp*VMWORD] = result;
-          machine->ip++;
-        }
-      } break;
+        int32 arg = *(int32*)&memory[arg_sp*VMWORD];
+        int32 result = arg;
+        if(opcode == Opcode_INCR)
+          result++;
+        else
+          result--;
+        *(int32*)&memory[arg_sp*VMWORD] = result;
+        machine->ip++;
+      }
+    } break;/*<<<*/
 
     case Opcode_LOAD:
     case Opcode_LOAD8:
+    {/*>>>*/
+      int32 arg_sp = machine->sp-1;
+      if(check_stack_bounds(machine, arg_sp))
       {
-        int32 arg_sp = machine->sp-1;
-        if(check_stack_bounds(machine, arg_sp))
+        int32 location = *(int32*)&memory[arg_sp*VMWORD];
+        if(check_memory_bounds(machine, location))
         {
-          int32 location = *(int32*)&memory[arg_sp*VMWORD];
-          if(check_memory_bounds(machine, location))
+          if(opcode == Opcode_LOAD)
           {
-            if(opcode == Opcode_LOAD)
-            {
-              uint32 value = *(uint32*)&memory[location*VMWORD];
-              *(uint32*)&memory[arg_sp*VMWORD] = (uint32)value;
-            }
-            else if(opcode == Opcode_LOAD8)
-            {
-              uint8 value = *(uint8*)&memory[location];
-              *(uint32*)&memory[arg_sp] = (uint32)value;
-            }
-            else
-              assert(false);
+            uint32 value = *(uint32*)&memory[location*VMWORD];
+            *(uint32*)&memory[arg_sp*VMWORD] = (uint32)value;
+          }
+          else if(opcode == Opcode_LOAD8)
+          {
+            uint8 value = *(uint8*)&memory[location];
+            *(uint32*)&memory[arg_sp] = (uint32)value;
+          }
+          else
+            assert(false);
 
-            machine->ip++;
-          } else
-            return ExecResult_InvalidMemoryAccess;
+          machine->ip++;
         } else
           return ExecResult_InvalidMemoryAccess;
-      } break;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
 
     case Opcode_STORE:
     case Opcode_STORE8:
+    {/*>>>*/
+      int32 loc_arg_sp = machine->sp-1;
+      int32 val_arg_sp = machine->sp-2;
+      if(check_stack_bounds(machine, val_arg_sp))
       {
-        int32 loc_arg_sp = machine->sp-1;
-        int32 val_arg_sp = machine->sp-2;
-        if(check_stack_bounds(machine, val_arg_sp))
+        int32 location = *(int32*)&memory[loc_arg_sp*VMWORD];
+        if(check_memory_bounds(machine, location))
         {
-          int32 location = *(int32*)&memory[loc_arg_sp*VMWORD];
-          if(check_memory_bounds(machine, location))
+          uint32 value = *(uint32*)&memory[val_arg_sp*VMWORD];
+          if(opcode == Opcode_STORE)
           {
-            uint32 value = *(uint32*)&memory[val_arg_sp*VMWORD];
-            if(opcode == Opcode_STORE)
-            {
-              if(value <= 0xffffffff)
-                *((uint32*)&memory[location*VMWORD]) = (uint32)value;
-              else
-                return ExecResult_InvalidOperandSize;
-            }
-            else if(opcode == Opcode_STORE8)
-            {
-              if(value <= 0xff)
-                *((uint8*)&memory[location]) = (uint8)value;
-              else
-                return ExecResult_InvalidOperandSize;
-            }
+            if(value <= 0xffffffff)
+              *((uint32*)&memory[location*VMWORD]) = (uint32)value;
             else
-              assert(false);
-
-            machine->sp--;
-            machine->ip++;
-          } else
-            return ExecResult_InvalidMemoryAccess;
-        } else
-          return ExecResult_InvalidMemoryAccess;
-      } break;
-
-    case Opcode_GOTO:
-      {
-        assert(instr->param_type == ParamType_Int32);
-        machine->ip = instr->param.int_num;
-      } break;
-
-    case Opcode_CALL:
-      {
-        assert(instr->param_type == ParamType_Int32);
-        int32 top_sp = machine->sp+3;
-        if(check_stack_bounds(machine, top_sp))
-        {
-          *(int32*)&memory[machine->sp*VMWORD] = machine->ip+1;
-          *(int32*)&memory[(machine->sp+1)*VMWORD] = machine->fp;
-          *(int32*)&memory[(machine->sp+2)*VMWORD] = machine->sp;
-
-          int32 jump_address = instr->param.int_num;
-          machine->ip = jump_address;
-          machine->sp = top_sp;
-          machine->fp = top_sp;
-        } else
-          return ExecResult_InvalidMemoryAccess;
-      } break;
-
-    case Opcode_RETURN:
-      {
-        int32 arg_sp = machine->fp-3;
-        if(check_stack_bounds(machine, arg_sp))
-        {
-          machine->ip = *(int32*)&memory[arg_sp*VMWORD];
-          machine->fp = *(int32*)&memory[(arg_sp+1)*VMWORD];
-          machine->sp = *(int32*)&memory[(arg_sp+2)*VMWORD];
-        } else
-          return ExecResult_InvalidMemoryAccess;
-      } break;
-
-    case Opcode_ENTER:
-      {
-        int32 top_sp = machine->sp+1;
-        if(check_stack_bounds(machine, top_sp))
-        {
-          *(int32*)&memory[machine->sp*VMWORD] = machine->fp;
-          machine->fp = top_sp;
-          machine->sp = top_sp;
-          machine->ip++;
-        } else
-          return ExecResult_InvalidMemoryAccess;
-      } break;
-
-    case Opcode_LEAVE:
-      {
-        int32 arg_sp = machine->fp-1;
-        if(check_stack_bounds(machine, arg_sp))
-        {
-          machine->fp = *(int32*)&memory[arg_sp*VMWORD];
-          machine->sp = arg_sp;
-          machine->ip++;
-        } else
-          return ExecResult_InvalidMemoryAccess;
-      } break;
-
-    case Opcode_JUMPNZ:
-    case Opcode_JUMPZ:
-      {
-        assert(instr->param_type == ParamType_Int32);
-        int32 arg_sp = machine->sp-1;
-        if(check_stack_bounds(machine, arg_sp))
-        {
-          int32 jump_address = instr->param.int_num;
-          int32 check = *(int32*)&memory[arg_sp*VMWORD];
-          if((check && opcode == Opcode_JUMPNZ) ||
-              (!check && opcode == Opcode_JUMPZ))
+              return ExecResult_InvalidOperandSize;
+          }
+          else if(opcode == Opcode_STORE8)
           {
-            machine->ip = jump_address;
+            if(value <= 0xff)
+              *((uint8*)&memory[location]) = (uint8)value;
+            else
+              return ExecResult_InvalidOperandSize;
           }
           else
-            machine->ip++;
+            assert(false);
+
           machine->sp--;
+          machine->ip++;
         } else
           return ExecResult_InvalidMemoryAccess;
-      } break;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
 
     case Opcode_DUP:
+    {/*>>>*/
+      int32 arg_sp = machine->sp-1;
+      if(check_stack_bounds(machine, arg_sp))
       {
-        int32 arg_sp = machine->sp-1;
-        if(check_stack_bounds(machine, arg_sp))
+        int32 value = *(int32*)&memory[arg_sp*VMWORD];
+        if(check_stack_bounds(machine, machine->sp))
         {
-          int32 value = *(int32*)&memory[arg_sp*VMWORD];
-          if(check_stack_bounds(machine, machine->sp))
-          {
-            *(int32*)&memory[machine->sp*VMWORD] = value;
-            machine->sp++;
-            machine->ip++;
-          } else
-            return ExecResult_InvalidMemoryAccess;
+          *(int32*)&memory[machine->sp*VMWORD] = value;
+          machine->sp++;
+          machine->ip++;
         } else
           return ExecResult_InvalidMemoryAccess;
-      } break;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+      } break;/*<<<*/
+
+    case Opcode_GOTO:
+    {/*>>>*/
+      assert(instr->param_type == ParamType_Int32);
+      machine->ip = instr->param.int_num;
+    } break;/*<<<*/
+
+    case Opcode_CALL:
+    {/*>>>*/
+      assert(instr->param_type == ParamType_Int32);
+      int32 top_sp = machine->sp+3;
+      if(check_stack_bounds(machine, top_sp))
+      {
+        *(int32*)&memory[machine->sp*VMWORD] = machine->ip+1;
+        *(int32*)&memory[(machine->sp+1)*VMWORD] = machine->fp;
+        *(int32*)&memory[(machine->sp+2)*VMWORD] = machine->sp;
+
+        int32 jump_address = instr->param.int_num;
+        machine->ip = jump_address;
+        machine->sp = top_sp;
+        machine->fp = top_sp;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
+
+    case Opcode_RETURN:
+    {/*>>>*/
+      int32 arg_sp = machine->fp-3;
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        machine->ip = *(int32*)&memory[arg_sp*VMWORD];
+        machine->fp = *(int32*)&memory[(arg_sp+1)*VMWORD];
+        machine->sp = *(int32*)&memory[(arg_sp+2)*VMWORD];
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
+
+    case Opcode_ENTER:
+    {/*>>>*/
+      int32 top_sp = machine->sp+1;
+      if(check_stack_bounds(machine, top_sp))
+      {
+        *(int32*)&memory[machine->sp*VMWORD] = machine->fp;
+        machine->fp = top_sp;
+        machine->sp = top_sp;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
+
+    case Opcode_LEAVE:
+    {/*>>>*/
+      int32 arg_sp = machine->fp-1;
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        machine->fp = *(int32*)&memory[arg_sp*VMWORD];
+        machine->sp = arg_sp;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
+
+    case Opcode_JUMPZ:
+    case Opcode_JUMPNZ:
+    {/*>>>*/
+      assert(instr->param_type == ParamType_Int32);
+      int32 arg_sp = machine->sp-1;
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        int32 jump_address = instr->param.int_num;
+        int32 check = *(int32*)&memory[arg_sp*VMWORD];
+        if((check && opcode == Opcode_JUMPNZ) ||
+           (!check && opcode == Opcode_JUMPZ))
+        {
+          machine->ip = jump_address;
+        }
+        else
+          machine->ip++;
+        machine->sp--;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
+
+    case Opcode_CMPEQ:
+    case Opcode_CMPNEQ:
+    {/*>>>*/
+      int32 arg_sp = machine->sp-2;
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        int32 arg1 = *(int32*)&memory[arg_sp*VMWORD];
+        int32 arg2 = *(int32*)&memory[(arg_sp+1)*VMWORD];
+        int32 result = (arg1 == arg2);
+        if(opcode == Opcode_CMPNEQ)
+          result = !result;
+        *(int32*)&memory[arg_sp*VMWORD] = result;
+        machine->sp--;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
+
+    case Opcode_CMPLSS:
+    case Opcode_CMPGRT:
+    {/*>>>*/
+      int32 arg_sp = machine->sp-2;
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        int32 arg1 = *(int32*)&memory[arg_sp*VMWORD];
+        int32 arg2 = *(int32*)&memory[(arg_sp+1)*VMWORD];
+        int32 result = (arg1 < arg2);
+        if(opcode == Opcode_CMPGRT)
+          result = (arg1 > arg2);
+        *(int32*)&memory[arg_sp*VMWORD] = result;
+        machine->sp--;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
 
 //    case Opcode_PRINT:
 //      {/*>>>*/
@@ -376,16 +453,16 @@ execute_instr(HocMachine* machine, Instruction* instr)
         return ExecResult_EndOfProgram;
 
     case Opcode_LABEL:
-      {
-        assert(instr->param_type == ParamType_Int32);
-        int32 jump_address = instr->param.int_num;
-        machine->ip = jump_address;
-      } break;
+    {/*>>>*/
+      assert(instr->param_type == ParamType_Int32);
+      int32 jump_address = instr->param.int_num;
+      machine->ip = jump_address;
+    } break;/*<<<*/
 
     case Opcode_NOOP:
-      {
-        machine->ip++;
-      } break;
+    {/*>>>*/
+      machine->ip++;
+    } break;/*<<<*/
 
     default:
         return ExecResult_IllegalInstruction;

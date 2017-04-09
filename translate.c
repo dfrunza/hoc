@@ -44,7 +44,18 @@ typedef enum
   Token_Plus,
   Token_Minus,
   Token_UnaryMinus,
+  Token_Bang,
   Token_Equals,
+  Token_EqualsEquals,
+  Token_BangEquals,
+  Token_AngleLeft,
+  Token_AngleRight,
+  Token_AngleLeftEquals,
+  Token_AngleRightEquals,
+  Token_Amprsnd,
+  Token_AmprsndAmprsnd,
+  Token_Pipe,
+  Token_PipePipe,
   Token_OpenParens,
   Token_CloseParens,
   Token_OpenBrace,
@@ -83,16 +94,26 @@ typedef struct IrProc_ IrProc;
 
 typedef enum
 {/*>>>*/
-  AstOperatorKind__Null,
-  AstOperatorKind_Add,
-  AstOperatorKind_Sub,
-  AstOperatorKind_Assign,
-  AstOperatorKind_Div,
-  AstOperatorKind_Mul,
-  AstOperatorKind_Call,
-  AstOperatorKind_Neg,
+  AstOpKind__Null,
+
+  AstOpKind_Add,
+  AstOpKind_Sub,
+  AstOpKind_Div,
+  AstOpKind_Mul,
+  AstOpKind_Neg,
+
+  AstOpKind_Call,
+  AstOpKind_Assign,
+  
+  AstOpKind_Equals,
+  AstOpKind_NotEquals,
+  AstOpKind_Less,
+  AstOpKind_Greatr,
+  AstOpKind_LogicAnd,
+  AstOpKind_LogicOr,
+  AstOpKind_LogicNot,
 }/*<<<*/
-AstOperatorKind;
+AstOpKind;
 
 typedef enum
 {/*>>>*/
@@ -140,7 +161,7 @@ AstVarDecl;
 
 typedef struct
 {/*>>>*/
-  AstOperatorKind op;
+  AstOpKind op;
   AstNode* left_operand;
   AstNode* right_operand;
 }/*<<<*/
@@ -148,7 +169,7 @@ AstBinExpr;
 
 typedef struct
 {/*>>>*/
-  AstOperatorKind op;
+  AstOpKind op;
   AstNode* operand;
 }/*<<<*/
 AstUnrExpr;
@@ -289,12 +310,22 @@ IrNodeKind;
 typedef enum
 {/*>>>*/
   IrOpKind__Null,
+
   IrOpKind_Add,
   IrOpKind_Mul,
   IrOpKind_Sub,
   IrOpKind_Div,
-  IrOpKind_Store,
   IrOpKind_Neg,
+
+  IrOpKind_Store,
+
+  IrOpKind_CmpEq,
+  IrOpKind_CmpNEq,
+  IrOpKind_CmpLss,
+  IrOpKind_CmpGrt,
+  IrOpKind_And,
+  IrOpKind_Or,
+  IrOpKind_Not,
 }/*<<<*/
 IrOpKind;
 
@@ -754,7 +785,7 @@ loop:
   }
 
   if(char_is_letter(c) || c == '_')
-  {
+  {/*>>>*/
     char* begin_char = input->cursor;
     c = *(++input->cursor);
 
@@ -770,9 +801,9 @@ loop:
       input->token = symbol->kw_token;
     else
       input->token = Token_Id;
-  }
+  }/*<<<*/
   else if(char_is_numeric(c))
-  {
+  {/*>>>*/
     int num = c - '0';
     c = *(++input->cursor);
 
@@ -786,9 +817,9 @@ loop:
     *value = num;
     input->token = Token_IntNum;
     input->lexeme.int_num = value;
-  }
+  }/*<<<*/
   else if(c == '-')
-  {
+  {/*>>>*/
     c = *(++input->cursor);
     if(c == '>')
     {
@@ -805,9 +836,9 @@ loop:
       input->token = Token_UnaryMinus;
     else
       input->token = Token_Minus;
-  }
+  }/*<<<*/
   else if(c == '/')
-  {
+  {/*>>>*/
     char* fwd_cursor = input->cursor;
 
     c = *(++fwd_cursor);
@@ -834,9 +865,9 @@ loop:
       input->token = Token_FwdSlash;
       ++input->cursor;
     }
-  }
+  }/*<<<*/
   else if(c == '"')
-  {
+  {/*>>>*/
     char* fwd_cursor = input->cursor;
 
     c = *(++fwd_cursor);
@@ -847,77 +878,158 @@ loop:
     input->lexeme.str = lexeme;
     input->token = Token_String;
     input->cursor = ++fwd_cursor;
-  }
+  }/*<<<*/
+  else if(c == '=')
+  {/*>>>*/
+    char* fwd_cursor = input->cursor;
+    c = *(++fwd_cursor);
+    if(c == '=')
+    {
+      input->token = Token_EqualsEquals;
+      input->cursor = ++fwd_cursor;
+    } else
+    {
+      input->token = Token_Equals;
+      ++input->cursor;
+    }
+  }/*<<<*/
+  else if(c == '<')
+  {/*>>>*/
+    /*
+    char* fwd_cursor = input->cursor;
+    c = *(++fwd_cursor);
+    if(c == '=')
+    {
+      input->token = Token_AngleLeftEquals;
+      input->cursor = ++fwd_cursor;
+    } else*/
+    {
+      input->token = Token_AngleLeft;
+      ++input->cursor;
+    }
+  }/*<<<*/
+  else if(c == '>')
+  {/*>>>*/
+    /*
+    char* fwd_cursor = input->cursor;
+    c = *(++fwd_cursor);
+    if(c == '=')
+    {
+      input->token = Token_AngleRightEquals;
+      input->cursor = ++fwd_cursor;
+    } else*/
+    {
+      input->token = Token_AngleRight;
+      ++input->cursor;
+    }
+  }/*<<<*/
+  else if(c == '&')
+  {/*>>>*/
+    char* fwd_cursor = input->cursor;
+    c = *(++fwd_cursor);
+    if(c == '&')
+    {
+      input->token = Token_AmprsndAmprsnd;
+      input->cursor = ++fwd_cursor;
+    }/* else
+    {
+      input->token = Token_Amprsnd;
+      ++input->cursor;
+    }*/
+  }/*<<<*/
+  else if(c == '|')
+  {/*>>>*/
+    char* fwd_cursor = input->cursor;
+    c = *(++fwd_cursor);
+    if(c == '|')
+    {
+      input->token = Token_PipePipe;
+      input->cursor = ++fwd_cursor;
+    }/* else
+    {
+      input->token = Token_Pipe;
+      ++input->cursor;
+    }*/
+  }/*<<<*/
+  else if(c == '!')
+  {/*>>>*/
+    char* fwd_cursor = input->cursor;
+    c = *(++fwd_cursor);
+    if(c == '=')
+    {
+      input->token = Token_BangEquals;
+      input->cursor = ++fwd_cursor;
+    } else
+    {
+      input->token = Token_Bang;
+      ++input->cursor;
+    }
+  }/*<<<*/
   else if(c == '*')
-  {
+  {/*>>>*/
     input->token = Token_Star;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == '.')
-  {
+  {/*>>>*/
     input->token = Token_Dot;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == '}')
-  {
+  {/*>>>*/
     input->token = Token_CloseBrace;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == '{')
-  {
+  {/*>>>*/
     input->token = Token_OpenBrace;
     ++input->cursor;
-  }
-  else if(c == '=')
-  {
-    input->token = Token_Equals;
-    ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == '+')
-  {
+  {/*>>>*/
     input->token = Token_Plus;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == '(')
-  {
+  {/*>>>*/
     input->token = Token_OpenParens;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == ')')
-  {
+  {/*>>>*/
     input->token = Token_CloseParens;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == ';')
-  {
+  {/*>>>*/
     input->token = Token_Semicolon;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == ',')
-  {
+  {/*>>>*/
     input->token = Token_Comma;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == ':')
-  {
+  {/*>>>*/
     input->token = Token_Colon;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == '[')
-  {
+  {/*>>>*/
     input->token = Token_OpenParens;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == ']')
-  {
+  {/*>>>*/
     input->token = Token_CloseBracket;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == '^')
-  {
+  {/*>>>*/
     input->token = Token_UpArrow;
     ++input->cursor;
-  }
+  }/*<<<*/
   else if(c == '\0')
     input->token = Token_EndOfInput;
 }/*<<<*/
@@ -942,8 +1054,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   if(input->token == Token_OpenParens)
   {
     consume_token(input, symbol_table);
-    success = parse_expression(arena, input, symbol_table,
-                              enclosing_block, node);
+    success = parse_expression(arena, input, symbol_table, enclosing_block, node);
     if(success)
     {
       if(input->token == Token_CloseParens)
@@ -957,6 +1068,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   else if(input->token == Token_UnaryMinus)
   {
     consume_token(input, symbol_table);
+
     AstNode* operand = 0;
     success = parse_term(arena, input, symbol_table, enclosing_block, &operand);
     if(success)
@@ -966,11 +1078,33 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
         AstNode* neg_node = mem_push_struct(arena, AstNode, 1);
         neg_node->kind = AstNodeKind_UnrExpr;
         AstUnrExpr* expr = &neg_node->unr_expr;
-        expr->op = AstOperatorKind_Neg;
+        expr->op = AstOpKind_Neg;
         expr->operand = operand;
         *node = neg_node;
       } else {
         syntax_error(input, "Expression expected after '-'");
+        success = false;
+      }
+    }
+  }
+  else if(input->token == Token_Bang)
+  {
+    consume_token(input, symbol_table);
+
+    AstNode* operand = 0;
+    success = parse_term(arena, input, symbol_table, enclosing_block, &operand);
+    if(success)
+    {
+      if(operand)
+      {
+        AstNode* not_node = mem_push_struct(arena, AstNode, 1);
+        not_node->kind = AstNodeKind_UnrExpr;
+        AstUnrExpr* expr = &not_node->unr_expr;
+        expr->op = AstOpKind_LogicNot;
+        expr->operand = operand;
+        *node = not_node;
+      } else {
+        syntax_error(input, "Expression expected after '!'");
         success = false;
       }
     }
@@ -1080,15 +1214,33 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
   bool32 success = true;
 
   if(input->token == Token_Star ||
-      input->token == Token_FwdSlash)
+     input->token == Token_FwdSlash ||
+     input->token == Token_EqualsEquals ||
+     input->token == Token_BangEquals ||
+     input->token == Token_AmprsndAmprsnd ||
+     input->token == Token_PipePipe ||
+     input->token == Token_AngleLeft ||
+     input->token == Token_AngleRight)
   {
     AstNode* expr_node = mem_push_struct(arena, AstNode, 1);
     expr_node->kind = AstNodeKind_BinExpr;
     AstBinExpr* expr = &expr_node->bin_expr;
     if(input->token == Token_Star)
-      expr->op = AstOperatorKind_Mul;
+      expr->op = AstOpKind_Mul;
     else if(input->token == Token_FwdSlash)
-      expr->op = AstOperatorKind_Div;
+      expr->op = AstOpKind_Div;
+    else if(input->token == Token_EqualsEquals)
+      expr->op = AstOpKind_Equals;
+    else if(input->token == Token_BangEquals)
+      expr->op = AstOpKind_NotEquals;
+    else if(input->token == Token_AngleLeft)
+      expr->op = AstOpKind_Less;
+    else if(input->token == Token_AngleRight)
+      expr->op = AstOpKind_Greatr;
+    else if(input->token == Token_AmprsndAmprsnd)
+      expr->op = AstOpKind_LogicAnd;
+    else if(input->token == Token_PipePipe)
+      expr->op = AstOpKind_LogicOr;
     else
       assert(false);
 
@@ -1142,9 +1294,9 @@ parse_rest_of_terms(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
     expr_node->kind = AstNodeKind_BinExpr;
     AstBinExpr* expr = &expr_node->bin_expr;
     if(input->token == Token_Plus)
-      expr->op = AstOperatorKind_Add;
+      expr->op = AstOpKind_Add;
     else if(input->token == Token_Minus)
-      expr->op = AstOperatorKind_Sub;
+      expr->op = AstOpKind_Sub;
     else
       assert(false);
 
@@ -1203,7 +1355,7 @@ parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input, SymbolTab
           AstNode* expr_node = mem_push_struct(arena, AstNode, 1);
           expr_node->kind = AstNodeKind_BinExpr;
           AstBinExpr* expr = &expr_node->bin_expr;
-          expr->op = AstOperatorKind_Assign;
+          expr->op = AstOpKind_Assign;
           expr->left_operand = left_node;
           expr->right_operand = right_side;
 
@@ -1232,8 +1384,10 @@ parse_expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
 
   bool32 success = parse_assignment_term(arena, input, symbol_table, enclosing_block, &assgn_node);
   if(success && assgn_node)
+  {
     success = parse_rest_of_assignment_terms(arena, input, symbol_table,
                                              enclosing_block, assgn_node, &expr_node);
+  }
 
   *node = expr_node;
   return success;
@@ -1875,7 +2029,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
               if(stmt_node->kind == AstNodeKind_BinExpr)
               {
                 AstBinExpr* expr = &stmt_node->bin_expr;
-                if(expr->op != AstOperatorKind_Assign)
+                if(expr->op != AstOpKind_Assign)
                 {
                   syntax_error(input, "Assignment expression required");
                   success = false;
@@ -2091,19 +2245,31 @@ ir_build_bin_expr(MemoryArena* arena, IrActivationRecord* actv_rec, AstBinExpr* 
   val_node = ir_build_value(arena, actv_rec, left_operand);
   ir_op->left_operand = &val_node->value;
 
-  if(bin_expr->op == AstOperatorKind_Assign)
+  if(bin_expr->op == AstOpKind_Assign)
   {
     assert(left_operand->kind == AstNodeKind_VarOccur);
     ir_op->op = IrOpKind_Store;
   }
-  else if(bin_expr->op == AstOperatorKind_Add)
+  else if(bin_expr->op == AstOpKind_Add)
     ir_op->op = IrOpKind_Add;
-  else if(bin_expr->op == AstOperatorKind_Sub)
+  else if(bin_expr->op == AstOpKind_Sub)
     ir_op->op = IrOpKind_Sub;
-  else if(bin_expr->op == AstOperatorKind_Mul)
+  else if(bin_expr->op == AstOpKind_Mul)
     ir_op->op = IrOpKind_Mul;
-  else if(bin_expr->op == AstOperatorKind_Div)
+  else if(bin_expr->op == AstOpKind_Div)
     ir_op->op = IrOpKind_Div;
+  else if(bin_expr->op == AstOpKind_Equals)
+    ir_op->op = IrOpKind_CmpEq;
+  else if(bin_expr->op == AstOpKind_NotEquals)
+    ir_op->op = IrOpKind_CmpNEq;
+  else if(bin_expr->op == AstOpKind_Less)
+    ir_op->op = IrOpKind_CmpLss;
+  else if(bin_expr->op == AstOpKind_Greatr)
+    ir_op->op = IrOpKind_CmpGrt;
+  else if(bin_expr->op == AstOpKind_LogicAnd)
+    ir_op->op = IrOpKind_And;
+  else if(bin_expr->op == AstOpKind_LogicOr)
+    ir_op->op = IrOpKind_Or;
   else
     assert(false);
 
@@ -2118,8 +2284,12 @@ ir_build_unr_expr(MemoryArena* arena, IrActivationRecord* actv_rec, AstUnrExpr* 
   IrUnrExpr* ir_op = &ir_node->unr_expr;
   IrNode* val_node = ir_build_value(arena, actv_rec, unr_expr->operand);
   ir_op->operand = &val_node->value;
-  if(unr_expr->op == AstOperatorKind_Neg)
+  if(unr_expr->op == AstOpKind_Neg)
     ir_op->op = IrOpKind_Neg;
+  else if(unr_expr->op == AstOpKind_LogicNot)
+    ir_op->op = IrOpKind_Not;
+  else
+    assert(false);
   return ir_node;
 }/*<<<*/
 
@@ -2437,7 +2607,7 @@ ir_build_statement(MemoryArena* arena, IrActivationRecord* actv_rec, AstNode* as
   if(ast_node->kind == AstNodeKind_BinExpr)
   {
     AstBinExpr* bin_expr = &ast_node->bin_expr;
-    assert(bin_expr->op == AstOperatorKind_Assign);
+    assert(bin_expr->op == AstOpKind_Assign);
     ir_node = ir_build_bin_expr(arena, actv_rec, bin_expr);
   }
   else if(ast_node->kind == AstNodeKind_Call)
@@ -2678,6 +2848,18 @@ gen_bin_expr(MemoryArena* arena, List* code, IrBinExpr* bin_expr)
       emit_instr(arena, code, Opcode_MUL);
     else if(bin_expr->op == IrOpKind_Div)
       emit_instr(arena, code, Opcode_DIV);
+    else if(bin_expr->op == IrOpKind_CmpEq)
+      emit_instr(arena, code, Opcode_CMPEQ);
+    else if(bin_expr->op == IrOpKind_CmpNEq)
+      emit_instr(arena, code, Opcode_CMPNEQ);
+    else if(bin_expr->op == IrOpKind_CmpLss)
+      emit_instr(arena, code, Opcode_CMPLSS);
+    else if(bin_expr->op == IrOpKind_CmpGrt)
+      emit_instr(arena, code, Opcode_CMPGRT);
+    else if(bin_expr->op == IrOpKind_And)
+      emit_instr(arena, code, Opcode_AND);
+    else if(bin_expr->op == IrOpKind_Or)
+      emit_instr(arena, code, Opcode_OR);
     else
       assert(false);
   }
@@ -2691,6 +2873,10 @@ void gen_unr_expr(MemoryArena* arena, List* code, IrUnrExpr* unr_expr)
     // emulated instruction
     emit_instr_int(arena, code, Opcode_PUSH, -1);
     emit_instr(arena, code, Opcode_MUL);
+  }
+  else if(unr_expr->op == IrOpKind_Not)
+  {
+    emit_instr(arena, code, Opcode_NOT);
   }
   else
     assert(false);
@@ -3087,6 +3273,42 @@ print_code(VmProgram* vm_program)
       {
         assert(instr->param_type == ParamType__Null);
         print_instruction(vm_program, "noop");
+      } break;
+
+      case Opcode_CMPEQ:
+      case Opcode_CMPNEQ:
+      case Opcode_CMPLSS:
+      case Opcode_CMPGRT:
+      {
+        assert(instr->param_type == ParamType__Null);
+        if(instr->opcode == Opcode_CMPEQ)
+          print_instruction(vm_program, "cmpeq");
+        else if(instr->opcode == Opcode_CMPNEQ)
+          print_instruction(vm_program, "cmpneq");
+        else if(instr->opcode == Opcode_CMPLSS)
+          print_instruction(vm_program, "cmplss");
+        else if(instr->opcode == Opcode_CMPGRT)
+          print_instruction(vm_program, "cmpgrt");
+        else
+          assert(false);
+      } break;
+
+      case Opcode_AND:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "and");
+      } break;
+
+      case Opcode_OR:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "or");
+      } break;
+
+      case Opcode_NOT:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "not");
       } break;
 
       default:

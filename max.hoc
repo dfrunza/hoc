@@ -1,4 +1,0 @@
-proc max(var a, var b)
-{
-  return 1188;
-}

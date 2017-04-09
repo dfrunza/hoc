@@ -1,3 +1,19 @@
+proc max(var a, var b)
+{
+  var result = a;
+  if(a < b)
+    result = b;
+  return result;
+}
+
+proc min(var a, var b)
+{
+  var result = a;
+  if(a > b)
+    result = b;
+  return result;
+}
+
 proc power(var a, var power)
 {
   var p = power;

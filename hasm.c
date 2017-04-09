@@ -161,58 +161,105 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
     {
       char* mnemonic = components[0];
 
-      if(cstr_match(mnemonic, "pop"))
+      if(cstr_match(mnemonic, "pop")) {
         instr.opcode = Opcode_POP;
-      else if(cstr_match(mnemonic, "push"))
+      }
+      else if(cstr_match(mnemonic, "push")) {
         instr.opcode = Opcode_PUSH;
-      else if(cstr_match(mnemonic, "store"))
+      }
+      else if(cstr_match(mnemonic, "store")) {
         instr.opcode = Opcode_STORE;
-      else if(cstr_match(mnemonic, "store8"))
+      }
+      else if(cstr_match(mnemonic, "store8")) {
         instr.opcode = Opcode_STORE8;
-      else if(cstr_match(mnemonic, "load"))
+      }
+      else if(cstr_match(mnemonic, "load")) {
         instr.opcode = Opcode_LOAD;
-      else if(cstr_match(mnemonic, "load8"))
+      }
+      else if(cstr_match(mnemonic, "load8")) {
         instr.opcode = Opcode_LOAD8;
-      else if(cstr_match(mnemonic, "add"))
+      }
+      else if(cstr_match(mnemonic, "add")) {
         instr.opcode = Opcode_ADD;
-      else if(cstr_match(mnemonic, "sub"))
+      }
+      else if(cstr_match(mnemonic, "sub")) {
         instr.opcode = Opcode_SUB;
-      else if(cstr_match(mnemonic, "mul"))
+      }
+      else if(cstr_match(mnemonic, "mul")) {
         instr.opcode = Opcode_MUL;
-      else if(cstr_match(mnemonic, "div"))
+      }
+      else if(cstr_match(mnemonic, "div")) {
         instr.opcode = Opcode_DIV;
-      else if(cstr_match(mnemonic, "mod"))
+      }
+      else if(cstr_match(mnemonic, "mod")) {
         instr.opcode = Opcode_MOD;
-      else if(cstr_match(mnemonic, "incr"))
+      }
+      else if(cstr_match(mnemonic, "incr")) {
         instr.opcode = Opcode_INCR;
-      else if(cstr_match(mnemonic, "decr"))
+      }
+      else if(cstr_match(mnemonic, "decr")) {
         instr.opcode = Opcode_DECR;
-      else if(cstr_match(mnemonic, "halt"))
+      }
+      else if(cstr_match(mnemonic, "halt")) {
         instr.opcode = Opcode_HALT;
-      else if(cstr_match(mnemonic, "print"))
+      }
+      else if(cstr_match(mnemonic, "print")) {
         instr.opcode = Opcode_PRINT;
-      else if(cstr_match(mnemonic, "dup"))
+      }
+      else if(cstr_match(mnemonic, "dup")) {
         instr.opcode = Opcode_DUP;
-      else if(cstr_match(mnemonic, "goto"))
+      }
+      else if(cstr_match(mnemonic, "goto")) {
         instr.opcode = Opcode_GOTO;
-      else if(cstr_match(mnemonic, "jumpnz"))
+      }
+      else if(cstr_match(mnemonic, "jumpnz")) {
         instr.opcode = Opcode_JUMPNZ;
-      else if(cstr_match(mnemonic, "jumpz"))
+      }
+      else if(cstr_match(mnemonic, "jumpz")) {
         instr.opcode = Opcode_JUMPZ;
-      else if(cstr_match(mnemonic, "label"))
+      }
+      else if(cstr_match(mnemonic, "cmpeq")) {
+        instr.opcode = Opcode_CMPEQ;
+      }
+      else if(cstr_match(mnemonic, "cmpneq")) {
+        instr.opcode = Opcode_CMPNEQ;
+      }
+      else if(cstr_match(mnemonic, "cmplss")) {
+        instr.opcode = Opcode_CMPLSS;
+      }
+      else if(cstr_match(mnemonic, "cmpgrt")) {
+        instr.opcode = Opcode_CMPGRT;
+      }
+      else if(cstr_match(mnemonic, "and")) {
+        instr.opcode = Opcode_AND;
+      }
+      else if(cstr_match(mnemonic, "or")) {
+        instr.opcode = Opcode_OR;
+      }
+      else if(cstr_match(mnemonic, "not")) {
+        instr.opcode = Opcode_NOT;
+      }
+      else if(cstr_match(mnemonic, "label")) {
         instr.opcode = Opcode_LABEL;
-      else if(cstr_match(mnemonic, "noop"))
+      }
+      else if(cstr_match(mnemonic, "noop")) {
         instr.opcode = Opcode_NOOP;
-      else if(cstr_match(mnemonic, "call"))
+      }
+      else if(cstr_match(mnemonic, "call")) {
         instr.opcode = Opcode_CALL;
-      else if(cstr_match(mnemonic, "return"))
+      }
+      else if(cstr_match(mnemonic, "return")) {
         instr.opcode = Opcode_RETURN;
-      else if(cstr_match(mnemonic, "enter"))
+      }
+      else if(cstr_match(mnemonic, "enter")) {
         instr.opcode = Opcode_ENTER;
-      else if(cstr_match(mnemonic, "leave"))
+      }
+      else if(cstr_match(mnemonic, "leave")) {
         instr.opcode = Opcode_LEAVE;
-      else if(cstr_match(mnemonic, "alloc"))
+      }
+      else if(cstr_match(mnemonic, "alloc")) {
         instr.opcode = Opcode_ALLOC;
+      }
       else {
         error("Invalid instruction: %s", mnemonic);
         return false;

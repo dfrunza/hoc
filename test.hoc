@@ -1,7 +1,6 @@
-proc main()
+proc foo(var a)
 {
-  var a = 10;
-  var b = 5;
+  var b = a/3;
   while(a)
   {
     a = a-1;
@@ -12,5 +11,11 @@ proc main()
       return a;
   }
   return b;
+}
+
+proc main()
+{
+  var a = foo(33);
+  return a;
 }
 

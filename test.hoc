@@ -1,6 +1,7 @@
 proc foo(var a)
 {
   var b = a/3;
+  
   while(a)
   {
     a = a-1;
@@ -8,9 +9,15 @@ proc foo(var a)
     if(b)
       ;
     else
-      return a;
+    {
+      if(1)
+      {
+        a = 323;
+        break;
+      }
+    }
   }
-  return b;
+  return a;
 }
 
 proc main()

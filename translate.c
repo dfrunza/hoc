@@ -1,5 +1,6 @@
 #include "lib.c"
 
+/*>>> Lex structs */
 typedef enum
 {/*>>>*/
   Token__Null,
@@ -20,6 +21,7 @@ typedef enum
   Token_Proc,
   Token_Struct,
   Token_Return,
+  Token_Break,
   Token_True,
   Token_False,
   Token__KeywordEnd,
@@ -66,24 +68,13 @@ typedef struct
   } lexval;
 }
 TokenStream;
+/*<<<*/
 
 typedef struct Symbol_ Symbol;
 typedef struct AstNode_ AstNode;
 typedef struct Block_ AstBlock;
 
-typedef struct
-{
-  Symbol* symbol;
-  int     scope_id;
-  int     last_scope_id;
-  int     nesting_depth;
-  int     active_scopes[32];
-  char    label[64];
-  int     last_label_id;
-  MemoryArena* arena;
-}
-SymbolTable;
-
+/*>>> AST structs */
 typedef enum
 {
   AstOperatorKind__Null,
@@ -111,6 +102,7 @@ typedef enum
   AstNodeKind_WhileStmt,
   AstNodeKind_IfStmt,
   AstNodeKind_ReturnStmt,
+  AstNodeKind_BreakStmt,
   AstNodeKind_EmptyStmt,
   AstNodeKind_Module,
 }
@@ -199,7 +191,7 @@ AstProc;
 typedef struct
 {
   AstNode* expr;
-  int      intervening_block_count;
+  int      block_count;
   AstProc* proc;
   AstNode* ret_var;
 }
@@ -222,12 +214,21 @@ typedef struct
 }
 AstIfStmt;
 
+typedef struct IrWhileStmt_ IrWhileStmt;
 typedef struct
 {
   AstNode* expr;
   AstNode* body;
+  IrWhileStmt* ir_while;
 }
 AstWhileStmt;
+
+typedef struct
+{
+  AstWhileStmt* while_stmt;
+  int block_count;
+}
+AstBreakStmt;
 
 typedef struct Block_
 {
@@ -258,10 +259,223 @@ typedef struct AstNode_
     AstBlock      block;
     AstReturnStmt ret_stmt;
     AstWhileStmt  while_stmt;
+    AstBreakStmt  break_stmt;
     AstIfStmt     if_stmt;
   };
 }
 AstNode;
+/*<<<*/
+
+/*>>> IR structs */
+typedef enum
+{
+  IrNodeKind__Null,
+  IrNodeKind_Value,
+  IrNodeKind_BinExpr,
+  IrNodeKind_UnrExpr,
+  IrNodeKind_Proc,
+  IrNodeKind_Block,
+  IrNodeKind_Module,
+  IrNodeKind_Call,
+  IrNodeKind_ReturnStmt,
+  IrNodeKind_BreakStmt,
+  IrNodeKind_IfStmt,
+  IrNodeKind_WhileStmt,
+  IrNodeKind_Noop,
+}
+IrNodeKind;
+
+typedef enum
+{
+  IrOpKind__Null,
+  IrOpKind_Add,
+  IrOpKind_Mul,
+  IrOpKind_Sub,
+  IrOpKind_Div,
+  IrOpKind_Store,
+  IrOpKind_Neg,
+}
+IrOpKind;
+
+typedef struct IrNode_ IrNode;
+typedef struct IrValue_ IrValue;
+
+typedef enum
+{
+  IrValueKind__Null,
+  IrValueKind_Var,
+  IrValueKind_IntNum,
+  IrValueKind_Call,
+  IrValueKind_BinExpr,
+  IrValueKind_UnrExpr,
+}
+IrValueKind;
+
+typedef struct
+{
+  IrProc* proc;
+  List    actual_args;
+}
+IrCall;
+
+typedef struct
+{
+  IrOpKind op;
+  IrValue* left_operand;
+  IrValue* right_operand;
+}
+IrBinExpr;
+
+typedef struct
+{
+  IrOpKind op;
+  IrValue* operand;
+}
+IrUnrExpr;
+
+typedef struct
+{
+  IrBinExpr* assgn_expr;
+  IrVar      ret_var;
+  IrProc*    proc;
+  int        depth;
+}
+IrReturnStmt;
+
+typedef enum
+{
+  IrAvRecord__Null,
+  IrAvRecord_Proc,
+  IrAvRecord_Block,
+}
+IrAvRecordKind;
+
+typedef struct
+{
+  IrStackArea access_links;
+  IrStackArea old_fp;
+}
+IrBlockAvRecord;
+
+typedef struct
+{
+  IrStackArea ret;
+  IrStackArea args;
+  IrStackArea ctrl_links;
+}
+IrProcAvRecord;
+
+typedef struct
+{
+  IrValue* expr;
+  IrNode*  body;
+  IrNode*  else_body;
+  char*    label_else;
+  char*    label_end;
+}
+IrIfStmt;
+
+typedef struct IrWhileStmt_
+{
+  IrValue* expr;
+  IrNode* body;
+  char* label_eval;
+  char* label_break;
+}
+IrWhileStmt;
+
+typedef struct
+{
+  IrWhileStmt* while_stmt;
+  int depth;
+}
+IrBreakStmt;
+
+typedef struct IrValue_
+{
+  IrValueKind kind;
+
+  union {
+    int32      int_num;
+    IrVar*     var;
+    IrCall*    call;
+    IrBinExpr* bin_expr;
+    IrUnrExpr* unr_expr;
+  };
+}
+IrValue;
+
+typedef struct
+{
+  union {
+    IrProcAvRecord  proc;
+    IrBlockAvRecord block;
+  };
+  IrStackArea locals;
+  IrAvRecordKind kind;
+  int fp;
+  int sp;
+}
+IrActivationRecord;
+
+typedef struct IrProc_
+{
+  char* label;
+  char* label_return;
+  List  instr_list;
+  IrActivationRecord* actv_rec;
+}
+IrProc;
+
+typedef struct IrBlock_
+{
+  List access_links;
+  List instr_list;
+  IrActivationRecord* actv_rec;
+}
+IrBlock;
+
+typedef struct
+{
+  IrProc* main_proc;
+  IrCall* main_call;
+  List    proc_list;
+}
+IrModule;
+
+typedef struct IrNode_
+{
+  IrNodeKind kind;
+
+  union {
+    IrVar        var;
+    IrValue      value;
+    IrBinExpr    bin_expr;
+    IrUnrExpr    unr_expr;
+    IrProc       proc;
+    IrBlock      block;
+    IrModule     module;
+    IrCall       call;
+    IrReturnStmt ret;
+    IrIfStmt     if_stmt;
+    IrWhileStmt  while_stmt;
+    IrBreakStmt  break_stmt;
+  };
+} IrNode;
+/*<<<*/
+
+typedef struct
+{
+  Symbol* symbol;
+  int     scope_id;
+  int     last_scope_id;
+  int     nesting_depth;
+  int     active_scopes[32];
+  char    label[64];
+  int     last_label_id;
+  MemoryArena* arena;
+}
+SymbolTable;
 
 typedef enum
 {
@@ -400,6 +614,7 @@ void register_keywords(SymbolTable* symbol_table)
   add_keyword(symbol_table, "else", Token_Else);
   add_keyword(symbol_table, "while", Token_While);
   add_keyword(symbol_table, "return", Token_Return);
+  add_keyword(symbol_table, "break", Token_Break);
   add_keyword(symbol_table, "true", Token_True);
   add_keyword(symbol_table, "false", Token_False);
 }/*<<<*/
@@ -437,7 +652,7 @@ void scope_end(SymbolTable* symbol_table)
 
 static int last_label_id; // todo: got no idea where to stick this
 
-void gen_unique_label(String* label)
+void make_unique_label(String* label)
 {
   sprintf(label->start, "L%d", last_label_id++);
   int len = str_len(label->start);
@@ -446,7 +661,7 @@ void gen_unique_label(String* label)
   arena->free = label->end + 1;
 }
 
-/*>>> Lex */
+/*>>> Lex procs */
 bool32 token_is_keyword(Token token)
 {/*>>>*/
   return token > Token__KeywordBegin && token < Token__KeywordEnd;
@@ -614,7 +829,7 @@ void consume_token(TokenStream* input, SymbolTable* symbol_table)
 }/*<<<*/
 /*<<<*/
 
-/*>>> Parse */
+/*>>> Parse procs */
 bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse_statement_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*);
 bool32 parse_actual_argument_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstCall*);
@@ -737,8 +952,7 @@ bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
           syntax_error(input, "Missing '(' in procedure call");
           success = false;
         }
-      }
-      else if(symbol->kind == SymbolKind_Keyword)
+      } else if(symbol->kind == SymbolKind_Keyword)
       {
         syntax_error(input, "Keyword used as identifier: %s", input->lexval.id);
         success = false;
@@ -1123,7 +1337,7 @@ bool32 parse_block(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_t
 
 bool32 parse_else_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                             AstBlock* enclosing_block, AstNode* owner, AstNode** node)
-{
+{/*>>>*/
   bool32 success = true;
 
   if(input->token == Token_Else)
@@ -1151,8 +1365,7 @@ bool32 parse_else_statement(MemoryArena* arena, TokenStream* input, SymbolTable*
             if(else_node)
             {
               *node = else_node;
-            } else
-            {
+            } else {
               syntax_error(input, "Statement(s) required");
               success = false;
             }
@@ -1162,7 +1375,7 @@ bool32 parse_else_statement(MemoryArena* arena, TokenStream* input, SymbolTable*
     }
   }
   return success;
-}
+}/*<<<*/
 
 bool32 parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                           AstBlock* enclosing_block, AstNode** node)
@@ -1213,13 +1426,11 @@ bool32 parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
                 {
                   if_stmt->else_body = else_node;
                 }
-              } else
-              {
+              } else {
                 syntax_error(input, "Var statement not allowed");
                 success = false;
               }
-            } else
-            {
+            } else {
               syntax_error(input, "Statement(s) required");
               success = false;
             }
@@ -1349,14 +1560,15 @@ bool32 parse_procedure_list(MemoryArena* arena, TokenStream* input, SymbolTable*
   return success;
 }/*<<<*/
 
-bool32 parse_return_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                              AstBlock* enclosing_block, AstNode** node)
+bool32 parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+                         AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
 
   if(input->token == Token_Return)
   {
     consume_token(input, symbol_table);
+
     AstNode* expr_node = 0;
     success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
     if(success)
@@ -1379,28 +1591,70 @@ bool32 parse_return_statement(MemoryArena* arena, TokenStream* input, SymbolTabl
           depth++;
           block = block->enclosing_block;
         }
-        assert(block);
-        AstProc* ret_proc = &block->owner->proc;
-        ret_stmt->proc = ret_proc;
-        ret_stmt->intervening_block_count = depth;
+        if(block)
+        {
+          AstProc* ret_proc = &block->owner->proc;
+          ret_stmt->proc = ret_proc;
+          ret_stmt->block_count = depth;
 
-        AstNode* var_node = push_element(arena, AstNode, 1);
-        var_node->kind = AstNodeKind_VarOccur;
-        AstVarOccur* var_occur = &var_node->var_occur;
-        var_occur->var_decl = &ret_proc->ret_var;
-        var_occur->decl_block_offset = depth;
-        if(depth > 0)
-          list_append(arena, &enclosing_block->non_local_occurs, var_node);
-        else
-          list_append(arena, &enclosing_block->local_occurs, var_node);
-        ret_stmt->ret_var = var_node;
+          AstNode* var_node = push_element(arena, AstNode, 1);
+          var_node->kind = AstNodeKind_VarOccur;
+          AstVarOccur* var_occur = &var_node->var_occur;
+          var_occur->var_decl = &ret_proc->ret_var;
+          var_occur->decl_block_offset = depth;
+          if(depth > 0)
+            list_append(arena, &enclosing_block->non_local_occurs, var_node);
+          else
+            list_append(arena, &enclosing_block->local_occurs, var_node);
+          ret_stmt->ret_var = var_node;
+        } else {
+          syntax_error(input, "'return' : no enclosing procedure");
+          success = false;
+        }
       } else {
-        syntax_error(input, "Expression required after the 'return' keyword");
+        syntax_error(input, "Expression required after 'return'");
         success = false;
       }
     }
   }
 
+  return success;
+}/*<<<*/
+
+bool32 parse_break_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+                        AstBlock* enclosing_block, AstNode** node)
+{/*>>>*/
+  bool32 success = true;
+
+  if(input->token == Token_Break)
+  {
+    consume_token(input, symbol_table);
+
+    AstNode* break_node = push_element(arena, AstNode, 1);
+    break_node->kind = AstNodeKind_BreakStmt;
+    AstBreakStmt* break_stmt = &break_node->break_stmt;
+    *node = break_node;
+
+    int depth = 0;
+    AstBlock* block = enclosing_block;
+    while(block)
+    {
+      AstNode* owner = block->owner;
+      if(owner->kind == AstNodeKind_WhileStmt)
+        break;
+      depth++;
+      block = block->enclosing_block;
+    }
+    if(block)
+    {
+      AstWhileStmt* while_stmt = &block->owner->while_stmt;
+      break_stmt->while_stmt = while_stmt;
+      break_stmt->block_count = depth + 1;
+    } else {
+      syntax_error(input, "'break': no enclosing while statement");
+      success = false;
+    }
+  }
   return success;
 }/*<<<*/
 
@@ -1417,6 +1671,7 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
     Alt_If,
     Alt_While,
     Alt_Return,
+    Alt_Break,
     Alt_EmptyStmt,
   } Alternative;
 
@@ -1445,14 +1700,12 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
                   syntax_error(input, "Assignment expression required");
                   success = false;
                 }
-              }
-              else if(stmt_node->kind != AstNodeKind_Call)
+              } else if(stmt_node->kind != AstNodeKind_Call)
               {
                 syntax_error(input, "Expression is not a statement");
                 success = false;
               }
-            }
-            else {
+            } else {
               syntax_error(input, "Missing ';'");
               success = false;
             }
@@ -1492,7 +1745,27 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 
       case Alt_Return:
       {
-        success = parse_return_statement(arena, input, symbol_table, enclosing_block, &stmt_node);
+        success = parse_return_stmt(arena, input, symbol_table, enclosing_block, &stmt_node);
+        if(success)
+        {
+          if(stmt_node)
+          {
+            alt = Alt__Null;
+            if(input->token == Token_Semicolon)
+              consume_token(input, symbol_table);
+            else {
+              syntax_error(input, "Missing ';'");
+              success = false;
+            }
+          } else
+            alt = (Alternative)((int)alt+1);
+        } else
+          alt = Alt__Null;
+      } break;
+
+      case Alt_Break:
+      {
+        success = parse_break_stmt(arena, input, symbol_table, enclosing_block, &stmt_node);
         if(success)
         {
           if(stmt_node)
@@ -1617,194 +1890,7 @@ bool32 parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 }/*<<<*/
 /*<<<*/
 
-/*>>> IR */
-typedef enum
-{
-  IrNodeKind__Null,
-  IrNodeKind_Value,
-  IrNodeKind_BinExpr,
-  IrNodeKind_UnrExpr,
-  IrNodeKind_Proc,
-  IrNodeKind_Block,
-  IrNodeKind_Module,
-  IrNodeKind_Call,
-  IrNodeKind_Return,
-  IrNodeKind_IfStmt,
-  IrNodeKind_WhileStmt,
-  IrNodeKind_Noop,
-}
-IrNodeKind;
-
-typedef enum
-{
-  IrOpKind__Null,
-  IrOpKind_Add,
-  IrOpKind_Mul,
-  IrOpKind_Sub,
-  IrOpKind_Div,
-  IrOpKind_Store,
-  IrOpKind_Neg,
-}
-IrOpKind;
-
-typedef struct IrNode_ IrNode;
-typedef struct IrValue_ IrValue;
-
-typedef enum
-{
-  IrValueKind__Null,
-  IrValueKind_Var,
-  IrValueKind_IntNum,
-  IrValueKind_Call,
-  IrValueKind_BinExpr,
-  IrValueKind_UnrExpr,
-}
-IrValueKind;
-
-typedef struct
-{
-  IrProc* proc;
-  List    actual_args;
-}
-IrCall;
-
-typedef struct
-{
-  IrOpKind op;
-  IrValue* left_operand;
-  IrValue* right_operand;
-}
-IrBinExpr;
-
-typedef struct
-{
-  IrOpKind op;
-  IrValue* operand;
-}
-IrUnrExpr;
-
-typedef struct
-{
-  IrBinExpr* assgn_expr;
-  IrVar      ret_var;
-  IrProc*    proc;
-  int        depth;
-}
-IrReturn;
-
-typedef enum
-{
-  IrAvRecord__Null,
-  IrAvRecord_Proc,
-  IrAvRecord_Block,
-}
-IrAvRecordKind;
-
-typedef struct
-{
-  IrStackArea access_links;
-  IrStackArea old_fp;
-}
-IrBlockAvRecord;
-
-typedef struct
-{
-  IrStackArea ret;
-  IrStackArea args;
-  IrStackArea ctrl_links;
-}
-IrProcAvRecord;
-
-typedef struct
-{
-  IrValue* expr;
-  IrNode*  body;
-  IrNode*  else_body;
-  char*    label_else;
-  char*    label_end;
-}
-IrIfStmt;
-
-typedef struct
-{
-  IrValue* expr;
-  IrNode* body;
-  char* label_eval;
-  char* label_break;
-}
-IrWhileStmt;
-
-typedef struct IrValue_
-{
-  IrValueKind kind;
-
-  union {
-    int32      int_num;
-    IrVar*     var;
-    IrCall*    call;
-    IrBinExpr* bin_expr;
-    IrUnrExpr* unr_expr;
-  };
-}
-IrValue;
-
-typedef struct
-{
-  union {
-    IrProcAvRecord  proc;
-    IrBlockAvRecord block;
-  };
-  IrStackArea locals;
-  IrAvRecordKind kind;
-  int fp;
-  int sp;
-}
-IrActivationRecord;
-
-typedef struct IrProc_
-{
-  char* label;
-  char* end_label;
-  List  instr_list;
-  IrActivationRecord* actv_rec;
-}
-IrProc;
-
-typedef struct IrBlock_
-{
-  List access_links;
-  List instr_list;
-  IrActivationRecord* actv_rec;
-}
-IrBlock;
-
-typedef struct
-{
-  IrProc* main_proc;
-  IrCall* main_call;
-  List    proc_list;
-}
-IrModule;
-
-typedef struct IrNode_
-{
-  IrNodeKind kind;
-
-  union {
-    IrVar     var;
-    IrValue   value;
-    IrBinExpr bin_expr;
-    IrUnrExpr unr_expr;
-    IrProc    proc;
-    IrBlock   block;
-    IrModule  module;
-    IrCall    call;
-    IrReturn  ret;
-    IrIfStmt  if_stmt;
-    IrWhileStmt while_stmt;
-  };
-} IrNode;
-
+/*>>> IR procs */
 IrNode* ir_build_value(MemoryArena*, IrActivationRecord*, AstNode*);
 IrNode* ir_build_statement(MemoryArena*, IrActivationRecord*, AstNode*);
 void ir_block_build_statements(MemoryArena*, IrActivationRecord*, List*, List*);
@@ -1915,11 +2001,11 @@ IrNode* ir_build_value(MemoryArena* arena, IrActivationRecord* actv_rec, AstNode
   return ir_node;
 }/*<<<*/
 
-IrNode* ir_build_return(MemoryArena* arena, IrActivationRecord* actv_rec, AstReturnStmt* ast_ret)
+IrNode* ir_build_return_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstReturnStmt* ast_ret)
 {/*>>>*/
   IrNode* ir_node = push_element(arena, IrNode, 1);
-  ir_node->kind = IrNodeKind_Return;
-  IrReturn* ir_ret = &ir_node->ret;
+  ir_node->kind = IrNodeKind_ReturnStmt;
+  IrReturnStmt* ir_ret = &ir_node->ret;
 
   IrBinExpr* assgn_expr = push_element(arena, IrBinExpr, 1);
   assgn_expr->op = IrOpKind_Store;
@@ -1940,10 +2026,21 @@ IrNode* ir_build_return(MemoryArena* arena, IrActivationRecord* actv_rec, AstRet
   ir_ret->assgn_expr = assgn_expr;
 
   ir_ret->proc = ast_ret->proc->ir_proc;
-  ir_ret->depth = ast_ret->intervening_block_count;
+  ir_ret->depth = ast_ret->block_count;
 
   return ir_node;
 }/*<<<*/
+
+IrNode* ir_build_break_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstBreakStmt* ast_break)
+{
+  IrNode* ir_node = push_element(arena, IrNode, 1);
+  ir_node->kind = IrNodeKind_BreakStmt;
+  IrBreakStmt* ir_break = &ir_node->break_stmt;
+  AstWhileStmt* ast_while = ast_break->while_stmt;
+  ir_break->while_stmt = ast_while->ir_while;
+  ir_break->depth = ast_break->block_count;
+  return ir_node;
+}
 
 void ir_block_decl_vars_compute_address(IrActivationRecord* actv_rec, IrStackArea* locals_area, List* decl_vars)
 {
@@ -2048,12 +2145,13 @@ IrNode* ir_build_while_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, As
   IrNode* ir_node = push_element(arena, IrNode, 1);
   ir_node->kind = IrNodeKind_WhileStmt;
   IrWhileStmt* ir_while = &ir_node->while_stmt;
+  ast_while->ir_while = ir_while;
   ir_while->expr = &ir_build_value(arena, actv_rec, ast_while->expr)->value;
 
   {/*>>> labels */
     String label_id = {0};
     string_init(&label_id, arena);
-    gen_unique_label(&label_id);
+    make_unique_label(&label_id);
 
     String label = {0};
     string_init(&label, arena);
@@ -2086,10 +2184,10 @@ IrNode* ir_build_if_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstIf
   IrIfStmt* ir_if = &ir_node->if_stmt;
   ir_if->expr = &ir_build_value(arena, actv_rec, ast_if->expr)->value;
 
-  {/*>>> label generation */
+  {/*>>> labels */
     String label_id = {0};
     string_init(&label_id, arena);
-    gen_unique_label(&label_id);
+    make_unique_label(&label_id);
 
     String label = {0};
     string_init(&label, arena);
@@ -2151,11 +2249,13 @@ IrNode* ir_build_statement(MemoryArena* arena, IrActivationRecord* actv_rec, Ast
   else if(ast_node->kind == AstNodeKind_Call)
     ir_node = ir_build_call(arena, actv_rec, &ast_node->call);
   else if(ast_node->kind == AstNodeKind_ReturnStmt)
-    ir_node = ir_build_return(arena, actv_rec, &ast_node->ret_stmt);
+    ir_node = ir_build_return_stmt(arena, actv_rec, &ast_node->ret_stmt);
   else if(ast_node->kind == AstNodeKind_IfStmt)
     ir_node = ir_build_if_stmt(arena, actv_rec, &ast_node->if_stmt);
   else if(ast_node->kind == AstNodeKind_WhileStmt)
     ir_node = ir_build_while_stmt(arena, actv_rec, &ast_node->while_stmt);
+  else if(ast_node->kind == AstNodeKind_BreakStmt)
+    ir_node = ir_build_break_stmt(arena, actv_rec, &ast_node->break_stmt);
   else if(ast_node->kind == AstNodeKind_EmptyStmt)
     ir_node = ir_build_noop(arena);
   else
@@ -2249,11 +2349,11 @@ IrNode* ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
   ir_proc->label = ast_proc->name;
   list_init(&ir_proc->instr_list);
 
-  String end_label = {0};
-  string_init(&end_label, arena);
-  append_string(&end_label, ast_proc->name);
-  append_string(&end_label, ".proc-end");
-  ir_proc->end_label = end_label.start;
+  String label = {0};
+  string_init(&label, arena);
+  append_string(&label, ast_proc->name);
+  append_string(&label, ".proc-return");
+  ir_proc->label_return = label.start;
   ast_proc->ir_proc = ir_proc; // the pointer must be set before building the statement list
 
   ir_block_build_statements(arena, actv_rec, &ir_proc->instr_list, &ast_block->stmt_list);
@@ -2299,6 +2399,7 @@ IrNode* ir_build_module(MemoryArena* arena, AstModule* module)
 }/*<<<*/
 /*<<<*/
 
+/*>>> Code gen procs */
 void print_instruction(VmProgram* vm_program, char* code, ...)
 {/*>>>*/
   static char strbuf[128] = {0};
@@ -2463,20 +2564,29 @@ void gen_load_rvalue(MemoryArena* arena, List* code, IrValue* ir_value)
     assert(false);
 }/*<<<*/
 
-void gen_return(MemoryArena* arena, List* code, IrReturn* ir_ret)
+void gen_return_stmt(MemoryArena* arena, List* code, IrReturnStmt* ir_ret)
 {/*>>>*/
   gen_bin_expr(arena, code, ir_ret->assgn_expr);
   emit_instr(arena, code, Opcode_POP);
 
   IrProc* proc = ir_ret->proc;
-  int level = ir_ret->depth;
-  while(level--)
+  int depth = ir_ret->depth;
+  while(depth--)
     emit_instr(arena, code, Opcode_LEAVE);
-  emit_instr_str(arena, code, Opcode_GOTO, proc->end_label);
+  emit_instr_str(arena, code, Opcode_GOTO, proc->label_return);
 }/*<<<*/
 
-void gen_block(MemoryArena* arena, List* code, IrBlock* block)
+void gen_break_stmt(MemoryArena* arena, List* code, IrBreakStmt* ir_break)
 {
+  IrWhileStmt* ir_while = ir_break->while_stmt;
+  int depth = ir_break->depth;
+  while(depth--)
+    emit_instr(arena, code, Opcode_LEAVE);
+  emit_instr_str(arena, code, Opcode_GOTO, ir_while->label_break);
+}
+
+void gen_block(MemoryArena* arena, List* code, IrBlock* block)
+{/*>>>*/
   ListItem* link_item = list_first_item(&block->access_links);
   while(link_item)
   {
@@ -2507,7 +2617,7 @@ void gen_block(MemoryArena* arena, List* code, IrBlock* block)
   }
 
   emit_instr(arena, code, Opcode_LEAVE);
-}
+}/*<<<*/
 
 void gen_proc(MemoryArena* arena, List* code, IrProc* proc)
 {/*>>>*/
@@ -2525,7 +2635,7 @@ void gen_proc(MemoryArena* arena, List* code, IrProc* proc)
     item = item->next;
   }
 
-  emit_instr_str(arena, code, Opcode_LABEL, proc->end_label);
+  emit_instr_str(arena, code, Opcode_LABEL, proc->label_return);
   emit_instr(arena, code, Opcode_RETURN);
 }/*<<<*/
 
@@ -2542,9 +2652,13 @@ void gen_statement(MemoryArena* arena, List* code, IrNode* stmt_node)
     gen_call(arena, code, &stmt_node->call);
     emit_instr(arena, code, Opcode_POP);
   }
-  else if(stmt_node->kind == IrNodeKind_Return)
+  else if(stmt_node->kind == IrNodeKind_ReturnStmt)
   {
-    gen_return(arena, code, &stmt_node->ret);
+    gen_return_stmt(arena, code, &stmt_node->ret);
+  }
+  else if(stmt_node->kind == IrNodeKind_BreakStmt)
+  {
+    gen_break_stmt(arena, code, &stmt_node->break_stmt);
   }
   else if(stmt_node->kind == IrNodeKind_Noop)
   {
@@ -2767,6 +2881,7 @@ void print_code(VmProgram* vm_program)
     item = item->next;
   }
 }/*<<<*/
+/*<<<*/
 
 uint write_bytes_to_file(char* fileName, char* text, int count)
 {/*>>>*/

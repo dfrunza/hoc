@@ -1,25 +1,16 @@
 proc main()
 {
-  var a = 9;
-  if(0) {
-    a = 111;
+  var a = 10;
+  var b = 5;
+  while(a)
+  {
+    a = a-1;
+    b = b-1;
+    if(b)
+      ;
+    else
+      return a;
   }
-  else {
-    a =11;
-    if(1)
-    {
-      var a;
-      a = 121;
-    }
-    else if(1)
-    {
-      var c;
-      if(1)
-      {
-        a = 131;
-      }
-    }
-  }
-  return a;
+  return b;
 }
 

@@ -620,7 +620,8 @@ bool32 parse_statement_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*)
 bool32 parse_actual_argument_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstCall*);
 bool32 parse_term(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse_statement(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
-bool32 parse_if_statement(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
+bool32 parse_if_stmt(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
+bool32 parse_block(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode*, AstNode**);
 
 bool32 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                     AstBlock* enclosing_block, AstNode** node)
@@ -1051,7 +1052,7 @@ bool32 parse_actual_argument_list(MemoryArena* arena, TokenStream* input, Symbol
   return success;
 }/*<<<*/
 
-bool32 parse_while_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+bool32 parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                              AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
@@ -1059,16 +1060,24 @@ bool32 parse_while_statement(MemoryArena* arena, TokenStream* input, SymbolTable
   if(input->token == Token_While)
   {
     consume_token(input, symbol_table);
+
     AstNode* expr_node = 0;
     success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
     if(success)
     {
-      AstNode* whileNode = push_element(arena, AstNode, 1);
-      whileNode->kind = AstNodeKind_WhileStmt;
-      AstWhileStmt* while_stmt = &whileNode->while_stmt;
+      AstNode* while_node = push_element(arena, AstNode, 1);
+      while_node->kind = AstNodeKind_WhileStmt;
+      AstWhileStmt* while_stmt = &while_node->while_stmt;
       while_stmt->expr = expr_node;
-      *node = whileNode;
+      *node = while_node;
 
+      AstNode* body_node = 0;
+      success = parse_block(arena, input, symbol_table, enclosing_block, while_node, &body_node);
+      if(success)
+      {
+        while_stmt->body = body_node;
+      }
+#if 0
       if(input->token == Token_OpenBrace)
       {
         consume_token(input, symbol_table);
@@ -1080,7 +1089,7 @@ bool32 parse_while_statement(MemoryArena* arena, TokenStream* input, SymbolTable
           block_node->kind = AstNodeKind_Block;
           AstBlock* block = &block_node->block;
           block->enclosing_block = enclosing_block;
-          block->owner = whileNode;
+          block->owner = while_node;
           block_init(symbol_table, block);
 
           success = parse_statement_list(arena, input, symbol_table, block);
@@ -1102,6 +1111,7 @@ bool32 parse_while_statement(MemoryArena* arena, TokenStream* input, SymbolTable
         syntax_error(input, "Missing '{'");
         success = false;
       }
+#endif
     }
   }
 
@@ -1157,7 +1167,7 @@ bool32 parse_else_statement(MemoryArena* arena, TokenStream* input, SymbolTable*
     consume_token(input, symbol_table);
 
     AstNode* else_node = 0;
-    success = parse_if_statement(arena, input, symbol_table, enclosing_block, &else_node);
+    success = parse_if_stmt(arena, input, symbol_table, enclosing_block, &else_node);
     if(success)
     {
       if(else_node)
@@ -1190,7 +1200,7 @@ bool32 parse_else_statement(MemoryArena* arena, TokenStream* input, SymbolTable*
   return success;
 }
 
-bool32 parse_if_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+bool32 parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                           AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
   bool32 success = true;
@@ -1490,7 +1500,7 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 
       case Alt_If:
       {
-        success = parse_if_statement(arena, input, symbol_table, enclosing_block, &stmt_node);
+        success = parse_if_stmt(arena, input, symbol_table, enclosing_block, &stmt_node);
         if(success)
         {
           if(stmt_node)
@@ -1504,7 +1514,7 @@ bool32 parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symb
 
       case Alt_While:
       {
-        success = parse_while_statement(arena, input, symbol_table, enclosing_block, &stmt_node);
+        success = parse_while_stmt(arena, input, symbol_table, enclosing_block, &stmt_node);
         if(success)
         {
           if(stmt_node)
@@ -1656,6 +1666,7 @@ typedef enum
   IrNodeKind_Call,
   IrNodeKind_Return,
   IrNodeKind_IfStmt,
+  IrNodeKind_WhileStmt,
   IrNodeKind_Noop,
 }
 IrNodeKind;
@@ -1750,6 +1761,15 @@ typedef struct
 }
 IrIfStmt;
 
+typedef struct
+{
+  IrValue* expr;
+  IrNode* body;
+  char* label_eval;
+  char* label_break;
+}
+IrWhileStmt;
+
 typedef struct IrValue_
 {
   IrValueKind kind;
@@ -1812,11 +1832,12 @@ typedef struct IrNode_
     IrBinExpr bin_expr;
     IrUnrExpr unr_expr;
     IrProc    proc;
+    IrBlock   block;
     IrModule  module;
     IrCall    call;
     IrReturn  ret;
     IrIfStmt  if_stmt;
-    IrBlock   block;
+    IrWhileStmt while_stmt;
   };
 } IrNode;
 
@@ -2058,6 +2079,42 @@ IrNode* ir_build_block(MemoryArena* arena, AstBlock* ast_block)
   return ir_node;
 }/*<<<*/
 
+IrNode* ir_build_while_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstWhileStmt* ast_while)
+{
+  IrNode* ir_node = push_element(arena, IrNode, 1);
+  ir_node->kind = IrNodeKind_WhileStmt;
+  IrWhileStmt* ir_while = &ir_node->while_stmt;
+  ir_while->expr = &ir_build_value(arena, actv_rec, ast_while->expr)->value;
+
+  {/*>>> labels */
+    String label_id = {0};
+    string_init(&label_id, arena);
+    gen_unique_label(&label_id);
+
+    String label = {0};
+    string_init(&label, arena);
+    append_string(&label, label_id.start);
+    append_string(&label, ".while-expr");
+    ir_while->label_eval = label.start;
+
+    string_init(&label, arena);
+    append_string(&label, label_id.start);
+    append_string(&label, ".while-break");
+    ir_while->label_break = label.start;
+  }/*<<<*/
+
+  if(ast_while->body->kind == AstNodeKind_Block)
+  {
+    AstBlock* ast_block = &ast_while->body->block;
+    IrNode* ir_block = ir_build_block(arena, ast_block);
+    ir_while->body = ir_block;
+  }
+  else
+    ir_while->body = ir_build_statement(arena, actv_rec, ast_while->body);
+
+  return ir_node;
+}
+
 IrNode* ir_build_if_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstIfStmt* ast_if)
 {/*>>>*/
   IrNode* ir_node = push_element(arena, IrNode, 1);
@@ -2082,17 +2139,14 @@ IrNode* ir_build_if_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstIf
     ir_if->label_end = label.start;
   }/*<<<*/
 
-  if(ast_if->body)
+  if(ast_if->body->kind == AstNodeKind_Block)
   {
-    if(ast_if->body->kind == AstNodeKind_Block)
-    {
-      AstBlock* ast_block = &ast_if->body->block;
-      IrNode* ir_block = ir_build_block(arena, ast_block);
-      ir_if->body = ir_block;
-    }
-    else
-      ir_if->body = ir_build_statement(arena, actv_rec, ast_if->body);
+    AstBlock* ast_block = &ast_if->body->block;
+    IrNode* ir_block = ir_build_block(arena, ast_block);
+    ir_if->body = ir_block;
   }
+  else
+    ir_if->body = ir_build_statement(arena, actv_rec, ast_if->body);
 
   if(ast_if->else_body)
   {
@@ -2136,6 +2190,8 @@ IrNode* ir_build_statement(MemoryArena* arena, IrActivationRecord* actv_rec, Ast
     ir_node = ir_build_return(arena, actv_rec, &ast_node->ret_stmt);
   else if(ast_node->kind == AstNodeKind_IfStmt)
     ir_node = ir_build_if_stmt(arena, actv_rec, &ast_node->if_stmt);
+  else if(ast_node->kind == AstNodeKind_WhileStmt)
+    ir_node = ir_build_while_stmt(arena, actv_rec, &ast_node->while_stmt);
   else if(ast_node->kind == AstNodeKind_EmptyStmt)
     ir_node = ir_build_noop(arena);
   else
@@ -2526,9 +2582,14 @@ void gen_statement(MemoryArena* arena, List* code, IrNode* stmt_node)
   {
     gen_return(arena, code, &stmt_node->ret);
   }
+  else if(stmt_node->kind == IrNodeKind_Noop)
+  {
+    emit_instr(arena, code, Opcode_NOOP);
+  }
   else if(stmt_node->kind == IrNodeKind_IfStmt)
   {
     IrIfStmt* ir_if = &stmt_node->if_stmt;
+
     gen_load_rvalue(arena, code, ir_if->expr);
     if(ir_if->else_body)
       emit_instr_str(arena, code, Opcode_JUMPZ, ir_if->label_else);
@@ -2555,9 +2616,20 @@ void gen_statement(MemoryArena* arena, List* code, IrNode* stmt_node)
     }
     emit_instr_str(arena, code, Opcode_LABEL, ir_if->label_end);
   }
-  else if(stmt_node->kind == IrNodeKind_Noop)
+  else if(stmt_node->kind == IrNodeKind_WhileStmt)
   {
-    emit_instr(arena, code, Opcode_NOOP);
+    IrWhileStmt* ir_while = &stmt_node->while_stmt;
+
+    emit_instr_str(arena, code, Opcode_LABEL, ir_while->label_eval);
+    gen_load_rvalue(arena, code, ir_while->expr);
+    emit_instr_str(arena, code, Opcode_JUMPZ, ir_while->label_break);
+    if(ir_while->body->kind == IrNodeKind_Block)
+      gen_block(arena, code, &ir_while->body->block);
+    else
+      gen_statement(arena, code, ir_while->body);
+    emit_instr_str(arena, code, Opcode_GOTO, ir_while->label_eval);
+
+    emit_instr_str(arena, code, Opcode_LABEL, ir_while->label_break);
   }
   else
     assert(false);
@@ -2733,552 +2805,6 @@ void print_code(VmProgram* vm_program)
     item = item->next;
   }
 }/*<<<*/
-
-/*>>> Old code gen */
-//bool32 BuildIr(MemoryArena* arena, SymbolTable* symbol_table, AstNode* ast)
-//{/*>>>*/
-//  bool32 success = true;
-//
-//  switch(ast->kind)
-//  {
-//    case Ast_Call:
-//    {
-//      int actualArgCount = ast->call.argCount;
-//      Symbol* procSymbol = ast->call.symbol;
-//      Block* procBlock = procSymbol->ast->block;
-//      assert(procBlock->kind == Block_Proc);
-//      assert(actualArgCount == procBlock->proc.argCount);
-//    } break;
-//
-//    case Ast_Block:
-//    {
-//      Block* block = ast->block;
-//      ActivationRecord* actv_rec = &block->actv_rec;
-//      actv_rec->kind = ActvRecord_Block;
-//
-//      switch(block->kind)
-//      {
-//        case Block_Module:
-//          {
-//            Ast_ListItem* proc_list = block->module.proc_list;
-//            while(proc_list && success)
-//            {
-//              AstNode* procAst = proc_list->ast;
-//              success = BuildIr(arena, symbol_table, procAst);
-//
-//              proc_list = proc_list->nextItem;
-//            }
-//          } break;
-//
-//        case Block_Proc:
-//          {
-//            actv_rec->kind = ActvRecord_Proc;
-//            actv_rec->proc.retAreaSize = 1;
-//
-//            Ast_ListItem* argList = block->proc.argList;
-//            int args_areaSize = 0;
-//            int argsCount = 0;
-//            DataObjList* irArgs = 0;
-//            while(argList)
-//            {
-//              AstNode* argAst = argList->ast;
-//              Symbol* argSymbol = argAst->id.symbol;
-//
-//              assert(argAst->kind == Ast_Var);
-//              assert(argSymbol->kind == SymbolKind_Var);
-//
-//              DataObj* irArg = &argSymbol->dataObj;
-//              // Note that the storage locs for arguments are negative
-//              irArg->loc = -(args_areaSize + CONTROL_LINKS_DATA_SIZE + 1);
-//              irArg->size     = 1;
-//
-//              args_areaSize += irArg->size;
-//
-//              DataObjList* irArgItem = push_element(arena, DataObjList, 1);
-//              irArgItem->dataObj = irArg;
-//              irArgItem->nextItem = irArgs;
-//              irArgs = irArgItem;
-//
-//              argList = argList->nextItem;
-//              argsCount++;
-//            }
-//            actv_rec->proc.args = irArgs;
-//            actv_rec->proc.args_areaSize = args_areaSize;
-//            actv_rec->proc.argsCount = argsCount;
-//
-//            Symbol* procSymbol = block->proc.symbol;
-//
-//            //FIXME Looks like a hack
-//            if(str_match(procSymbol->name, "main"))
-//            {
-//              if(block->proc.argList)
-//              {
-//                error("main() must not have arguments");
-//                success = false;
-//              }
-//            }
-//          } break;
-//
-//        case Block_WhileStmt:
-//          {
-//            success = BuildIr(arena, symbol_table, block->while_stmt.expr);
-//          } break;
-//
-//        default:
-//          assert(false && !"Not implemented");
-//      }
-//
-//      // Process the declared vars
-//      Ast_ListItem* declList = block->decl_vars;
-//      DataObjList* irLocalsList = 0;
-//      int localAreaSize = 0;
-//      while(declList)
-//      {
-//        AstNode* varAst = declList->ast;
-//        Symbol* varSymbol = varAst->var.symbol;
-//
-//        assert(varAst->kind == Ast_Var);
-//        assert(varSymbol->kind == SymbolKind_Var);
-//
-//        DataObj* dataObj = &varSymbol->dataObj;
-//        dataObj->loc = localAreaSize;
-//        localAreaSize += dataObj->size;
-//
-//        DataObjList* irLocalItem = push_element(arena, DataObjList, 1);
-//        irLocalItem->dataObj = dataObj;
-//        irLocalItem->nextItem = irLocalsList;
-//        irLocalsList = irLocalItem;
-//
-//        declList = declList->nextItem;
-//      }
-//      actv_rec->localObjects = irLocalsList;
-//      actv_rec->localAreaSize = localAreaSize;
-//
-//      // Process the non-local refs
-//      Ast_ListItem* nonLocalsList = block->nonLocalVars;
-//      int access_linkCount = 0;
-//      AccessLink* access_links = 0;
-//      while(nonLocalsList)
-//      {
-//        AstNode* idAst = nonLocalsList->ast;
-//        Symbol* idSymbol = idAst->id.symbol;
-//
-//        assert(idAst->kind == Ast_Id);
-//        assert(idAst->id.decl_block_offset > 0);
-//        assert(idSymbol->kind == SymbolKind_Var);
-//
-//        AccessLink* access_link = 0;
-//        {
-//          AccessLink* link = access_links;
-//          while(link)
-//          {
-//            if(link->actv_rec_offset == idAst->id.decl_block_offset)
-//            {
-//              access_link = link;
-//              break;
-//            }
-//            link = link->nextLink;
-//          }
-//          if(!access_link)
-//          {
-//            access_link = push_element(arena, AccessLink, 1);
-//            access_link->actv_rec_offset = idAst->id.decl_block_offset;
-//            access_link->index = access_linkCount++;
-//
-//            access_link->nextLink = access_links;
-//            access_links = access_link;
-//          }
-//        }
-//
-//        idAst->id.access_link = access_link;
-//
-//        nonLocalsList = nonLocalsList->nextItem;
-//      }
-//      actv_rec->access_links = access_links;
-//      actv_rec->access_linkCount = access_linkCount;
-//
-//      if(success)
-//      {
-//        Ast_ListItem* stmt_list = block->stmt_list;
-//        while(stmt_list && success)
-//        {
-//          AstNode* stmtAst = stmt_list->ast;
-//          success = BuildIr(arena, symbol_table, stmtAst);
-//          stmt_list = stmt_list->nextItem;
-//        }
-//      }
-//    } break;
-//
-//    case Ast_Return:
-//    {
-//      AstNode* exprAst = ast->ret.expr;
-//      success = BuildIr(arena, symbol_table, exprAst);
-//      if(success)
-//        ast->ret.actv_rec = &ast->ret.block->actv_rec;
-//    } break;
-//
-//    case Ast_Expr:
-//    {
-//      AstNode* left_operand = ast->expr.left_operand;
-//      AstNode* right_operand = ast->expr.right_operand;
-//      success = BuildIr(arena, symbol_table, left_operand);
-//      if(right_operand)
-//        success &= BuildIr(arena, symbol_table, right_operand);
-//    } break;
-//
-//    case Ast_Id:
-//    case Ast_Var:
-//    case Ast_IntNum:
-//    case Ast_Neg:
-//    {} break;
-//
-//    default:
-//      assert(false && !"Not implemented");
-//  }
-//
-//  return success;
-//}/*<<<*/
-//
-//void gen_codeLValue(VmProgram* vm_program, AstNode* ast)
-//{/*>>>*/
-//  switch(ast->kind)
-//  {
-//    case Ast_Id:
-//      {
-//        Symbol* symbol = ast->id.symbol;
-//        DataObj* dataObj = &symbol->dataObj;
-//
-//        if(ast->id.is_non_local)
-//        {
-//          AccessLink* access_link = ast->id.access_link;
-//
-//          Emit(vm_program, ";begin load l-value of non-local '%s'", symbol->name);
-//          Emit(vm_program, "push fp");
-//          int access_link_loc = 2 + access_link->index;
-//          Emit(vm_program, "push -%d", access_link_loc);
-//          Emit(vm_program, "add");
-//          Emit(vm_program, "load ;access link"); // access link is on the stack now
-//        } else
-//        {
-//          Emit(vm_program, ";begin load l-value of local '%s'", symbol->name);
-//          Emit(vm_program, "push fp");
-//        }
-//        Emit(vm_program, "push %d", dataObj->loc);
-//        Emit(vm_program, "add");
-//        Emit(vm_program, ";end load of l-value");
-//      } break;
-//
-//    default:
-//      assert(false);
-//  }
-//}/*<<<*/
-//
-//void gen_codeRValue(VmProgram* vm_program, AstNode* ast)
-//{/*>>>*/
-//  switch(ast->kind)
-//  {
-//    case Ast_Id:
-//      {
-//        gen_codeLValue(vm_program, ast);
-//        Emit(vm_program, "load ;r-value");
-//      } break;
-//
-//    case Ast_Expr:
-//      {
-//        switch(ast->expr.op)
-//        {
-//          case Operator_Call:
-//            {
-//              AstNode* callAst = ast->expr.left_operand;
-//              Symbol* procSymbol = callAst->call.symbol;
-//
-//              assert(callAst->kind == Ast_Call);
-//              assert(procSymbol->kind == SymbolKind_Proc);
-//
-//              Emit(vm_program, "push 0 ;retval of %s", callAst->call.name);
-//
-//              Emit(vm_program, ";begin arg-eval");
-//              Ast_ListItem* argList = callAst->call.argList;
-//              while(argList)
-//              {
-//                AstNode* argAst = argList->ast;
-//                gen_codeRValue(vm_program, argAst);
-//                argList = argList->nextItem;
-//              }
-//              Emit(vm_program, ";end arg-eval");
-//
-//              Emit(vm_program, "call %s", callAst->call.name);
-//
-//              ActivationRecord* actv_rec = callAst->call.actv_rec;
-//              assert(actv_rec->kind == ActvRecord_Proc);
-//              int restoreSp = actv_rec->proc.args_areaSize;
-//
-//              if(ast->expr.is_statement)
-//                restoreSp += 1; // discard retval
-//              if(restoreSp > 0)
-//                Emit(vm_program, "pop %d ;restore callee sp", restoreSp);
-//            } break;
-//
-//          case Operator_Assign:
-//            {
-//              AstNode* right_side = ast->expr.right_operand;
-//              gen_codeRValue(vm_program, right_side);
-//
-//              AstNode* leftSide = ast->expr.left_operand;
-//              assert(leftSide->kind == Ast_Id);
-//              gen_codeLValue(vm_program, leftSide);
-//              Emit(vm_program, "store ;'%s'", leftSide->id.name);
-//
-//              if(ast->expr.is_statement)
-//                Emit(vm_program, "pop"); // discard the r-value
-//            } break;
-//
-//          case Operator_Mul:
-//          case Operator_Add:
-//          case Operator_Div:
-//          case Operator_Sub:
-//            {
-//              AstNode* left_operand = ast->expr.left_operand;
-//              gen_codeRValue(vm_program, left_operand);
-//              AstNode* right_operand = ast->expr.right_operand;
-//              gen_codeRValue(vm_program, right_operand);
-//
-//              if(ast->expr.op == Operator_Mul)
-//                Emit(vm_program, "mul");
-//              else if(ast->expr.op == Operator_Add)
-//                Emit(vm_program, "add");
-//              else if(ast->expr.op == Operator_Div)
-//                Emit(vm_program, "div");
-//              else if(ast->expr.op == Operator_Sub)
-//                Emit(vm_program, "sub");
-//              else
-//                assert(false);
-//            } break;
-//        }
-//      } break;
-//
-//    case Ast_IntNum:
-//      {
-//        Emit(vm_program, "push %d", ast->literal.int_num);
-//      } break;
-//
-//    case Ast_Neg:
-//      {
-//        AstNode* expr = ast->neg.expr;
-//        if(expr->kind == Ast_IntNum)
-//        {
-//          Emit(vm_program, "push -%d", expr->literal.int_num);
-//        } else {
-//          gen_codeRValue(vm_program, expr);
-//          Emit(vm_program, "push -1");
-//          Emit(vm_program, "mul");
-//        }
-//      } break;
-//
-//    default:
-//      assert(false);
-//  }
-//}/*<<<*/
-//
-//void gen_code(VmProgram* vm_program, SymbolTable* symbol_table,
-//             Block* block, AstNode* ast)
-//{/*>>>*/
-//  switch(ast->kind)
-//  {
-//    case Ast_IntNum:
-//    case Ast_Expr:
-//    case Ast_Id:
-//      {
-//        gen_codeRValue(vm_program, ast);
-//      } break;
-//
-//    case Ast_Var:
-//      {} break;
-//
-//    case Ast_Block:
-//      {
-//        Block* block = ast->block;
-//
-//        switch(block->kind)
-//        {
-//          case Block_Module:
-//            {
-//              Emit(vm_program, "push 0 ;main retval");
-//              Emit(vm_program, "call main");
-//              Emit(vm_program, "halt");
-//
-//              Ast_ListItem* proc_list = block->module.proc_list;
-//              while(proc_list)
-//              {
-//                AstNode* procAst = proc_list->ast;
-//                gen_code(vm_program, symbol_table, block, procAst);
-//
-//                proc_list = proc_list->nextItem;
-//              }
-//            } break;
-//
-//          case Block_Proc:
-//            {
-//              Symbol* procSymbol = block->proc.symbol;
-//              Emit(vm_program, "label %s", procSymbol->name); // entry point
-//
-//              ActivationRecord* actv_rec = &block->actv_rec;
-//              int dataAreaSize = actv_rec->localAreaSize;
-//              if(dataAreaSize > 0)
-//                Emit(vm_program, "alloc %d ;local storage", dataAreaSize);
-//
-//              Ast_ListItem* stmt_list = block->stmt_list;
-//              while(stmt_list)
-//              {
-//                AstNode* stmt = stmt_list->ast;
-//                gen_code(vm_program, symbol_table, block, stmt);
-//
-//                stmt_list = stmt_list->nextItem;
-//              }
-//
-//              Emit(vm_program, "label %s.end-proc", procSymbol->name);
-//              Emit(vm_program, "return");
-//            } break;
-//
-//          case Block_WhileStmt:
-//            {
-//              ActivationRecord* actv_rec = &block->actv_rec;
-//
-//              char label[32] = {};
-//              gen_unique_label(symbol_table, label);
-//              Emit(vm_program, "label %s.while-expr", label);
-//
-//              // conditional expr
-//              gen_codeRValue(vm_program, block->while_stmt.expr);
-//              Emit(vm_program, "jumpz %s.while-break", label);
-//
-//              if(actv_rec->access_linkCount > 0)
-//              {
-//                // Highest indexed access link is first from the top
-//                Emit(vm_program, ";begin set-up of access links");
-//
-//                AccessLink* access_link = actv_rec->access_links;
-//                while(access_link)
-//                {
-//                  Emit(vm_program, "push fp"); // first level up is the caller's activ. record
-//
-//                  assert(access_link->actv_rec_offset > 0);
-//                  int offset = access_link->actv_rec_offset;
-//                  offset--;
-//                  while(offset--)
-//                  {
-//                    Emit(vm_program, "decr"); // offset to the fp of actv. record n-1
-//                    Emit(vm_program, "load");
-//                  }
-//
-//                  access_link = access_link->nextLink;
-//                }
-//                Emit(vm_program, ";end set-up of access links");
-//              }
-//
-//              Emit(vm_program, "enter");
-//
-//              if(actv_rec->localAreaSize > 0)
-//                Emit(vm_program, "alloc %d ;local storage", actv_rec->localAreaSize);
-//
-//              // body
-//              Ast_ListItem* stmt_list = block->stmt_list;
-//              while(stmt_list)
-//              {
-//                AstNode* stmt = stmt_list->ast;
-//                gen_code(vm_program, symbol_table, block, stmt);
-//
-//                stmt_list = stmt_list->nextItem;
-//              }
-//
-//              Emit(vm_program, "leave");
-//              Emit(vm_program, "pop %d ;discard access links", actv_rec->access_linkCount);
-//
-//              Emit(vm_program, "goto %s.while-expr", label);
-//              Emit(vm_program, "label %s.while-break", label);
-//            } break;
-//
-//          default:
-//            assert(false && !"Not implemented");
-//        }
-//      } break;
-//
-//    case Ast_Call:
-//      {
-//        Emit(vm_program, "call %s", ast->call.name);
-//      } break;
-//
-//    case Ast_Return:
-//      {
-//        gen_codeRValue(vm_program, ast->ret.expr);
-//
-//        ActivationRecord* actv_rec = ast->ret.actv_rec;
-//        assert(actv_rec->kind == ActvRecord_Proc);
-//
-//        //FIXME: 'retval' is a DataObj
-//        int retValloc = CONTROL_LINKS_DATA_SIZE + actv_rec->proc.args_areaSize +
-//          actv_rec->proc.retAreaSize;
-//
-//        // Load l-value of the 'ret' data object
-//        Emit(vm_program, "push fp");
-//        assert(ast->ret.intervening_block_count >= 0);
-//        int level = ast->ret.intervening_block_count;
-//        while(level--)
-//        {
-//          Emit(vm_program, "decr"); // offset to the fp of actv. record n-1
-//          Emit(vm_program, "load");
-//        }
-//        //--
-//
-//        Emit(vm_program, "push %d ;loc of retval", -retValloc); // note the negative sign
-//        Emit(vm_program, "add");
-//        Emit(vm_program, "store ;retval");
-//
-//        // Exit from the enclosing procedure and any of the intervening blocks
-//        Block* block = ast->ret.block; 
-//        Symbol* procSymbol = block->proc.symbol;
-//        int depth = ast->ret.intervening_block_count;
-//        assert(depth >= 0);
-//        while(depth--)
-//          Emit(vm_program, "leave");
-//        Emit(vm_program, "goto %s.end-proc", procSymbol->name);
-//      } break;
-//#if 0
-//    case Ast_IfStmt:
-//      {
-//        Emit(vm_program, ";if-begin");
-//
-//        // conditional
-//        gen_codeRValue(vm_program, ast->if_stmt.expr);
-//
-//        char* label = gen_unique_label(symbol_table);
-//
-//        if(ast->if_stmt.bodyElse)
-//          Emit(vm_program, "jumpz %s.else", label);
-//        else
-//          Emit(vm_program, "jumpz %s.if-end", label);
-//
-//        gen_code(vm_program, symbol_table, ast->if_stmt.body);
-//        if(ast->if_stmt.bodyElse)
-//        {
-//          Emit(vm_program, "goto %s.if-end", label);
-//          Emit(vm_program, "label %s.else", label);
-//          gen_code(vm_program, symbol_table, ast->if_stmt.bodyElse);
-//        }
-//
-//        Emit(vm_program, "label %s.if-end", label);
-//
-//      } break;
-//
-//    case Ast_WhileStmt:
-//      {
-//      } break;
-//#endif
-//    default:
-//      assert(false && !"Not implemented");
-//  }
-//}/*<<<*/
-/*<<<*/
 
 uint write_bytes_to_file(char* fileName, char* text, int count)
 {/*>>>*/

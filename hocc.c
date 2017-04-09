@@ -66,16 +66,16 @@ write_res_file(OutFileNames* out_files)
   bool32 success = (bytes_written == text_len);
   if(success)
   {
-    STARTUPINFO startInfo = {0};
-    startInfo.dwFlags = STARTF_USESTDHANDLES;
-    startInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-    startInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-    startInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+    STARTUPINFO start_info = {0};
+    start_info.dwFlags = STARTF_USESTDHANDLES;
+    start_info.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    start_info.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+    start_info.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 
     PROCESS_INFORMATION proc_info = {0};
     sprintf(buf, "rc.exe /nologo /fo%s %s", out_files->res.name, out_files->rc.name);
     DWORD exit_code = 0;
-    success = CreateProcess(0, buf, 0, 0, true, 0, 0, 0, &startInfo, &proc_info);
+    success = CreateProcess(0, buf, 0, 0, true, 0, 0, 0, &start_info, &proc_info);
     if(success)
     {
       WaitForSingleObject(proc_info.hProcess, INFINITE);
@@ -94,7 +94,7 @@ write_res_file(OutFileNames* out_files)
 bool32
 write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
 {/*>>>*/
-  int bytes_written = write_bytes_to_file(out_files->ir.name, vm_program->text.start, vm_program->text_len);
+  int bytes_written = write_bytes_to_file(out_files->ir.name, vm_program->text.head, vm_program->text_len);
   bool32 success = (bytes_written == vm_program->text_len);
   if(!success)
     error("IR file '%s' incompletely written", out_files->ir.name);
@@ -129,7 +129,7 @@ main(int argc, char* argv[])
       if(success)
       {
         OutFileNames out_files = {0};
-        char* file_stem = path_get_file_stem(file_path);
+        char* file_stem = path_make_stem(file_path);
 
         success = make_file_names(&out_files, file_stem) &&
           write_ir_file(&out_files, &vm_program);
@@ -137,7 +137,7 @@ main(int argc, char* argv[])
         if(success)
         {
           HasmCode* hasm_code = 0;
-          char* hasm_text = vm_program.text.start;
+          char* hasm_text = vm_program.text.head;
           bool32 success = translate_ir_to_code(&arena, hasm_text, &hasm_code);
 
           if(success)

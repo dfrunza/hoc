@@ -35,7 +35,7 @@ MemoryArena;
 
 typedef struct
 {/*>>>*/
-  char* start;
+  char* head;
   char* end;
   MemoryArena* arena;
 }/*<<<*/
@@ -275,17 +275,17 @@ void
 str_init(String* string, MemoryArena* arena)
 {/*>>>*/
   string->arena = arena;
-  string->start = mem_push_struct(arena, char, 1);
-  *string->start = '\0';
-  string->end = string->start;
+  string->head = mem_push_struct(arena, char, 1);
+  *string->head = '\0';
+  string->end = string->head;
 }/*<<<*/
 
 //NOTE: The 0-terminator is not counted.
 uint
 str_len(String* string)
 {/*>>>*/
-  assert(string->start <= string->end);
-  uint len = (uint)(string->end - string->start);
+  assert(string->head <= string->end);
+  uint len = (uint)(string->end - string->head);
   return len;
 }/*<<<*/
 
@@ -293,7 +293,7 @@ void
 str_append(String* string, char* cstr)
 {/*>>>*/
   MemoryArena* arena = string->arena;
-  assert(string->start <= string->end);
+  assert(string->head <= string->end);
   assert(string->end == (char*)arena->free-1);
   int len = cstr_len(cstr);
   mem_push_struct(arena, char, len);
@@ -301,11 +301,26 @@ str_append(String* string, char* cstr)
   string->end = (char*)arena->free-1;
 }/*<<<*/
 
+void
+str_tidyup(String* string)
+{/*>>>*/
+  assert(string->head <= string->end);
+  if(string->end > string->head)
+  {
+    char* p_end = string->end - 1;
+    while(p_end >= string->head && *p_end)
+      p_end--;
+    string->end = p_end;
+    MemoryArena* arena = string->arena;
+    arena->free = string->end+1;
+  }
+}/*<<<*/
+
 char*
-path_get_file_stem(char* file_path)
+path_find_leaf(char* file_path)
 {/*>>>*/
   char* p_char = file_path;
-  char* stem = p_char;
+  char* leaf = p_char;
 
   // Get the file name part
   while(p_char && *p_char)
@@ -313,18 +328,35 @@ path_get_file_stem(char* file_path)
     while(*p_char && *p_char != '\\')
       p_char++;
     if(*p_char == '\\')
-      stem = ++p_char;
+      leaf = ++p_char;
   }
+  return leaf;
+}/*<<<*/
 
-  // Remove the extension
-  if(stem)
+/* Writes over the 'file_path' string */
+char*
+path_make_stem(char* file_path)
+{/*>>>*/
+  char* leaf = path_find_leaf(file_path);
+
+  // Remove the filename extension
+  if(leaf)
   {
-    char* p_char = stem;
+    char* p_char = leaf;
     while(*p_char && *p_char != '.')
       p_char++;
     *p_char = '\0';
   }
-  return stem;
+  return leaf;
+}/*<<<*/
+
+char*
+path_make_dir(char* file_path)
+{/*>>>*/
+  char* leaf = path_find_leaf(file_path);
+  if(leaf)
+    *leaf = '\0';
+  return file_path;
 }/*<<<*/
 
 char*

@@ -3,6 +3,7 @@ import "lib.hoc"
 proc main()
 {
   var a = power(2, 10);
+  a = max(1, 1);
   return a;
 }
 

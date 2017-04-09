@@ -1,6 +1,7 @@
 #include "lib.c"
 
-/*>>> Lex structs */
+/* Lex structs */
+
 typedef enum
 {/*>>>*/
   Token__Null,
@@ -53,7 +54,7 @@ typedef enum
 Token;/*<<<*/
 
 typedef struct
-{
+{/*>>>*/
   Token prev_token;
   Token token;
   char* text;
@@ -68,17 +69,17 @@ typedef struct
     int*  int_num;
     char* str;
   } lexeme;
-}
+}/*<<<*/
 TokenStream;
-/*<<<*/
 
 typedef struct Symbol_ Symbol;
 typedef struct AstNode_ AstNode;
 typedef struct Block_ AstBlock;
 
-/*>>> AST structs */
+/* AST structs */
+
 typedef enum
-{
+{/*>>>*/
   AstOperatorKind__Null,
   AstOperatorKind_Add,
   AstOperatorKind_Sub,
@@ -87,11 +88,11 @@ typedef enum
   AstOperatorKind_Mul,
   AstOperatorKind_Call,
   AstOperatorKind_Neg,
-}
+}/*<<<*/
 AstOperatorKind;
 
 typedef enum
-{
+{/*>>>*/
   AstNodeKind__Null,
   AstNodeKind_BinExpr,
   AstNodeKind_UnrExpr,
@@ -108,139 +109,139 @@ typedef enum
   AstNodeKind_Import,
   AstNodeKind_EmptyStmt,
   AstNodeKind_Module,
-}
+}/*<<<*/
 AstNodeKind;
 
 typedef struct
-{
+{/*>>>*/
   List     proc_list; // of AstNode type
   AstNode* body;
-}
+}/*<<<*/
 AstModule;
 
 typedef struct
-{
+{/*>>>*/
   int actv_rec_offset;
   int loc; // within the current actv. rec.
-}
+}/*<<<*/
 IrAccessLink;
 
 typedef struct
-{
+{/*>>>*/
   int loc;
   int size;
-}
+}/*<<<*/
 IrStackArea;
 
 typedef struct IrVar_
-{
+{/*>>>*/
   IrStackArea*  data;
   IrAccessLink* link;
-}
+}/*<<<*/
 IrVar;
 
 typedef struct
-{
+{/*>>>*/
   Symbol*     symbol;
   char*       name;
   IrStackArea var_data;
   AstNode*    init_expr;
-}
+}/*<<<*/
 AstVarDecl;
 
 typedef struct
-{
+{/*>>>*/
   AstOperatorKind op;
   AstNode* left_operand;
   AstNode* right_operand;
-}
+}/*<<<*/
 AstBinExpr;
 
 typedef struct
-{
+{/*>>>*/
   AstOperatorKind op;
   AstNode* operand;
-}
+}/*<<<*/
 AstUnrExpr;
 
 typedef struct
-{
+{/*>>>*/
   Symbol*       symbol;
   char*         name;
   int           decl_block_offset;
   AstVarDecl*   var_decl;
   IrAccessLink* link;
-}
+}/*<<<*/
 AstVarOccur;
 
 typedef struct
-{
+{/*>>>*/
   int32 value;
-}
+}/*<<<*/
 AstIntNum;
 
 typedef struct IrProc_ IrProc;
 typedef struct
-{
+{/*>>>*/
   Symbol*   symbol;
   char*     name;
   List      formal_args;
   AstBlock* body;
   IrProc*   ir_proc;
   AstVarDecl ret_var;
-}
+}/*<<<*/
 AstProc;
 
 typedef struct
-{
+{/*>>>*/
   AstNode* expr;
   int      block_count;
   AstProc* proc;
   AstNode* ret_var;
-}
+}/*<<<*/
 AstReturnStmt;
 
 typedef struct
-{
+{/*>>>*/
   Symbol*  symbol;
   char*    name;
   List     actual_args;
   AstProc* proc;
-}
+}/*<<<*/
 AstCall;
 
 typedef struct
-{
+{/*>>>*/
   AstNode* expr;
   AstNode* body;
   AstNode* else_body;
-}
+}/*<<<*/
 AstIfStmt;
 
 typedef struct IrWhileStmt_ IrWhileStmt;
 typedef struct
-{
+{/*>>>*/
   AstNode* expr;
   AstNode* body;
   IrWhileStmt* ir_while;
-}
+}/*<<<*/
 AstWhileStmt;
 
 typedef struct
-{
+{/*>>>*/
   AstWhileStmt* while_stmt;
   int block_count;
-}
+}/*<<<*/
 AstBreakStmt;
 
 typedef struct
-{
-  char* file_name;
-}
+{/*>>>*/
+  char* file_path;
+}/*<<<*/
 AstImport;
 
 typedef struct Block_
-{
+{/*>>>*/
   AstNode* owner;
   int      block_id;
   int      nesting_depth;
@@ -249,11 +250,11 @@ typedef struct Block_
   List     non_local_occurs;
   List     stmt_list;
   struct   Block_* enclosing_block;
-}
+}/*<<<*/
 AstBlock;
 
 typedef struct AstNode_
-{
+{/*>>>*/
   AstNodeKind  kind;
 
   union {
@@ -272,13 +273,13 @@ typedef struct AstNode_
     AstBreakStmt  break_stmt;
     AstIfStmt     if_stmt;
   };
-}
+}/*<<<*/
 AstNode;
-/*<<<*/
 
-/*>>> IR structs */
+/* IR structs */
+
 typedef enum
-{
+{/*>>>*/
   IrNodeKind__Null,
   IrNodeKind_Value,
   IrNodeKind_BinExpr,
@@ -292,11 +293,11 @@ typedef enum
   IrNodeKind_IfStmt,
   IrNodeKind_WhileStmt,
   IrNodeKind_Noop,
-}
+}/*<<<*/
 IrNodeKind;
 
 typedef enum
-{
+{/*>>>*/
   IrOpKind__Null,
   IrOpKind_Add,
   IrOpKind_Mul,
@@ -304,105 +305,105 @@ typedef enum
   IrOpKind_Div,
   IrOpKind_Store,
   IrOpKind_Neg,
-}
+}/*<<<*/
 IrOpKind;
 
 typedef struct IrNode_ IrNode;
 typedef struct IrValue_ IrValue;
 
 typedef enum
-{
+{/*>>>*/
   IrValueKind__Null,
   IrValueKind_Var,
   IrValueKind_IntNum,
   IrValueKind_Call,
   IrValueKind_BinExpr,
   IrValueKind_UnrExpr,
-}
+}/*<<<*/
 IrValueKind;
 
 typedef struct
-{
+{/*>>>*/
   IrProc* proc;
   List    actual_args;
-}
+}/*<<<*/
 IrCall;
 
 typedef struct
-{
+{/*>>>*/
   IrOpKind op;
   IrValue* left_operand;
   IrValue* right_operand;
-}
+}/*<<<*/
 IrBinExpr;
 
 typedef struct
-{
+{/*>>>*/
   IrOpKind op;
   IrValue* operand;
-}
+}/*<<<*/
 IrUnrExpr;
 
 typedef struct
-{
+{/*>>>*/
   IrBinExpr* assgn_expr;
   IrVar      ret_var;
   IrProc*    proc;
   int        depth;
-}
+}/*<<<*/
 IrReturnStmt;
 
 typedef enum
-{
+{/*>>>*/
   IrAvRecord__Null,
   IrAvRecord_Proc,
   IrAvRecord_Block,
-}
+}/*<<<*/
 IrAvRecordKind;
 
 typedef struct
-{
+{/*>>>*/
   IrStackArea access_links;
   IrStackArea old_fp;
-}
+}/*<<<*/
 IrBlockAvRecord;
 
 typedef struct
-{
+{/*>>>*/
   IrStackArea ret;
   IrStackArea args;
   IrStackArea ctrl_links;
-}
+}/*<<<*/
 IrProcAvRecord;
 
 typedef struct
-{
+{/*>>>*/
   IrValue* expr;
   IrNode*  body;
   IrNode*  else_body;
   char*    label_else;
   char*    label_end;
-}
+}/*<<<*/
 IrIfStmt;
 
 typedef struct IrWhileStmt_
-{
+{/*>>>*/
   IrValue* expr;
   IrNode* body;
   char* label_eval;
   char* label_break;
-}
+}/*<<<*/
 IrWhileStmt;
 
 typedef struct
-{
+{/*>>>*/
   IrWhileStmt* while_stmt;
   int depth;
-}
+}/*<<<*/
 IrBreakStmt;
 
 typedef struct IrValue_
-{
+{/*>>>*/
   IrValueKind kind;
 
   union {
@@ -412,11 +413,11 @@ typedef struct IrValue_
     IrBinExpr* bin_expr;
     IrUnrExpr* unr_expr;
   };
-}
+}/*<<<*/
 IrValue;
 
 typedef struct
-{
+{/*>>>*/
   union {
     IrProcAvRecord  proc;
     IrBlockAvRecord block;
@@ -425,36 +426,36 @@ typedef struct
   IrAvRecordKind kind;
   int fp;
   int sp;
-}
+}/*<<<*/
 IrActivationRecord;
 
 typedef struct IrProc_
-{
+{/*>>>*/
   char* label;
   char* label_end;
   List  instr_list;
   IrActivationRecord* actv_rec;
-}
+}/*<<<*/
 IrProc;
 
 typedef struct IrBlock_
-{
+{/*>>>*/
   List access_links;
   List instr_list;
   IrActivationRecord* actv_rec;
-}
+}/*<<<*/
 IrBlock;
 
 typedef struct
-{
+{/*>>>*/
   IrProc* main_proc;
   IrCall* main_call;
   List    proc_list;
-}
+}/*<<<*/
 IrModule;
 
 typedef struct IrNode_
-{
+{/*>>>*/
   IrNodeKind kind;
 
   union {
@@ -471,8 +472,9 @@ typedef struct IrNode_
     IrWhileStmt  while_stmt;
     IrBreakStmt  break_stmt;
   };
-} IrNode;
-/*<<<*/
+} IrNode;/*<<<*/
+
+/* Symbol table structs */
 
 typedef struct
 {/*>>>*/
@@ -681,9 +683,9 @@ static int last_label_id; // TODO: got no idea where to stick this
 void
 make_unique_label(String* label)
 {/*>>>*/
-  sprintf(label->start, "L%d", last_label_id++);
-  int len = cstr_len(label->start);
-  label->end = label->start + len;
+  sprintf(label->head, "L%d", last_label_id++);
+  int len = cstr_len(label->head);
+  label->end = label->head + len;
   MemoryArena* arena = label->arena;
   arena->free = label->end + 1;
 }/*<<<*/
@@ -1666,10 +1668,15 @@ parse_import(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
       imp_node->kind = AstNodeKind_Import;
       *node = imp_node;
 
-      char* file_stem = path_get_file_stem(input->file_path);
+      String str = {0};
+      str_init(&str, arena);
+      str_append(&str, input->file_path);
+      path_make_dir(str.head);
+      str_tidyup(&str);
+      str_append(&str, input->lexeme.str);
 
       AstImport* ast_imp = &imp_node->import;
-      ast_imp->file_name = input->lexeme.str;
+      ast_imp->file_path = str.head;
 
       consume_token(input, symbol_table);
     }
@@ -1700,8 +1707,7 @@ parse_module_definition(MemoryArena* arena, TokenStream* input, SymbolTable* sym
         {
           AstImport* ast_imp = &ast_node->import;
 
-          char* file_path = "W:/hoc/lib.hoc";
-          char* hoc_text = file_read_text(arena, file_path);
+          char* hoc_text = file_read_text(arena, ast_imp->file_path);
           if(hoc_text)
           {
             TokenStream* imp_input = mem_push_struct(arena, TokenStream, 1);
@@ -1709,7 +1715,7 @@ parse_module_definition(MemoryArena* arena, TokenStream* input, SymbolTable* sym
             imp_input->text = hoc_text;
             imp_input->cursor = imp_input->text;
             imp_input->line_nr = 1;
-            imp_input->file_path = file_path;
+            imp_input->file_path = ast_imp->file_path;
 
             consume_token(imp_input, symbol_table);
 
@@ -1717,7 +1723,10 @@ parse_module_definition(MemoryArena* arena, TokenStream* input, SymbolTable* sym
             if(success)
               success = parse_module_definition(arena, input, symbol_table, enclosing_block, module);
           } else
-            error("File could not be read: %s", file_path);
+          {
+            syntax_error(input, "File could not be read: %s", ast_imp->file_path);
+            success = false;
+          }
         }
       }
     }
@@ -2335,14 +2344,14 @@ ir_build_while_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstWhileSt
 
     String label = {0};
     str_init(&label, arena);
-    str_append(&label, label_id.start);
+    str_append(&label, label_id.head);
     str_append(&label, ".while-expr");
-    ir_while->label_eval = label.start;
+    ir_while->label_eval = label.head;
 
     str_init(&label, arena);
-    str_append(&label, label_id.start);
+    str_append(&label, label_id.head);
     str_append(&label, ".while-break");
-    ir_while->label_break = label.start;
+    ir_while->label_break = label.head;
   }/*<<<*/
 
   if(ast_while->body->kind == AstNodeKind_Block)
@@ -2372,14 +2381,14 @@ ir_build_if_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstIfStmt* as
 
     String label = {0};
     str_init(&label, arena);
-    str_append(&label, label_id.start);
+    str_append(&label, label_id.head);
     str_append(&label, ".if-else");
-    ir_if->label_else = label.start;
+    ir_if->label_else = label.head;
 
     str_init(&label, arena);
-    str_append(&label, label_id.start);
+    str_append(&label, label_id.head);
     str_append(&label, ".if-end");
-    ir_if->label_end = label.start;
+    ir_if->label_end = label.head;
   }/*<<<*/
 
   if(ast_if->body->kind == AstNodeKind_Block)
@@ -2538,7 +2547,7 @@ ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
   str_init(&label, arena);
   str_append(&label, ast_proc->name);
   str_append(&label, ".proc-end");
-  ir_proc->label_end = label.start;
+  ir_proc->label_end = label.head;
   ast_proc->ir_proc = ir_proc; // must be set before building the statement list
 
   ir_block_build_statements(arena, actv_rec, &ir_proc->instr_list, &ast_block->stmt_list);

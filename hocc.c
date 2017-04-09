@@ -6,50 +6,26 @@
 #define OUT_RC "CODE  VM  \"%s\""
 
 typedef struct
-{
+{/*>>>*/
   char* name;
   int len;
-}
+}/*<<<*/
 FileName;
 
 typedef struct
-{
+{/*>>>*/
   char strings[4*80 + 4*10];
   FileName ir;
   FileName irc;
   FileName rc;
   FileName res;
-}
+}/*<<<*/
 OutFileNames;
 
-char* get_file_stem(char* file_path)
-{
-  char* p_char = file_path;
-  char* stem = p_char;
-
-  // Get the file name part
-  while(p_char && *p_char)
-  {
-    while(*p_char && *p_char != '\\')
-      p_char++;
-    if(*p_char == '\\')
-      stem = ++p_char;
-  }
-
-  // Remove the extension
-  if(stem)
-  {
-    char* p_char = stem;
-    while(*p_char && *p_char != '.')
-      p_char++;
-    *p_char = '\0';
-  }
-  return stem;
-}
-
-bool32 make_file_names(OutFileNames* out_files, char* stem)
-{
-  int stem_len = str_len(stem);
+bool32
+make_file_names(OutFileNames* out_files, char* stem)
+{/*>>>*/
+  int stem_len = cstr_len(stem);
   assert(stem_len > 0);
   bool32 success = (stem_len > 0 && stem_len < 80);
 
@@ -59,32 +35,33 @@ bool32 make_file_names(OutFileNames* out_files, char* stem)
 
     sprintf(str, "%s.ir", stem);
     out_files->ir.name = str;
-    out_files->ir.len = str_len(out_files->ir.name);
+    out_files->ir.len = cstr_len(out_files->ir.name);
     str = out_files->ir.name + out_files->ir.len + 1;
 
     sprintf(str, "%s.irc", stem);
     out_files->irc.name = str;
-    out_files->irc.len = str_len(out_files->irc.name);
+    out_files->irc.len = cstr_len(out_files->irc.name);
     str = out_files->irc.name + out_files->irc.len + 1;
 
     sprintf(str, "%s.rc", stem);
     out_files->rc.name = str;
-    out_files->rc.len = str_len(out_files->rc.name);
+    out_files->rc.len = cstr_len(out_files->rc.name);
     str = out_files->rc.name + out_files->rc.len + 1;
 
     sprintf(str, "%s.res", stem);
     out_files->res.name = str;
-    out_files->res.len = str_len(out_files->res.name);
+    out_files->res.len = cstr_len(out_files->res.name);
   } else
     error("Length of file name out of range : '%s'", stem);
   return success;
-}
+}/*<<<*/
 
-bool32 write_res_file(OutFileNames* out_files)
-{
+bool32
+write_res_file(OutFileNames* out_files)
+{/*>>>*/
   char buf[200];
   sprintf(buf, OUT_RC, out_files->irc.name);
-  int text_len = str_len(buf);
+  int text_len = cstr_len(buf);
   int bytes_written = write_bytes_to_file(out_files->rc.name, buf, text_len);
   bool32 success = (bytes_written == text_len);
   if(success)
@@ -112,46 +89,49 @@ bool32 write_res_file(OutFileNames* out_files)
   } else
     error("RC file '%s' incompletely written", out_files->rc.name);
   return success;
-}
+}/*<<<*/
 
-bool32 write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
-{
+bool32
+write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
+{/*>>>*/
   int bytes_written = write_bytes_to_file(out_files->ir.name, vm_program->text.start, vm_program->text_len);
   bool32 success = (bytes_written == vm_program->text_len);
   if(!success)
     error("IR file '%s' incompletely written", out_files->ir.name);
   return success;
-}
+}/*<<<*/
 
-bool32 write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
-{
+bool32
+write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
+{/*>>>*/
   int bytes_written = write_bytes_to_file(out_files->irc.name, (char*)hasm_code->code_start, hasm_code->code_size);
   bool32 success = (bytes_written == hasm_code->code_size);
   if(!success)
     error("IRC file '%s' incompletely written", out_files->irc.name);
   return success;
-}
+}/*<<<*/
 
-int main(int argc, char* argv[])
-{
+int
+main(int argc, char* argv[])
+{/*>>>*/
   int ret = -1;
 
   if(argc >= 2)
   {
-    MemoryArena arena = new_arena(10*MEGABYTE);
+    MemoryArena arena = arena_new(10*MEGABYTE);
 
     char* file_path = argv[1];
-    char* hoc_program = read_text_from_file(&arena, file_path);
-    if(hoc_program)
+    char* hoc_text = file_read_text(&arena, file_path);
+    if(hoc_text)
     {
       VmProgram vm_program = {0};
-      bool32 success = translate_hoc(&arena, file_path, hoc_program, &vm_program);
+      bool32 success = translate_hoc(&arena, file_path, hoc_text, &vm_program);
       if(success)
       {
         OutFileNames out_files = {0};
-        char* fileStem = get_file_stem(file_path);
+        char* file_stem = path_get_file_stem(file_path);
 
-        success = make_file_names(&out_files, fileStem) &&
+        success = make_file_names(&out_files, file_stem) &&
           write_ir_file(&out_files, &vm_program);
 #if 1
         if(success)
@@ -177,4 +157,4 @@ int main(int argc, char* argv[])
     error("Missing argument: input source file");
 
   return ret;
-}
+}/*<<<*/

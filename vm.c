@@ -4,18 +4,18 @@
 #define VMWORD (sizeof(int32))
 
 typedef struct
-{
+{/*>>>*/
   HasmCode* code;
   int32 mem_size;
   int32 fp;
   int32 sp;
   int32 ip;
   uint8 memory[2048];
-}
+}/*<<<*/
 HocMachine;
 
 typedef enum
-{
+{/*>>>*/
   ExecResult_EndOfProgram = 0,
   ExecResult_OK,
   ExecResult_InvalidMemoryAccess,
@@ -25,25 +25,29 @@ typedef enum
   ExecResult_DivByZero,
 
   ExecResult__Count
-}
+}/*<<<*/
 ExecResult;
 
-bool32 check_stack_bounds(HocMachine* machine, int sp)
-{
+bool32
+check_stack_bounds(HocMachine* machine, int sp)
+{/*>>>*/
   return sp >= 0 && sp*(int)VMWORD < machine->mem_size;
-}
+}/*<<<*/
 
-bool32 check_memory_bounds(HocMachine* machine, int location)
-{
+bool32
+check_memory_bounds(HocMachine* machine, int location)
+{/*>>>*/
   return location >= 0 && location < machine->mem_size;
-}
+}/*<<<*/
 
-bool32 check_instr_bounds(HasmCode* code, int address)
-{
+bool32
+check_instr_bounds(HasmCode* code, int address)
+{/*>>>*/
   return address >= 0 && address < code->instr_count;
-}
+}/*<<<*/
 
-ExecResult execute_instr(HocMachine* machine, Instruction* instr)
+ExecResult
+execute_instr(HocMachine* machine, Instruction* instr)
 {/*>>>*/
   uint8* memory = machine->memory;
   Opcode opcode = instr->opcode;
@@ -390,7 +394,8 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
   return ExecResult_OK;
 }/*<<<*/
 
-ExecResult run_program(HocMachine* machine)
+ExecResult
+run_program(HocMachine* machine)
 {/*>>>*/
   HasmCode* code = machine->code;
 
@@ -442,14 +447,15 @@ ExecResult run_program(HocMachine* machine)
   return exec_result;
 }/*<<<*/
 
-bool32 load_ir_code(HasmCode* code)
-{
+bool32
+load_ir_code(HasmCode* code)
+{/*>>>*/
   HRSRC res = FindResource(0, "CODE", "VM");
   if(res)
   {
     HGLOBAL res_data = LoadResource(0, res);
     HasmCode* res_code = (HasmCode*)LockResource(res_data);
-    if(str_match(res_code->groove, "IRC"))
+    if(cstr_match(res_code->groove, "IRC"))
     {
       // Fix the pointers
       *code = *res_code;
@@ -461,10 +467,11 @@ bool32 load_ir_code(HasmCode* code)
   } else
     error("IR code not found");
   return false;
-}
+}/*<<<*/
 
-int main(int argc, char* argv[])
-{
+int
+main(int argc, char* argv[])
+{/*>>>*/
   int ret = -1;
 
   HocMachine machine = {0};
@@ -477,4 +484,5 @@ int main(int argc, char* argv[])
     ret = (int)run_program(&machine);
   }
   return ret;
-}
+}/*<<<*/
+

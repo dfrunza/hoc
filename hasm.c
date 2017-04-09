@@ -2,14 +2,14 @@
 #include "hasm.h"
 
 typedef struct
-{
+{/*>>>*/
   char* string;
   int instr_address;
-}
+}/*<<<*/
 Label;
 
 typedef struct
-{
+{/*>>>*/
   char* text;
 
   int max_lines;
@@ -19,10 +19,11 @@ typedef struct
   int max_labels;
   int labesl_count;
   Label labels[512]; //FIXME: Unchecked bounds
-}
+}/*<<<*/
 SourceProgram;
 
-int break_instr_into_components(char* str, char* components[], int max_component_count)
+int
+break_instr_into_components(char* str, char* components[], int max_component_count)
 {/*>>>*/
   int component_count = 0;
 
@@ -58,8 +59,9 @@ int break_instr_into_components(char* str, char* components[], int max_component
   return component_count;
 }/*<<<*/
 
-int find_instr_address_at_line(SourceProgram* source, int lineNr)
-{
+int
+find_instr_address_at_line(SourceProgram* source, int lineNr)
+{/*>>>*/
   int result = -1;
   InstructionLine* line = source->lines;
   for(int line_index = 0; line_index < source->line_count; line_index++)
@@ -72,30 +74,33 @@ int find_instr_address_at_line(SourceProgram* source, int lineNr)
     line++;
   }
   return result;
-}
+}/*<<<*/
 
-Label* find_label(SourceProgram* source, char* label_string)
-{
+Label*
+find_label(SourceProgram* source, char* label_string)
+{/*>>>*/
   Label* result = 0;
   for(int i = 0; i < source->labesl_count; i++)
   {
     Label* label = &source->labels[i];
-    if(str_equals(label->string, label_string))
+    if(cstr_match(label->string, label_string))
     {
       result = label;
       break;
     }
   }
   return result;
-}
+}/*<<<*/
 
-bool32 is_valid_label(char *label)
-{
+bool32
+is_valid_label(char *label)
+{/*>>>*/
   char start_char = *label;
   return ('A' <= start_char && start_char <= 'Z') || ('a' <= start_char && start_char <= 'z') || start_char == '.';
-}
+}/*<<<*/
 
-void process_source_lines(SourceProgram* source)
+void
+process_source_lines(SourceProgram* source)
 {/*>>>*/
   source->line_count = 0;
   char* char_ptr = &source->text[0];
@@ -133,13 +138,14 @@ void process_source_lines(SourceProgram* source)
   }
 }/*<<<*/
 
-bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
+bool32
+build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
 {/*>>>*/
-  HasmCode* code = push_element(arena, HasmCode, 1);
-  copy_cstr(code->groove, "IRC");
+  HasmCode* code = mem_push_struct(arena, HasmCode, 1);
+  cstr_copy(code->groove, "IRC");
   code->code_start = (uint8*)code;
   code->instr_count = source->line_count;
-  code->instr_array = push_element(arena, Instruction, code->instr_count);
+  code->instr_array = mem_push_struct(arena, Instruction, code->instr_count);
   code->code_size = (int)((uint8*)arena->free - code->code_start);
   *out_code = code;
 
@@ -155,57 +161,57 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_c
     {
       char* mnemonic = components[0];
 
-      if(str_equals(mnemonic, "pop"))
+      if(cstr_match(mnemonic, "pop"))
         instr.opcode = Opcode_POP;
-      else if(str_equals(mnemonic, "push"))
+      else if(cstr_match(mnemonic, "push"))
         instr.opcode = Opcode_PUSH;
-      else if(str_equals(mnemonic, "store"))
+      else if(cstr_match(mnemonic, "store"))
         instr.opcode = Opcode_STORE;
-      else if(str_equals(mnemonic, "store8"))
+      else if(cstr_match(mnemonic, "store8"))
         instr.opcode = Opcode_STORE8;
-      else if(str_equals(mnemonic, "load"))
+      else if(cstr_match(mnemonic, "load"))
         instr.opcode = Opcode_LOAD;
-      else if(str_equals(mnemonic, "load8"))
+      else if(cstr_match(mnemonic, "load8"))
         instr.opcode = Opcode_LOAD8;
-      else if(str_equals(mnemonic, "add"))
+      else if(cstr_match(mnemonic, "add"))
         instr.opcode = Opcode_ADD;
-      else if(str_equals(mnemonic, "sub"))
+      else if(cstr_match(mnemonic, "sub"))
         instr.opcode = Opcode_SUB;
-      else if(str_equals(mnemonic, "mul"))
+      else if(cstr_match(mnemonic, "mul"))
         instr.opcode = Opcode_MUL;
-      else if(str_equals(mnemonic, "div"))
+      else if(cstr_match(mnemonic, "div"))
         instr.opcode = Opcode_DIV;
-      else if(str_equals(mnemonic, "mod"))
+      else if(cstr_match(mnemonic, "mod"))
         instr.opcode = Opcode_MOD;
-      else if(str_equals(mnemonic, "incr"))
+      else if(cstr_match(mnemonic, "incr"))
         instr.opcode = Opcode_INCR;
-      else if(str_equals(mnemonic, "decr"))
+      else if(cstr_match(mnemonic, "decr"))
         instr.opcode = Opcode_DECR;
-      else if(str_equals(mnemonic, "halt"))
+      else if(cstr_match(mnemonic, "halt"))
         instr.opcode = Opcode_HALT;
-      else if(str_equals(mnemonic, "print"))
+      else if(cstr_match(mnemonic, "print"))
         instr.opcode = Opcode_PRINT;
-      else if(str_equals(mnemonic, "dup"))
+      else if(cstr_match(mnemonic, "dup"))
         instr.opcode = Opcode_DUP;
-      else if(str_equals(mnemonic, "goto"))
+      else if(cstr_match(mnemonic, "goto"))
         instr.opcode = Opcode_GOTO;
-      else if(str_equals(mnemonic, "jumpnz"))
+      else if(cstr_match(mnemonic, "jumpnz"))
         instr.opcode = Opcode_JUMPNZ;
-      else if(str_equals(mnemonic, "jumpz"))
+      else if(cstr_match(mnemonic, "jumpz"))
         instr.opcode = Opcode_JUMPZ;
-      else if(str_equals(mnemonic, "label"))
+      else if(cstr_match(mnemonic, "label"))
         instr.opcode = Opcode_LABEL;
-      else if(str_equals(mnemonic, "noop"))
+      else if(cstr_match(mnemonic, "noop"))
         instr.opcode = Opcode_NOOP;
-      else if(str_equals(mnemonic, "call"))
+      else if(cstr_match(mnemonic, "call"))
         instr.opcode = Opcode_CALL;
-      else if(str_equals(mnemonic, "return"))
+      else if(cstr_match(mnemonic, "return"))
         instr.opcode = Opcode_RETURN;
-      else if(str_equals(mnemonic, "enter"))
+      else if(cstr_match(mnemonic, "enter"))
         instr.opcode = Opcode_ENTER;
-      else if(str_equals(mnemonic, "leave"))
+      else if(cstr_match(mnemonic, "leave"))
         instr.opcode = Opcode_LEAVE;
-      else if(str_equals(mnemonic, "alloc"))
+      else if(cstr_match(mnemonic, "alloc"))
         instr.opcode = Opcode_ALLOC;
       else {
         error("Invalid instruction: %s", mnemonic);
@@ -235,17 +241,17 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_c
           case Opcode_POP:
           case Opcode_PUSH:
             {
-              if(str_to_int(components[1], &instr.param.int_num))
+              if(cstr_to_int(components[1], &instr.param.int_num))
                 instr.param_type = ParamType_Int32;
               else {
                 instr.param_type = ParamType_Reg;
                 char* reg = components[1];
 
-                if(str_match(reg, "sp"))
+                if(cstr_match(reg, "sp"))
                   instr.param.reg = RegName_SP;
-                else if(str_match(reg, "fp"))
+                else if(cstr_match(reg, "fp"))
                   instr.param.reg = RegName_FP;
-                else if(str_match(reg, "ip"))
+                else if(cstr_match(reg, "ip"))
                   instr.param.reg = RegName_IP;
                 else {
                   error("Invalid register '%s'", components[1]);
@@ -256,7 +262,7 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_c
 
           case Opcode_ALLOC:
             {
-              if(str_to_int(components[1], &instr.param.int_num))
+              if(cstr_to_int(components[1], &instr.param.int_num))
                 instr.param_type = ParamType_Int32;
               else {
                 error("Invalid parameter '%s'", components[1]);
@@ -350,8 +356,9 @@ bool32 build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_c
   return true;
 }/*<<<*/
 
-bool32 translate_ir_to_code(MemoryArena* arena, char* text, HasmCode** code)
-{
+bool32
+translate_ir_to_code(MemoryArena* arena, char* text, HasmCode** code)
+{/*>>>*/
   bool32 success = true;
 
   SourceProgram source = {0};
@@ -360,4 +367,4 @@ bool32 translate_ir_to_code(MemoryArena* arena, char* text, HasmCode** code)
 
   success = build_ir_code(arena, &source, code);
   return success;
-}
+}/*<<<*/

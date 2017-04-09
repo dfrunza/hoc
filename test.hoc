@@ -1,20 +1,8 @@
-proc power(var a, var power)
-{
-  var p = power;
-  var result = 1;
-  while(p)
-  {
-    result = result*a;
-    p = p-1;
-  }
-  return result;
-}
+import "lib.hoc"
 
 proc main()
 {
-  /*/////////////*/
-  var a; var b; var c;
-  a = /*b = (c =*/ 123/*)*/;
+  var a = power(2, 10);
   return a;
 }
 

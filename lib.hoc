@@ -1,5 +1,3 @@
-import "max.hoc"
-
 proc power(var a, var power)
 {
   var p = power;

@@ -359,11 +359,24 @@ path_make_dir(char* file_path)
   return file_path;
 }/*<<<*/
 
+uint
+file_write_bytes(char* file_path, char* text, int count)
+{/*>>>*/
+  uint bytesWritten = 0;
+  FILE* hFile = fopen(file_path, "wb");
+  if(hFile)
+  {
+    bytesWritten = (uint)fwrite(text, 1, count, hFile);
+    fclose(hFile);
+  }
+  return bytesWritten;
+}/*<<<*/
+
 char*
-file_read_text(MemoryArena* arena, char* file_name)
+file_read_text(MemoryArena* arena, char* file_path)
 {/*>>>*/
   char* text = 0;
-  FILE* file = fopen(file_name, "rb");
+  FILE* file = fopen(file_path, "rb");
   if(file)
   {
     fseek(file, 0, SEEK_END);
@@ -378,7 +391,7 @@ file_read_text(MemoryArena* arena, char* file_name)
 }/*<<<*/
 
 int
-read_stdin(char buf[], int buf_size)
+stdin_read(char buf[], int buf_size)
 {/*>>>*/
   HANDLE h_std = GetStdHandle(STD_INPUT_HANDLE);
   DWORD bytes_read = 0;

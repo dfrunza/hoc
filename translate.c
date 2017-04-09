@@ -50,8 +50,8 @@ typedef enum
   Token_OpenBrace,
   Token_CloseBrace,
   Token_String,
-}
-Token;/*<<<*/
+}/*<<<*/
+Token;
 
 typedef struct
 {/*>>>*/
@@ -72,11 +72,14 @@ typedef struct
 }/*<<<*/
 TokenStream;
 
+/* AST structs */
+
 typedef struct Symbol_ Symbol;
 typedef struct AstNode_ AstNode;
 typedef struct Block_ AstBlock;
-
-/* AST structs */
+typedef struct AccessLink_ AccessLink;
+typedef struct IrWhileStmt_ IrWhileStmt;
+typedef struct IrProc_ IrProc;
 
 typedef enum
 {/*>>>*/
@@ -121,30 +124,16 @@ AstModule;
 
 typedef struct
 {/*>>>*/
-  int actv_rec_offset;
-  int loc; // within the current actv. rec.
-}/*<<<*/
-IrAccessLink;
-
-typedef struct
-{/*>>>*/
   int loc;
   int size;
 }/*<<<*/
-IrStackArea;
-
-typedef struct IrVar_
-{/*>>>*/
-  IrStackArea*  data;
-  IrAccessLink* link;
-}/*<<<*/
-IrVar;
+DataArea;
 
 typedef struct
 {/*>>>*/
   Symbol*     symbol;
   char*       name;
-  IrStackArea var_data;
+  DataArea var_data;
   AstNode*    init_expr;
 }/*<<<*/
 AstVarDecl;
@@ -170,7 +159,7 @@ typedef struct
   char*         name;
   int           decl_block_offset;
   AstVarDecl*   var_decl;
-  IrAccessLink* link;
+  AccessLink* link;
 }/*<<<*/
 AstVarOccur;
 
@@ -180,7 +169,6 @@ typedef struct
 }/*<<<*/
 AstIntNum;
 
-typedef struct IrProc_ IrProc;
 typedef struct
 {/*>>>*/
   Symbol*   symbol;
@@ -218,7 +206,6 @@ typedef struct
 }/*<<<*/
 AstIfStmt;
 
-typedef struct IrWhileStmt_ IrWhileStmt;
 typedef struct
 {/*>>>*/
   AstNode* expr;
@@ -278,6 +265,9 @@ AstNode;
 
 /* IR structs */
 
+typedef struct IrNode_ IrNode;
+typedef struct IrValue_ IrValue;
+
 typedef enum
 {/*>>>*/
   IrNodeKind__Null,
@@ -308,8 +298,19 @@ typedef enum
 }/*<<<*/
 IrOpKind;
 
-typedef struct IrNode_ IrNode;
-typedef struct IrValue_ IrValue;
+typedef struct AccessLink_
+{/*>>>*/
+  int actv_rec_offset;
+  int loc; // within the current actv. rec.
+}/*<<<*/
+AccessLink;
+
+typedef struct IrVar_
+{/*>>>*/
+  DataArea*  data;
+  AccessLink* link;
+}/*<<<*/
+IrVar;
 
 typedef enum
 {/*>>>*/
@@ -363,16 +364,16 @@ IrAvRecordKind;
 
 typedef struct
 {/*>>>*/
-  IrStackArea access_links;
-  IrStackArea old_fp;
+  DataArea access_links;
+  DataArea old_fp;
 }/*<<<*/
 IrBlockAvRecord;
 
 typedef struct
 {/*>>>*/
-  IrStackArea ret;
-  IrStackArea args;
-  IrStackArea ctrl_links;
+  DataArea ret;
+  DataArea args;
+  DataArea ctrl_links;
 }/*<<<*/
 IrProcAvRecord;
 
@@ -422,7 +423,7 @@ typedef struct
     IrProcAvRecord  proc;
     IrBlockAvRecord block;
   };
-  IrStackArea locals;
+  DataArea locals;
   IrAvRecordKind kind;
   int fp;
   int sp;
@@ -922,6 +923,7 @@ loop:
 }/*<<<*/
 
 /* Parse */
+
 bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse_statement_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*);
 bool32 parse_actual_argument_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstCall*);
@@ -2069,7 +2071,7 @@ parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   return success;
 }/*<<<*/
 
-/* IR procs */
+/* IR */
 
 IrNode* ir_build_value(MemoryArena*, IrActivationRecord*, AstNode*);
 IrNode* ir_build_statement(MemoryArena*, IrActivationRecord*, AstNode*);
@@ -2229,7 +2231,7 @@ ir_build_break_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstBreakSt
 }/*<<<*/
 
 void
-ir_block_decl_vars_compute_address(IrActivationRecord* actv_rec, IrStackArea* locals_area, List* decl_vars)
+ir_block_decl_vars_compute_address(IrActivationRecord* actv_rec, DataArea* locals_area, List* decl_vars)
 {/*>>>*/
   locals_area->loc = actv_rec->sp;
   {/* locals*/
@@ -2239,7 +2241,7 @@ ir_block_decl_vars_compute_address(IrActivationRecord* actv_rec, IrStackArea* lo
       AstNode* decl_node = node_item->elem;
       assert(decl_node->kind == AstNodeKind_VarDecl);
       AstVarDecl* var_decl = &decl_node->var_decl;
-      IrStackArea* var_data = &var_decl->var_data;
+      DataArea* var_data = &var_decl->var_data;
 
       var_data->loc = actv_rec->sp - actv_rec->fp;
       actv_rec->sp += var_data->size;
@@ -2263,7 +2265,7 @@ ir_build_block(MemoryArena* arena, AstBlock* ast_block)
   list_init(&ir_block->instr_list);
   list_init(&ir_block->access_links);
 
-  IrStackArea* area = &block_av->access_links;
+  DataArea* area = &block_av->access_links;
   area->loc = actv_rec->sp;
   {/*>>> non-locals */
     ListItem* occur_item = list_first_item(&ast_block->non_local_occurs);
@@ -2274,7 +2276,7 @@ ir_build_block(MemoryArena* arena, AstBlock* ast_block)
       List* links_list = &ir_block->access_links;
 
       ListItem* link_item = list_first_item(links_list);
-      IrAccessLink* link = 0;
+      AccessLink* link = 0;
       while(link_item)
       {
         link = link_item->elem;
@@ -2285,7 +2287,7 @@ ir_build_block(MemoryArena* arena, AstBlock* ast_block)
       }
       if(!link)
       {
-        link = mem_push_struct(arena, IrAccessLink, 1);
+        link = mem_push_struct(arena, AccessLink, 1);
         link->actv_rec_offset = var_occur->decl_block_offset;
         link->loc = actv_rec->sp++; // size of link = 1
         list_append(arena, links_list, link);
@@ -2310,7 +2312,7 @@ ir_build_block(MemoryArena* arena, AstBlock* ast_block)
       ListItem* link_item = list_first_item(&ir_block->access_links);
       while(link_item)
       {
-        IrAccessLink* link = link_item->elem;
+        AccessLink* link = link_item->elem;
         link->loc = -(actv_rec->fp - link->loc);
 
         link_item = link_item->next;
@@ -2479,11 +2481,11 @@ ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
   IrProcAvRecord* proc_av = &actv_rec->proc;
   actv_rec->sp = 0;
 
-  IrStackArea* area = &proc_av->ret;
+  DataArea* area = &proc_av->ret;
   area->loc = actv_rec->sp;
   {/*>>> ret val*/
     AstVarDecl* var_decl = &ast_proc->ret_var;
-    IrStackArea* var_data = &var_decl->var_data;
+    DataArea* var_data = &var_decl->var_data;
     var_data->loc = actv_rec->sp;
     var_data->size = 1;
     actv_rec->sp += var_data->size;
@@ -2499,7 +2501,7 @@ ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
       AstNode* decl_node = node_item->elem;
       assert(decl_node->kind == AstNodeKind_VarDecl);
       AstVarDecl* var_decl = &decl_node->var_decl;
-      IrStackArea* arg_var_data = &var_decl->var_data;
+      DataArea* arg_var_data = &var_decl->var_data;
 
       arg_var_data->loc = actv_rec->sp;
       actv_rec->sp += arg_var_data->size;
@@ -2519,7 +2521,7 @@ ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
   ir_block_decl_vars_compute_address(actv_rec, &actv_rec->locals, &ast_block->decl_vars);
 
   {/*>>> These vars have negative locations : retval and arguments */
-    IrStackArea* var_data = &ast_proc->ret_var.var_data;
+    DataArea* var_data = &ast_proc->ret_var.var_data;
     var_data->loc = -(actv_rec->fp - var_data->loc);
 
     ListItem* node_item = list_first_item(&ast_proc->formal_args);
@@ -2528,7 +2530,7 @@ ir_build_proc(MemoryArena* arena, AstProc* ast_proc)
       AstNode* decl_node = node_item->elem;
       assert(decl_node->kind == AstNodeKind_VarDecl);
       AstVarDecl* var_decl = &decl_node->var_decl;
-      IrStackArea* var_data = &var_decl->var_data;
+      DataArea* var_data = &var_decl->var_data;
 
       var_data->loc = -(actv_rec->fp - var_data->loc);
 
@@ -2722,8 +2724,8 @@ gen_load_lvalue(MemoryArena* arena, List* code, IrValue* ir_value)
 {/*>>>*/
   if(ir_value->kind == IrValueKind_Var)
   {
-    IrStackArea* data = ir_value->var->data;
-    IrAccessLink* link = ir_value->var->link;
+    DataArea* data = ir_value->var->data;
+    AccessLink* link = ir_value->var->link;
 
     emit_instr_reg(arena, code, Opcode_PUSH, RegName_FP);
     if(link) 
@@ -2797,7 +2799,7 @@ gen_block(MemoryArena* arena, List* code, IrBlock* block)
   ListItem* link_item = list_first_item(&block->access_links);
   while(link_item)
   {
-    IrAccessLink* link = link_item->elem;
+    AccessLink* link = link_item->elem;
     emit_instr_reg(arena, code, Opcode_PUSH, RegName_FP);
     int offset = link->actv_rec_offset - 1;
     while(offset--)
@@ -2811,7 +2813,7 @@ gen_block(MemoryArena* arena, List* code, IrBlock* block)
   emit_instr(arena, code, Opcode_ENTER);
 
   IrActivationRecord* actv_rec = block->actv_rec;
-  IrStackArea* locals_area = &actv_rec->locals;
+  DataArea* locals_area = &actv_rec->locals;
   if(locals_area->size > 0)
     emit_instr_int(arena, code, Opcode_ALLOC, locals_area->size);
 
@@ -2831,7 +2833,7 @@ gen_proc(MemoryArena* arena, List* code, IrProc* proc)
 {/*>>>*/
   emit_instr_str(arena, code, Opcode_LABEL, proc->label);
   IrActivationRecord* actv_rec = proc->actv_rec;
-  IrStackArea* locals_area = &actv_rec->locals;
+  DataArea* locals_area = &actv_rec->locals;
   if(locals_area->size > 0)
     emit_instr_int(arena, code, Opcode_ALLOC, locals_area->size);
 
@@ -3092,19 +3094,6 @@ print_code(VmProgram* vm_program)
     }
     item = item->next;
   }
-}/*<<<*/
-
-uint
-write_bytes_to_file(char* fileName, char* text, int count)
-{/*>>>*/
-  uint bytesWritten = 0;
-  FILE* hFile = fopen(fileName, "wb");
-  if(hFile)
-  {
-    bytesWritten = (uint)fwrite(text, 1, count, hFile);
-    fclose(hFile);
-  }
-  return bytesWritten;
 }/*<<<*/
 
 bool32

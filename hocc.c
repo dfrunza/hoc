@@ -62,7 +62,7 @@ write_res_file(OutFileNames* out_files)
   char buf[200];
   sprintf(buf, OUT_RC, out_files->irc.name);
   int text_len = cstr_len(buf);
-  int bytes_written = write_bytes_to_file(out_files->rc.name, buf, text_len);
+  int bytes_written = file_write_bytes(out_files->rc.name, buf, text_len);
   bool32 success = (bytes_written == text_len);
   if(success)
   {
@@ -84,17 +84,21 @@ write_res_file(OutFileNames* out_files)
 
       CloseHandle(proc_info.hProcess);
       CloseHandle(proc_info.hThread);
-    } else
+    } else {
       error("Process could not be launched : %s", buf);
-  } else
+      success = false;
+    }
+  } else {
     error("RC file '%s' incompletely written", out_files->rc.name);
+    success = false;
+  }
   return success;
 }/*<<<*/
 
 bool32
 write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
 {/*>>>*/
-  int bytes_written = write_bytes_to_file(out_files->ir.name, vm_program->text.head, vm_program->text_len);
+  int bytes_written = file_write_bytes(out_files->ir.name, vm_program->text.head, vm_program->text_len);
   bool32 success = (bytes_written == vm_program->text_len);
   if(!success)
     error("IR file '%s' incompletely written", out_files->ir.name);
@@ -104,7 +108,7 @@ write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
 bool32
 write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
 {/*>>>*/
-  int bytes_written = write_bytes_to_file(out_files->irc.name, (char*)hasm_code->code_start, hasm_code->code_size);
+  int bytes_written = file_write_bytes(out_files->irc.name, (char*)hasm_code->code_start, hasm_code->code_size);
   bool32 success = (bytes_written == hasm_code->code_size);
   if(!success)
     error("IRC file '%s' incompletely written", out_files->irc.name);
@@ -114,7 +118,7 @@ write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
 int
 main(int argc, char* argv[])
 {/*>>>*/
-  int ret = -1;
+  int ret = 0; // success
 
   if(argc >= 2)
   {
@@ -143,18 +147,22 @@ main(int argc, char* argv[])
           if(success)
           {
             success = write_irc_file(&out_files, hasm_code) && write_res_file(&out_files);
-            if(success)
-              ret = 0;
+            if(!success)
+              ret = -1;
           }
         }
 #else
         ret = 0;
 #endif
       }
-    } else
+    } else {
       error("File could not be read: %s", file_path);
-  } else
+      ret = -1;
+    }
+  } else {
     error("Missing argument: input source file");
+    ret = -1;
+  }
 
   return ret;
 }/*<<<*/

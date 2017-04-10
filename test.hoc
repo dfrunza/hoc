@@ -2,8 +2,6 @@ import "lib.hoc"
 
 proc main()
 {
-  var ma = min(10, 20);
-  var mi = max(99, -78);
-  return (ma == 10) && (mi = 10);
+  print gcd(20, 15);
 }
 

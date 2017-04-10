@@ -26,6 +26,7 @@ typedef enum
   Token_Import,
   Token_True,
   Token_False,
+  Token_Print,
   Token__KeywordEnd,
 
   Token_Id,
@@ -39,8 +40,10 @@ typedef enum
   Token_Semicolon,
   Token_Colon,
   Token_Comma,
+  Token_Percent,
   Token_Star,
   Token_FwdSlash,
+  Token_BackSlash,
   Token_Plus,
   Token_Minus,
   Token_UnaryMinus,
@@ -100,6 +103,7 @@ typedef enum
   AstOpKind_Sub,
   AstOpKind_Div,
   AstOpKind_Mul,
+  AstOpKind_Mod,
   AstOpKind_Neg,
 
   AstOpKind_Call,
@@ -130,6 +134,7 @@ typedef enum
   AstNodeKind_IfStmt,
   AstNodeKind_ReturnStmt,
   AstNodeKind_BreakStmt,
+  AstNodeKind_PrintStmt,
   AstNodeKind_Import,
   AstNodeKind_EmptyStmt,
   AstNodeKind_Module,
@@ -243,6 +248,13 @@ typedef struct
 AstBreakStmt;
 
 typedef struct
+{
+  AstNode* expr;
+  bool32 new_line;
+}
+AstPrintStmt;
+
+typedef struct
 {/*>>>*/
   char* file_path;
 }/*<<<*/
@@ -279,6 +291,7 @@ typedef struct AstNode_
     AstReturnStmt ret_stmt;
     AstWhileStmt  while_stmt;
     AstBreakStmt  break_stmt;
+    AstPrintStmt  print_stmt;
     AstIfStmt     if_stmt;
   };
 }/*<<<*/
@@ -301,6 +314,7 @@ typedef enum
   IrNodeKind_Call,
   IrNodeKind_ReturnStmt,
   IrNodeKind_BreakStmt,
+  IrNodeKind_PrintStmt,
   IrNodeKind_IfStmt,
   IrNodeKind_WhileStmt,
   IrNodeKind_Noop,
@@ -315,6 +329,7 @@ typedef enum
   IrOpKind_Mul,
   IrOpKind_Sub,
   IrOpKind_Div,
+  IrOpKind_Mod,
   IrOpKind_Neg,
 
   IrOpKind_Store,
@@ -384,6 +399,13 @@ typedef struct
   int        depth;
 }/*<<<*/
 IrReturnStmt;
+
+typedef struct
+{/*>>>*/
+  IrValue* value;
+  bool32 new_line;
+}/*<<<*/
+IrPrintStmt;
 
 typedef enum
 {/*>>>*/
@@ -503,8 +525,10 @@ typedef struct IrNode_
     IrIfStmt     if_stmt;
     IrWhileStmt  while_stmt;
     IrBreakStmt  break_stmt;
+    IrPrintStmt  print_stmt;
   };
-} IrNode;/*<<<*/
+}/*<<<*/
+IrNode;
 
 /* Symbol table structs */
 
@@ -676,6 +700,7 @@ register_keywords(SymbolTable* symbol_table)
   add_keyword(symbol_table, "import", Token_Import);
   add_keyword(symbol_table, "true", Token_True);
   add_keyword(symbol_table, "false", Token_False);
+  add_keyword(symbol_table, "print", Token_Print);
 }/*<<<*/
 
 bool32
@@ -965,6 +990,16 @@ loop:
       ++input->cursor;
     }
   }/*<<<*/
+  else if(c == '%')
+  {/*>>>*/
+    input->token = Token_Percent;
+    ++input->cursor;
+  }/*<<<*/
+  else if(c == '\\')
+  {/*>>>*/
+    input->token = Token_BackSlash;
+    ++input->cursor;
+  }/*<<<*/
   else if(c == '*')
   {/*>>>*/
     input->token = Token_Star;
@@ -1215,6 +1250,7 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
 
   if(input->token == Token_Star ||
      input->token == Token_FwdSlash ||
+     input->token == Token_Percent ||
      input->token == Token_EqualsEquals ||
      input->token == Token_BangEquals ||
      input->token == Token_AmprsndAmprsnd ||
@@ -1229,6 +1265,8 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
       expr->op = AstOpKind_Mul;
     else if(input->token == Token_FwdSlash)
       expr->op = AstOpKind_Div;
+    else if(input->token == Token_Percent)
+      expr->op = AstOpKind_Mod;
     else if(input->token == Token_EqualsEquals)
       expr->op = AstOpKind_Equals;
     else if(input->token == Token_BangEquals)
@@ -1892,6 +1930,54 @@ parse_module_definition(MemoryArena* arena, TokenStream* input, SymbolTable* sym
 }/*<<<*/
 
 bool32
+parse_print_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+                 AstBlock* enclosing_block, AstNode** node)
+{/*>>>*/
+  bool32 success = true;
+
+  if(input->token == Token_Print)
+  {
+    consume_token(input, symbol_table);
+
+    AstNode* expr_node = 0;
+    success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
+    if(success)
+    {
+      AstNode* print_node = mem_push_struct(arena, AstNode, 1);
+      print_node->kind = AstNodeKind_PrintStmt;
+      *node = print_node;
+      AstPrintStmt* print_stmt = &print_node->print_stmt;
+
+      if(expr_node)
+      {
+        print_stmt->expr = expr_node;
+      }/* else {
+        syntax_error(input, "Expression required after 'print'");
+        success = false;
+      }*/
+
+      if(input->token == Token_BackSlash)
+      {
+        consume_token(input, symbol_table);
+
+        if(input->token == Token_Id)
+        {
+          if(cstr_match("n", input->lexeme.str))
+          {
+            print_stmt->new_line = true;
+            consume_token(input, symbol_table);
+          } else {
+            syntax_error(input, "Expected new line char '\n'");
+            success = false;
+          }
+        }
+      }
+    }
+  }
+  return success;
+}/*<<<*/
+
+bool32
 parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                   AstBlock* enclosing_block, AstNode** node)
 {/*>>>*/
@@ -2006,6 +2092,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
     Alt_While,
     Alt_Return,
     Alt_Break,
+    Alt_Print,
     Alt_EmptyStmt,
   } Alternative;
 
@@ -2120,6 +2207,26 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
       case Alt_Var:
       {
         success = parse_var_statement(arena, input, symbol_table, enclosing_block, &stmt_node);
+        if(success)
+        {
+          if(stmt_node)
+          {
+            alt = Alt__Null;
+            if(input->token == Token_Semicolon)
+              consume_token(input, symbol_table);
+            else {
+              syntax_error(input, "Missing ';'");
+              success = false;
+            }
+          } else
+            alt = (Alternative)((int)alt+1);
+        } else
+          alt = Alt__Null;
+      } break;
+
+      case Alt_Print:
+      {
+        success = parse_print_stmt(arena, input, symbol_table, enclosing_block, &stmt_node);
         if(success)
         {
           if(stmt_node)
@@ -2258,6 +2365,8 @@ ir_build_bin_expr(MemoryArena* arena, IrActivationRecord* actv_rec, AstBinExpr* 
     ir_op->op = IrOpKind_Mul;
   else if(bin_expr->op == AstOpKind_Div)
     ir_op->op = IrOpKind_Div;
+  else if(bin_expr->op == AstOpKind_Mod)
+    ir_op->op = IrOpKind_Mod;
   else if(bin_expr->op == AstOpKind_Equals)
     ir_op->op = IrOpKind_CmpEq;
   else if(bin_expr->op == AstOpKind_NotEquals)
@@ -2354,6 +2463,19 @@ ir_build_value(MemoryArena* arena, IrActivationRecord* actv_rec, AstNode* ast_no
   }
   else
     assert(false);
+  return ir_node;
+}/*<<<*/
+
+IrNode*
+ir_build_print_stmt(MemoryArena* arena, IrActivationRecord* actv_rec, AstPrintStmt* ast_print)
+{/*>>>*/
+  IrNode* ir_node = mem_push_struct(arena, IrNode, 1);
+  ir_node->kind = IrNodeKind_PrintStmt;
+  IrPrintStmt* ir_print = &ir_node->print_stmt;
+  if(ast_print->expr) {
+    ir_print->value = &ir_build_value(arena, actv_rec, ast_print->expr)->value;
+  }
+  ir_print->new_line = ast_print->new_line;
   return ir_node;
 }/*<<<*/
 
@@ -2620,6 +2742,8 @@ ir_build_statement(MemoryArena* arena, IrActivationRecord* actv_rec, AstNode* as
     ir_node = ir_build_while_stmt(arena, actv_rec, &ast_node->while_stmt);
   else if(ast_node->kind == AstNodeKind_BreakStmt)
     ir_node = ir_build_break_stmt(arena, actv_rec, &ast_node->break_stmt);
+  else if(ast_node->kind == AstNodeKind_PrintStmt)
+    ir_node = ir_build_print_stmt(arena, actv_rec, &ast_node->print_stmt);
   else if(ast_node->kind == AstNodeKind_EmptyStmt)
     ir_node = ir_build_noop(arena);
   else
@@ -2848,6 +2972,8 @@ gen_bin_expr(MemoryArena* arena, List* code, IrBinExpr* bin_expr)
       emit_instr(arena, code, Opcode_MUL);
     else if(bin_expr->op == IrOpKind_Div)
       emit_instr(arena, code, Opcode_DIV);
+    else if(bin_expr->op == IrOpKind_Mod)
+      emit_instr(arena, code, Opcode_MOD);
     else if(bin_expr->op == IrOpKind_CmpEq)
       emit_instr(arena, code, Opcode_CMPEQ);
     else if(bin_expr->op == IrOpKind_CmpNEq)
@@ -3104,6 +3230,17 @@ gen_statement(MemoryArena* arena, List* code, IrNode* stmt_node)
 
     emit_instr_str(arena, code, Opcode_LABEL, ir_while->label_break);
   }
+  else if(stmt_node->kind == IrNodeKind_PrintStmt)
+  {
+    IrPrintStmt* ir_print = &stmt_node->print_stmt;
+    if(ir_print->value)
+    {
+      gen_load_rvalue(arena, code, ir_print->value);
+      emit_instr(arena, code, Opcode_PRINT);
+    }
+    if(ir_print->new_line)
+      emit_instr(arena, code, Opcode_PRINTNL);
+  }
   else
     assert(false);
 }/*<<<*/
@@ -3195,6 +3332,12 @@ print_code(VmProgram* vm_program)
       {
         assert(instr->param_type == ParamType__Null);
         print_instruction(vm_program, "div");
+      } break;
+
+      case Opcode_MOD:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "mod");
       } break;
 
       case Opcode_LOAD:
@@ -3309,6 +3452,18 @@ print_code(VmProgram* vm_program)
       {
         assert(instr->param_type == ParamType__Null);
         print_instruction(vm_program, "not");
+      } break;
+
+      case Opcode_PRINT:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "print");
+      } break;
+
+      case Opcode_PRINTNL:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "printnl");
       } break;
 
       default:

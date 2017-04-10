@@ -206,6 +206,9 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
       else if(cstr_match(mnemonic, "print")) {
         instr.opcode = Opcode_PRINT;
       }
+      else if(cstr_match(mnemonic, "printnl")) {
+        instr.opcode = Opcode_PRINTNL;
+      }
       else if(cstr_match(mnemonic, "dup")) {
         instr.opcode = Opcode_DUP;
       }

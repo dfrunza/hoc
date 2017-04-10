@@ -138,9 +138,10 @@ execute_instr(HocMachine* machine, Instruction* instr)
     } break;/*<<<*/
 
     case Opcode_ADD:
-    case Opcode_DIV:
-    case Opcode_MUL:
     case Opcode_SUB:
+    case Opcode_MUL:
+    case Opcode_DIV:
+    case Opcode_MOD:
     {/*>>>*/
       int32 arg_sp = machine->sp-2;
       if(check_stack_bounds(machine, arg_sp))
@@ -157,6 +158,12 @@ execute_instr(HocMachine* machine, Instruction* instr)
         }
         else if(opcode == Opcode_MUL) {
           result = arg1 * arg2;
+        }
+        else if(opcode == Opcode_MOD) {
+          if(arg2 != 0)
+            result = arg1 % arg2;
+          else
+            return ExecResult_DivByZero;
         }
         else if(opcode == Opcode_DIV)
         {
@@ -431,23 +438,25 @@ execute_instr(HocMachine* machine, Instruction* instr)
         return ExecResult_InvalidMemoryAccess;
     } break;/*<<<*/
 
-//    case Opcode_PRINT:
-//      {/*>>>*/
-//        int32 sp = machine->sp-VMWORD;
-//        if(check_stack_bounds(machine, sp))
-//        {
-//          int32 location = *(int32*)&memory[sp];
-//          for(char* charPtr = (char*)(memory + location);
-//              *charPtr != '\0';
-//              charPtr++)
-//          {
-//            putchar(*charPtr);
-//          }
-//          machine->sp = sp;
-//          machine->ip++;
-//        } else
-//          return ExecResult_InvalidMemoryAccess;
-//      } break;/*<<<*/
+    case Opcode_PRINT:
+    {/*>>>*/
+      int32 arg_sp = machine->sp-1;
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        int32 arg = *(int32*)&memory[arg_sp*VMWORD];
+        printf("%d", arg);
+
+        machine->sp = arg_sp;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;/*<<<*/
+
+    case Opcode_PRINTNL:
+    {/*>>>*/
+      putchar('\n');
+      machine->ip++;
+    } break;/*<<<*/
 
     case Opcode_HALT:
         return ExecResult_EndOfProgram;
@@ -493,9 +502,11 @@ run_program(HocMachine* machine)
 
   if(exec_result == ExecResult_EndOfProgram)
   {
+#if 0
     //Memory dump
     for(int i = 0; i <= VMWORD*30; i += VMWORD)
       printf("%d ", *(int32*)&machine->memory[i]);
+#endif
   }
   else {
     switch(exec_result)
@@ -513,7 +524,7 @@ run_program(HocMachine* machine)
         error("Invalid operand size");
         break;
       case ExecResult_DivByZero:
-        error("Division by zero");
+        error("Attemp to divide by zero");
         break;
 
       default:

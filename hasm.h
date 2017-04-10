@@ -40,6 +40,7 @@ typedef enum
 
   Opcode_NOOP,
   Opcode_PRINT,
+  Opcode_PRINTNL,
 }/*<<<*/
 Opcode;
 

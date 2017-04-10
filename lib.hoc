@@ -25,3 +25,19 @@ proc power(var a, var power)
   }
   return result;
 }
+
+proc gcd(var a, var b)
+{
+  var result = 1;
+  if(b != 0)
+  {
+    var r = a % b;
+    result = b;
+    if(r == 0)
+      result = b;
+    else
+      result = gcd(b, r);
+  }
+  return result;
+}
+

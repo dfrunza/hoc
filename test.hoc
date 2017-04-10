@@ -2,7 +2,9 @@ import "lib.hoc"
 
 proc main()
 {
+  /*
   fibo(42);
-  print power(12, 2) \n;
+  print power(12, 2) \n;*/
+  fizzbuzz(100);
 }
 

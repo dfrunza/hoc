@@ -75,3 +75,30 @@ proc fibo(var n)
     }
   }
 }
+
+/*
+   For all integers from 1 to 'n' print:
+     -3 if it's divisible by 3
+     -5 if it's divisible by 5
+     -15 if it's divisible by 15
+     else print the integer itself
+*/
+proc fizzbuzz(var n)
+{
+  if(n > 0)
+  {
+    while(n)
+    {
+      if((n % 15) == 0)
+        print (-15)\n;
+      else if((n % 3) == 0)
+        print (-3)\n;
+      else if((n % 5) == 0)
+        print (-5)\n;
+      else
+        print n \n;
+
+      n = n-1;
+    }
+  }
+}

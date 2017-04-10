@@ -108,7 +108,7 @@ write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
 bool32
 write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
 {/*>>>*/
-  int bytes_written = file_write_bytes(out_files->irc.name, (char*)hasm_code->code_start, hasm_code->code_size);
+  size_t bytes_written = file_write_bytes(out_files->irc.name, (char*)hasm_code->code_start, hasm_code->code_size);
   bool32 success = (bytes_written == hasm_code->code_size);
   if(!success)
     error("IRC file '%s' incompletely written", out_files->irc.name);

@@ -23,7 +23,7 @@ typedef struct
 SourceProgram;
 
 int
-break_instr_into_components(char* str, char* components[], int max_component_count)
+instr_to_components(char* str, char* components[], int max_component_count)
 {/*>>>*/
   int component_count = 0;
 
@@ -156,7 +156,7 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
     instr.source_line_nr = instr_line->source_line_nr;
 
     char* components[2] = {0};
-    int component_count = break_instr_into_components(instr_line->string, components, sizeof_array(components));
+    int component_count = instr_to_components(instr_line->string, components, sizeof_array(components));
     if(component_count >= 1 && component_count <= sizeof_array(components))
     {
       char* mnemonic = components[0];

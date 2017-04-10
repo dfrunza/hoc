@@ -360,16 +360,16 @@ path_make_dir(char* file_path)
 }/*<<<*/
 
 uint
-file_write_bytes(char* file_path, char* text, int count)
+file_write_bytes(char* file_path, char* text, size_t count)
 {/*>>>*/
-  uint bytesWritten = 0;
-  FILE* hFile = fopen(file_path, "wb");
-  if(hFile)
+  uint bytes_written = 0;
+  FILE* h_file = fopen(file_path, "wb");
+  if(h_file)
   {
-    bytesWritten = (uint)fwrite(text, 1, count, hFile);
-    fclose(hFile);
+    bytes_written = (uint)fwrite(text, 1, count, h_file);
+    fclose(h_file);
   }
-  return bytesWritten;
+  return bytes_written;
 }/*<<<*/
 
 char*

@@ -2,6 +2,6 @@ import "lib.hoc"
 
 proc main()
 {
-  print gcd(20, 15);
+  print gcd(21, 9);
 }
 

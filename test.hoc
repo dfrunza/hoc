@@ -2,6 +2,9 @@ import "lib.hoc"
 
 proc main()
 {
-  print gcd(21, 9);
+  /*
+  fibo(42);
+  print power(12, 2) \n;*/
+  fizzbuzz(100);
 }
 

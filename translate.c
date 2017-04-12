@@ -778,7 +778,7 @@ lexeme_install_dquot_str(TokenStream* input, char* begin_char, char* end_char)
 
   char* dest_str = lexeme;
   char* src_str = begin_char+1;
-  for(int i = 0; i < len; i++)
+  for(uint i = 0; i < len; i++)
   {
     *dest_str++ = *src_str++;
   }

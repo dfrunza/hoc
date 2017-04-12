@@ -89,7 +89,7 @@ typedef struct
   char         groove[4];
   int          instr_count;
   uint8*       code_start;
-  int          code_size;
+  uint         code_size;
   Instruction* instr_array;
 }/*<<<*/
 HasmCode;

@@ -10,13 +10,13 @@ set LinkerFlags=-incremental:no -opt:ref -subsystem:console
 
 set Program=test
 
-cl %CompilerFlags% ..\hocc.c /link %LinkerFlags%
+..\ctime.exe cl %CompilerFlags% ..\hocc.c /link %LinkerFlags%
 
 if %errorlevel% neq 0 goto :build_failed
-hocc.exe %cd%\..\%Program%.hoc
+..\ctime.exe hocc.exe %cd%\..\%Program%.hoc
 
 if %errorlevel% neq 0 goto :hocc_exe_error
-cl /Fe:%Program%.exe %CompilerFlags% ..\vm.c %Program%.res /link %LinkerFlags% 
+..\ctime.exe cl /Fe:%Program%.exe %CompilerFlags% ..\vm.c %Program%.res /link %LinkerFlags% 
 
 rem echo Build successful
 goto :end

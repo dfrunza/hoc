@@ -1,0 +1,25 @@
+/* Greatest Common Divisor */
+proc gcd(var A, var B)
+{
+  var a = abs(A);
+  var b = abs(B);
+  var result = a;
+  if(b != 0)
+  {
+    result = b;
+    var r = a % b;
+    if(r == 0)
+      result = b;
+    else
+      result = gcd(b, r);
+  }
+  return result;
+}
+
+/* Least Common Multiple */
+proc lcm(var a, var b)
+{
+  return abs(a*b)/gcd(a, b);
+}
+
+

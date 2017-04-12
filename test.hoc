@@ -1,8 +1,8 @@
-import "lib.hoc"
+import "hlib/sqrt.hoc"
 
 proc main()
 {
-  var n = 10;
+  var n = 124410;
   print sqrt_ceil(n) \n;
 }
 

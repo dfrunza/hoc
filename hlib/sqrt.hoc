@@ -1,0 +1,27 @@
+proc sqrt_iter(var x, var g)
+{
+  var r = x/g;
+  if(r == g)
+    return r;
+  else
+    return (r+g)/2;
+}
+
+/*
+   Computes smallest number 'r' such that:
+      r*r >= x
+*/
+proc sqrt_ceil(var x)
+{
+  var g = x;
+  var r = 1;
+  while(g && (g != r))
+  {
+    g = r;
+    r = sqrt_iter(x, g);
+  }
+  if(g*g < x)
+    g = g+1;
+  return g;
+}
+

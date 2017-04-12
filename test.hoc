@@ -2,9 +2,7 @@ import "lib.hoc"
 
 proc main()
 {
-  /*
-  fibo(42);
-  print power(12, 2) \n;*/
-  fizzbuzz(100);
+  var n = 10;
+  print sqrt_ceil(n) \n;
 }
 

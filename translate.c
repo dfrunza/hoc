@@ -1592,12 +1592,15 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
         } else
         {
           success = parse_statement(arena, input, symbol_table, enclosing_block, &body_node);
-          if(body_node)
+          if(success)
           {
-            while_stmt->body = body_node;
-          } else {
-            syntax_error(input, "Statement(s) required");
-            success = false;
+            if(body_node)
+            {
+              while_stmt->body = body_node;
+            } else {
+              syntax_error(input, "Statement(s) required");
+              success = false;
+            }
           }
         }
       }

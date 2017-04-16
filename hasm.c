@@ -2,14 +2,14 @@
 #include "hasm.h"
 
 typedef struct
-{/*>>>*/
+{
   char* string;
   int instr_address;
-}/*<<<*/
+}
 Label;
 
 typedef struct
-{/*>>>*/
+{
   char* text;
 
   int max_lines;
@@ -19,12 +19,12 @@ typedef struct
   int max_labels;
   int labesl_count;
   Label labels[512]; //FIXME: Unchecked bounds
-}/*<<<*/
+}
 SourceProgram;
 
 int
 instr_to_components(char* str, char* components[], int max_component_count)
-{/*>>>*/
+{
   int component_count = 0;
 
   char* component = str;
@@ -57,11 +57,11 @@ instr_to_components(char* str, char* components[], int max_component_count)
   } while(*char_ptr != '\0' && *char_ptr != ';');
 
   return component_count;
-}/*<<<*/
+}
 
 int
 find_instr_address_at_line(SourceProgram* source, int lineNr)
-{/*>>>*/
+{
   int result = -1;
   InstructionLine* line = source->lines;
   for(int line_index = 0; line_index < source->line_count; line_index++)
@@ -74,11 +74,11 @@ find_instr_address_at_line(SourceProgram* source, int lineNr)
     line++;
   }
   return result;
-}/*<<<*/
+}
 
 Label*
 find_label(SourceProgram* source, char* label_string)
-{/*>>>*/
+{
   Label* result = 0;
   for(int i = 0; i < source->labesl_count; i++)
   {
@@ -90,18 +90,18 @@ find_label(SourceProgram* source, char* label_string)
     }
   }
   return result;
-}/*<<<*/
+}
 
 bool32
 is_valid_label(char *label)
-{/*>>>*/
+{
   char start_char = *label;
   return ('A' <= start_char && start_char <= 'Z') || ('a' <= start_char && start_char <= 'z') || start_char == '.';
-}/*<<<*/
+}
 
 void
 process_source_lines(SourceProgram* source)
-{/*>>>*/
+{
   source->line_count = 0;
   char* char_ptr = &source->text[0];
   if(*char_ptr != '\0')
@@ -136,11 +136,11 @@ process_source_lines(SourceProgram* source)
       }
     }
   }
-}/*<<<*/
+}
 
 bool32
 build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
-{/*>>>*/
+{
   HasmCode* code = mem_push_struct(arena, HasmCode, 1);
   cstr_copy(code->groove, "IRC");
   code->code_start = (uint8*)code;
@@ -404,11 +404,11 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
   }
 
   return true;
-}/*<<<*/
+}
 
 bool32
 translate_ir_to_code(MemoryArena* arena, char* text, HasmCode** code)
-{/*>>>*/
+{
   bool32 success = true;
 
   SourceProgram source = {0};
@@ -417,4 +417,4 @@ translate_ir_to_code(MemoryArena* arena, char* text, HasmCode** code)
 
   success = build_ir_code(arena, &source, code);
   return success;
-}/*<<<*/
+}

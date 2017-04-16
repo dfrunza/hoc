@@ -6,25 +6,25 @@
 #define OUT_RC "CODE  VM  \"%s\""
 
 typedef struct
-{/*>>>*/
+{
   char* name;
   int len;
-}/*<<<*/
+}
 FileName;
 
 typedef struct
-{/*>>>*/
+{
   char strings[4*80 + 4*10];
   FileName ir;
   FileName irc;
   FileName rc;
   FileName res;
-}/*<<<*/
+}
 OutFileNames;
 
 bool32
 make_file_names(OutFileNames* out_files, char* stem)
-{/*>>>*/
+{
   int stem_len = cstr_len(stem);
   assert(stem_len > 0);
   bool32 success = (stem_len > 0 && stem_len < 80);
@@ -54,11 +54,11 @@ make_file_names(OutFileNames* out_files, char* stem)
   } else
     error("Length of file name out of range : '%s'", stem);
   return success;
-}/*<<<*/
+}
 
 bool32
 write_res_file(OutFileNames* out_files)
-{/*>>>*/
+{
   char buf[200];
   sprintf(buf, OUT_RC, out_files->irc.name);
   int text_len = cstr_len(buf);
@@ -93,31 +93,31 @@ write_res_file(OutFileNames* out_files)
     success = false;
   }
   return success;
-}/*<<<*/
+}
 
 bool32
 write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
-{/*>>>*/
+{
   int bytes_written = file_write_bytes(out_files->ir.name, vm_program->text.head, vm_program->text_len);
   bool32 success = (bytes_written == vm_program->text_len);
   if(!success)
     error("IR file '%s' incompletely written", out_files->ir.name);
   return success;
-}/*<<<*/
+}
 
 bool32
 write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
-{/*>>>*/
+{
   size_t bytes_written = file_write_bytes(out_files->irc.name, (char*)hasm_code->code_start, hasm_code->code_size);
   bool32 success = (bytes_written == hasm_code->code_size);
   if(!success)
     error("IRC file '%s' incompletely written", out_files->irc.name);
   return success;
-}/*<<<*/
+}
 
 int
 main(int argc, char* argv[])
-{/*>>>*/
+{
   int ret = 0; // success
 
   if(argc >= 2)
@@ -165,4 +165,4 @@ main(int argc, char* argv[])
   }
 
   return ret;
-}/*<<<*/
+}

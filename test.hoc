@@ -1,8 +1,11 @@
-import "hlib/sqrt.hoc"
+include "hlib/abs.hoc"
+include "hlib/minmax.hoc"
+include "hlib/sqrt.hoc"
+include "hlib/gcd.hoc"
 
 proc main()
 {
-  var n = 124410;
-  print sqrt_ceil(n) \n;
+  var n = gcd(77*13*5*2, 17*7*2*5);
+  print n;
 }
 

@@ -1,4 +1,6 @@
-/* Prints the first 'n' Fibonacci numbers */
+/*
+   Prints the first 'n' Fibonacci numbers
+ */
 proc fibo(var n)
 {
   if(n > 0)

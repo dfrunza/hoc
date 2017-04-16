@@ -2,10 +2,13 @@ include "hlib/abs.hoc"
 include "hlib/minmax.hoc"
 include "hlib/sqrt.hoc"
 include "hlib/gcd.hoc"
+include "hlib/fibo.hoc"
 
 proc main()
 {
+  /*
   var n = gcd(77*13*5*2, 17*7*2*5);
-  print n;
+  print n;*/
+  fibo(20);
 }
 

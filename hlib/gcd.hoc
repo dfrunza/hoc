@@ -1,4 +1,6 @@
-/* Greatest Common Divisor */
+/*
+   Greatest Common Divisor
+ */
 proc gcd(var A, var B)
 {
   var a = abs(A);
@@ -16,7 +18,9 @@ proc gcd(var A, var B)
   return result;
 }
 
-/* Least Common Multiple */
+/*
+   Least Common Multiple
+ */
 proc lcm(var a, var b)
 {
   return abs(a*b)/gcd(a, b);

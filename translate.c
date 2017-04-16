@@ -143,7 +143,7 @@ AstNodeKind;
 
 typedef struct
 {
-  List proc_list; // of AstNode type
+  List proc_list; // <AstNode>
   AstNode* body;
 }
 AstModule;
@@ -199,7 +199,7 @@ typedef struct
 {
   Symbol* symbol;
   char* name;
-  List formal_args;
+  List formal_args; // <AstVarDecl>
   AstBlock* body;
   IrProc* ir_proc;
   AstVarDecl ret_var;
@@ -219,7 +219,7 @@ typedef struct
 {
   Symbol* symbol;
   char* name;
-  List actual_args;
+  List actual_args; // <AstNode>
   AstProc* proc;
 }
 AstCall;
@@ -265,10 +265,10 @@ typedef struct Block_
   AstNode* owner;
   int block_id;
   int nesting_depth;
-  List decl_vars;
-  List local_occurs;
-  List non_local_occurs;
-  List stmt_list;
+  List decl_vars; // <AstVarDecl>
+  List local_occurs; // <AstVarOccur>
+  List non_local_occurs; // <AstVarOccur>
+  List stmt_list; // <AstNode>
   struct Block_* enclosing_block;
 }
 AstBlock;
@@ -372,7 +372,7 @@ IrValueKind;
 typedef struct
 {
   IrProc* proc;
-  List actual_args;
+  List actual_args; // <IrNode>
 }
 IrCall;
 
@@ -451,7 +451,7 @@ typedef struct IrProc_
 {
   char* label;
   char* label_end;
-  List instr_list;
+  List instr_list; // <IrNode>
   int ret_size;
   int args_size;
   int locals_size;
@@ -460,8 +460,8 @@ IrProc;
 
 typedef struct IrBlock_
 {
-  List instr_list;
-  List access_links;
+  List instr_list; // <IrNode>
+  List access_links; // <AccessLink>
   int links_size;
   int locals_size;
 }
@@ -541,8 +541,7 @@ typedef struct
 {
   String text;
   int text_len;
-  List instr_list;
-  MemoryArena* arena;
+  List instr_list; // <Instruction>
 }
 VmProgram;
 
@@ -754,6 +753,18 @@ lexeme_install_dquot_str(TokenStream* input, char* begin_char, char* end_char)
 }
 
 void
+token_stream_init(TokenStream* token_stream, MemoryArena* arena, char* text, char* file_path)
+{
+  token_stream->arena = arena;
+  token_stream->text = text;
+  token_stream->cursor = token_stream->text;
+  token_stream->line_nr = 1;
+  //TODO: Compute the absolute path to the file, so that Vim could properly
+  // jump from the QuickFix window to the error line in the file.
+  token_stream->file_path = file_path;
+}
+
+void
 consume_token(TokenStream* input, SymbolTable* symbol_table)
 {
   input->prev_token = input->token;
@@ -866,10 +877,14 @@ loop:
     while(c != '"' && c != '\0')
       c = *(++fwd_cursor);
 
-    char* lexeme = lexeme_install_dquot_str(input, input->cursor, fwd_cursor);
-    input->lexeme.str = lexeme;
-    input->token = Token_String;
-    input->cursor = ++fwd_cursor;
+    if(c == '"')
+    {
+      char* lexeme = lexeme_install_dquot_str(input, input->cursor, fwd_cursor);
+      input->lexeme.str = lexeme;
+      input->token = Token_String;
+      input->cursor = ++fwd_cursor;
+    } else
+      syntax_error(input, "Missing closing '\"'\n");
   }
   else if(c == '=')
   {
@@ -1141,12 +1156,12 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
 
         if(var_occur->decl_block_offset > 0)
         {
-          list_append(arena, &enclosing_block->non_local_occurs, id_node);
+          list_append(arena, &enclosing_block->non_local_occurs, var_occur);
         }
         else
         {
           assert(var_occur->decl_block_offset == 0);
-          list_append(arena, &enclosing_block->local_occurs, id_node);
+          list_append(arena, &enclosing_block->local_occurs, var_occur);
         }
       }
       else if(symbol->kind == SymbolKind_Proc)
@@ -1495,7 +1510,8 @@ parse_formal_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* 
   success = parse_formal_argument(arena, input, symbol_table, enclosing_block, &arg_node);
   if(success && arg_node)
   {
-    list_append(arena, &proc->formal_args, arg_node);
+    assert(arg_node->kind == AstNodeKind_VarDecl);
+    list_append(arena, &proc->formal_args, &arg_node->var_decl);
 
     if(input->token == Token_Comma)
     {
@@ -1772,10 +1788,8 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
               ListItem* arg_item = list_first_item(&proc->formal_args);
               while(arg_item)
               {
-                AstNode* node = arg_item->elem;
-                assert(node->kind == AstNodeKind_VarDecl);
-                AstVarDecl* arg = &node->var_decl;
-                Symbol* symbol = node->var_decl.symbol;
+                AstVarDecl* arg = arg_item->elem;
+                Symbol* symbol = arg->symbol;
                 symbol->var = arg;
                 arg->data.size = 1;
 
@@ -1842,9 +1856,9 @@ parse_include(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
 
     if(input->token == Token_String)
     {
-      AstNode* imp_node = mem_push_struct(arena, AstNode, 1);
-      imp_node->kind = AstNodeKind_Include;
-      *node = imp_node;
+      AstNode* inc_node = mem_push_struct(arena, AstNode, 1);
+      inc_node->kind = AstNodeKind_Include;
+      *node = inc_node;
 
       String str = {0};
       str_init(&str, arena);
@@ -1853,12 +1867,12 @@ parse_include(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
       str_tidyup(&str);
       str_append(&str, input->lexeme.str);
 
-      AstInclude* ast_imp = &imp_node->include;
-      ast_imp->file_path = str.head;
+      AstInclude* ast_inc = &inc_node->include;
+      ast_inc->file_path = str.head;
 
       consume_token(input, symbol_table);
     } else {
-      syntax_error(input, "Expected a string token after the 'include' keyword\n");
+      syntax_error(input, "String required after 'include'\n");
       success = false;
     }
   }
@@ -1886,26 +1900,22 @@ parse_module_definition(MemoryArena* arena, TokenStream* input, SymbolTable* sym
       {
         if(ast_node)
         {
-          AstInclude* ast_imp = &ast_node->include;
+          AstInclude* ast_inc = &ast_node->include;
 
-          char* hoc_text = file_read_text(arena, ast_imp->file_path);
+          char* hoc_text = file_read_text(arena, ast_inc->file_path);
           if(hoc_text)
           {
-            TokenStream* imp_input = mem_push_struct(arena, TokenStream, 1);
-            imp_input->arena = arena;
-            imp_input->text = hoc_text;
-            imp_input->cursor = imp_input->text;
-            imp_input->line_nr = 1;
-            imp_input->file_path = ast_imp->file_path;
+            TokenStream* inc_input = mem_push_struct(arena, TokenStream, 1);
+            token_stream_init(inc_input, arena, hoc_text, ast_inc->file_path);
 
-            consume_token(imp_input, symbol_table);
+            consume_token(inc_input, symbol_table);
 
-            success = parse_module_definition(arena, imp_input, symbol_table, enclosing_block, module);
+            success = parse_module_definition(arena, inc_input, symbol_table, enclosing_block, module);
             if(success)
               success = parse_module_definition(arena, input, symbol_table, enclosing_block, module);
           } else
           {
-            syntax_error(input, "File could not be read: %s", ast_imp->file_path);
+            syntax_error(input, "File could not be read: %s", ast_inc->file_path);
             success = false;
           }
         }
@@ -2267,15 +2277,15 @@ parse_statement_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
   {
     if(stmt_node->kind == AstNodeKind_VarDecl)
     {
-      list_append(arena, &block->decl_vars, stmt_node);
       AstVarDecl* var_decl = &stmt_node->var_decl;
+      list_append(arena, &block->decl_vars, var_decl);
       if(var_decl->init_expr)
         list_append(arena, &block->stmt_list, var_decl->init_expr);
     }
     else
       list_append(arena, &block->stmt_list, stmt_node);
 
-    success = parse_statement_list(arena, input, symbol_table, block); //FIXME: Is this tail-recursion - can it be optimized?
+    success = parse_statement_list(arena, input, symbol_table, block);
   }
   return success;
 }
@@ -2369,12 +2379,11 @@ ir_block_compute_activation_record(MemoryArena* arena, AstBlock* ast_block, IrBl
   List post_fp_data = {0};
   list_init(&post_fp_data);
 
-  {/* compute the access links for non-locals */
+  {/* compute the access links to non-locals */
     ListItem* occur_item = list_first_item(&ast_block->non_local_occurs);
     while(occur_item)
     {
-      AstNode* node = occur_item->elem;
-      AstVarOccur* var_occur = &node->var_occur;
+      AstVarOccur* var_occur = occur_item->elem;
       List* links_list = &ir_block->access_links;
 
       ListItem* link_item = list_first_item(links_list);
@@ -2410,12 +2419,10 @@ ir_block_compute_activation_record(MemoryArena* arena, AstBlock* ast_block, IrBl
     ListItem* node_item = list_first_item(&ast_block->decl_vars);
     while(node_item)
     {
-      AstNode* decl_node = node_item->elem;
-      assert(decl_node->kind == AstNodeKind_VarDecl);
-      AstVarDecl* var_decl = &decl_node->var_decl;
+      AstVarDecl* local = node_item->elem;
 
-      list_append(arena, &post_fp_data, &var_decl->data);
-      ir_block->locals_size += var_decl->data.size;
+      list_append(arena, &post_fp_data, &local->data);
+      ir_block->locals_size += local->data.size;
 
       node_item = node_item->next;
     }
@@ -2436,15 +2443,13 @@ ir_proc_compute_activation_record(MemoryArena* arena, AstProc* ast_proc, IrProc*
   list_append(arena, &pre_fp_data, &ret_var->data);
   ir_proc->ret_size = ret_var->data.size;
 
-  {/* formal args*/
+  {/* formals */
     ListItem* node_item = list_first_item(&ast_proc->formal_args);
     while(node_item)
     {
-      AstNode* decl_node = node_item->elem;
-      assert(decl_node->kind == AstNodeKind_VarDecl);
-      AstVarDecl* var_decl = &decl_node->var_decl;
-      list_append(arena, &pre_fp_data, &var_decl->data);
-      ir_proc->args_size += var_decl->data.size;
+      AstVarDecl* formal = node_item->elem;
+      list_append(arena, &pre_fp_data, &formal->data);
+      ir_proc->args_size += formal->data.size;
 
       node_item = node_item->next;
     }
@@ -2454,16 +2459,14 @@ ir_proc_compute_activation_record(MemoryArena* arena, AstProc* ast_proc, IrProc*
   ctrl_links->size = 3;
   list_append(arena, &pre_fp_data, ctrl_links);
 
-  {/* locals*/
+  {/* locals */
     ListItem* node_item = list_first_item(&ast_proc->body->decl_vars);
     while(node_item)
     {
-      AstNode* decl_node = node_item->elem;
-      assert(decl_node->kind == AstNodeKind_VarDecl);
-      AstVarDecl* var_decl = &decl_node->var_decl;
+      AstVarDecl* local = node_item->elem;
 
-      list_append(arena, &post_fp_data, &var_decl->data);
-      ir_proc->locals_size += var_decl->data.size;
+      list_append(arena, &post_fp_data, &local->data);
+      ir_proc->locals_size += local->data.size;
 
       node_item = node_item->next;
     }
@@ -2655,30 +2658,6 @@ ir_build_break_stmt(MemoryArena* arena, AstBreakStmt* ast_break)
   ir_break->depth = ast_break->block_count;
   return ir_node;
 }
-
-#if 0
-void
-ir_block_decl_vars_compute_address(DataArea* locals_area, List* decl_vars)
-{
-  locals_area->loc = actv_rec->sp;
-  {/* locals*/
-    ListItem* node_item = list_first_item(decl_vars);
-    while(node_item)
-    {
-      AstNode* decl_node = node_item->elem;
-      assert(decl_node->kind == AstNodeKind_VarDecl);
-      AstVarDecl* var_decl = &decl_node->var_decl;
-      DataArea* var_data = &var_decl->var_data;
-
-      var_data->loc = actv_rec->sp - actv_rec->fp;
-      actv_rec->sp += var_data->size;
-
-      node_item = node_item->next;
-    }
-  }
-  locals_area->size = actv_rec->sp - locals_area->loc;
-}
-#endif
 
 IrNode*
 ir_build_block(MemoryArena* arena, AstBlock* ast_block)
@@ -3475,8 +3454,7 @@ print_code(VmProgram* vm_program)
   }
 }
 
-bool32
-translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text, VmProgram* vm_program)
+VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
 {
   bool32 success = false;
 
@@ -3484,13 +3462,7 @@ translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text, VmProgram* vm
   symbol_table.arena = arena;
 
   TokenStream token_stream = {0};
-  token_stream.arena = arena;
-  token_stream.text = hoc_text;
-  token_stream.cursor = token_stream.text;
-  token_stream.line_nr = 1;
-  //TODO: Compute the absolute path to the file, so that Vim could properly
-  // jump from the QuickFix window to the error line in the file.
-  token_stream.file_path = file_path;
+  token_stream_init(&token_stream, arena, hoc_text, file_path);
 
   register_keywords(&symbol_table);
   consume_token(&token_stream, &symbol_table);
@@ -3498,6 +3470,7 @@ translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text, VmProgram* vm
   AstNode* ast_node = 0;
   success = parse_module(arena, &token_stream, &symbol_table, &ast_node);
 
+  VmProgram* vm_program = 0;
   if(success)
   {
     assert(ast_node->kind == AstNodeKind_Module);
@@ -3507,16 +3480,14 @@ translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text, VmProgram* vm
     IrNode* ir_module_node = ir_build_module(arena, &ast_node->module);
     if(ir_module_node)
     {
+      vm_program = mem_push_struct(arena, VmProgram, 1);
       list_init(&vm_program->instr_list);
       gen_module(arena, &vm_program->instr_list, &ir_module_node->module);
 
       str_init(&vm_program->text, arena);
       print_code(vm_program);
     }
-    else
-      success = false;
   }
-
-  return success;
+  return vm_program;
 }
 

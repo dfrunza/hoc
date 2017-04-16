@@ -128,32 +128,30 @@ main(int argc, char* argv[])
     char* hoc_text = file_read_text(&arena, file_path);
     if(hoc_text)
     {
-      VmProgram vm_program = {0};
-      bool32 success = translate_hoc(&arena, file_path, hoc_text, &vm_program);
-      if(success)
+      VmProgram* vm_program = translate_hoc(&arena, file_path, hoc_text);
+      if(vm_program)
       {
         OutFileNames out_files = {0};
         char* file_stem = path_make_stem(file_path);
 
-        success = make_file_names(&out_files, file_stem) &&
-          write_ir_file(&out_files, &vm_program);
-#if 1
+        bool32 success = make_file_names(&out_files, file_stem) &&
+          write_ir_file(&out_files, vm_program);
+
         if(success)
         {
           HasmCode* hasm_code = 0;
-          char* hasm_text = vm_program.text.head;
+          char* hasm_text = vm_program->text.head;
           bool32 success = translate_ir_to_code(&arena, hasm_text, &hasm_code);
 
           if(success)
-          {
             success = write_irc_file(&out_files, hasm_code) && write_res_file(&out_files);
-            if(!success)
-              ret = -1;
-          }
         }
-#else
-        ret = 0;
-#endif
+
+        if(!success)
+          ret = -1;
+      } else {
+        error("Program could not be translated\n");
+        ret = -1;
       }
     } else {
       error("File could not be read: %s", file_path);

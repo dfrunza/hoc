@@ -1,10 +1,5 @@
-/*
-   Greatest Common Divisor
- */
-proc gcd(var A, var B)
+proc gcd_(var a, var b)
 {
-  var a = abs(A);
-  var b = abs(B);
   var result = a;
   if(b != 0)
   {
@@ -13,9 +8,17 @@ proc gcd(var A, var B)
     if(r == 0)
       result = b;
     else
-      result = gcd(b, r);
+      result = gcd_(b, r);
   }
   return result;
+}
+
+/*
+   Greatest Common Divisor
+ */
+proc gcd(var a, var b)
+{
+  return gcd_(abs(a), abs(b));
 }
 
 /*

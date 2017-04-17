@@ -17,6 +17,7 @@ typedef enum
   Opcode_MUL,
   Opcode_DIV,
   Opcode_MOD,
+  Opcode_NEG,
   Opcode_INCR,
   Opcode_DECR,
 

@@ -118,7 +118,7 @@ write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
 int
 main(int argc, char* argv[])
 {
-  int ret = 0; // success
+  int ret = -1; // error
 
   if(argc >= 2)
   {
@@ -144,23 +144,20 @@ main(int argc, char* argv[])
           bool32 success = translate_ir_to_code(&arena, hasm_text, &hasm_code);
 
           if(success)
+          {
             success = write_irc_file(&out_files, hasm_code) && write_res_file(&out_files);
-        }
-
-        if(!success)
-          ret = -1;
-      } else {
-        error("Program could not be translated\n");
-        ret = -1;
+            if(success)
+              ret = 0;
+            else
+              error("Could not write IRC/RES file: %s, %s", out_files.irc.name, out_files.res.name);
+          }
+        } else
+          error("Could not write IR file: %s", out_files.ir.name);
       }
-    } else {
+    } else
       error("File could not be read: %s", file_path);
-      ret = -1;
-    }
-  } else {
+  } else
     error("Missing argument: input source file");
-    ret = -1;
-  }
 
   return ret;
 }

@@ -242,6 +242,9 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
       else if(cstr_match(mnemonic, "not")) {
         instr.opcode = Opcode_NOT;
       }
+      else if(cstr_match(mnemonic, "neg")) {
+        instr.opcode = Opcode_NEG;
+      }
       else if(cstr_match(mnemonic, "label")) {
         instr.opcode = Opcode_LABEL;
       }

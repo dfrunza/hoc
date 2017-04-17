@@ -60,7 +60,8 @@ void
 error(char* message, ...)
 {
   va_list args;
-  fprintf(stdout, "error : ");
+  // Commented out, because it's confusing Vim's QuickFix 'jump to error' feature
+//  fprintf(stdout, ":error : ");
 
   va_start(args, message);
   vfprintf(stderr, message, args);

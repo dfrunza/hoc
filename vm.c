@@ -214,8 +214,19 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(check_stack_bounds(machine, arg_sp))
       {
         int32 arg = *(int32*)&memory[arg_sp*VMWORD];
-        bool32 result = !arg;
-        *(int32*)&memory[arg_sp*VMWORD] = result;
+        *(int32*)&memory[arg_sp*VMWORD] = (bool32)!arg;
+        machine->ip++;
+      } else
+        return ExecResult_InvalidMemoryAccess;
+    } break;
+
+    case Opcode_NEG:
+    {
+      int32 arg_sp = machine->sp-1;
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        int32 arg = *(int32*)&memory[arg_sp*VMWORD];
+        *(int32*)&memory[arg_sp*VMWORD] = -arg;
         machine->ip++;
       } else
         return ExecResult_InvalidMemoryAccess;

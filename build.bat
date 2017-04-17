@@ -13,7 +13,7 @@ set Program=test
 ..\ctime.exe cl %CompilerFlags% ..\hocc.c /link %LinkerFlags%
 
 if %errorlevel% neq 0 goto :build_failed
-..\ctime.exe hocc.exe %cd%\..\%Program%.hoc
+rem ..\ctime.exe hocc.exe %cd%\..\%Program%.hoc
 
 if %errorlevel% neq 0 goto :hocc_exe_error
 ..\ctime.exe cl /Fe:%Program%.exe %CompilerFlags% ..\vm.c %Program%.res /link %LinkerFlags% 

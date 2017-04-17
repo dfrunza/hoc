@@ -6,9 +6,7 @@ include "hlib/fibo.hoc"
 
 proc main()
 {
-  /*
-  var n = gcd(77*13*5*2, 17*7*2*5);
-  print n;*/
-  fibo(20);
+  var n = gcd(81, -15);
+  print n;
 }
 

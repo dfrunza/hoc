@@ -3,10 +3,15 @@ include "hlib/minmax.hoc"
 include "hlib/sqrt.hoc"
 include "hlib/gcd.hoc"
 include "hlib/fibo.hoc"
+include "hlib/fizzbuzz.hoc"
 
 proc main()
 {
+  fibo(10);
+  print \n;
   var n = gcd(81, -15);
+  print n \n;
+  n = sqrt_floor(1023);
   print n;
 }
 

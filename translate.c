@@ -233,7 +233,7 @@ AstProc;
 typedef struct
 {
   AstNode* expr;
-  int block_count;
+  int depth;
   AstProc* proc;
 }
 AstReturnStmt;
@@ -271,7 +271,6 @@ AstWhileStmt;
 typedef struct
 {
   AstWhileStmt* while_stmt;
-  int block_count;
   int depth;
 }
 AstBreakStmt;
@@ -921,6 +920,9 @@ bool32 parse_statement(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstN
 bool32 parse_if_stmt(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse_block(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode*, AstNode**);
 bool32 parse_module(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
+void ir_build_value(MemoryArena*, AstNode*);
+void ir_build_statement(MemoryArena*, AstNode*);
+void ir_block_build_statements(MemoryArena*, List*);
 
 bool32
 parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
@@ -1869,7 +1871,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
         {
           AstProc* ret_proc = &block->owner->proc;
           ret_stmt->proc = ret_proc;
-          ret_stmt->block_count = depth;
+          ret_stmt->depth = depth;
 
           AstNode* var_node = mem_push_struct(arena, AstNode, 1);
           var_node->kind = AstNodeKind_VarOccur;
@@ -1885,7 +1887,10 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
           AstNode* assgn_expr_node = mem_push_struct(arena, AstNode, 1);
           assgn_expr_node->kind = AstNodeKind_BinExpr;
           AstBinExpr* assgn_expr = &assgn_expr_node->bin_expr;
+          assgn_expr->op = AstOpKind_Assign;
+          ir_build_value(arena, var_node);
           assgn_expr->left_operand = var_node;
+          ir_build_value(arena, ret_expr);
           assgn_expr->right_operand = ret_expr;
 
           ret_stmt->expr = assgn_expr_node;
@@ -1932,7 +1937,7 @@ parse_break_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
     {
       AstWhileStmt* while_stmt = &block->owner->while_stmt;
       break_stmt->while_stmt = while_stmt;
-      break_stmt->block_count = depth + 1;
+      break_stmt->depth = depth + 1;
     } else {
       syntax_error(input, "'break': no enclosing while statement");
       success = false;
@@ -2198,10 +2203,6 @@ parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
 
 /* IR */
 
-void ir_build_value(MemoryArena*, AstNode*);
-void ir_build_statement(MemoryArena*, AstNode*);
-void ir_block_build_statements(MemoryArena*, List*);
-
 int
 ir_compute_data_loc(int sp, List* areas)
 {
@@ -2413,17 +2414,8 @@ ir_build_value(MemoryArena* arena, AstNode* node_in)
 void
 ir_build_print_stmt(MemoryArena* arena, AstPrintStmt* print_stmt)
 {
-  ir_build_value(arena, print_stmt->expr);
-}
-
-void
-ir_build_return_stmt(MemoryArena* arena, AstReturnStmt* ret_stmt)
-{
-}
-
-void
-ir_build_break_stmt(MemoryArena* arena, AstBreakStmt* ast_break)
-{
+  if(print_stmt->expr)
+    ir_build_value(arena, print_stmt->expr);
 }
 
 void
@@ -2520,13 +2512,13 @@ ir_build_statement(MemoryArena* arena, AstNode* node)
   else if(node->kind == AstNodeKind_Call)
     ir_build_call(arena, &node->call);
   else if(node->kind == AstNodeKind_ReturnStmt)
-    ir_build_return_stmt(arena, &node->ret_stmt);
+    ;
   else if(node->kind == AstNodeKind_IfStmt)
     ir_build_if_stmt(arena, &node->if_stmt);
   else if(node->kind == AstNodeKind_WhileStmt)
     ir_build_while_stmt(arena, &node->while_stmt);
   else if(node->kind == AstNodeKind_BreakStmt)
-    ir_build_break_stmt(arena, &node->break_stmt);
+    ;
   else if(node->kind == AstNodeKind_PrintStmt)
     ir_build_print_stmt(arena, &node->print_stmt);
   else if(node->kind == AstNodeKind_EmptyStmt)
@@ -2788,7 +2780,7 @@ gen_return_stmt(MemoryArena* arena, List* code, AstReturnStmt* ret_stmt)
   emit_instr(arena, code, Opcode_POP);
 
   AstProc* proc = ret_stmt->proc;
-  int depth = ret_stmt->block_count;
+  int depth = ret_stmt->depth;
   while(depth--)
     emit_instr(arena, code, Opcode_LEAVE);
   emit_instr_str(arena, code, Opcode_GOTO, proc->label_end);

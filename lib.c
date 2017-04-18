@@ -1,7 +1,6 @@
 #pragma once
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <windows.h>
 
 typedef unsigned char uchar;
@@ -64,10 +63,18 @@ error(char* message, ...)
 //  fprintf(stdout, ":error : ");
 
   va_start(args, message);
-  vfprintf(stderr, message, args);
-  fprintf(stderr, "\n");
+  vprintf(message, args);
+  printf("\n");
   va_end(args);
 }
+
+#define assert(EXPR)\
+if(!(EXPR))\
+{\
+  printf("Assertion failed: %s\n", #EXPR);\
+  printf("%s:%d", __FILE__, __LINE__);\
+  *(int*)0 = 0;\
+}\
 
 int
 maxi(int a, int b)

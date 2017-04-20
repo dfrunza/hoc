@@ -59,7 +59,7 @@ void
 error(char* message, ...)
 {
   va_list args;
-  // Commented out, because it's confusing Vim's QuickFix 'jump to error' feature
+  // Commented out, because Vim is confused when it tries to jump to the error line
 //  fprintf(stdout, ":error : ");
 
   va_start(args, message);

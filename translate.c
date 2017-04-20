@@ -109,10 +109,10 @@ typedef enum
   AstOpKind_Call,
   AstOpKind_Assign,
   
-  AstOpKind_Equals,
-  AstOpKind_NotEquals,
-  AstOpKind_Less,
-  AstOpKind_Greatr,
+  AstOpKind_LogicEquals,
+  AstOpKind_LogicNotEquals,
+  AstOpKind_LogicLess,
+  AstOpKind_LogicGreater,
   AstOpKind_LogicAnd,
   AstOpKind_LogicOr,
   AstOpKind_LogicNot,
@@ -197,6 +197,8 @@ typedef struct
   AstOpKind op;
   AstNode* left_operand;
   AstNode* right_operand;
+
+  char* label_end; // for boolean expressions
 }
 AstBinExpr;
 
@@ -1104,13 +1106,13 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
     else if(input->token == Token_Percent)
       expr->op = AstOpKind_Mod;
     else if(input->token == Token_EqualsEquals)
-      expr->op = AstOpKind_Equals;
+      expr->op = AstOpKind_LogicEquals;
     else if(input->token == Token_BangEquals)
-      expr->op = AstOpKind_NotEquals;
+      expr->op = AstOpKind_LogicNotEquals;
     else if(input->token == Token_AngleLeft)
-      expr->op = AstOpKind_Less;
+      expr->op = AstOpKind_LogicLess;
     else if(input->token == Token_AngleRight)
-      expr->op = AstOpKind_Greatr;
+      expr->op = AstOpKind_LogicGreater;
     else if(input->token == Token_AmprsndAmprsnd)
       expr->op = AstOpKind_LogicAnd;
     else if(input->token == Token_PipePipe)
@@ -2412,6 +2414,16 @@ build_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
 void
 build_bin_expr(MemoryArena* arena, AstBinExpr* bin_expr)
 {
+  String label_id = {0};
+  str_init(&label_id, arena);
+  make_unique_label(&label_id);
+
+  String label = {0};
+  str_init(&label, arena);
+  str_append(&label, label_id.head);
+  str_append(&label, ".logic-end");
+  bin_expr->label_end = label.head;
+
   build_node(arena, bin_expr->left_operand);
   build_node(arena, bin_expr->right_operand);
 }
@@ -2505,6 +2517,7 @@ build_module(MemoryArena* arena, AstModule* module)
     AstNode* call_node = ast_new_node(arena, AstNodeKind_Call);
     AstCall* call = &call_node->call;
     call->proc = module->main_proc;
+    build_call(arena, call);
     module->main_call = call;
   }
 }
@@ -2584,33 +2597,88 @@ gen_bin_expr(MemoryArena* arena, List* code, AstBinExpr* bin_expr)
   }
   else
   {
-    gen_load_rvalue(arena, code, bin_expr->left_operand);
-    gen_load_rvalue(arena, code, bin_expr->right_operand);
+    switch(bin_expr->op)
+    {
+      case AstOpKind_Add:
+      case AstOpKind_Sub:
+      case AstOpKind_Mul:
+      case AstOpKind_Div:
+      case AstOpKind_Mod:
+      case AstOpKind_LogicEquals:
+      case AstOpKind_LogicNotEquals:
+      case AstOpKind_LogicLess:
+      case AstOpKind_LogicGreater:
+      {
+        gen_load_rvalue(arena, code, bin_expr->left_operand);
+        gen_load_rvalue(arena, code, bin_expr->right_operand);
 
-    if(bin_expr->op == AstOpKind_Add)
-      emit_instr(arena, code, Opcode_ADD);
-    else if(bin_expr->op == AstOpKind_Sub)
-      emit_instr(arena, code, Opcode_SUB);
-    else if(bin_expr->op == AstOpKind_Mul)
-      emit_instr(arena, code, Opcode_MUL);
-    else if(bin_expr->op == AstOpKind_Div)
-      emit_instr(arena, code, Opcode_DIV);
-    else if(bin_expr->op == AstOpKind_Mod)
-      emit_instr(arena, code, Opcode_MOD);
-    else if(bin_expr->op == AstOpKind_Equals)
-      emit_instr(arena, code, Opcode_CMPEQ);
-    else if(bin_expr->op == AstOpKind_NotEquals)
-      emit_instr(arena, code, Opcode_CMPNEQ);
-    else if(bin_expr->op == AstOpKind_Less)
-      emit_instr(arena, code, Opcode_CMPLSS);
-    else if(bin_expr->op == AstOpKind_Greatr)
-      emit_instr(arena, code, Opcode_CMPGRT);
-    else if(bin_expr->op == AstOpKind_LogicAnd)
-      emit_instr(arena, code, Opcode_AND);
-    else if(bin_expr->op == AstOpKind_LogicOr)
-      emit_instr(arena, code, Opcode_OR);
-    else
-      assert(false);
+        if(bin_expr->op == AstOpKind_Add)
+        {
+          emit_instr(arena, code, Opcode_ADD);
+        }
+        else if(bin_expr->op == AstOpKind_Sub)
+        {
+          emit_instr(arena, code, Opcode_SUB);
+        }
+        else if(bin_expr->op == AstOpKind_Mul)
+        {
+          emit_instr(arena, code, Opcode_MUL);
+        }
+        else if(bin_expr->op == AstOpKind_Div)
+        {
+          emit_instr(arena, code, Opcode_DIV);
+        }
+        else if(bin_expr->op == AstOpKind_Mod)
+        {
+          emit_instr(arena, code, Opcode_MOD);
+        }
+        else if(bin_expr->op == AstOpKind_LogicEquals)
+        {
+          emit_instr(arena, code, Opcode_CMPEQ);
+        }
+        else if(bin_expr->op == AstOpKind_LogicNotEquals)
+        {
+          emit_instr(arena, code, Opcode_CMPNEQ);
+        }
+        else if(bin_expr->op == AstOpKind_LogicLess)
+        {
+          emit_instr(arena, code, Opcode_CMPLSS);
+        }
+        else if(bin_expr->op == AstOpKind_LogicGreater)
+        {
+          emit_instr(arena, code, Opcode_CMPGRT);
+        }
+        else
+          assert(false);
+      } break;
+
+      case AstOpKind_LogicAnd:
+      case AstOpKind_LogicOr:
+      {
+        gen_load_rvalue(arena, code, bin_expr->left_operand);
+        emit_instr(arena, code, Opcode_DUP);
+
+        if(bin_expr->op == AstOpKind_LogicAnd)
+        {
+          emit_instr_str(arena, code, Opcode_JUMPZ, bin_expr->label_end);
+          emit_instr(arena, code, Opcode_POP);
+          gen_load_rvalue(arena, code, bin_expr->right_operand);
+          emit_instr_str(arena, code, Opcode_LABEL, bin_expr->label_end);
+        }
+        else if(bin_expr->op == AstOpKind_LogicOr)
+        {
+          emit_instr_str(arena, code, Opcode_JUMPNZ, bin_expr->label_end);
+          emit_instr(arena, code, Opcode_POP);
+          gen_load_rvalue(arena, code, bin_expr->right_operand);
+          emit_instr_str(arena, code, Opcode_LABEL, bin_expr->label_end);
+        }
+        else
+          assert(false);
+      } break;
+
+      default:
+        assert(false);
+    }
   }
 }
 
@@ -2621,9 +2689,9 @@ void gen_unr_expr(MemoryArena* arena, List* code, AstUnrExpr* unr_expr)
   {
     emit_instr(arena, code, Opcode_NEG);
   }
-  else if(unr_expr->op == AstOpKind_NotEquals)
+  else if(unr_expr->op == AstOpKind_LogicNot)
   {
-    emit_instr(arena, code, Opcode_NOT);
+    assert(false);
   }
   else
     assert(false);
@@ -2665,6 +2733,7 @@ gen_load_lvalue(MemoryArena* arena, List* code, AstVarOccur* var_occur)
   emit_instr_int(arena, code, Opcode_PUSH, data->loc);
   emit_instr(arena, code, Opcode_ADD);
 }
+
 void
 gen_load_rvalue(MemoryArena* arena, List* code, AstNode* node)
 {
@@ -2770,6 +2839,64 @@ gen_proc(MemoryArena* arena, List* code, AstProc* proc)
 }
 
 void
+gen_if_stmt(MemoryArena* arena, List* code, AstIfStmt* if_stmt)
+{
+  gen_load_rvalue(arena, code, if_stmt->expr);
+
+  if(if_stmt->else_body)
+    emit_instr_str(arena, code, Opcode_JUMPZ, if_stmt->label_else);
+  else
+    emit_instr_str(arena, code, Opcode_JUMPZ, if_stmt->label_end);
+
+  if(if_stmt->body->kind == AstNodeKind_Block)
+    gen_block(arena, code, &if_stmt->body->block);
+  else
+    gen_statement(arena, code, if_stmt->body);
+
+  emit_instr_str(arena, code, Opcode_GOTO, if_stmt->label_end);
+
+  if(if_stmt->else_body)
+  {
+    emit_instr_str(arena, code, Opcode_LABEL, if_stmt->label_else);
+    AstNode* else_body = if_stmt->else_body;
+    if(else_body->kind == AstNodeKind_Block)
+      gen_block(arena, code, &else_body->block);
+    else
+      gen_statement(arena, code, else_body);
+  }
+
+  emit_instr_str(arena, code, Opcode_LABEL, if_stmt->label_end);
+  emit_instr(arena, code, Opcode_POP); // expr. value
+}
+
+void
+gen_while_stmt(MemoryArena* arena, List* code, AstWhileStmt* while_stmt)
+{
+  emit_instr_str(arena, code, Opcode_LABEL, while_stmt->label_eval);
+  gen_load_rvalue(arena, code, while_stmt->expr);
+  emit_instr_str(arena, code, Opcode_JUMPZ, while_stmt->label_break);
+  if(while_stmt->body->kind == AstNodeKind_Block)
+    gen_block(arena, code, &while_stmt->body->block);
+  else
+    gen_statement(arena, code, while_stmt->body);
+  emit_instr_str(arena, code, Opcode_GOTO, while_stmt->label_eval);
+
+  emit_instr_str(arena, code, Opcode_LABEL, while_stmt->label_break);
+}
+
+void
+gen_print_stmt(MemoryArena* arena, List* code, AstPrintStmt* print_stmt)
+{
+  if(print_stmt->expr)
+  {
+    gen_load_rvalue(arena, code, print_stmt->expr);
+    emit_instr(arena, code, Opcode_PRINT);
+  }
+  if(print_stmt->new_line)
+    emit_instr(arena, code, Opcode_PRINTNL);
+}
+
+void
 gen_statement(MemoryArena* arena, List* code, AstNode* stmt_node)
 {
   if(stmt_node->kind == AstNodeKind_BinExpr)
@@ -2797,57 +2924,15 @@ gen_statement(MemoryArena* arena, List* code, AstNode* stmt_node)
   }
   else if(stmt_node->kind == AstNodeKind_IfStmt)
   {
-    AstIfStmt* if_stmt = &stmt_node->if_stmt;
-
-    gen_load_rvalue(arena, code, if_stmt->expr);
-    if(if_stmt->else_body)
-      emit_instr_str(arena, code, Opcode_JUMPZ, if_stmt->label_else);
-    else
-      emit_instr_str(arena, code, Opcode_JUMPZ, if_stmt->label_end);
-
-    if(if_stmt->body->kind == AstNodeKind_Block)
-      gen_block(arena, code, &if_stmt->body->block);
-    else
-      gen_statement(arena, code, if_stmt->body);
-
-    emit_instr_str(arena, code, Opcode_GOTO, if_stmt->label_end);
-
-    if(if_stmt->else_body)
-    {
-      emit_instr_str(arena, code, Opcode_LABEL, if_stmt->label_else);
-      AstNode* else_body = if_stmt->else_body;
-      if(else_body->kind == AstNodeKind_Block)
-        gen_block(arena, code, &else_body->block);
-      else
-        gen_statement(arena, code, else_body);
-    }
-    emit_instr_str(arena, code, Opcode_LABEL, if_stmt->label_end);
+    gen_if_stmt(arena, code, &stmt_node->if_stmt);
   }
   else if(stmt_node->kind == AstNodeKind_WhileStmt)
   {
-    AstWhileStmt* while_stmt = &stmt_node->while_stmt;
-
-    emit_instr_str(arena, code, Opcode_LABEL, while_stmt->label_eval);
-    gen_load_rvalue(arena, code, while_stmt->expr);
-    emit_instr_str(arena, code, Opcode_JUMPZ, while_stmt->label_break);
-    if(while_stmt->body->kind == AstNodeKind_Block)
-      gen_block(arena, code, &while_stmt->body->block);
-    else
-      gen_statement(arena, code, while_stmt->body);
-    emit_instr_str(arena, code, Opcode_GOTO, while_stmt->label_eval);
-
-    emit_instr_str(arena, code, Opcode_LABEL, while_stmt->label_break);
+    gen_while_stmt(arena, code, &stmt_node->while_stmt);
   }
   else if(stmt_node->kind == AstNodeKind_PrintStmt)
   {
-    AstPrintStmt* print_stmt = &stmt_node->print_stmt;
-    if(print_stmt->expr)
-    {
-      gen_load_rvalue(arena, code, print_stmt->expr);
-      emit_instr(arena, code, Opcode_PRINT);
-    }
-    if(print_stmt->new_line)
-      emit_instr(arena, code, Opcode_PRINTNL);
+    gen_print_stmt(arena, code, &stmt_node->print_stmt);
   }
   else
     assert(false);
@@ -2916,6 +3001,12 @@ print_code(VmProgram* vm_program)
           print_instruction(vm_program, "pop %d", instr->param.int_num);
         else
           assert(false);
+      } break;
+
+      case Opcode_DUP:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "dup");
       } break;
 
       case Opcode_ADD:
@@ -3006,6 +3097,12 @@ print_code(VmProgram* vm_program)
       {
         assert(instr->param_type == ParamType_String);
         print_instruction(vm_program, "jumpz %s", instr->param.str);
+      } break;
+
+      case Opcode_JUMPNZ:
+      {
+        assert(instr->param_type == ParamType_String);
+        print_instruction(vm_program, "jumpnz %s", instr->param.str);
       } break;
 
       case Opcode_DECR:

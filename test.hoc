@@ -1,27 +1,25 @@
 include "hlib/abs.hoc"
 include "hlib/minmax.hoc"
 include "hlib/sqrt.hoc"
-/*
 include "hlib/gcd.hoc"
 include "hlib/fibo.hoc"
 include "hlib/fizzbuzz.hoc"
-*/
 
 proc main()
 {
+  var n;
+  
   /*
   fibo(10);
   print \n;
-  var n = gcd(81, -15);
+  n = gcd(81, -15);
   print n \n;
-  */
-  var n = sqrt_floor(1023);
+  n = sqrt_floor(1023);
   print n;
-  /*
-  var a = 1;
-  var b = 0;
-  if(a == b)
-    print 9999\n;
   */
+  if((1 || 0 && (0 || 0)) || (1 && (0 || 0 || 0)))
+    print 9999;
+  else
+    print 1111;
 }
 

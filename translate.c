@@ -2866,7 +2866,6 @@ gen_if_stmt(MemoryArena* arena, List* code, AstIfStmt* if_stmt)
   }
 
   emit_instr_str(arena, code, Opcode_LABEL, if_stmt->label_end);
-  emit_instr(arena, code, Opcode_POP); // expr. value
 }
 
 void

@@ -2,7 +2,7 @@ proc power(var a, var power)
 {
   var p = power;
   var result = 1;
-  while(p)
+  while(p > 0)
   {
     result = result*a;
     p = p-1;

@@ -51,10 +51,10 @@ typedef enum
   Token_Equals,
   Token_EqualsEquals,
   Token_BangEquals,
-  Token_AngleLeft,
   Token_AngleRight,
-  Token_AngleLeftEquals,
   Token_AngleRightEquals,
+  Token_AngleLeft,
+  Token_AngleLeftEquals,
   Token_Amprsnd,
   Token_AmprsndAmprsnd,
   Token_Pipe,
@@ -112,7 +112,9 @@ typedef enum
   AstOpKind_LogicEquals,
   AstOpKind_LogicNotEquals,
   AstOpKind_LogicLess,
+  AstOpKind_LogicLessEquals,
   AstOpKind_LogicGreater,
+  AstOpKind_LogicGreaterEquals,
   AstOpKind_LogicAnd,
   AstOpKind_LogicOr,
   AstOpKind_LogicNot,
@@ -723,14 +725,13 @@ loop:
   }
   else if(c == '<')
   {
-    /*
     char* fwd_cursor = input->cursor;
     c = *(++fwd_cursor);
     if(c == '=')
     {
       input->token = Token_AngleLeftEquals;
       input->cursor = ++fwd_cursor;
-    } else*/
+    } else
     {
       input->token = Token_AngleLeft;
       ++input->cursor;
@@ -738,14 +739,13 @@ loop:
   }
   else if(c == '>')
   {
-    /*
     char* fwd_cursor = input->cursor;
     c = *(++fwd_cursor);
     if(c == '=')
     {
       input->token = Token_AngleRightEquals;
       input->cursor = ++fwd_cursor;
-    } else*/
+    } else
     {
       input->token = Token_AngleRight;
       ++input->cursor;
@@ -1095,28 +1095,56 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
      input->token == Token_AmprsndAmprsnd ||
      input->token == Token_PipePipe ||
      input->token == Token_AngleLeft ||
-     input->token == Token_AngleRight)
+     input->token == Token_AngleLeftEquals ||
+     input->token == Token_AngleRight ||
+     input->token == Token_AngleRightEquals)
   {
     AstNode* expr_node = ast_new_node(arena, AstNodeKind_BinExpr);
     AstBinExpr* expr = &expr_node->bin_expr;
     if(input->token == Token_Star)
+    {
       expr->op = AstOpKind_Mul;
+    }
     else if(input->token == Token_FwdSlash)
+    {
       expr->op = AstOpKind_Div;
+    }
     else if(input->token == Token_Percent)
+    {
       expr->op = AstOpKind_Mod;
+    }
     else if(input->token == Token_EqualsEquals)
+    {
       expr->op = AstOpKind_LogicEquals;
+    }
     else if(input->token == Token_BangEquals)
+    {
       expr->op = AstOpKind_LogicNotEquals;
+    }
     else if(input->token == Token_AngleLeft)
+    {
       expr->op = AstOpKind_LogicLess;
+    }
+    else if(input->token == Token_AngleLeftEquals)
+    {
+      expr->op = AstOpKind_LogicLessEquals;
+    }
     else if(input->token == Token_AngleRight)
+    {
       expr->op = AstOpKind_LogicGreater;
+    }
+    else if(input->token == Token_AngleRightEquals)
+    {
+      expr->op = AstOpKind_LogicGreaterEquals;
+    }
     else if(input->token == Token_AmprsndAmprsnd)
+    {
       expr->op = AstOpKind_LogicAnd;
+    }
     else if(input->token == Token_PipePipe)
+    {
       expr->op = AstOpKind_LogicOr;
+    }
     else
       assert(false);
 
@@ -2661,19 +2689,42 @@ gen_bin_expr(MemoryArena* arena, List* code, AstBinExpr* bin_expr)
         if(bin_expr->op == AstOpKind_LogicAnd)
         {
           emit_instr_str(arena, code, Opcode_JUMPZ, bin_expr->label_end);
-          emit_instr(arena, code, Opcode_POP);
-          gen_load_rvalue(arena, code, bin_expr->right_operand);
-          emit_instr_str(arena, code, Opcode_LABEL, bin_expr->label_end);
         }
         else if(bin_expr->op == AstOpKind_LogicOr)
         {
           emit_instr_str(arena, code, Opcode_JUMPNZ, bin_expr->label_end);
-          emit_instr(arena, code, Opcode_POP);
-          gen_load_rvalue(arena, code, bin_expr->right_operand);
-          emit_instr_str(arena, code, Opcode_LABEL, bin_expr->label_end);
         }
         else
           assert(false);
+
+        emit_instr(arena, code, Opcode_POP);
+        gen_load_rvalue(arena, code, bin_expr->right_operand);
+        emit_instr_str(arena, code, Opcode_LABEL, bin_expr->label_end);
+      } break;
+
+      case AstOpKind_LogicLessEquals:
+      case AstOpKind_LogicGreaterEquals:
+      {
+        gen_load_rvalue(arena, code, bin_expr->left_operand);
+        gen_load_rvalue(arena, code, bin_expr->right_operand);
+        if(bin_expr->op == AstOpKind_LogicLessEquals)
+        {
+          emit_instr(arena, code, Opcode_CMPLSS);
+        }
+        else if(bin_expr->op == AstOpKind_LogicGreaterEquals)
+        {
+          emit_instr(arena, code, Opcode_CMPGRT);
+        }
+        else
+          assert(false);
+        emit_instr(arena, code, Opcode_DUP);
+
+        emit_instr_str(arena, code, Opcode_JUMPNZ, bin_expr->label_end);
+        emit_instr(arena, code, Opcode_POP);
+        gen_load_rvalue(arena, code, bin_expr->left_operand);
+        gen_load_rvalue(arena, code, bin_expr->right_operand);
+        emit_instr(arena, code, Opcode_CMPEQ);
+        emit_instr_str(arena, code, Opcode_LABEL, bin_expr->label_end);
       } break;
 
       default:

@@ -23,6 +23,7 @@ typedef double float64;
 #define MEGABYTE (1024*KILOBYTE)
 #define false 0
 #define true  1
+#define inline __inline
 
 typedef struct
 {

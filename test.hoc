@@ -18,11 +18,9 @@ proc main()
   print n \n;
   n = power(2, 20)+1;
   print n \n;
-  /*
-  if((2 <= 3) && (1 >= 1))
+  if(!(1 && 0))
     print 9999;
   else
     print 1111;
-  */
 }
 

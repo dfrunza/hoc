@@ -124,23 +124,23 @@ AstOpKind;
 typedef enum
 {
   AstNodeKind__Null,
-  AstNodeKind_BinExpr,
-  AstNodeKind_UnrExpr,
-  AstNodeKind_IntNum,
-  AstNodeKind_VarDecl,
-  AstNodeKind_VarOccur,
-  AstNodeKind_Call,
-  AstNodeKind_Block,
-  AstNodeKind_Proc,
-  AstNodeKind_WhileStmt,
-  AstNodeKind_IfStmt,
-  AstNodeKind_ReturnStmt,
-  AstNodeKind_BreakStmt,
-  AstNodeKind_PrintStmt,
-  AstNodeKind_IncludeStmt,
-  AstNodeKind_EmptyStmt,
-  AstNodeKind_Module,
-  AstNodeKind_Noop,
+  AstNodeKind_AstBinExpr,
+  AstNodeKind_AstUnrExpr,
+  AstNodeKind_AstIntNum,
+  AstNodeKind_AstVarDecl,
+  AstNodeKind_AstVarOccur,
+  AstNodeKind_AstCall,
+  AstNodeKind_AstBlock,
+  AstNodeKind_AstProc,
+  AstNodeKind_AstWhileStmt,
+  AstNodeKind_AstIfStmt,
+  AstNodeKind_AstReturnStmt,
+  AstNodeKind_AstBreakStmt,
+  AstNodeKind_AstPrintStmt,
+  AstNodeKind_AstIncludeStmt,
+  AstNodeKind_AstEmptyStmt,
+  AstNodeKind_AstModule,
+  AstNodeKind_AstNoop,
 }
 AstNodeKind;
 
@@ -149,6 +149,15 @@ typedef struct AstNode_
   AstNodeKind kind;
 }
 AstNode;
+
+#define ast_node_as(NODE, TYPE) (TYPE*)ast_node_as_((NODE), AstNodeKind_##TYPE)
+
+inline AstNode*
+ast_node_as_(AstNode* node, AstNodeKind kind)
+{
+  assert(node->kind == kind);
+  return node;
+}
 
 typedef struct
 {
@@ -902,7 +911,7 @@ ast_new_module(MemoryArena* arena)
 {
   AstModule* module = mem_push_struct(arena, AstModule, 1);
   list_init(&module->proc_list);
-  module->node.kind = AstNodeKind_Module;
+  module->node.kind = AstNodeKind_AstModule;
   return module;
 }
 
@@ -917,7 +926,7 @@ ast_new_block(MemoryArena* arena, SymbolTable* symbol_table)
   list_init(&block->access_links);
   block->block_id = symbol_table->scope_id;
   block->nesting_depth = symbol_table->nesting_depth;
-  block->node.kind = AstNodeKind_Block;
+  block->node.kind = AstNodeKind_AstBlock;
   return block;
 }
 
@@ -926,7 +935,7 @@ ast_new_call(MemoryArena* arena)
 {
   AstCall* call = mem_push_struct(arena, AstCall, 1);
   list_init(&call->actual_args);
-  call->node.kind = AstNodeKind_Call;
+  call->node.kind = AstNodeKind_AstCall;
   return call;
 }
 
@@ -935,7 +944,7 @@ ast_new_proc(MemoryArena* arena)
 {
   AstProc* proc = mem_push_struct(arena, AstProc, 1);
   list_init(&proc->formal_args);
-  proc->node.kind = AstNodeKind_Proc;
+  proc->node.kind = AstNodeKind_AstProc;
   return proc;
 }
 
@@ -943,7 +952,7 @@ inline AstBinExpr*
 ast_new_bin_expr(MemoryArena* arena)
 {
   AstBinExpr* bin_expr = mem_push_struct(arena, AstBinExpr, 1);
-  bin_expr->node.kind = AstNodeKind_BinExpr;
+  bin_expr->node.kind = AstNodeKind_AstBinExpr;
   return bin_expr;
 }
 
@@ -951,7 +960,7 @@ inline AstUnrExpr*
 ast_new_unr_expr(MemoryArena* arena)
 {
   AstUnrExpr* unr_expr = mem_push_struct(arena, AstUnrExpr, 1);
-  unr_expr->node.kind = AstNodeKind_UnrExpr;
+  unr_expr->node.kind = AstNodeKind_AstUnrExpr;
   return unr_expr;
 }
 
@@ -959,7 +968,7 @@ inline AstIntNum*
 ast_new_int_num(MemoryArena* arena)
 {
   AstIntNum* int_num = mem_push_struct(arena, AstIntNum, 1);
-  int_num->node.kind = AstNodeKind_IntNum;
+  int_num->node.kind = AstNodeKind_AstIntNum;
   return int_num;
 }
 
@@ -967,7 +976,7 @@ inline AstVarDecl*
 ast_new_var_decl(MemoryArena* arena)
 {
   AstVarDecl* var_decl = mem_push_struct(arena, AstVarDecl, 1);
-  var_decl->node.kind = AstNodeKind_VarDecl;
+  var_decl->node.kind = AstNodeKind_AstVarDecl;
   return var_decl;
 }
 
@@ -975,7 +984,7 @@ inline AstVarOccur*
 ast_new_var_occur(MemoryArena* arena)
 {
   AstVarOccur* var_occur = mem_push_struct(arena, AstVarOccur, 1);
-  var_occur->node.kind = AstNodeKind_VarOccur;
+  var_occur->node.kind = AstNodeKind_AstVarOccur;
   return var_occur;
 }
 
@@ -983,7 +992,7 @@ inline AstWhileStmt*
 ast_new_while_stmt(MemoryArena* arena)
 {
   AstWhileStmt* while_stmt = mem_push_struct(arena, AstWhileStmt, 1);
-  while_stmt->node.kind = AstNodeKind_WhileStmt;
+  while_stmt->node.kind = AstNodeKind_AstWhileStmt;
   return while_stmt;
 }
 
@@ -991,7 +1000,7 @@ inline AstIfStmt*
 ast_new_if_stmt(MemoryArena* arena)
 {
   AstIfStmt* if_stmt = mem_push_struct(arena, AstIfStmt, 1);
-  if_stmt->node.kind = AstNodeKind_IfStmt;
+  if_stmt->node.kind = AstNodeKind_AstIfStmt;
   return if_stmt;
 }
 
@@ -999,7 +1008,7 @@ inline AstReturnStmt*
 ast_new_return_stmt(MemoryArena* arena)
 {
   AstReturnStmt* ret_stmt = mem_push_struct(arena, AstReturnStmt, 1);
-  ret_stmt->node.kind = AstNodeKind_ReturnStmt;
+  ret_stmt->node.kind = AstNodeKind_AstReturnStmt;
   return ret_stmt;
 }
 
@@ -1007,7 +1016,7 @@ inline AstBreakStmt*
 ast_new_break_stmt(MemoryArena* arena)
 {
   AstBreakStmt* break_stmt = mem_push_struct(arena, AstBreakStmt, 1);
-  break_stmt->node.kind = AstNodeKind_BreakStmt;
+  break_stmt->node.kind = AstNodeKind_AstBreakStmt;
   return break_stmt;
 }
 
@@ -1015,7 +1024,7 @@ inline AstPrintStmt*
 ast_new_print_stmt(MemoryArena* arena)
 {
   AstPrintStmt* print_stmt = mem_push_struct(arena, AstPrintStmt, 1);
-  print_stmt->node.kind = AstNodeKind_PrintStmt;
+  print_stmt->node.kind = AstNodeKind_AstPrintStmt;
   return print_stmt;
 }
 
@@ -1023,7 +1032,7 @@ inline AstIncludeStmt*
 ast_new_include_stmt(MemoryArena* arena)
 {
   AstIncludeStmt* inc_stmt = mem_push_struct(arena, AstIncludeStmt, 1);
-  inc_stmt->node.kind = AstNodeKind_IncludeStmt;
+  inc_stmt->node.kind = AstNodeKind_AstIncludeStmt;
   return inc_stmt;
 }
 
@@ -1031,7 +1040,7 @@ inline AstEmptyStmt*
 ast_new_empty_stmt(MemoryArena* arena)
 {
   AstNode* empty = mem_push_struct(arena, AstNode, 1);
-  empty->kind = AstNodeKind_EmptyStmt;
+  empty->kind = AstNodeKind_AstEmptyStmt;
   return empty;
 }
 
@@ -1366,7 +1375,7 @@ parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input, SymbolTab
     {
       if(right_side)
       {
-        if(left_node->kind == AstNodeKind_VarOccur)
+        if(left_node->kind == AstNodeKind_AstVarOccur)
         {
           AstBinExpr* expr = ast_new_bin_expr(arena);
           expr->op = AstOpKind_Assign;
@@ -1495,8 +1504,7 @@ parse_formal_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* 
   success = parse_formal_argument(arena, input, symbol_table, enclosing_block, &arg_node);
   if(success && arg_node)
   {
-    assert(arg_node->kind == AstNodeKind_VarDecl);
-    list_append(arena, &proc->formal_args, (AstVarDecl*)arg_node);
+    list_append(arena, &proc->formal_args, ast_node_as(arg_node, AstVarDecl));
 
     if(input->token == Token_Comma)
     {
@@ -1693,7 +1701,7 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
           {
             if(body_node)
             {
-              if(body_node->kind != AstNodeKind_VarDecl)
+              if(body_node->kind != AstNodeKind_AstVarDecl)
               {
                 if_stmt->body = body_node;
 
@@ -1870,8 +1878,7 @@ parse_module_definition(MemoryArena* arena, TokenStream* input, SymbolTable* sym
       {
         if(node)
         {
-          assert(node->kind == AstNodeKind_IncludeStmt);
-          AstIncludeStmt* inc_stmt = (AstIncludeStmt*)node;
+          AstIncludeStmt* inc_stmt = ast_node_as(node, AstIncludeStmt);
 
           char* hoc_text = file_read_text(arena, inc_stmt->file_path);
           if(hoc_text)
@@ -1967,16 +1974,14 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
         while(block)
         {
           AstNode* owner = block->owner;
-          if(owner->kind == AstNodeKind_Proc)
+          if(owner->kind == AstNodeKind_AstProc)
             break;
           depth++;
           block = block->enclosing_block;
         }
         if(block)
         {
-          AstNode* owner_node = block->owner;
-          assert(owner_node->kind == AstNodeKind_Proc);
-          AstProc* ret_proc = (AstProc*)owner_node;
+          AstProc* ret_proc = ast_node_as(block->owner, AstProc);
           ret_stmt->proc = ret_proc;
           ret_stmt->depth = depth;
 
@@ -2027,17 +2032,14 @@ parse_break_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
     while(block)
     {
       AstNode* owner = block->owner;
-      if(owner->kind == AstNodeKind_WhileStmt)
+      if(owner->kind == AstNodeKind_AstWhileStmt)
         break;
       depth++;
       block = block->enclosing_block;
     }
     if(block)
     {
-      AstNode* owner_node = block->owner;
-      assert(owner_node->kind == AstNodeKind_WhileStmt);
-      AstWhileStmt* while_stmt = (AstWhileStmt*)owner_node;
-      break_stmt->while_stmt = while_stmt;
+      break_stmt->while_stmt = ast_node_as(block->owner, AstWhileStmt);
       break_stmt->depth = depth + 1;
     } else {
       syntax_error(input, "'break': enclosing 'while' statement not found");
@@ -2083,7 +2085,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
             {
               consume_token(input, symbol_table);
 
-              if(stmt_node->kind == AstNodeKind_BinExpr)
+              if(stmt_node->kind == AstNodeKind_AstBinExpr)
               {
                 AstBinExpr* expr = (AstBinExpr*)stmt_node;
                 if(expr->op != AstOpKind_Assign)
@@ -2091,7 +2093,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
                   syntax_error(input, "Assignment expression required");
                   success = false;
                 }
-              } else if(stmt_node->kind != AstNodeKind_Call)
+              } else if(stmt_node->kind != AstNodeKind_AstCall)
               {
                 syntax_error(input, "Expression is not a statement");
                 success = false;
@@ -2247,9 +2249,9 @@ parse_statement_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
   success = parse_statement(arena, input, symbol_table, block, &stmt_node);
   if(success && stmt_node)
   {
-    if(stmt_node->kind == AstNodeKind_VarDecl)
+    if(stmt_node->kind == AstNodeKind_AstVarDecl)
     {
-      AstVarDecl* var_decl = (AstVarDecl*)stmt_node;
+      AstVarDecl* var_decl = ast_node_as(stmt_node, AstVarDecl); 
       list_append(arena, &block->decl_vars, var_decl);
       if(var_decl->init_expr)
         list_append(arena, &block->stmt_list, var_decl->init_expr);
@@ -2480,7 +2482,7 @@ build_while_stmt(MemoryArena* arena, AstWhileStmt* while_stmt)
     while_stmt->label_break = label.head;
   }
 
-  if(while_stmt->body->kind == AstNodeKind_Block)
+  if(while_stmt->body->kind == AstNodeKind_AstBlock)
     build_block(arena, (AstBlock*)while_stmt->body);
   else
     build_node(arena, while_stmt->body);
@@ -2508,7 +2510,7 @@ build_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
     if_stmt->label_end = label.head;
   }
 
-  if(if_stmt->body->kind == AstNodeKind_Block)
+  if(if_stmt->body->kind == AstNodeKind_AstBlock)
   {
     build_block(arena, (AstBlock*)if_stmt->body);
   }
@@ -2518,10 +2520,14 @@ build_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
   if(if_stmt->else_body)
   {
     AstNode* else_node = if_stmt->else_body;
-    if(else_node->kind == AstNodeKind_Block)
+    if(else_node->kind == AstNodeKind_AstBlock)
+    {
       build_block(arena, (AstBlock*)else_node);
-    else if(else_node->kind == AstNodeKind_IfStmt)
+    }
+    else if(else_node->kind == AstNodeKind_AstIfStmt)
+    {
       build_if_stmt(arena, (AstIfStmt*)else_node);
+    }
     else
       build_node(arena, else_node);
   }
@@ -2553,35 +2559,35 @@ build_unr_expr(MemoryArena* arena, AstUnrExpr* unr_expr)
 void
 build_node(MemoryArena* arena, AstNode* node)
 {
-  if(node->kind == AstNodeKind_BinExpr)
+  if(node->kind == AstNodeKind_AstBinExpr)
   {
     build_bin_expr(arena, (AstBinExpr*)node);
   }
-  else if(node->kind == AstNodeKind_UnrExpr)
+  else if(node->kind == AstNodeKind_AstUnrExpr)
   {
     build_unr_expr(arena, (AstUnrExpr*)node);
   }
-  else if(node->kind == AstNodeKind_Call)
+  else if(node->kind == AstNodeKind_AstCall)
   {
     build_call(arena, (AstCall*)node);
   }
-  else if(node->kind == AstNodeKind_IfStmt)
+  else if(node->kind == AstNodeKind_AstIfStmt)
   {
     build_if_stmt(arena, (AstIfStmt*)node);
   }
-  else if(node->kind == AstNodeKind_WhileStmt)
+  else if(node->kind == AstNodeKind_AstWhileStmt)
   {
     build_while_stmt(arena, (AstWhileStmt*)node);
   }
-  else if(node->kind == AstNodeKind_PrintStmt)
+  else if(node->kind == AstNodeKind_AstPrintStmt)
   {
     build_print_stmt(arena, (AstPrintStmt*)node);
   }
-  else if(node->kind == AstNodeKind_VarOccur ||
-          node->kind == AstNodeKind_BreakStmt ||
-          node->kind == AstNodeKind_ReturnStmt ||
-          node->kind == AstNodeKind_EmptyStmt ||
-          node->kind == AstNodeKind_IntNum)
+  else if(node->kind == AstNodeKind_AstVarOccur ||
+          node->kind == AstNodeKind_AstBreakStmt ||
+          node->kind == AstNodeKind_AstReturnStmt ||
+          node->kind == AstNodeKind_AstEmptyStmt ||
+          node->kind == AstNodeKind_AstIntNum)
     ;
   else
     assert(false);
@@ -2619,9 +2625,7 @@ build_module(MemoryArena* arena, AstModule* module)
   ListItem* proc_item = list_first_item(&module->proc_list);
   while(proc_item)
   {
-    AstNode* proc_node = proc_item->elem;
-    assert(proc_node->kind == AstNodeKind_Proc);
-    AstProc* proc = (AstProc*)proc_node;
+    AstProc* proc = ast_node_as(proc_item->elem, AstProc);
     build_proc(arena, proc);
     if(cstr_match(proc->name, "main"))
       module->main_proc = proc;
@@ -2706,7 +2710,7 @@ gen_bin_expr(MemoryArena* arena, List* code, AstBinExpr* bin_expr)
   {
     gen_load_rvalue(arena, code, bin_expr->right_operand);
 
-    assert(bin_expr->left_operand->kind = AstNodeKind_VarOccur);
+    assert(bin_expr->left_operand->kind = AstNodeKind_AstVarOccur);
     gen_load_lvalue(arena, code, (AstVarOccur*)bin_expr->left_operand);
 
     emit_instr(arena, code, Opcode_STORE);
@@ -2877,24 +2881,24 @@ gen_load_lvalue(MemoryArena* arena, List* code, AstVarOccur* var_occur)
 void
 gen_load_rvalue(MemoryArena* arena, List* code, AstNode* node)
 {
-  if(node->kind == AstNodeKind_VarOccur)
+  if(node->kind == AstNodeKind_AstVarOccur)
   {
     gen_load_lvalue(arena, code, (AstVarOccur*)node);
     emit_instr(arena, code, Opcode_LOAD);
   }
-  else if(node->kind == AstNodeKind_Call)
+  else if(node->kind == AstNodeKind_AstCall)
   {
     gen_call(arena, code, (AstCall*)node);
   }
-  else if(node->kind == AstNodeKind_IntNum)
+  else if(node->kind == AstNodeKind_AstIntNum)
   {
     emit_instr_int(arena, code, Opcode_PUSH, ((AstIntNum*)node)->value);
   }
-  else if(node->kind == AstNodeKind_BinExpr)
+  else if(node->kind == AstNodeKind_AstBinExpr)
   {
     gen_bin_expr(arena, code, (AstBinExpr*)node);
   }
-  else if(node->kind == AstNodeKind_UnrExpr)
+  else if(node->kind == AstNodeKind_AstUnrExpr)
   {
     gen_unr_expr(arena, code, (AstUnrExpr*)node);
   }
@@ -2905,7 +2909,7 @@ gen_load_rvalue(MemoryArena* arena, List* code, AstNode* node)
 void
 gen_return_stmt(MemoryArena* arena, List* code, AstReturnStmt* ret_stmt)
 {
-  assert(ret_stmt->expr->kind == AstNodeKind_BinExpr);
+  assert(ret_stmt->expr->kind == AstNodeKind_AstBinExpr);
 
   gen_bin_expr(arena, code, (AstBinExpr*)ret_stmt->expr);
   emit_instr(arena, code, Opcode_POP);
@@ -2987,7 +2991,7 @@ gen_if_stmt(MemoryArena* arena, List* code, AstIfStmt* if_stmt)
   else
     emit_instr_str(arena, code, Opcode_JUMPZ, if_stmt->label_end);
 
-  if(if_stmt->body->kind == AstNodeKind_Block)
+  if(if_stmt->body->kind == AstNodeKind_AstBlock)
     gen_block(arena, code, (AstBlock*)if_stmt->body);
   else
     gen_statement(arena, code, if_stmt->body);
@@ -2998,7 +3002,7 @@ gen_if_stmt(MemoryArena* arena, List* code, AstIfStmt* if_stmt)
   {
     emit_instr_str(arena, code, Opcode_LABEL, if_stmt->label_else);
     AstNode* else_body = if_stmt->else_body;
-    if(else_body->kind == AstNodeKind_Block)
+    if(else_body->kind == AstNodeKind_AstBlock)
       gen_block(arena, code, (AstBlock*)else_body);
     else
       gen_statement(arena, code, else_body);
@@ -3013,7 +3017,7 @@ gen_while_stmt(MemoryArena* arena, List* code, AstWhileStmt* while_stmt)
   emit_instr_str(arena, code, Opcode_LABEL, while_stmt->label_eval);
   gen_load_rvalue(arena, code, while_stmt->expr);
   emit_instr_str(arena, code, Opcode_JUMPZ, while_stmt->label_break);
-  if(while_stmt->body->kind == AstNodeKind_Block)
+  if(while_stmt->body->kind == AstNodeKind_AstBlock)
     gen_block(arena, code, (AstBlock*)while_stmt->body);
   else
     gen_statement(arena, code, while_stmt->body);
@@ -3037,39 +3041,39 @@ gen_print_stmt(MemoryArena* arena, List* code, AstPrintStmt* print_stmt)
 void
 gen_statement(MemoryArena* arena, List* code, AstNode* stmt_node)
 {
-  if(stmt_node->kind == AstNodeKind_BinExpr)
+  if(stmt_node->kind == AstNodeKind_AstBinExpr)
   {
     AstBinExpr* bin_expr = (AstBinExpr*)stmt_node;
     assert(bin_expr->op == AstOpKind_Assign);
     gen_bin_expr(arena, code, bin_expr);
     emit_instr(arena, code, Opcode_POP);
   }
-  else if(stmt_node->kind == AstNodeKind_Call)
+  else if(stmt_node->kind == AstNodeKind_AstCall)
   {
     gen_call(arena, code, (AstCall*)stmt_node);
     emit_instr(arena, code, Opcode_POP);
   }
-  else if(stmt_node->kind == AstNodeKind_ReturnStmt)
+  else if(stmt_node->kind == AstNodeKind_AstReturnStmt)
   {
     gen_return_stmt(arena, code, (AstReturnStmt*)stmt_node);
   }
-  else if(stmt_node->kind == AstNodeKind_BreakStmt)
+  else if(stmt_node->kind == AstNodeKind_AstBreakStmt)
   {
     gen_break_stmt(arena, code, (AstBreakStmt*)stmt_node);
   }
-  else if(stmt_node->kind == AstNodeKind_Noop)
+  else if(stmt_node->kind == AstNodeKind_AstNoop)
   {
     emit_instr(arena, code, Opcode_NOOP);
   }
-  else if(stmt_node->kind == AstNodeKind_IfStmt)
+  else if(stmt_node->kind == AstNodeKind_AstIfStmt)
   {
     gen_if_stmt(arena, code, (AstIfStmt*)stmt_node);
   }
-  else if(stmt_node->kind == AstNodeKind_WhileStmt)
+  else if(stmt_node->kind == AstNodeKind_AstWhileStmt)
   {
     gen_while_stmt(arena, code, (AstWhileStmt*)stmt_node);
   }
-  else if(stmt_node->kind == AstNodeKind_PrintStmt)
+  else if(stmt_node->kind == AstNodeKind_AstPrintStmt)
   {
     gen_print_stmt(arena, code, (AstPrintStmt*)stmt_node);
   }
@@ -3087,7 +3091,7 @@ gen_module(MemoryArena* arena, List* code, AstModule* module)
   while(item)
   {
     AstNode* node = item->elem;
-    assert(node->kind == AstNodeKind_Proc);
+    assert(node->kind == AstNodeKind_AstProc);
     gen_proc(arena, code, (AstProc*)node);
     item = item->next;
   }
@@ -3346,8 +3350,7 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
     assert(symbol_table.scope_id == 0);
     assert(symbol_table.nesting_depth == 0);
 
-    assert(node->kind == AstNodeKind_Module);
-    AstModule* module = (AstModule*)node;
+    AstModule* module = ast_node_as(node, AstModule);
     build_module(arena, module);
     if(module->main_call)
     {

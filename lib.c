@@ -424,11 +424,9 @@ stdin_read(char buf[], int buf_size)
   return (int)bytes_read;
 }
 
-typedef void ListElem;
-
 typedef struct ListItem_
 {
-  ListElem* elem;
+  void* elem;
   struct ListItem_* next;
   struct ListItem_* prev;
 }
@@ -436,32 +434,43 @@ ListItem;
 
 typedef struct
 {
-  ListItem* last;
-  int       count;
-  ListItem  sentinel;
+  ListItem** last;
+  ListItem** next_slot;
+  int count;
+  ListItem* first;
 }
 List;
 
-void
+inline void
 list_init(List* list)
 {
-  list->last = &list->sentinel;
+  list->last = &list->first;
+  list->next_slot = &list->first;
 }
 
 void
-list_append(MemoryArena* arena, List* list, ListElem* elem)
+list_append(MemoryArena* arena, List* list, void* elem)
 {
   ListItem* item = mem_push_struct(arena, ListItem, 1);
   item->elem = elem;
-  list->last->next = item;
-  item->prev = list->last;
-  list->last = item;
+
+  ListItem* prev = *list->last;
+  *list->next_slot = item;
+
+  ListItem* last = *list->last;
+  item->prev = prev;
+  last->next = item;
+  item->next = 0;
+
+  list->last = &last->next;
+  list->next_slot = &item->next;
+
   list->count++;
 }
 
-ListItem*
+inline ListItem*
 list_first_item(List* list)
 {
-  return list->sentinel.next;
+  return list->first;
 }
 

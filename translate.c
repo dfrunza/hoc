@@ -1737,7 +1737,6 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
       success = symbol_register_new(symbol_table, input, &symbol, SymbolKind_Proc);
       if(success && symbol)
       {
-        //AstProc* proc = &proc_node->proc;
         proc->symbol = symbol;
         proc->name = symbol->name;
         proc->ret_var.data.size = 1;

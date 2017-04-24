@@ -449,11 +449,8 @@ list_init(List* list)
 }
 
 void
-list_append(MemoryArena* arena, List* list, void* elem)
+list_append_item(List* list, ListItem* item)
 {
-  ListItem* item = mem_push_struct(arena, ListItem, 1);
-  item->elem = elem;
-
   ListItem* prev = *list->last;
   *list->next_slot = item;
 
@@ -466,6 +463,14 @@ list_append(MemoryArena* arena, List* list, void* elem)
   list->next_slot = &item->next;
 
   list->count++;
+}
+
+void
+list_append(MemoryArena* arena, List* list, void* elem)
+{
+  ListItem* item = mem_push_struct(arena, ListItem, 1);
+  item->elem = elem;
+  list_append_item(list, item);
 }
 
 inline ListItem*

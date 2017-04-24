@@ -47,7 +47,7 @@ Opcode;
 
 typedef struct
 {
-  int   source_line_nr;
+  int source_line_nr;
   char* string;
 }
 InstructionLine;
@@ -72,13 +72,13 @@ RegName;
 
 typedef struct
 {
-  Opcode    opcode;
+  Opcode opcode;
   ParamType param_type;
 
   union {
-    int32   int_num;
+    int32 int_num;
     RegName reg;
-    char*   str;
+    char* str;
   } param;
 
   int source_line_nr;
@@ -87,10 +87,10 @@ Instruction;
 
 typedef struct
 {
-  char         groove[4];
-  int          instr_count;
-  uint8*       code_start;
-  uint         code_size;
+  char groove[4];
+  int instr_count;
+  uint8* code_start;
+  uint code_size;
   Instruction* instr_array;
 }
 HasmCode;

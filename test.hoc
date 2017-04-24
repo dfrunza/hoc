@@ -1,26 +1,11 @@
-include "hlib/abs.hoc"
-include "hlib/minmax.hoc"
-include "hlib/sqrt.hoc"
-include "hlib/gcd.hoc"
-include "hlib/fibo.hoc"
-include "hlib/fizzbuzz.hoc"
-include "hlib/power.hoc"
-
-proc main()
+proc float foo()
 {
-  var n;
-  
-  fibo(15);
-  print \n;
-  n = gcd(81, -15);
-  print n \n;
-  n = sqrt_floor(1023);
-  print n \n;
-  n = power(2, 20)+1;
-  print n \n;
-  if(!(1 && 0))
-    print 9999;
-  else
-    print 1111;
+  var float a = 0;
+  return a;
 }
 
+proc int main()
+{
+  var int a = 0;
+  return a;
+}

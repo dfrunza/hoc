@@ -32,4 +32,4 @@ goto :end
 :end
 popd
 
-cloc.exe hasm.h hocc.c hasm.c lib.c translate.c vm.c
+cloc.exe hasm.h hocc.c hasm.c lib.c translate.c vm.c lex.h lex.c

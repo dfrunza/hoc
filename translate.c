@@ -36,8 +36,6 @@ typedef enum
   UnaryCtorKind_Array,
 } UnaryCtorKind;
 
-static int type_var_id = 1; // FIXME: Find this guy a home.
-
 typedef struct
 {
   int id;
@@ -49,6 +47,7 @@ typedef enum
   BasicTypeKind_Void,
   BasicTypeKind_Integer,
   BasicTypeKind_Float,
+  BasicTypeKind_Char,
 } BasicTypeKind;
 
 typedef struct
@@ -245,7 +244,7 @@ typedef struct AstProc_
   List formal_args; // <AstVarDecl>
   AstBlock* body;
   AstVarDecl ret_var;
-  struct Type_ ret_type;
+  Type* ret_type;
 
   char* label;
   char* label_end;
@@ -360,8 +359,6 @@ typedef struct
   int last_scope_id;
   int nesting_depth;
   int active_scopes[32];
-  char label[64];
-  int last_label_id;
   List type_tuples;
   MemoryArena* arena;
 }
@@ -372,6 +369,7 @@ typedef enum
   SymbolKind__Null,
   SymbolKind_Keyword,
   SymbolKind_Proc,
+  SymbolKind_Type,
   SymbolKind_Var,
 }
 SymbolKind;
@@ -391,6 +389,7 @@ typedef struct Symbol_
     AstVarDecl* var_decl;
     AstProc* proc;
     Token kw_token;
+    Type* type;
   };
 }
 Symbol;
@@ -402,6 +401,9 @@ typedef struct
   List instr_list; // <Instruction>
 }
 VmProgram;
+
+static int type_var_id = 1;
+static int last_label_id;
 
 //
 //  End of structs
@@ -441,33 +443,6 @@ new_proc_type(MemoryArena* arena, Type* args, Type* ret)
   type->proc.args = args;
   type->proc.ret = ret;
   return type;
-}
-
-void
-make_type_var(Type* type)
-{
-  type->kind = TypeKind_TypeVar;
-  type->type_var.id = type_var_id++;
-}
-
-void
-make_basic_type(Type* type, Token type_token)
-{
-  type->kind = TypeKind_Basic;
-  if(type_token == Token_Int)
-  {
-    type->basic.kind = BasicTypeKind_Integer;
-  }
-  else if(type_token == Token_Void)
-  {
-    type->basic.kind = BasicTypeKind_Void;
-  }
-  else if(type_token == Token_Float)
-  {
-    type->basic.kind = BasicTypeKind_Float;
-  }
-  else
-    assert(false);
 }
 
 Type*
@@ -564,6 +539,52 @@ symbol_register_new(SymbolTable* symbol_table, TokenStream* input, Symbol** new_
   return success;
 }
 
+#include "lex.c"
+
+void
+make_type_var(Type* type)
+{
+  type->kind = TypeKind_TypeVar;
+  type->type_var.id = type_var_id++;
+}
+
+void
+make_basic_type_from_token(Type* type, Token type_token)
+{
+  assert(token_is_builtin_type(type_token));
+
+  type->kind = TypeKind_Basic;
+  if(type_token == Token_Int)
+  {
+    type->basic.kind = BasicTypeKind_Integer;
+  }
+  else if(type_token == Token_Void)
+  {
+    type->basic.kind = BasicTypeKind_Void;
+  }
+  else if(type_token == Token_Float)
+  {
+    type->basic.kind = BasicTypeKind_Float;
+  }
+  else if(type_token == Token_Char)
+  {
+    type->basic.kind = BasicTypeKind_Char;
+  }
+  else
+    assert(false);
+}
+
+Symbol*
+add_builtin_type_symbol(SymbolTable* symbol_table, char* name, BasicTypeKind type)
+{
+  Symbol* symbol = symbol_add(symbol_table, name, SymbolKind_Id);
+  symbol->name = name;
+  Type* type = &symbol->type;
+  type->kind = TypeKind_Basic;
+  type->basic.kind = type;
+  return symbol;
+}
+
 Symbol*
 add_keyword(SymbolTable* symbol_table, char* name, Token token)
 {
@@ -576,9 +597,10 @@ void
 register_keywords(SymbolTable* symbol_table)
 {
   add_keyword(symbol_table, "int", Token_Int);
+  add_keyword(symbol_table, "char", Token_Char);
   add_keyword(symbol_table, "float", Token_Float);
   add_keyword(symbol_table, "void", Token_Void);
-  add_keyword(symbol_table, "char", Token_Char);
+
   add_keyword(symbol_table, "var", Token_Var);
   add_keyword(symbol_table, "proc", Token_Proc);
   add_keyword(symbol_table, "type", Token_Type);
@@ -595,8 +617,6 @@ register_keywords(SymbolTable* symbol_table)
   add_keyword(symbol_table, "false", Token_False);
   add_keyword(symbol_table, "print", Token_Print);
 }
-
-#include "lex.c"
 
 bool32
 scope_begin(SymbolTable* symbol_table)
@@ -629,8 +649,6 @@ scope_end(SymbolTable* symbol_table)
     symbol = symbol->next_symbol;
   symbol_table->symbol = symbol;
 }
-
-static int last_label_id; // FIXME: got no idea where to stick this
 
 void
 make_unique_label(String* label)
@@ -1167,50 +1185,56 @@ parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
   {
     consume_token(input, symbol_table);
 
-    if(input->token == Token_Int ||
-       input->token == Token_Float ||
-       input->token == Token_Void)
+    if(input->token == Token_Id)
     {
-      Token type_token = input->token;
-
-      consume_token(input, symbol_table);
-      if(input->token == Token_Id)
+      Symbol* type_symbol = symbol_lookup(symbol_table, input->lexeme.str);
+      if(type_symbol && type_symbol->type.kind == BasicTypeKind)
       {
-        Symbol* symbol = 0;
-        success = symbol_register_new(symbol_table, input, &symbol, SymbolKind_Var);
-
-        if(success && symbol)
+        consume_token(input, symbol_table);
+        if(input->token == Token_Id)
         {
-          make_basic_type(&symbol->type, type_token);
-          AstVarDecl* var_decl = ast_new_var_decl(arena);
-          var_decl->symbol = symbol;
-          var_decl->name = symbol->name;
-          var_decl->data.size = 1;
-          symbol->var_decl = var_decl;
-          *node = &var_decl->node;
+          Symbol* symbol = 0;
+          success = symbol_register_new(symbol_table, input, &symbol, SymbolKind_Var);
 
-          consume_token(input, symbol_table);
-          if(input->token == Token_Equals)
+          if(success && symbol)
           {
-            AstVarOccur* var_occur = ast_new_var_occur(arena);
-            var_occur->symbol = symbol;
-            var_occur->name = symbol->name;
-            var_occur->data = &var_decl->data;
-            var_occur->decl_block_offset = 0;
+            symbol->type =
+            AstVarDecl* var_decl = ast_new_var_decl(arena);
+            var_decl->symbol = symbol;
+            var_decl->name = symbol->name;
+            var_decl->data.size = 1;
+            symbol->var_decl = var_decl;
+            *node = &var_decl->node;
 
-            AstNode* init_expr = 0;
-            success = parse_rest_of_assignment_terms(arena, input, symbol_table,
-                                                     enclosing_block, &var_occur->node, &init_expr);
-            if(success)
-              var_decl->init_expr = init_expr;
+            consume_token(input, symbol_table);
+            if(input->token == Token_Equals)
+            {
+              AstVarOccur* var_occur = ast_new_var_occur(arena);
+              var_occur->symbol = symbol;
+              var_occur->name = symbol->name;
+              var_occur->data = &var_decl->data;
+              var_occur->decl_block_offset = 0;
+
+              AstNode* init_expr = 0;
+              success = parse_rest_of_assignment_terms(arena, input, symbol_table,
+                  enclosing_block, &var_occur->node, &init_expr);
+              if(success)
+                var_decl->init_expr = init_expr;
+            }
           }
         }
-      } else {
-        syntax_error(input, "Missing identifier");
+        else {
+          syntax_error(input, "Identifier expected");
+          success = false;
+        }
+      }
+      else {
+        syntax_error(input, "Symbol not found or not a type");
         success = false;
       }
-    } else {
-      syntax_error(input, "Type expected");
+    }
+    else {
+      syntax_error(input, "Identifier expected");
       success = false;
     }
   }
@@ -1228,8 +1252,7 @@ parse_formal_argument(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
   {
     consume_token(input, symbol_table);
 
-    if(input->token == Token_Int ||
-       input->token == Token_Float)
+    if(token_is_builtin_type(input->token))
     {
       consume_token(input, symbol_table);
       Token type_token = input->token;
@@ -1240,7 +1263,7 @@ parse_formal_argument(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
         success = symbol_register_new(symbol_table, input, &symbol, SymbolKind_Var);
         if(success && symbol)
         {
-          make_basic_type(&symbol->type, type_token);
+          make_basic_type_from_token(&symbol->type, type_token);
           AstVarDecl* var_decl = ast_new_var_decl(arena);
           var_decl->symbol = symbol;
           var_decl->name = symbol->name;
@@ -1507,11 +1530,10 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
     *node = &proc->node;
 
     consume_token(input, symbol_table);
-    if(input->token == Token_Int ||
-       input->token == Token_Void ||
-       input->token == Token_Float)
+    if(input->token == Token_Id)
     {
-      make_basic_type(&proc->ret_type, input->token);
+      Symbol* type_symbol = 0;
+      symbol = symbol_register_new(symbol_table, input, &symbol, SymbolKind_Type);
 
       consume_token(input, symbol_table);
       if(input->token == Token_Id)
@@ -3176,7 +3198,7 @@ type_unification(Type* type_a, Type* type_b)
   }
 
   if(!success)
-    error("Type error\n");
+    error("Type error");
 
   return success;
 }

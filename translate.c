@@ -337,6 +337,7 @@ AstBlock;
 typedef struct AstNode_
 {
   AstNodeKind kind;
+  Type* type;
 
   union
   {
@@ -385,7 +386,6 @@ typedef enum
 }
 SymbolKind;
 
-
 typedef struct Symbol_
 {
   SymbolKind kind;
@@ -394,7 +394,6 @@ typedef struct Symbol_
   char* name;
   int block_id;
   int nesting_depth;
-  Type* type;
 
   union {
     AstVarDecl* var_decl;
@@ -558,8 +557,6 @@ add_builtin_type_keyword(MemoryArena* arena, SymbolTable* symbol_table, char* na
 {
   Symbol* symbol = symbol_add(arena, symbol_table, name, SymbolKind_Type);
   symbol->name = name;
-  symbol->type = mem_push_struct(arena, Type, 1);
-  symbol->type->kind = TypeKind_Type;
 
   Type* type = mem_push_struct(arena, Type, 1);
   type->kind = TypeKind_Basic;
@@ -657,11 +654,12 @@ void build_node(MemoryArena*, AstNode*);
 void build_block_stmts(MemoryArena*, List*);
 
 inline AstNode*
-ast_new_module(MemoryArena* arena)
+ast_new_module(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   list_init(&node->module.proc_list);
   node->kind = AstNodeKind_Module;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->module.node = node;
   return node;
 }
@@ -672,6 +670,7 @@ ast_new_block(MemoryArena* arena, SymbolTable* symbol_table)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Block;
   node->block.node = node;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   AstBlock* block = &node->block;
   list_init(&block->decl_vars);
   list_init(&block->local_occurs);
@@ -684,129 +683,143 @@ ast_new_block(MemoryArena* arena, SymbolTable* symbol_table)
 }
 
 inline AstNode*
-ast_new_call(MemoryArena* arena)
+ast_new_call(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Call;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->call.node = node;
   list_init(&node->call.actual_args);
   return node;
 }
 
 inline AstNode*
-ast_new_proc(MemoryArena* arena)
+ast_new_proc(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Proc;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->proc.node = node;
   list_init(&node->proc.formal_args);
   return node;
 }
 
 inline AstNode*
-ast_new_bin_expr(MemoryArena* arena)
+ast_new_bin_expr(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_BinExpr;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->bin_expr.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_unr_expr(MemoryArena* arena)
+ast_new_unr_expr(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_UnrExpr;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->unr_expr.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_int_num(MemoryArena* arena)
+ast_new_int_num(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IntNum;
+  node->type = symbol_lookup(symbol_table, "int")->t_type;
   node->int_num.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_var_decl(MemoryArena* arena)
+ast_new_var_decl(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_VarDecl;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->var_decl.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_var_occur(MemoryArena* arena)
+ast_new_var_occur(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_VarOccur;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->var_occur.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_while_stmt(MemoryArena* arena)
+ast_new_while_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_WhileStmt;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->while_stmt.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_if_stmt(MemoryArena* arena)
+ast_new_if_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IfStmt;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->if_stmt.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_return_stmt(MemoryArena* arena)
+ast_new_return_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_ReturnStmt;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->ret_stmt.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_break_stmt(MemoryArena* arena)
+ast_new_break_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_BreakStmt;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->break_stmt.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_print_stmt(MemoryArena* arena)
+ast_new_print_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_PrintStmt;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->print_stmt.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_include_stmt(MemoryArena* arena)
+ast_new_include_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IncludeStmt;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   node->inc_stmt.node = node;
   return node;
 }
 
 inline AstNode*
-ast_new_empty_stmt(MemoryArena* arena)
+ast_new_empty_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_EmptyStmt;
+  node->type = symbol_lookup(symbol_table, "void")->t_type;
   return node;
 }
 
@@ -840,7 +853,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
     {
       if(operand)
       {
-        AstUnrExpr* expr = &ast_new_unr_expr(arena)->unr_expr;
+        AstUnrExpr* expr = &ast_new_unr_expr(arena, symbol_table)->unr_expr;
         expr->op = AstOpKind_Neg;
         expr->operand = operand;
         *node = expr->node;
@@ -860,7 +873,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
     {
       if(operand)
       {
-        AstUnrExpr* expr = &ast_new_unr_expr(arena)->unr_expr;
+        AstUnrExpr* expr = &ast_new_unr_expr(arena, symbol_table)->unr_expr;
         expr->op = AstOpKind_LogicNot;
         expr->operand = operand;
         *node = expr->node;
@@ -872,7 +885,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   }
   else if(input->token == Token_IntNum)
   {
-    AstIntNum* int_num = &ast_new_int_num(arena)->int_num;
+    AstIntNum* int_num = &ast_new_int_num(arena, symbol_table)->int_num;
     int_num->value = *(int32*)input->lexeme.int_num;
     *node = int_num->node;
 
@@ -887,10 +900,11 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
 
       if(symbol->kind == SymbolKind_Var)
       {
-        AstVarOccur* var_occur = &ast_new_var_occur(arena)->var_occur;
+        AstVarOccur* var_occur = &ast_new_var_occur(arena, symbol_table)->var_occur;
         var_occur->symbol = symbol;
         var_occur->name = symbol->name;
         var_occur->data = &symbol->var_decl->data;
+        var_occur->node->type = symbol->var_decl->node->type;
         var_occur->decl_block_offset = (symbol_table->nesting_depth - symbol->nesting_depth);
         *node = var_occur->node;
 
@@ -907,7 +921,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
       }
       else if(symbol->kind == SymbolKind_Proc)
       {
-        AstCall* call = &ast_new_call(arena)->call;
+        AstCall* call = &ast_new_call(arena, symbol_table)->call;
         call->symbol = symbol;
         call->name = symbol->name;
         call->proc = symbol->proc;
@@ -953,7 +967,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   }
   else if(input->token == Token_True || input->token == Token_False)
   {
-    AstIntNum* int_num = &ast_new_int_num(arena)->int_num;
+    AstIntNum* int_num = &ast_new_int_num(arena, symbol_table)->int_num;
     int_num->value = (input->token == Token_True ? 1 : 0);
     *node = int_num->node;
 
@@ -981,7 +995,7 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
      input->token == Token_AngleRight ||
      input->token == Token_AngleRightEquals)
   {
-    AstBinExpr* expr = &ast_new_bin_expr(arena)->bin_expr;
+    AstBinExpr* expr = &ast_new_bin_expr(arena, symbol_table)->bin_expr;
 
     if(input->token == Token_Star)
     {
@@ -1075,7 +1089,7 @@ parse_rest_of_terms(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 
   if(input->token == Token_Plus || input->token == Token_Minus)
   {
-    AstBinExpr* expr = &ast_new_bin_expr(arena)->bin_expr;
+    AstBinExpr* expr = &ast_new_bin_expr(arena, symbol_table)->bin_expr;
 
     if(input->token == Token_Plus)
       expr->op = AstOpKind_Add;
@@ -1136,7 +1150,7 @@ parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input, SymbolTab
       {
         if(left_node->kind == AstNodeKind_VarOccur)
         {
-          AstBinExpr* expr = &ast_new_bin_expr(arena)->bin_expr;
+          AstBinExpr* expr = &ast_new_bin_expr(arena, symbol_table)->bin_expr;
           expr->op = AstOpKind_Assign;
           expr->left_operand = left_node;
           expr->right_operand = right_side;
@@ -1201,18 +1215,18 @@ parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 
             if(success && symbol)
             {
-              AstVarDecl* var_decl = &ast_new_var_decl(arena)->var_decl;
+              AstVarDecl* var_decl = &ast_new_var_decl(arena, symbol_table)->var_decl;
               var_decl->symbol = symbol;
               var_decl->name = symbol->name;
               var_decl->data.size = 1;
+              var_decl->node->type = var_type;
               symbol->var_decl = var_decl;
-              symbol->type = var_type;
               *node = var_decl->node;
 
               consume_token(input, symbol_table);
               if(input->token == Token_Equals)
               {
-                AstVarOccur* var_occur = &ast_new_var_occur(arena)->var_occur;
+                AstVarOccur* var_occur = &ast_new_var_occur(arena, symbol_table)->var_occur;
                 var_occur->symbol = symbol;
                 var_occur->name = symbol->name;
                 var_occur->data = &var_decl->data;
@@ -1278,11 +1292,11 @@ parse_formal_argument(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
 
             if(success && symbol)
             {
-              AstVarDecl* var_decl = &ast_new_var_decl(arena)->var_decl;
+              AstVarDecl* var_decl = &ast_new_var_decl(arena, symbol_table)->var_decl;
               var_decl->symbol = symbol;
               var_decl->name = symbol->name;
               symbol->var_decl = var_decl;
-              symbol->type = var_type;
+              var_decl->node->type = var_type;
               *node = var_decl->node;
 
               consume_token(input, symbol_table);
@@ -1370,7 +1384,7 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
     success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
     if(success)
     {
-      AstWhileStmt* while_stmt = &ast_new_while_stmt(arena)->while_stmt;
+      AstWhileStmt* while_stmt = &ast_new_while_stmt(arena, symbol_table)->while_stmt;
       while_stmt->expr = expr_node;
       *node = while_stmt->node;
 
@@ -1494,7 +1508,7 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
     success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
     if(success)
     {
-      AstIfStmt* if_stmt = &ast_new_if_stmt(arena)->if_stmt;
+      AstIfStmt* if_stmt = &ast_new_if_stmt(arena, symbol_table)->if_stmt;
       if_stmt->expr = expr_node;
       *node = if_stmt->node;
 
@@ -1553,7 +1567,7 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
 
   if(input->token == Token_Proc)
   {
-    AstProc* proc = &ast_new_proc(arena)->proc;
+    AstProc* proc = &ast_new_proc(arena, symbol_table)->proc;
     *node = proc->node;
 
     consume_token(input, symbol_table);
@@ -1573,7 +1587,7 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
 
           if(success && symbol)
           {
-            symbol->type = new_type_var(arena);
+            proc->node->type = new_type_var(arena);
             proc->symbol = symbol;
             symbol->proc = proc;
             proc->name = symbol->name;
@@ -1679,7 +1693,7 @@ parse_include_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_t
 
     if(input->token == Token_String)
     {
-      AstIncludeStmt* inc_stmt = &ast_new_include_stmt(arena)->inc_stmt;
+      AstIncludeStmt* inc_stmt = &ast_new_include_stmt(arena, symbol_table)->inc_stmt;
       *node = inc_stmt->node;
 
       String str = {0};
@@ -1760,7 +1774,7 @@ parse_print_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
     success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
     if(success)
     {
-      AstPrintStmt* print_stmt = &ast_new_print_stmt(arena)->print_stmt;
+      AstPrintStmt* print_stmt = &ast_new_print_stmt(arena, symbol_table)->print_stmt;
       *node = print_stmt->node;
 
       if(expr_node)
@@ -1823,7 +1837,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
     success = parse_expression(arena, input, symbol_table, enclosing_block, &ret_expr);
     if(success)
     {
-      AstReturnStmt* ret_stmt = &ast_new_return_stmt(arena)->ret_stmt;
+      AstReturnStmt* ret_stmt = &ast_new_return_stmt(arena, symbol_table)->ret_stmt;
       ret_stmt->ret_expr = ret_expr;
       *node = ret_stmt->node;
 
@@ -1837,7 +1851,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
 
         if(ret_expr)
         {
-          AstVarOccur* var_occur = &ast_new_var_occur(arena)->var_occur;
+          AstVarOccur* var_occur = &ast_new_var_occur(arena, symbol_table)->var_occur;
           var_occur->data = &ret_proc->ret_var.data;
           var_occur->decl_block_offset = depth;
 
@@ -1846,7 +1860,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
           else
             list_append(arena, &enclosing_block->local_occurs, &var_occur->node);
 
-          AstBinExpr* assgn_expr = &ast_new_bin_expr(arena)->bin_expr;
+          AstBinExpr* assgn_expr = &ast_new_bin_expr(arena, symbol_table)->bin_expr;
           assgn_expr->op = AstOpKind_Assign;
           assgn_expr->left_operand = var_occur->node;
           assgn_expr->right_operand = ret_expr;
@@ -1874,7 +1888,7 @@ parse_break_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
   {
     consume_token(input, symbol_table);
 
-    AstBreakStmt* break_stmt = &ast_new_break_stmt(arena)->break_stmt;
+    AstBreakStmt* break_stmt = &ast_new_break_stmt(arena, symbol_table)->break_stmt;
     *node = break_stmt->node;
 
     AstNode* owner = 0;
@@ -2063,7 +2077,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
         if(input->token == Token_Semicolon)
         {
           consume_token(input, symbol_table);
-          stmt_node = ast_new_empty_stmt(arena);
+          stmt_node = ast_new_empty_stmt(arena, symbol_table);
         } else
           alt = (Alternative)((int)alt+1);
       } break;
@@ -2114,7 +2128,7 @@ parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table, 
   success = scope_begin(symbol_table);
   if(success)
   {
-    AstModule* module = &ast_new_module(arena)->module;
+    AstModule* module = &ast_new_module(arena, symbol_table)->module;
     *node = module->node;
 
     AstBlock* block = &ast_new_block(arena, symbol_table)->block;
@@ -2460,7 +2474,7 @@ build_proc(MemoryArena* arena, AstProc* proc)
 }
  
 void
-build_module(MemoryArena* arena, AstModule* module)
+build_module(MemoryArena* arena, SymbolTable* symbol_table, AstModule* module)
 {
   ListItem* proc_item = list_first_item(&module->proc_list);
   while(proc_item)
@@ -2475,7 +2489,7 @@ build_module(MemoryArena* arena, AstModule* module)
 
   if(module->main_proc)
   {
-    AstCall* call = &ast_new_call(arena)->call;
+    AstCall* call = &ast_new_call(arena, symbol_table)->call;
     call->proc = module->main_proc;
     build_call(arena, call);
     module->main_call = call;
@@ -3252,7 +3266,7 @@ make_product_type(MemoryArena* arena, SymbolTable* symbol_table,
   {
     AstVarDecl* var_decl = list_item->elem;
     Type* right_type = make_product_type(arena, symbol_table,
-                                         var_decl->symbol->type,
+                                         var_decl->node->type,
                                          list_item->next);
     type_out = new_product_type(arena, type_in, right_type);
   }
@@ -3335,7 +3349,16 @@ typecheck_expr(MemoryArena* arena, SymbolTable* symbol_table, AstNode* expr)
   if(expr->kind == AstNodeKind_VarOccur)
   {
     AstVarOccur* var_occur = &expr->var_occur;
-    result = type_substitution(arena, &symbol_table->type_tuples, var_occur->symbol->type);
+    result = type_substitution(arena, &symbol_table->type_tuples, var_occur->node->type);
+  }
+  else if(expr->kind == AstNodeKind_BinExpr)
+  {
+#if 0
+    AstNode* left_operand = expr->bin_expr.left_operand;
+    AstNode* right_operand = expr->bin_expr.right_operand;
+    if(type_unification(left_operand->symbol->type, right_operand->symbol->type))
+      result = type_substitution(arena, &symbol_table->type_tuples, left_operand->symbol->type);
+#endif
   }
   else
     assert(false);
@@ -3355,7 +3378,7 @@ typecheck_proc(MemoryArena* arena, SymbolTable* symbol_table, AstProc* proc)
     ListItem* list_item = list_first_item(&proc->formal_args);
     AstVarDecl* var_decl = list_item->elem;
     args_type = make_product_type(arena, symbol_table,
-                                  var_decl->symbol->type,
+                                  var_decl->node->type,
                                   list_item->next);
   }
   else if(arg_count == 0)
@@ -3366,7 +3389,7 @@ typecheck_proc(MemoryArena* arena, SymbolTable* symbol_table, AstProc* proc)
     assert(false);
 
   Type* proc_type = new_proc_type(arena, args_type, proc->ret_type);
-  success = type_unification(proc_type, proc->symbol->type);
+  success = type_unification(proc_type, proc->node->type);
 
   if(success)
   {
@@ -3438,7 +3461,7 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
     AstModule* module = &node->module;
     if(typecheck_module(arena, &symbol_table, module))
     {
-      build_module(arena, module);
+      build_module(arena, &symbol_table, module);
       if(module->main_call)
       {
         vm_program = mem_push_struct(arena, VmProgram, 1);

@@ -1,3 +1,9 @@
+proc int foo(var int a)
+{
+  var float c;
+  return a;
+}
+
 proc int main()
 {
   var int a = 0;

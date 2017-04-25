@@ -184,7 +184,6 @@ typedef struct
 {
   AstNode* node;
 
-  Symbol* symbol;
   char* name;
   int decl_block_offset;
   AccessLink* link;
@@ -901,10 +900,10 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
       if(symbol->kind == SymbolKind_Var)
       {
         AstVarOccur* var_occur = &ast_new_var_occur(arena, symbol_table)->var_occur;
-        var_occur->symbol = symbol;
         var_occur->name = symbol->name;
-        var_occur->data = &symbol->var_decl->data;
-        var_occur->node->type = symbol->var_decl->node->type;
+        AstVarDecl* var_decl = symbol->var_decl;
+        var_occur->data = &var_decl->data;
+        var_occur->node->type = var_decl->node->type;
         var_occur->decl_block_offset = (symbol_table->nesting_depth - symbol->nesting_depth);
         *node = var_occur->node;
 
@@ -1227,7 +1226,6 @@ parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
               if(input->token == Token_Equals)
               {
                 AstVarOccur* var_occur = &ast_new_var_occur(arena, symbol_table)->var_occur;
-                var_occur->symbol = symbol;
                 var_occur->name = symbol->name;
                 var_occur->data = &var_decl->data;
                 var_occur->decl_block_offset = 0;

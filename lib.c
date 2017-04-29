@@ -73,7 +73,8 @@ error(char* message, ...)
 if(!(EXPR))\
 {\
   printf("Assertion failed: %s\n", #EXPR);\
-  printf("%s:%d", __FILE__, __LINE__);\
+  printf("%s:%d\n", __FILE__, __LINE__);\
+  fflush(stdout);\
   *(int*)0 = 0;\
 }\
 

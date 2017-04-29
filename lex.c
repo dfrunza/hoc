@@ -82,7 +82,7 @@ loop:
     char* lexeme = lexeme_install_id(input, begin_char, end_char);
     input->lexeme.str = lexeme;
 
-    Symbol* symbol = symbol_lookup(symbol_table, lexeme);
+    Symbol* symbol = lookup_symbol(symbol_table, lexeme);
     if(symbol && symbol->kind == SymbolKind_Keyword)
       input->token = symbol->kw_token;
     else

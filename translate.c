@@ -398,7 +398,7 @@ typedef struct Symbol_
     AstVarDecl* var_decl;
     AstProc* proc;
     Token kw_token;
-    Type* t_type;
+    Type* type;
   };
 }
 Symbol;
@@ -486,7 +486,7 @@ copy_type(MemoryArena* arena, Type* type)
 //
 
 Symbol*
-symbol_lookup(SymbolTable* symbol_table, char* name)
+lookup_symbol(SymbolTable* symbol_table, char* name)
 {
   Symbol* result = 0;
 
@@ -504,7 +504,7 @@ symbol_lookup(SymbolTable* symbol_table, char* name)
 }
 
 Symbol*
-symbol_add(MemoryArena* arena, SymbolTable* symbol_table, char* name, SymbolKind kind)
+add_symbol(MemoryArena* arena, SymbolTable* symbol_table, char* name, SymbolKind kind)
 {
   Symbol* symbol = mem_push_struct(arena, Symbol, 1);
   symbol->name = name;
@@ -517,31 +517,50 @@ symbol_add(MemoryArena* arena, SymbolTable* symbol_table, char* name, SymbolKind
 }
 
 bool32
-symbol_register_new(MemoryArena* arena, SymbolTable* symbol_table,
-                    TokenStream* input, Symbol** new_symbol, SymbolKind kind)
+is_builtin_symbol(Symbol* symbol)
+{
+  bool32 result = false;
+  if(symbol->kind == SymbolKind_Keyword)
+  {
+    result = true;
+  }
+  else if(symbol->kind == SymbolKind_Type)
+  {
+    Type* type = symbol->type;
+    if (type->kind == TypeKind_Basic)
+    {
+      BasicType* basic_type = &type->basic;
+      result = basic_type->kind == BasicTypeKind_Integer ||
+        basic_type->kind == BasicTypeKind_Float ||
+        basic_type->kind == BasicTypeKind_Char ||
+        basic_type->kind == BasicTypeKind_Void;
+    }
+  }
+  return result;
+}
+
+bool32
+register_symbol(MemoryArena* arena, SymbolTable* symbol_table,
+                TokenStream* input, Symbol** new_symbol, SymbolKind kind)
 {
   assert(input->token == Token_Id);
   bool32 success = true;
 
-  Symbol* symbol = symbol_lookup(symbol_table, input->lexeme.str);
+  Symbol* symbol = lookup_symbol(symbol_table, input->lexeme.str);
   if(!symbol)
   {
-    symbol = symbol_add(arena, symbol_table, input->lexeme.str, kind);
-  } else
+    symbol = add_symbol(arena, symbol_table, input->lexeme.str, kind);
+  }
+  else if(!is_builtin_symbol(symbol))
   {
-    if(symbol->kind != SymbolKind_Keyword)
+    if(symbol->block_id != symbol_table->scope_id || symbol->kind != kind)
     {
-      if(symbol->block_id != symbol_table->scope_id || symbol->kind != kind)
-      {
-        assert(symbol->nesting_depth <= symbol_table->nesting_depth);
+      assert(symbol->nesting_depth <= symbol_table->nesting_depth);
 
-        symbol = symbol_add(arena, symbol_table, input->lexeme.str, kind);
-      } else {
-        syntax_error(input, "Re-declaraion of identifier: %s", symbol->name);
-        success = false;
-      }
-    } else {
-      syntax_error(input, "Keyword used as identifier: %s", symbol->name);
+      symbol = add_symbol(arena, symbol_table, input->lexeme.str, kind);
+    }
+    else {
+      syntax_error(input, "Cannot register symbol: %s", symbol->name);
       success = false;
     }
   }
@@ -549,36 +568,56 @@ symbol_register_new(MemoryArena* arena, SymbolTable* symbol_table,
   return success;
 }
 
+bool32
+register_type_symbol(MemoryArena* arena, SymbolTable* symbol_table,
+                     TokenStream* input, Symbol** new_symbol)
+{
+  assert(input->token == Token_Id);
+  bool32 success = true;
+
+  Symbol* symbol = 0;
+  success = register_symbol(arena, symbol_table, input, &symbol, SymbolKind_Type);
+  if(success)
+  {
+    if(!symbol->type)
+    {
+      symbol->type = new_type_var(arena);
+    }
+    *new_symbol = symbol;
+  }
+  return success;
+}
+
 #include "lex.c"
 
 Symbol*
-add_builtin_type_keyword(MemoryArena* arena, SymbolTable* symbol_table, char* name, BasicTypeKind basic_kind)
+add_builtin_type(MemoryArena* arena, SymbolTable* symbol_table, char* name, BasicTypeKind basic_kind)
 {
-  Symbol* symbol = symbol_add(arena, symbol_table, name, SymbolKind_Type);
+  Symbol* symbol = add_symbol(arena, symbol_table, name, SymbolKind_Type);
   symbol->name = name;
 
   Type* type = mem_push_struct(arena, Type, 1);
   type->kind = TypeKind_Basic;
   type->basic.kind = basic_kind;
-  symbol->t_type = type;
+  symbol->type = type;
   return symbol;
 }
 
 Symbol*
 add_keyword(MemoryArena* arena, SymbolTable* symbol_table, char* name, Token token)
 {
-  Symbol* symbol = symbol_add(arena, symbol_table, name, SymbolKind_Keyword);
+  Symbol* symbol = add_symbol(arena, symbol_table, name, SymbolKind_Keyword);
   symbol->kw_token = token;
   return symbol;
 }
 
 void
-register_keywords(MemoryArena* arena, SymbolTable* symbol_table)
+add_keyword_list(MemoryArena* arena, SymbolTable* symbol_table)
 {
-  add_builtin_type_keyword(arena, symbol_table, "int", BasicTypeKind_Integer);
-  add_builtin_type_keyword(arena, symbol_table, "char", BasicTypeKind_Char);
-  add_builtin_type_keyword(arena, symbol_table, "float", BasicTypeKind_Float);
-  add_builtin_type_keyword(arena, symbol_table, "void", BasicTypeKind_Void);
+  add_builtin_type(arena, symbol_table, "int", BasicTypeKind_Integer);
+  add_builtin_type(arena, symbol_table, "char", BasicTypeKind_Char);
+  add_builtin_type(arena, symbol_table, "float", BasicTypeKind_Float);
+  add_builtin_type(arena, symbol_table, "void", BasicTypeKind_Void);
 
   add_keyword(arena, symbol_table, "var", Token_Var);
   add_keyword(arena, symbol_table, "proc", Token_Proc);
@@ -658,7 +697,7 @@ ast_new_module(MemoryArena* arena, SymbolTable* symbol_table)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   list_init(&node->module.proc_list);
   node->kind = AstNodeKind_Module;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->module.node = node;
   return node;
 }
@@ -669,7 +708,7 @@ ast_new_block(MemoryArena* arena, SymbolTable* symbol_table)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Block;
   node->block.node = node;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   AstBlock* block = &node->block;
   list_init(&block->decl_vars);
   list_init(&block->local_occurs);
@@ -686,7 +725,7 @@ ast_new_call(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Call;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->call.node = node;
   list_init(&node->call.actual_args);
   return node;
@@ -697,7 +736,7 @@ ast_new_proc(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Proc;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->proc.node = node;
   list_init(&node->proc.formal_args);
   return node;
@@ -708,7 +747,7 @@ ast_new_bin_expr(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_BinExpr;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->bin_expr.node = node;
   return node;
 }
@@ -718,7 +757,7 @@ ast_new_unr_expr(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_UnrExpr;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->unr_expr.node = node;
   return node;
 }
@@ -728,7 +767,7 @@ ast_new_int_num(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IntNum;
-  node->type = symbol_lookup(symbol_table, "int")->t_type;
+  node->type = lookup_symbol(symbol_table, "int")->type;
   node->int_num.node = node;
   return node;
 }
@@ -738,7 +777,7 @@ ast_new_var_decl(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_VarDecl;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->var_decl.node = node;
   return node;
 }
@@ -748,7 +787,7 @@ ast_new_var_occur(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_VarOccur;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->var_occur.node = node;
   return node;
 }
@@ -758,7 +797,7 @@ ast_new_while_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_WhileStmt;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->while_stmt.node = node;
   return node;
 }
@@ -768,7 +807,7 @@ ast_new_if_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IfStmt;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->if_stmt.node = node;
   return node;
 }
@@ -778,7 +817,7 @@ ast_new_return_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_ReturnStmt;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->ret_stmt.node = node;
   return node;
 }
@@ -788,7 +827,7 @@ ast_new_break_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_BreakStmt;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->break_stmt.node = node;
   return node;
 }
@@ -798,7 +837,7 @@ ast_new_print_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_PrintStmt;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->print_stmt.node = node;
   return node;
 }
@@ -808,7 +847,7 @@ ast_new_include_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IncludeStmt;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   node->inc_stmt.node = node;
   return node;
 }
@@ -818,7 +857,7 @@ ast_new_empty_stmt(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_EmptyStmt;
-  node->type = symbol_lookup(symbol_table, "void")->t_type;
+  node->type = lookup_symbol(symbol_table, "void")->type;
   return node;
 }
 
@@ -892,7 +931,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   }
   else if(input->token == Token_Id)
   {
-    Symbol* symbol = symbol_lookup(symbol_table, input->lexeme.str);
+    Symbol* symbol = lookup_symbol(symbol_table, input->lexeme.str);
     if(symbol)
     {
       consume_token(input, symbol_table);
@@ -943,23 +982,32 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                 syntax_error(input, "Expected %d arguments in the call: %s(..)", formal_args->count, symbol->name);
                 success = false;
               }
-            } else {
+            }
+            else {
               syntax_error(input, "Missing ')' in procedure call");
               success = false;
             }
           }
-        } else {
+        }
+        else {
           syntax_error(input, "Missing '(' in procedure call");
           success = false;
         }
-      } else if(symbol->kind == SymbolKind_Keyword)
+      }
+      else if(symbol->kind == SymbolKind_Keyword)
       {
-        syntax_error(input, "Keyword used as identifier: %s", input->lexeme.str);
+        syntax_error(input, "Invalid use of keyword: %s", symbol->name);
+        success = false;
+      }
+      else if(symbol->kind == SymbolKind_Type)
+      {
+        syntax_error(input, "Invalid use of type identifier: %s", symbol->name);
         success = false;
       }
       else
         assert(false);
-    } else {
+    }
+    else {
       syntax_error(input, "Unknown identifier: %s", input->lexeme.str);
       success = false;
     }
@@ -1047,15 +1095,19 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
     AstNode* factor_node = 0;
     success = parse_factor(arena, input, symbol_table, enclosing_block, &factor_node);
 
-    if(success && factor_node)
+    if(success)
     {
-      expr->right_operand = factor_node;
-      expr->left_operand = left_node;
-      success = parse_rest_of_factors(arena, input, symbol_table,
-                                      enclosing_block, expr->node, node);
-    } else {
-      syntax_error(input, "Factor expected");
-      success = false;
+      if(factor_node)
+      {
+        expr->right_operand = factor_node;
+        expr->left_operand = left_node;
+        success = parse_rest_of_factors(arena, input, symbol_table,
+                                        enclosing_block, expr->node, node);
+      }
+      else {
+        syntax_error(input, "Factor expected");
+        success = false;
+      }
     }
   }
   else
@@ -1199,58 +1251,47 @@ parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 
     if(input->token == Token_Id)
     {
-      Symbol* type_symbol = symbol_lookup(symbol_table, input->lexeme.str);
-      if(type_symbol && type_symbol->kind == SymbolKind_Type)
+      Symbol* type_symbol = 0;
+      success = register_type_symbol(arena, symbol_table, input, &type_symbol);
+      if(success)
       {
-        Type* var_type = type_symbol->t_type;
-        if(var_type->kind == TypeKind_Basic &&
-           var_type->basic.kind != BasicTypeKind_Void)
+        consume_token(input, symbol_table);
+        if(input->token == Token_Id)
         {
-          consume_token(input, symbol_table);
-          if(input->token == Token_Id)
+          Symbol* symbol = 0;
+          success = register_symbol(arena, symbol_table, input, &symbol, SymbolKind_Var);
+
+          if(success && symbol)
           {
-            Symbol* symbol = 0;
-            success = symbol_register_new(arena, symbol_table, input, &symbol, SymbolKind_Var);
+            AstVarDecl* var_decl = &ast_new_var_decl(arena, symbol_table)->var_decl;
+            var_decl->symbol = symbol;
+            var_decl->name = symbol->name;
+            var_decl->data.size = 1;
+            var_decl->node->type = type_symbol->type;
+            symbol->var_decl = var_decl;
+            *node = var_decl->node;
 
-            if(success && symbol)
+            consume_token(input, symbol_table);
+            if(input->token == Token_Equals)
             {
-              AstVarDecl* var_decl = &ast_new_var_decl(arena, symbol_table)->var_decl;
-              var_decl->symbol = symbol;
-              var_decl->name = symbol->name;
-              var_decl->data.size = 1;
-              var_decl->node->type = var_type;
-              symbol->var_decl = var_decl;
-              *node = var_decl->node;
+              AstVarOccur* var_occur = &ast_new_var_occur(arena, symbol_table)->var_occur;
+              var_occur->symbol = symbol;
+              var_occur->name = symbol->name;
+              var_occur->data = &var_decl->data;
+              var_occur->decl_block_offset = 0;
 
-              consume_token(input, symbol_table);
-              if(input->token == Token_Equals)
-              {
-                AstVarOccur* var_occur = &ast_new_var_occur(arena, symbol_table)->var_occur;
-                var_occur->name = symbol->name;
-                var_occur->data = &var_decl->data;
-                var_occur->decl_block_offset = 0;
-
-                AstNode* init_expr = 0;
-                success = parse_rest_of_assignment_terms(arena, input, symbol_table,
-                                                         enclosing_block, var_occur->node, &init_expr);
-                if(success)
-                  var_decl->init_expr = init_expr;
-              }
+              AstNode* init_expr = 0;
+              success = parse_rest_of_assignment_terms(arena, input, symbol_table,
+                                                        enclosing_block, var_occur->node, &init_expr);
+              if(success)
+                var_decl->init_expr = init_expr;
             }
-          }
-          else {
-            syntax_error(input, "Identifier expected");
-            success = false;
           }
         }
         else {
-          syntax_error(input, "Variable cannot be of 'void' type");
+          syntax_error(input, "Identifier expected");
           success = false;
         }
-      }
-      else {
-        syntax_error(input, "Symbol not found or is not a type");
-        success = false;
       }
     }
     else {
@@ -1275,48 +1316,36 @@ parse_formal_argument(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
 
     if(input->token == Token_Id)
     {
-      Symbol* type_symbol = symbol_lookup(symbol_table, input->lexeme.str);
-      if(type_symbol && type_symbol->kind == SymbolKind_Type)
+      Symbol* type_symbol = 0;
+      success = register_type_symbol(arena, symbol_table, input, &type_symbol);
+      if(success)
       {
-        Type* var_type = type_symbol->t_type;
-        if(var_type->kind == TypeKind_Basic &&
-           var_type->basic.kind != BasicTypeKind_Void)
+        consume_token(input, symbol_table);
+        if(input->token == Token_Id)
         {
-          consume_token(input, symbol_table);
-          if(input->token == Token_Id)
+          Symbol* symbol = 0;
+          success = register_symbol(arena, symbol_table, input, &symbol, SymbolKind_Var);
+
+          if(success && symbol)
           {
-            Symbol* symbol = 0;
-            success = symbol_register_new(arena, symbol_table, input, &symbol, SymbolKind_Var);
+            AstVarDecl* var_decl = &ast_new_var_decl(arena, symbol_table)->var_decl;
+            var_decl->symbol = symbol;
+            var_decl->name = symbol->name;
+            symbol->var_decl = var_decl;
+            var_decl->node->type = type_symbol->type;
+            *node = var_decl->node;
 
-            if(success && symbol)
-            {
-              AstVarDecl* var_decl = &ast_new_var_decl(arena, symbol_table)->var_decl;
-              var_decl->symbol = symbol;
-              var_decl->name = symbol->name;
-              symbol->var_decl = var_decl;
-              var_decl->node->type = var_type;
-              *node = var_decl->node;
-
-              consume_token(input, symbol_table);
-            }
-          }
-          else {
-            syntax_error(input, "Identifier expected");
-            success = false;
+            consume_token(input, symbol_table);
           }
         }
         else {
-          syntax_error(input, "Variable cannot be of 'void' type");
+          syntax_error(input, "Var identifier expected");
           success = false;
         }
       }
-      else {
-        syntax_error(input, "Symbol not found or not a type");
-        success = false;
-      }
     }
     else {
-      syntax_error(input, "Identifier expected");
+      syntax_error(input, "Type identifier expected");
       success = false;
     }
   }
@@ -1378,36 +1407,54 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
   {
     consume_token(input, symbol_table);
 
-    AstNode* expr_node = 0;
-    success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
-    if(success)
+    if(input->token == Token_OpenParens)
     {
-      AstWhileStmt* while_stmt = &ast_new_while_stmt(arena, symbol_table)->while_stmt;
-      while_stmt->expr = expr_node;
-      *node = while_stmt->node;
+      consume_token(input, symbol_table);
 
-      AstNode* body_node = 0;
-      success = parse_block(arena, input, symbol_table, enclosing_block, while_stmt->node, &body_node);
+      AstNode* expr_node = 0;
+      success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
       if(success)
       {
-        if(body_node)
+        if(input->token == Token_CloseParens)
         {
-          while_stmt->body = body_node;
-        } else
-        {
-          success = parse_statement(arena, input, symbol_table, enclosing_block, &body_node);
+          consume_token(input, symbol_table);
+
+          AstWhileStmt* while_stmt = &ast_new_while_stmt(arena, symbol_table)->while_stmt;
+          while_stmt->expr = expr_node;
+          *node = while_stmt->node;
+
+          AstNode* body_node = 0;
+          success = parse_block(arena, input, symbol_table, enclosing_block, while_stmt->node, &body_node);
           if(success)
           {
             if(body_node)
             {
               while_stmt->body = body_node;
-            } else {
-              syntax_error(input, "Statement(s) required");
-              success = false;
+            } else
+            {
+              success = parse_statement(arena, input, symbol_table, enclosing_block, &body_node);
+              if(success)
+              {
+                if(body_node)
+                {
+                  while_stmt->body = body_node;
+                } else {
+                  syntax_error(input, "Statement(s) required");
+                  success = false;
+                }
+              }
             }
           }
         }
+        else {
+          syntax_error(input, "Missing ')'");
+          success = false;
+        }
       }
+    }
+    else {
+      syntax_error(input, "Missing '('");
+      success = false;
     }
   }
 
@@ -1502,56 +1549,75 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   if(input->token == Token_If)
   {
     consume_token(input, symbol_table);
-    AstNode* expr_node = 0;
-    success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
-    if(success)
-    {
-      AstIfStmt* if_stmt = &ast_new_if_stmt(arena, symbol_table)->if_stmt;
-      if_stmt->expr = expr_node;
-      *node = if_stmt->node;
 
-      AstNode* body_node = 0;
-      success = parse_block(arena, input, symbol_table, enclosing_block, if_stmt->node, &body_node);
+    if(input->token == Token_OpenParens)
+    {
+      consume_token(input, symbol_table);
+
+      AstNode* expr_node = 0;
+      success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
       if(success)
       {
-        if(body_node)
+        if(input->token == Token_CloseParens)
         {
-          if_stmt->body = body_node;
+          consume_token(input, symbol_table);
 
-          AstNode* else_node = 0;
-          success = parse_else_statement(arena, input, symbol_table, enclosing_block, if_stmt->node, &else_node);
-          if(success)
-          {
-            if_stmt->else_body = else_node;
-          }
-        } else
-        {
-          success = parse_statement(arena, input, symbol_table, enclosing_block, &body_node);
+          AstIfStmt* if_stmt = &ast_new_if_stmt(arena, symbol_table)->if_stmt;
+          if_stmt->expr = expr_node;
+          *node = if_stmt->node;
+
+          AstNode* body_node = 0;
+          success = parse_block(arena, input, symbol_table, enclosing_block, if_stmt->node, &body_node);
           if(success)
           {
             if(body_node)
             {
-              if(body_node->kind != AstNodeKind_VarDecl)
-              {
-                if_stmt->body = body_node;
+              if_stmt->body = body_node;
 
-                AstNode* else_node = 0;
-                success = parse_else_statement(arena, input, symbol_table, enclosing_block, if_stmt->node, &else_node);
-                if(success)
-                {
-                  if_stmt->else_body = else_node;
-                }
-              } else {
-                syntax_error(input, "Var statement not allowed");
-                success = false;
+              AstNode* else_node = 0;
+              success = parse_else_statement(arena, input, symbol_table, enclosing_block, if_stmt->node, &else_node);
+              if(success)
+              {
+                if_stmt->else_body = else_node;
               }
-            } else {
-              syntax_error(input, "Statement(s) required");
-              success = false;
+            } else
+            {
+              success = parse_statement(arena, input, symbol_table, enclosing_block, &body_node);
+              if(success)
+              {
+                if(body_node)
+                {
+                  if(body_node->kind != AstNodeKind_VarDecl)
+                  {
+                    if_stmt->body = body_node;
+
+                    AstNode* else_node = 0;
+                    success = parse_else_statement(arena, input, symbol_table, enclosing_block, if_stmt->node, &else_node);
+                    if(success)
+                    {
+                      if_stmt->else_body = else_node;
+                    }
+                  } else {
+                    syntax_error(input, "Var statement not allowed");
+                    success = false;
+                  }
+                } else {
+                  syntax_error(input, "Statement(s) required");
+                  success = false;
+                }
+              }
             }
           }
         }
+        else {
+          syntax_error(input, "Missing ')'");
+          success = false;
+        }
       }
+    }
+    else {
+      syntax_error(input, "Missing '('");
+      success = false;
     }
   }
   return success;
@@ -1571,17 +1637,17 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
     consume_token(input, symbol_table);
     if(input->token == Token_Id)
     {
-      Symbol* type_symbol = symbol_lookup(symbol_table, input->lexeme.str);
+      Symbol* type_symbol = lookup_symbol(symbol_table, input->lexeme.str);
 
       if(type_symbol && type_symbol->kind == SymbolKind_Type)
       {
-        proc->ret_type = type_symbol->t_type;
+        proc->ret_type = type_symbol->type;
 
         consume_token(input, symbol_table);
         if(input->token == Token_Id)
         {
           Symbol* symbol = 0;
-          success = symbol_register_new(arena, symbol_table, input, &symbol, SymbolKind_Proc);
+          success = register_symbol(arena, symbol_table, input, &symbol, SymbolKind_Proc);
 
           if(success && symbol)
           {
@@ -2206,65 +2272,62 @@ build_print_stmt(MemoryArena* arena, AstPrintStmt* print_stmt)
 void
 build_block(MemoryArena* arena, AstBlock* block)
 {
+  List pre_fp_data = {0};
+  list_init(&pre_fp_data);
+  List post_fp_data = {0};
+  list_init(&post_fp_data);
+
   {
-    /* activation record */
-    List pre_fp_data = {0};
-    list_init(&pre_fp_data);
-    List post_fp_data = {0};
-    list_init(&post_fp_data);
-
+    /* access links */
+    ListItem* occur_item = list_first_item(&block->nonlocal_occurs);
+    while(occur_item)
     {
-      /* access links */
-      ListItem* occur_item = list_first_item(&block->nonlocal_occurs);
-      while(occur_item)
+      AstVarOccur* var_occur = occur_item->elem;
+      List* links_list = &block->access_links;
+
+      ListItem* link_item = list_first_item(links_list);
+      AccessLink* link = 0;
+      while(link_item)
       {
-        AstVarOccur* var_occur = occur_item->elem;
-        List* links_list = &block->access_links;
-
-        ListItem* link_item = list_first_item(links_list);
-        AccessLink* link = 0;
-        while(link_item)
-        {
-          link = link_item->elem;
-          if(link->actv_rec_offset == var_occur->decl_block_offset)
-            break;
-          link_item = link_item->next;
-          link = 0;
-        }
-        if(!link)
-        {
-          link = mem_push_struct(arena, AccessLink, 1);
-          link->actv_rec_offset = var_occur->decl_block_offset;
-          link->data.size = 1;
-          list_append(arena, links_list, link);
-          list_append(arena, &pre_fp_data, &link->data);
-          block->links_size += link->data.size;
-        }
-        var_occur->link = link;
-
-        occur_item = occur_item->next;
+        link = link_item->elem;
+        if(link->actv_rec_offset == var_occur->decl_block_offset)
+          break;
+        link_item = link_item->next;
+        link = 0;
       }
-    }
-
-    DataArea* old_fp = mem_push_struct(arena, DataArea, 1);
-    old_fp->size = 1;
-    list_append(arena, &pre_fp_data, old_fp);
-
-    {
-      /* locals*/
-      ListItem* node_item = list_first_item(&block->decl_vars);
-      while(node_item)
+      if(!link)
       {
-        AstVarDecl* local = node_item->elem;
-
-        list_append(arena, &post_fp_data, &local->data);
-        block->locals_size += local->data.size;
-
-        node_item = node_item->next;
+        link = mem_push_struct(arena, AccessLink, 1);
+        link->actv_rec_offset = var_occur->decl_block_offset;
+        link->data.size = 1;
+        list_append(arena, links_list, link);
+        list_append(arena, &pre_fp_data, &link->data);
+        block->links_size += link->data.size;
       }
+      var_occur->link = link;
+
+      occur_item = occur_item->next;
     }
-    compute_activation_record_locations(&pre_fp_data, &post_fp_data);
   }
+
+  DataArea* old_fp = mem_push_struct(arena, DataArea, 1);
+  old_fp->size = 1;
+  list_append(arena, &pre_fp_data, old_fp);
+
+  {
+    /* locals*/
+    ListItem* node_item = list_first_item(&block->decl_vars);
+    while(node_item)
+    {
+      AstVarDecl* local = node_item->elem;
+
+      list_append(arena, &post_fp_data, &local->data);
+      block->locals_size += local->data.size;
+
+      node_item = node_item->next;
+    }
+  }
+  compute_activation_record_locations(&pre_fp_data, &post_fp_data);
   build_block_stmts(arena, &block->stmt_list);
 }
 
@@ -2425,49 +2488,46 @@ build_proc(MemoryArena* arena, AstProc* proc)
   str_append(&label, ".proc-end");
   proc->label_end = label.head;
 
+  List pre_fp_data = {0};
+  list_init(&pre_fp_data);
+  List post_fp_data = {0};
+  list_init(&post_fp_data);
+
+  AstVarDecl* ret_var = &proc->ret_var;
+  list_append(arena, &pre_fp_data, &ret_var->data);
+  proc->ret_size = ret_var->data.size;
+
   {
-    /* activation record */
-    List pre_fp_data = {0};
-    list_init(&pre_fp_data);
-    List post_fp_data = {0};
-    list_init(&post_fp_data);
-
-    AstVarDecl* ret_var = &proc->ret_var;
-    list_append(arena, &pre_fp_data, &ret_var->data);
-    proc->ret_size = ret_var->data.size;
-
+    /* formals */
+    ListItem* node_item = list_first_item(&proc->formal_args);
+    while(node_item)
     {
-      /* formals */
-      ListItem* node_item = list_first_item(&proc->formal_args);
-      while(node_item)
-      {
-        AstVarDecl* formal = node_item->elem;
-        list_append(arena, &pre_fp_data, &formal->data);
-        proc->args_size += formal->data.size;
+      AstVarDecl* formal = node_item->elem;
+      list_append(arena, &pre_fp_data, &formal->data);
+      proc->args_size += formal->data.size;
 
-        node_item = node_item->next;
-      }
+      node_item = node_item->next;
     }
-
-    DataArea* ctrl_links = mem_push_struct(arena, DataArea, 1);
-    ctrl_links->size = 3; // fp,sp,ip
-    list_append(arena, &pre_fp_data, ctrl_links);
-
-    {
-      /* locals */
-      ListItem* node_item = list_first_item(&proc->body->decl_vars);
-      while(node_item)
-      {
-        AstVarDecl* local = node_item->elem;
-
-        list_append(arena, &post_fp_data, &local->data);
-        proc->locals_size += local->data.size;
-
-        node_item = node_item->next;
-      }
-    }
-    compute_activation_record_locations(&pre_fp_data, &post_fp_data);
   }
+
+  DataArea* ctrl_links = mem_push_struct(arena, DataArea, 1);
+  ctrl_links->size = 3; // fp,sp,ip
+  list_append(arena, &pre_fp_data, ctrl_links);
+
+  {
+    /* locals */
+    ListItem* node_item = list_first_item(&proc->body->decl_vars);
+    while(node_item)
+    {
+      AstVarDecl* local = node_item->elem;
+
+      list_append(arena, &post_fp_data, &local->data);
+      proc->locals_size += local->data.size;
+
+      node_item = node_item->next;
+    }
+  }
+  compute_activation_record_locations(&pre_fp_data, &post_fp_data);
   build_block_stmts(arena, &proc->body->stmt_list);
 }
  
@@ -2892,6 +2952,12 @@ gen_print_stmt(MemoryArena* arena, List* code, AstPrintStmt* print_stmt)
 }
 
 void
+gen_empty_stmt(MemoryArena* arena, List* code)
+{
+  emit_instr(arena, code, Opcode_NOOP);
+}
+
+void
 gen_statement(MemoryArena* arena, List* code, AstNode* stmt_node)
 {
   if(stmt_node->kind == AstNodeKind_BinExpr)
@@ -2929,6 +2995,10 @@ gen_statement(MemoryArena* arena, List* code, AstNode* stmt_node)
   else if(stmt_node->kind == AstNodeKind_PrintStmt)
   {
     gen_print_stmt(arena, code, &stmt_node->print_stmt);
+  }
+  else if(stmt_node->kind == AstNodeKind_EmptyStmt)
+  {
+    gen_empty_stmt(arena, code);
   }
   else
     assert(false);
@@ -3339,29 +3409,42 @@ type_substitution(MemoryArena* arena, List* tuple_list, Type* type)
   return subst;
 }
 
-Type*
-typecheck_expr(MemoryArena* arena, SymbolTable* symbol_table, AstNode* expr)
+bool32
+typecheck_expr(MemoryArena* arena, SymbolTable* symbol_table,
+               AstNode* expr, Type** type)
 {
   Type* result = 0;
+  bool32 success = true;
 
-  if(expr->kind == AstNodeKind_VarOccur)
+  if(expr->kind == AstNodeKind_VarOccur ||
+     expr->kind == AstNodeKind_IntNum)
   {
-    AstVarOccur* var_occur = &expr->var_occur;
-    result = type_substitution(arena, &symbol_table->type_tuples, var_occur->node->type);
+    result = type_substitution(arena, &symbol_table->type_tuples, expr->type);
   }
   else if(expr->kind == AstNodeKind_BinExpr)
   {
-#if 0
     AstNode* left_operand = expr->bin_expr.left_operand;
     AstNode* right_operand = expr->bin_expr.right_operand;
-    if(type_unification(left_operand->symbol->type, right_operand->symbol->type))
-      result = type_substitution(arena, &symbol_table->type_tuples, left_operand->symbol->type);
-#endif
+    success = type_unification(left_operand->type, right_operand->type);
+    if(success)
+    {
+      result = type_substitution(arena, &symbol_table->type_tuples, left_operand->type);
+    }
+  }
+  else if(expr->kind == AstNodeKind_UnrExpr)
+  {
+    AstUnrExpr* unr_expr = &expr->unr_expr;
+    AstNode* operand = unr_expr->operand;
+    if(unr_expr->op == AstOpKind_Neg)
+      result = type_substitution(arena, &symbol_table->type_tuples, operand->type);
+    else
+      assert(false);
   }
   else
     assert(false);
 
-  return result;
+  *type = result;
+  return success;
 }
 
 bool32
@@ -3402,8 +3485,8 @@ typecheck_proc(MemoryArena* arena, SymbolTable* symbol_table, AstProc* proc)
         AstReturnStmt* ret_stmt = &node->ret_stmt;
         if(ret_stmt->ret_expr)
         {
-          ret_type = typecheck_expr(arena, symbol_table, ret_stmt->ret_expr);
-          success = type_unification(ret_type, proc_type->proc.ret);
+          success = typecheck_expr(arena, symbol_table, ret_stmt->ret_expr, &ret_type) &&
+                    type_unification(ret_type, proc_type->proc.ret);
         }
       }
       list_item = list_item->next;
@@ -3444,7 +3527,7 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
   TokenStream token_stream = {0};
   token_stream_init(&token_stream, arena, hoc_text, file_path);
 
-  register_keywords(arena, &symbol_table);
+  add_keyword_list(arena, &symbol_table);
   consume_token(&token_stream, &symbol_table);
 
   AstNode* node = 0;

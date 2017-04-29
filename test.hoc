@@ -1,7 +1,9 @@
-proc void foo(var int a)
+proc int foo(var a b)
 {
-  var float c;
-  return;
+  var int c;
+  var int d;
+  /*var a A;*/
+  return d*c;
 }
 
 proc int main()

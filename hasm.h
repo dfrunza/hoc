@@ -76,7 +76,7 @@ typedef struct
   ParamType param_type;
 
   union {
-    int32 int_num;
+    int32 int_val;
     RegName reg;
     char* str;
   } param;

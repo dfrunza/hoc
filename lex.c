@@ -1,29 +1,29 @@
 bool32
-token_is_keyword(Token token)
+token_is_keyword(TokenKind token_kind)
 {
-  return token > Token__KeywordBegin && token < Token__KeywordEnd;
+  return (token_kind > TokenKind__KeywordBegin) && (token_kind < TokenKind__KeywordEnd);
 }
 
 char*
-lexeme_install_id(TokenStream* input, char* begin_char, char* end_char)
+lexeme_install_id(MemoryArena* arena, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
 
   //TODO: Search the lexeme, and if found, then return it.
   size_t len = end_char - begin_char + 1;
-  char* lexeme = mem_push_struct(input->arena, char, len + 1);
+  char* lexeme = mem_push_struct(arena, char, len + 1);
   cstr_copy_substr(lexeme, begin_char, end_char);
   return lexeme;
 }
 
 char*
-lexeme_install_dquot_str(TokenStream* input, char* begin_char, char* end_char)
+lexeme_install_dquot_str(MemoryArena* arena, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
   assert(*begin_char == '"' && *end_char == '"');
 
   size_t len = (end_char - begin_char + 1) - 2; // minus the quotes
-  char* lexeme = mem_push_struct(input->arena, char, len + 1); // +NULL
+  char* lexeme = mem_push_struct(arena, char, len + 1); // +NULL
 
   char* dest_str = lexeme;
   char* src_str = begin_char+1;
@@ -36,9 +36,9 @@ lexeme_install_dquot_str(TokenStream* input, char* begin_char, char* end_char)
 }
 
 void
-token_stream_init(TokenStream* token_stream, MemoryArena* arena, char* text, char* file_path)
+token_stream_init(TokenStream* token_stream, char* text, char* file_path)
 {
-  token_stream->arena = arena;
+  //token_stream->arena = arena;
   token_stream->text = text;
   token_stream->cursor = token_stream->text;
   token_stream->line_nr = 1;
@@ -48,12 +48,15 @@ token_stream_init(TokenStream* token_stream, MemoryArena* arena, char* text, cha
 }
 
 void
-consume_token(TokenStream* input, SymbolTable* symbol_table)
+consume_token(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table)
 {
-  input->prev_token = input->token;
-  input->token = Token__Null;
+  /*
+  input->prev_token_kind = input->token_kind;
+  input->token_kind = TokenKind__Null;
   mem_zero(&input->lexeme);
-
+  */
+  input->prev_token = input->token;
+  mem_zero(&input->token);
   input->src_line = input->cursor;
   char c;
 
@@ -79,14 +82,16 @@ loop:
       c = *(++input->cursor);
 
     char* end_char = input->cursor - 1;
-    char* lexeme = lexeme_install_id(input, begin_char, end_char);
-    input->lexeme.str = lexeme;
+    char* lexeme = lexeme_install_id(arena, begin_char, end_char);
+    //input->lexeme.str = lexeme;
 
-    Symbol* symbol = lookup_symbol(symbol_table, lexeme);
-    if(symbol && symbol->kind == SymbolKind_Keyword)
-      input->token = symbol->kw_token;
-    else
-      input->token = Token_Id;
+    input->token.kind = TokenKind_Id;
+    input->token.lexeme = lexeme;
+    Symbol* symbol = lookup_symbol(symbol_table, lexeme, SymbolKind_Keyword);
+    if(symbol)
+    {
+      input->token.kind = symbol->keyword;
+    }
   }
   else if(char_is_numeric(c))
   {
@@ -99,33 +104,35 @@ loop:
       c = *(++input->cursor);
     }
 
-    int* value = mem_push_struct(input->arena, int, 1);
+    int* value = mem_push_struct(arena, int, 1);
     *value = num;
-    input->token = Token_IntNum;
-    input->lexeme.int_num = value;
+    //input->token_kind = TokenKind_IntNum;
+    //input->lexeme.int_num = value;
+    input->token.kind = TokenKind_IntNum;
+    input->token.int_val = value;
   }
   else if(c == '-')
   {
-    input->token = Token_Minus;
+    input->token.kind = TokenKind_Minus;
     c = *(++input->cursor);
     if(c == '>')
     {
-      input->token = Token_RightArrow;
+      input->token.kind = TokenKind_RightArrow;
       ++input->cursor;
     }
-    else if(input->prev_token == Token_Equals ||
-            input->prev_token == Token_OpenParens ||
-            input->prev_token == Token_Star ||
-            input->prev_token == Token_Plus ||
-            input->prev_token == Token_Comma ||
-            input->prev_token == Token_FwdSlash ||
-            input->prev_token == Token_Return)
+    else if(input->prev_token.kind == TokenKind_Equals ||
+            input->prev_token.kind == TokenKind_OpenParens ||
+            input->prev_token.kind == TokenKind_Star ||
+            input->prev_token.kind == TokenKind_Plus ||
+            input->prev_token.kind == TokenKind_Comma ||
+            input->prev_token.kind == TokenKind_FwdSlash ||
+            input->prev_token.kind == TokenKind_Return)
     {
-      input->token = Token_UnaryMinus;
+      input->token.kind = TokenKind_UnaryMinus;
     }
     else if(c == '-')
     {
-      input->token = Token_MinusMinus;
+      input->token.kind = TokenKind_MinusMinus;
       ++input->cursor;
     }
   }
@@ -155,7 +162,7 @@ loop:
       goto loop;
     } else
     {
-      input->token = Token_FwdSlash;
+      input->token.kind = TokenKind_FwdSlash;
       ++input->cursor;
     }
   }
@@ -170,154 +177,154 @@ loop:
 
     if(c == '"')
     {
-      char* lexeme = lexeme_install_dquot_str(input, input->cursor, fwd_cursor);
-      input->lexeme.str = lexeme;
-      input->token = Token_String;
+      char* lexeme = lexeme_install_dquot_str(arena, input->cursor, fwd_cursor);
+      input->token.str = lexeme;
+      input->token.kind = TokenKind_String;
       input->cursor = ++fwd_cursor;
     } else
       syntax_error(input, "Missing closing '\"'\n");
   }
   else if(c == '=')
   {
-    input->token = Token_Equals;
+    input->token.kind = TokenKind_Equals;
     c = *(++input->cursor);
     if(c == '=')
     {
-      input->token = Token_EqualsEquals;
+      input->token.kind = TokenKind_EqualsEquals;
       ++input->cursor;
     }
   }
   else if(c == '<')
   {
-    input->token = Token_AngleLeft;
+    input->token.kind = TokenKind_AngleLeft;
     c = *(++input->cursor);
     if(c == '=')
     {
-      input->token = Token_AngleLeftEquals;
+      input->token.kind = TokenKind_AngleLeftEquals;
       ++input->cursor;
     }
   }
   else if(c == '>')
   {
-    input->token = Token_AngleRight;
+    input->token.kind = TokenKind_AngleRight;
     c = *(++input->cursor);
     if(c == '=')
     {
-      input->token = Token_AngleRightEquals;
+      input->token.kind = TokenKind_AngleRightEquals;
       ++input->cursor;
     }
   }
   else if(c == '&')
   {
-    input->token = Token_Amprsnd;
+    input->token.kind = TokenKind_Amprsnd;
     c = *(++input->cursor);
     if(c == '&')
     {
-      input->token = Token_AmprsndAmprsnd;
+      input->token.kind = TokenKind_AmprsndAmprsnd;
       ++input->cursor;
     }
   }
   else if(c == '|')
   {
-    input->token = Token_Pipe;
+    input->token.kind = TokenKind_Pipe;
     c = *(++input->cursor);
     if(c == '|')
     {
-      input->token = Token_PipePipe;
+      input->token.kind = TokenKind_PipePipe;
       ++input->cursor;
     }
   }
   else if(c == '!')
   {
-    input->token = Token_Bang;
+    input->token.kind = TokenKind_Bang;
     c = *(++input->cursor);
     if(c == '=')
     {
-      input->token = Token_BangEquals;
+      input->token.kind = TokenKind_BangEquals;
       ++input->cursor;
     }
   }
   else if(c == '+')
   {
-    input->token = Token_Plus;
+    input->token.kind = TokenKind_Plus;
     c = *(++input->cursor);
     if(c == '+')
     {
-      input->token = Token_PlusPlus;
+      input->token.kind = TokenKind_PlusPlus;
       ++input->cursor;
     }
   }
   else if(c == '%')
   {
-    input->token = Token_Percent;
+    input->token.kind = TokenKind_Percent;
     ++input->cursor;
   }
   else if(c == '\\')
   {
-    input->token = Token_BackSlash;
+    input->token.kind = TokenKind_BackSlash;
     ++input->cursor;
   }
   else if(c == '*')
   {
-    input->token = Token_Star;
+    input->token.kind = TokenKind_Star;
     ++input->cursor;
   }
   else if(c == '.')
   {
-    input->token = Token_Dot;
+    input->token.kind = TokenKind_Dot;
     ++input->cursor;
   }
   else if(c == '}')
   {
-    input->token = Token_CloseBrace;
+    input->token.kind = TokenKind_CloseBrace;
     ++input->cursor;
   }
   else if(c == '{')
   {
-    input->token = Token_OpenBrace;
+    input->token.kind = TokenKind_OpenBrace;
     ++input->cursor;
   }
   else if(c == '(')
   {
-    input->token = Token_OpenParens;
+    input->token.kind = TokenKind_OpenParens;
     ++input->cursor;
   }
   else if(c == ')')
   {
-    input->token = Token_CloseParens;
+    input->token.kind = TokenKind_CloseParens;
     ++input->cursor;
   }
   else if(c == ';')
   {
-    input->token = Token_Semicolon;
+    input->token.kind = TokenKind_Semicolon;
     ++input->cursor;
   }
   else if(c == ',')
   {
-    input->token = Token_Comma;
+    input->token.kind = TokenKind_Comma;
     ++input->cursor;
   }
   else if(c == ':')
   {
-    input->token = Token_Colon;
+    input->token.kind = TokenKind_Colon;
     ++input->cursor;
   }
   else if(c == '[')
   {
-    input->token = Token_OpenParens;
+    input->token.kind = TokenKind_OpenParens;
     ++input->cursor;
   }
   else if(c == ']')
   {
-    input->token = Token_CloseBracket;
+    input->token.kind = TokenKind_CloseBracket;
     ++input->cursor;
   }
   else if(c == '^')
   {
-    input->token = Token_UpArrow;
+    input->token.kind = TokenKind_UpArrow;
     ++input->cursor;
   }
   else if(c == '\0')
-    input->token = Token_EndOfInput;
+    input->token.kind = TokenKind_EndOfInput;
 }
 

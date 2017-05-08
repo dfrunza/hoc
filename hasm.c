@@ -294,7 +294,7 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
           case Opcode_POP:
           case Opcode_PUSH:
             {
-              if(cstr_to_int(components[1], &instr.param.int_num))
+              if(cstr_to_int(components[1], &instr.param.int_val))
                 instr.param_type = ParamType_Int32;
               else {
                 instr.param_type = ParamType_Reg;
@@ -315,7 +315,7 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
 
           case Opcode_ALLOC:
             {
-              if(cstr_to_int(components[1], &instr.param.int_num))
+              if(cstr_to_int(components[1], &instr.param.int_val))
                 instr.param_type = ParamType_Int32;
               else {
                 error("Invalid parameter '%s'", components[1]);
@@ -375,7 +375,7 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
     {
       Instruction* label_instr = &code->instr_array[label->instr_address];
       label_instr->param_type = ParamType_Int32;
-      label_instr->param.int_num = target_instr_address;
+      label_instr->param.int_val = target_instr_address;
       label->instr_address = target_instr_address;
     }
     else {
@@ -397,7 +397,7 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
       if(label)
       {
         instr->param_type = ParamType_Int32;
-        instr->param.int_num = label->instr_address;
+        instr->param.int_val = label->instr_address;
       }
       else {
         error("Label '%s' not found", instr->param.str);

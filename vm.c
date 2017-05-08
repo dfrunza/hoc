@@ -57,7 +57,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_ALLOC:
     {
       assert(instr->param_type == ParamType_Int32);
-      int32 top_sp = machine->sp + instr->param.int_num;
+      int32 top_sp = machine->sp + instr->param.int_val;
       if(check_stack_bounds(machine, top_sp))
       {
         for(int i = machine->sp; i < top_sp; i++)
@@ -74,7 +74,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(check_stack_bounds(machine, top_sp))
       {
         if(instr->param_type == ParamType_Int32)
-          *(int32*)&memory[machine->sp*VMWORD] = instr->param.int_num;
+          *(int32*)&memory[machine->sp*VMWORD] = instr->param.int_val;
         else if(instr->param_type == ParamType_Reg)
         {
           RegName regname = instr->param.reg;
@@ -107,7 +107,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
         }
         else if(instr->param_type == ParamType_Int32)
         {
-          machine->sp -= instr->param.int_num;
+          machine->sp -= instr->param.int_val;
           machine->ip++;
         }
         else if(instr->param_type == ParamType_Reg)
@@ -334,7 +334,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_GOTO:
     {
       assert(instr->param_type == ParamType_Int32);
-      machine->ip = instr->param.int_num;
+      machine->ip = instr->param.int_val;
     } break;
 
     case Opcode_CALL:
@@ -347,7 +347,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
         *(int32*)&memory[(machine->sp+1)*VMWORD] = machine->fp;
         *(int32*)&memory[(machine->sp+2)*VMWORD] = machine->sp;
 
-        int32 jump_address = instr->param.int_num;
+        int32 jump_address = instr->param.int_val;
         machine->ip = jump_address;
         machine->sp = top_sp;
         machine->fp = top_sp;
@@ -399,7 +399,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
       int32 arg_sp = machine->sp-1;
       if(check_stack_bounds(machine, arg_sp))
       {
-        int32 jump_address = instr->param.int_num;
+        int32 jump_address = instr->param.int_val;
         int32 check = *(int32*)&memory[arg_sp*VMWORD];
         if((check && opcode == Opcode_JUMPNZ) ||
            (!check && opcode == Opcode_JUMPZ))
@@ -475,7 +475,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_LABEL:
     {
       assert(instr->param_type == ParamType_Int32);
-      int32 jump_address = instr->param.int_num;
+      int32 jump_address = instr->param.int_val;
       machine->ip = jump_address;
     } break;
 

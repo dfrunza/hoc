@@ -1,12 +1,11 @@
-proc int foo(var int b)
+proc int foo()
 {
-  return b;
+  return 0;
 }
 
 proc int main()
 {
-  var int a;
-  var float b;
-  a = foo(b);
-  return a;
+  var int result;
+  result = foo();
+  return result;
 }

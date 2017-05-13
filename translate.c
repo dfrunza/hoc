@@ -255,7 +255,7 @@ typedef struct
   Symbol* symbol;
   char* name;
   List actual_args; // <AstNode>
-  AstProc* proc;
+  AstNode* proc;
 }
 AstCall;
 
@@ -264,8 +264,8 @@ typedef struct
   List proc_list; // <AstProc>
   AstNode* body;
 
-  AstProc* main_proc;
-  AstCall* main_call;
+  AstNode* main_proc;
+  AstNode* main_call;
 }
 AstModule;
 
@@ -390,8 +390,8 @@ typedef struct
 }
 VmProgram;
 
-static int typevar_id = 1;
-static int last_label_id;
+static int g_typevar_id = 1;
+static int g_last_label_id;
 
 //
 //  End of structs
@@ -438,7 +438,7 @@ new_typevar(MemoryArena* arena)
 {
   Type* type = mem_push_struct(arena, Type, 1);
   type->kind = TypeKind_TypeVar;
-  type->typevar.id = typevar_id++;
+  type->typevar.id = g_typevar_id++;
   return type;
 }
 
@@ -617,6 +617,13 @@ add_keyword_list(MemoryArena* arena, SymbolTable* symbol_table)
   add_keyword(arena, symbol_table, "print", TokenKind_Print);
 }
 
+Type*
+get_basic_type(SymbolTable* symbol_table, char* name)
+{
+  Symbol* type_symbol = lookup_symbol(symbol_table, name, SymbolKind_Type);
+  return type_symbol->type;
+}
+
 bool32
 scope_begin(SymbolTable* symbol_table)
 {
@@ -652,7 +659,7 @@ scope_end(SymbolTable* symbol_table)
 void
 make_unique_label(String* label)
 {
-  sprintf(label->head, "L%d", last_label_id++);
+  sprintf(label->head, "L%d", g_last_label_id++);
   int len = cstr_len(label->head);
   label->end = label->head + len;
   MemoryArena* arena = label->arena;
@@ -917,9 +924,10 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
       Symbol* symbol = lookup_symbol(symbol_table, id_name, SymbolKind_Proc);
       if(symbol)
       {
+        AstNode* proc_node = symbol->node;
         call->symbol = symbol;
         call->name = symbol->name;
-        call->proc = &symbol->node->proc;
+        call->proc = proc_node;
 
         consume_token(arena, input, symbol_table);
         success = parse_actual_argument_list(arena, input, symbol_table, enclosing_block, call);
@@ -929,11 +937,11 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
           {
             consume_token(arena, input, symbol_table);
 
-            List* formal_args = &call->proc->formal_args;
+            List* formal_args = &proc_node->proc.formal_args;
             List* actual_args = &call->actual_args;
             if(formal_args->count != actual_args->count)
             {
-              syntax_error(input, "Expected %d arguments in the call: %s(..)", formal_args->count, symbol->name);
+              syntax_error(input, "Expected %d arguments in the call: %s(..)", formal_args->count, proc_node->proc.name);
               success = false;
             }
           }
@@ -2506,26 +2514,29 @@ build_proc(MemoryArena* arena, AstProc* proc)
 void
 build_module(MemoryArena* arena, SymbolTable* symbol_table, AstModule* module)
 {
-  ListItem* proc_item = list_first_item(&module->proc_list);
-  while(proc_item)
+  ListItem* list_item = list_first_item(&module->proc_list);
+  while(list_item)
   {
-    AstNode* proc_node = proc_item->elem;
+    AstNode* proc_node = list_item->elem;
     assert(proc_node->kind == AstNodeKind_Proc);
     AstProc* proc = &proc_node->proc;
 
     build_proc(arena, proc);
     if(cstr_match(proc->name, "main"))
-      module->main_proc = proc;
+    {
+      module->main_proc = proc_node;
+    }
 
-    proc_item = proc_item->next;
+    list_item = list_item->next;
   }
 
   if(module->main_proc)
   {
-    AstCall* call = &ast_new_call(arena)->call;
+    AstNode* call_node = ast_new_call(arena);
+    AstCall* call = &call_node->call;
     call->proc = module->main_proc;
     build_call(arena, call);
-    module->main_call = call;
+    module->main_call = call_node;
   }
 }
 
@@ -2731,7 +2742,7 @@ void gen_unr_expr(MemoryArena* arena, List* code, AstUnrExpr* unr_expr)
 void
 gen_call(MemoryArena* arena, List* code, AstCall* call)
 {
-  AstProc* proc = call->proc;
+  AstProc* proc = &call->proc->proc;
   emit_instr_int(arena, code, Opcode_ALLOC, proc->ret_size);
 
   ListItem* arg_item = list_first_item(&call->actual_args);
@@ -2982,7 +2993,7 @@ gen_statement(MemoryArena* arena, List* code, AstNode* stmt_node)
 void
 gen_module(MemoryArena* arena, List* code, AstModule* module)
 {
-  gen_call(arena, code, module->main_call);
+  gen_call(arena, code, &module->main_call->call);
   emit_instr(arena, code, Opcode_HALT);
 
   ListItem* item = list_first_item(&module->proc_list);
@@ -3257,40 +3268,40 @@ bool32
 type_unification(Type* type_a, Type* type_b)
 {
   bool32 success = false;
-  Type* set_type_a = type_find_equiv_set(type_a);
-  Type* set_type_b = type_find_equiv_set(type_b);
+  Type* equiv_set_a = type_find_equiv_set(type_a);
+  Type* equiv_set_b = type_find_equiv_set(type_b);
 
-  if(set_type_a->kind == TypeKind_TypeVar ||
-     set_type_b->kind == TypeKind_TypeVar)
+  if(equiv_set_a->kind == TypeKind_TypeVar ||
+     equiv_set_b->kind == TypeKind_TypeVar)
   {
-    type_set_union(set_type_a, set_type_b);
+    type_set_union(equiv_set_a, equiv_set_b);
     success = true;
   }
-  else if(set_type_a->kind == set_type_b->kind)
+  else if(equiv_set_a->kind == equiv_set_b->kind)
   {
-    if(set_type_a == set_type_b)
+    if(equiv_set_a == equiv_set_b)
     {
       success = true;
     }
-    else if(set_type_a->kind == TypeKind_Basic)
+    else if(equiv_set_a->kind == TypeKind_Basic)
     {
-      success = type_a->basic.kind == type_b->basic.kind;
+      success = equiv_set_a->basic.kind == equiv_set_b->basic.kind;
     }
     else
     {
-      type_set_union(set_type_a, set_type_b);
+      type_set_union(equiv_set_a, equiv_set_b);
 
-      if(set_type_a->kind == TypeKind_Proc)
+      if(equiv_set_a->kind == TypeKind_Proc)
       {
         success = type_unification(type_a->proc.args, type_b->proc.args) &&
           type_unification(type_a->proc.ret, type_b->proc.ret);
       }
-      else if(set_type_a->kind == TypeKind_Product)
+      else if(equiv_set_a->kind == TypeKind_Product)
       {
         success = type_unification(type_a->product.left, type_b->product.left) &&
           type_unification(type_a->product.right, type_b->product.right);
       }
-      else if(set_type_a->kind == TypeKind_Pointer)
+      else if(equiv_set_a->kind == TypeKind_Pointer)
       {
         success = type_unification(type_a->ptr.pointee, type_b->ptr.pointee);
       }
@@ -3364,7 +3375,7 @@ type_substitution(MemoryArena* arena, List* tuple_list, Type* type)
 
     if(subst->kind == TypeKind_TypeVar)
     {
-      subst->typevar.id = typevar_id++;
+      subst->typevar.id = g_typevar_id++;
     }
     else if(subst->kind == TypeKind_Proc)
     {
@@ -3411,8 +3422,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
     Type* left_type = 0;
     Type* right_type = 0;
     success = typecheck_expr(arena, type_tuples, left_operand, &left_type) &&
-       typecheck_expr(arena, type_tuples, right_operand, &right_type) &&
-       type_unification(left_operand->type, right_operand->type);
+       typecheck_expr(arena, type_tuples, right_operand, &right_type);
     if(success)
     {
       result = type_substitution(arena, type_tuples, left_operand->type);
@@ -3436,7 +3446,50 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
   }
   else if(expr_node->kind == AstNodeKind_Call)
   {
-    assert(!"Not implemented");
+    AstCall* call = &expr_node->call;
+    AstProc* proc = &call->proc->proc;
+    assert(call->actual_args.count == proc->formal_args.count);
+
+    // actual args
+    {
+      ListItem* list_item = list_first_item(&call->actual_args);
+      Type* arg_type = 0;
+      while(success && list_item)
+      {
+        AstNode* arg_node = list_item->elem;
+        success = typecheck_expr(arena, type_tuples, arg_node, &arg_type) &&
+          type_unification(arg_node->type, arg_type);
+
+        list_item = list_item->next;
+      }
+    }
+
+    // call type
+    {
+      Type* args_type = 0;
+      int arg_count = call->actual_args.count;
+
+      if(arg_count > 0)
+      {
+        ListItem* list_item = list_first_item(&call->actual_args);
+        AstNode* arg_node = list_item->elem;
+        args_type = make_product_type(arena, arg_node->type, list_item->next);
+      }
+      else if(arg_count == 0)
+      {
+        args_type = new_basic_type(arena, BasicTypeKind_Void);
+      }
+      else
+        assert(false);
+
+      Type* call_type = new_proc_type(arena, args_type, proc->ret_type);
+      success = type_unification(call_type, call->proc->type)
+        && type_unification(expr_node->type, call_type);
+      if(success)
+      {
+        result = type_substitution(arena, type_tuples, proc->ret_type);
+      }
+    }
   }
   else
     assert(false);
@@ -3452,36 +3505,18 @@ typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* node)
   assert(node->kind == AstNodeKind_Proc);
   AstProc* proc = &node->proc;
 
-  Type* args_type = 0;
-  int arg_count = proc->formal_args.count;
-
-  if(arg_count > 0)
+  // formal args
   {
-    // formal args
-    {
-      ListItem* list_item = list_first_item(&proc->formal_args);
-      while(success && list_item)
-      {
-        AstNode* var_decl_node = list_item->elem;
-        assert(var_decl_node->kind == AstNodeKind_VarDecl);
-        success = type_unification(var_decl_node->type, var_decl_node->var_decl.var_type);
-
-        list_item = list_item->next;
-      }
-    }
-
     ListItem* list_item = list_first_item(&proc->formal_args);
-    AstNode* arg_node = list_item->elem;
-    args_type = make_product_type(arena, arg_node->type, list_item->next);
-  }
-  else if(arg_count == 0)
-  {
-    args_type = new_basic_type(arena, BasicTypeKind_Void);
-  }
-  else
-    assert(false);
+    while(success && list_item)
+    {
+      AstNode* var_decl_node = list_item->elem;
+      assert(var_decl_node->kind == AstNodeKind_VarDecl);
+      success = type_unification(var_decl_node->type, var_decl_node->var_decl.var_type);
 
-  node->type = new_proc_type(arena, args_type, proc->ret_type);
+      list_item = list_item->next;
+    }
+  }
 
   // decl vars
   {
@@ -3539,6 +3574,28 @@ typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* node)
       ret_type = new_basic_type(arena, BasicTypeKind_Void);
       success = type_unification(ret_type, proc->ret_type);
     }
+  }
+
+  // proc type
+  if(success)
+  {
+    Type* args_type = 0;
+    int arg_count = proc->formal_args.count;
+
+    if(arg_count > 0)
+    {
+      ListItem* list_item = list_first_item(&proc->formal_args);
+      AstNode* arg_node = list_item->elem;
+      args_type = make_product_type(arena, arg_node->type, list_item->next);
+    }
+    else if(arg_count == 0)
+    {
+      args_type = new_basic_type(arena, BasicTypeKind_Void);
+    }
+    else
+      assert(false);
+
+    node->type = new_proc_type(arena, args_type, proc->ret_type);
   }
 
   return success;

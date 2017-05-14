@@ -271,7 +271,7 @@ AstModule;
 
 typedef struct
 {
-  AstNode* expr;
+  AstNode* cond_expr;
   AstNode* body;
   AstNode* else_body;
 
@@ -282,7 +282,7 @@ AstIfStmt;
 
 typedef struct
 {
-  AstNode* expr;
+  AstNode* cond_expr;
   AstNode* body;
 
   char* label_eval;
@@ -495,81 +495,13 @@ add_symbol(MemoryArena* arena, SymbolTable* symbol_table, char* name, SymbolKind
   return symbol;
 }
 
-#if 0
-bool32
-is_builtin_symbol(Symbol* symbol)
-{
-  bool32 result = false;
-  if(symbol->kind == SymbolKind_Keyword)
-  {
-    result = true;
-  }
-  else if(symbol->kind == SymbolKind_Type)
-  {
-    Type* type = symbol->type;
-    if (type->kind == TypeKind_Basic)
-    {
-      BasicType* basic_type = &type->basic;
-      result = basic_type->kind == BasicTypeKind_Integer ||
-        basic_type->kind == BasicTypeKind_Float ||
-        basic_type->kind == BasicTypeKind_Char ||
-        basic_type->kind == BasicTypeKind_Void;
-    }
-  }
-  return result;
-}
-
-bool32
-register_symbol(MemoryArena* arena, SymbolTable* symbol_table,
-                TokenStream* input, Symbol** new_symbol, SymbolKind kind)
-{
-  assert(input->token.kind == TokenKind_Id);
-  bool32 success = true;
-
-  Symbol* symbol = lookup_symbol(symbol_table, input->lexeme.str);
-  if(!symbol)
-  {
-    symbol = add_symbol(arena, symbol_table, input->lexeme.str, kind);
-  }
-  else if(!is_builtin_symbol(symbol))
-  {
-    if(symbol->block_id != symbol_table->scope_id || symbol->kind != kind)
-    {
-      assert(symbol->nesting_depth <= symbol_table->nesting_depth);
-
-      symbol = add_symbol(arena, symbol_table, input->lexeme.str, kind);
-    }
-    else {
-      syntax_error(input, "Cannot register symbol: %s", symbol->name);
-      success = false;
-    }
-  }
-  *new_symbol = symbol;
-  return success;
-}
-
-bool32
-register_type_symbol(MemoryArena* arena, SymbolTable* symbol_table,
-                     TokenStream* input, Symbol** new_symbol)
-{
-  assert(input->token.kind == TokenKind_Id);
-  bool32 success = true;
-
-  Symbol* symbol = 0;
-  success = register_symbol(arena, symbol_table, input, &symbol, SymbolKind_Type);
-  if(success)
-  {
-    if(!symbol->type)
-    {
-      symbol->type = new_typevar(arena);
-    }
-    *new_symbol = symbol;
-  }
-  return success;
-}
-#endif
-
 #include "lex.c"
+
+bool32
+is_logical_operator(AstOpKind op)
+{
+  return op >= AstOpKind_LogicEquals && op <= AstOpKind_LogicNot;
+}
 
 Symbol*
 add_builtin_type(MemoryArena* arena, SymbolTable* symbol_table, char* name, BasicTypeKind basic_kind)
@@ -1366,7 +1298,7 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
 
           *node = ast_new_while_stmt(arena);
           AstWhileStmt* while_stmt = &(*node)->while_stmt;
-          while_stmt->expr = expr_node;
+          while_stmt->cond_expr = expr_node;
 
           AstNode* body_node = 0;
           success = parse_block(arena, input, symbol_table, enclosing_block, *node, &body_node);
@@ -1512,7 +1444,7 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
 
           *node = ast_new_if_stmt(arena);
           AstIfStmt* if_stmt = &(*node)->if_stmt;
-          if_stmt->expr = expr_node;
+          if_stmt->cond_expr = expr_node;
 
           AstNode* body_node = 0;
           success = parse_block(arena, input, symbol_table, enclosing_block, *node, &body_node);
@@ -1722,7 +1654,7 @@ parse_include_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_t
       str_append(&str, input->file_path);
       path_make_dir(str.head);
       str_tidyup(&str);
-      str_append(&str, input->token.symbol->name);
+      str_append(&str, input->token.str);
       inc_stmt->file_path = str.head;
 
       consume_token(arena, input, symbol_table);
@@ -1814,7 +1746,7 @@ parse_print_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
 
         if(input->token.kind == TokenKind_Id)
         {
-          if(cstr_match("n", input->token.symbol->name))
+          if(cstr_match("n", input->token.lexeme))
           {
             print_stmt->new_line = true;
             consume_token(arena, input, symbol_table);
@@ -2191,14 +2123,14 @@ parse(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table, AstNode
 int
 compute_data_loc(int sp, List* areas)
 {
-  ListItem* list_item = list_first_item(areas);
-  while(list_item)
+  for(ListItem* list_item = list_first_item(areas);
+      list_item;
+      list_item = list_item->next)
   {
     DataArea* data = list_item->elem;
     data->loc = sp;
     assert(data->size > 0);
     sp += data->size;
-    list_item = list_item->next;
   }
   return sp;
 }
@@ -2206,12 +2138,12 @@ compute_data_loc(int sp, List* areas)
 void
 fixup_data_loc(int fp, List* areas)
 {
-  ListItem* list_item = list_first_item(areas);
-  while(list_item)
+  for(ListItem* list_item = list_first_item(areas);
+      list_item;
+      list_item = list_item->next)
   {
     DataArea* data = list_item->elem;
     data->loc = data->loc - fp;
-    list_item = list_item->next;
   }
 }
 
@@ -2227,11 +2159,11 @@ compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
 void
 build_call(MemoryArena* arena, AstCall* call)
 {
-  ListItem* arg_item = list_first_item(&call->actual_args);
-  while(arg_item)
+  for(ListItem* list_item = list_first_item(&call->actual_args);
+      list_item;
+      list_item = list_item->next)
   {
-    build_node(arena, arg_item->elem);
-    arg_item = arg_item->next;
+    build_node(arena, list_item->elem);
   }
 }
 
@@ -2252,20 +2184,21 @@ build_block(MemoryArena* arena, AstBlock* block)
 
   {
     /* access links */
-    ListItem* occur_item = list_first_item(&block->nonlocal_occurs);
-    while(occur_item)
+    for(ListItem* list_item = list_first_item(&block->nonlocal_occurs);
+        list_item;
+        list_item = list_item->next)
     {
-      AstVarOccur* var_occur = occur_item->elem;
+      AstVarOccur* var_occur = list_item->elem;
       List* links_list = &block->access_links;
 
-      ListItem* link_item = list_first_item(links_list);
       AccessLink* link = 0;
-      while(link_item)
+      for(ListItem* list_item = list_first_item(links_list);
+          list_item;
+          list_item = list_item->next)
       {
-        link = link_item->elem;
+        link = list_item->elem;
         if(link->actv_rec_offset == var_occur->decl_block_offset)
           break;
-        link_item = link_item->next;
         link = 0;
       }
       if(!link)
@@ -2278,8 +2211,6 @@ build_block(MemoryArena* arena, AstBlock* block)
         block->links_size += link->data.size;
       }
       var_occur->link = link;
-
-      occur_item = occur_item->next;
     }
   }
 
@@ -2289,8 +2220,9 @@ build_block(MemoryArena* arena, AstBlock* block)
 
   {
     /* locals*/
-    ListItem* list_item = list_first_item(&block->decl_vars);
-    while(list_item)
+    for(ListItem* list_item = list_first_item(&block->decl_vars);
+        list_item;
+        list_item = list_item->next)
     {
       AstNode* node = list_item->elem;
       assert(node->kind == AstNodeKind_VarDecl);
@@ -2298,8 +2230,6 @@ build_block(MemoryArena* arena, AstBlock* block)
 
       list_append(arena, &post_fp_data, &local->data);
       block->locals_size += local->data.size;
-
-      list_item = list_item->next;
     }
   }
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
@@ -2309,7 +2239,7 @@ build_block(MemoryArena* arena, AstBlock* block)
 void
 build_while_stmt(MemoryArena* arena, AstWhileStmt* while_stmt)
 {
-  build_node(arena, while_stmt->expr);
+  build_node(arena, while_stmt->cond_expr);
 
   {
     /* labels */
@@ -2338,7 +2268,7 @@ build_while_stmt(MemoryArena* arena, AstWhileStmt* while_stmt)
 void
 build_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
 {
-  build_node(arena, if_stmt->expr);
+  build_node(arena, if_stmt->cond_expr);
 
   {
     /* labels */
@@ -2444,11 +2374,11 @@ build_node(MemoryArena* arena, AstNode* node)
 void
 build_block_stmts(MemoryArena* arena, List* stmt_list)
 {
-  ListItem* list_item = list_first_item(stmt_list);
-  while(list_item)
+  for(ListItem* list_item = list_first_item(stmt_list);
+      list_item;
+      list_item = list_item->next)
   {
     build_node(arena, list_item->elem);
-    list_item = list_item->next;
   }
 }
 
@@ -2474,8 +2404,9 @@ build_proc(MemoryArena* arena, AstProc* proc)
 
   {
     /* formals */
-    ListItem* list_item = list_first_item(&proc->formal_args);
-    while(list_item)
+    for(ListItem* list_item = list_first_item(&proc->formal_args);
+        list_item;
+        list_item = list_item->next)
     {
       AstNode* node = list_item->elem;
       assert(node->kind == AstNodeKind_VarDecl);
@@ -2483,8 +2414,6 @@ build_proc(MemoryArena* arena, AstProc* proc)
 
       list_append(arena, &pre_fp_data, &formal->data);
       proc->args_size += formal->data.size;
-
-      list_item = list_item->next;
     }
   }
 
@@ -2494,8 +2423,9 @@ build_proc(MemoryArena* arena, AstProc* proc)
 
   {
     /* locals */
-    ListItem* list_item = list_first_item(&proc->body->decl_vars);
-    while(list_item)
+    for(ListItem* list_item = list_first_item(&proc->body->decl_vars);
+        list_item;
+        list_item = list_item->next)
     {
       AstNode* node = list_item->elem;
       assert(node->kind == AstNodeKind_VarDecl);
@@ -2503,8 +2433,6 @@ build_proc(MemoryArena* arena, AstProc* proc)
 
       list_append(arena, &post_fp_data, &local->data);
       proc->locals_size += local->data.size;
-
-      list_item = list_item->next;
     }
   }
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
@@ -2514,8 +2442,9 @@ build_proc(MemoryArena* arena, AstProc* proc)
 void
 build_module(MemoryArena* arena, SymbolTable* symbol_table, AstModule* module)
 {
-  ListItem* list_item = list_first_item(&module->proc_list);
-  while(list_item)
+  for(ListItem* list_item = list_first_item(&module->proc_list);
+      list_item;
+      list_item = list_item->next)
   {
     AstNode* proc_node = list_item->elem;
     assert(proc_node->kind == AstNodeKind_Proc);
@@ -2526,8 +2455,6 @@ build_module(MemoryArena* arena, SymbolTable* symbol_table, AstModule* module)
     {
       module->main_proc = proc_node;
     }
-
-    list_item = list_item->next;
   }
 
   if(module->main_proc)
@@ -2745,12 +2672,12 @@ gen_call(MemoryArena* arena, List* code, AstCall* call)
   AstProc* proc = &call->proc->proc;
   emit_instr_int(arena, code, Opcode_ALLOC, proc->ret_size);
 
-  ListItem* arg_item = list_first_item(&call->actual_args);
-  while(arg_item)
+  for(ListItem* list_item = list_first_item(&call->actual_args);
+      list_item;
+      list_item = list_item->next)
   {
-    AstNode* arg = arg_item->elem;
+    AstNode* arg = list_item->elem;
     gen_load_rvalue(arena, code, arg);
-    arg_item = arg_item->next;
   }
 
   emit_instr_str(arena, code, Opcode_CALL, proc->label);
@@ -2833,10 +2760,11 @@ gen_break_stmt(MemoryArena* arena, List* code, AstBreakStmt* break_stmt)
 void
 gen_block(MemoryArena* arena, List* code, AstBlock* block)
 {
-  ListItem* link_item = list_first_item(&block->access_links);
-  while(link_item)
+  for(ListItem* list_item = list_first_item(&block->access_links);
+      list_item;
+      list_item = list_item->next)
   {
-    AccessLink* link = link_item->elem;
+    AccessLink* link = list_item->elem;
     emit_instr_reg(arena, code, Opcode_PUSH, RegName_FP);
     int offset = link->actv_rec_offset - 1;
     while(offset--)
@@ -2844,7 +2772,6 @@ gen_block(MemoryArena* arena, List* code, AstBlock* block)
       emit_instr(arena, code, Opcode_DECR); // TODO: explain why
       emit_instr(arena, code, Opcode_LOAD);
     }
-    link_item = link_item->next;
   }
 
   emit_instr(arena, code, Opcode_ENTER);
@@ -2868,12 +2795,12 @@ gen_proc(MemoryArena* arena, List* code, AstProc* proc)
   emit_instr_str(arena, code, Opcode_LABEL, proc->label);
   emit_instr_int(arena, code, Opcode_ALLOC, proc->locals_size);
 
-  ListItem* item = list_first_item(&proc->body->stmt_list);
-  while(item)
+  for(ListItem* list_item = list_first_item(&proc->body->stmt_list);
+      list_item;
+      list_item = list_item->next)
   {
-    AstNode* node = item->elem;
+    AstNode* node = list_item->elem;
     gen_statement(arena, code, node);
-    item = item->next;
   }
 
   emit_instr_str(arena, code, Opcode_LABEL, proc->label_end);
@@ -2883,7 +2810,7 @@ gen_proc(MemoryArena* arena, List* code, AstProc* proc)
 void
 gen_if_stmt(MemoryArena* arena, List* code, AstIfStmt* if_stmt)
 {
-  gen_load_rvalue(arena, code, if_stmt->expr);
+  gen_load_rvalue(arena, code, if_stmt->cond_expr);
 
   if(if_stmt->else_body)
     emit_instr_str(arena, code, Opcode_JUMPZ, if_stmt->label_else);
@@ -2914,7 +2841,7 @@ void
 gen_while_stmt(MemoryArena* arena, List* code, AstWhileStmt* while_stmt)
 {
   emit_instr_str(arena, code, Opcode_LABEL, while_stmt->label_eval);
-  gen_load_rvalue(arena, code, while_stmt->expr);
+  gen_load_rvalue(arena, code, while_stmt->cond_expr);
   emit_instr_str(arena, code, Opcode_JUMPZ, while_stmt->label_break);
   if(while_stmt->body->kind == AstNodeKind_Block)
     gen_block(arena, code, &while_stmt->body->block);
@@ -2996,15 +2923,15 @@ gen_module(MemoryArena* arena, List* code, AstModule* module)
   gen_call(arena, code, &module->main_call->call);
   emit_instr(arena, code, Opcode_HALT);
 
-  ListItem* item = list_first_item(&module->proc_list);
-  while(item)
+  for(ListItem* list_item = list_first_item(&module->proc_list);
+      list_item;
+      list_item = list_item->next)
   {
-    AstNode* proc_node = item->elem;
+    AstNode* proc_node = list_item->elem;
     assert(proc_node->kind == AstNodeKind_Proc);
     AstProc* proc = &proc_node->proc;
 
     gen_proc(arena, code, proc);
-    item = item->next;
   }
 }
 
@@ -3030,10 +2957,11 @@ get_regname_str(RegName reg)
 void
 print_code(VmProgram* vm_program)
 {
-  ListItem* item = list_first_item(&vm_program->instr_list);
-  while(item)
+  for(ListItem* list_item = list_first_item(&vm_program->instr_list);
+      list_item;
+      list_item = list_item->next)
   {
-    Instruction* instr = item->elem;
+    Instruction* instr = list_item->elem;
     switch(instr->opcode)
     {
       case Opcode_PUSH:
@@ -3235,7 +3163,6 @@ print_code(VmProgram* vm_program)
       default:
         assert(false);
     }
-    item = item->next;
   }
 }
 
@@ -3341,8 +3268,9 @@ TypeTuple*
 type_find_tuple(List* tuple_list, Type* type)
 {
   TypeTuple* result = 0;
-  ListItem* list_item = list_first_item(tuple_list);
-  while(list_item)
+  for(ListItem* list_item = list_first_item(tuple_list);
+      list_item;
+      list_item = list_item->next)
   {
     TypeTuple* tuple = list_item->elem;
     if(tuple->key == type)
@@ -3350,7 +3278,6 @@ type_find_tuple(List* tuple_list, Type* type)
       result = tuple;
       break;
     }
-    list_item = list_item->next;
   }
   return result;
 }
@@ -3417,15 +3344,26 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
   }
   else if(expr_node->kind == AstNodeKind_BinExpr)
   {
-    AstNode* left_operand = expr_node->bin_expr.left_operand;
-    AstNode* right_operand = expr_node->bin_expr.right_operand;
+    AstBinExpr* bin_expr = &expr_node->bin_expr;
+    AstNode* left_operand = bin_expr->left_operand;
+    AstNode* right_operand = bin_expr->right_operand;
     Type* left_type = 0;
     Type* right_type = 0;
-    success = typecheck_expr(arena, type_tuples, left_operand, &left_type) &&
-       typecheck_expr(arena, type_tuples, right_operand, &right_type);
-    if(success)
+
+    if(success = typecheck_expr(arena, type_tuples, left_operand, &left_type) &&
+       typecheck_expr(arena, type_tuples, right_operand, &right_type))
     {
-      result = type_substitution(arena, type_tuples, left_operand->type);
+      if(success = type_unification(left_type, right_type))
+      {
+        if(!is_logical_operator(bin_expr->op))
+        {
+          result = type_substitution(arena, type_tuples, left_operand->type);
+        }
+        else
+        {
+          result = new_basic_type(arena, BasicTypeKind_Bool);
+        }
+      }
     }
   }
   else if(expr_node->kind == AstNodeKind_UnrExpr)
@@ -3452,15 +3390,15 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
 
     // actual args
     {
-      ListItem* list_item = list_first_item(&call->actual_args);
+      ;
       Type* arg_type = 0;
-      while(success && list_item)
+      for(ListItem* list_item = list_first_item(&call->actual_args);
+          success && list_item;
+          list_item = list_item->next)
       {
         AstNode* arg_node = list_item->elem;
         success = typecheck_expr(arena, type_tuples, arg_node, &arg_type) &&
           type_unification(arg_node->type, arg_type);
-
-        list_item = list_item->next;
       }
     }
 
@@ -3507,28 +3445,26 @@ typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* node)
 
   // formal args
   {
-    ListItem* list_item = list_first_item(&proc->formal_args);
-    while(success && list_item)
+    for(ListItem* list_item = list_first_item(&proc->formal_args);
+        success && list_item;
+        list_item = list_item->next)
     {
       AstNode* var_decl_node = list_item->elem;
       assert(var_decl_node->kind == AstNodeKind_VarDecl);
       success = type_unification(var_decl_node->type, var_decl_node->var_decl.var_type);
-
-      list_item = list_item->next;
     }
   }
 
   // decl vars
   {
-    ListItem* list_item = list_first_item(&proc->body->decl_vars);
-    while(success && list_item)
+    for(ListItem* list_item = list_first_item(&proc->body->decl_vars);
+        success && list_item;
+        list_item = list_item->next)
     {
       AstNode* var_decl_node = list_item->elem;
       assert(var_decl_node->kind == AstNodeKind_VarDecl);
       AstVarDecl* var_decl = &var_decl_node->var_decl;
       success = type_unification(var_decl_node->type, var_decl->var_type);
-
-      list_item = list_item->next;
     }
   }
 
@@ -3536,8 +3472,9 @@ typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* node)
   {
     Type* ret_type = 0;
 
-    ListItem* list_item = list_first_item(&proc->body->stmt_list);
-    while(success && list_item)
+    for(ListItem* list_item = list_first_item(&proc->body->stmt_list);
+        success && list_item;
+        list_item = list_item->next)
     {
       AstNode* stmt_node = list_item->elem;
       if(stmt_node->kind == AstNodeKind_ReturnStmt)
@@ -3563,10 +3500,18 @@ typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* node)
         Type* expr_type = 0;
         success = typecheck_expr(arena, type_tuples, stmt_node, &expr_type);
       }
+      else if(stmt_node->kind == AstNodeKind_IfStmt)
+      {
+        AstIfStmt* if_stmt = &stmt_node->if_stmt;
+        Type* cond_type = 0;
+        if(success = typecheck_expr(arena, type_tuples, if_stmt->cond_expr, &cond_type))
+        {
+          Type* bool_type = new_basic_type(arena, BasicTypeKind_Bool);
+          success = type_unification(cond_type, bool_type);
+        }
+      }
       else
         assert(false);
-
-      list_item = list_item->next;
     }
 
     if(success && !ret_type)

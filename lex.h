@@ -71,7 +71,6 @@ typedef struct
     int* int_val;
     int* float_val;
     char* str;
-    Symbol* symbol;
   };
 }
 Token;

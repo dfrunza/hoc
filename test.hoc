@@ -1,3 +1,5 @@
+include "hlib/abs.hoc"
+
 proc float foo(var int a, var int b)
 {
   var float r;

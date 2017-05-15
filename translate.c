@@ -70,7 +70,7 @@ typedef struct
 typedef struct Type
 {
   TypeKind kind;
-  Type* equiv_set;
+  Type* repr_type; // representative of the equivalent set of types
 
   union
   {
@@ -3212,12 +3212,12 @@ print_code(VmProgram* vm_program)
 }
 
 Type*
-type_find_equiv_set(Type* type)
+type_find_set_representative(Type* type)
 {
   Type* result = type;
-  while(type->equiv_set)
+  while(type->repr_type)
   {
-    type = type->equiv_set;
+    type = type->repr_type;
     result = type;
   }
   return result;
@@ -3228,11 +3228,11 @@ type_set_union(Type* type_a, Type* type_b)
 {
   if(type_a->kind == TypeKind_TypeVar)
   {
-    type_a->equiv_set = type_b;
+    type_a->repr_type = type_b;
   }
   else
   {
-    type_b->equiv_set = type_a;
+    type_b->repr_type = type_a;
   }
 }
 
@@ -3240,42 +3240,42 @@ bool32
 type_unification(Type* type_a, Type* type_b)
 {
   bool32 success = false;
-  Type* equiv_set_a = type_find_equiv_set(type_a);
-  Type* equiv_set_b = type_find_equiv_set(type_b);
+  Type* repr_type_a = type_find_set_representative(type_a);
+  Type* repr_type_b = type_find_set_representative(type_b);
 
-  if(equiv_set_a->kind == TypeKind_TypeVar ||
-     equiv_set_b->kind == TypeKind_TypeVar)
+  if(repr_type_a->kind == TypeKind_TypeVar ||
+     repr_type_b->kind == TypeKind_TypeVar)
   {
-    type_set_union(equiv_set_a, equiv_set_b);
+    type_set_union(repr_type_a, repr_type_b);
     success = true;
   }
-  else if(equiv_set_a->kind == equiv_set_b->kind)
+  else if(repr_type_a->kind == repr_type_b->kind)
   {
-    if(equiv_set_a == equiv_set_b)
+    if(repr_type_a == repr_type_b)
     {
       success = true;
     }
-    else if(equiv_set_a->kind == TypeKind_Basic)
+    else if(repr_type_a->kind == TypeKind_Basic)
     {
-      success = equiv_set_a->basic.kind == equiv_set_b->basic.kind;
+      success = repr_type_a->basic.kind == repr_type_b->basic.kind;
     }
     else
     {
-      type_set_union(equiv_set_a, equiv_set_b);
+      type_set_union(repr_type_a, repr_type_b);
 
-      if(equiv_set_a->kind == TypeKind_Proc)
+      if(repr_type_a->kind == TypeKind_Proc)
       {
-        success = type_unification(equiv_set_a->proc.args, equiv_set_b->proc.args) &&
-          type_unification(equiv_set_a->proc.ret, equiv_set_b->proc.ret);
+        success = type_unification(repr_type_a->proc.args, repr_type_b->proc.args) &&
+          type_unification(repr_type_a->proc.ret, repr_type_b->proc.ret);
       }
-      else if(equiv_set_a->kind == TypeKind_Product)
+      else if(repr_type_a->kind == TypeKind_Product)
       {
-        success = type_unification(equiv_set_a->product.left, equiv_set_b->product.left) &&
-          type_unification(equiv_set_a->product.right, equiv_set_b->product.right);
+        success = type_unification(repr_type_a->product.left, repr_type_b->product.left) &&
+          type_unification(repr_type_a->product.right, repr_type_b->product.right);
       }
-      else if(equiv_set_a->kind == TypeKind_Pointer)
+      else if(repr_type_a->kind == TypeKind_Pointer)
       {
-        success = type_unification(equiv_set_a->ptr.pointee, equiv_set_b->ptr.pointee);
+        success = type_unification(repr_type_a->ptr.pointee, repr_type_b->ptr.pointee);
       }
     }
   }
@@ -3330,7 +3330,7 @@ type_find_tuple(List* tuple_list, Type* type)
 Type*
 type_substitution(MemoryArena* arena, List* tuple_list, Type* type)
 {
-  type = type_find_equiv_set(type);
+  type = type_find_set_representative(type);
   Type* subst = 0;
 
   TypeTuple* tuple = type_find_tuple(tuple_list, type);

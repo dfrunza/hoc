@@ -793,7 +793,7 @@ parse_actual_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* 
   bool32 success = true;
 
   AstNode* arg_node = 0;
-  if(success = parse_expression(arena, input, symbol_table, enclosing_block, &arg_node)
+  if((success = parse_expression(arena, input, symbol_table, enclosing_block, &arg_node))
      && arg_node)
   {
     list_append(arena, &call->actual_args, arg_node);
@@ -818,7 +818,7 @@ parse_statement_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
     consume_token(arena, input, symbol_table);
 
   AstNode* stmt_node = 0;
-  if(success = parse_statement(arena, input, symbol_table, block, &stmt_node)
+  if((success = parse_statement(arena, input, symbol_table, block, &stmt_node))
      && stmt_node)
   {
     if(stmt_node->kind == AstNodeKind_VarDecl)
@@ -1133,7 +1133,7 @@ parse_term(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   AstNode* factor_node = 0;
   AstNode* expr_node = 0;
 
-  if(success = parse_factor(arena, input, symbol_table, enclosing_block, &factor_node)
+  if((success = parse_factor(arena, input, symbol_table, enclosing_block, &factor_node))
      && factor_node)
   {
     success = parse_rest_of_factors(arena, input, symbol_table,
@@ -1165,7 +1165,7 @@ parse_rest_of_terms(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
     consume_token(arena, input, symbol_table);
 
     AstNode* term_node = 0;
-    if(success = parse_term(arena, input, symbol_table, enclosing_block, &term_node)
+    if((success = parse_term(arena, input, symbol_table, enclosing_block, &term_node))
        && term_node)
     {
       expr->right_operand = term_node;
@@ -1191,7 +1191,7 @@ parse_assignment_term(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
   AstNode* term_node = 0;
   AstNode* expr_node = 0;
 
-  if(success = parse_term(arena, input, symbol_table, enclosing_block, &term_node)
+  if((success = parse_term(arena, input, symbol_table, enclosing_block, &term_node))
      && term_node)
   {
     success = parse_rest_of_terms(arena, input, symbol_table, enclosing_block, term_node, &expr_node);
@@ -1249,7 +1249,7 @@ parse_expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
   AstNode* assgn_node = 0;
   AstNode* expr_node = 0;
 
-  if(success = parse_assignment_term(arena, input, symbol_table, enclosing_block, &assgn_node)
+  if((success = parse_assignment_term(arena, input, symbol_table, enclosing_block, &assgn_node))
      && assgn_node)
   {
     success = parse_rest_of_assignment_terms(arena, input, symbol_table,
@@ -1334,7 +1334,7 @@ parse_formal_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* 
   bool32 success = true;
 
   AstNode* arg_node = 0;
-  if(success = parse_var_statement(arena, input, symbol_table, enclosing_block, &arg_node)
+  if((success = parse_var_statement(arena, input, symbol_table, enclosing_block, &arg_node))
      && arg_node)
   {
     assert(arg_node->kind == AstNodeKind_VarDecl);

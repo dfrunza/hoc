@@ -1,15 +1,24 @@
+/*
 include "hlib/abs.hoc"
+include "hlib/minmax.hoc"
+include "hlib/gcd.hoc"
+include "hlib/power.hoc"
+include "hlib/sqrt.hoc"
+include "hlib/fizzbuzz.hoc"
+*/
 
-proc float foo(var int a, var int b)
+proc int foo(var int a, var int b)
 {
-  var float r;
-  return r;
+  return a - b;
 }
 
 proc int main()
 {
   var int b;
-  var float c;
-  c = foo(b, b);
+  var bool c;
+  if(c)
+  {
+    c = !foo(b, b);
+  }
   return b;
 }

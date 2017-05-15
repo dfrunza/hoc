@@ -122,10 +122,13 @@ main(int argc, char* argv[])
 
   if(argc >= 2)
   {
-    MemoryArena arena = arena_new(10*MEGABYTE);
+    MemoryArena arena = arena_new(500*KILOBYTE);
+    DEBUG_arena_print_occupancy("", &arena);
 
     char* file_path = argv[1];
     char* hoc_text = file_read_text(&arena, file_path);
+    DEBUG_arena_print_occupancy("Read text", &arena);
+
     if(hoc_text)
     {
       VmProgram* vm_program = translate_hoc(&arena, file_path, hoc_text);

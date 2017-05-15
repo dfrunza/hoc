@@ -138,6 +138,15 @@ arena_set_watermark(MemoryArena* arena, void* ptr)
   arena->free = ptr;
 }
 
+void
+DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
+{
+  size_t total_avail = (uint8*)arena->limit - (uint8*)arena->base;
+  double in_use = ((uint8*)arena->free - (uint8*)arena->base) / (double)total_avail;
+  double free = ((uint8*)arena->limit - (uint8*)arena->free) / (double)total_avail;
+  debug_print("used: %.2f%%, free: %.2f%% -- %s\n", in_use*100, free*100, tag);
+}
+
 MemoryArena
 arena_push_(MemoryArena* arena, size_t elem_size, size_t count, bool32 clear_to_zero)
 {
@@ -178,6 +187,7 @@ arena_new(int size)
 {
   MemoryArena arena = {0};
   arena.free = malloc(size);
+  arena.base = arena.free;
   arena.limit = (uint8*)arena.free + size;
   return arena;
 }

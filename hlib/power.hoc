@@ -1,7 +1,7 @@
-proc power(var a, var power)
+proc int power(var int a, var int power)
 {
-  var p = power;
-  var result = 1;
+  var int p = power;
+  var int result = 1;
   while(p > 0)
   {
     result = result*a;

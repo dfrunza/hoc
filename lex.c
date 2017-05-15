@@ -38,7 +38,6 @@ lexeme_install_dquot_str(MemoryArena* arena, char* begin_char, char* end_char)
 void
 token_stream_init(TokenStream* token_stream, char* text, char* file_path)
 {
-  //token_stream->arena = arena;
   token_stream->text = text;
   token_stream->cursor = token_stream->text;
   token_stream->line_nr = 1;
@@ -50,11 +49,6 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
 void
 consume_token(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table)
 {
-  /*
-  input->prev_token_kind = input->token_kind;
-  input->token_kind = TokenKind__Null;
-  mem_zero(&input->lexeme);
-  */
   input->prev_token = input->token;
   mem_zero(&input->token);
   input->src_line = input->cursor;
@@ -83,7 +77,6 @@ loop:
 
     char* end_char = input->cursor - 1;
     char* lexeme = lexeme_install_id(arena, begin_char, end_char);
-    //input->lexeme.str = lexeme;
 
     input->token.kind = TokenKind_Id;
     input->token.lexeme = lexeme;
@@ -106,8 +99,6 @@ loop:
 
     int* value = mem_push_struct(arena, int, 1);
     *value = num;
-    //input->token_kind = TokenKind_IntNum;
-    //input->lexeme.int_num = value;
     input->token.kind = TokenKind_IntNum;
     input->token.int_val = value;
   }

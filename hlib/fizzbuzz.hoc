@@ -5,20 +5,20 @@
      -15 if it's divisible by 15
      else print the integer itself
 */
-proc fizzbuzz(var n)
+proc int fizzbuzz(var int n)
 {
   if(n > 0)
   {
-    while(n)
+    while(n > 0)
     {
       if((n % 15) == 0)
-        print (-15)\n;
+        /*print (-15)\n*/;
       else if((n % 3) == 0)
-        print (-3)\n;
+        /*print (-3)\n*/;
       else if((n % 5) == 0)
-        print (-5)\n;
+        /*print (-5)\n*/;
       else
-        print n \n;
+        /*print n \n*/;
 
       n = n-1;
     }

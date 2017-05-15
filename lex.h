@@ -77,8 +77,6 @@ Token;
 
 typedef struct TokenStream
 {
-//  TokenKind prev_token_kind;
-//  TokenKind token_kind;
   Token prev_token;
   Token token;
   char* text;
@@ -87,12 +85,5 @@ typedef struct TokenStream
   char* file_path;
   int line_nr;
   char* src_line;
-
-  /*
-  union {
-    int* int_num;
-    char* str;
-  } lexeme;
-  */
 }
 TokenStream;

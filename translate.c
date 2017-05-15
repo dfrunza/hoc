@@ -7,7 +7,7 @@ typedef struct Type Type;
 #include "lex.h"
 
 ///////////////////////////////////////////////////////////////////////////////
-//    Type system
+//  Types
 //
 
 typedef enum
@@ -70,7 +70,7 @@ typedef struct
 typedef struct Type
 {
   TypeKind kind;
-  Type* repr_type; // representative of the equivalent set of types
+  Type* repr_type; // representative of the set of equivalent types
 
   union
   {
@@ -159,7 +159,6 @@ AccessLink;
 typedef struct
 {
   char* name;
-  Symbol* symbol;
   DataArea data;
   AstNode* init_expr;
   Type* var_type;
@@ -169,7 +168,6 @@ AstVarDecl;
 typedef struct
 {
   char* name;
-  Symbol* symbol;
   AstNode* var_decl;
   int decl_block_offset;
   AccessLink* link;
@@ -245,7 +243,6 @@ AstReturnStmt;
 
 typedef struct
 {
-  Symbol* symbol;
   char* name;
   List actual_args; // <AstNode>
   AstNode* proc;
@@ -420,10 +417,6 @@ static Type* g_basic_type_int;
 static Type* g_basic_type_char;
 static Type* g_basic_type_float;
 static Type* g_basic_type_void;
-
-//
-//  End of structs
-////////////////////////////////////////////////////////////////////////////////
 
 void
 syntax_error(TokenStream* input, char* message, ...)
@@ -626,7 +619,9 @@ make_unique_label(String* label)
   arena->free = (uint8*)label->end + 1;
 }
 
-/* Parse */
+////////////////////////////////////////////////////////////////////////////////
+//  Parse
+//
 
 bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse_statement_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*);
@@ -636,10 +631,6 @@ bool32 parse_statement(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstN
 bool32 parse_if_stmt(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse_block(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode*, AstNode**);
 bool32 parse(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
-void build_node(MemoryArena*, AstNode*);
-void build_block_stmts(MemoryArena*, List*);
-Type* make_product_type(MemoryArena*, Type*, ListItem*);
-bool32 typecheck_block(MemoryArena*, List*, AstNode*);
 
 inline AstNode*
 ast_new_module(MemoryArena* arena)
@@ -877,7 +868,6 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
       if(symbol)
       {
         AstNode* proc_node = symbol->node;
-        call->symbol = symbol;
         call->name = symbol->name;
         call->proc = proc_node;
 
@@ -919,7 +909,6 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
       Symbol* symbol = lookup_symbol(symbol_table, id_name, SymbolKind_Var);
       if(symbol)
       {
-        var_occur->symbol = symbol;
         var_occur->name = symbol->name;
 
         AstVarDecl* var_decl = &symbol->node->var_decl;
@@ -1199,7 +1188,6 @@ parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
         {
           Symbol* var_symbol = add_symbol(arena, symbol_table, input->token.lexeme, SymbolKind_Var);
           var_symbol->node = *node;
-          var_decl->symbol = var_symbol;
           var_decl->name = var_symbol->name;
 
           consume_token(arena, input, symbol_table);
@@ -1207,7 +1195,6 @@ parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
           {
             AstNode* var_node = ast_new_var_occur(arena);
             AstVarOccur* var_occur = &var_node->var_occur;
-            var_occur->symbol = var_decl->symbol;
             var_occur->name = var_decl->name;
             var_occur->data = &var_decl->data;
             var_occur->decl_block_offset = 0;
@@ -2167,6 +2154,13 @@ parse(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table, AstNode
   return success;
 }
 
+/////////////////////////////////////////////////////////////////////////////////
+//  Runtime objects
+//
+
+void build_node(MemoryArena*, AstNode*);
+void build_block_stmts(MemoryArena*, List*);
+
 int
 compute_data_loc(int sp, List* areas)
 {
@@ -2510,7 +2504,9 @@ build_module(MemoryArena* arena, SymbolTable* symbol_table, AstModule* module)
   }
 }
 
-/* Code gen */
+////////////////////////////////////////////////////////////////////////////////
+//  Code gen
+//
 
 void
 print_instruction(VmProgram* vm_program, char* code, ...)
@@ -3210,6 +3206,13 @@ print_code(VmProgram* vm_program)
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//  Type check
+//
+
+Type* make_product_type(MemoryArena*, Type*, ListItem*);
+bool32 typecheck_block(MemoryArena*, List*, AstNode*);
 
 Type*
 type_find_set_representative(Type* type)

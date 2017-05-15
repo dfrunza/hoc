@@ -143,8 +143,7 @@ DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
 {
   size_t total_avail = arena->limit - arena->base;
   double in_use = (arena->free - arena->base) / (double)total_avail;
-  double free = (arena->limit - arena->free) / (double)total_avail;
-  debug_print("used: %.2f%%, free: %.2f%% -- %s\n", in_use*100, free*100, tag);
+  debug_print("used: %.2f%% -- %s\n", in_use*100, tag);
 }
 
 MemoryArena

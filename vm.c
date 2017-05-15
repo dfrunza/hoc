@@ -513,7 +513,7 @@ run_program(HocMachine* machine)
 
   if(exec_result == ExecResult_EndOfProgram)
   {
-#if 0
+#if 1
     //Memory dump
     for(int i = 0; i <= VMWORD*30; i += VMWORD)
       printf("%d ", *(int32*)&machine->memory[i]);

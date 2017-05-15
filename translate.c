@@ -624,12 +624,9 @@ make_unique_label(String* label)
 //
 
 bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
-bool32 parse_statement_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*);
-bool32 parse_actual_argument_list(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstCall*);
 bool32 parse_term(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse_statement(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse_if_stmt(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
-bool32 parse_block(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode*, AstNode**);
 bool32 parse(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
 
 inline AstNode*
@@ -648,6 +645,7 @@ ast_new_block(MemoryArena* arena, SymbolTable* symbol_table)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Block;
   node->type = g_basic_type_void;
+
   AstBlock* block = &node->block;
   list_init(&block->decl_vars);
   list_init(&block->local_occurs);
@@ -702,7 +700,7 @@ ast_new_int_val(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IntNum;
-  node->type = new_basic_type(arena, BasicTypeKind_Int);
+  node->type = g_basic_type_int;
   return node;
 }
 
@@ -785,6 +783,95 @@ ast_new_empty_stmt(MemoryArena* arena)
   node->kind = AstNodeKind_EmptyStmt;
   node->type = g_basic_type_void;
   return node;
+}
+
+bool32
+parse_actual_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+                           AstBlock* enclosing_block, AstCall* call)
+{
+  bool32 success = true;
+
+  AstNode* arg_node = 0;
+  success = parse_expression(arena, input, symbol_table, enclosing_block, &arg_node);
+  if(success && arg_node)
+  {
+    list_append(arena, &call->actual_args, arg_node);
+
+    if(input->token.kind == TokenKind_Comma)
+    {
+      consume_token(arena, input, symbol_table);
+      success = parse_actual_argument_list(arena, input, symbol_table, enclosing_block, call);
+    }
+  }
+
+  return success;
+}
+
+bool32
+parse_statement_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+                     AstBlock* block)
+{
+  bool32 success = true;
+
+  while(input->token.kind == TokenKind_Semicolon)
+    consume_token(arena, input, symbol_table);
+
+  AstNode* stmt_node = 0;
+  success = parse_statement(arena, input, symbol_table, block, &stmt_node);
+  if(success && stmt_node)
+  {
+    if(stmt_node->kind == AstNodeKind_VarDecl)
+    {
+      list_append(arena, &block->decl_vars, stmt_node);
+      AstVarDecl* var_decl = &stmt_node->var_decl;
+      if(var_decl->init_expr)
+      {
+        list_append(arena, &block->stmt_list, var_decl->init_expr);
+      }
+    }
+    else
+      list_append(arena, &block->stmt_list, stmt_node);
+
+    success = parse_statement_list(arena, input, symbol_table, block);
+  }
+  return success;
+}
+
+bool32
+parse_block(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+            AstBlock* enclosing_block, AstNode* owner, AstNode** node)
+{
+  *node = 0;
+  bool32 success = true;
+
+  if(input->token.kind == TokenKind_OpenBrace)
+  {
+    consume_token(arena, input, symbol_table);
+
+    success = scope_begin(symbol_table);
+    if(success)
+    {
+      *node = ast_new_block(arena, symbol_table);
+      AstBlock* block = &(*node)->block;
+      block->owner = owner;
+      block->enclosing_block = enclosing_block;
+
+      success = parse_statement_list(arena, input, symbol_table, block);
+      if(success)
+      {
+        if(input->token.kind == TokenKind_CloseBrace)
+        {
+          consume_token(arena, input, symbol_table);
+          scope_end(symbol_table);
+        } else {
+          syntax_error(input, "Missing '}'");
+          success = false;
+        }
+      }
+    }
+  }
+
+  return success;
 }
 
 bool32
@@ -1260,28 +1347,6 @@ parse_formal_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* 
 }
 
 bool32
-parse_actual_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                           AstBlock* enclosing_block, AstCall* call)
-{
-  bool32 success = true;
-
-  AstNode* arg_node = 0;
-  success = parse_expression(arena, input, symbol_table, enclosing_block, &arg_node);
-  if(success && arg_node)
-  {
-    list_append(arena, &call->actual_args, arg_node);
-
-    if(input->token.kind == TokenKind_Comma)
-    {
-      consume_token(arena, input, symbol_table);
-      success = parse_actual_argument_list(arena, input, symbol_table, enclosing_block, call);
-    }
-  }
-
-  return success;
-}
-
-bool32
 parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                  AstBlock* enclosing_block, AstNode** node)
 {
@@ -1348,43 +1413,6 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
     else {
       syntax_error(input, "Missing '('");
       success = false;
-    }
-  }
-
-  return success;
-}
-
-bool32
-parse_block(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-            AstBlock* enclosing_block, AstNode* owner, AstNode** node)
-{
-  *node = 0;
-  bool32 success = true;
-
-  if(input->token.kind == TokenKind_OpenBrace)
-  {
-    consume_token(arena, input, symbol_table);
-
-    success = scope_begin(symbol_table);
-    if(success)
-    {
-      *node = ast_new_block(arena, symbol_table);
-      AstBlock* block = &(*node)->block;
-      block->owner = owner;
-      block->enclosing_block = enclosing_block;
-
-      success = parse_statement_list(arena, input, symbol_table, block);
-      if(success)
-      {
-        if(input->token.kind == TokenKind_CloseBrace)
-        {
-          consume_token(arena, input, symbol_table);
-          scope_end(symbol_table);
-        } else {
-          syntax_error(input, "Missing '}'");
-          success = false;
-        }
-      }
     }
   }
 
@@ -2088,36 +2116,6 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
   }
 
   *node = stmt_node;
-  return success;
-}
-
-bool32
-parse_statement_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
-                     AstBlock* block)
-{
-  bool32 success = true;
-
-  while(input->token.kind == TokenKind_Semicolon)
-    consume_token(arena, input, symbol_table);
-
-  AstNode* stmt_node = 0;
-  success = parse_statement(arena, input, symbol_table, block, &stmt_node);
-  if(success && stmt_node)
-  {
-    if(stmt_node->kind == AstNodeKind_VarDecl)
-    {
-      list_append(arena, &block->decl_vars, stmt_node);
-      AstVarDecl* var_decl = &stmt_node->var_decl;
-      if(var_decl->init_expr)
-      {
-        list_append(arena, &block->stmt_list, var_decl->init_expr);
-      }
-    }
-    else
-      list_append(arena, &block->stmt_list, stmt_node);
-
-    success = parse_statement_list(arena, input, symbol_table, block);
-  }
   return success;
 }
 

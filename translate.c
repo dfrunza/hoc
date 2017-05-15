@@ -623,7 +623,7 @@ make_unique_label(String* label)
   int len = cstr_len(label->head);
   label->end = label->head + len;
   MemoryArena* arena = label->arena;
-  arena->free = label->end + 1;
+  arena->free = (uint8*)label->end + 1;
 }
 
 /* Parse */

@@ -587,8 +587,9 @@ scope_begin(SymbolTable* symbol_table)
   if(nesting_depth < sizeof_array(symbol_table->active_scopes))
   {
     symbol_table->active_scopes[nesting_depth] = scope_id;
-  } else {
-    error("Reached the maximum scope nesting depth");
+  }
+  else {
+    error("Maximum scope nesting depth has been reached: %d", sizeof_array(symbol_table->active_scopes));
     return false;
   }
 
@@ -629,7 +630,7 @@ bool32 parse_statement(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstN
 bool32 parse_if_stmt(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
 
-inline AstNode*
+AstNode*
 ast_new_module(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -639,7 +640,7 @@ ast_new_module(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_block(MemoryArena* arena, SymbolTable* symbol_table)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -657,7 +658,7 @@ ast_new_block(MemoryArena* arena, SymbolTable* symbol_table)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_call(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -667,7 +668,7 @@ ast_new_call(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_proc(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -677,7 +678,7 @@ ast_new_proc(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_bin_expr(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -686,7 +687,7 @@ ast_new_bin_expr(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_unr_expr(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -695,7 +696,7 @@ ast_new_unr_expr(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_int_val(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -704,7 +705,7 @@ ast_new_int_val(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_var_decl(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -713,7 +714,7 @@ ast_new_var_decl(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_var_occur(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -722,7 +723,7 @@ ast_new_var_occur(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_while_stmt(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -731,7 +732,7 @@ ast_new_while_stmt(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_if_stmt(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -740,7 +741,7 @@ ast_new_if_stmt(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_return_stmt(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -749,7 +750,7 @@ ast_new_return_stmt(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_break_stmt(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -758,7 +759,7 @@ ast_new_break_stmt(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_print_stmt(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -767,7 +768,7 @@ ast_new_print_stmt(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_include_stmt(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -776,7 +777,7 @@ ast_new_include_stmt(MemoryArena* arena)
   return node;
 }
 
-inline AstNode*
+AstNode*
 ast_new_empty_stmt(MemoryArena* arena)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -792,8 +793,8 @@ parse_actual_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* 
   bool32 success = true;
 
   AstNode* arg_node = 0;
-  success = parse_expression(arena, input, symbol_table, enclosing_block, &arg_node);
-  if(success && arg_node)
+  if(success = parse_expression(arena, input, symbol_table, enclosing_block, &arg_node)
+     && arg_node)
   {
     list_append(arena, &call->actual_args, arg_node);
 
@@ -817,8 +818,8 @@ parse_statement_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
     consume_token(arena, input, symbol_table);
 
   AstNode* stmt_node = 0;
-  success = parse_statement(arena, input, symbol_table, block, &stmt_node);
-  if(success && stmt_node)
+  if(success = parse_statement(arena, input, symbol_table, block, &stmt_node)
+     && stmt_node)
   {
     if(stmt_node->kind == AstNodeKind_VarDecl)
     {
@@ -848,22 +849,21 @@ parse_block(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   {
     consume_token(arena, input, symbol_table);
 
-    success = scope_begin(symbol_table);
-    if(success)
+    if(success = scope_begin(symbol_table))
     {
       *node = ast_new_block(arena, symbol_table);
       AstBlock* block = &(*node)->block;
       block->owner = owner;
       block->enclosing_block = enclosing_block;
 
-      success = parse_statement_list(arena, input, symbol_table, block);
-      if(success)
+      if(success = parse_statement_list(arena, input, symbol_table, block))
       {
         if(input->token.kind == TokenKind_CloseBrace)
         {
           consume_token(arena, input, symbol_table);
           scope_end(symbol_table);
-        } else {
+        }
+        else {
           syntax_error(input, "Missing '}'");
           success = false;
         }
@@ -883,11 +883,13 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   if(input->token.kind == TokenKind_OpenParens)
   {
     consume_token(arena, input, symbol_table);
-    success = parse_expression(arena, input, symbol_table, enclosing_block, node);
-    if(success)
+
+    if(success = parse_expression(arena, input, symbol_table, enclosing_block, node))
     {
       if(input->token.kind == TokenKind_CloseParens)
+      {
         consume_token(arena, input, symbol_table);
+      }
       else {
         syntax_error(input, "Missing ')'");
         success = false;
@@ -899,8 +901,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
     consume_token(arena, input, symbol_table);
 
     AstNode* operand = 0;
-    success = parse_term(arena, input, symbol_table, enclosing_block, &operand);
-    if(success)
+    if(success = parse_term(arena, input, symbol_table, enclosing_block, &operand))
     {
       if(operand)
       {
@@ -908,7 +909,8 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
         AstUnrExpr* expr = &(*node)->unr_expr;
         expr->op = AstOpKind_Neg;
         expr->operand = operand;
-      } else {
+      }
+      else {
         syntax_error(input, "Expression expected after '-'");
         success = false;
       }
@@ -919,8 +921,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
     consume_token(arena, input, symbol_table);
 
     AstNode* operand = 0;
-    success = parse_term(arena, input, symbol_table, enclosing_block, &operand);
-    if(success)
+    if(success = parse_term(arena, input, symbol_table, enclosing_block, &operand))
     {
       if(operand)
       {
@@ -928,7 +929,8 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
         AstUnrExpr* expr = &(*node)->unr_expr;
         expr->op = AstOpKind_LogicNot;
         expr->operand = operand;
-      } else {
+      }
+      else {
         syntax_error(input, "Expression expected after '!'");
         success = false;
       }
@@ -951,6 +953,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
     {
       *node = ast_new_call(arena);
       AstCall* call = &(*node)->call;
+
       Symbol* symbol = lookup_symbol(symbol_table, id_name, SymbolKind_Proc);
       if(symbol)
       {
@@ -959,8 +962,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
         call->proc = proc_node;
 
         consume_token(arena, input, symbol_table);
-        success = parse_actual_argument_list(arena, input, symbol_table, enclosing_block, call);
-        if(success)
+        if(success = parse_actual_argument_list(arena, input, symbol_table, enclosing_block, call))
         {
           if(input->token.kind == TokenKind_CloseParens)
           {
@@ -1101,10 +1103,9 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
       assert(false);
 
     consume_token(arena, input, symbol_table);
-    AstNode* factor_node = 0;
-    success = parse_factor(arena, input, symbol_table, enclosing_block, &factor_node);
 
-    if(success)
+    AstNode* factor_node = 0;
+    if(success = parse_factor(arena, input, symbol_table, enclosing_block, &factor_node))
     {
       if(factor_node)
       {
@@ -1128,13 +1129,16 @@ bool32
 parse_term(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
            AstBlock* enclosing_block, AstNode** node)
 {
+  bool32 success = true;
   AstNode* factor_node = 0;
   AstNode* expr_node = 0;
 
-  bool32 success = parse_factor(arena, input, symbol_table, enclosing_block, &factor_node);
-  if(success && factor_node)
+  if(success = parse_factor(arena, input, symbol_table, enclosing_block, &factor_node)
+     && factor_node)
+  {
     success = parse_rest_of_factors(arena, input, symbol_table,
                                     enclosing_block, factor_node, &expr_node);
+  }
 
   *node = expr_node;
   return success;
@@ -1159,15 +1163,16 @@ parse_rest_of_terms(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
       assert(false);
 
     consume_token(arena, input, symbol_table);
-    AstNode* term_node = 0;
-    success = parse_term(arena, input, symbol_table, enclosing_block, &term_node);
 
-    if(success && term_node)
+    AstNode* term_node = 0;
+    if(success = parse_term(arena, input, symbol_table, enclosing_block, &term_node)
+       && term_node)
     {
       expr->right_operand = term_node;
       expr->left_operand = left_node;
       success = parse_rest_of_terms(arena, input, symbol_table, enclosing_block, *node, node);
-    } else {
+    }
+    else {
       syntax_error(input, "Expression term expected");
       success = false;
     }
@@ -1182,12 +1187,15 @@ bool32
 parse_assignment_term(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                       AstBlock* enclosing_block, AstNode** node)
 {
+  bool32 success = true;
   AstNode* term_node = 0;
   AstNode* expr_node = 0;
 
-  bool32 success = parse_term(arena, input, symbol_table, enclosing_block, &term_node);
-  if(success && term_node)
+  if(success = parse_term(arena, input, symbol_table, enclosing_block, &term_node)
+     && term_node)
+  {
     success = parse_rest_of_terms(arena, input, symbol_table, enclosing_block, term_node, &expr_node);
+  }
 
   *node = expr_node;
   return success;
@@ -1202,9 +1210,9 @@ parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input, SymbolTab
   if(input->token.kind == TokenKind_Equals)
   {
     consume_token(arena, input, symbol_table);
+
     AstNode* right_side = 0;
-    success = parse_expression(arena, input, symbol_table, enclosing_block, &right_side);
-    if(success)
+    if(success = parse_expression(arena, input, symbol_table, enclosing_block, &right_side))
     {
       if(right_side)
       {
@@ -1215,16 +1223,19 @@ parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input, SymbolTab
           expr->op = AstOpKind_Assign;
           expr->left_operand = left_node;
           expr->right_operand = right_side;
-        } else {
+        }
+        else {
           syntax_error(input, "Variable required on the left side of assignment");
           success = false;
         }
-      } else {
+      }
+      else {
         syntax_error(input, "Missing right side of assignment");
         success = false;
       }
     }
-  } else
+  }
+  else
     *node = left_node;
 
   return success;
@@ -1234,11 +1245,12 @@ bool32
 parse_expression(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                  AstBlock* enclosing_block, AstNode** node)
 {
+  bool32 success = true;
   AstNode* assgn_node = 0;
   AstNode* expr_node = 0;
 
-  bool32 success = parse_assignment_term(arena, input, symbol_table, enclosing_block, &assgn_node);
-  if(success && assgn_node)
+  if(success = parse_assignment_term(arena, input, symbol_table, enclosing_block, &assgn_node)
+     && assgn_node)
   {
     success = parse_rest_of_assignment_terms(arena, input, symbol_table,
                                              enclosing_block, assgn_node, &expr_node);
@@ -1289,9 +1301,8 @@ parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
             var_node->type = (*node)->type;
 
             AstNode* init_expr = 0;
-            success = parse_rest_of_assignment_terms(arena, input, symbol_table,
-                                                     enclosing_block, var_node, &init_expr);
-            if(success)
+            if(success = parse_rest_of_assignment_terms(arena, input, symbol_table,
+                                                        enclosing_block, var_node, &init_expr))
             {
               var_decl->init_expr = init_expr;
             }
@@ -1323,8 +1334,8 @@ parse_formal_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* 
   bool32 success = true;
 
   AstNode* arg_node = 0;
-  success = parse_var_statement(arena, input, symbol_table, enclosing_block, &arg_node);
-  if(success && arg_node)
+  if(success = parse_var_statement(arena, input, symbol_table, enclosing_block, &arg_node)
+     && arg_node)
   {
     assert(arg_node->kind == AstNodeKind_VarDecl);
     if(!arg_node->var_decl.init_expr)
@@ -1375,8 +1386,7 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
             while_stmt->cond_expr = expr_node;
 
             AstNode* body_node = 0;
-            success = parse_block(arena, input, symbol_table, enclosing_block, *node, &body_node);
-            if(success)
+            if(success = parse_block(arena, input, symbol_table, enclosing_block, *node, &body_node))
             {
               if(body_node)
               {
@@ -1384,8 +1394,7 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
               }
               else
               {
-                success = parse_statement(arena, input, symbol_table, enclosing_block, &body_node);
-                if(success)
+                if(success = parse_statement(arena, input, symbol_table, enclosing_block, &body_node))
                 {
                   if(body_node)
                   {
@@ -1431,27 +1440,27 @@ parse_else_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
     consume_token(arena, input, symbol_table);
 
     AstNode* else_node = 0;
-    success = parse_if_stmt(arena, input, symbol_table, enclosing_block, &else_node);
-    if(success)
+    if(success = parse_if_stmt(arena, input, symbol_table, enclosing_block, &else_node))
     {
       if(else_node)
       {
         *node = else_node;
-      } else
+      }
+      else
       {
-        success = parse_block(arena, input, symbol_table, enclosing_block, owner, &else_node);
-        if(success)
+        if(success = parse_block(arena, input, symbol_table, enclosing_block, owner, &else_node))
         {
           if(else_node)
           {
             *node = else_node;
-          } else
+          }
+          else
           {
-            success = parse_statement(arena, input, symbol_table, enclosing_block, &else_node);
-            if(else_node)
+            if(success = parse_statement(arena, input, symbol_table, enclosing_block, &else_node))
             {
               *node = else_node;
-            } else {
+            }
+            else {
               syntax_error(input, "Statement(s) required");
               success = false;
             }
@@ -1492,24 +1501,21 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
             if_stmt->cond_expr = expr_node;
 
             AstNode* body_node = 0;
-            success = parse_block(arena, input, symbol_table, enclosing_block, *node, &body_node);
-            if(success)
+            if(success = parse_block(arena, input, symbol_table, enclosing_block, *node, &body_node))
             {
               if(body_node)
               {
                 if_stmt->body = body_node;
 
                 AstNode* else_node = 0;
-                success = parse_else_statement(arena, input, symbol_table, enclosing_block, *node, &else_node);
-                if(success)
+                if(success = parse_else_statement(arena, input, symbol_table, enclosing_block, *node, &else_node))
                 {
                   if_stmt->else_body = else_node;
                 }
               }
               else
               {
-                success = parse_statement(arena, input, symbol_table, enclosing_block, &body_node);
-                if(success)
+                if(success = parse_statement(arena, input, symbol_table, enclosing_block, &body_node))
                 {
                   if(body_node)
                   {
@@ -1518,8 +1524,7 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                       if_stmt->body = body_node;
 
                       AstNode* else_node = 0;
-                      success = parse_else_statement(arena, input, symbol_table, enclosing_block, *node, &else_node);
-                      if(success)
+                      if(success = parse_else_statement(arena, input, symbol_table, enclosing_block, *node, &else_node))
                       {
                         if_stmt->else_body = else_node;
                       }
@@ -1594,16 +1599,14 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
               consume_token(arena, input, symbol_table);
 
               // arguments
-              success = scope_begin(symbol_table);
-              if(success)
+              if(success = scope_begin(symbol_table))
               {
                 AstNode* block_node = ast_new_block(arena, symbol_table);
                 AstBlock* block = &block_node->block;
                 proc->body = block_node;
                 block->owner = *node;
 
-                success = parse_formal_argument_list(arena, input, symbol_table, block, proc);
-                if(success)
+                if(success = parse_formal_argument_list(arena, input, symbol_table, block, proc))
                 {
                   for(ListItem* list_item = list_first_item(&proc->formal_args);
                       list_item;
@@ -1624,8 +1627,7 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
                       // body
                       consume_token(arena, input, symbol_table);
 
-                      success = parse_statement_list(arena, input, symbol_table, block);
-                      if(success)
+                      if(success = parse_statement_list(arena, input, symbol_table, block))
                       {
                         if(input->token.kind == TokenKind_CloseBrace)
                         {
@@ -1711,7 +1713,8 @@ parse_include_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_t
       inc_stmt->file_path = str.head;
 
       consume_token(arena, input, symbol_table);
-    } else {
+    }
+    else {
       syntax_error(input, "String required after 'include'\n");
       success = false;
     }
@@ -1726,8 +1729,7 @@ parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   bool32 success = true;
 
   AstNode* node = 0;
-  success = parse_procedure(arena, input, symbol_table, enclosing_block, &node);
-  if(success)
+  if(success = parse_procedure(arena, input, symbol_table, enclosing_block, &node))
   {
     if(node)
     {
@@ -1736,8 +1738,7 @@ parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
     }
     else
     {
-      success = parse_include_stmt(arena, input, symbol_table, enclosing_block, &node);
-      if(success)
+      if(success = parse_include_stmt(arena, input, symbol_table, enclosing_block, &node))
       {
         if(node)
         {
@@ -1751,8 +1752,7 @@ parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
 
             consume_token(arena, inc_input, symbol_table);
 
-            success = parse_module(arena, inc_input, symbol_table, enclosing_block, module);
-            if(success)
+            if(success = parse_module(arena, inc_input, symbol_table, enclosing_block, module))
             {
               if(inc_input->token.kind == TokenKind_EndOfInput)
               {
@@ -1788,8 +1788,7 @@ parse_print_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
     consume_token(arena, input, symbol_table);
 
     AstNode* expr_node = 0;
-    success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node);
-    if(success)
+    if(success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node))
     {
       *node = ast_new_print_stmt(arena);
       AstPrintStmt* print_stmt = &(*node)->print_stmt;
@@ -1812,7 +1811,8 @@ parse_print_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
           {
             print_stmt->new_line = true;
             consume_token(arena, input, symbol_table);
-          } else {
+          }
+          else {
             syntax_error(input, "Expected new line char '\n'");
             success = false;
           }
@@ -1852,8 +1852,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
     consume_token(arena, input, symbol_table);
 
     AstNode* ret_expr = 0;
-    success = parse_expression(arena, input, symbol_table, enclosing_block, &ret_expr);
-    if(success)
+    if(success = parse_expression(arena, input, symbol_table, enclosing_block, &ret_expr))
     {
       *node = ast_new_return_stmt(arena);
       AstReturnStmt* ret_stmt = &(*node)->ret_stmt;
@@ -1923,7 +1922,8 @@ parse_break_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
     {
       break_stmt->while_stmt = &owner->while_stmt;
       break_stmt->depth = depth + 1;
-    } else {
+    }
+    else {
       syntax_error(input, "'break': enclosing 'while' statement not found");
       success = false;
     }
@@ -1958,8 +1958,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
     switch(alt) {
       case Alt_Expr:
       {
-        success = parse_expression(arena, input, symbol_table, enclosing_block, &stmt_node);
-        if(success)
+        if(success = parse_expression(arena, input, symbol_table, enclosing_block, &stmt_node))
         {
           if(stmt_node)
           {
@@ -1976,12 +1975,14 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
                   syntax_error(input, "Assignment expression required");
                   success = false;
                 }
-              } else if(stmt_node->kind != AstNodeKind_Call)
+              }
+              else if(stmt_node->kind != AstNodeKind_Call)
               {
                 syntax_error(input, "Expression is not a statement");
                 success = false;
               }
-            } else {
+            }
+            else {
               syntax_error(input, "Missing ';'");
               success = false;
             }
@@ -1993,8 +1994,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
 
       case Alt_If:
       {
-        success = parse_if_stmt(arena, input, symbol_table, enclosing_block, &stmt_node);
-        if(success)
+        if(success = parse_if_stmt(arena, input, symbol_table, enclosing_block, &stmt_node))
         {
           if(stmt_node)
           {
@@ -2007,8 +2007,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
 
       case Alt_While:
       {
-        success = parse_while_stmt(arena, input, symbol_table, enclosing_block, &stmt_node);
-        if(success)
+        if(success = parse_while_stmt(arena, input, symbol_table, enclosing_block, &stmt_node))
         {
           if(stmt_node)
           {
@@ -2021,14 +2020,15 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
 
       case Alt_Return:
       {
-        success = parse_return_stmt(arena, input, symbol_table, enclosing_block, &stmt_node);
-        if(success)
+        if(success = parse_return_stmt(arena, input, symbol_table, enclosing_block, &stmt_node))
         {
           if(stmt_node)
           {
             alt = Alt__Null;
             if(input->token.kind == TokenKind_Semicolon)
+            {
               consume_token(arena, input, symbol_table);
+            }
             else {
               syntax_error(input, "Missing ';'");
               success = false;
@@ -2041,8 +2041,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
 
       case Alt_Break:
       {
-        success = parse_break_stmt(arena, input, symbol_table, enclosing_block, &stmt_node);
-        if(success)
+        if(success = parse_break_stmt(arena, input, symbol_table, enclosing_block, &stmt_node))
         {
           if(stmt_node)
           {
@@ -2061,14 +2060,15 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
 
       case Alt_Var:
       {
-        success = parse_var_statement(arena, input, symbol_table, enclosing_block, &stmt_node);
-        if(success)
+        if(success = parse_var_statement(arena, input, symbol_table, enclosing_block, &stmt_node))
         {
           if(stmt_node)
           {
             alt = Alt__Null;
             if(input->token.kind == TokenKind_Semicolon)
+            {
               consume_token(arena, input, symbol_table);
+            }
             else {
               syntax_error(input, "Missing ';'");
               success = false;
@@ -2081,14 +2081,15 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
 
       case Alt_Print:
       {
-        success = parse_print_stmt(arena, input, symbol_table, enclosing_block, &stmt_node);
-        if(success)
+        if(success = parse_print_stmt(arena, input, symbol_table, enclosing_block, &stmt_node))
         {
           if(stmt_node)
           {
             alt = Alt__Null;
             if(input->token.kind == TokenKind_Semicolon)
+            {
               consume_token(arena, input, symbol_table);
+            }
             else {
               syntax_error(input, "Missing ';'");
               success = false;
@@ -2125,8 +2126,7 @@ parse(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table, AstNode
   *node = 0;
   bool32 success = true;
 
-  success = scope_begin(symbol_table);
-  if(success)
+  if(success = scope_begin(symbol_table))
   {
     *node = ast_new_module(arena);
     AstModule* module = &(*node)->module;

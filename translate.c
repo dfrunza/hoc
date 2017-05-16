@@ -3546,7 +3546,7 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
     {
       success = typecheck_expr(arena, type_tuples, ret_stmt->ret_expr, &ret_type) &&
         type_unification(ret_type, ret_stmt->proc->ret_type);
-      if(success)
+      if(!success)
         compile_error(&stmt_node->src_loc, "Type error: return stmt");
     }
     if(success)

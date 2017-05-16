@@ -9,7 +9,7 @@ include "hlib/fizzbuzz.hoc"
 
 proc bool foo(var int a, var int b)
 {
-  return a && b;
+  return !(a+b);
 }
 
 proc int main()
@@ -18,7 +18,7 @@ proc int main()
   var bool c;
   if(c)
   {
-    c = foo(c, b);
+    c = foo(b*b, b);
   }
   return b;
 }

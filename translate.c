@@ -21,19 +21,22 @@ typedef enum
   TypeKind_Product,
   TypeKind_Pointer,
   TypeKind_Array,
-} TypeKind;
+}
+TypeKind;
 
 typedef enum
 {
   UnaryCtorKind__Null,
   UnaryCtorKind_Pointer,
   UnaryCtorKind_Array,
-} UnaryCtorKind;
+}
+UnaryCtorKind;
 
 typedef struct
 {
   int id;
-} TypeVar;
+}
+TypeVar;
 
 typedef enum
 {
@@ -43,29 +46,34 @@ typedef enum
   BasicTypeKind_Float,
   BasicTypeKind_Char,
   BasicTypeKind_Bool,
-} BasicTypeKind;
+}
+BasicTypeKind;
 
 typedef struct
 {
   BasicTypeKind kind;
-} BasicType;
+}
+BasicType;
 
 typedef struct
 {
   Type* pointee;
-} PointerType;
+}
+PointerType;
 
 typedef struct
 {
   Type* args;
   Type* ret;
-} ProcType;
+}
+ProcType;
 
 typedef struct
 {
   Type* left;
   Type* right;
-} ProductType;
+}
+ProductType;
 
 typedef struct Type
 {
@@ -80,13 +88,15 @@ typedef struct Type
     ProductType product;
     TypeVar typevar;
   };
-} Type;
+}
+Type;
 
 typedef struct
 {
   Type* key;
   Type* value;
-} TypeTuple;
+}
+TypeTuple;
 
 ///////////////////////////////////////////////////////////////////////////////
 //  AST
@@ -306,6 +316,7 @@ typedef struct AstNode
 {
   AstNodeKind kind;
   Type* type;
+  SourceLocation src_loc;
 
   union
   {
@@ -419,11 +430,11 @@ static Type* g_basic_type_float;
 static Type* g_basic_type_void;
 
 void
-syntax_error(TokenStream* input, char* message, ...)
+compile_error(SourceLocation* src_loc, char* message, ...)
 {
   va_list args;
 
-  fprintf(stderr, "%s(%d) : ", input->file_path, input->line_nr);
+  fprintf(stderr, "%s(%d) : ", src_loc->file_path, src_loc->line_nr);
 
   va_start(args, message);
   vfprintf(stderr, message, args);
@@ -631,21 +642,23 @@ bool32 parse_if_stmt(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNod
 bool32 parse(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
 
 AstNode*
-ast_new_module(MemoryArena* arena)
+ast_new_module(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   list_init(&node->module.proc_list);
   node->kind = AstNodeKind_Module;
   node->type = g_basic_type_void;
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_block(MemoryArena* arena, SymbolTable* symbol_table)
+ast_new_block(MemoryArena* arena, SymbolTable* symbol_table, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Block;
   node->type = g_basic_type_void;
+  node->src_loc = *src_loc;
 
   AstBlock* block = &node->block;
   list_init(&block->decl_vars);
@@ -659,130 +672,144 @@ ast_new_block(MemoryArena* arena, SymbolTable* symbol_table)
 }
 
 AstNode*
-ast_new_call(MemoryArena* arena)
+ast_new_call(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Call;
   node->type = new_typevar(arena);
+  node->src_loc = *src_loc;
   list_init(&node->call.actual_args);
   return node;
 }
 
 AstNode*
-ast_new_proc(MemoryArena* arena)
+ast_new_proc(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Proc;
   node->type = new_typevar(arena);
+  node->src_loc = *src_loc;
   list_init(&node->proc.formal_args);
   return node;
 }
 
 AstNode*
-ast_new_bin_expr(MemoryArena* arena)
+ast_new_bin_expr(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_BinExpr;
   node->type = new_typevar(arena);
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_unr_expr(MemoryArena* arena)
+ast_new_unr_expr(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_UnrExpr;
   node->type = new_typevar(arena);
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_int_val(MemoryArena* arena)
+ast_new_int_val(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IntNum;
   node->type = g_basic_type_int;
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_var_decl(MemoryArena* arena)
+ast_new_var_decl(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_VarDecl;
   node->type = new_typevar(arena);
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_var_occur(MemoryArena* arena)
+ast_new_var_occur(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_VarOccur;
   node->type = new_typevar(arena);
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_while_stmt(MemoryArena* arena)
+ast_new_while_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_WhileStmt;
   node->type = g_basic_type_void;
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_if_stmt(MemoryArena* arena)
+ast_new_if_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IfStmt;
   node->type = g_basic_type_void;
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_return_stmt(MemoryArena* arena)
+ast_new_return_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_ReturnStmt;
   node->type = new_typevar(arena);
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_break_stmt(MemoryArena* arena)
+ast_new_break_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_BreakStmt;
   node->type = g_basic_type_void;
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_print_stmt(MemoryArena* arena)
+ast_new_print_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_PrintStmt;
   node->type = g_basic_type_void;
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_include_stmt(MemoryArena* arena)
+ast_new_include_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IncludeStmt;
   node->type = g_basic_type_void;
+  node->src_loc = *src_loc;
   return node;
 }
 
 AstNode*
-ast_new_empty_stmt(MemoryArena* arena)
+ast_new_empty_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_EmptyStmt;
   node->type = g_basic_type_void;
+  node->src_loc = *src_loc;
   return node;
 }
 
@@ -851,7 +878,7 @@ parse_block(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
 
     if(success = scope_begin(symbol_table))
     {
-      *node = ast_new_block(arena, symbol_table);
+      *node = ast_new_block(arena, symbol_table, &input->src_loc);
       AstBlock* block = &(*node)->block;
       block->owner = owner;
       block->enclosing_block = enclosing_block;
@@ -864,7 +891,7 @@ parse_block(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
           scope_end(symbol_table);
         }
         else {
-          syntax_error(input, "Missing '}'");
+          compile_error(&input->src_loc, "Missing '}'");
           success = false;
         }
       }
@@ -891,7 +918,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
         consume_token(arena, input, symbol_table);
       }
       else {
-        syntax_error(input, "Missing ')'");
+        compile_error(&input->src_loc, "Missing ')'");
         success = false;
       }
     }
@@ -905,13 +932,13 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
     {
       if(operand)
       {
-        *node = ast_new_unr_expr(arena);
+        *node = ast_new_unr_expr(arena, &input->src_loc);
         AstUnrExpr* expr = &(*node)->unr_expr;
         expr->op = AstOpKind_Neg;
         expr->operand = operand;
       }
       else {
-        syntax_error(input, "Expression expected after '-'");
+        compile_error(&input->src_loc, "Expression expected after '-'");
         success = false;
       }
     }
@@ -925,20 +952,20 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
     {
       if(operand)
       {
-        *node = ast_new_unr_expr(arena);
+        *node = ast_new_unr_expr(arena, &input->src_loc);
         AstUnrExpr* expr = &(*node)->unr_expr;
         expr->op = AstOpKind_LogicNot;
         expr->operand = operand;
       }
       else {
-        syntax_error(input, "Expression expected after '!'");
+        compile_error(&input->src_loc, "Expression expected after '!'");
         success = false;
       }
     }
   }
   else if(input->token.kind == TokenKind_IntNum)
   {
-    *node = ast_new_int_val(arena);
+    *node = ast_new_int_val(arena, &input->src_loc);
     AstIntNum* int_val = &(*node)->int_val;
     int_val->value = *(int32*)input->token.int_val;
 
@@ -951,7 +978,7 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
 
     if(input->token.kind == TokenKind_OpenParens)
     {
-      *node = ast_new_call(arena);
+      *node = ast_new_call(arena, &input->src_loc);
       AstCall* call = &(*node)->call;
 
       Symbol* symbol = lookup_symbol(symbol_table, id_name, SymbolKind_Proc);
@@ -972,28 +999,28 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
             List* actual_args = &call->actual_args;
             if(formal_args->count != actual_args->count)
             {
-              syntax_error(input, "Expected %d arguments in the call: %s(..)", formal_args->count, proc_node->proc.name);
+              compile_error(&input->src_loc, "Expected %d arguments in the call: %s(..)", formal_args->count, proc_node->proc.name);
               success = false;
             }
           }
           else {
-            syntax_error(input, "Missing ')' in procedure call");
+            compile_error(&input->src_loc, "Missing ')' in procedure call");
             success = false;
           }
         }
         else {
-          syntax_error(input, "Missing '(' in procedure call");
+          compile_error(&input->src_loc, "Missing '(' in procedure call");
           success = false;
         }
       }
       else {
-        syntax_error(input, "Unknown procedure: %s", input->token.lexeme);
+        compile_error(&input->src_loc, "Unknown procedure: %s", input->token.lexeme);
         success = false;
       }
     }
     else
     {
-      *node = ast_new_var_occur(arena);
+      *node = ast_new_var_occur(arena, &input->src_loc);
       AstVarOccur* var_occur = &(*node)->var_occur;
       Symbol* symbol = lookup_symbol(symbol_table, id_name, SymbolKind_Var);
       if(symbol)
@@ -1017,14 +1044,14 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
           assert(false);
       }
       else {
-        syntax_error(input, "Unknown identifier: %s", id_name);
+        compile_error(&input->src_loc, "Unknown identifier: %s", id_name);
         success = false;
       }
     }
   }
   else if(input->token.kind == TokenKind_True || input->token.kind == TokenKind_False)
   {
-    *node = ast_new_int_val(arena);
+    *node = ast_new_int_val(arena, &input->src_loc);
     AstIntNum* int_val = &(*node)->int_val;
     int_val->value = (input->token.kind == TokenKind_True ? 1 : 0);
 
@@ -1052,7 +1079,7 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
      input->token.kind == TokenKind_AngleRight ||
      input->token.kind == TokenKind_AngleRightEquals)
   {
-    *node = ast_new_bin_expr(arena);
+    *node = ast_new_bin_expr(arena, &input->src_loc);
     AstBinExpr* expr = &(*node)->bin_expr;
 
     if(input->token.kind == TokenKind_Star)
@@ -1114,7 +1141,7 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input, SymbolTable* symbo
         success = parse_rest_of_factors(arena, input, symbol_table, enclosing_block, *node, node);
       }
       else {
-        syntax_error(input, "Factor expected");
+        compile_error(&input->src_loc, "Factor expected");
         success = false;
       }
     }
@@ -1152,7 +1179,7 @@ parse_rest_of_terms(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 
   if(input->token.kind == TokenKind_Plus || input->token.kind == TokenKind_Minus)
   {
-    *node = ast_new_bin_expr(arena);
+    *node = ast_new_bin_expr(arena, &input->src_loc);
     AstBinExpr* expr = &(*node)->bin_expr;
 
     if(input->token.kind == TokenKind_Plus)
@@ -1173,7 +1200,7 @@ parse_rest_of_terms(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
       success = parse_rest_of_terms(arena, input, symbol_table, enclosing_block, *node, node);
     }
     else {
-      syntax_error(input, "Expression term expected");
+      compile_error(&input->src_loc, "Expression term expected");
       success = false;
     }
   }
@@ -1218,19 +1245,19 @@ parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input, SymbolTab
       {
         if(left_node->kind == AstNodeKind_VarOccur)
         {
-          *node = ast_new_bin_expr(arena);
+          *node = ast_new_bin_expr(arena, &input->src_loc);
           AstBinExpr* expr = &(*node)->bin_expr;
           expr->op = AstOpKind_Assign;
           expr->left_operand = left_node;
           expr->right_operand = right_side;
         }
         else {
-          syntax_error(input, "Variable required on the left side of assignment");
+          compile_error(&input->src_loc, "Variable required on the left side of assignment");
           success = false;
         }
       }
       else {
-        syntax_error(input, "Missing right side of assignment");
+        compile_error(&input->src_loc, "Missing right side of assignment");
         success = false;
       }
     }
@@ -1269,7 +1296,7 @@ parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
 
   if(input->token.kind == TokenKind_Var)
   {
-    *node = ast_new_var_decl(arena);
+    *node = ast_new_var_decl(arena, &input->src_loc);
     AstVarDecl* var_decl = &(*node)->var_decl;
     var_decl->data.size = 1;
 
@@ -1292,7 +1319,7 @@ parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
           consume_token(arena, input, symbol_table);
           if(input->token.kind == TokenKind_Equals)
           {
-            AstNode* var_node = ast_new_var_occur(arena);
+            AstNode* var_node = ast_new_var_occur(arena, &input->src_loc);
             AstVarOccur* var_occur = &var_node->var_occur;
             var_occur->name = var_decl->name;
             var_occur->data = &var_decl->data;
@@ -1309,17 +1336,17 @@ parse_var_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_
           }
         }
         else {
-          syntax_error(input, "Identifier expected");
+          compile_error(&input->src_loc, "Identifier expected");
           success = false;
         }
       }
       else {
-        syntax_error(input, "Unknown type: %s", input->token.lexeme);
+        compile_error(&input->src_loc, "Unknown type: %s", input->token.lexeme);
         success = false;
       }
     }
     else {
-      syntax_error(input, "Identifier expected");
+      compile_error(&input->src_loc, "Identifier expected");
       success = false;
     }
   }
@@ -1349,7 +1376,7 @@ parse_formal_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* 
       }
     }
     else {
-      syntax_error(input, "Variable initializer not allowed here");
+      compile_error(&input->src_loc, "Variable initializer not allowed here");
       success = false;
     }
   }
@@ -1381,7 +1408,7 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
 
           if(expr_node)
           {
-            *node = ast_new_while_stmt(arena);
+            *node = ast_new_while_stmt(arena, &input->src_loc);
             AstWhileStmt* while_stmt = &(*node)->while_stmt;
             while_stmt->cond_expr = expr_node;
 
@@ -1401,7 +1428,7 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
                     while_stmt->body = body_node;
                   }
                   else {
-                    syntax_error(input, "Statement(s) required");
+                    compile_error(&input->src_loc, "Statement(s) required");
                     success = false;
                   }
                 }
@@ -1409,18 +1436,18 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
             }
           }
           else {
-            syntax_error(input, "Expression required");
+            compile_error(&input->src_loc, "Expression required");
             success = false;
           }
         }
         else {
-          syntax_error(input, "Missing ')'");
+          compile_error(&input->src_loc, "Missing ')'");
           success = false;
         }
       }
     }
     else {
-      syntax_error(input, "Missing '('");
+      compile_error(&input->src_loc, "Missing '('");
       success = false;
     }
   }
@@ -1461,7 +1488,7 @@ parse_else_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol
               *node = else_node;
             }
             else {
-              syntax_error(input, "Statement(s) required");
+              compile_error(&input->src_loc, "Statement(s) required");
               success = false;
             }
           }
@@ -1496,7 +1523,7 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
 
           if(expr_node)
           {
-            *node = ast_new_if_stmt(arena);
+            *node = ast_new_if_stmt(arena, &input->src_loc);
             AstIfStmt* if_stmt = &(*node)->if_stmt;
             if_stmt->cond_expr = expr_node;
 
@@ -1530,12 +1557,12 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                       }
                     }
                     else {
-                      syntax_error(input, "Var statement not allowed here");
+                      compile_error(&input->src_loc, "Var statement not allowed here");
                       success = false;
                     }
                   }
                   else {
-                    syntax_error(input, "Statement(s) required");
+                    compile_error(&input->src_loc, "Statement(s) required");
                     success = false;
                   }
                 }
@@ -1543,18 +1570,18 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
             }
           }
           else {
-            syntax_error(input, "Expression required");
+            compile_error(&input->src_loc, "Expression required");
             success = false;
           }
         }
         else {
-          syntax_error(input, "Missing ')'");
+          compile_error(&input->src_loc, "Missing ')'");
           success = false;
         }
       }
     }
     else {
-      syntax_error(input, "Missing '('");
+      compile_error(&input->src_loc, "Missing '('");
       success = false;
     }
   }
@@ -1570,7 +1597,7 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
 
   if(input->token.kind == TokenKind_Proc)
   {
-    *node = ast_new_proc(arena);
+    *node = ast_new_proc(arena, &input->src_loc);
     AstProc* proc = &(*node)->proc;
 
     consume_token(arena, input, symbol_table);
@@ -1601,7 +1628,7 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
               // arguments
               if(success = scope_begin(symbol_table))
               {
-                AstNode* block_node = ast_new_block(arena, symbol_table);
+                AstNode* block_node = ast_new_block(arena, symbol_table, &input->src_loc);
                 AstBlock* block = &block_node->block;
                 proc->body = block_node;
                 block->owner = *node;
@@ -1635,24 +1662,24 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
                           scope_end(symbol_table); // body
                         }
                         else {
-                          syntax_error(input, "Missing '}'");
+                          compile_error(&input->src_loc, "Missing '}'");
                           success = false;
                         }
                       }
                     }
                     else {
-                      syntax_error(input, "Missing '{'");
+                      compile_error(&input->src_loc, "Missing '{'");
                       success = false;
                     }
                   }
                   else {
                     if(input->token.kind == TokenKind_Id)
                     {
-                      syntax_error(input, "Missing 'var' keyword", input->token.lexeme);
+                      compile_error(&input->src_loc, "Missing 'var' keyword", input->token.lexeme);
                     }
                     else
                     {
-                      syntax_error(input, "Missing ')'");
+                      compile_error(&input->src_loc, "Missing ')'");
                     }
                     success = false;
                   }
@@ -1660,27 +1687,27 @@ parse_procedure(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
               }
             }
             else {
-              syntax_error(input, "Missing '('");
+              compile_error(&input->src_loc, "Missing '('");
               success = false;
             }
           }
           else {
-            syntax_error(input, "Redeclaration of procedure: %s", input->token.lexeme);
+            compile_error(&input->src_loc, "Redeclaration of procedure: %s", input->token.lexeme);
             success = false;
           }
         }
         else {
-          syntax_error(input, "Identifier expected");
+          compile_error(&input->src_loc, "Identifier expected");
           success = false;
         }
       }
       else {
-        syntax_error(input, "Unknown type: %s", input->token.lexeme);
+        compile_error(&input->src_loc, "Unknown type: %s", input->token.lexeme);
         success = false;
       }
     }
     else {
-      syntax_error(input, "Identifier expected");
+      compile_error(&input->src_loc, "Identifier expected");
       success = false;
     }
   }
@@ -1701,12 +1728,12 @@ parse_include_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_t
 
     if(input->token.kind == TokenKind_String)
     {
-      *node = ast_new_include_stmt(arena);
+      *node = ast_new_include_stmt(arena, &input->src_loc);
       AstIncludeStmt* inc_stmt = &(*node)->inc_stmt;
 
       String str = {0};
       str_init(&str, arena);
-      str_append(&str, input->file_path);
+      str_append(&str, input->src_loc.file_path);
       path_make_dir(str.head);
       str_tidyup(&str);
       str_append(&str, input->token.str);
@@ -1715,7 +1742,7 @@ parse_include_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_t
       consume_token(arena, input, symbol_table);
     }
     else {
-      syntax_error(input, "String required after 'include'\n");
+      compile_error(&input->src_loc, "String required after 'include'\n");
       success = false;
     }
   }
@@ -1759,13 +1786,13 @@ parse_module(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                 success = parse_module(arena, input, symbol_table, enclosing_block, module);
               }
               else {
-                syntax_error(inc_input, "Unexpected token");
+                compile_error(&inc_input->src_loc, "Unexpected token");
                 success = false;
               }
             }
           }
           else {
-            syntax_error(input, "File could not be read: %s", inc_stmt->file_path);
+            compile_error(&input->src_loc, "File could not be read: %s", inc_stmt->file_path);
             success = false;
           }
         }
@@ -1790,14 +1817,14 @@ parse_print_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
     AstNode* expr_node = 0;
     if(success = parse_expression(arena, input, symbol_table, enclosing_block, &expr_node))
     {
-      *node = ast_new_print_stmt(arena);
+      *node = ast_new_print_stmt(arena, &input->src_loc);
       AstPrintStmt* print_stmt = &(*node)->print_stmt;
 
       if(expr_node)
       {
         print_stmt->expr = expr_node;
       }/* else {
-        syntax_error(input, "Expression required after 'print'");
+        compile_error(input, "Expression required after 'print'");
         success = false;
       }*/
 
@@ -1813,7 +1840,7 @@ parse_print_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
             consume_token(arena, input, symbol_table);
           }
           else {
-            syntax_error(input, "Expected new line char '\n'");
+            compile_error(&input->src_loc, "Expected new line char '\n'");
             success = false;
           }
         }
@@ -1854,7 +1881,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
     AstNode* ret_expr = 0;
     if(success = parse_expression(arena, input, symbol_table, enclosing_block, &ret_expr))
     {
-      *node = ast_new_return_stmt(arena);
+      *node = ast_new_return_stmt(arena, &input->src_loc);
       AstReturnStmt* ret_stmt = &(*node)->ret_stmt;
       ret_stmt->ret_expr = ret_expr;
 
@@ -1868,7 +1895,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
 
         if(ret_expr)
         {
-          AstNode* var_node = ast_new_var_occur(arena);
+          AstNode* var_node = ast_new_var_occur(arena, &input->src_loc);
           AstVarOccur* var_occur = &var_node->var_occur;
           var_occur->data = &ret_proc->ret_var.data;
           var_occur->decl_block_offset = depth;
@@ -1883,7 +1910,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
             list_append(arena, &enclosing_block->local_occurs, var_node);
           }
 
-          AstNode* assgn_node = ast_new_bin_expr(arena);
+          AstNode* assgn_node = ast_new_bin_expr(arena, &input->src_loc);
           AstBinExpr* assgn_expr = &assgn_node->bin_expr;
           assgn_expr->op = AstOpKind_Assign;
           assgn_expr->left_operand = var_node;
@@ -1893,7 +1920,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
         }
       }
       else {
-        syntax_error(input, "'return' : enclosing procedure not found");
+        compile_error(&input->src_loc, "'return' : enclosing procedure not found");
         success = false;
       }
     }
@@ -1913,7 +1940,7 @@ parse_break_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
   {
     consume_token(arena, input, symbol_table);
 
-    *node = ast_new_break_stmt(arena);
+    *node = ast_new_break_stmt(arena, &input->src_loc);
     AstBreakStmt* break_stmt = &(*node)->break_stmt;
 
     AstNode* owner = 0;
@@ -1924,7 +1951,7 @@ parse_break_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tab
       break_stmt->depth = depth + 1;
     }
     else {
-      syntax_error(input, "'break': enclosing 'while' statement not found");
+      compile_error(&input->src_loc, "'break': enclosing 'while' statement not found");
       success = false;
     }
   }
@@ -1972,18 +1999,18 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
                 AstBinExpr* expr = &stmt_node->bin_expr;
                 if(expr->op != AstOpKind_Assign)
                 {
-                  syntax_error(input, "Assignment expression required");
+                  compile_error(&input->src_loc, "Assignment expression required");
                   success = false;
                 }
               }
               else if(stmt_node->kind != AstNodeKind_Call)
               {
-                syntax_error(input, "Expression is not a statement");
+                compile_error(&input->src_loc, "Expression is not a statement");
                 success = false;
               }
             }
             else {
-              syntax_error(input, "Missing ';'");
+              compile_error(&input->src_loc, "Missing ';'");
               success = false;
             }
           } else
@@ -2030,7 +2057,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
               consume_token(arena, input, symbol_table);
             }
             else {
-              syntax_error(input, "Missing ';'");
+              compile_error(&input->src_loc, "Missing ';'");
               success = false;
             }
           } else
@@ -2049,7 +2076,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
             if(input->token.kind == TokenKind_Semicolon)
               consume_token(arena, input, symbol_table);
             else {
-              syntax_error(input, "Missing ';'");
+              compile_error(&input->src_loc, "Missing ';'");
               success = false;
             }
           } else
@@ -2070,7 +2097,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
               consume_token(arena, input, symbol_table);
             }
             else {
-              syntax_error(input, "Missing ';'");
+              compile_error(&input->src_loc, "Missing ';'");
               success = false;
             }
           } else
@@ -2091,7 +2118,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
               consume_token(arena, input, symbol_table);
             }
             else {
-              syntax_error(input, "Missing ';'");
+              compile_error(&input->src_loc, "Missing ';'");
               success = false;
             }
           } else
@@ -2105,7 +2132,7 @@ parse_statement(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_tabl
         if(input->token.kind == TokenKind_Semicolon)
         {
           consume_token(arena, input, symbol_table);
-          stmt_node = ast_new_empty_stmt(arena);
+          stmt_node = ast_new_empty_stmt(arena, &input->src_loc);
         } else
           alt = (Alternative)((int)alt+1);
       } break;
@@ -2128,10 +2155,10 @@ parse(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table, AstNode
 
   if(success = scope_begin(symbol_table))
   {
-    *node = ast_new_module(arena);
+    *node = ast_new_module(arena, &input->src_loc);
     AstModule* module = &(*node)->module;
 
-    AstNode* block_node = ast_new_block(arena, symbol_table);
+    AstNode* block_node = ast_new_block(arena, symbol_table, &input->src_loc);
     AstBlock* block = &block_node->block;
     block->owner = *node;
     module->body = block_node;
@@ -2143,7 +2170,7 @@ parse(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table, AstNode
 
       if(input->token.kind != TokenKind_EndOfInput)
       {
-        syntax_error(input, "Unexpected token");
+        compile_error(&input->src_loc, "Unexpected token: %s", input->token.lexeme);
         success = false;
       }
     }
@@ -2156,7 +2183,7 @@ parse(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table, AstNode
 //  Runtime objects
 //
 
-void build_node(MemoryArena*, AstNode*);
+void build_stmt(MemoryArena*, AstNode*);
 void build_block_stmts(MemoryArena*, List*);
 
 int
@@ -2202,7 +2229,7 @@ build_call(MemoryArena* arena, AstCall* call)
       list_item;
       list_item = list_item->next)
   {
-    build_node(arena, list_item->elem);
+    build_stmt(arena, list_item->elem);
   }
 }
 
@@ -2210,7 +2237,7 @@ void
 build_print_stmt(MemoryArena* arena, AstPrintStmt* print_stmt)
 {
   if(print_stmt->expr)
-    build_node(arena, print_stmt->expr);
+    build_stmt(arena, print_stmt->expr);
 }
 
 void
@@ -2277,7 +2304,7 @@ build_block(MemoryArena* arena, AstBlock* block)
 void
 build_while_stmt(MemoryArena* arena, AstWhileStmt* while_stmt)
 {
-  build_node(arena, while_stmt->cond_expr);
+  build_stmt(arena, while_stmt->cond_expr);
 
   {
     /* labels */
@@ -2300,13 +2327,13 @@ build_while_stmt(MemoryArena* arena, AstWhileStmt* while_stmt)
   if(while_stmt->body->kind == AstNodeKind_Block)
     build_block(arena, &while_stmt->body->block);
   else
-    build_node(arena, while_stmt->body);
+    build_stmt(arena, while_stmt->body);
 }
 
 void
 build_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
 {
-  build_node(arena, if_stmt->cond_expr);
+  build_stmt(arena, if_stmt->cond_expr);
 
   {
     /* labels */
@@ -2329,7 +2356,7 @@ build_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
   if(if_stmt->body->kind == AstNodeKind_Block)
     build_block(arena, &if_stmt->body->block);
   else
-    build_node(arena, if_stmt->body);
+    build_stmt(arena, if_stmt->body);
 
   if(if_stmt->else_body)
   {
@@ -2344,7 +2371,7 @@ build_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
     }
     else
     {
-      build_node(arena, else_node);
+      build_stmt(arena, else_node);
     }
   }
 }
@@ -2362,18 +2389,18 @@ build_bin_expr(MemoryArena* arena, AstBinExpr* bin_expr)
   str_append(&label, ".logic-end");
   bin_expr->label_end = label.head;
 
-  build_node(arena, bin_expr->left_operand);
-  build_node(arena, bin_expr->right_operand);
+  build_stmt(arena, bin_expr->left_operand);
+  build_stmt(arena, bin_expr->right_operand);
 }
 
 void
 build_unr_expr(MemoryArena* arena, AstUnrExpr* unr_expr)
 {
-  build_node(arena, unr_expr->operand);
+  build_stmt(arena, unr_expr->operand);
 }
 
 void
-build_node(MemoryArena* arena, AstNode* node)
+build_stmt(MemoryArena* arena, AstNode* node)
 {
   if(node->kind == AstNodeKind_BinExpr)
   {
@@ -2399,9 +2426,16 @@ build_node(MemoryArena* arena, AstNode* node)
   {
     build_print_stmt(arena, &node->print_stmt);
   }
+  else if(node->kind == AstNodeKind_ReturnStmt)
+  {
+    AstReturnStmt* ret_stmt = &node->ret_stmt;
+    if(ret_stmt->ret_expr)
+    {
+      build_stmt(arena, ret_stmt->ret_expr);
+    }
+  }
   else if(node->kind == AstNodeKind_VarOccur ||
           node->kind == AstNodeKind_BreakStmt ||
-          node->kind == AstNodeKind_ReturnStmt ||
           node->kind == AstNodeKind_EmptyStmt ||
           node->kind == AstNodeKind_IntNum)
     ;
@@ -2416,7 +2450,7 @@ build_block_stmts(MemoryArena* arena, List* stmt_list)
       list_item;
       list_item = list_item->next)
   {
-    build_node(arena, list_item->elem);
+    build_stmt(arena, list_item->elem);
   }
 }
 
@@ -2475,8 +2509,11 @@ build_proc(MemoryArena* arena, AstProc* proc)
 }
  
 void
-build_module(MemoryArena* arena, SymbolTable* symbol_table, AstModule* module)
+build_module(MemoryArena* arena, SymbolTable* symbol_table, AstNode* module_node)
 {
+  assert(module_node->kind == AstNodeKind_Module);
+  AstModule* module = &module_node->module;
+
   for(ListItem* list_item = list_first_item(&module->proc_list);
       list_item;
       list_item = list_item->next)
@@ -2494,7 +2531,7 @@ build_module(MemoryArena* arena, SymbolTable* symbol_table, AstModule* module)
 
   if(module->main_proc)
   {
-    AstNode* call_node = ast_new_call(arena);
+    AstNode* call_node = ast_new_call(arena, &module_node->src_loc);
     AstCall* call = &call_node->call;
     call->proc = module->main_proc;
     build_call(arena, call);
@@ -3281,9 +3318,6 @@ type_unification(Type* type_a, Type* type_b)
     }
   }
 
-  if(!success)
-    error("Type error");
-
   return success;
 }
 
@@ -3382,11 +3416,12 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
   else if(expr_node->kind == AstNodeKind_VarOccur)
   {
     AstNode* var_decl_node = expr_node->var_occur.var_decl;
-    success = type_unification(expr_node->type, var_decl_node->type);
-    if(success)
+    if(success = type_unification(expr_node->type, var_decl_node->type))
     {
       result = type_substitution(arena, type_tuples, expr_node->type);
     }
+    else
+      compile_error(&expr_node->src_loc, "Type error: %s", expr_node->var_occur.name);
   }
   else if(expr_node->kind == AstNodeKind_BinExpr)
   {
@@ -3397,17 +3432,26 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
     Type* right_type = 0;
 
     if(success = typecheck_expr(arena, type_tuples, left_operand, &left_type) &&
-       typecheck_expr(arena, type_tuples, right_operand, &right_type) &&
-       type_unification(left_type, right_type))
+       typecheck_expr(arena, type_tuples, right_operand, &right_type))
     {
-      if(!is_logical_operator(bin_expr->op))
+      if(success = type_unification(left_type, right_type))
       {
-        result = type_substitution(arena, type_tuples, left_operand->type);
+        if(is_logical_operator(bin_expr->op))
+        {
+          if(!(success = type_unification(expr_node->type, g_basic_type_bool)))
+            compile_error(&expr_node->src_loc, "Type error: bool");
+        }
+        else
+        {
+          if(!(success = type_unification(expr_node->type, left_type)))
+            compile_error(&expr_node->src_loc, "Type error: bin expr");
+        }
+
+        if(success)
+          result = type_substitution(arena, type_tuples, expr_node->type);
       }
       else
-      {
-        result = g_basic_type_bool;
-      }
+        compile_error(&expr_node->src_loc, "Type error: bin expr");
     }
   }
   else if(expr_node->kind == AstNodeKind_UnrExpr)
@@ -3419,10 +3463,20 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
     if(success = typecheck_expr(arena, type_tuples, operand, &operand_type))
     {
       if(unr_expr->op == AstOpKind_LogicNot)
-        success = type_unification(expr_node->type, g_basic_type_bool);
+      {
+        if(!(success = type_unification(expr_node->type, g_basic_type_bool)))
+          compile_error(&expr_node->src_loc, "Type error: bool");
+      }
+      else
+      {
+        if(!(success = type_unification(expr_node->type, operand_type)))
+          compile_error(&expr_node->src_loc, "Type error: unr expr");
+      }
 
       if(success)
+      {
         result = type_substitution(arena, type_tuples, expr_node->type);
+      }
     }
   }
   else if(expr_node->kind == AstNodeKind_Call)
@@ -3445,6 +3499,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
     }
 
     // call type
+    if(success)
     {
       Type* args_type = g_basic_type_void;
       int arg_count = call->actual_args.count;
@@ -3464,12 +3519,15 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
       {
         result = type_substitution(arena, type_tuples, expr_node->type);
       }
+      else
+        compile_error(&expr_node->src_loc, "Type error: %s(..)", call->name);
     }
   }
   else
     assert(false);
 
   *type = result;
+  success = success && (result->kind != TypeKind_TypeVar);
   return success;
 }
 
@@ -3486,16 +3544,20 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
     {
       success = typecheck_expr(arena, type_tuples, ret_stmt->ret_expr, &ret_type) &&
         type_unification(ret_type, ret_stmt->proc->ret_type);
+      if(!success)
+        compile_error(&stmt_node->src_loc, "Type error: return stmt");
     }
   }
   else if(stmt_node->kind == AstNodeKind_VarDecl)
   {
-    success = type_unification(stmt_node->type, stmt_node->var_decl.var_type);
+    if(!(success = type_unification(stmt_node->type, stmt_node->var_decl.var_type)))
+      compile_error(&stmt_node->src_loc, "Type error: %s", stmt_node->var_decl.name);
   }
   else if(stmt_node->kind == AstNodeKind_VarOccur)
   {
     AstNode* var_decl_node = stmt_node->var_occur.var_decl;
-    success = type_unification(stmt_node->type, var_decl_node->var_decl.var_type);
+    if(!(success = type_unification(stmt_node->type, var_decl_node->var_decl.var_type)))
+      compile_error(&stmt_node->src_loc, "Type error: %s", stmt_node->var_occur.name);
   }
   else if(stmt_node->kind == AstNodeKind_BinExpr)
   {
@@ -3506,37 +3568,45 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
   {
     AstIfStmt* if_stmt = &stmt_node->if_stmt;
     Type* cond_type = 0;
-    if(success = typecheck_expr(arena, type_tuples, if_stmt->cond_expr, &cond_type) &&
-       type_unification(cond_type, g_basic_type_bool))
+    if(success = typecheck_expr(arena, type_tuples, if_stmt->cond_expr, &cond_type))
     {
-      AstNode* body_node = if_stmt->body;
-      if(body_node->kind == AstNodeKind_Block)
-        success = typecheck_block(arena, type_tuples, body_node);
-      else
-        success = typecheck_stmt(arena, type_tuples, body_node);
-
-      AstNode* else_node = if_stmt->else_body;
-      if(else_node)
+      if(success = type_unification(cond_type, g_basic_type_bool))
       {
-        if(else_node->kind == AstNodeKind_Block)
-          success = typecheck_block(arena, type_tuples, else_node);
+        AstNode* body_node = if_stmt->body;
+        if(body_node->kind == AstNodeKind_Block)
+          success = typecheck_block(arena, type_tuples, body_node);
         else
-          success = typecheck_stmt(arena, type_tuples, else_node);
+          success = typecheck_stmt(arena, type_tuples, body_node);
+
+        AstNode* else_node = if_stmt->else_body;
+        if(else_node)
+        {
+          if(else_node->kind == AstNodeKind_Block)
+            success = typecheck_block(arena, type_tuples, else_node);
+          else
+            success = typecheck_stmt(arena, type_tuples, else_node);
+        }
       }
+      else
+        compile_error(&stmt_node->src_loc, "Type error: if stmt");
     }
   }
   else if(stmt_node->kind == AstNodeKind_WhileStmt)
   {
     AstWhileStmt* while_stmt = &stmt_node->while_stmt;
     Type* cond_type = 0;
-    if(success = typecheck_expr(arena, type_tuples, while_stmt->cond_expr, &cond_type) &&
-       type_unification(cond_type, g_basic_type_bool))
+    if(success = typecheck_expr(arena, type_tuples, while_stmt->cond_expr, &cond_type))
     {
-      AstNode* body_node = while_stmt->body;
-      if(body_node->kind == AstNodeKind_Block)
-        success = typecheck_block(arena, type_tuples, body_node);
+      if(success = type_unification(cond_type, g_basic_type_bool))
+      {
+        AstNode* body_node = while_stmt->body;
+        if(body_node->kind == AstNodeKind_Block)
+          success = typecheck_block(arena, type_tuples, body_node);
+        else
+          success = typecheck_stmt(arena, type_tuples, body_node);
+      }
       else
-        success = typecheck_stmt(arena, type_tuples, body_node);
+        compile_error(&stmt_node->src_loc, "Type error: while stmt");
     }
   }
   else if(stmt_node->kind == AstNodeKind_EmptyStmt)
@@ -3546,6 +3616,8 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
   else
     assert(false);
 
+  Type* stmt_type = type_find_set_representative(stmt_node->type);
+  success = success && (stmt_type->kind != TypeKind_TypeVar);
   return success;
 }
 
@@ -3567,15 +3639,19 @@ typecheck_block(MemoryArena* arena, List* type_tuples, AstNode* block_node)
 
     success = type_unification(var_decl_node->type, var_decl->var_type);
   }
-
-  // statements
-  for(ListItem* list_item = list_first_item(&block->stmt_list);
-      success && list_item;
-      list_item = list_item->next)
+  if(success)
   {
-    AstNode* stmt_node = list_item->elem;
-    typecheck_stmt(arena, type_tuples, stmt_node);
+    // statements
+    for(ListItem* list_item = list_first_item(&block->stmt_list);
+        success && list_item;
+        list_item = list_item->next)
+    {
+      AstNode* stmt_node = list_item->elem;
+      success = typecheck_stmt(arena, type_tuples, stmt_node);
+    }
   }
+  else
+    error("Type error: block");
 
   return success;
 }
@@ -3612,17 +3688,26 @@ typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* proc_node)
       assert(false);
 
     Type* proc_type = new_proc_type(arena, args_type, proc->ret_type);
-    success = type_unification(proc_type, proc_node->type) &&
-      typecheck_block(arena, type_tuples, proc->body);
+    if(success = type_unification(proc_type, proc_node->type))
+    {
+      success = typecheck_block(arena, type_tuples, proc->body);
+    }
+    else
+      error("Type error: %s()", proc->name);
   }
+  else
+    error("Type error: %s()", proc->name);
 
   return success;
 }
 
 bool32
-typecheck_module(MemoryArena* arena, List* type_tuples, AstModule* module)
+typecheck_module(MemoryArena* arena, List* type_tuples, AstNode* module_node)
 {
   bool32 success = true;
+  assert(module_node->kind == AstNodeKind_Module);
+  AstModule* module = &module_node->module;
+
   for(ListItem* list_item = list_first_item(&module->proc_list);
       success && list_item;
       list_item = list_item->next)
@@ -3660,14 +3745,14 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
     assert(symbol_table.scope_id == 0);
     assert(symbol_table.nesting_depth == 0);
 
-    AstModule* module = &node->module;
-    if(typecheck_module(arena, &g_type_tuples, module))
+    if(typecheck_module(arena, &g_type_tuples, node))
     {
       DEBUG_arena_print_occupancy("Typecheck", arena);
 
-      build_module(arena, &symbol_table, module);
+      build_module(arena, &symbol_table, node);
       DEBUG_arena_print_occupancy("Runtime objects", arena);
 
+      AstModule* module = &node->module;
       if(module->main_call)
       {
         vm_program = mem_push_struct(arena, VmProgram, 1);

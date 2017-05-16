@@ -1,11 +1,4 @@
-include "hlib/abs.hoc"
-include "hlib/minmax.hoc"
-include "hlib/gcd.hoc"
-include "hlib/power.hoc"
-include "hlib/sqrt.hoc"
-include "hlib/fizzbuzz.hoc"
-
-proc int foo(var int a, var int b)
+proc int foo(var bool a, var int b)
 {
   return a + b;
 }
@@ -14,9 +7,10 @@ proc int main()
 {
   var int b = 223;
   var bool c;
-  if(b > 0)
+  if(c)
   {
-    b = foo(b, b);
+    c = foo(c, b);
   }
   return b;
 }
+

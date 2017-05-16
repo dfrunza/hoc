@@ -40,10 +40,11 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
 {
   token_stream->text = text;
   token_stream->cursor = token_stream->text;
-  token_stream->line_nr = 1;
+  SourceLocation* src_loc = &token_stream->src_loc;
+  src_loc->line_nr = 1;
   //TODO: Compute the absolute path to the file, so that Vim could properly
   // jump from the QuickFix window to the error line in the file.
-  token_stream->file_path = file_path;
+  src_loc->file_path = file_path;
 }
 
 void
@@ -51,7 +52,8 @@ consume_token(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table)
 {
   input->prev_token = input->token;
   mem_zero(&input->token);
-  input->src_line = input->cursor;
+  SourceLocation* src_loc = &input->src_loc;
+  src_loc->src_line = input->cursor;
   char c;
 
 loop:
@@ -61,8 +63,8 @@ loop:
   {
     if(c == '\n')
     {
-      input->line_nr++;
-      input->src_line = input->cursor;
+      src_loc->line_nr++;
+      src_loc->src_line = input->cursor;
     }
     c = *(++input->cursor);
   }
@@ -173,7 +175,7 @@ loop:
       input->token.kind = TokenKind_String;
       input->cursor = ++fwd_cursor;
     } else
-      syntax_error(input, "Missing closing '\"'\n");
+      compile_error(&input->src_loc, "Missing closing '\"'\n");
   }
   else if(c == '=')
   {

@@ -75,6 +75,14 @@ typedef struct
 }
 Token;
 
+typedef struct
+{
+  char* file_path;
+  int line_nr;
+  char* src_line;
+}
+SourceLocation;
+
 typedef struct TokenStream
 {
   Token prev_token;
@@ -82,8 +90,6 @@ typedef struct TokenStream
   char* text;
   char* cursor;
 
-  char* file_path;
-  int line_nr;
-  char* src_line;
+  SourceLocation src_loc;
 }
 TokenStream;

@@ -3528,6 +3528,8 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
 
   *type = result;
   success = success && (result->kind != TypeKind_TypeVar);
+//  if(!success)
+//    compile_error(&expr_node->src_loc, "Type error: type var");
   return success;
 }
 
@@ -3544,6 +3546,12 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
     {
       success = typecheck_expr(arena, type_tuples, ret_stmt->ret_expr, &ret_type) &&
         type_unification(ret_type, ret_stmt->proc->ret_type);
+      if(success)
+        compile_error(&stmt_node->src_loc, "Type error: return stmt");
+    }
+    if(success)
+    {
+      success = type_unification(stmt_node->type, ret_type);
       if(!success)
         compile_error(&stmt_node->src_loc, "Type error: return stmt");
     }
@@ -3618,6 +3626,8 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
 
   Type* stmt_type = type_find_set_representative(stmt_node->type);
   success = success && (stmt_type->kind != TypeKind_TypeVar);
+//  if(!success)
+//    compile_error(&stmt_node->src_loc, "Type error: type var");
   return success;
 }
 

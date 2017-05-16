@@ -7,9 +7,9 @@ include "hlib/sqrt.hoc"
 include "hlib/fizzbuzz.hoc"
 */
 
-proc int foo(var bool a, var int b)
+proc bool foo(var int a, var int b)
 {
-  return a + b;
+  return a && b;
 }
 
 proc int main()

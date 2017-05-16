@@ -142,7 +142,14 @@ loop:
       while(true)
       {
         while(c != '*' && c != '\0')
+        {
+          if(c == '\n')
+          {
+            src_loc->line_nr++;
+            src_loc->src_line = input->cursor;
+          }
           c = *(++fwd_cursor);
+        }
         if(c == '*')
         {
           c = *(++fwd_cursor);

@@ -1,3 +1,5 @@
+#pragma once
+
 typedef enum TokenKind
 {
   TokenKind__Null,

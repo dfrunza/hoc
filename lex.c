@@ -90,19 +90,40 @@ loop:
   }
   else if(char_is_numeric(c))
   {
-    int num = c - '0';
-    c = *(++input->cursor);
+    int inum = c - '0';
+    float fract = 0.0;
 
+    c = *(++input->cursor);
     while(char_is_numeric(c))
     {
-      num = (10 * num) + (c - '0');
+      inum = (10 * inum) + (c - '0');
       c = *(++input->cursor);
     }
 
-    int* value = mem_push_struct(arena, int, 1);
-    *value = num;
-    input->token.kind = TokenKind_IntNum;
-    input->token.int_val = value;
+    if(c == '.')
+    {
+      c = *(++input->cursor);
+      while(char_is_numeric(c))
+      {
+        fract = ((c - '0') / 10.0f) + fract;
+        c = *(++input->cursor);
+      }
+    }
+
+    if(fract > 0)
+    {
+      float* value = mem_push_struct(arena, float, 1);
+      *value = (float)inum + fract;
+      input->token.kind = TokenKind_FloatNum;
+      input->token.float_val = value;
+    }
+    else
+    {
+      int* value = mem_push_struct(arena, int, 1);
+      *value = inum;
+      input->token.kind = TokenKind_IntNum;
+      input->token.int_val = value;
+    }
   }
   else if(c == '-')
   {

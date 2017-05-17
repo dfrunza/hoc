@@ -133,7 +133,7 @@ typedef enum
   AstNodeKind__Null,
   AstNodeKind_BinExpr,
   AstNodeKind_UnrExpr,
-  AstNodeKind_IntNum,
+  AstNodeKind_Literal,
   AstNodeKind_VarDecl,
   AstNodeKind_VarOccur,
   AstNodeKind_Call,
@@ -202,11 +202,27 @@ typedef struct
 }
 AstUnrExpr;
 
+typedef enum
+{
+  AstLiteralKind__Null,
+  AstLiteralKind_Int,
+  AstLiteralKind_Float,
+  AstLiteralKind_Bool,
+}
+AstLiteralKind;
+
 typedef struct
 {
-  int32 value;
+  AstLiteralKind kind;
+
+  union
+  {
+    int32 int_val;
+    float32 float_val;
+    int32 bool_val;
+  };
 }
-AstIntNum;
+AstLiteral;
 
 typedef struct AstBlock
 {
@@ -325,7 +341,7 @@ typedef struct AstNode
     AstVarOccur var_occur;
     AstBinExpr bin_expr;
     AstUnrExpr unr_expr;
-    AstIntNum int_val;
+    AstLiteral literal;
     AstProc proc;
     AstReturnStmt ret_stmt;
     AstCall call;
@@ -714,11 +730,34 @@ ast_new_unr_expr(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 AstNode*
-ast_new_int_val(MemoryArena* arena, SourceLocation* src_loc)
+ast_new_int_literal(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
-  node->kind = AstNodeKind_IntNum;
+  node->kind = AstNodeKind_Literal;
+  node->literal.kind = AstLiteralKind_Int;
   node->type = g_basic_type_int;
+  node->src_loc = *src_loc;
+  return node;
+}
+
+AstNode*
+ast_new_float_literal(MemoryArena* arena, SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  node->kind = AstNodeKind_Literal;
+  node->literal.kind = AstLiteralKind_Float;
+  node->type = g_basic_type_float;
+  node->src_loc = *src_loc;
+  return node;
+}
+
+AstNode*
+ast_new_bool_literal(MemoryArena* arena, SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  node->kind = AstNodeKind_Literal;
+  node->literal.kind = AstLiteralKind_Bool;
+  node->type = g_basic_type_bool;
   node->src_loc = *src_loc;
   return node;
 }
@@ -965,9 +1004,17 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   }
   else if(input->token.kind == TokenKind_IntNum)
   {
-    *node = ast_new_int_val(arena, &input->src_loc);
-    AstIntNum* int_val = &(*node)->int_val;
-    int_val->value = *(int32*)input->token.int_val;
+    *node = ast_new_int_literal(arena, &input->src_loc);
+    AstLiteral* literal = &(*node)->literal;
+    literal->int_val = *input->token.int_val;
+
+    consume_token(arena, input, symbol_table);
+  }
+  else if(input->token.kind == TokenKind_FloatNum)
+  {
+    *node = ast_new_float_literal(arena, &input->src_loc);
+    AstLiteral* literal = &(*node)->literal;
+    literal->float_val = *input->token.float_val;
 
     consume_token(arena, input, symbol_table);
   }
@@ -1051,9 +1098,9 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
   }
   else if(input->token.kind == TokenKind_True || input->token.kind == TokenKind_False)
   {
-    *node = ast_new_int_val(arena, &input->src_loc);
-    AstIntNum* int_val = &(*node)->int_val;
-    int_val->value = (input->token.kind == TokenKind_True ? 1 : 0);
+    *node = ast_new_bool_literal(arena, &input->src_loc);
+    AstLiteral* literal = &(*node)->literal;
+    literal->bool_val = (input->token.kind == TokenKind_True ? 1 : 0);
 
     consume_token(arena, input, symbol_table);
   }
@@ -2437,7 +2484,7 @@ build_stmt(MemoryArena* arena, AstNode* node)
   else if(node->kind == AstNodeKind_VarOccur ||
           node->kind == AstNodeKind_BreakStmt ||
           node->kind == AstNodeKind_EmptyStmt ||
-          node->kind == AstNodeKind_IntNum)
+          node->kind == AstNodeKind_Literal)
     ;
   else
     assert(false);
@@ -2789,9 +2836,21 @@ gen_load_rvalue(MemoryArena* arena, List* code, AstNode* node)
   {
     gen_call(arena, code, &node->call);
   }
-  else if(node->kind == AstNodeKind_IntNum)
+  else if(node->kind == AstNodeKind_Literal)
   {
-    emit_instr_int(arena, code, Opcode_PUSH, node->int_val.value);
+    AstLiteral* literal = &node->literal;
+    if(literal->kind == AstLiteralKind_Int
+       || literal->kind == AstLiteralKind_Bool)
+    {
+      emit_instr_int(arena, code, Opcode_PUSH, literal->int_val);
+    }
+    else if(literal->kind == AstLiteralKind_Float)
+    {
+      //FIXME:!!
+      //assert(false);
+    }
+    else
+      assert(false);
   }
   else if(node->kind == AstNodeKind_BinExpr)
   {
@@ -3409,7 +3468,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
   Type* result = 0;
   bool32 success = true;
 
-  if(expr_node->kind == AstNodeKind_IntNum)
+  if(expr_node->kind == AstNodeKind_Literal)
   {
     result = type_substitution(arena, type_tuples, expr_node->type);
   }
@@ -3634,6 +3693,9 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
 bool32
 typecheck_block(MemoryArena* arena, List* type_tuples, AstNode* block_node)
 {
+  //TODO: Typecheck the block properly:
+  // If the block is owned by a proc, then its type should be set to proc's type.
+  // If the block is owned by 'if,while' (or anonymous) then its type should be 'void'.
   bool32 success = true;
   assert(block_node->kind == AstNodeKind_Block);
   AstBlock* block = &block_node->block;

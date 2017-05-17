@@ -24,9 +24,9 @@ typedef enum TokenKind
   TokenKind_Id,
   TokenKind_Dot,
   TokenKind_IntNum,
+  TokenKind_FloatNum,
   TokenKind_UpArrow,
   TokenKind_RightArrow,
-  TokenKind_Literal,
   TokenKind_OpenBracket,
   TokenKind_CloseBracket,
   TokenKind_Semicolon,
@@ -69,7 +69,7 @@ typedef struct
   union
   {
     int* int_val;
-    int* float_val;
+    float* float_val;
     char* str;
   };
 }

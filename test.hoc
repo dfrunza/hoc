@@ -7,19 +7,21 @@ include "hlib/sqrt.hoc"
 include "hlib/fizzbuzz.hoc"
 */
 
-proc bool foo(var int a, var int b)
+proc bool foo(var float a, var int b, var bool y)
 {
-  return !(a+b);
+  return !(b);
 }
 
 proc int main()
 {
-  var int b = 223;
+  var float b = 223.3;
   var bool c;
+  var bool a = false;
   if(c)
   {
-    c = foo(b*b, b);
+    c = foo(b*b, 99, a);
+    c = (a && c) || c;
   }
-  return b;
+  return 0;
 }
 

@@ -250,11 +250,14 @@ build_stmt(MemoryArena* arena, AstNode* node)
   }
   else if(node->kind == AstNodeKind_ReturnStmt)
   {
-    AstReturnStmt* ret_stmt = &node->ret_stmt;
-    if(ret_stmt->ret_expr)
+    if(node->ret_stmt.ret_expr)
     {
-      build_stmt(arena, ret_stmt->ret_expr);
+      build_stmt(arena, node->ret_stmt.ret_expr);
     }
+  }
+  else if(node->kind == AstNodeKind_Cast)
+  {
+    build_stmt(arena, node->cast.expr);
   }
   else if(node->kind == AstNodeKind_VarOccur ||
           node->kind == AstNodeKind_BreakStmt ||

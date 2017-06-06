@@ -246,16 +246,15 @@ gen_load_rvalue(MemoryArena* arena, List* code, AstNode* node)
   }
   else if(node->kind == AstNodeKind_Literal)
   {
-    AstLiteral* literal = &node->literal;
-    if(literal->kind == AstLiteralKind_Int
-       || literal->kind == AstLiteralKind_Bool)
+    if(node->literal.kind == AstLiteralKind_Int
+       || node->literal.kind == AstLiteralKind_Bool)
     {
-      emit_instr_int(arena, code, Opcode_PUSH, literal->int_val);
+      emit_instr_int(arena, code, Opcode_PUSH, node->literal.int_val);
     }
-    else if(literal->kind == AstLiteralKind_Float)
+    else if(node->literal.kind == AstLiteralKind_Float)
     {
-      //FIXME:!!
-      //assert(false);
+      //FIXME: Emit proper float value.
+      emit_instr_int(arena, code, Opcode_PUSH, (int)node->literal.float_val);
     }
     else
       assert(false);
@@ -267,6 +266,10 @@ gen_load_rvalue(MemoryArena* arena, List* code, AstNode* node)
   else if(node->kind == AstNodeKind_UnrExpr)
   {
     gen_unr_expr(arena, code, &node->unr_expr);
+  }
+  else if(node->kind == AstNodeKind_Cast)
+  {
+    gen_load_rvalue(arena, code, node->cast.expr);
   }
   else
     assert(false);

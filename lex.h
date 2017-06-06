@@ -21,6 +21,7 @@ typedef enum TokenKind
   TokenKind_True,
   TokenKind_False,
   TokenKind_Print,
+  TokenKind_Cast,
   TokenKind__KeywordEnd,
 
   TokenKind_Id,
@@ -87,7 +88,7 @@ SourceLocation;
 
 typedef struct TokenStream
 {
-  Token prev_token;
+  Token prev_tokens[2];
   Token token;
   char* text;
   char* cursor;

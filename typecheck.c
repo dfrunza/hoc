@@ -321,6 +321,19 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
         compile_error(&expr_node->src_loc, "Type error: %s(..)", call->name);
     }
   }
+  else if(expr_node->kind == AstNodeKind_Cast)
+  {
+    Type* expr_type = 0;
+    if(!typecheck_expr(arena, type_tuples, expr_node->cast.expr, &expr_type))
+    {
+      compile_error(&expr_node->src_loc, "Type error: cast expr");
+      return false;
+    }
+
+    // TODO: Check cast validity
+
+    result = type_substitution(arena, type_tuples, expr_node->cast.to_type);
+  }
   else
     assert(false);
 

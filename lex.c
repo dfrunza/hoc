@@ -1,3 +1,10 @@
+Token*
+get_prev_token(TokenStream* input, int index)
+{
+  assert(index == 0 || index == 1);
+  return &input->prev_tokens[index];
+}
+
 bool32
 token_is_keyword(TokenKind token_kind)
 {
@@ -50,7 +57,8 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
 void
 consume_token(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table)
 {
-  input->prev_token = input->token;
+  input->prev_tokens[1] = input->prev_tokens[0];
+  input->prev_tokens[0] = input->token;
   mem_zero(&input->token);
   SourceLocation* src_loc = &input->src_loc;
   src_loc->src_line = input->cursor;
@@ -108,10 +116,7 @@ loop:
         fract = ((c - '0') / 10.0f) + fract;
         c = *(++input->cursor);
       }
-    }
 
-    if(fract > 0)
-    {
       float* value = mem_push_struct(arena, float, 1);
       *value = (float)inum + fract;
       input->token.kind = TokenKind_FloatNum;
@@ -127,6 +132,7 @@ loop:
   }
   else if(c == '-')
   {
+    Token* prev_token = get_prev_token(input, 0);
     input->token.kind = TokenKind_Minus;
     c = *(++input->cursor);
     if(c == '>')
@@ -134,15 +140,15 @@ loop:
       input->token.kind = TokenKind_RightArrow;
       ++input->cursor;
     }
-    else if(input->prev_token.kind == TokenKind_Equals ||
-            input->prev_token.kind == TokenKind_OpenParens ||
-            input->prev_token.kind == TokenKind_Star ||
-            input->prev_token.kind == TokenKind_Plus ||
-            input->prev_token.kind == TokenKind_Comma ||
-            input->prev_token.kind == TokenKind_FwdSlash ||
-            input->prev_token.kind == TokenKind_Return)
+    else if(prev_token->kind == TokenKind_Equals ||
+            prev_token->kind == TokenKind_OpenParens ||
+            prev_token->kind == TokenKind_Star ||
+            prev_token->kind == TokenKind_Plus ||
+            prev_token->kind == TokenKind_Comma ||
+            prev_token->kind == TokenKind_FwdSlash ||
+            prev_token->kind == TokenKind_Return)
     {
-      input->token.kind = TokenKind_UnaryMinus;
+       input->token.kind = TokenKind_UnaryMinus;
     }
     else if(c == '-')
     {

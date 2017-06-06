@@ -80,6 +80,7 @@ add_keyword_list(MemoryArena* arena, SymbolTable* symbol_table)
   add_keyword(arena, symbol_table, "true", TokenKind_True);
   add_keyword(arena, symbol_table, "false", TokenKind_False);
   add_keyword(arena, symbol_table, "print", TokenKind_Print);
+  add_keyword(arena, symbol_table, "cast", TokenKind_Cast);
 }
 
 void
@@ -324,6 +325,67 @@ ast_new_empty_stmt(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
+AstNode*
+ast_new_cast(MemoryArena* arena, SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  node->kind = AstNodeKind_Cast;
+  node->type = g_basic_type_void;
+  node->src_loc = *src_loc;
+  return node;
+}
+
+bool32
+parse_cast(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
+            AstBlock* enclosing_block, AstNode** node)
+{
+  if(input->token.kind != TokenKind_Cast)
+    return true;
+  
+  consume_token(arena, input, symbol_table);
+  if(input->token.kind != TokenKind_OpenParens)
+  {
+    compile_error(&input->src_loc, "Missing '('");
+    return false;
+  }
+
+  consume_token(arena, input, symbol_table);
+  if(input->token.kind != TokenKind_Id)
+  {
+    compile_error(&input->src_loc, "Identifier required");
+    return false;
+  }
+
+  Symbol* type_symbol = lookup_symbol(symbol_table, input->token.lexeme, SymbolKind_Type);
+  if(!type_symbol)
+  {
+    compile_error(&input->src_loc, "Unknown type : %s", input->token.lexeme);
+    return false;
+  }
+
+  *node = ast_new_cast(arena, &input->src_loc);
+  (*node)->cast.to_type = type_symbol->type;
+
+  consume_token(arena, input, symbol_table);
+  if(input->token.kind != TokenKind_CloseParens)
+  {
+    compile_error(&input->src_loc, "Missing ')'");
+    return false;
+  }
+
+  consume_token(arena, input, symbol_table);
+  if(!parse_expression(arena, input, symbol_table, enclosing_block, &(*node)->cast.expr))
+    return false;
+
+  if(!(*node)->cast.expr)
+  {
+    compile_error(&input->src_loc, "Expression required");
+    return false;
+  }
+
+  return true;
+}
+
 bool32
 parse_actual_argument_list(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
                            AstBlock* enclosing_block, AstCall* call)
@@ -562,11 +624,16 @@ parse_factor(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table,
         else
           assert(false);
       }
-      else {
+      else
+      {
         compile_error(&input->src_loc, "Unknown identifier: %s", id_name);
         success = false;
       }
     }
+  }
+  else if(input->token.kind == TokenKind_Cast)
+  {
+    success = parse_cast(arena, input, symbol_table, enclosing_block, node);
   }
   else if(input->token.kind == TokenKind_True || input->token.kind == TokenKind_False)
   {

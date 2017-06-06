@@ -51,6 +51,7 @@ typedef enum
   AstNodeKind_EmptyStmt,
   AstNodeKind_Module,
   AstNodeKind_Noop,
+  AstNodeKind_Cast,
 }
 AstNodeKind;
 
@@ -230,6 +231,13 @@ AstIncludeStmt;
 
 typedef AstNode AstEmptyStmt;
 
+typedef struct
+{
+  Type* to_type;
+  AstNode* expr;
+}
+AstCast;
+
 typedef struct AstNode
 {
   AstNodeKind kind;
@@ -253,6 +261,7 @@ typedef struct AstNode
     AstIncludeStmt inc_stmt;
     AstBreakStmt break_stmt;
     AstBlock block;
+    AstCast cast;
   };
 }
 AstNode;
@@ -306,4 +315,5 @@ bool32 parse_term(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**
 bool32 parse_statement(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse_if_stmt(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 bool32 parse(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
+bool32 parse_factor(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
 

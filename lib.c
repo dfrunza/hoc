@@ -42,6 +42,7 @@ typedef struct
 String;
 
 #define sizeof_array(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
+#define obj(STRUCT, FIELD) (&((STRUCT)->FIELD))
 
 void
 debug_print(char* message, ...)

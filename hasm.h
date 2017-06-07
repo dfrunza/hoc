@@ -4,6 +4,7 @@ typedef enum
 {
   Opcode__Null,
   Opcode_PUSH,
+  Opcode_PUSHF,
   Opcode_POP,
   Opcode_DUP,
   Opcode_LOAD,
@@ -20,6 +21,11 @@ typedef enum
   Opcode_NEG,
   Opcode_INCR,
   Opcode_DECR,
+
+  Opcode_ADDF,
+  Opcode_SUBF,
+  Opcode_MULF,
+  Opcode_DIVF,
 
   Opcode_CMPEQ,
   Opcode_CMPNEQ,
@@ -56,6 +62,7 @@ typedef enum
 {
   ParamType__Null,
   ParamType_Int32,
+  ParamType_Float32,
   ParamType_String,
   ParamType_Reg,
 }
@@ -77,6 +84,7 @@ typedef struct
 
   union {
     int32 int_val;
+    float32 float_val;
     RegName reg;
     char* str;
   } param;

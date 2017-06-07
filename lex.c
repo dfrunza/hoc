@@ -98,37 +98,64 @@ loop:
   }
   else if(char_is_numeric(c))
   {
-    int inum = c - '0';
-    float fract = 0.0;
+#if 0
+    int int_part = c - '0';
 
     c = *(++input->cursor);
     while(char_is_numeric(c))
     {
-      inum = (10 * inum) + (c - '0');
+      int_part = (10 * int_part) + (c - '0');
       c = *(++input->cursor);
     }
 
     if(c == '.')
     {
+      float fract_part = 0.0;
+
       c = *(++input->cursor);
       while(char_is_numeric(c))
       {
-        fract = ((c - '0') / 10.0f) + fract;
+        fract_part = ((c - '0') / 10.0f) + fract_part;
         c = *(++input->cursor);
       }
 
       float* value = mem_push_struct(arena, float, 1);
-      *value = (float)inum + fract;
+      *value = (float)int_part + fract_part;
       input->token.kind = TokenKind_FloatNum;
       input->token.float_val = value;
     }
     else
     {
       int* value = mem_push_struct(arena, int, 1);
-      *value = inum;
+      *value = int_part;
       input->token.kind = TokenKind_IntNum;
       input->token.int_val = value;
     }
+#else
+    char digit_buf[32] = {0};
+    bool32 is_float = false;
+    int i = 0;
+    for(; i < sizeof_array(digit_buf)-1 && (char_is_numeric(c) || c == '.'); i++)
+    {
+      digit_buf[i] = c;
+      is_float = is_float | (c == '.');
+      c = *(++input->cursor);
+    }
+    digit_buf[i] = '\0';
+
+    if(is_float)
+    {
+      input->token.kind = TokenKind_FloatNum;
+      input->token.float_val = mem_push_struct(arena, float, 1);
+      sscanf(digit_buf, "%f", input->token.float_val);
+    }
+    else
+    {
+      input->token.kind = TokenKind_IntNum;
+      input->token.int_val = mem_push_struct(arena, int, 1);
+      sscanf(digit_buf, "%d", input->token.int_val);
+    }
+#endif
   }
   else if(c == '-')
   {

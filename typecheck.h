@@ -1,7 +1,8 @@
 #pragma once
 
 typedef enum
-{ TypeKind__Null,
+{
+  TypeKind__Null,
   TypeKind_TypeVar,
   TypeKind_Unary,
   TypeKind_Basic,

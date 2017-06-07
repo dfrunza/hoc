@@ -9,9 +9,9 @@ include "hlib/fizzbuzz.hoc"
 
 proc int main()
 {
-  var int i = 111;
-  var float f = 222.2;
-  var int z = i+cast(int)f;
-  return z;
+  var float f = 112.542;
+  var float g = 6.3;
+  var float z = g+f;
+  return cast(int)z;
 }
 

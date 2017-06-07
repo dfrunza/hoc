@@ -69,25 +69,36 @@ execute_instr(HocMachine* machine, Instruction* instr)
     } break;
 
     case Opcode_PUSH:
+    case Opcode_PUSHF:
     {
       int32 top_sp = machine->sp+1;
       if(check_stack_bounds(machine, top_sp))
       {
-        if(instr->param_type == ParamType_Int32)
-          *(int32*)&memory[machine->sp*VMWORD] = instr->param.int_val;
-        else if(instr->param_type == ParamType_Reg)
+        if(opcode == Opcode_PUSH)
         {
-          RegName regname = instr->param.reg;
-          if(regname == RegName_SP)
-            *(int32*)&memory[machine->sp*VMWORD] = machine->sp;
-          else if(regname == RegName_IP)
-            *(int32*)&memory[machine->sp*VMWORD] = machine->ip;
-          else if(regname == RegName_FP)
-            *(int32*)&memory[machine->sp*VMWORD] = machine->fp;
+          if(instr->param_type == ParamType_Int32)
+            *(int32*)&memory[machine->sp*VMWORD] = instr->param.int_val;
+          else if(instr->param_type == ParamType_Reg)
+          {
+            RegName regname = instr->param.reg;
+            if(regname == RegName_SP)
+              *(int32*)&memory[machine->sp*VMWORD] = machine->sp;
+            else if(regname == RegName_IP)
+              *(int32*)&memory[machine->sp*VMWORD] = machine->ip;
+            else if(regname == RegName_FP)
+              *(int32*)&memory[machine->sp*VMWORD] = machine->fp;
+            else
+              assert(false);
+          } else
+            assert(false);
+        }
+        else if(opcode == Opcode_PUSHF)
+        {
+          if(instr->param_type == ParamType_Float32)
+            *(float32*)&memory[machine->sp*VMWORD] = instr->param.float_val;
           else
             assert(false);
-        } else
-          assert(false);
+        }
 
         machine->sp = top_sp;
         machine->ip++;
@@ -142,40 +153,94 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_MUL:
     case Opcode_DIV:
     case Opcode_MOD:
+    case Opcode_ADDF:
+    case Opcode_SUBF:
+    case Opcode_MULF:
+    case Opcode_DIVF:
     {
       int32 arg_sp = machine->sp-2;
       if(check_stack_bounds(machine, arg_sp))
       {
-        int32 arg1 = *(int32*)&memory[arg_sp*VMWORD];
-        int32 arg2 = *(int32*)&memory[(arg_sp+1)*VMWORD];
-
-        int32 result = 0;
-        if(opcode == Opcode_ADD) {
-          result = arg1 + arg2;
-        }
-        else if(opcode == Opcode_SUB) {
-          result = arg1 - arg2;
-        }
-        else if(opcode == Opcode_MUL) {
-          result = arg1 * arg2;
-        }
-        else if(opcode == Opcode_MOD) {
-          if(arg2 != 0)
-            result = arg1 % arg2;
-          else
-            return ExecResult_DivByZero;
-        }
-        else if(opcode == Opcode_DIV)
+        switch(opcode)
         {
-          if(arg2 != 0)
-            result = arg1 / arg2;
-          else
-            return ExecResult_DivByZero;
-        }
-        else
-          assert(false);
+          case Opcode_ADD:
+          case Opcode_SUB:
+          case Opcode_MUL:
+          case Opcode_DIV:
+          case Opcode_MOD:
+          {
+            int32 arg1 = *(int32*)&memory[arg_sp*VMWORD];
+            int32 arg2 = *(int32*)&memory[(arg_sp+1)*VMWORD];
 
-        *(int32*)&memory[arg_sp*VMWORD] = result;
+            int32 result = 0;
+            if(opcode == Opcode_ADD) {
+              result = arg1 + arg2;
+            }
+            else if(opcode == Opcode_SUB) {
+              result = arg1 - arg2;
+            }
+            else if(opcode == Opcode_MUL) {
+              result = arg1 * arg2;
+            }
+            else if(opcode == Opcode_MOD) {
+              if(arg2 != 0)
+                result = arg1 % arg2;
+              else
+                return ExecResult_DivByZero;
+            }
+            else if(opcode == Opcode_DIV)
+            {
+              if(arg2 != 0)
+                result = arg1 / arg2;
+              else
+                return ExecResult_DivByZero;
+            }
+            else
+              assert(false);
+
+            *(int32*)&memory[arg_sp*VMWORD] = result;
+          }
+          break;
+
+          case Opcode_ADDF:
+          case Opcode_SUBF:
+          case Opcode_MULF:
+          case Opcode_DIVF:
+          {
+            float32 arg1 = *(float32*)&memory[arg_sp*VMWORD];
+            float32 arg2 = *(float32*)&memory[(arg_sp+1)*VMWORD];
+
+            float32 result = 0;
+            if(opcode == Opcode_ADDF)
+            {
+              result = arg1 + arg2;
+            }
+            else if(opcode == Opcode_SUBF)
+            {
+              result = arg1 - arg2;
+            }
+            else if(opcode == Opcode_MULF)
+            {
+              result = arg1 * arg2;
+            }
+            else if(opcode == Opcode_DIVF)
+            {
+              if(arg2 != 0)
+                result = arg1 / arg2;
+              else
+                return ExecResult_DivByZero;
+            }
+            else
+              assert(false);
+
+            *(float32*)&memory[arg_sp*VMWORD] = result;
+          }
+          break;
+
+          default:
+            assert(false);
+        }
+
         machine->sp--;
         machine->ip++;
       } else
@@ -517,6 +582,9 @@ run_program(HocMachine* machine)
     //Memory dump
     for(int i = 0; i <= VMWORD*30; i += VMWORD)
       printf("%d ", *(int32*)&machine->memory[i]);
+
+    for(int i = 0; i <= VMWORD*30; i += VMWORD)
+      printf("%f ", *(float32*)&machine->memory[i]);
 #endif
   }
   else {

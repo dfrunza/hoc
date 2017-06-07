@@ -231,6 +231,65 @@ cstr_to_int(char* string, int* integer)
 }
 
 bool32
+cstr_to_float(char* string, float* result)
+{
+#if 0
+  bool32 negative = false;
+
+  if(*string == '-')
+  {
+    negative = true;
+    string++;
+  }
+
+  char c = *string++;
+  if(char_is_numeric(c))
+  {
+    int int_part = (c - '0');
+    for(c = *string++; c != '\0' && c != '.'; c = *string++)
+    {
+      if(char_is_numeric(c))
+      {
+        int_part = int_part*10 + (c - '0');
+      }
+      else if(c != '.')
+        return false;
+    }
+
+    float float_val = (float)int_part;
+
+    if(c == '.')
+    {
+      float fract_part = 0.0;
+
+      c = *string++;
+      for(c = *string++; c != '\0'; c = *string++)
+      {
+        if(char_is_numeric(c))
+        {
+          fract_part = fract_part + ((c - '0') / 10.0f);
+        }
+        else
+          return false;
+      }
+      float_val += fract_part;
+    }
+
+    if(negative)
+      float_val = -float_val;
+    *result = float_val;
+  }
+  else
+    return false;
+#else
+  if(sscanf(string, "%f", result) != 1)
+    return false;
+#endif
+
+  return true;
+}
+
+bool32
 cstr_start_with(char* str, char* prefix)
 {
   while(*str == *prefix)

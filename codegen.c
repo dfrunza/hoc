@@ -1,3 +1,7 @@
+void gen_load_rvalue(MemoryArena*, List*, AstNode*);
+void gen_load_lvalue(MemoryArena*, List*, AstVarOccur*);
+void gen_statement(MemoryArena*, List*, AstNode*);
+
 void
 print_instruction(VmProgram* vm_program, char* code, ...)
 {
@@ -34,6 +38,16 @@ emit_instr_int(MemoryArena* arena, List* instr_list, Opcode opcode, int32 int_va
 }
 
 void
+emit_instr_float(MemoryArena* arena, List* instr_list, Opcode opcode, float32 float_val)
+{
+  Instruction* instr = mem_push_struct(arena, Instruction, 1);
+  instr->opcode = opcode;
+  instr->param_type = ParamType_Float32;
+  instr->param.float_val = float_val;
+  list_append(arena, instr_list, instr);
+}
+
+void
 emit_instr(MemoryArena* arena, List* instr_list, Opcode opcode)
 {
   Instruction* instr = mem_push_struct(arena, Instruction, 1);
@@ -53,13 +67,12 @@ emit_instr_str(MemoryArena* arena, List* instr_list, Opcode opcode, char* str)
   list_append(arena, instr_list, instr);
 }
 
-void gen_load_rvalue(MemoryArena*, List*, AstNode*);
-void gen_load_lvalue(MemoryArena*, List*, AstVarOccur*);
-void gen_statement(MemoryArena*, List*, AstNode*);
-
 void
-gen_bin_expr(MemoryArena* arena, List* code, AstBinExpr* bin_expr)
+gen_bin_expr(MemoryArena* arena, List* code, AstNode* node)
 {
+  assert(node->kind == AstNodeKind_BinExpr);
+  AstBinExpr* bin_expr = &node->bin_expr;
+
   if(bin_expr->op == AstOpKind_Assign)
   {
     gen_load_rvalue(arena, code, bin_expr->right_operand);
@@ -71,6 +84,9 @@ gen_bin_expr(MemoryArena* arena, List* code, AstBinExpr* bin_expr)
   }
   else
   {
+    gen_load_rvalue(arena, code, bin_expr->left_operand);
+    gen_load_rvalue(arena, code, bin_expr->right_operand);
+
     switch(bin_expr->op)
     {
       case AstOpKind_Add:
@@ -78,35 +94,64 @@ gen_bin_expr(MemoryArena* arena, List* code, AstBinExpr* bin_expr)
       case AstOpKind_Mul:
       case AstOpKind_Div:
       case AstOpKind_Mod:
+      {
+        Type* expr_type = type_find_set_representative(node->type);
+        if(expr_type->kind == TypeKind_Basic)
+        {
+          if(expr_type->basic.kind == BasicTypeKind_Int)
+          {
+            if(bin_expr->op == AstOpKind_Add)
+            {
+              emit_instr(arena, code, Opcode_ADD);
+            }
+            else if(bin_expr->op == AstOpKind_Sub)
+            {
+              emit_instr(arena, code, Opcode_SUB);
+            }
+            else if(bin_expr->op == AstOpKind_Mul)
+            {
+              emit_instr(arena, code, Opcode_MUL);
+            }
+            else if(bin_expr->op == AstOpKind_Div)
+            {
+              emit_instr(arena, code, Opcode_DIV);
+            }
+            else if(bin_expr->op == AstOpKind_Mod)
+            {
+              emit_instr(arena, code, Opcode_MOD);
+            }
+          }
+          else if(expr_type->basic.kind == BasicTypeKind_Float)
+          {
+            if(bin_expr->op == AstOpKind_Add)
+            {
+              emit_instr(arena, code, Opcode_ADDF);
+            }
+            else if(bin_expr->op == AstOpKind_Sub)
+            {
+              emit_instr(arena, code, Opcode_SUBF);
+            }
+            else if(bin_expr->op == AstOpKind_Mul)
+            {
+              emit_instr(arena, code, Opcode_MULF);
+            }
+            else if(bin_expr->op == AstOpKind_Div)
+            {
+              emit_instr(arena, code, Opcode_DIVF);
+            }
+          }
+        }
+        else
+          assert(false);
+      }
+      break;
+
       case AstOpKind_LogicEquals:
       case AstOpKind_LogicNotEquals:
       case AstOpKind_LogicLess:
       case AstOpKind_LogicGreater:
       {
-        gen_load_rvalue(arena, code, bin_expr->left_operand);
-        gen_load_rvalue(arena, code, bin_expr->right_operand);
-
-        if(bin_expr->op == AstOpKind_Add)
-        {
-          emit_instr(arena, code, Opcode_ADD);
-        }
-        else if(bin_expr->op == AstOpKind_Sub)
-        {
-          emit_instr(arena, code, Opcode_SUB);
-        }
-        else if(bin_expr->op == AstOpKind_Mul)
-        {
-          emit_instr(arena, code, Opcode_MUL);
-        }
-        else if(bin_expr->op == AstOpKind_Div)
-        {
-          emit_instr(arena, code, Opcode_DIV);
-        }
-        else if(bin_expr->op == AstOpKind_Mod)
-        {
-          emit_instr(arena, code, Opcode_MOD);
-        }
-        else if(bin_expr->op == AstOpKind_LogicEquals)
+        if(bin_expr->op == AstOpKind_LogicEquals)
         {
           emit_instr(arena, code, Opcode_CMPEQ);
         }
@@ -253,15 +298,14 @@ gen_load_rvalue(MemoryArena* arena, List* code, AstNode* node)
     }
     else if(node->literal.kind == AstLiteralKind_Float)
     {
-      //FIXME: Emit proper float value.
-      emit_instr_int(arena, code, Opcode_PUSH, (int)node->literal.float_val);
+      emit_instr_float(arena, code, Opcode_PUSHF, node->literal.float_val);
     }
     else
       assert(false);
   }
   else if(node->kind == AstNodeKind_BinExpr)
   {
-    gen_bin_expr(arena, code, &node->bin_expr);
+    gen_bin_expr(arena, code, node);
   }
   else if(node->kind == AstNodeKind_UnrExpr)
   {
@@ -421,9 +465,8 @@ gen_statement(MemoryArena* arena, List* code, AstNode* stmt_node)
 {
   if(stmt_node->kind == AstNodeKind_BinExpr)
   {
-    AstBinExpr* bin_expr = &stmt_node->bin_expr;
-    assert(bin_expr->op == AstOpKind_Assign);
-    gen_bin_expr(arena, code, bin_expr);
+    assert(stmt_node->bin_expr.op == AstOpKind_Assign);
+    gen_bin_expr(arena, code, stmt_node);
     emit_instr(arena, code, Opcode_POP);
   }
   else if(stmt_node->kind == AstNodeKind_Call)
@@ -520,6 +563,14 @@ print_code(VmProgram* vm_program)
           assert(false);
       } break;
 
+      case Opcode_PUSHF:
+      {
+        if(instr->param_type == ParamType_Float32)
+          print_instruction(vm_program, "pushf %f", instr->param.float_val);
+        else
+          assert(false);
+      } break;
+
       case Opcode_POP:
       {
         if(instr->param_type == ParamType_Reg)
@@ -560,6 +611,30 @@ print_code(VmProgram* vm_program)
       {
         assert(instr->param_type == ParamType__Null);
         print_instruction(vm_program, "div");
+      } break;
+
+      case Opcode_ADDF:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "addf");
+      } break;
+
+      case Opcode_SUBF:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "subf");
+      } break;
+
+      case Opcode_MULF:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "mulf");
+      } break;
+
+      case Opcode_DIVF:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "divf");
       } break;
 
       case Opcode_MOD:

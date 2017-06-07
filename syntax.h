@@ -164,7 +164,7 @@ AstProc;
 typedef struct
 {
   AstNode* ret_expr;
-  AstBinExpr* assgn_expr;
+  AstNode* assgn_expr;
   int depth;
   AstProc* proc;
 }

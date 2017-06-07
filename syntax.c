@@ -1502,7 +1502,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_ta
           assgn_expr->left_operand = var_node;
           assgn_expr->right_operand = ret_expr;
 
-          ret_stmt->assgn_expr = assgn_expr;
+          ret_stmt->assgn_expr = assgn_node;
         }
       }
       else {

@@ -167,6 +167,9 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
       else if(cstr_match(mnemonic, "push")) {
         instr.opcode = Opcode_PUSH;
       }
+      else if(cstr_match(mnemonic, "pushf")) {
+        instr.opcode = Opcode_PUSHF;
+      }
       else if(cstr_match(mnemonic, "store")) {
         instr.opcode = Opcode_STORE;
       }
@@ -193,6 +196,18 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
       }
       else if(cstr_match(mnemonic, "mod")) {
         instr.opcode = Opcode_MOD;
+      }
+      else if(cstr_match(mnemonic, "addf")) {
+        instr.opcode = Opcode_ADDF;
+      }
+      else if(cstr_match(mnemonic, "subf")) {
+        instr.opcode = Opcode_SUBF;
+      }
+      else if(cstr_match(mnemonic, "mulf")) {
+        instr.opcode = Opcode_MULF;
+      }
+      else if(cstr_match(mnemonic, "divf")) {
+        instr.opcode = Opcode_DIVF;
       }
       else if(cstr_match(mnemonic, "incr")) {
         instr.opcode = Opcode_INCR;
@@ -311,6 +326,12 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
                   return false;
                 }
               }
+            } break;
+
+          case Opcode_PUSHF:
+            {
+              if(cstr_to_float(components[1], &instr.param.float_val))
+                instr.param_type = ParamType_Float32;
             } break;
 
           case Opcode_ALLOC:

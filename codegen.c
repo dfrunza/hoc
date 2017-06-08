@@ -224,12 +224,26 @@ gen_bin_expr(MemoryArena* arena, List* code, AstNode* node)
   }
 }
 
-void gen_unr_expr(MemoryArena* arena, List* code, AstUnrExpr* unr_expr)
+void gen_unr_expr(MemoryArena* arena, List* code, AstNode* node)
 {
+  assert(node->kind == AstNodeKind_UnrExpr);
+  AstUnrExpr* unr_expr = &node->unr_expr;
+
   gen_load_rvalue(arena, code, unr_expr->operand);
   if(unr_expr->op == AstOpKind_Neg)
   {
-    emit_instr(arena, code, Opcode_NEG);
+    Type* expr_type = type_find_set_representative(node->type);
+    if(expr_type->kind == TypeKind_Basic)
+    {
+      if(expr_type->basic.kind == BasicTypeKind_Int)
+        emit_instr(arena, code, Opcode_NEG);
+      else if(expr_type->basic.kind == BasicTypeKind_Float)
+        emit_instr(arena, code, Opcode_NEGF);
+      else
+        assert(false);
+    }
+    else
+      assert(false);
   }
   else if(unr_expr->op == AstOpKind_LogicNot)
   {
@@ -309,7 +323,7 @@ gen_load_rvalue(MemoryArena* arena, List* code, AstNode* node)
   }
   else if(node->kind == AstNodeKind_UnrExpr)
   {
-    gen_unr_expr(arena, code, &node->unr_expr);
+    gen_unr_expr(arena, code, node);
   }
   else if(node->kind == AstNodeKind_Cast)
   {
@@ -635,6 +649,12 @@ print_code(VmProgram* vm_program)
       {
         assert(instr->param_type == ParamType__Null);
         print_instruction(vm_program, "divf");
+      } break;
+
+      case Opcode_NEGF:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "negf");
       } break;
 
       case Opcode_MOD:

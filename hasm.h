@@ -26,6 +26,7 @@ typedef enum
   Opcode_SUBF,
   Opcode_MULF,
   Opcode_DIVF,
+  Opcode_NEGF,
 
   Opcode_CMPEQ,
   Opcode_CMPNEQ,

@@ -286,12 +286,24 @@ execute_instr(HocMachine* machine, Instruction* instr)
     } break;
 
     case Opcode_NEG:
+    case Opcode_NEGF:
     {
       int32 arg_sp = machine->sp-1;
       if(check_stack_bounds(machine, arg_sp))
       {
-        int32 arg = *(int32*)&memory[arg_sp*VMWORD];
-        *(int32*)&memory[arg_sp*VMWORD] = -arg;
+        if(opcode == Opcode_NEG)
+        {
+          int32 arg = *(int32*)&memory[arg_sp*VMWORD];
+          *(int32*)&memory[arg_sp*VMWORD] = -arg;
+        }
+        else if(opcode == Opcode_NEGF)
+        {
+          float32 arg = *(float32*)&memory[arg_sp*VMWORD];
+          *(float32*)&memory[arg_sp*VMWORD] = -arg;
+        }
+        else
+          assert(false);
+
         machine->ip++;
       } else
         return ExecResult_InvalidMemoryAccess;

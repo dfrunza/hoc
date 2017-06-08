@@ -209,6 +209,9 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
       else if(cstr_match(mnemonic, "divf")) {
         instr.opcode = Opcode_DIVF;
       }
+      else if(cstr_match(mnemonic, "negf")) {
+        instr.opcode = Opcode_NEGF;
+      }
       else if(cstr_match(mnemonic, "incr")) {
         instr.opcode = Opcode_INCR;
       }

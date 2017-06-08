@@ -284,6 +284,12 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
       else if(cstr_match(mnemonic, "alloc")) {
         instr.opcode = Opcode_ALLOC;
       }
+      else if(cstr_match(mnemonic, "float_to_int")) {
+        instr.opcode = Opcode_FLOAT_TO_INT;
+      }
+      else if(cstr_match(mnemonic, "int_to_float")) {
+        instr.opcode = Opcode_INT_TO_FLOAT;
+      }
       else {
         error("Invalid instruction: %s", mnemonic);
         return false;

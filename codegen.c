@@ -273,6 +273,33 @@ gen_call(MemoryArena* arena, List* code, AstCall* call)
 }
 
 void
+gen_cast(MemoryArena* arena, List* code, AstNode* node)
+{
+  assert(node->kind == AstNodeKind_Cast);
+  AstCast* cast = &node->cast;
+
+  gen_load_rvalue(arena, code, cast->expr);
+
+  Type* to_type = type_find_set_representative(cast->to_type);
+  Type* from_type = type_find_set_representative(cast->expr->type);
+  if(to_type->kind == TypeKind_Basic)
+  {
+    if(to_type->basic.kind == BasicTypeKind_Float)
+    {
+      if(from_type->basic.kind == BasicTypeKind_Int)
+        emit_instr(arena, code, Opcode_INT_TO_FLOAT);
+    }
+    else if(to_type->basic.kind == BasicTypeKind_Int)
+    {
+      if(from_type->basic.kind == BasicTypeKind_Float)
+        emit_instr(arena, code, Opcode_FLOAT_TO_INT);
+    }
+    else assert(false);
+  }
+  else assert(false);
+}
+
+void
 gen_load_lvalue(MemoryArena* arena, List* code, AstVarOccur* var_occur)
 {
   DataArea* data = var_occur->data;
@@ -327,7 +354,7 @@ gen_load_rvalue(MemoryArena* arena, List* code, AstNode* node)
   }
   else if(node->kind == AstNodeKind_Cast)
   {
-    gen_load_rvalue(arena, code, node->cast.expr);
+    gen_cast(arena, code, node);
   }
   else
     assert(false);
@@ -799,6 +826,18 @@ print_code(VmProgram* vm_program)
       {
         assert(instr->param_type == ParamType__Null);
         print_instruction(vm_program, "printnl");
+      } break;
+
+      case Opcode_FLOAT_TO_INT:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "float_to_int");
+      } break;
+
+      case Opcode_INT_TO_FLOAT:
+      {
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "int_to_float");
       } break;
 
       default:

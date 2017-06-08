@@ -7,11 +7,16 @@ include "hlib/sqrt.hoc"
 include "hlib/fizzbuzz.hoc"
 */
 
+proc float foo(var float a, var float b)
+{
+  return a+b;
+}
+
 proc int main()
 {
   var float f = 112.542;
-  var float g = 6.3;
-  var float z = g+f;
-  return cast(int)z;
+  var float g = 16.88;
+  var int z = cast(int)foo(f, g);
+  return z;
 }
 

@@ -49,6 +49,9 @@ typedef enum
   Opcode_NOOP,
   Opcode_PRINT,
   Opcode_PRINTNL,
+
+  Opcode_FLOAT_TO_INT,
+  Opcode_INT_TO_FLOAT,
 }
 Opcode;
 

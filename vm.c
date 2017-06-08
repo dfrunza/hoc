@@ -285,6 +285,28 @@ execute_instr(HocMachine* machine, Instruction* instr)
         return ExecResult_InvalidMemoryAccess;
     } break;
 
+    case Opcode_FLOAT_TO_INT:
+    case Opcode_INT_TO_FLOAT:
+    {
+      int32 arg_sp = machine->sp-1;
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        if(opcode == Opcode_FLOAT_TO_INT)
+        {
+          float32 arg = *(float32*)&memory[arg_sp*VMWORD];
+          *(int32*)&memory[arg_sp*VMWORD] = (int32)arg;
+        }
+        else if(opcode == Opcode_INT_TO_FLOAT)
+        {
+          int32 arg = *(int32*)&memory[arg_sp*VMWORD];
+          *(float32*)&memory[arg_sp*VMWORD] = (float32)arg;
+        }
+
+        machine->ip++;
+      }
+    }
+    break;
+
     case Opcode_NEG:
     case Opcode_NEGF:
     {

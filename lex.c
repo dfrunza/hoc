@@ -138,7 +138,12 @@ loop:
     for(; i < sizeof_array(digit_buf)-1 && (char_is_numeric(c) || c == '.'); i++)
     {
       digit_buf[i] = c;
-      is_float = is_float | (c == '.');
+      if(c == '.')
+      {
+        if(is_float)
+          break;
+        is_float = true;
+      }
       c = *(++input->cursor);
     }
     digit_buf[i] = '\0';

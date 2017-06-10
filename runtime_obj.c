@@ -1,7 +1,7 @@
 void
 make_unique_label(String* label)
 {
-  sprintf(label->head, "L%d", g_last_label_id++);
+  sprintf(label->head, "L%d", last_label_id++);
   int len = cstr_len(label->head);
   label->end = label->head + len;
   MemoryArena* arena = label->arena;

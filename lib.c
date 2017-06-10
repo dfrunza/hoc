@@ -24,6 +24,7 @@ typedef double float64;
 #define false 0
 #define true  1
 #define inline __inline
+#define internal static
 
 typedef struct
 {

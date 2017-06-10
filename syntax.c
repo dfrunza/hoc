@@ -59,11 +59,11 @@ add_keyword(MemoryArena* arena, SymbolTable* symbol_table, char* name, TokenKind
 void
 add_keyword_list(MemoryArena* arena, SymbolTable* symbol_table)
 {
-  add_builtin_type(arena, symbol_table, "bool", g_basic_type_bool);
-  add_builtin_type(arena, symbol_table, "int", g_basic_type_int);
-  add_builtin_type(arena, symbol_table, "char", g_basic_type_char);
-  add_builtin_type(arena, symbol_table, "float", g_basic_type_float);
-  add_builtin_type(arena, symbol_table, "void", g_basic_type_void);
+  add_builtin_type(arena, symbol_table, "bool", basic_type_bool);
+  add_builtin_type(arena, symbol_table, "int", basic_type_int);
+  add_builtin_type(arena, symbol_table, "char", basic_type_char);
+  add_builtin_type(arena, symbol_table, "float", basic_type_float);
+  add_builtin_type(arena, symbol_table, "void", basic_type_void);
 
   add_keyword(arena, symbol_table, "var", TokenKind_Var);
   add_keyword(arena, symbol_table, "proc", TokenKind_Proc);
@@ -86,11 +86,11 @@ add_keyword_list(MemoryArena* arena, SymbolTable* symbol_table)
 void
 init_global_basic_types(MemoryArena* arena)
 {
-  g_basic_type_bool = new_basic_type(arena, BasicTypeKind_Bool);
-  g_basic_type_int = new_basic_type(arena, BasicTypeKind_Int);
-  g_basic_type_char = new_basic_type(arena, BasicTypeKind_Char);
-  g_basic_type_float = new_basic_type(arena, BasicTypeKind_Float);
-  g_basic_type_void = new_basic_type(arena, BasicTypeKind_Void);
+  basic_type_bool = new_basic_type(arena, BasicTypeKind_Bool);
+  basic_type_int = new_basic_type(arena, BasicTypeKind_Int);
+  basic_type_char = new_basic_type(arena, BasicTypeKind_Char);
+  basic_type_float = new_basic_type(arena, BasicTypeKind_Float);
+  basic_type_void = new_basic_type(arena, BasicTypeKind_Void);
 }
 
 bool32
@@ -136,7 +136,7 @@ ast_new_module(MemoryArena* arena, SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   list_init(&node->module.proc_list);
   node->kind = AstNodeKind_Module;
-  node->type = g_basic_type_void;
+  node->type = basic_type_void;
   node->src_loc = *src_loc;
   return node;
 }
@@ -146,7 +146,7 @@ ast_new_block(MemoryArena* arena, SymbolTable* symbol_table, SourceLocation* src
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Block;
-  node->type = g_basic_type_void;
+  node->type = basic_type_void;
   node->src_loc = *src_loc;
 
   AstBlock* block = &node->block;
@@ -208,7 +208,7 @@ ast_new_int_literal(MemoryArena* arena, SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Literal;
   node->literal.kind = AstLiteralKind_Int;
-  node->type = g_basic_type_int;
+  node->type = basic_type_int;
   node->src_loc = *src_loc;
   return node;
 }
@@ -219,7 +219,7 @@ ast_new_float_literal(MemoryArena* arena, SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Literal;
   node->literal.kind = AstLiteralKind_Float;
-  node->type = g_basic_type_float;
+  node->type = basic_type_float;
   node->src_loc = *src_loc;
   return node;
 }
@@ -230,7 +230,7 @@ ast_new_bool_literal(MemoryArena* arena, SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Literal;
   node->literal.kind = AstLiteralKind_Bool;
-  node->type = g_basic_type_bool;
+  node->type = basic_type_bool;
   node->src_loc = *src_loc;
   return node;
 }
@@ -260,7 +260,7 @@ ast_new_while_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_WhileStmt;
-  node->type = g_basic_type_void;
+  node->type = basic_type_void;
   node->src_loc = *src_loc;
   return node;
 }
@@ -270,7 +270,7 @@ ast_new_if_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IfStmt;
-  node->type = g_basic_type_void;
+  node->type = basic_type_void;
   node->src_loc = *src_loc;
   return node;
 }
@@ -290,7 +290,7 @@ ast_new_break_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_BreakStmt;
-  node->type = g_basic_type_void;
+  node->type = basic_type_void;
   node->src_loc = *src_loc;
   return node;
 }
@@ -300,7 +300,7 @@ ast_new_print_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_PrintStmt;
-  node->type = g_basic_type_void;
+  node->type = basic_type_void;
   node->src_loc = *src_loc;
   return node;
 }
@@ -310,7 +310,7 @@ ast_new_include_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IncludeStmt;
-  node->type = g_basic_type_void;
+  node->type = basic_type_void;
   node->src_loc = *src_loc;
   return node;
 }
@@ -320,7 +320,7 @@ ast_new_empty_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_EmptyStmt;
-  node->type = g_basic_type_void;
+  node->type = basic_type_void;
   node->src_loc = *src_loc;
   return node;
 }
@@ -330,7 +330,7 @@ ast_new_cast(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Cast;
-  node->type = g_basic_type_void;
+  node->type = basic_type_void;
   node->src_loc = *src_loc;
   return node;
 }

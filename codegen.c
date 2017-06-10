@@ -284,17 +284,27 @@ gen_cast(MemoryArena* arena, List* code, AstNode* node)
   Type* from_type = type_find_set_representative(cast->expr->type);
   if(to_type->kind == TypeKind_Basic)
   {
-    if(to_type->basic.kind == BasicTypeKind_Float)
+    if(from_type->basic.kind != to_type->basic.kind)
     {
-      if(from_type->basic.kind == BasicTypeKind_Int)
-        emit_instr(arena, code, Opcode_INT_TO_FLOAT);
+      if(to_type->basic.kind == BasicTypeKind_Float)
+      {
+        if(from_type->basic.kind == BasicTypeKind_Int)
+          emit_instr(arena, code, Opcode_INT_TO_FLOAT);
+        else assert(false);
+      }
+      else if(to_type->basic.kind == BasicTypeKind_Int)
+      {
+        if(from_type->basic.kind == BasicTypeKind_Float)
+          emit_instr(arena, code, Opcode_FLOAT_TO_INT);
+        else assert(false);
+      }
+      else if(to_type->basic.kind == BasicTypeKind_Bool)
+      {
+        if(from_type->basic.kind != BasicTypeKind_Int)
+          assert(false);
+      }
+      else assert(false);
     }
-    else if(to_type->basic.kind == BasicTypeKind_Int)
-    {
-      if(from_type->basic.kind == BasicTypeKind_Float)
-        emit_instr(arena, code, Opcode_FLOAT_TO_INT);
-    }
-    else assert(false);
   }
   else assert(false);
 }

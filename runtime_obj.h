@@ -29,5 +29,5 @@ struct Entity
 void build_stmt(MemoryArena*, AstNode*);
 void build_block_stmts(MemoryArena*, List*);
 
-static int g_last_label_id;
+static int last_label_id;
 

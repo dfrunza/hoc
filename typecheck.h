@@ -88,14 +88,17 @@ typedef struct
 }
 TypeTuple;
 
+Type* make_product_type(MemoryArena*, Type*, ListItem*);
+bool32 typecheck_block(MemoryArena*, List*, AstNode*);
+
 ////////////////////////////////////////////////////////////////////////////////
 
-static List g_type_tuples;
-static int g_typevar_id = 1;
+static List type_tuples;
+static int typevar_id = 1;
 
-static Type* g_basic_type_bool;
-static Type* g_basic_type_int;
-static Type* g_basic_type_char;
-static Type* g_basic_type_float;
-static Type* g_basic_type_void;
+static Type* basic_type_bool;
+static Type* basic_type_int;
+static Type* basic_type_char;
+static Type* basic_type_float;
+static Type* basic_type_void;
 

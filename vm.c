@@ -649,7 +649,7 @@ run_program(HocMachine* machine)
 }
 
 bool32
-load_ir_code(HasmCode* code)
+load_hvm_code(HasmCode* code)
 {
   HRSRC res = FindResource(0, "CODE", "VM");
   if(res)
@@ -664,9 +664,9 @@ load_ir_code(HasmCode* code)
       code->instr_array = (Instruction*)(code->code_start + sizeof(HasmCode));
       return true;
     } else
-      error("Resource does not appear to be valid IR code");
+      error("Resource does not appear to be valid HVM code");
   } else
-    error("IR code not found");
+    error("HVM code not found");
   return false;
 }
 
@@ -677,7 +677,7 @@ main(int argc, char* argv[])
 
   HocMachine machine = {0};
   HasmCode code = {0};
-  if(load_ir_code(&code))
+  if(load_hvm_code(&code))
   {
     machine.mem_size = sizeof_array(machine.memory);
     machine.code = &code;

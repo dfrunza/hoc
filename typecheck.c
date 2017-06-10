@@ -1,6 +1,3 @@
-Type* make_product_type(MemoryArena*, Type*, ListItem*);
-bool32 typecheck_block(MemoryArena*, List*, AstNode*);
-
 Type*
 new_basic_type(MemoryArena* arena, BasicTypeKind kind)
 {
@@ -25,7 +22,7 @@ new_typevar(MemoryArena* arena)
 {
   Type* type = mem_push_struct(arena, Type, 1);
   type->kind = TypeKind_TypeVar;
-  type->typevar.id = g_typevar_id++;
+  type->typevar.id = typevar_id++;
   return type;
 }
 
@@ -37,6 +34,23 @@ new_product_type(MemoryArena* arena, Type* left, Type* right)
   type->product.left = left;
   type->product.right = right;
   return type;
+}
+
+bool32
+types_are_equal(Type* type_a, Type* type_b)
+{
+  bool32 are_equal = false;
+
+  if(type_a->kind != TypeKind_TypeVar &&
+     type_b->kind == type_a->kind)
+  {
+    if(type_a->kind == TypeKind_Basic)
+    {
+      are_equal = (type_a->basic.kind == type_b->basic.kind);
+    }
+    else assert(false);
+  }
+  return are_equal;
 }
 
 Type*
@@ -93,7 +107,7 @@ type_unification(Type* type_a, Type* type_b)
     }
     else if(repr_type_a->kind == TypeKind_Basic)
     {
-      success = repr_type_a->basic.kind == repr_type_b->basic.kind;
+      success = (repr_type_a->basic.kind == repr_type_b->basic.kind);
     }
     else
     {
@@ -180,7 +194,7 @@ type_substitution(MemoryArena* arena, List* tuple_list, Type* type)
 
     if(subst->kind == TypeKind_TypeVar)
     {
-      subst->typevar.id = g_typevar_id++;
+      subst->typevar.id = typevar_id++;
     }
     else if(subst->kind == TypeKind_Proc)
     {
@@ -236,7 +250,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
       {
         if(is_logical_operator(bin_expr->op))
         {
-          if(!(success = type_unification(expr_node->type, g_basic_type_bool)))
+          if(!(success = type_unification(expr_node->type, basic_type_bool)))
             compile_error(&expr_node->src_loc, "Type error: bool");
         }
         else
@@ -262,7 +276,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
     {
       if(unr_expr->op == AstOpKind_LogicNot)
       {
-        if(!(success = type_unification(expr_node->type, g_basic_type_bool)))
+        if(!(success = type_unification(expr_node->type, basic_type_bool)))
           compile_error(&expr_node->src_loc, "Type error: bool");
       }
       else
@@ -299,7 +313,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
     // call type
     if(success)
     {
-      Type* args_type = g_basic_type_void;
+      Type* args_type = basic_type_void;
       int arg_count = call->actual_args.count;
 
       if(arg_count > 0)
@@ -330,9 +344,26 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
       return false;
     }
 
-    // TODO: Check cast validity
-
     result = type_substitution(arena, type_tuples, expr_node->cast.to_type);
+
+    {
+      Type* type_from = type_find_set_representative(expr_type);
+      Type* type_to = type_find_set_representative(result);
+      if(!types_are_equal(type_from, type_to))
+      {
+        if(types_are_equal(type_from, basic_type_float) &&
+           types_are_equal(type_to, basic_type_bool))
+        {
+          compile_error(&expr_node->src_loc, "Invalid cast : float -> bool");
+          return false;
+        }
+        if(types_are_equal(type_from, basic_type_bool))
+        {
+          compile_error(&expr_node->src_loc, "Invalid cast : bool -> <something>");
+          return false;
+        }
+      }
+    }
   }
   else
     assert(false);
@@ -352,7 +383,7 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
   if(stmt_node->kind == AstNodeKind_ReturnStmt)
   {
     AstReturnStmt* ret_stmt = &stmt_node->ret_stmt;
-    Type* ret_type = g_basic_type_void;
+    Type* ret_type = basic_type_void;
     if(ret_stmt->ret_expr)
     {
       success = typecheck_expr(arena, type_tuples, ret_stmt->ret_expr, &ret_type) &&
@@ -389,7 +420,7 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
     Type* cond_type = 0;
     if(success = typecheck_expr(arena, type_tuples, if_stmt->cond_expr, &cond_type))
     {
-      if(success = type_unification(cond_type, g_basic_type_bool))
+      if(success = type_unification(cond_type, basic_type_bool))
       {
         AstNode* body_node = if_stmt->body;
         if(body_node->kind == AstNodeKind_Block)
@@ -416,7 +447,7 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
     Type* cond_type = 0;
     if(success = typecheck_expr(arena, type_tuples, while_stmt->cond_expr, &cond_type))
     {
-      if(success = type_unification(cond_type, g_basic_type_bool))
+      if(success = type_unification(cond_type, basic_type_bool))
       {
         AstNode* body_node = while_stmt->body;
         if(body_node->kind == AstNodeKind_Block)
@@ -499,7 +530,7 @@ typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* proc_node)
 
   if(success)
   {
-    Type* args_type = g_basic_type_void;
+    Type* args_type = basic_type_void;
     int arg_count = proc->formal_args.count;
 
     if(arg_count > 0)

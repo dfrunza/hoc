@@ -41,7 +41,7 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
   bool32 success = false;
 
   init_global_basic_types(arena);
-  list_init(&g_type_tuples);
+  list_init(&type_tuples);
 
   SymbolTable symbol_table = {0};
   symbol_table.arena = arena;
@@ -62,7 +62,7 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
     assert(symbol_table.scope_id == 0);
     assert(symbol_table.nesting_depth == 0);
 
-    if(typecheck_module(arena, &g_type_tuples, node))
+    if(typecheck_module(arena, &type_tuples, node))
     {
       DEBUG_arena_print_occupancy("Typecheck", arena);
 

@@ -349,13 +349,12 @@ typedef struct Symbol
 }
 Symbol;
 
-Symbol* lookup_symbol(SymbolTable*, char*, SymbolKind);
 bool32 is_logical_operator(AstOpKind);
-bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
-bool32 parse_term(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
-bool32 parse_statement(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
-bool32 parse_if_stmt(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
-bool32 parse(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
-bool32 parse_factor(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
-bool32 parse_module(MemoryArena*, TokenStream*, SymbolTable*, List*);
+bool32 parse_expression(MemoryArena*, TokenStream*, AstNode**);
+bool32 parse_term(MemoryArena*, TokenStream*, AstNode**);
+bool32 parse_statement(MemoryArena*, TokenStream*, AstNode**);
+bool32 parse_if_stmt(MemoryArena*, TokenStream*, AstNode**);
+bool32 parse(MemoryArena*, TokenStream*, AstNode**);
+bool32 parse_factor(MemoryArena*, TokenStream*, AstNode**);
+bool32 parse_module(MemoryArena*, TokenStream*, List*);
 

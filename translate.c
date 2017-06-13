@@ -43,19 +43,19 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
   /*
   init_global_basic_types(arena);
   list_init(&type_tuples);
-  */
 
   SymbolTable symbol_table = {0};
   symbol_table.arena = arena;
   add_keyword_list(arena, &symbol_table);
+  */
 
   TokenStream token_stream = {0};
   token_stream_init(&token_stream, hoc_text, file_path);
 
-  get_next_token(arena, &token_stream, &symbol_table);
+  get_next_token(arena, &token_stream);
 
   AstNode* node = 0;
-  success = parse(arena, &token_stream, &symbol_table, &node);
+  success = parse(arena, &token_stream, &node);
   DEBUG_arena_print_occupancy("Parse", arena);
 
   VmProgram* vm_program = 0;

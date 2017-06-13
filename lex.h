@@ -96,3 +96,19 @@ typedef struct TokenStream
   SourceLocation src_loc;
 }
 TokenStream;
+
+Token keyword_list[] = 
+{
+  {TokenKind_Var, "var"},
+  {TokenKind_Proc, "proc"},
+  {TokenKind_If, "if"},
+  {TokenKind_Else, "else"},
+  {TokenKind_While, "while"},
+  {TokenKind_Return, "return"},
+  {TokenKind_Break, "break"},
+  {TokenKind_Include, "include"},
+  {TokenKind_True, "true"},
+  {TokenKind_False, "false"},
+  {TokenKind_Cast, "cast"},
+  {TokenKind__Null},
+};

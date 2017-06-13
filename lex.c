@@ -1,4 +1,23 @@
 Token*
+lookup_keyword(Token* list, char* lexeme)
+{
+  Token* result = 0;
+  Token* token;
+
+  for(int i = 0;
+      (token = &list[i])->kind;
+      token = &list[++i])
+  {
+    if(cstr_match(lexeme, token->lexeme))
+    {
+      result = token;
+      break;
+    }
+  }
+  return result;
+}
+
+Token*
 get_prev_token(TokenStream* input, int index)
 {
   assert(index == 0 || index == 1);
@@ -55,7 +74,7 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
 }
 
 void
-get_next_token(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table)
+get_next_token(MemoryArena* arena, TokenStream* input)
 {
   input->prev_tokens[1] = input->prev_tokens[0];
   input->prev_tokens[0] = input->token;
@@ -90,48 +109,12 @@ loop:
 
     input->token.kind = TokenKind_Id;
     input->token.lexeme = lexeme;
-    Symbol* symbol = lookup_symbol(symbol_table, lexeme, SymbolKind_Keyword);
-    if(symbol)
-    {
-      input->token.kind = symbol->keyword;
-    }
+    Token* keyword = lookup_keyword(keyword_list, lexeme);
+    if(keyword)
+      input->token.kind = keyword->kind;
   }
   else if(char_is_numeric(c))
   {
-#if 0
-    int int_part = c - '0';
-
-    c = *(++input->cursor);
-    while(char_is_numeric(c))
-    {
-      int_part = (10 * int_part) + (c - '0');
-      c = *(++input->cursor);
-    }
-
-    if(c == '.')
-    {
-      float fract_part = 0.0;
-
-      c = *(++input->cursor);
-      while(char_is_numeric(c))
-      {
-        fract_part = ((c - '0') / 10.0f) + fract_part;
-        c = *(++input->cursor);
-      }
-
-      float* value = mem_push_struct(arena, float, 1);
-      *value = (float)int_part + fract_part;
-      input->token.kind = TokenKind_FloatNum;
-      input->token.float_val = value;
-    }
-    else
-    {
-      int* value = mem_push_struct(arena, int, 1);
-      *value = int_part;
-      input->token.kind = TokenKind_IntNum;
-      input->token.int_val = value;
-    }
-#else
     char digit_buf[32] = {0};
     bool32 is_float = false;
     int i = 0;
@@ -160,7 +143,6 @@ loop:
       input->token.int_val = mem_push_struct(arena, int, 1);
       sscanf(digit_buf, "%d", input->token.int_val);
     }
-#endif
   }
   else if(c == '-')
   {

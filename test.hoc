@@ -1,11 +1,9 @@
-/*
 include "hlib/gcd.hoc";
 include "hlib/minmax.hoc";
 include "hlib/fibo.hoc";
 include "hlib/abs.hoc";
 include "hlib/power.hoc";
 include "hlib/sqrt.hoc";
-*/
 
 proc int main()
 {

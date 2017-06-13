@@ -266,7 +266,7 @@ parse_actual_argument_list(MemoryArena* arena, TokenStream* input,
   bool32 success = true;
   
   AstNode* arg_node = 0;
-  success = parse_expression(arena, input,&arg_node);
+  success = parse_expression(arena, input, &arg_node);
   if(success && arg_node)
   {
     list_append(arena, arg_list, arg_node);
@@ -325,10 +325,9 @@ parse_block(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_OpenBrace)
   {
-    get_next_token(arena, input);
-
     *node = ast_new_block(arena, &input->src_loc);
 
+    get_next_token(arena, input);
     if(success = parse_statement_list(arena, input, &(*node)->stmt_list))
     {
       if(input->token.kind == TokenKind_CloseBrace)
@@ -370,19 +369,15 @@ parse_factor(MemoryArena* arena, TokenStream* input,
   }
   else if(input->token.kind == TokenKind_UnaryMinus)
   {
-    get_next_token(arena, input);
+    *node = ast_new_unr_expr(arena, &input->src_loc);
+    AstUnrExpr* expr = &(*node)->unr_expr;
+    expr->op = AstOpKind_Neg;
 
-    AstNode* operand = 0;
-    if(success = parse_term(arena, input, &operand))
+    get_next_token(arena, input);
+    if(success = parse_term(arena, input, &expr->operand))
     {
-      if(operand)
+      if(!expr->operand)
       {
-        *node = ast_new_unr_expr(arena, &input->src_loc);
-        AstUnrExpr* expr = &(*node)->unr_expr;
-        expr->op = AstOpKind_Neg;
-        expr->operand = operand;
-      }
-      else {
         compile_error(&input->src_loc, "Expression expected after '-'");
         success = false;
       }
@@ -390,19 +385,15 @@ parse_factor(MemoryArena* arena, TokenStream* input,
   }
   else if(input->token.kind == TokenKind_Bang)
   {
-    get_next_token(arena, input);
+    *node = ast_new_unr_expr(arena, &input->src_loc);
+    AstUnrExpr* expr = &(*node)->unr_expr;
+    expr->op = AstOpKind_LogicNot;
 
-    AstNode* operand = 0;
-    if(success = parse_term(arena, input, &operand))
+    get_next_token(arena, input);
+    if(success = parse_term(arena, input, &expr->operand))
     {
-      if(operand)
+      if(!expr->operand)
       {
-        *node = ast_new_unr_expr(arena, &input->src_loc);
-        AstUnrExpr* expr = &(*node)->unr_expr;
-        expr->op = AstOpKind_LogicNot;
-        expr->operand = operand;
-      }
-      else {
         compile_error(&input->src_loc, "Expression expected after '!'");
         success = false;
       }
@@ -433,10 +424,9 @@ parse_factor(MemoryArena* arena, TokenStream* input,
     get_next_token(arena, input);
     if(input->token.kind == TokenKind_OpenParens)
     {
-      AstNode* actual_args = ast_new_actual_arg_list(arena, &input->src_loc);
+      id->rest_of_id = ast_new_actual_arg_list(arena, &input->src_loc);
       get_next_token(arena, input);
-      success = parse_actual_argument_list(arena, input, &actual_args->arg_list);
-      id->rest_of_id = actual_args;
+      success = parse_actual_argument_list(arena, input, &id->rest_of_id->arg_list);
 
       if(input->token.kind == TokenKind_CloseParens)
       {
@@ -559,6 +549,7 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input,
   {
     *node = ast_new_bin_expr(arena, &input->src_loc);
     AstBinExpr* expr = &(*node)->bin_expr;
+    expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Star)
     {
@@ -608,14 +599,10 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input,
       assert(false);
 
     get_next_token(arena, input);
-
-    AstNode* factor_node = 0;
-    if(success = parse_factor(arena, input, &factor_node))
+    if(success = parse_factor(arena, input, &expr->right_operand))
     {
-      if(factor_node)
+      if(expr->right_operand)
       {
-        expr->right_operand = factor_node;
-        expr->left_operand = left_node;
         success = parse_rest_of_factors(arena, input, *node, node);
       }
       else {
@@ -636,16 +623,11 @@ parse_term(MemoryArena* arena, TokenStream* input,
 {
   bool32 success = true;
   AstNode* factor_node = 0;
-  AstNode* expr_node = 0;
 
-  if((success = parse_factor(arena, input, &factor_node))
-     && factor_node)
+  if((success = parse_factor(arena, input, &factor_node)) && factor_node)
   {
-    success = parse_rest_of_factors(arena, input,
-                                    factor_node, &expr_node);
+    success = parse_rest_of_factors(arena, input, factor_node, node);
   }
-
-  *node = expr_node;
   return success;
 }
 
@@ -659,6 +641,7 @@ parse_rest_of_terms(MemoryArena* arena, TokenStream* input,
   {
     *node = ast_new_bin_expr(arena, &input->src_loc);
     AstBinExpr* expr = &(*node)->bin_expr;
+    expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Plus)
       expr->op = AstOpKind_Add;
@@ -669,15 +652,12 @@ parse_rest_of_terms(MemoryArena* arena, TokenStream* input,
 
     get_next_token(arena, input);
 
-    AstNode* term_node = 0;
-    if((success = parse_term(arena, input, &term_node))
-       && term_node)
+    if((success = parse_term(arena, input, &expr->right_operand)) && expr->right_operand)
     {
-      expr->right_operand = term_node;
-      expr->left_operand = left_node;
       success = parse_rest_of_terms(arena, input, *node, node);
     }
-    else {
+    else
+    {
       compile_error(&input->src_loc, "Expression term expected");
       success = false;
     }
@@ -694,15 +674,11 @@ parse_assignment_term(MemoryArena* arena, TokenStream* input,
 {
   bool32 success = true;
   AstNode* term_node = 0;
-  AstNode* expr_node = 0;
 
-  if((success = parse_term(arena, input, &term_node))
-     && term_node)
+  if((success = parse_term(arena, input, &term_node)) && term_node)
   {
-    success = parse_rest_of_terms(arena, input, term_node, &expr_node);
+    success = parse_rest_of_terms(arena, input, term_node, node);
   }
-
-  *node = expr_node;
   return success;
 }
 
@@ -714,20 +690,15 @@ parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_Equals)
   {
-    get_next_token(arena, input);
+    *node = ast_new_bin_expr(arena, &input->src_loc);
+    AstBinExpr* expr = &(*node)->bin_expr;
+    expr->op = AstOpKind_Assign;
+    expr->left_operand = left_node;
 
-    AstNode* right_side = 0;
-    if(success = parse_expression(arena, input, &right_side))
+    get_next_token(arena, input);
+    if(success = parse_expression(arena, input, &expr->right_operand))
     {
-      if(right_side)
-      {
-        *node = ast_new_bin_expr(arena, &input->src_loc);
-        AstBinExpr* expr = &(*node)->bin_expr;
-        expr->op = AstOpKind_Assign;
-        expr->left_operand = left_node;
-        expr->right_operand = right_side;
-      }
-      else
+      if(!expr->right_operand)
       {
         compile_error(&input->src_loc, "Missing right side of assignment");
         success = false;
@@ -746,15 +717,11 @@ parse_expression(MemoryArena* arena, TokenStream* input,
 {
   bool32 success = true;
   AstNode* assgn_node = 0;
-  AstNode* expr_node = 0;
 
-  if((success = parse_assignment_term(arena, input, &assgn_node))
-     && assgn_node)
+  if((success = parse_assignment_term(arena, input, &assgn_node)) && assgn_node)
   {
-    success = parse_rest_of_assignment_terms(arena, input, assgn_node, &expr_node);
+    success = parse_rest_of_assignment_terms(arena, input, assgn_node, node);
   }
-
-  *node = expr_node;
   return success;
 }
 
@@ -773,17 +740,11 @@ parse_var_stmt(MemoryArena* arena, TokenStream* input,
     get_next_token(arena, input);
     if(input->token.kind == TokenKind_Id)
     {
-      AstNode* type_node = 0;
-      if(success = parse_type_expression(arena, input, &type_node))
+      if(success = parse_type_expression(arena, input, &var_decl->type))
       {
-        var_decl->type = type_node;
-
-        get_next_token(arena, input);
         if(input->token.kind == TokenKind_Id)
         {
-          AstNode* decl_expr = 0;
-          success = parse_expression(arena, input, &decl_expr);
-          var_decl->decl = decl_expr;
+          success = parse_expression(arena, input, &var_decl->decl);
         }
         else
         {
@@ -838,25 +799,22 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_While)
   {
-    get_next_token(arena, input);
+    *node = ast_new_while_stmt(arena, &input->src_loc);
+    AstWhileStmt* while_stmt = &(*node)->while_stmt;
 
+    get_next_token(arena, input);
     if(input->token.kind == TokenKind_OpenParens)
     {
       get_next_token(arena, input);
 
-      AstNode* expr_node = 0;
-      if(success = parse_expression(arena, input, &expr_node))
+      if(success = parse_expression(arena, input, &while_stmt->cond_expr))
       {
         if(input->token.kind == TokenKind_CloseParens)
         {
           get_next_token(arena, input);
 
-          if(expr_node)
+          if(while_stmt->cond_expr)
           {
-            *node = ast_new_while_stmt(arena, &input->src_loc);
-            AstWhileStmt* while_stmt = &(*node)->while_stmt;
-            while_stmt->cond_expr = expr_node;
-
             if(success = parse_block(arena, input, &while_stmt->body))
             {
               if(!while_stmt->body)
@@ -906,31 +864,16 @@ parse_else_stmt(MemoryArena* arena, TokenStream* input,
   {
     get_next_token(arena, input);
 
-    AstNode* else_node = 0;
-    if(success = parse_if_stmt(arena, input, &else_node))
+    if(success = parse_block(arena, input, node))
     {
-      if(else_node)
+      if(!(*node))
       {
-        *node = else_node;
-      }
-      else
-      {
-        if(success = parse_block(arena, input, &else_node))
+        if(success = parse_statement(arena, input, node))
         {
-          if(else_node)
+          if(!(*node))
           {
-            *node = else_node;
-          }
-          else
-          {
-            if(success = parse_statement(arena, input, &else_node))
-            {
-              *node = else_node;
-            }
-            else {
-              compile_error(&input->src_loc, "Statement(s) required");
-              success = false;
-            }
+            compile_error(&input->src_loc, "Statement(s) required");
+            success = false;
           }
         }
       }
@@ -948,25 +891,22 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_If)
   {
-    get_next_token(arena, input);
+    *node = ast_new_if_stmt(arena, &input->src_loc);
+    AstIfStmt* if_stmt = &(*node)->if_stmt;
 
+    get_next_token(arena, input);
     if(input->token.kind == TokenKind_OpenParens)
     {
       get_next_token(arena, input);
 
-      AstNode* expr_node = 0;
-      if(success = parse_expression(arena, input, &expr_node))
+      if(success = parse_expression(arena, input, &if_stmt->cond_expr))
       {
         if(input->token.kind == TokenKind_CloseParens)
         {
           get_next_token(arena, input);
 
-          if(expr_node)
+          if(if_stmt->cond_expr)
           {
-            *node = ast_new_if_stmt(arena, &input->src_loc);
-            AstIfStmt* if_stmt = &(*node)->if_stmt;
-            if_stmt->cond_expr = expr_node;
-
             if(success = parse_block(arena, input, &if_stmt->body))
             {
               if(!if_stmt->body)
@@ -984,11 +924,6 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input,
               {
                 assert(if_stmt->body);
                 success = parse_else_stmt(arena, input, *node, &if_stmt->else_body);
-                if(!if_stmt->else_body)
-                {
-                  compile_error(&input->src_loc, "Invalid else statement");
-                  success = false;
-                }
               }
             }
           }
@@ -1326,14 +1261,11 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_Return)
   {
+    *node = ast_new_return_stmt(arena, &input->src_loc);
+
     get_next_token(arena, input);
-
-    AstNode* ret_expr = 0;
-    if(success = parse_expression(arena, input, &ret_expr))
+    if(success = parse_expression(arena, input, &(*node)->ret_expr))
     {
-      *node = ast_new_return_stmt(arena, &input->src_loc);
-      (*node)->ret_expr = ret_expr;
-
 #if 0
       AstNode* owner = 0;
       int depth = block_find_owner(enclosing_block, AstNodeKind_Proc, &owner);
@@ -1390,9 +1322,8 @@ parse_break_stmt(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_Break)
   {
-    get_next_token(arena, input);
-
     *node = ast_new_break_stmt(arena, &input->src_loc);
+    get_next_token(arena, input);
 #if 0
     AstBreakStmt* break_stmt = &(*node)->break_stmt;
 

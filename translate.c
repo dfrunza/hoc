@@ -5,9 +5,9 @@ typedef struct AstNode AstNode;
 typedef struct Type Type;
 
 #include "lex.h"
-#include "typecheck.h"
+//#include "typecheck.h"
 #include "syntax.h"
-#include "runtime_obj.h"
+//#include "runtime_obj.h"
 
 typedef struct
 {
@@ -31,17 +31,19 @@ compile_error(SourceLocation* src_loc, char* message, ...)
 }
 
 #include "lex.c"
-#include "typecheck.c"
+//#include "typecheck.c"
 #include "syntax.c"
-#include "runtime_obj.c"
-#include "codegen.c"
+//#include "runtime_obj.c"
+//#include "codegen.c"
 
 VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
 {
   bool32 success = false;
 
+  /*
   init_global_basic_types(arena);
   list_init(&type_tuples);
+  */
 
   SymbolTable symbol_table = {0};
   symbol_table.arena = arena;
@@ -50,13 +52,14 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
   TokenStream token_stream = {0};
   token_stream_init(&token_stream, hoc_text, file_path);
 
-  consume_token(arena, &token_stream, &symbol_table);
+  get_next_token(arena, &token_stream, &symbol_table);
 
   AstNode* node = 0;
   success = parse(arena, &token_stream, &symbol_table, &node);
   DEBUG_arena_print_occupancy("Parse", arena);
 
   VmProgram* vm_program = 0;
+#if 0
   if(success)
   {
     assert(symbol_table.scope_id == 0);
@@ -87,6 +90,7 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
       }
     }
   }
+#endif
   return vm_program;
 }
 

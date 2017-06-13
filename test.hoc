@@ -1,18 +1,14 @@
 /*
-include "hlib/abs.hoc"
-include "hlib/minmax.hoc"
-include "hlib/gcd.hoc"
-include "hlib/power.hoc"
-include "hlib/sqrt.hoc"
-include "hlib/fizzbuzz.hoc"
+include "hlib/gcd.hoc";
+include "hlib/minmax.hoc";
+include "hlib/fibo.hoc";
+include "hlib/abs.hoc";
+include "hlib/power.hoc";
+include "hlib/sqrt.hoc";
 */
 
 proc int main()
 {
-  var float f = 15.99345;
-  var int i = cast(int)f;
-  if(cast(bool)i)
-    i = i*2;
-  return i;
+  x = cast(int)x;
 }
 

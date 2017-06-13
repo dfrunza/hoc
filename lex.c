@@ -55,7 +55,7 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
 }
 
 void
-consume_token(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table)
+get_next_token(MemoryArena* arena, TokenStream* input, SymbolTable* symbol_table)
 {
   input->prev_tokens[1] = input->prev_tokens[0];
   input->prev_tokens[0] = input->token;

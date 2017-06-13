@@ -365,8 +365,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
       }
     }
   }
-  else
-    assert(false);
+  else assert(false);
 
   *type = result;
   success = success && (result->kind != TypeKind_TypeVar);

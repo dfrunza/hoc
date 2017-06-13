@@ -148,18 +148,22 @@ main(int argc, char* argv[])
 
           if(success)
           {
-            success = write_irc_file(&out_files, hasm_code) && write_res_file(&out_files);
-            if(success)
+            if(success = write_irc_file(&out_files, hasm_code) && write_res_file(&out_files))
               ret = 0;
             else
               error("Could not write IRC/RES file: %s, %s", out_files.irc.name, out_files.res.name);
           }
-        } else
+        }
+        else
           error("Could not write IR file: %s", out_files.ir.name);
       }
-    } else
+//      else
+//        error("Program could not be translated");
+    }
+    else
       error("File could not be read: %s", file_path);
-  } else
+  }
+  else
     error("Missing argument: input source file");
 
   return ret;

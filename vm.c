@@ -616,7 +616,7 @@ run_program(HocMachine* machine)
     //Memory dump
     for(int i = 0; i <= VMWORD*30; i += VMWORD)
       printf("%d ", *(int32*)&machine->memory[i]);
-
+    printf("\n------------------------------------\n");
     for(int i = 0; i <= VMWORD*30; i += VMWORD)
       printf("%f ", *(float32*)&machine->memory[i]);
 #endif

@@ -52,8 +52,17 @@ typedef enum
   AstNodeKind_Module,
   AstNodeKind_Noop,
   AstNodeKind_Cast,
+  AstNodeKind_ActualArgList,
+  AstNodeKind_FormalArgList,
 }
 AstNodeKind;
+
+typedef struct
+{
+  char* name;
+  AstNode* rest_of_id;
+}
+AstId;
 
 typedef struct
 {
@@ -71,13 +80,16 @@ AccessLink;
 
 typedef struct
 {
-  char* name;
+  AstNode* type;
+  AstNode* decl;
+  /*
   DataArea data;
-  AstNode* init_expr;
   Type* var_type;
+  */
 }
 AstVarDecl;
 
+/*
 typedef struct
 {
   char* name;
@@ -87,6 +99,7 @@ typedef struct
   DataArea* data;
 }
 AstVarOccur;
+*/
 
 typedef struct
 {
@@ -94,7 +107,9 @@ typedef struct
   AstNode* left_operand;
   AstNode* right_operand;
 
+  /*
   char* label_end; // for boolean expressions
+  */
 }
 AstBinExpr;
 
@@ -127,8 +142,11 @@ typedef struct
 }
 AstLiteral;
 
+/*
 typedef struct AstBlock
 {
+  List stmt_list;
+
   AstNode* owner;
   int block_id;
   int nesting_depth;
@@ -136,20 +154,22 @@ typedef struct AstBlock
   List decl_vars; // <AstNode>
   List local_occurs; // <AstNode>
   List nonlocal_occurs; // <AstNode>
-  List stmt_list; // <AstNode>
   List access_links; // <AccessLink>
 
   int links_size;
   int locals_size;
 }
 AstBlock;
+*/
 
 typedef struct
 {
   char* name;
+  char* ret_type;
   List formal_args; // <AstNode>
   AstNode* body; // <AstBlock>
 
+  /*
   Type* ret_type;
   AstVarDecl ret_var;
 
@@ -158,9 +178,11 @@ typedef struct
   int ret_size;
   int args_size;
   int locals_size;
+  */
 }
 AstProc;
 
+/*
 typedef struct
 {
   AstNode* ret_expr;
@@ -169,7 +191,9 @@ typedef struct
   AstProc* proc;
 }
 AstReturnStmt;
+*/
 
+/*
 typedef struct
 {
   char* name;
@@ -177,7 +201,9 @@ typedef struct
   AstNode* proc;
 }
 AstCall;
+*/
 
+/*
 typedef struct
 {
   List proc_list; // <AstProc>
@@ -187,6 +213,7 @@ typedef struct
   AstNode* main_call;
 }
 AstModule;
+*/
 
 typedef struct
 {
@@ -194,8 +221,10 @@ typedef struct
   AstNode* body;
   AstNode* else_body;
 
+  /*
   char* label_else;
   char* label_end;
+  */
 }
 AstIfStmt;
 
@@ -204,36 +233,43 @@ typedef struct
   AstNode* cond_expr;
   AstNode* body;
 
+  /*
   char* label_eval;
   char* label_break;
+  */
 }
 AstWhileStmt;
 
+/*
 typedef struct
 {
   AstWhileStmt* while_stmt;
   int depth;
 }
 AstBreakStmt;
+*/
 
+/*
 typedef struct
 {
   AstNode* expr;
   bool32 new_line;
 }
 AstPrintStmt;
+*/
 
 typedef struct
 {
   char* file_path;
+  List node_list;
 }
 AstIncludeStmt;
 
-typedef AstNode AstEmptyStmt;
+//typedef AstNode AstEmptyStmt;
 
 typedef struct
 {
-  Type* to_type;
+  AstNode* type;
   AstNode* expr;
 }
 AstCast;
@@ -246,22 +282,27 @@ typedef struct AstNode
 
   union
   {
-    AstModule module;
+    //AstModule module;
     AstVarDecl var_decl;
-    AstVarOccur var_occur;
+    //AstVarOccur var_occur;
     AstBinExpr bin_expr;
     AstUnrExpr unr_expr;
     AstLiteral literal;
     AstProc proc;
-    AstReturnStmt ret_stmt;
-    AstCall call;
+    //AstReturnStmt ret_stmt;
+    AstNode* ret_expr;
+    //AstCall call;
     AstIfStmt if_stmt;
     AstWhileStmt while_stmt;
-    AstPrintStmt print_stmt;
+    //AstPrintStmt print_stmt;
     AstIncludeStmt inc_stmt;
-    AstBreakStmt break_stmt;
-    AstBlock block;
+    //AstBreakStmt break_stmt;
+    //AstBlock block;
     AstCast cast;
+    AstId id;
+    List arg_list;
+    List stmt_list;
+    List node_list;
   };
 }
 AstNode;
@@ -310,10 +351,11 @@ Symbol;
 
 Symbol* lookup_symbol(SymbolTable*, char*, SymbolKind);
 bool32 is_logical_operator(AstOpKind);
-bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
-bool32 parse_term(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
-bool32 parse_statement(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
-bool32 parse_if_stmt(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
+bool32 parse_expression(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
+bool32 parse_term(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
+bool32 parse_statement(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
+bool32 parse_if_stmt(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
 bool32 parse(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
-bool32 parse_factor(MemoryArena*, TokenStream*, SymbolTable*, AstBlock*, AstNode**);
+bool32 parse_factor(MemoryArena*, TokenStream*, SymbolTable*, AstNode**);
+bool32 parse_module(MemoryArena*, TokenStream*, SymbolTable*, List*);
 

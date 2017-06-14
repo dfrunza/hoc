@@ -33,4 +33,4 @@ goto :end
 popd
 
 cloc.exe lib.c hasm.h hasm.c lex.h lex.c syntax.h syntax.c typecheck.h typecheck.c ^
-runtime_obj.h runtime_obj.c codegen.c hocc.c translate.c vm.c 
+runtime_obj.h runtime_obj.c codegen.c hocc.c translate.c vm.c semantic.c

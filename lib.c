@@ -26,6 +26,8 @@ typedef double float64;
 #define inline __inline
 #define internal static
 
+internal bool32 DEBUG_mem_clear_zero = true;
+
 typedef struct
 {
   uint8* base;
@@ -116,15 +118,21 @@ mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
 void
 mem_zero_(void* mem, size_t len)
 {
-  memset(mem, 0, len);
+  if(DEBUG_mem_clear_zero)
+  {
+    memset(mem, 0, len);
+  }
 }
 
 void
 mem_zero_range(void* start, void* one_past_end)
 {
-  size_t len = (uint8*)one_past_end - (uint8*)start;
-  assert(len >= 0);
-  mem_zero_(start, len);
+  if(DEBUG_mem_clear_zero)
+  {
+    size_t len = (uint8*)one_past_end - (uint8*)start;
+    assert(len >= 0);
+    mem_zero_(start, len);
+  }
 }
 
 void
@@ -149,22 +157,17 @@ DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
 }
 
 MemoryArena
-arena_push_(MemoryArena* arena, size_t elem_size, size_t count, bool32 clear_to_zero)
+mem_push_arena(MemoryArena* arena, size_t size)
 {
-  assert(count > 0);
+  assert(size > 0);
 
   MemoryArena sub_arena = {0};
   sub_arena.base = arena->free;
   sub_arena.free = sub_arena.base;
-  arena->free = sub_arena.base + elem_size*count;
+  arena->free = sub_arena.base + size;
   arena_check_bounds(arena);
   sub_arena.limit = arena->free;
-  if(clear_to_zero)
-  {
-    size_t size = sub_arena.limit - sub_arena.base;
-    assert(size >= 0);
-    mem_zero_(sub_arena.base, size);
-  }
+  mem_zero_range(sub_arena.base, sub_arena.limit);
   return sub_arena;
 }
 
@@ -372,6 +375,7 @@ str_len(String* string)
 void
 str_append(String* string, char* cstr)
 {
+  assert(string->head && string->end && string->arena);
   MemoryArena* arena = string->arena;
   assert(string->head <= string->end);
   assert(string->end == (char*)arena->free-1);

@@ -52,15 +52,28 @@ typedef enum
   AstNodeKind_Module,
   AstNodeKind_Noop,
   AstNodeKind_Cast,
-  AstNodeKind_ActualArgList,
-  AstNodeKind_FormalArgList,
 }
 AstNodeKind;
 
+typedef enum
+{
+  AstIdKind__Null,
+  AstIdKind_Plain,
+  AstIdKind_ProcCall,
+  AstIdKind_ArrayIndexer,
+}
+AstIdKind;
+
 typedef struct
 {
+  AstIdKind kind;
   char* name;
-  AstNode* rest_of_id;
+
+  union
+  {
+    List call_args;
+    AstNode* indexer_expr;
+  };
 }
 AstId;
 
@@ -203,17 +216,18 @@ typedef struct
 AstCall;
 */
 
-/*
 typedef struct
 {
+  List node_list;
+/*
   List proc_list; // <AstProc>
   AstNode* body;
 
   AstNode* main_proc;
   AstNode* main_call;
+*/
 }
 AstModule;
-*/
 
 typedef struct
 {
@@ -265,8 +279,6 @@ typedef struct
 }
 AstIncludeStmt;
 
-//typedef AstNode AstEmptyStmt;
-
 typedef struct
 {
   AstNode* type;
@@ -282,7 +294,7 @@ typedef struct AstNode
 
   union
   {
-    //AstModule module;
+    AstModule module;
     AstVarDecl var_decl;
     //AstVarOccur var_occur;
     AstBinExpr bin_expr;
@@ -300,9 +312,9 @@ typedef struct AstNode
     //AstBlock block;
     AstCast cast;
     AstId id;
-    List arg_list;
+    //List arg_list;
     List stmt_list;
-    List node_list;
+    //List node_list;
   };
 }
 AstNode;

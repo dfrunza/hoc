@@ -7,6 +7,6 @@ include "hlib/sqrt.hoc";
 
 proc int main()
 {
-  x = cast(int)x;
+  x = gcd(a, b);
 }
 

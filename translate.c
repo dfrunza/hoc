@@ -59,7 +59,15 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
   DEBUG_arena_print_occupancy("Parse", arena);
 
   VmProgram* vm_program = 0;
-#if 0
+#if 1
+  {
+    char temp_mem[512];
+    String str = {0};
+    str_init(&str, arena);
+    DEBUG_print_ast(&str, temp_mem, node);
+    printf("%s\n", str.head);
+  }
+#else
   if(success)
   {
     assert(symbol_table.scope_id == 0);

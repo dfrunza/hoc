@@ -15,7 +15,6 @@ typedef enum
   AstOpKind_Mod,
   AstOpKind_Neg,
 
-  AstOpKind_Call,
   AstOpKind_Assign,
   
   AstOpKind_LogicEquals,
@@ -27,8 +26,32 @@ typedef enum
   AstOpKind_LogicAnd,
   AstOpKind_LogicOr,
   AstOpKind_LogicNot,
+
+  AstOpKind__Count,
 }
 AstOpKind;
+
+internal char*
+DEBUG_AstOpKind_tags[AstOpKind__Count] =
+{
+  "AstOpKind__Null",
+  "AstOpKind_Add",
+  "AstOpKind_Sub",
+  "AstOpKind_Div",
+  "AstOpKind_Mul",
+  "AstOpKind_Mod",
+  "AstOpKind_Neg",
+  "AstOpKind_Assign",
+  "AstOpKind_LogicEquals",
+  "AstOpKind_LogicNotEquals",
+  "AstOpKind_LogicLess",
+  "AstOpKind_LogicLessEquals",
+  "AstOpKind_LogicGreater",
+  "AstOpKind_LogicGreaterEquals",
+  "AstOpKind_LogicAnd",
+  "AstOpKind_LogicOr",
+  "AstOpKind_LogicNot",
+};
 
 typedef enum
 {
@@ -37,8 +60,6 @@ typedef enum
   AstNodeKind_UnrExpr,
   AstNodeKind_Literal,
   AstNodeKind_VarDecl,
-  AstNodeKind_VarOccur,
-  AstNodeKind_Call,
   AstNodeKind_Block,
   AstNodeKind_Proc,
   AstNodeKind_Id,
@@ -46,14 +67,37 @@ typedef enum
   AstNodeKind_IfStmt,
   AstNodeKind_ReturnStmt,
   AstNodeKind_BreakStmt,
-  AstNodeKind_PrintStmt,
   AstNodeKind_IncludeStmt,
   AstNodeKind_EmptyStmt,
   AstNodeKind_Module,
   AstNodeKind_Noop,
   AstNodeKind_Cast,
+
+  AstNodeKind__Count,
 }
 AstNodeKind;
+
+internal char*
+DEBUG_AstNodeKind_tags[AstNodeKind__Count] = 
+{
+  "AstNodeKind__Null",
+  "AstNodeKind_BinExpr",
+  "AstNodeKind_UnrExpr",
+  "AstNodeKind_Literal",
+  "AstNodeKind_VarDecl",
+  "AstNodeKind_Block",
+  "AstNodeKind_Proc",
+  "AstNodeKind_Id",
+  "AstNodeKind_WhileStmt",
+  "AstNodeKind_IfStmt",
+  "AstNodeKind_ReturnStmt",
+  "AstNodeKind_BreakStmt",
+  "AstNodeKind_IncludeStmt",
+  "AstNodeKind_EmptyStmt",
+  "AstNodeKind_Module",
+  "AstNodeKind_Noop",
+  "AstNodeKind_Cast",
+};
 
 typedef enum
 {
@@ -61,8 +105,19 @@ typedef enum
   AstIdKind_Plain,
   AstIdKind_ProcCall,
   AstIdKind_ArrayIndexer,
+
+  AstIdKind__Count,
 }
 AstIdKind;
+
+internal char*
+DEBUG_AstIdKind_tags[AstIdKind__Count] =
+{
+  "AstIdKind__Null",
+  "AstIdKind_Plain",
+  "AstIdKind_ProcCall",
+  "AstIdKind_ArrayIndexer",
+};
 
 typedef struct
 {
@@ -139,8 +194,19 @@ typedef enum
   AstLiteralKind_Int,
   AstLiteralKind_Float,
   AstLiteralKind_Bool,
+  
+  AstLiteralKind__Count,
 }
 AstLiteralKind;
+
+internal char*
+DEBUG_AstLiteralKind_tags[AstLiteralKind__Count] =
+{
+  "AstLiteralKind__Null",
+  "AstLiteralKind_Int",
+  "AstLiteralKind_Float",
+  "AstLiteralKind_Bool",
+};
 
 typedef struct
 {
@@ -155,11 +221,11 @@ typedef struct
 }
 AstLiteral;
 
-/*
 typedef struct AstBlock
 {
   List stmt_list;
 
+/*
   AstNode* owner;
   int block_id;
   int nesting_depth;
@@ -171,9 +237,9 @@ typedef struct AstBlock
 
   int links_size;
   int locals_size;
+*/
 }
 AstBlock;
-*/
 
 typedef struct
 {
@@ -195,16 +261,16 @@ typedef struct
 }
 AstProc;
 
-/*
 typedef struct
 {
-  AstNode* ret_expr;
+  AstNode* expr;
+/*
   AstNode* assgn_expr;
   int depth;
   AstProc* proc;
+*/
 }
 AstReturnStmt;
-*/
 
 /*
 typedef struct
@@ -289,32 +355,24 @@ AstCast;
 typedef struct AstNode
 {
   AstNodeKind kind;
-  Type* type;
+  //Type* type;
   SourceLocation src_loc;
 
   union
   {
     AstModule module;
     AstVarDecl var_decl;
-    //AstVarOccur var_occur;
     AstBinExpr bin_expr;
     AstUnrExpr unr_expr;
     AstLiteral literal;
     AstProc proc;
-    //AstReturnStmt ret_stmt;
-    AstNode* ret_expr;
-    //AstCall call;
+    AstReturnStmt ret_stmt;
     AstIfStmt if_stmt;
     AstWhileStmt while_stmt;
-    //AstPrintStmt print_stmt;
     AstIncludeStmt inc_stmt;
-    //AstBreakStmt break_stmt;
-    //AstBlock block;
+    AstBlock block;
     AstCast cast;
     AstId id;
-    //List arg_list;
-    List stmt_list;
-    //List node_list;
   };
 }
 AstNode;
@@ -369,4 +427,5 @@ bool32 parse_if_stmt(MemoryArena*, TokenStream*, AstNode**);
 bool32 parse(MemoryArena*, TokenStream*, AstNode**);
 bool32 parse_factor(MemoryArena*, TokenStream*, AstNode**);
 bool32 parse_module(MemoryArena*, TokenStream*, List*);
+void DEBUG_print_ast(String*, int, AstNode*, char*);
 

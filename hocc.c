@@ -62,7 +62,7 @@ write_res_file(OutFileNames* out_files)
   char buf[200];
   sprintf(buf, OUT_RC, out_files->irc.name);
   int text_len = cstr_len(buf);
-  int bytes_written = file_write_bytes(out_files->rc.name, buf, text_len);
+  int bytes_written = file_write_bytes(out_files->rc.name, (uint8*)buf, text_len);
   bool32 success = (bytes_written == text_len);
   if(success)
   {
@@ -98,7 +98,7 @@ write_res_file(OutFileNames* out_files)
 bool32
 write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
 {
-  int bytes_written = file_write_bytes(out_files->ir.name, vm_program->text.head, vm_program->text_len);
+  int bytes_written = file_write_bytes(out_files->ir.name, (uint8*)vm_program->text.head, vm_program->text_len);
   bool32 success = (bytes_written == vm_program->text_len);
   if(!success)
     error("IR file '%s' incompletely written", out_files->ir.name);
@@ -108,7 +108,7 @@ write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
 bool32
 write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
 {
-  size_t bytes_written = file_write_bytes(out_files->irc.name, (char*)hasm_code->code_start, hasm_code->code_size);
+  size_t bytes_written = file_write_bytes(out_files->irc.name, hasm_code->code_start, hasm_code->code_size);
   bool32 success = (bytes_written == hasm_code->code_size);
   if(!success)
     error("IRC file '%s' incompletely written", out_files->irc.name);

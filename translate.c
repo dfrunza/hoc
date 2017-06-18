@@ -61,11 +61,10 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
   VmProgram* vm_program = 0;
 #if 1
   {
-    char temp_mem[512];
     String str = {0};
     str_init(&str, arena);
-    DEBUG_print_ast(&str, temp_mem, node);
-    printf("%s\n", str.head);
+    DEBUG_print_ast(&str, 0, node, 0);
+    str_stdout(&str);
   }
 #else
   if(success)

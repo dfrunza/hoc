@@ -40,7 +40,7 @@ ast_new_block(MemoryArena* arena, SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Block;
   node->src_loc = *src_loc;
-  list_init(&node->stmt_list);
+  list_init(&node->block.stmt_list);
   return node;
 }
 
@@ -62,6 +62,7 @@ ast_new_id(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Id;
+  node->id.kind = AstIdKind_Plain;
   node->src_loc = *src_loc;
   return node;
 }
@@ -134,15 +135,6 @@ ast_new_var_decl(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 AstNode*
-ast_new_var_occur(MemoryArena* arena, SourceLocation* src_loc)
-{
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
-  node->kind = AstNodeKind_VarOccur;
-  node->src_loc = *src_loc;
-  return node;
-}
-
-AstNode*
 ast_new_while_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -174,15 +166,6 @@ ast_new_break_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_BreakStmt;
-  node->src_loc = *src_loc;
-  return node;
-}
-
-AstNode*
-ast_new_print_stmt(MemoryArena* arena, SourceLocation* src_loc)
-{
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
-  node->kind = AstNodeKind_PrintStmt;
   node->src_loc = *src_loc;
   return node;
 }
@@ -301,7 +284,7 @@ parse_block(MemoryArena* arena, TokenStream* input,
     *node = ast_new_block(arena, &input->src_loc);
 
     get_next_token(arena, input);
-    if(success = parse_statement_list(arena, input, &(*node)->stmt_list))
+    if(success = parse_statement_list(arena, input, &(*node)->block.stmt_list))
     {
       if(input->token.kind == TokenKind_CloseBrace)
       {
@@ -392,7 +375,6 @@ parse_factor(MemoryArena* arena, TokenStream* input,
   {
     *node = ast_new_id(arena, &input->src_loc);
     AstId* id = &(*node)->id;
-    id->kind = AstIdKind_Plain;
     id->name = input->token.lexeme;
 
     get_next_token(arena, input);
@@ -1255,7 +1237,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input,
     *node = ast_new_return_stmt(arena, &input->src_loc);
 
     get_next_token(arena, input);
-    if(success = parse_expression(arena, input, &(*node)->ret_expr))
+    if(success = parse_expression(arena, input, &(*node)->ret_stmt.expr))
     {
       /*
       AstNode* owner = 0;
@@ -1561,60 +1543,155 @@ parse(MemoryArena* arena, TokenStream* input, AstNode** node)
 }
 
 void
-DEBUG_print_ast(String* str, char* print_buf, AstNode* node)
+DEBUG_print_tree_node(String* str, int indent_level, char* message, ...)
+{
+  for(int i = 0; i < indent_level; i++)
+  {
+    str_append(str, " ");
+  }
+
+  va_list varargs;
+  va_start(varargs, message);
+  str_printf(str, message, varargs);
+  va_end(varargs);
+
+  str_append(str, "\n");
+}
+
+void
+DEBUG_print_ast_node_list(String* str, int indent_level, List* node_list, char* tag)
+{
+  if(tag)
+  {
+    DEBUG_print_tree_node(str, indent_level, tag);
+    ++indent_level;
+  }
+  for(ListItem* list_item = list_first_item(node_list);
+      list_item;
+      list_item = list_item->next)
+  {
+    AstNode* node = list_item->elem;
+    DEBUG_print_ast(str, indent_level, node, 0);
+  }
+}
+
+void
+DEBUG_print_ast(String* str, int indent_level, AstNode* node, char* tag)
 {
   if(node)
   {
-    if(node->kind == AstNodeKind_Id)
+    if(tag)
     {
-      AstId* id = &node->id;
-      if(id->kind == AstIdKind_Plain)
-      {
-        sprintf(print_buf, "AstIdKind_Plain{name=%s}\n", id->name);
-        str_append(str, print_buf);
-      }
-      else assert(false);
+      DEBUG_print_tree_node(str, indent_level, tag);
+      ++indent_level;
     }
-    else if(node->kind == AstNodeKind_Module)
+    DEBUG_print_tree_node(str, indent_level, DEBUG_AstNodeKind_tags[node->kind]);
+
+    if(node->kind == AstNodeKind_Module)
     {
       AstModule* module = &node->module;
-      for(ListItem* list_item = list_first_item(&module->node_list);
-          list_item;
-          list_item = list_item->next)
-      {
-        AstNode* child_node = list_item->elem;
-        DEBUG_print_ast(str, print_buf, child_node);
-      }
+      ++indent_level;
+      DEBUG_print_ast_node_list(str, indent_level, &module->node_list, "node_list");
     }
     else if(node->kind == AstNodeKind_IncludeStmt)
     {
       AstIncludeStmt* inc = &node->inc_stmt;
-      sprintf(print_buf, "AstIncludeStmt{file_path='%s'}\n", inc->file_path);
-      str_append(str, print_buf);
-      for(ListItem* list_item = list_first_item(&inc->node_list);
-          list_item;
-          list_item = list_item->next)
-      {
-        AstNode* child_node = list_item->elem;
-        DEBUG_print_ast(str, print_buf, child_node);
-      }
+
+      ++indent_level;
+      DEBUG_print_tree_node(str, indent_level, "file_path: \"%s\"", inc->file_path);
+      DEBUG_print_ast_node_list(str, indent_level, &inc->node_list, "node_list");
     }
     else if(node->kind == AstNodeKind_Proc)
     {
       AstProc* proc = &node->proc;
-      sprintf(print_buf, "AstProc{name=%s, ret_type=%s}\n", proc->name, proc->ret_type);
-      /*
-      for(ListItem* list_item = list_first_item(&proc->formal_args);
-          list_item;
-          list_item = list_item->next)
-      {
-        AstNode* child_node = list_item->elem;
-        DEBUG_print_ast(str, print_buf, child_node);
-      }
-      */
-      str_append(str, print_buf);
-      DEBUG_print_ast(str, print_buf, proc->body);
+      ++indent_level;
+      DEBUG_print_tree_node(str, indent_level, "name: %s", proc->name);
+      DEBUG_print_tree_node(str, indent_level, "ret_type: %s", proc->ret_type);
+      DEBUG_print_ast_node_list(str, indent_level, &proc->formal_args, "formal_args");
+      DEBUG_print_ast(str, indent_level, proc->body, "body");
     }
-    //else assert(false);
+    else if(node->kind == AstNodeKind_VarDecl)
+    {
+      AstVarDecl* var_decl = &node->var_decl;
+      ++indent_level;
+      DEBUG_print_ast(str, indent_level, var_decl->type, "type");
+      DEBUG_print_ast(str, indent_level, var_decl->decl, "decl");
+    }
+    else if(node->kind == AstNodeKind_Id)
+    {
+      AstId* id = &node->id;
+      ++indent_level;
+      DEBUG_print_tree_node(str, indent_level, DEBUG_AstIdKind_tags[id->kind]);
+      DEBUG_print_tree_node(str, indent_level, "name: %s", id->name);
+      if(id->kind == AstIdKind_Plain)
+      {
+        // do nothing
+      }
+      else if(id->kind == AstIdKind_ProcCall)
+      {
+        DEBUG_print_ast_node_list(str, indent_level, &id->call_args, "call_args");
+      }
+      else assert(false);
+    }
+    else if(node->kind == AstNodeKind_Block)
+    {
+      ++indent_level;
+      DEBUG_print_ast_node_list(str, indent_level, &node->block.stmt_list, "stmt_list");
+    }
+    else if(node->kind == AstNodeKind_BinExpr)
+    {
+      AstBinExpr* bin_expr = &node->bin_expr;
+      ++indent_level;
+      DEBUG_print_tree_node(str, indent_level, "op: %s", DEBUG_AstOpKind_tags[bin_expr->op]);
+      DEBUG_print_ast(str, indent_level, bin_expr->left_operand, "left_operand");
+      DEBUG_print_ast(str, indent_level, bin_expr->right_operand, "right_operand");
+    }
+    else if(node->kind == AstNodeKind_UnrExpr)
+    {
+      AstUnrExpr* unr_expr = &node->unr_expr;
+      ++indent_level;
+      DEBUG_print_tree_node(str, indent_level, "op: %s", DEBUG_AstOpKind_tags[unr_expr->op]);
+      DEBUG_print_ast(str, indent_level, unr_expr->operand, "operand");
+    }
+    else if(node->kind == AstNodeKind_IfStmt)
+    {
+      AstIfStmt* if_stmt = &node->if_stmt;
+      ++indent_level;
+      DEBUG_print_ast(str, indent_level, if_stmt->cond_expr, "cond_expr");
+      DEBUG_print_ast(str, indent_level, if_stmt->body, "body");
+      DEBUG_print_ast(str, indent_level, if_stmt->else_body, "else_body");
+    }
+    else if(node->kind == AstNodeKind_ReturnStmt)
+    {
+      AstReturnStmt* ret_stmt = &node->ret_stmt;
+      ++indent_level;
+      DEBUG_print_ast(str, indent_level, ret_stmt->expr, "expr");
+    }
+    else if(node->kind == AstNodeKind_Literal)
+    {
+      AstLiteral* lit = &node->literal;
+      ++indent_level;
+      DEBUG_print_tree_node(str, indent_level, DEBUG_AstLiteralKind_tags[lit->kind]);
+      if(lit->kind == AstLiteralKind_Int)
+        DEBUG_print_tree_node(str, indent_level, "int_val: %d", lit->int_val);
+      else if(lit->kind == AstLiteralKind_Float)
+        DEBUG_print_tree_node(str, indent_level, "float_val: %f", lit->float_val);
+      else if(lit->kind == AstLiteralKind_Bool)
+        DEBUG_print_tree_node(str, indent_level, "bool_val: %d", lit->bool_val);
+      else
+        assert(false);
+    }
+    else if(node->kind == AstNodeKind_WhileStmt)
+    {
+      AstWhileStmt* while_stmt = &node->while_stmt;
+      ++indent_level;
+      DEBUG_print_ast(str, indent_level, while_stmt->cond_expr, "cond_expr");
+    }
+    else
+    {
+      //assert(false);
+      ++indent_level;
+      DEBUG_print_tree_node(str, indent_level, "???");
+    } 
   }
 }

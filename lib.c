@@ -47,8 +47,9 @@ String;
 #define sizeof_array(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
 #define obj(STRUCT, FIELD) (&((STRUCT)->FIELD))
 
+/* WARNING: Maximum length of 'message' is 128 chars. */
 void
-debug_print(char* message, ...)
+DEBUG_output_short_cstr(char* message, ...)
 {
   static char strbuf[128] = {0};
   va_list args;
@@ -153,7 +154,7 @@ DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
 {
   size_t total_avail = arena->limit - arena->base;
   double in_use = (arena->free - arena->base) / (double)total_avail;
-  debug_print("used: %.2f%% -- %s\n", in_use*100, tag);
+  DEBUG_output_short_cstr("used: %.2f%% -- %s\n", in_use*100, tag);
 }
 
 MemoryArena
@@ -373,16 +374,43 @@ str_len(String* string)
 }
 
 void
+str_debug_output(String* string)
+{
+  OutputDebugString(string->head);
+}
+
+void
+str_stdout(String* string)
+{
+  printf(string->head);
+}
+
+void
 str_append(String* string, char* cstr)
 {
   assert(string->head && string->end && string->arena);
   MemoryArena* arena = string->arena;
   assert(string->head <= string->end);
   assert(string->end == (char*)arena->free-1);
+
   int len = cstr_len(cstr);
   mem_push_struct(arena, char, len);
   cstr_copy(string->end, cstr);
   string->end = (char*)arena->free-1;
+}
+
+void
+str_printf(String* string, char* message, va_list varargs)
+{
+  assert(string->head && string->end && string->arena);
+  MemoryArena* arena = string->arena;
+  assert(string->head <= string->end);
+  assert(string->end == (char*)arena->free-1);
+
+  int len = vsprintf(string->end, message, varargs);
+  string->end += len;
+  assert(string->end < (char*)arena->limit);
+  arena->free = (uint8*)string->end+1;
 }
 
 void
@@ -444,7 +472,7 @@ path_make_dir(char* file_path)
 }
 
 uint
-file_write_bytes(char* file_path, char* text, size_t count)
+file_write_bytes(char* file_path, uint8* text, size_t count)
 {
   uint bytes_written = 0;
   FILE* h_file = fopen(file_path, "wb");

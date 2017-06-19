@@ -3,35 +3,13 @@
 typedef enum TokenKind
 {
   TokenKind__Null,
-  TokenKind_EndOfInput,
-
-  TokenKind__KeywordBegin,
-  TokenKind_If,
-  TokenKind_Else,
-  TokenKind_While,
-  TokenKind_Type,
-  TokenKind_Of,
-  TokenKind_Array,
-  TokenKind_Var,
-  TokenKind_Proc,
-  TokenKind_Struct,
-  TokenKind_Return,
-  TokenKind_Break,
-  TokenKind_Include,
-  TokenKind_True,
-  TokenKind_False,
-  TokenKind_Print,
-  TokenKind_Cast,
-  TokenKind__KeywordEnd,
-
-  TokenKind_Id,
   TokenKind_Dot,
-  TokenKind_IntNum,
-  TokenKind_FloatNum,
-  TokenKind_UpArrow,
-  TokenKind_RightArrow,
   TokenKind_OpenBracket,
   TokenKind_CloseBracket,
+  TokenKind_OpenParens,
+  TokenKind_CloseParens,
+  TokenKind_OpenBrace,
+  TokenKind_CloseBrace,
   TokenKind_Semicolon,
   TokenKind_Colon,
   TokenKind_Comma,
@@ -42,8 +20,8 @@ typedef enum TokenKind
   TokenKind_Plus,
   TokenKind_PlusPlus,
   TokenKind_Minus,
-  TokenKind_MinusMinus,
   TokenKind_UnaryMinus,
+  TokenKind_MinusMinus,
   TokenKind_Bang,
   TokenKind_Equals,
   TokenKind_EqualsEquals,
@@ -56,11 +34,29 @@ typedef enum TokenKind
   TokenKind_AmprsndAmprsnd,
   TokenKind_Pipe,
   TokenKind_PipePipe,
-  TokenKind_OpenParens,
-  TokenKind_CloseParens,
-  TokenKind_OpenBrace,
-  TokenKind_CloseBrace,
+
+  TokenKind_Id,
+  TokenKind_IntNum,
+  TokenKind_FloatNum,
   TokenKind_String,
+
+  TokenKind_EndOfInput,
+
+  TokenKind__KeywordBegin,
+  TokenKind_If,
+  TokenKind_Else,
+  TokenKind_While,
+  TokenKind_Array,
+  TokenKind_Var,
+  TokenKind_Struct,
+  TokenKind_Return,
+  TokenKind_Break,
+  TokenKind_Include,
+  TokenKind_True,
+  TokenKind_False,
+  TokenKind_Print,
+  TokenKind_Cast,
+  TokenKind__KeywordEnd,
 }
 TokenKind;
 
@@ -97,10 +93,8 @@ typedef struct TokenStream
 }
 TokenStream;
 
-Token keyword_list[] = 
+internal Token keyword_list[] = 
 {
-  {TokenKind_Var, "var"},
-  {TokenKind_Proc, "proc"},
   {TokenKind_If, "if"},
   {TokenKind_Else, "else"},
   {TokenKind_While, "while"},
@@ -111,4 +105,10 @@ Token keyword_list[] =
   {TokenKind_False, "false"},
   {TokenKind_Cast, "cast"},
   {TokenKind__Null},
+};
+
+internal char* simple_lexeme_list[] =
+{
+  "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "/", "\\",
+  "+", "++", "-", "-", "--", "!", "=", "==", "!=", ">", ">=", "<", "<=", "&", "&&", "|", "||", 
 };

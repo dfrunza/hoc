@@ -77,9 +77,9 @@ error(char* message, ...)
 #define assert(EXPR)\
 if(!(EXPR))\
 {\
-  printf("Assertion failed: %s\n", #EXPR);\
-  printf("%s:%d\n", __FILE__, __LINE__);\
-  fflush(stdout);\
+  fprintf(stderr, "Assertion failed: %s\n", #EXPR);\
+  fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);\
+  fflush(stderr);\
   *(int*)0 = 0;\
 }\
 
@@ -549,6 +549,14 @@ list_init(List* list)
 {
   list->last = &list->first;
   list->next_slot = &list->first;
+}
+
+List*
+list_new(MemoryArena* arena)
+{
+  List* list = mem_push_struct(arena, List, 1);
+  list_init(list);
+  return list;
 }
 
 void

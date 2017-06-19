@@ -5,6 +5,14 @@ is_logical_operator(AstOpKind op)
 }
 
 AstNode*
+ast_new_node(MemoryArena* arena, SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  node->src_loc = *src_loc;
+  return node;
+}
+
+AstNode*
 ast_new_module(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -44,19 +52,6 @@ ast_new_block(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-/*
-AstNode*
-ast_new_call(MemoryArena* arena, SourceLocation* src_loc)
-{
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
-  node->kind = AstNodeKind_Call;
-  //node->type = new_typevar(arena);
-  node->src_loc = *src_loc;
-  list_init(&node->call.actual_args);
-  return node;
-}
-*/
-
 AstNode*
 ast_new_id(MemoryArena* arena, SourceLocation* src_loc)
 {
@@ -73,7 +68,6 @@ ast_new_proc(MemoryArena* arena, SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Proc;
   node->src_loc = *src_loc;
-  list_init(&node->proc.formal_args);
   return node;
 }
 
@@ -205,12 +199,17 @@ parse_type_expression(MemoryArena* arena, TokenStream* input,
   *node = 0;
   bool32 success = true;
 
-  if(input->token.kind == TokenKind_Id ||
-     token_is_keyword(input->token.kind))
+  if(input->token.kind == TokenKind_Id)
   {
     *node = ast_new_id(arena, &input->src_loc);
     (*node)->id.name = input->token.lexeme;
+    (*node)->id.kind = AstIdKind_Type;
     get_next_token(arena, input);
+
+    if(input->token.kind == TokenKind_Star)
+    {
+      assert(!"Not implemented");
+    }
   }
   return success;
 }
@@ -251,19 +250,19 @@ parse_statement_list(MemoryArena* arena, TokenStream* input,
     success = parse_statement(arena, input, &stmt_node);
     if(success && stmt_node)
     {
-      /*
-         if(stmt_node->kind == AstNodeKind_VarDecl)
-         {
-         list_append(arena, &block->decl_vars, stmt_node);
-         AstVarDecl* var_decl = &stmt_node->var_decl;
-         if(var_decl->init_expr)
-         {
-         list_append(arena, &block->stmt_list, var_decl->init_expr);
-         }
-         }
-         else
-         list_append(arena, &block->stmt_list, stmt_node);
-         */
+#if 0
+      if(stmt_node->kind == AstNodeKind_VarDecl)
+      {
+        list_append(arena, &block->decl_vars, stmt_node);
+        AstVarDecl* var_decl = &stmt_node->var_decl;
+        if(var_decl->init_expr)
+        {
+          list_append(arena, &block->stmt_list, var_decl->init_expr);
+        }
+      }
+      else
+        list_append(arena, &block->stmt_list, stmt_node);
+#endif
 
       list_append(arena, stmt_list, stmt_node);
     }
@@ -474,7 +473,7 @@ parse_factor(MemoryArena* arena, TokenStream* input,
         }
         else
         {
-          compile_error(&input->src_loc, "Expected ')'");
+          compile_error(&input->src_loc, "Missing ')'");
           success = false;
         }
       }
@@ -699,45 +698,38 @@ parse_expression(MemoryArena* arena, TokenStream* input,
 }
 
 bool32
-parse_var_stmt(MemoryArena* arena, TokenStream* input,
-               AstNode** node)
+parse_formal_var_decl(MemoryArena* arena, TokenStream* input,
+                      AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
-  if(input->token.kind == TokenKind_Var)
+  if(input->token.kind == TokenKind_Id)
   {
     *node = ast_new_var_decl(arena, &input->src_loc);
     AstVarDecl* var_decl = &(*node)->var_decl;
 
-    get_next_token(arena, input);
-    if(input->token.kind == TokenKind_Id)
+    if(success = parse_type_expression(arena, input, &var_decl->type))
     {
-      if(success = parse_type_expression(arena, input, &var_decl->type))
+      if(input->token.kind == TokenKind_Id)
       {
-        if(input->token.kind == TokenKind_Id)
+        AstNode* decl = ast_new_id(arena, &input->src_loc);
+        decl->id.name = input->token.lexeme;
+        var_decl->decl = decl;
+
+        get_next_token(arena, input);
+        if(input->token.kind == TokenKind_OpenBracket)
         {
-          success = parse_expression(arena, input, &var_decl->decl);
-        }
-        else
-        {
-          compile_error(&input->src_loc, "Expected identifier");
-          success = false;
+          assert(!"Not implemented");
         }
       }
       else
       {
-        compile_error(&input->src_loc, "Failed to parse var decl. expression");
+        compile_error(&input->src_loc, "Identifier expected");
         success = false;
       }
     }
-    else
-    {
-      compile_error(&input->src_loc, "Expected identifier");
-      success = false;
-    }
   }
-
   return success;
 }
 
@@ -748,18 +740,19 @@ parse_formal_argument_list(MemoryArena* arena, TokenStream* input,
   bool32 success = true;
 
   AstNode* arg_node = 0;
-  if((success = parse_var_stmt(arena, input, &arg_node))
-     && arg_node)
+  do
   {
-    list_append(arena, arg_list, arg_node);
-
-    if(input->token.kind == TokenKind_Comma)
+    success = parse_formal_var_decl(arena, input, &arg_node);
+    if(success && arg_node)
     {
-      get_next_token(arena, input);
-      success = parse_formal_argument_list(arena, input, arg_list);
+      list_append(arena, arg_list, arg_node);
+      if(input->token.kind == TokenKind_Comma)
+      {
+        get_next_token(arena, input);
+      }
     }
   }
-
+  while(success && arg_node);
   return success;
 }
 
@@ -923,81 +916,122 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input,
 }
 
 bool32
-parse_procedure(MemoryArena* arena, TokenStream* input,
-                AstNode** node)
+parse_decl_id(MemoryArena* arena, TokenStream* input,
+              bool32 parse_proc, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
-  if(input->token.kind == TokenKind_Proc)
+  if(input->token.kind == TokenKind_Id)
   {
-    *node = ast_new_proc(arena, &input->src_loc);
-    AstProc* proc = &(*node)->proc;
+    *node = ast_new_id(arena, &input->src_loc);
+    AstId* id = &(*node)->id;
+    id->name = input->token.lexeme;
 
     get_next_token(arena, input);
-    if(input->token.kind == TokenKind_Id)
+    if(input->token.kind == TokenKind_OpenParens && parse_proc)
     {
-      proc->ret_type = input->token.lexeme;
-
       get_next_token(arena, input);
-      if(input->token.kind == TokenKind_Id)
-      {
-        proc->name = input->token.lexeme;
 
-        get_next_token(arena, input);
-        if(input->token.kind == TokenKind_OpenParens)
+      List formal_args = {0};
+      list_init(&formal_args);
+      if(success = parse_formal_argument_list(arena, input, &formal_args))
+      {
+        if(input->token.kind == TokenKind_CloseParens)
         {
-          // arguments
           get_next_token(arena, input);
 
-          if(success = parse_formal_argument_list(arena, input, &proc->formal_args))
-          {
-            if(input->token.kind == TokenKind_CloseParens)
-            {
-              get_next_token(arena, input);
-
-              if(success = parse_block(arena, input, &proc->body))
-              {
-                if(!proc->body)
-                {
-                  compile_error(&input->src_loc, "Missing procedure body");
-                  success = false;
-                }
-              }
-            }
-            else
-            {
-              if(input->token.kind == TokenKind_Id)
-              {
-                compile_error(&input->src_loc, "Missing 'var' keyword", input->token.lexeme);
-              }
-              else
-              {
-                compile_error(&input->src_loc, "Missing ')'");
-              }
-              success = false;
-            }
-          }
+          id->kind = AstIdKind_ProcSignature;
+          id->formal_args = formal_args;
         }
         else
         {
-          compile_error(&input->src_loc, "Missing '('");
+          compile_error(&input->src_loc, "Expected ')'");
           success = false;
+        }
+      }
+    }
+    else if(input->token.kind == TokenKind_OpenBracket)
+    {
+      assert(!"Not implemented");
+    }
+  }
+  return success;
+}
+
+bool32
+parse_proc_or_var_decl(MemoryArena* arena, TokenStream* input,
+                       bool32 parse_proc, AstNode** node)
+{
+  *node = 0;
+  bool32 success = true;
+
+  AstNode* type = 0;
+  if((success = parse_type_expression(arena, input, &type)) && type)
+  {
+    AstNode* decl_id = 0;
+    if(success = parse_decl_id(arena, input, parse_proc, &decl_id))
+    {
+      if(input->token.kind == TokenKind_Semicolon)
+      {
+        get_next_token(arena, input);
+
+        *node = ast_new_var_decl(arena, &input->src_loc);
+        AstVarDecl* var_decl = &(*node)->var_decl;
+        var_decl->type = type;
+        var_decl->decl = decl_id;
+      }
+      else if(input->token.kind == TokenKind_OpenBrace && parse_proc)
+      {
+        AstNode* body = 0;
+        if(success = parse_block(arena, input, &body))
+        {
+          *node = ast_new_proc(arena, &input->src_loc);
+          AstProc* proc = &(*node)->proc;
+          proc->ret_type = type;
+          proc->signature = decl_id;
+          proc->body = body;
+        }
+      }
+      else if(input->token.kind == TokenKind_Equals)
+      {
+        get_next_token(arena, input);
+
+        AstNode* init_expr = 0;
+        if(success = parse_expression(arena, input, &init_expr))
+        {
+          if(init_expr)
+          {
+            *node = ast_new_bin_expr(arena, &input->src_loc);
+            AstBinExpr* assign_expr = &(*node)->bin_expr;
+            assign_expr->op = AstOpKind_Assign;
+            assign_expr->left_operand = decl_id;
+            assign_expr->right_operand = init_expr;
+
+            if(input->token.kind == TokenKind_Semicolon)
+            {
+              get_next_token(arena, input);
+            }
+            else
+            {
+              compile_error(&input->src_loc, "Missing ';'");
+              success = false;
+            }
+          }
+          else
+          {
+            compile_error(&input->src_loc, "Expression expected");
+            success = false;
+          }
         }
       }
       else
       {
-        compile_error(&input->src_loc, "Identifier expected");
+        compile_error(&input->src_loc, "Unexpected token: %s", input->token.lexeme);
         success = false;
       }
     }
-    else
-    {
-      compile_error(&input->src_loc, "Identifier expected");
-      success = false;
-    }
   }
-
   return success;
 }
 
@@ -1065,10 +1099,9 @@ parse_module_element(MemoryArena* arena, TokenStream* input,
 
   typedef enum
   {
-    Alt__Null,
-    Alt_Proc,
-    Alt_Var,
+    Alt__Stop,
     Alt_Include,
+    Alt_ProcOrVarDecl,
     Alt__End,
   }
   Alternative;
@@ -1077,81 +1110,46 @@ parse_module_element(MemoryArena* arena, TokenStream* input,
 
   while(alt)
   {
-    switch(alt)
+    if(alt == Alt_Include)
     {
-      case Alt_Proc:
+      if(success = parse_include_stmt(arena, input, node))
       {
-        if(success = parse_procedure(arena, input, node))
+        if(*node)
         {
-          if(*node)
+          alt = Alt__Stop;
+          if(input->token.kind == TokenKind_Semicolon)
           {
-            alt = Alt__Null;
+            get_next_token(arena, input);
           }
           else
-            alt = (Alternative)((int)alt+1);
+          {
+            compile_error(&input->src_loc, "Missing ';'");
+            success = false;
+          }
         }
         else
-          alt = Alt__Null;
-      }
-      break;
-
-      case Alt_Var:
-      {
-        if(success = parse_var_stmt(arena, input, node))
-        {
-          if(*node)
-          {
-            alt = Alt__Null;
-            if(input->token.kind == TokenKind_Semicolon)
-            {
-              get_next_token(arena, input);
-            }
-            else
-            {
-              compile_error(&input->src_loc, "Missing ';'");
-              success = false;
-            }
-          }
-          else
-            alt = (Alternative)((int)alt+1);
-        }
-        else
-          alt = Alt__Null;
-      }
-      break;
-
-      case Alt_Include:
-      {
-        if(success = parse_include_stmt(arena, input, node))
-        {
-          if(*node)
-          {
-            alt = Alt__Null;
-            if(input->token.kind == TokenKind_Semicolon)
-            {
-              get_next_token(arena, input);
-            }
-            else
-            {
-              compile_error(&input->src_loc, "Missing ';'");
-              success = false;
-            }
-          }
-          else
-            alt = (Alternative)((int)alt+1);
-        }
-        alt = Alt__Null;
-      }
-      break;
-
-      case Alt__End:
-        alt = Alt__Null;
-        break;
-
-      default:
-        assert(false);
-        break;
+          alt = (Alternative)((int)alt+1);
+      } else
+        alt = Alt__Stop;
     }
+    else if(alt == Alt_ProcOrVarDecl)
+    {
+      if(success = parse_proc_or_var_decl(arena, input, true, node))
+      {
+        if(*node)
+        {
+          alt = Alt__Stop;
+        } else
+          alt = (Alternative)((int)alt+1);
+      } else
+        alt = Alt__Stop;
+    }
+    else if(alt == Alt__End)
+    {
+      alt = Alt__Stop;
+    }
+    else
+      assert(false);
   }
 
   return success;
@@ -1175,55 +1173,6 @@ parse_module(MemoryArena* arena, TokenStream* input,
   while(success && node);
   return success;
 }
-
-#if 0
-bool32
-parse_print_stmt(MemoryArena* arena, TokenStream* input,
-                 AstNode** node)
-{
-  *node = 0;
-  bool32 success = true;
-
-  if(input->token.kind == TokenKind_Print)
-  {
-    get_next_token(arena, input);
-
-    AstNode* expr_node = 0;
-    if(success = parse_expression(arena, input, &expr_node))
-    {
-      *node = ast_new_print_stmt(arena, &input->src_loc);
-      AstPrintStmt* print_stmt = &(*node)->print_stmt;
-
-      if(expr_node)
-      {
-        print_stmt->expr = expr_node;
-      }/* else {
-        compile_error(input, "Expression required after 'print'");
-        success = false;
-      }*/
-
-      if(input->token.kind == TokenKind_BackSlash)
-      {
-        get_next_token(arena, input);
-
-        if(input->token.kind == TokenKind_Id)
-        {
-          if(cstr_match("n", input->token.lexeme))
-          {
-            print_stmt->new_line = true;
-            get_next_token(arena, input);
-          }
-          else {
-            compile_error(&input->src_loc, "Expected new line char '\n'");
-            success = false;
-          }
-        }
-      }
-    }
-  }
-  return success;
-}
-#endif
 
 bool32
 parse_return_stmt(MemoryArena* arena, TokenStream* input,
@@ -1325,14 +1274,13 @@ parse_statement(MemoryArena* arena, TokenStream* input,
 
   typedef enum
   {
-    Alt__Null,
-    Alt_Var,
+    Alt__Stop,
+    Alt_VarDecl,
     Alt_Expr,
     Alt_If,
     Alt_While,
     Alt_Return,
     Alt_Break,
-//    Alt_Print,
     Alt_EmptyStmt,
     Alt__End,
   } Alternative;
@@ -1342,181 +1290,120 @@ parse_statement(MemoryArena* arena, TokenStream* input,
 
   while(alt)
   {
-    switch(alt)
+    if(alt == Alt_Expr)
     {
-      case Alt_Expr:
+      if(success = parse_expression(arena, input, &stmt_node))
       {
-        if(success = parse_expression(arena, input, &stmt_node))
+        if(stmt_node)
         {
-          if(stmt_node)
+          alt = Alt__Stop;
+          if(input->token.kind == TokenKind_Semicolon)
           {
-            alt = Alt__Null;
-            if(input->token.kind == TokenKind_Semicolon)
-            {
-              get_next_token(arena, input);
-
-              /*
-              if(stmt_node->kind == AstNodeKind_BinExpr)
-              {
-                AstBinExpr* expr = &stmt_node->bin_expr;
-                if(expr->op != AstOpKind_Assign)
-                {
-                  compile_error(&input->src_loc, "Assignment expression required");
-                  success = false;
-                }
-              }
-              else if(stmt_node->kind != AstNodeKind_Call)
-              {
-                compile_error(&input->src_loc, "Expression is not a statement");
-                success = false;
-              }
-              */
-            }
-            else
-            {
-              compile_error(&input->src_loc, "Missing ';'");
-              success = false;
-            }
-          } else
-            alt = (Alternative)((int)alt+1);
-        } else
-          alt = Alt__Null;
-      } break;
-
-      case Alt_If:
-      {
-        if(success = parse_if_stmt(arena, input, &stmt_node))
-        {
-          if(stmt_node)
+            get_next_token(arena, input);
+          }
+          else
           {
-            alt = Alt__Null;
-          } else
-            alt = (Alternative)((int)alt+1);
-        } else
-          alt = Alt__Null;
-      } break;
-
-      case Alt_While:
-      {
-        if(success = parse_while_stmt(arena, input, &stmt_node))
-        {
-          if(stmt_node)
-          {
-            alt = Alt__Null;
-          } else
-            alt = (Alternative)((int)alt+1);
-        } else
-          alt = Alt__Null;
-      } break;
-
-      case Alt_Return:
-      {
-        if(success = parse_return_stmt(arena, input, &stmt_node))
-        {
-          if(stmt_node)
-          {
-            alt = Alt__Null;
-            if(input->token.kind == TokenKind_Semicolon)
-            {
-              get_next_token(arena, input);
-            }
-            else
-            {
-              compile_error(&input->src_loc, "Missing ';'");
-              success = false;
-            }
-          } else
-            alt = (Alternative)((int)alt+1);
-        } else
-          alt = Alt__Null;
-      } break;
-
-      case Alt_Break:
-      {
-        if(success = parse_break_stmt(arena, input, &stmt_node))
-        {
-          if(stmt_node)
-          {
-            alt = Alt__Null;
-            if(input->token.kind == TokenKind_Semicolon)
-            {
-              get_next_token(arena, input);
-            }
-            else
-            {
-              compile_error(&input->src_loc, "Missing ';'");
-              success = false;
-            }
-          } else
-            alt = (Alternative)((int)alt+1);
-        } else
-          alt = Alt__Null;
-      } break;
-
-      case Alt_Var:
-      {
-        if(success = parse_var_stmt(arena, input, &stmt_node))
-        {
-          if(stmt_node)
-          {
-            alt = Alt__Null;
-            if(input->token.kind == TokenKind_Semicolon)
-            {
-              get_next_token(arena, input);
-            }
-            else
-            {
-              compile_error(&input->src_loc, "Missing ';'");
-              success = false;
-            }
-          } else
-            alt = (Alternative)((int)alt+1);
-        } else
-          alt = Alt__Null;
-      } break;
-
-      /*
-      case Alt_Print:
-      {
-        if(success = parse_print_stmt(arena, input, &stmt_node))
-        {
-          if(stmt_node)
-          {
-            alt = Alt__Null;
-            if(input->token.kind == TokenKind_Semicolon)
-            {
-              get_next_token(arena, input);
-            }
-            else
-            {
-              compile_error(&input->src_loc, "Missing ';'");
-              success = false;
-            }
-          } else
-            alt = (Alternative)((int)alt+1);
-        } else
-          alt = Alt__Null;
-      } break;
-      */
-
-      case Alt_EmptyStmt:
-      {
-        if(input->token.kind == TokenKind_Semicolon)
-        {
-          get_next_token(arena, input);
-          stmt_node = ast_new_empty_stmt(arena, &input->src_loc);
+            compile_error(&input->src_loc, "Missing ';'");
+            success = false;
+          }
         } else
           alt = (Alternative)((int)alt+1);
-      } break;
-
-      case Alt__End:
-        alt = Alt__Null;
-        break;
-
-      default:
-        assert(false);
-        break;
+      } else
+        alt = Alt__Stop;
     }
+    else if(alt == Alt_If)
+    {
+      if(success = parse_if_stmt(arena, input, &stmt_node))
+      {
+        if(stmt_node)
+        {
+          alt = Alt__Stop;
+        } else
+          alt = (Alternative)((int)alt+1);
+      } else
+        alt = Alt__Stop;
+    }
+    else if(alt == Alt_While)
+    {
+      if(success = parse_while_stmt(arena, input, &stmt_node))
+      {
+        if(stmt_node)
+        {
+          alt = Alt__Stop;
+        } else
+          alt = (Alternative)((int)alt+1);
+      } else
+        alt = Alt__Stop;
+    }
+    else if(alt == Alt_Return)
+    {
+      if(success = parse_return_stmt(arena, input, &stmt_node))
+      {
+        if(stmt_node)
+        {
+          alt = Alt__Stop;
+          if(input->token.kind == TokenKind_Semicolon)
+          {
+            get_next_token(arena, input);
+          }
+          else
+          {
+            compile_error(&input->src_loc, "Missing ';'");
+            success = false;
+          }
+        } else
+          alt = (Alternative)((int)alt+1);
+      } else
+        alt = Alt__Stop;
+    }
+    else if(alt == Alt_Break)
+    {
+      if(success = parse_break_stmt(arena, input, &stmt_node))
+      {
+        if(stmt_node)
+        {
+          alt = Alt__Stop;
+          if(input->token.kind == TokenKind_Semicolon)
+          {
+            get_next_token(arena, input);
+          }
+          else
+          {
+            compile_error(&input->src_loc, "Missing ';'");
+            success = false;
+          }
+        } else
+          alt = (Alternative)((int)alt+1);
+      } else
+        alt = Alt__Stop;
+    }
+    else if(alt == Alt_VarDecl)
+    {
+      if(success = parse_proc_or_var_decl(arena, input, false, &stmt_node))
+      {
+        if(stmt_node)
+        {
+          alt = Alt__Stop;
+        } else
+          alt = (Alternative)((int)alt+1);
+      } else
+        alt = Alt__Stop;
+    }
+    else if(alt == Alt_EmptyStmt)
+    {
+      if(input->token.kind == TokenKind_Semicolon)
+      {
+        get_next_token(arena, input);
+        stmt_node = ast_new_empty_stmt(arena, &input->src_loc);
+      } else
+        alt = (Alternative)((int)alt+1);
+    }
+    else if(alt == Alt__End)
+    {
+      alt = Alt__Stop;
+    }
+    else
+      assert(false);
   }
 
   *node = stmt_node;
@@ -1571,12 +1458,12 @@ DEBUG_print_ast_node_list(String* str, int indent_level, List* node_list, char* 
       list_item = list_item->next)
   {
     AstNode* node = list_item->elem;
-    DEBUG_print_ast(str, indent_level, node, 0);
+    DEBUG_print_ast_node(str, indent_level, node, 0);
   }
 }
 
 void
-DEBUG_print_ast(String* str, int indent_level, AstNode* node, char* tag)
+DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
 {
   if(node)
   {
@@ -1605,17 +1492,16 @@ DEBUG_print_ast(String* str, int indent_level, AstNode* node, char* tag)
     {
       AstProc* proc = &node->proc;
       ++indent_level;
-      DEBUG_print_tree_node(str, indent_level, "name: %s", proc->name);
-      DEBUG_print_tree_node(str, indent_level, "ret_type: %s", proc->ret_type);
-      DEBUG_print_ast_node_list(str, indent_level, &proc->formal_args, "formal_args");
-      DEBUG_print_ast(str, indent_level, proc->body, "body");
+      DEBUG_print_ast_node(str, indent_level, proc->ret_type, "ret_type");
+      DEBUG_print_ast_node(str, indent_level, proc->signature, "signature");
+      DEBUG_print_ast_node(str, indent_level, proc->body, "body");
     }
     else if(node->kind == AstNodeKind_VarDecl)
     {
       AstVarDecl* var_decl = &node->var_decl;
       ++indent_level;
-      DEBUG_print_ast(str, indent_level, var_decl->type, "type");
-      DEBUG_print_ast(str, indent_level, var_decl->decl, "decl");
+      DEBUG_print_ast_node(str, indent_level, var_decl->type, "type");
+      DEBUG_print_ast_node(str, indent_level, var_decl->decl, "decl");
     }
     else if(node->kind == AstNodeKind_Id)
     {
@@ -1623,13 +1509,18 @@ DEBUG_print_ast(String* str, int indent_level, AstNode* node, char* tag)
       ++indent_level;
       DEBUG_print_tree_node(str, indent_level, DEBUG_AstIdKind_tags[id->kind]);
       DEBUG_print_tree_node(str, indent_level, "name: %s", id->name);
-      if(id->kind == AstIdKind_Plain)
+      if(id->kind == AstIdKind_Plain
+         || id->kind == AstIdKind_Type)
       {
         // do nothing
       }
       else if(id->kind == AstIdKind_ProcCall)
       {
         DEBUG_print_ast_node_list(str, indent_level, &id->call_args, "call_args");
+      }
+      else if(id->kind == AstIdKind_ProcSignature)
+      {
+        DEBUG_print_ast_node_list(str, indent_level, &id->formal_args, "formal_args");
       }
       else assert(false);
     }
@@ -1643,29 +1534,29 @@ DEBUG_print_ast(String* str, int indent_level, AstNode* node, char* tag)
       AstBinExpr* bin_expr = &node->bin_expr;
       ++indent_level;
       DEBUG_print_tree_node(str, indent_level, "op: %s", DEBUG_AstOpKind_tags[bin_expr->op]);
-      DEBUG_print_ast(str, indent_level, bin_expr->left_operand, "left_operand");
-      DEBUG_print_ast(str, indent_level, bin_expr->right_operand, "right_operand");
+      DEBUG_print_ast_node(str, indent_level, bin_expr->left_operand, "left_operand");
+      DEBUG_print_ast_node(str, indent_level, bin_expr->right_operand, "right_operand");
     }
     else if(node->kind == AstNodeKind_UnrExpr)
     {
       AstUnrExpr* unr_expr = &node->unr_expr;
       ++indent_level;
       DEBUG_print_tree_node(str, indent_level, "op: %s", DEBUG_AstOpKind_tags[unr_expr->op]);
-      DEBUG_print_ast(str, indent_level, unr_expr->operand, "operand");
+      DEBUG_print_ast_node(str, indent_level, unr_expr->operand, "operand");
     }
     else if(node->kind == AstNodeKind_IfStmt)
     {
       AstIfStmt* if_stmt = &node->if_stmt;
       ++indent_level;
-      DEBUG_print_ast(str, indent_level, if_stmt->cond_expr, "cond_expr");
-      DEBUG_print_ast(str, indent_level, if_stmt->body, "body");
-      DEBUG_print_ast(str, indent_level, if_stmt->else_body, "else_body");
+      DEBUG_print_ast_node(str, indent_level, if_stmt->cond_expr, "cond_expr");
+      DEBUG_print_ast_node(str, indent_level, if_stmt->body, "body");
+      DEBUG_print_ast_node(str, indent_level, if_stmt->else_body, "else_body");
     }
     else if(node->kind == AstNodeKind_ReturnStmt)
     {
       AstReturnStmt* ret_stmt = &node->ret_stmt;
       ++indent_level;
-      DEBUG_print_ast(str, indent_level, ret_stmt->expr, "expr");
+      DEBUG_print_ast_node(str, indent_level, ret_stmt->expr, "expr");
     }
     else if(node->kind == AstNodeKind_Literal)
     {
@@ -1685,13 +1576,17 @@ DEBUG_print_ast(String* str, int indent_level, AstNode* node, char* tag)
     {
       AstWhileStmt* while_stmt = &node->while_stmt;
       ++indent_level;
-      DEBUG_print_ast(str, indent_level, while_stmt->cond_expr, "cond_expr");
+      DEBUG_print_ast_node(str, indent_level, while_stmt->cond_expr, "cond_expr");
+      DEBUG_print_ast_node(str, indent_level, while_stmt->body, "body");
     }
     else
     {
-      //assert(false);
+#if 1
+      assert(false);
+#else
       ++indent_level;
       DEBUG_print_tree_node(str, indent_level, "???");
+#endif
     } 
   }
 }

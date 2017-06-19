@@ -63,7 +63,7 @@ VmProgram* translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
   {
     String str = {0};
     str_init(&str, arena);
-    DEBUG_print_ast(&str, 0, node, 0);
+    DEBUG_print_ast_node(&str, 0, node, 0);
     str_stdout(&str);
   }
 #else

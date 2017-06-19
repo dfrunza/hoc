@@ -103,7 +103,9 @@ typedef enum
 {
   AstIdKind__Null,
   AstIdKind_Plain,
+  AstIdKind_Type,
   AstIdKind_ProcCall,
+  AstIdKind_ProcSignature,
   AstIdKind_ArrayIndexer,
 
   AstIdKind__Count,
@@ -115,7 +117,9 @@ DEBUG_AstIdKind_tags[AstIdKind__Count] =
 {
   "AstIdKind__Null",
   "AstIdKind_Plain",
+  "AstIdKind_Type",
   "AstIdKind_ProcCall",
+  "AstIdKind_ProcSignature",
   "AstIdKind_ArrayIndexer",
 };
 
@@ -127,6 +131,7 @@ typedef struct
   union
   {
     List call_args;
+    List formal_args;
     AstNode* indexer_expr;
   };
 }
@@ -243,10 +248,9 @@ AstBlock;
 
 typedef struct
 {
-  char* name;
-  char* ret_type;
-  List formal_args; // <AstNode>
-  AstNode* body; // <AstBlock>
+  AstNode* ret_type;
+  AstNode* signature;
+  AstNode* body;
 
   /*
   Type* ret_type;
@@ -427,5 +431,5 @@ bool32 parse_if_stmt(MemoryArena*, TokenStream*, AstNode**);
 bool32 parse(MemoryArena*, TokenStream*, AstNode**);
 bool32 parse_factor(MemoryArena*, TokenStream*, AstNode**);
 bool32 parse_module(MemoryArena*, TokenStream*, List*);
-void DEBUG_print_ast(String*, int, AstNode*, char*);
+void DEBUG_print_ast_node(String*, int, AstNode*, char*);
 

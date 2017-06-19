@@ -1,12 +1,12 @@
-include "hlib/gcd.hoc";
-include "hlib/minmax.hoc";
-include "hlib/fibo.hoc";
-include "hlib/abs.hoc";
-include "hlib/power.hoc";
 include "hlib/sqrt.hoc";
+include "hlib/power.hoc";
+include "hlib/abs.hoc";
+include "hlib/gcd.hoc";
+include "hlib/fibo.hoc";
+include "hlib/minmax.hoc";
 
-proc int main()
+int main()
 {
-  x = gcd(a, b);
+  int a;
 }
 

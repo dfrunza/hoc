@@ -1,14 +1,14 @@
-proc int max(var int a, var int b)
+int max(int a, int b)
 {
-  var int result = a;
+  int result = a;
   if(a < b)
     result = b;
   return result;
 }
 
-proc int min(var int a, var int b)
+int min(int a, int b)
 {
-  var int result = a;
+  int result = a;
   if(a > b)
     result = b;
   return result;

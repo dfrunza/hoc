@@ -133,6 +133,7 @@ typedef struct
     List call_args;
     List formal_args;
     AstNode* indexer_expr;
+    int ptr_stars;
   };
 }
 AstId;

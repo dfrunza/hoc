@@ -953,7 +953,27 @@ parse_decl_id(MemoryArena* arena, TokenStream* input,
     }
     else if(input->token.kind == TokenKind_OpenBracket)
     {
-      assert(!"Not implemented");
+      id->kind = AstIdKind_ArrayIndexer;
+
+      get_next_token(arena, input);
+      if(input->token.kind == TokenKind_IntNum)
+      {
+        id->indexer_expr = ast_new_int_literal(arena, &input->src_loc);
+        AstLiteral* literal = &id->indexer_expr->literal;
+        literal->int_val = *input->token.int_val;
+
+        get_next_token(arena, input);
+      }
+
+      if(input->token.kind == TokenKind_CloseBracket)
+      {
+        get_next_token(arena, input);
+      }
+      else
+      {
+        compile_error(&input->src_loc, "Expected ']'");
+        success = false;
+      }
     }
   }
   return success;
@@ -1020,7 +1040,7 @@ parse_proc_or_var_decl(MemoryArena* arena, TokenStream* input,
           }
           else
           {
-            compile_error(&input->src_loc, "Expression expected");
+            compile_error(&input->src_loc, "Expression required");
             success = false;
           }
         }
@@ -1521,6 +1541,10 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       else if(id->kind == AstIdKind_ProcSignature)
       {
         DEBUG_print_ast_node_list(str, indent_level, &id->formal_args, "formal_args");
+      }
+      else if(id->kind == AstIdKind_ArrayIndexer)
+      {
+        DEBUG_print_ast_node(str, indent_level, id->indexer_expr, "indexer_expr");
       }
       else assert(false);
     }

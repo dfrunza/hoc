@@ -1,12 +1,18 @@
+/*
 include "hlib/sqrt.hoc";
 include "hlib/power.hoc";
 include "hlib/abs.hoc";
 include "hlib/gcd.hoc";
 include "hlib/fibo.hoc";
 include "hlib/minmax.hoc";
+*/
 
 int main()
 {
-  int a;
+  int x[100];
+  x = y + (array[2]);
+  /*
+  int* p;
+  */
 }
 

@@ -28,6 +28,8 @@ compile_error(SourceLocation* src_loc, char* message, ...)
   vfprintf(stderr, message, args);
   fprintf(stderr, "\n");
   va_end(args);
+
+  //DebugBreak();
 }
 
 #include "lex.c"

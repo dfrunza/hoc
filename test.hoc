@@ -9,10 +9,6 @@ include "hlib/minmax.hoc";
 
 int main()
 {
-  int x[100];
-  x = y + (array[2]);
-  /*
-  int* p;
-  */
+  int a[1][2];
 }
 

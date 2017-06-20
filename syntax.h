@@ -132,7 +132,7 @@ typedef struct
   {
     List call_args;
     List formal_args;
-    AstNode* indexer_expr;
+    List indexer_list;
     int ptr_stars;
   };
 }

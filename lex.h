@@ -3,6 +3,7 @@
 typedef enum TokenKind
 {
   TokenKind__Null,
+  // 'Simple' tokens must be listed at the beginning of the enum
   TokenKind_Dot,
   TokenKind_OpenBracket,
   TokenKind_CloseBracket,
@@ -104,7 +105,7 @@ internal Token keyword_list[] =
   {TokenKind_True, "true"},
   {TokenKind_False, "false"},
   {TokenKind_Cast, "cast"},
-  {TokenKind__Null},
+  {TokenKind__Null, 0}, // terminator
 };
 
 internal char* simple_lexeme_list[] =

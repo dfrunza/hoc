@@ -301,6 +301,50 @@ parse_block(MemoryArena* arena, TokenStream* input,
 }
 
 bool32
+parse_array_indexer(MemoryArena* arena, TokenStream* input,
+                    AstNode** node)
+{
+  *node = 0;
+  bool32 success = true;
+
+  if(input->token.kind == TokenKind_OpenBracket)
+  {
+    get_next_token(arena, input);
+    if(success = parse_expression(arena, input, node))
+    {
+      if(input->token.kind == TokenKind_CloseBracket)
+      {
+        get_next_token(arena, input);
+      }
+      else
+      {
+        compile_error(&input->src_loc, "Missing `]`");
+        success = false;
+      }
+    }
+  }
+  return success;
+}
+
+bool32
+parse_array_indexer_list(MemoryArena* arena, TokenStream* input,
+                         List* indexer_list)
+{
+  bool32 success = true;
+
+  AstNode* indexer_expr = 0;
+  do
+  {
+    if((success = parse_array_indexer(arena, input, &indexer_expr)) && indexer_expr)
+    {
+      list_append(arena, indexer_list, indexer_expr);
+    }
+  }
+  while(success && indexer_expr);
+  return success;
+}
+
+bool32
 parse_factor(MemoryArena* arena, TokenStream* input,
              AstNode** node)
 {
@@ -399,20 +443,8 @@ parse_factor(MemoryArena* arena, TokenStream* input,
     else if(input->token.kind == TokenKind_OpenBracket)
     {
       id->kind = AstIdKind_ArrayIndexer;
-
-      get_next_token(arena, input);
-      if(success = parse_expression(arena, input, &id->indexer_expr))
-      {
-        if(input->token.kind == TokenKind_CloseBracket)
-        {
-          get_next_token(arena, input);
-        }
-        else
-        {
-          compile_error(&input->src_loc, "Missing ']'");
-          success = false;
-        }
-      }
+      list_init(&id->indexer_list);
+      success = parse_array_indexer_list(arena, input, &id->indexer_list);
     }
     else
     {
@@ -954,26 +986,8 @@ parse_decl_id(MemoryArena* arena, TokenStream* input,
     else if(input->token.kind == TokenKind_OpenBracket)
     {
       id->kind = AstIdKind_ArrayIndexer;
-
-      get_next_token(arena, input);
-      if(input->token.kind == TokenKind_IntNum)
-      {
-        id->indexer_expr = ast_new_int_literal(arena, &input->src_loc);
-        AstLiteral* literal = &id->indexer_expr->literal;
-        literal->int_val = *input->token.int_val;
-
-        get_next_token(arena, input);
-      }
-
-      if(input->token.kind == TokenKind_CloseBracket)
-      {
-        get_next_token(arena, input);
-      }
-      else
-      {
-        compile_error(&input->src_loc, "Expected ']'");
-        success = false;
-      }
+      list_init(&id->indexer_list);
+      success = parse_array_indexer_list(arena, input, &id->indexer_list);
     }
   }
   return success;
@@ -1544,7 +1558,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       }
       else if(id->kind == AstIdKind_ArrayIndexer)
       {
-        DEBUG_print_ast_node(str, indent_level, id->indexer_expr, "indexer_expr");
+        DEBUG_print_ast_node_list(str, indent_level, &id->indexer_list, "indexer_list");
       }
       else assert(false);
     }

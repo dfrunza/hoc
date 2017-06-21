@@ -1,13 +1,13 @@
 /*
    Prints the first 'n' Fibonacci numbers
  */
-void fibo(int n)
+proc void fibo(var int n)
 {
   if(n > 0)
   {
-    int f1 = 0;
-    int f2 = 1;
-    int fn = f1 + f2;
+    var int f1 = 0;
+    var int f2 = 1;
+    var int fn = f1 + f2;
 
     while(n > 0)
     {

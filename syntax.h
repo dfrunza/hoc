@@ -156,6 +156,7 @@ typedef struct
 {
   AstNode* type;
   AstNode* decl;
+  AstNode* init_expr;
   /*
   DataArea data;
   Type* var_type;
@@ -250,7 +251,8 @@ AstBlock;
 typedef struct
 {
   AstNode* ret_type;
-  AstNode* signature;
+  char* name;
+  List formal_args;
   AstNode* body;
 
   /*

@@ -47,7 +47,7 @@ typedef enum TokenKind
   TokenKind_If,
   TokenKind_Else,
   TokenKind_While,
-  TokenKind_Array,
+  TokenKind_Proc,
   TokenKind_Var,
   TokenKind_Struct,
   TokenKind_Return,
@@ -105,6 +105,8 @@ internal Token keyword_list[] =
   {TokenKind_True, "true"},
   {TokenKind_False, "false"},
   {TokenKind_Cast, "cast"},
+  {TokenKind_Proc, "proc"},
+  {TokenKind_Var, "var"},
   {TokenKind__Null, 0}, // terminator
 };
 

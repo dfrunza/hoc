@@ -1,14 +1,20 @@
-/*
 include "hlib/sqrt.hoc";
 include "hlib/power.hoc";
 include "hlib/abs.hoc";
 include "hlib/gcd.hoc";
 include "hlib/fibo.hoc";
 include "hlib/minmax.hoc";
+/*
 */
 
-int main()
+proc int main()
 {
-  int a[1][2];
+  x[1] = y;
+  /*
+  *x = *y;
+  id = int* x;
+  */
+  int* x;
+  var int a;
 }
 

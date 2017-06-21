@@ -1,15 +1,15 @@
+/*
 include "hlib/sqrt.hoc";
 include "hlib/power.hoc";
 include "hlib/abs.hoc";
 include "hlib/gcd.hoc";
 include "hlib/fibo.hoc";
 include "hlib/minmax.hoc";
-/*
 */
 
 proc int main()
 {
-  x[1] = y;
+  var int a[] = y;
   /*
   *x = *y;
   id = int* x;

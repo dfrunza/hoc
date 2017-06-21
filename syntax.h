@@ -155,7 +155,7 @@ AccessLink;
 typedef struct
 {
   AstNode* type;
-  AstNode* decl;
+  AstNode* id;
   AstNode* init_expr;
   /*
   DataArea data;
@@ -251,8 +251,7 @@ AstBlock;
 typedef struct
 {
   AstNode* ret_type;
-  char* name;
-  List formal_args;
+  AstNode* signature;
   AstNode* body;
 
   /*

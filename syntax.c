@@ -68,7 +68,6 @@ ast_new_proc(MemoryArena* arena, SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Proc;
   node->src_loc = *src_loc;
-  list_init(&node->proc.formal_args);
   return node;
 }
 
@@ -761,22 +760,19 @@ parse_var_decl(MemoryArena* arena, TokenStream* input,
     {
       if(input->token.kind == TokenKind_Id)
       {
-        var_decl->decl = ast_new_id(arena, &input->src_loc);
-        AstId* decl_id = &var_decl->decl->id;
-        decl_id->name = input->token.lexeme;
+        var_decl->id = ast_new_id(arena, &input->src_loc);
+        AstId* id = &var_decl->id->id;
+        id->name = input->token.lexeme;
 
         get_next_token(arena, input);
         if(input->token.kind == TokenKind_OpenBracket)
         {
-          decl_id->kind = AstIdKind_ArrayIndexer;
-          list_init(&decl_id->indexer_list);
-          if(success = parse_array_indexer_list(arena, input, &decl_id->indexer_list))
-          {
-            get_next_token(arena, input);
-          }
+          id->kind = AstIdKind_ArrayIndexer;
+          list_init(&id->indexer_list);
+          success = parse_array_indexer_list(arena, input, &id->indexer_list);
         }
 
-        if(input->token.kind == TokenKind_Equals)
+        if(success && (input->token.kind == TokenKind_Equals))
         {
           get_next_token(arena, input);
 
@@ -784,7 +780,7 @@ parse_var_decl(MemoryArena* arena, TokenStream* input,
           {
             if(!var_decl->init_expr)
             {
-              compile_error(&input->src_loc, "Expression required");
+              compile_error(&input->src_loc, "Expression expected");
               success = false;
             }
           }
@@ -1000,14 +996,18 @@ parse_proc_decl(MemoryArena* arena, TokenStream* input,
     {
       if(input->token.kind == TokenKind_Id)
       {
-        proc->name = input->token.lexeme;
+        proc->signature = ast_new_id(arena, &input->src_loc);
+        AstId* signature = &proc->signature->id;
+        signature->kind = AstIdKind_ProcSignature;
+        signature->name = input->token.lexeme;
+        list_init(&signature->formal_args);
         get_next_token(arena, input);
 
         if(input->token.kind == TokenKind_OpenParens)
         {
           get_next_token(arena, input);
 
-          if(success = parse_formal_argument_list(arena, input, &proc->formal_args))
+          if(success = parse_formal_argument_list(arena, input, &signature->formal_args))
           {
             if(input->token.kind == TokenKind_CloseParens)
             {
@@ -1029,15 +1029,10 @@ parse_proc_decl(MemoryArena* arena, TokenStream* input,
         }
         else
         {
-          compile_error(&input->src_loc, "Parse signature");
+          compile_error(&input->src_loc, "Expected '('");
           success = false;
         }
       }
-    }
-    else
-    {
-      compile_error(&input->src_loc, "Parse type expression");
-      success = false;
     }
   }
   return success;
@@ -1484,8 +1479,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       AstProc* proc = &node->proc;
       ++indent_level;
       DEBUG_print_ast_node(str, indent_level, proc->ret_type, "ret_type");
-      DEBUG_print_tree_node(str, indent_level, "name: %s", proc->name);
-      DEBUG_print_ast_node_list(str, indent_level, &proc->formal_args, "formal_args");
+      DEBUG_print_ast_node(str, indent_level, proc->signature, "signature");
       DEBUG_print_ast_node(str, indent_level, proc->body, "body");
     }
     else if(node->kind == AstNodeKind_VarDecl)
@@ -1493,7 +1487,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       AstVarDecl* var_decl = &node->var_decl;
       ++indent_level;
       DEBUG_print_ast_node(str, indent_level, var_decl->type, "type");
-      DEBUG_print_ast_node(str, indent_level, var_decl->decl, "decl");
+      DEBUG_print_ast_node(str, indent_level, var_decl->id, "id");
     }
     else if(node->kind == AstNodeKind_Id)
     {

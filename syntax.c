@@ -63,6 +63,16 @@ ast_new_id(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 AstNode*
+ast_new_call(MemoryArena* arena, SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  node->kind = AstNodeKind_ProcCall;
+  list_init(&(node->call).args);
+  node->src_loc = *src_loc;
+  return node;
+}
+
+AstNode*
 ast_new_proc(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -369,6 +379,36 @@ parse_array_indexer_list(MemoryArena* arena, TokenStream* input,
     }
   }
   while(success && indexer_expr);
+  return success;
+}
+
+bool32
+parse_rest_of_id(MemoryArena* arena, TokenStream* input,
+                 AstNode* id, AstNode** node)
+{
+  *node = 0;
+  bool32 success = true;
+
+  if(input->token.kind == TokenKind_OpenParens)
+  {
+    *node = ast_new_call(arena, &input->src_loc);
+    AstCall* call = &(*node)->call;
+    call->id = id;
+
+    get_next_token(arena, input);
+    if(success = parse_actual_argument_list(arena, input, &call->args))
+    {
+        if(input->token.kind == TokenKind_CloseParens)
+        {
+          get_next_token(arena, input);
+        }
+        else
+        {
+          compile_error(&input->src_loc, "Missing ')'");
+          success = false;
+        }
+    }
+  }
   return success;
 }
 

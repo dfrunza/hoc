@@ -76,6 +76,7 @@ typedef enum
   AstNodeKind_Module,
   AstNodeKind_Noop,
   AstNodeKind_Cast,
+  AstNodeKind_ProcCall,
 
   AstNodeKind__Count,
 }
@@ -101,6 +102,7 @@ DEBUG_AstNodeKind_tags[AstNodeKind__Count] =
   "AstNodeKind_Module",
   "AstNodeKind_Noop",
   "AstNodeKind_Cast",
+  "AstNodeKind_ProcCall",
 };
 
 typedef enum
@@ -149,12 +151,19 @@ typedef struct
 }
 DataArea;
 
-typedef struct AccessLink
+typedef struct
 {
   int actv_rec_offset;
   DataArea data;
 }
 AccessLink;
+
+typedef struct
+{
+  AstNode* id;
+  List args;
+}
+AstCall;
 
 typedef struct
 {
@@ -383,6 +392,7 @@ typedef struct AstNode
     AstBlock block;
     AstCast cast;
     AstId id;
+    AstCall call;
   };
 }
 AstNode;

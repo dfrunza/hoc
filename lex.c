@@ -85,7 +85,9 @@ is_unary_leading_token(TokenKind token_kind)
       token_kind == TokenKind_Comma ||
       token_kind == TokenKind_FwdSlash ||
       token_kind == TokenKind_Return ||
-      token_kind == TokenKind_PtrDeref;
+      token_kind == TokenKind_PtrDeref ||
+      token_kind == TokenKind_AddressOf ||
+      token_kind == TokenKind_UnaryMinus;
 }
 
 void

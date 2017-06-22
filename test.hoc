@@ -9,7 +9,6 @@ include "hlib/minmax.hoc";
 
 proc int main()
 {
-  *x = *y;
-  x = *a + *b;
+  x = *func(b);
 }
 

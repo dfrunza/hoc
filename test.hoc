@@ -9,12 +9,7 @@ include "hlib/minmax.hoc";
 
 proc int main()
 {
-  var int a[] = y;
-  /*
   *x = *y;
-  id = int* x;
-  */
-  int* x;
-  var int a;
+  x = *a + *b;
 }
 

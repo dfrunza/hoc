@@ -73,6 +73,21 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
   src_loc->file_path = file_path;
 }
 
+bool32
+is_unary_leading_token(TokenKind token_kind)
+{
+  return token_kind == TokenKind_Equals ||
+      token_kind == TokenKind_OpenParens ||
+      token_kind == TokenKind_OpenBracket ||
+      token_kind == TokenKind_OpenBrace ||
+      token_kind == TokenKind_Star ||
+      token_kind == TokenKind_Plus ||
+      token_kind == TokenKind_Comma ||
+      token_kind == TokenKind_FwdSlash ||
+      token_kind == TokenKind_Return ||
+      token_kind == TokenKind_PtrDeref;
+}
+
 void
 get_next_token(MemoryArena* arena, TokenStream* input)
 {
@@ -147,22 +162,40 @@ loop:
   }
   else if(c == '-')
   {
-    Token* prev_token = get_prev_token(input, 0);
     token->kind = TokenKind_Minus;
     c = *(++input->cursor);
-    if(prev_token->kind == TokenKind_Equals ||
-       prev_token->kind == TokenKind_OpenParens ||
-       prev_token->kind == TokenKind_Star ||
-       prev_token->kind == TokenKind_Plus ||
-       prev_token->kind == TokenKind_Comma ||
-       prev_token->kind == TokenKind_FwdSlash ||
-       prev_token->kind == TokenKind_Return)
+    if(is_unary_leading_token(get_prev_token(input, 0)->kind))
     {
        token->kind = TokenKind_UnaryMinus;
     }
     else if(c == '-')
     {
       token->kind = TokenKind_MinusMinus;
+      ++input->cursor;
+    }
+    token->lexeme = simple_lexeme_list[token->kind];
+  }
+  else if(c == '*')
+  {
+    token->kind = TokenKind_Star;
+    ++input->cursor;
+    if(is_unary_leading_token(get_prev_token(input, 0)->kind))
+    {
+      token->kind = TokenKind_PtrDeref;
+    }
+    token->lexeme = simple_lexeme_list[token->kind];
+  }
+  else if(c == '&')
+  {
+    token->kind = TokenKind_Amprsnd;
+    c = *(++input->cursor);
+    if(is_unary_leading_token(get_prev_token(input, 0)->kind))
+    {
+      token->kind = TokenKind_AddressOf;
+    }
+    else if(c == '&')
+    {
+      token->kind = TokenKind_AmprsndAmprsnd;
       ++input->cursor;
     }
     token->lexeme = simple_lexeme_list[token->kind];
@@ -258,17 +291,6 @@ loop:
     }
     token->lexeme = simple_lexeme_list[token->kind];
   }
-  else if(c == '&')
-  {
-    token->kind = TokenKind_Amprsnd;
-    c = *(++input->cursor);
-    if(c == '&')
-    {
-      token->kind = TokenKind_AmprsndAmprsnd;
-      ++input->cursor;
-    }
-    token->lexeme = simple_lexeme_list[token->kind];
-  }
   else if(c == '|')
   {
     token->kind = TokenKind_Pipe;
@@ -311,12 +333,6 @@ loop:
   else if(c == '\\')
   {
     token->kind = TokenKind_BackSlash;
-    token->lexeme = simple_lexeme_list[token->kind];
-    ++input->cursor;
-  }
-  else if(c == '*')
-  {
-    token->kind = TokenKind_Star;
     token->lexeme = simple_lexeme_list[token->kind];
     ++input->cursor;
   }

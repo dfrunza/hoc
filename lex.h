@@ -16,6 +16,7 @@ typedef enum TokenKind
   TokenKind_Comma,
   TokenKind_Percent,
   TokenKind_Star,
+  TokenKind_PtrDeref,
   TokenKind_FwdSlash,
   TokenKind_BackSlash,
   TokenKind_Plus,
@@ -33,6 +34,7 @@ typedef enum TokenKind
   TokenKind_AngleLeftEquals,
   TokenKind_Amprsnd,
   TokenKind_AmprsndAmprsnd,
+  TokenKind_AddressOf,
   TokenKind_Pipe,
   TokenKind_PipePipe,
 
@@ -112,6 +114,7 @@ internal Token keyword_list[] =
 
 internal char* simple_lexeme_list[] =
 {
-  "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "/", "\\",
-  "+", "++", "-", "-", "--", "!", "=", "==", "!=", ">", ">=", "<", "<=", "&", "&&", "|", "||", 
+  "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "\\",
+  "+", "++", "-", "-", "--", "!", "=", "==", "!=", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||", 
 };
+

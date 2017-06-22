@@ -16,6 +16,8 @@ typedef enum
   AstOpKind_Neg,
 
   AstOpKind_Assign,
+  AstOpKind_PtrDeref,
+  AstOpKind_AddressOf,
   
   AstOpKind_LogicEquals,
   AstOpKind_LogicNotEquals,
@@ -42,6 +44,8 @@ DEBUG_AstOpKind_tags[AstOpKind__Count] =
   "AstOpKind_Mod",
   "AstOpKind_Neg",
   "AstOpKind_Assign",
+  "AstOpKind_PtrDeref",
+  "AstOpKind_AddressOf",
   "AstOpKind_LogicEquals",
   "AstOpKind_LogicNotEquals",
   "AstOpKind_LogicLess",
@@ -61,7 +65,7 @@ typedef enum
   AstNodeKind_Literal,
   AstNodeKind_VarDecl,
   AstNodeKind_Block,
-  AstNodeKind_Proc,
+  AstNodeKind_ProcDecl,
   AstNodeKind_Id,
   AstNodeKind_WhileStmt,
   AstNodeKind_IfStmt,
@@ -86,7 +90,7 @@ DEBUG_AstNodeKind_tags[AstNodeKind__Count] =
   "AstNodeKind_Literal",
   "AstNodeKind_VarDecl",
   "AstNodeKind_Block",
-  "AstNodeKind_Proc",
+  "AstNodeKind_ProcDecl",
   "AstNodeKind_Id",
   "AstNodeKind_WhileStmt",
   "AstNodeKind_IfStmt",
@@ -133,7 +137,7 @@ typedef struct
     List call_args;
     List formal_args;
     List indexer_list;
-    int ptr_stars;
+    int ptr_indir_level;
   };
 }
 AstId;
@@ -425,13 +429,8 @@ typedef struct Symbol
 }
 Symbol;
 
-bool32 is_logical_operator(AstOpKind);
 bool32 parse_expression(MemoryArena*, TokenStream*, AstNode**);
-bool32 parse_term(MemoryArena*, TokenStream*, AstNode**);
 bool32 parse_statement(MemoryArena*, TokenStream*, AstNode**);
-bool32 parse_if_stmt(MemoryArena*, TokenStream*, AstNode**);
-bool32 parse(MemoryArena*, TokenStream*, AstNode**);
-bool32 parse_factor(MemoryArena*, TokenStream*, AstNode**);
 bool32 parse_module(MemoryArena*, TokenStream*, List*);
 void DEBUG_print_ast_node(String*, int, AstNode*, char*);
 

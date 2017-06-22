@@ -1100,65 +1100,23 @@ parse_module_element(MemoryArena* arena, TokenStream* input,
   *node = 0;
   bool32 success = true;
 
-  typedef enum
+  if(input->token.kind == TokenKind_Include)
   {
-    Alt__Stop,
-    Alt_Include,
-    Alt_ProcDecl,
-    Alt_VarDecl,
-    Alt__End,
+    if(success = parse_include_stmt(arena, input, node))
+    {
+      expect_semicolon(arena, input, &success);
+    }
   }
-  Alternative;
-
-  Alternative alt = (Alternative)1;
-
-  while(alt)
+  else if(input->token.kind == TokenKind_Proc)
   {
-    if(alt == Alt_Include)
+    success = parse_proc_decl(arena, input, node);
+  }
+  else if(input->token.kind == TokenKind_Var)
+  {
+    if(success = parse_var_decl(arena, input, node))
     {
-      if(success = parse_include_stmt(arena, input, node))
-      {
-        if(*node)
-        {
-          alt = Alt__Stop;
-          expect_semicolon(arena, input, &success);
-        }
-        else
-          alt = (Alternative)((int)alt+1);
-      } else
-        alt = Alt__Stop;
+      expect_semicolon(arena, input, &success);
     }
-    else if(alt == Alt_ProcDecl)
-    {
-      if(success = parse_proc_decl(arena, input, node))
-      {
-        if(*node)
-        {
-          alt = Alt__Stop;
-        } else
-          alt = (Alternative)((int)alt+1);
-      } else
-        alt = Alt__Stop;
-    }
-    else if(alt == Alt_VarDecl)
-    {
-      if(success = parse_var_decl(arena, input, node))
-      {
-        if(*node)
-        {
-          alt = Alt__Stop;
-          expect_semicolon(arena, input, &success);
-        } else
-          alt = (Alternative)((int)alt+1);
-      } else
-        alt = Alt__Stop;
-    }
-    else if(alt == Alt__End)
-    {
-      alt = Alt__Stop;
-    }
-    else
-      assert(false);
   }
 
   return success;
@@ -1281,118 +1239,49 @@ parse_statement(MemoryArena* arena, TokenStream* input,
   *node = 0;
   bool32 success = true;
 
-  typedef enum
+  if(input->token.kind == TokenKind_If)
   {
-    Alt__Stop,
-    Alt_VarDecl,
-    Alt_Expr,
-    Alt_If,
-    Alt_While,
-    Alt_Return,
-    Alt_Break,
-    Alt_EmptyStmt,
-    Alt__End,
-  } Alternative;
-
-  Alternative alt = (Alternative)1;
-  AstNode* stmt_node = 0;
-
-  while(alt)
-  {
-    if(alt == Alt_Expr)
-    {
-      if(success = parse_expression(arena, input, &stmt_node))
-      {
-        if(stmt_node)
-        {
-          alt = Alt__Stop;
-          expect_semicolon(arena, input, &success);
-        } else
-          alt = (Alternative)((int)alt+1);
-      } else
-        alt = Alt__Stop;
-    }
-    else if(alt == Alt_If)
-    {
-      if(success = parse_if_stmt(arena, input, &stmt_node))
-      {
-        if(stmt_node)
-        {
-          alt = Alt__Stop;
-        } else
-          alt = (Alternative)((int)alt+1);
-      } else
-        alt = Alt__Stop;
-    }
-    else if(alt == Alt_While)
-    {
-      if(success = parse_while_stmt(arena, input, &stmt_node))
-      {
-        if(stmt_node)
-        {
-          alt = Alt__Stop;
-        } else
-          alt = (Alternative)((int)alt+1);
-      } else
-        alt = Alt__Stop;
-    }
-    else if(alt == Alt_Return)
-    {
-      if(success = parse_return_stmt(arena, input, &stmt_node))
-      {
-        if(stmt_node)
-        {
-          alt = Alt__Stop;
-          expect_semicolon(arena, input, &success);
-        } else
-          alt = (Alternative)((int)alt+1);
-      } else
-        alt = Alt__Stop;
-    }
-    else if(alt == Alt_Break)
-    {
-      if(success = parse_break_stmt(arena, input, &stmt_node))
-      {
-        if(stmt_node)
-        {
-          alt = Alt__Stop;
-          expect_semicolon(arena, input, &success);
-        } else
-          alt = (Alternative)((int)alt+1);
-      } else
-        alt = Alt__Stop;
-    }
-    else if(alt == Alt_VarDecl)
-    {
-      if(success = parse_var_decl(arena, input, &stmt_node))
-      {
-        if(stmt_node)
-        {
-          alt = Alt__Stop;
-          expect_semicolon(arena, input, &success);
-        } else
-          alt = (Alternative)((int)alt+1);
-      } else
-        alt = Alt__Stop;
-    }
-    else if(alt == Alt_EmptyStmt)
-    {
-      if(input->token.kind == TokenKind_Semicolon)
-      {
-        get_next_token(arena, input);
-        stmt_node = ast_new_empty_stmt(arena, &input->src_loc);
-      } else
-        alt = (Alternative)((int)alt+1);
-    }
-    else if(alt == Alt__End)
-    {
-      alt = Alt__Stop;
-    }
-    else
-      assert(false);
+    success = parse_if_stmt(arena, input, node);
   }
-
-  *node = stmt_node;
+  else if(input->token.kind == TokenKind_While)
+  {
+    success = parse_while_stmt(arena, input, node);
+  }
+  else if(input->token.kind == TokenKind_Return)
+  {
+    if(success = parse_return_stmt(arena, input, node))
+    {
+      expect_semicolon(arena, input, &success);
+    }
+  }
+  else if(input->token.kind == TokenKind_Break)
+  {
+    if(success = parse_break_stmt(arena, input, node))
+    {
+      expect_semicolon(arena, input, &success);
+    }
+  }
+  else if(input->token.kind == TokenKind_Var)
+  {
+    if(success = parse_var_decl(arena, input, node))
+    {
+      expect_semicolon(arena, input, &success);
+    }
+  }
+  /*
+  else if(input->token.kind == TokenKind_Semicolon)
+  {
+    get_next_token(arena, input);
+    *node = ast_new_empty_stmt(arena, &input->src_loc);
+  }
+  */
+  else
+  {
+    if((success = parse_expression(arena, input, node)) && (*node))
+    {
+      expect_semicolon(arena, input, &success);
+    }
+  }
   return success;
 }
 

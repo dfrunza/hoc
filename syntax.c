@@ -1635,6 +1635,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       ++indent_level;
       DEBUG_print_ast_node(str, indent_level, var_decl->type, "type");
       DEBUG_print_ast_node(str, indent_level, var_decl->id, "id");
+      DEBUG_print_ast_node(str, indent_level, var_decl->init_expr, "init_expr");
     }
     else if(node->kind == AstNodeKind_Id)
     {

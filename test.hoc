@@ -7,16 +7,13 @@ include "hlib/fibo.hoc";
 include "hlib/minmax.hoc";
 */
 
-/*
-struct Foo
+proc char* foo(int a)
 {
-  int a;
-  int b;
+  return "Hello World!";
 }
-*/
 
 proc int main()
 {
-  a = b[].c[];
+  var char* z = foo(a).b;
 }
 

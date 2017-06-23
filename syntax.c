@@ -53,10 +53,21 @@ ast_new_block(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 AstNode*
-ast_new_id(MemoryArena* arena, SourceLocation* src_loc)
+ast_new_id(MemoryArena* arena, SourceLocation* src_loc, char* name)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Id;
+  node->src_loc = *src_loc;
+  node->id.name = name;
+  return node;
+}
+
+AstNode*
+ast_new_enum(MemoryArena* arena, SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  node->kind = AstNodeKind_Enum;
+  list_init(&node->enum_.member_list);
   node->src_loc = *src_loc;
   return node;
 }
@@ -292,9 +303,7 @@ parse_type_id(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_Id)
   {
-    *node = ast_new_id(arena, &input->src_loc);
-    AstId* id = &(*node)->id;
-    id->name = input->token.lexeme;
+    *node = ast_new_id(arena, &input->src_loc, input->token.lexeme);
 
     get_next_token(arena, input);
     if(input->token.kind == TokenKind_Star)
@@ -438,8 +447,7 @@ parse_accessor(MemoryArena* arena, TokenStream* input,
 
     if(input->token.kind == TokenKind_Id)
     {
-      accessor->rhs = ast_new_id(arena, &input->src_loc);
-      accessor->rhs->id.name = input->token.lexeme;
+      accessor->rhs = ast_new_id(arena, &input->src_loc, input->token.lexeme);
       get_next_token(arena, input);
 
       if(input->token.kind == TokenKind_OpenBracket)
@@ -571,9 +579,7 @@ parse_factor(MemoryArena* arena, TokenStream* input,
   }
   else if(input->token.kind == TokenKind_Id)
   {
-    *node = ast_new_id(arena, &input->src_loc);
-    AstId* id = &(*node)->id;
-    id->name = input->token.lexeme;
+    *node = ast_new_id(arena, &input->src_loc, input->token.lexeme);
 
     get_next_token(arena, input);
     success = parse_rest_of_id(arena, input, *node, node);
@@ -902,8 +908,7 @@ parse_formal_arg_decl(MemoryArena* arena, TokenStream* input,
 
     if(input->token.kind == TokenKind_Id)
     {
-      var_decl->id = ast_new_id(arena, &input->src_loc);
-      var_decl->id->id.name = input->token.lexeme;
+      var_decl->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
 
       get_next_token(arena, input);
       if(input->token.kind == TokenKind_OpenBracket)
@@ -937,8 +942,7 @@ parse_var_decl(MemoryArena* arena, TokenStream* input,
     {
       if(input->token.kind == TokenKind_Id)
       {
-        var_decl->id = ast_new_id(arena, &input->src_loc);
-        var_decl->id->id.name = input->token.lexeme;
+        var_decl->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
 
         get_next_token(arena, input);
         if(input->token.kind == TokenKind_OpenBracket)
@@ -1147,8 +1151,7 @@ parse_proc_decl(MemoryArena* arena, TokenStream* input,
     {
       if(input->token.kind == TokenKind_Id)
       {
-        proc->id = ast_new_id(arena, &input->src_loc);
-        proc->id->id.name = input->token.lexeme;
+        proc->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
 
         get_next_token(arena, input);
         if(input->token.kind == TokenKind_OpenParens)
@@ -1261,6 +1264,70 @@ parse_include_stmt(MemoryArena* arena, TokenStream* input,
 }
 
 bool32
+parse_enum(MemoryArena* arena, TokenStream* input,
+           AstNode** node)
+{
+  *node = 0;
+  bool32 success = true;
+
+  if(input->token.kind == TokenKind_Enum)
+  {
+    get_next_token(arena, input);
+
+    if(input->token.kind == TokenKind_Id)
+    {
+      *node = ast_new_enum(arena, &input->src_loc);
+      AstEnum* enum_ = &(*node)->enum_;
+      enum_->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+
+      get_next_token(arena, input);
+      if(input->token.kind == TokenKind_OpenBrace)
+      {
+        get_next_token(arena, input);
+
+        AstNode* member = 0;
+        do
+        {
+          member = 0;
+          if(input->token.kind == TokenKind_Id)
+          {
+            member = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+            list_append(arena, &enum_->member_list, member);
+
+            get_next_token(arena, input);
+            if(input->token.kind == TokenKind_Comma)
+            {
+              get_next_token(arena, input);
+            }
+            else if(input->token.kind != TokenKind_CloseBrace)
+            {
+              member = 0;
+            }
+          }
+        }
+        while(member);
+
+        if(input->token.kind == TokenKind_CloseBrace)
+        {
+          get_next_token(arena, input);
+        }
+        else
+        {
+          compile_error(&input->src_loc, "Missing `}`");
+          success = false;
+        }
+      }
+    }
+    else
+    {
+      compile_error(&input->src_loc, "Identifier expected");
+      success = false;
+    }
+  }
+  return success;
+}
+
+bool32
 parse_struct_member(MemoryArena* arena, TokenStream* input,
                     AstNode** node)
 {
@@ -1276,8 +1343,7 @@ parse_struct_member(MemoryArena* arena, TokenStream* input,
 
     if(input->token.kind == TokenKind_Id)
     {
-      var_decl->id = ast_new_id(arena, &input->src_loc);
-      var_decl->id->id.name = input->token.lexeme;
+      var_decl->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
 
       get_next_token(arena, input);
       if(input->token.kind == TokenKind_OpenBracket)
@@ -1304,8 +1370,7 @@ parse_struct(MemoryArena* arena, TokenStream* input,
     {
       *node = ast_new_struct(arena, &input->src_loc);
       AstStruct* struct_ = &(*node)->struct_;
-      struct_->id = ast_new_id(arena, &input->src_loc);
-      struct_->id->id.name = input->token.lexeme;
+      struct_->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
 
       get_next_token(arena, input);
       if(input->token.kind == TokenKind_OpenBrace)
@@ -1374,6 +1439,10 @@ parse_module_element(MemoryArena* arena, TokenStream* input,
   else if(input->token.kind == TokenKind_Struct)
   {
     success = parse_struct(arena, input, node);
+  }
+  else if(input->token.kind == TokenKind_Enum)
+  {
+    success = parse_enum(arena, input, node);
   }
 
   return success;
@@ -1740,12 +1809,18 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       DEBUG_print_ast_node(str, indent_level, struct_->id, "id");
       DEBUG_print_ast_node_list(str, indent_level, &struct_->member_list, "member_list");
     }
-    else if(node->kind = AstNodeKind_Accessor)
+    else if(node->kind == AstNodeKind_Accessor)
     {
       AstAccessor* accessor = &node->accessor;
       ++indent_level;
       DEBUG_print_ast_node(str, indent_level, accessor->lhs, "lhs");
       DEBUG_print_ast_node(str, indent_level, accessor->rhs, "rhs");
+    }
+    else if(node->kind == AstNodeKind_Enum)
+    {
+      AstEnum* enum_ = &node->enum_;
+      ++indent_level;
+      DEBUG_print_ast_node_list(str, indent_level, &enum_->member_list, "member_list");
     }
     else
     {

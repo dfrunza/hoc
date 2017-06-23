@@ -7,13 +7,13 @@ include "hlib/fibo.hoc";
 include "hlib/minmax.hoc";
 */
 
-proc char* foo(int a)
+enum Cats
 {
-  return "Hello World!";
+  Panther,
+  Tiger,
 }
 
 proc int main()
 {
-  var char* z = foo(a).b;
 }
 

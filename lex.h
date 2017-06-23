@@ -59,6 +59,7 @@ typedef enum TokenKind
   TokenKind_Break,
   TokenKind_Include,
   TokenKind_Cast,
+  TokenKind_Enum,
   TokenKind__KeywordEnd,
 }
 TokenKind;
@@ -111,6 +112,7 @@ internal Token keyword_list[] =
   {TokenKind_Proc, "proc"},
   {TokenKind_Var, "var"},
   {TokenKind_Struct, "struct"},
+  {TokenKind_Enum, "enum"},
   {TokenKind__Null, 0}, // terminator
 };
 

@@ -82,6 +82,7 @@ typedef enum
   AstNodeKind_Pointer,
   AstNodeKind_Struct,
   AstNodeKind_Accessor,
+  AstNodeKind_Enum,
 
   AstNodeKind__Count,
 }
@@ -112,6 +113,7 @@ DEBUG_AstNodeKind_tags[] =
   "AstNodeKind_Pointer",
   "AstNodeKind_Struct",
   "AstNodeKind_Accessor",
+  "AstNodeKind_Enum",
   0, // guard
 };
 
@@ -321,6 +323,13 @@ AstStruct;
 
 typedef struct
 {
+  AstNode* id;
+  List member_list;
+}
+AstEnum;
+
+typedef struct
+{
   AstNode* cond_expr;
   AstNode* body;
   AstNode* else_body;
@@ -402,6 +411,7 @@ typedef struct AstNode
     AstPointer pointer;
     AstStruct struct_;
     AstAccessor accessor;
+    AstEnum enum_;
   };
 }
 AstNode;

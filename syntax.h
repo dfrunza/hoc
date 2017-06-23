@@ -34,7 +34,7 @@ typedef enum
 AstOpKind;
 
 internal char*
-DEBUG_AstOpKind_tags[AstOpKind__Count] =
+DEBUG_AstOpKind_tags[] =
 {
   "AstOpKind__Null",
   "AstOpKind_Add",
@@ -55,6 +55,7 @@ DEBUG_AstOpKind_tags[AstOpKind__Count] =
   "AstOpKind_LogicAnd",
   "AstOpKind_LogicOr",
   "AstOpKind_LogicNot",
+  0, // guard
 };
 
 typedef enum
@@ -79,13 +80,14 @@ typedef enum
   AstNodeKind_Call,
   AstNodeKind_Array,
   AstNodeKind_Pointer,
+  AstNodeKind_Struct,
 
   AstNodeKind__Count,
 }
 AstNodeKind;
 
 internal char*
-DEBUG_AstNodeKind_tags[AstNodeKind__Count] = 
+DEBUG_AstNodeKind_tags[] = 
 {
   "AstNodeKind__Null",
   "AstNodeKind_BinExpr",
@@ -107,6 +109,8 @@ DEBUG_AstNodeKind_tags[AstNodeKind__Count] =
   "AstNodeKind_Call",
   "AstNodeKind_Array",
   "AstNodeKind_Pointer",
+  "AstNodeKind_Struct",
+  0, // guard
 };
 
 typedef struct
@@ -191,18 +195,23 @@ typedef enum
   AstLiteralKind_Int,
   AstLiteralKind_Float,
   AstLiteralKind_Bool,
+  AstLiteralKind_String,
+  AstLiteralKind_Char,
   
   AstLiteralKind__Count,
 }
 AstLiteralKind;
 
 internal char*
-DEBUG_AstLiteralKind_tags[AstLiteralKind__Count] =
+DEBUG_AstLiteralKind_tags[] =
 {
   "AstLiteralKind__Null",
   "AstLiteralKind_Int",
   "AstLiteralKind_Float",
   "AstLiteralKind_Bool",
+  "AstLiteralKind_String",
+  "AstLiteralKind_Char",
+  0, // guard
 };
 
 typedef struct
@@ -214,6 +223,8 @@ typedef struct
     int32 int_val;
     float32 float_val;
     int32 bool_val;
+    char char_val;
+    char* str;
   };
 }
 AstLiteral;
@@ -291,6 +302,13 @@ typedef struct
 */
 }
 AstModule;
+
+typedef struct
+{
+  AstNode* id;
+  List member_list;
+}
+AstStruct;
 
 typedef struct
 {
@@ -373,6 +391,7 @@ typedef struct AstNode
     AstCall call;
     AstArray array;
     AstPointer pointer;
+    AstStruct struct_;
   };
 }
 AstNode;

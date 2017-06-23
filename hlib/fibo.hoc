@@ -1,7 +1,7 @@
 /*
    Prints the first 'n' Fibonacci numbers
  */
-proc void fibo(var int n)
+proc void fibo(int n)
 {
   if(n > 0)
   {

@@ -42,6 +42,9 @@ typedef enum TokenKind
   TokenKind_IntNum,
   TokenKind_FloatNum,
   TokenKind_String,
+  TokenKind_Char,
+  TokenKind_True,
+  TokenKind_False,
 
   TokenKind_EndOfInput,
 
@@ -55,9 +58,6 @@ typedef enum TokenKind
   TokenKind_Return,
   TokenKind_Break,
   TokenKind_Include,
-  TokenKind_True,
-  TokenKind_False,
-  TokenKind_Print,
   TokenKind_Cast,
   TokenKind__KeywordEnd,
 }
@@ -72,6 +72,7 @@ typedef struct
   {
     int* int_val;
     float* float_val;
+    char char_val;
     char* str;
   };
 }
@@ -109,6 +110,7 @@ internal Token keyword_list[] =
   {TokenKind_Cast, "cast"},
   {TokenKind_Proc, "proc"},
   {TokenKind_Var, "var"},
+  {TokenKind_Struct, "struct"},
   {TokenKind__Null, 0}, // terminator
 };
 
@@ -116,5 +118,6 @@ internal char* simple_lexeme_list[] =
 {
   "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "\\",
   "+", "++", "-", "-", "--", "!", "=", "==", "!=", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||", 
+  0,
 };
 

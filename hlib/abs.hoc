@@ -1,4 +1,4 @@
-proc int abs(var int a)
+proc int abs(int a)
 {
   if(a < 0)
     a = -a;

@@ -1,4 +1,4 @@
-proc int power(var int a, var int power)
+proc int power(int a, int power)
 {
   var int p = power;
   var int result = 1;

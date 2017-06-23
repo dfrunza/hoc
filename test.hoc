@@ -1,15 +1,17 @@
-/*
 include "hlib/sqrt.hoc";
 include "hlib/power.hoc";
 include "hlib/abs.hoc";
 include "hlib/gcd.hoc";
 include "hlib/fibo.hoc";
 include "hlib/minmax.hoc";
-*/
 
-proc int main()
+struct Foo
 {
-  var int** A[56];
-  var float** b;
+  int a;
+  int b;
+}
+
+proc int main(int* i[5], int j)
+{
 }
 

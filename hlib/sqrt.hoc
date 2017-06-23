@@ -1,4 +1,4 @@
-proc int sqrt_iter(var int x, var int g)
+proc int sqrt_iter(int x, int g)
 {
   var int r = x/g;
 
@@ -14,7 +14,7 @@ proc int sqrt_iter(var int x, var int g)
 /*
    Computes the largest number 'r' such that 'r*r <= x'
  */
-proc int sqrt_floor(var int x)
+proc int sqrt_floor(int x)
 {
   var int g = x;
   var int r = 1;

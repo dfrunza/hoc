@@ -15,8 +15,8 @@ set Program=test
 if %errorlevel% neq 0 goto :build_failed
 ..\ctime.exe hocc.exe %cd%\..\%Program%.hoc > debug.txt
 
-if %errorlevel% neq 0 goto :hocc_exe_error
-..\ctime.exe cl /Fe:%Program%.exe %CompilerFlags% ..\vm.c %Program%.res /link %LinkerFlags% 
+rem if %errorlevel% neq 0 goto :hocc_exe_error
+rem ..\ctime.exe cl /Fe:%Program%.exe %CompilerFlags% ..\vm.c %Program%.res /link %LinkerFlags% 
 
 rem echo Build successful
 goto :end

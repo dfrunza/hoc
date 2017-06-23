@@ -16,7 +16,7 @@ typedef enum
   AstOpKind_Neg,
 
   AstOpKind_Assign,
-  AstOpKind_PtrDeref,
+  AstOpKind_Deref,
   AstOpKind_AddressOf,
   
   AstOpKind_LogicEquals,
@@ -44,7 +44,7 @@ DEBUG_AstOpKind_tags[AstOpKind__Count] =
   "AstOpKind_Mod",
   "AstOpKind_Neg",
   "AstOpKind_Assign",
-  "AstOpKind_PtrDeref",
+  "AstOpKind_Deref",
   "AstOpKind_AddressOf",
   "AstOpKind_LogicEquals",
   "AstOpKind_LogicNotEquals",
@@ -65,7 +65,7 @@ typedef enum
   AstNodeKind_Literal,
   AstNodeKind_VarDecl,
   AstNodeKind_Block,
-  AstNodeKind_ProcDecl,
+  AstNodeKind_Proc,
   AstNodeKind_Id,
   AstNodeKind_WhileStmt,
   AstNodeKind_IfStmt,
@@ -76,7 +76,9 @@ typedef enum
   AstNodeKind_Module,
   AstNodeKind_Noop,
   AstNodeKind_Cast,
-  AstNodeKind_ProcCall,
+  AstNodeKind_Call,
+  AstNodeKind_Array,
+  AstNodeKind_Pointer,
 
   AstNodeKind__Count,
 }
@@ -91,7 +93,7 @@ DEBUG_AstNodeKind_tags[AstNodeKind__Count] =
   "AstNodeKind_Literal",
   "AstNodeKind_VarDecl",
   "AstNodeKind_Block",
-  "AstNodeKind_ProcDecl",
+  "AstNodeKind_Proc",
   "AstNodeKind_Id",
   "AstNodeKind_WhileStmt",
   "AstNodeKind_IfStmt",
@@ -102,45 +104,14 @@ DEBUG_AstNodeKind_tags[AstNodeKind__Count] =
   "AstNodeKind_Module",
   "AstNodeKind_Noop",
   "AstNodeKind_Cast",
-  "AstNodeKind_ProcCall",
-};
-
-typedef enum
-{
-  AstIdKind__Null,
-  AstIdKind_Plain,
-  AstIdKind_Type,
-  AstIdKind_ProcCall,
-  AstIdKind_ProcSignature,
-  AstIdKind_ArrayIndexer,
-
-  AstIdKind__Count,
-}
-AstIdKind;
-
-internal char*
-DEBUG_AstIdKind_tags[AstIdKind__Count] =
-{
-  "AstIdKind__Null",
-  "AstIdKind_Plain",
-  "AstIdKind_Type",
-  "AstIdKind_ProcCall",
-  "AstIdKind_ProcSignature",
-  "AstIdKind_ArrayIndexer",
+  "AstNodeKind_Call",
+  "AstNodeKind_Array",
+  "AstNodeKind_Pointer",
 };
 
 typedef struct
 {
-  AstIdKind kind;
   char* name;
-
-  union
-  {
-    List call_args;
-    List formal_args;
-    List indexer_list;
-    int ptr_indir_level;
-  };
 }
 AstId;
 
@@ -160,10 +131,16 @@ AccessLink;
 
 typedef struct
 {
-  AstNode* id;
-  List args;
+  AstNode* expr;
 }
-AstCall;
+AstPointer;
+
+typedef struct
+{
+  AstNode* expr;
+  AstNode* index;
+}
+AstArray;
 
 typedef struct
 {
@@ -264,7 +241,8 @@ AstBlock;
 typedef struct
 {
   AstNode* ret_type;
-  AstNode* signature;
+  AstNode* id;
+  List formal_args;
   AstNode* body;
 
   /*
@@ -291,15 +269,15 @@ typedef struct
 }
 AstReturnStmt;
 
-/*
 typedef struct
 {
-  char* name;
-  List actual_args; // <AstNode>
+  AstNode* id;
+  List actual_args;
+/*
   AstNode* proc;
+*/
 }
 AstCall;
-*/
 
 typedef struct
 {
@@ -393,6 +371,8 @@ typedef struct AstNode
     AstCast cast;
     AstId id;
     AstCall call;
+    AstArray array;
+    AstPointer pointer;
   };
 }
 AstNode;

@@ -9,6 +9,7 @@ include "hlib/minmax.hoc";
 
 proc int main()
 {
-  x = *func(b);
+  var int** A[56];
+  var float** b;
 }
 

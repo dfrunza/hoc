@@ -16,7 +16,7 @@ typedef enum TokenKind
   TokenKind_Comma,
   TokenKind_Percent,
   TokenKind_Star,
-  TokenKind_PtrDeref,
+  TokenKind_Pointer,
   TokenKind_FwdSlash,
   TokenKind_BackSlash,
   TokenKind_Plus,

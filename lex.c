@@ -77,6 +77,7 @@ bool32
 is_unary_leading_token(TokenKind token_kind)
 {
   return token_kind == TokenKind_Equals ||
+      token_kind == TokenKind_Semicolon ||
       token_kind == TokenKind_OpenParens ||
       token_kind == TokenKind_OpenBracket ||
       token_kind == TokenKind_OpenBrace ||
@@ -85,7 +86,7 @@ is_unary_leading_token(TokenKind token_kind)
       token_kind == TokenKind_Comma ||
       token_kind == TokenKind_FwdSlash ||
       token_kind == TokenKind_Return ||
-      token_kind == TokenKind_PtrDeref ||
+      token_kind == TokenKind_Pointer ||
       token_kind == TokenKind_AddressOf ||
       token_kind == TokenKind_UnaryMinus;
 }
@@ -183,7 +184,7 @@ loop:
     ++input->cursor;
     if(is_unary_leading_token(get_prev_token(input, 0)->kind))
     {
-      token->kind = TokenKind_PtrDeref;
+      token->kind = TokenKind_Pointer;
     }
     token->lexeme = simple_lexeme_list[token->kind];
   }

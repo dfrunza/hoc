@@ -17,6 +17,6 @@ struct Foo
 
 proc int main()
 {
-  x = y[].g[].z[];
+  a = b[].c[];
 }
 

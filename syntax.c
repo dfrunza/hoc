@@ -444,7 +444,7 @@ parse_accessor(MemoryArena* arena, TokenStream* input,
 
       if(input->token.kind == TokenKind_OpenBracket)
       {
-        success = parse_array_index(arena, input, *node, node);
+        success = parse_array_index(arena, input, accessor->rhs, &accessor->rhs);
       }
       if(success)
       {

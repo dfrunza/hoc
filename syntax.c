@@ -90,6 +90,15 @@ ast_new_array(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 AstNode*
+ast_new_accessor(MemoryArena* arena, SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  node->kind = AstNodeKind_Accessor;
+  node->src_loc = *src_loc;
+  return node;
+}
+
+AstNode*
 ast_new_proc(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -414,6 +423,44 @@ parse_array_index(MemoryArena* arena, TokenStream* input,
 }
 
 bool32
+parse_accessor(MemoryArena* arena, TokenStream* input,
+               AstNode* expr, AstNode** node)
+{
+  *node = expr;
+  bool32 success = true;
+
+  if(input->token.kind == TokenKind_Dot)
+  {
+    get_next_token(arena, input);
+    *node = ast_new_accessor(arena, &input->src_loc);
+    AstAccessor* accessor = &(*node)->accessor;
+    accessor->lhs = expr;
+
+    if(input->token.kind == TokenKind_Id)
+    {
+      accessor->rhs = ast_new_id(arena, &input->src_loc);
+      accessor->rhs->id.name = input->token.lexeme;
+      get_next_token(arena, input);
+
+      if(input->token.kind == TokenKind_OpenBracket)
+      {
+        success = parse_array_index(arena, input, *node, node);
+      }
+      if(success)
+      {
+        success = parse_accessor(arena, input, *node, node);
+      }
+    }
+    else
+    {
+      compile_error(&input->src_loc, "Identifier expected");
+      success = false;
+    }
+  }
+  return success;
+}
+
+bool32
 parse_rest_of_id(MemoryArena* arena, TokenStream* input,
                  AstNode* id, AstNode** node)
 {
@@ -429,20 +476,33 @@ parse_rest_of_id(MemoryArena* arena, TokenStream* input,
     get_next_token(arena, input);
     if(success = parse_actual_argument_list(arena, input, &call->actual_args))
     {
-        if(input->token.kind == TokenKind_CloseParens)
-        {
-          get_next_token(arena, input);
-        }
-        else
-        {
-          compile_error(&input->src_loc, "Missing `)`");
-          success = false;
-        }
+      if(input->token.kind == TokenKind_CloseParens)
+      {
+        get_next_token(arena, input);
+      }
+      else
+      {
+        compile_error(&input->src_loc, "Missing `)`");
+        success = false;
+      }
+    }
+    
+    if(success && (input->token.kind == TokenKind_Dot))
+    {
+      success = parse_accessor(arena, input, *node, node);
     }
   }
   else if(input->token.kind == TokenKind_OpenBracket)
   {
     success = parse_array_index(arena, input, *node, node);
+    if(success && (input->token.kind == TokenKind_Dot))
+    {
+      success = parse_accessor(arena, input, *node, node);
+    }
+  }
+  else if(input->token.kind == TokenKind_Dot)
+  {
+    success = parse_accessor(arena, input, *node, node);
   }
 
   return success;
@@ -1220,6 +1280,10 @@ parse_struct_member(MemoryArena* arena, TokenStream* input,
       var_decl->id->id.name = input->token.lexeme;
 
       get_next_token(arena, input);
+      if(input->token.kind == TokenKind_OpenBracket)
+      {
+        success = parse_array_index(arena, input, *node, node);
+      }
     }
   }
   return success;
@@ -1674,6 +1738,13 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       ++indent_level;
       DEBUG_print_ast_node(str, indent_level, struct_->id, "id");
       DEBUG_print_ast_node_list(str, indent_level, &struct_->member_list, "member_list");
+    }
+    else if(node->kind = AstNodeKind_Accessor)
+    {
+      AstAccessor* accessor = &node->accessor;
+      ++indent_level;
+      DEBUG_print_ast_node(str, indent_level, accessor->lhs, "lhs");
+      DEBUG_print_ast_node(str, indent_level, accessor->rhs, "rhs");
     }
     else
     {

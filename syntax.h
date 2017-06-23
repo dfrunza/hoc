@@ -81,6 +81,7 @@ typedef enum
   AstNodeKind_Array,
   AstNodeKind_Pointer,
   AstNodeKind_Struct,
+  AstNodeKind_Accessor,
 
   AstNodeKind__Count,
 }
@@ -110,6 +111,7 @@ DEBUG_AstNodeKind_tags[] =
   "AstNodeKind_Array",
   "AstNodeKind_Pointer",
   "AstNodeKind_Struct",
+  "AstNodeKind_Accessor",
   0, // guard
 };
 
@@ -145,6 +147,13 @@ typedef struct
   AstNode* index;
 }
 AstArray;
+
+typedef struct
+{
+  AstNode* lhs;
+  AstNode* rhs;
+}
+AstAccessor;
 
 typedef struct
 {
@@ -392,6 +401,7 @@ typedef struct AstNode
     AstArray array;
     AstPointer pointer;
     AstStruct struct_;
+    AstAccessor accessor;
   };
 }
 AstNode;

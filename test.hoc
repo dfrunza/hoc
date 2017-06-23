@@ -1,17 +1,22 @@
+/*
 include "hlib/sqrt.hoc";
 include "hlib/power.hoc";
 include "hlib/abs.hoc";
 include "hlib/gcd.hoc";
 include "hlib/fibo.hoc";
 include "hlib/minmax.hoc";
+*/
 
+/*
 struct Foo
 {
   int a;
   int b;
 }
+*/
 
-proc int main(int* i[5], int j)
+proc int main()
 {
+  x = y[].g[].z[];
 }
 

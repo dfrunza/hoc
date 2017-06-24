@@ -9,6 +9,5 @@ include "hlib/minmax.hoc";
 
 proc int main()
 {
-  x = x.z[5];
 }
 

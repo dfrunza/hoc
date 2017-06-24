@@ -74,21 +74,35 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
 }
 
 bool32
-is_unary_leading_token(TokenKind token_kind)
+is_unary_leading_token(TokenKind token)
 {
-  return token_kind == TokenKind_Equals ||
-      token_kind == TokenKind_Semicolon ||
-      token_kind == TokenKind_OpenParens ||
-      token_kind == TokenKind_OpenBracket ||
-      token_kind == TokenKind_OpenBrace ||
-      token_kind == TokenKind_Star ||
-      token_kind == TokenKind_Plus ||
-      token_kind == TokenKind_Comma ||
-      token_kind == TokenKind_FwdSlash ||
-      token_kind == TokenKind_Return ||
-      token_kind == TokenKind_Pointer ||
-      token_kind == TokenKind_AddressOf ||
-      token_kind == TokenKind_UnaryMinus;
+  return token == TokenKind_Equals ||
+      token == TokenKind_EqualsEquals ||
+      token == TokenKind_Semicolon ||
+      token == TokenKind_OpenParens ||
+      token == TokenKind_OpenBracket ||
+      token == TokenKind_OpenBrace ||
+      token == TokenKind_Star ||
+      token == TokenKind_Plus ||
+      token == TokenKind_Comma ||
+      token == TokenKind_FwdSlash ||
+      token == TokenKind_Return ||
+      token == TokenKind_Pointer ||
+      token == TokenKind_AddressOf ||
+      token == TokenKind_NegativeSign ||
+      token == TokenKind_MinusMinus ||
+      token == TokenKind_PlusPlus ||
+      token == TokenKind_AmprsndAmprsnd ||
+      token == TokenKind_AngleLeft ||
+      token == TokenKind_AngleLeftEquals ||
+      token == TokenKind_AngleRight ||
+      token == TokenKind_AngleRightEquals ||
+      token == TokenKind_Pipe ||
+      token == TokenKind_PipePipe ||
+      token == TokenKind_Percent ||
+      token == TokenKind_FwdSlash ||
+      token == TokenKind_Exclam ||
+      token == TokenKind_ExclamEquals;
 }
 
 void
@@ -167,14 +181,14 @@ loop:
   {
     token->kind = TokenKind_Minus;
     c = *(++input->cursor);
-    if(is_unary_leading_token(get_prev_token(input, 0)->kind))
-    {
-       token->kind = TokenKind_UnaryMinus;
-    }
-    else if(c == '-')
+    if(c == '-')
     {
       token->kind = TokenKind_MinusMinus;
       ++input->cursor;
+    }
+    else if(is_unary_leading_token(get_prev_token(input, 0)->kind))
+    {
+       token->kind = TokenKind_NegativeSign;
     }
     token->lexeme = simple_lexeme_list[token->kind];
   }
@@ -192,14 +206,14 @@ loop:
   {
     token->kind = TokenKind_Amprsnd;
     c = *(++input->cursor);
-    if(is_unary_leading_token(get_prev_token(input, 0)->kind))
-    {
-      token->kind = TokenKind_AddressOf;
-    }
-    else if(c == '&')
+    if(c == '&')
     {
       token->kind = TokenKind_AmprsndAmprsnd;
       ++input->cursor;
+    }
+    else if(is_unary_leading_token(get_prev_token(input, 0)->kind))
+    {
+      token->kind = TokenKind_AddressOf;
     }
     token->lexeme = simple_lexeme_list[token->kind];
   }
@@ -307,11 +321,11 @@ loop:
   }
   else if(c == '!')
   {
-    token->kind = TokenKind_Bang;
+    token->kind = TokenKind_Exclam;
     c = *(++input->cursor);
     if(c == '=')
     {
-      token->kind = TokenKind_BangEquals;
+      token->kind = TokenKind_ExclamEquals;
       ++input->cursor;
     }
     token->lexeme = simple_lexeme_list[token->kind];

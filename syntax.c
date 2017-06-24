@@ -595,22 +595,28 @@ parse_unary_factor(MemoryArena* arena, TokenStream* input,
   bool32 success = true;
   *node = 0;
 
-  if(input->token.kind == TokenKind_Bang ||
+  if(input->token.kind == TokenKind_Exclam ||
      input->token.kind == TokenKind_Pointer ||
      input->token.kind == TokenKind_AddressOf ||
-     input->token.kind == TokenKind_UnaryMinus)
+     input->token.kind == TokenKind_NegativeSign ||
+     input->token.kind == TokenKind_MinusMinus ||
+     input->token.kind == TokenKind_PlusPlus)
   {
     *node = ast_new_unr_expr(arena, &input->src_loc);
     AstUnrExpr* expr = &(*node)->unr_expr;
 
-    if(input->token.kind == TokenKind_Bang)
+    if(input->token.kind == TokenKind_Exclam)
       expr->op = AstOpKind_LogicNot;
     else if(input->token.kind == TokenKind_Pointer)
       expr->op = AstOpKind_Deref;
     else if(input->token.kind == TokenKind_AddressOf)
       expr->op = AstOpKind_AddressOf;
-    else if(input->token.kind == TokenKind_UnaryMinus)
+    else if(input->token.kind == TokenKind_NegativeSign)
       expr->op = AstOpKind_Neg;
+    else if(input->token.kind == TokenKind_MinusMinus)
+      expr->op = AstOpKind_Decrement;
+    else if(input->token.kind == TokenKind_PlusPlus)
+      expr->op = AstOpKind_Increment;
 
     get_next_token(arena, input);
     if(success = parse_unary_factor(arena, input, &expr->operand))
@@ -640,7 +646,7 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input,
      input->token.kind == TokenKind_FwdSlash ||
      input->token.kind == TokenKind_Percent ||
      input->token.kind == TokenKind_EqualsEquals ||
-     input->token.kind == TokenKind_BangEquals ||
+     input->token.kind == TokenKind_ExclamEquals ||
      input->token.kind == TokenKind_AmprsndAmprsnd ||
      input->token.kind == TokenKind_PipePipe ||
      input->token.kind == TokenKind_AngleLeft ||
@@ -669,7 +675,7 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input,
     {
       expr->op = AstOpKind_LogicEquals;
     }
-    else if(input->token.kind == TokenKind_BangEquals)
+    else if(input->token.kind == TokenKind_ExclamEquals)
     {
       expr->op = AstOpKind_LogicNotEquals;
     }

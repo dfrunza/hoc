@@ -22,12 +22,12 @@ typedef enum TokenKind
   TokenKind_Plus,
   TokenKind_PlusPlus,
   TokenKind_Minus,
-  TokenKind_UnaryMinus,
+  TokenKind_NegativeSign,
   TokenKind_MinusMinus,
-  TokenKind_Bang,
+  TokenKind_Exclam,
+  TokenKind_ExclamEquals,
   TokenKind_Equals,
   TokenKind_EqualsEquals,
-  TokenKind_BangEquals,
   TokenKind_AngleRight,
   TokenKind_AngleRightEquals,
   TokenKind_AngleLeft,
@@ -46,8 +46,6 @@ typedef enum TokenKind
   TokenKind_True,
   TokenKind_False,
 
-  TokenKind_EndOfInput,
-
   TokenKind__KeywordBegin,
   TokenKind_If,
   TokenKind_Else,
@@ -61,6 +59,8 @@ typedef enum TokenKind
   TokenKind_Cast,
   TokenKind_Enum,
   TokenKind__KeywordEnd,
+
+  TokenKind_EndOfInput,
 }
 TokenKind;
 
@@ -119,7 +119,7 @@ internal Token keyword_list[] =
 internal char* simple_lexeme_list[] =
 {
   "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "\\",
-  "+", "++", "-", "-", "--", "!", "=", "==", "!=", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||", 
+  "+", "++", "-", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||", 
   0,
 };
 

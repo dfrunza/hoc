@@ -19,6 +19,8 @@ typedef enum
   AstOpKind_Deref,
   AstOpKind_AddressOf,
   AstOpKind_MemberAccess,
+  AstOpKind_Decrement,
+  AstOpKind_Increment,
   
   AstOpKind_LogicEquals,
   AstOpKind_LogicNotEquals,
@@ -48,6 +50,8 @@ DEBUG_AstOpKind_tags[] =
   "AstOpKind_Deref",
   "AstOpKind_AddressOf",
   "AstOpKind_MemberAccess",
+  "AstOpKind_Decrement",
+  "AstOpKind_Increment",
   "AstOpKind_LogicEquals",
   "AstOpKind_LogicNotEquals",
   "AstOpKind_LogicLess",

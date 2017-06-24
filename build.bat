@@ -18,8 +18,9 @@ set prog=test
 ..\ctime cl /c %C_flags% ..\lib.c ..\lex.c ..\syntax.c /Fo
 ..\ctime cl %C_flags% ..\hocc.c lib.obj lex.obj syntax.obj /link %L_flags%
 
+rem NOTE: The full path to the .hoc source is needed for Vim QuickFix to work properly.
 if %errorlevel% neq 0 goto :build_failed
-..\ctime.exe hocc.exe ..\%prog%.hoc > debug.txt
+..\ctime.exe hocc.exe %cd%\..\%prog%.hoc > debug.txt
 
 rem if %errorlevel% neq 0 goto :hocc_exe_error
 rem ..\ctime.exe cl %C_flags% ..\vm.c %prog%.res /link %L_flags% /Fe:%prog%.exe 

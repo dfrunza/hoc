@@ -52,13 +52,13 @@ get_prev_token(TokenStream* input, int index)
 }
 
 internal bool32
-token_is_keyword(TokenKind token_kind)
+is_keyword(TokenKind token_kind)
 {
   return (token_kind > TokenKind__KeywordBegin) && (token_kind < TokenKind__KeywordEnd);
 }
 
 internal char*
-lexeme_install_id(MemoryArena* arena, char* begin_char, char* end_char)
+install_id(MemoryArena* arena, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
 
@@ -70,7 +70,7 @@ lexeme_install_id(MemoryArena* arena, char* begin_char, char* end_char)
 }
 
 internal char*
-lexeme_install_dquot_str(MemoryArena* arena, char* begin_char, char* end_char)
+install_dquot_str(MemoryArena* arena, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
   assert(*begin_char == '"' && *end_char == '"');
@@ -119,7 +119,7 @@ is_unary_leading_token(TokenKind token)
       token == TokenKind_NegativeSign ||
       token == TokenKind_MinusMinus ||
       token == TokenKind_PlusPlus ||
-      token == TokenKind_AmprsndAmprsnd ||
+      token == TokenKind_AmpersandAmpersand ||
       token == TokenKind_AngleLeft ||
       token == TokenKind_AngleLeftEquals ||
       token == TokenKind_AngleRight ||
@@ -165,7 +165,7 @@ loop:
       c = *(++input->cursor);
 
     char* end_char = input->cursor - 1;
-    char* lexeme = lexeme_install_id(arena, begin_char, end_char);
+    char* lexeme = install_id(arena, begin_char, end_char);
 
     token->kind = TokenKind_Id;
     token->lexeme = lexeme;
@@ -231,11 +231,11 @@ loop:
   }
   else if(c == '&')
   {
-    token->kind = TokenKind_Amprsnd;
+    token->kind = TokenKind_Ampersand;
     c = *(++input->cursor);
     if(c == '&')
     {
-      token->kind = TokenKind_AmprsndAmprsnd;
+      token->kind = TokenKind_AmpersandAmpersand;
       ++input->cursor;
     }
     else if(is_unary_leading_token(get_prev_token(input, 0)->kind))
@@ -294,7 +294,7 @@ loop:
 
     if(c == '"')
     {
-      char* lexeme = lexeme_install_dquot_str(arena, input->cursor, fwd_cursor);
+      char* lexeme = install_dquot_str(arena, input->cursor, fwd_cursor);
       token->str = lexeme;
       token->kind = TokenKind_String;
       input->cursor = ++fwd_cursor;

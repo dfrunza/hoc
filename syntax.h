@@ -32,6 +32,10 @@ typedef enum
   AstOpKind_LogicOr,
   AstOpKind_LogicNot,
 
+  AstOpKind_BitwiseAnd,
+  AstOpKind_BitwiseOr,
+  AstOpKind_BitwiseNot,
+
   AstOpKind__Count,
 }
 AstOpKind;

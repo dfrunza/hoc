@@ -11,7 +11,7 @@ is_logical_operator(AstOpKind op)
 }
 
 internal AstNode*
-ast_new_node(MemoryArena* arena, SourceLocation* src_loc)
+new_node(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->src_loc = *src_loc;
@@ -19,7 +19,7 @@ ast_new_node(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_module(MemoryArena* arena, SourceLocation* src_loc)
+new_module(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Module;
@@ -30,7 +30,7 @@ ast_new_module(MemoryArena* arena, SourceLocation* src_loc)
 
 /*
 AstNode*
-ast_new_block(MemoryArena* arena, SourceLocation* src_loc)
+new_block(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Block;
@@ -49,7 +49,7 @@ ast_new_block(MemoryArena* arena, SourceLocation* src_loc)
 }
 */
 internal AstNode*
-ast_new_block(MemoryArena* arena, SourceLocation* src_loc)
+new_block(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Block;
@@ -59,7 +59,7 @@ ast_new_block(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_id(MemoryArena* arena, SourceLocation* src_loc, char* name)
+new_id(MemoryArena* arena, SourceLocation* src_loc, char* name)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Id;
@@ -69,7 +69,7 @@ ast_new_id(MemoryArena* arena, SourceLocation* src_loc, char* name)
 }
 
 internal AstNode*
-ast_new_enum(MemoryArena* arena, SourceLocation* src_loc)
+new_enum(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Enum;
@@ -79,7 +79,7 @@ ast_new_enum(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_pointer(MemoryArena* arena, SourceLocation* src_loc)
+new_pointer(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Pointer;
@@ -88,7 +88,7 @@ ast_new_pointer(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_call(MemoryArena* arena, SourceLocation* src_loc)
+new_call(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Call;
@@ -98,7 +98,7 @@ ast_new_call(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_array(MemoryArena* arena, SourceLocation* src_loc)
+new_array(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Array;
@@ -107,7 +107,7 @@ ast_new_array(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_proc(MemoryArena* arena, SourceLocation* src_loc)
+new_proc(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Proc;
@@ -117,7 +117,7 @@ ast_new_proc(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_bin_expr(MemoryArena* arena, SourceLocation* src_loc)
+new_bin_expr(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_BinExpr;
@@ -126,7 +126,7 @@ ast_new_bin_expr(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_unr_expr(MemoryArena* arena, SourceLocation* src_loc)
+new_unr_expr(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_UnrExpr;
@@ -135,7 +135,7 @@ ast_new_unr_expr(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_int_literal(MemoryArena* arena, SourceLocation* src_loc)
+new_int_literal(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Literal;
@@ -145,7 +145,7 @@ ast_new_int_literal(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_float_literal(MemoryArena* arena, SourceLocation* src_loc)
+new_float_literal(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Literal;
@@ -155,7 +155,7 @@ ast_new_float_literal(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_bool_literal(MemoryArena* arena, SourceLocation* src_loc)
+new_bool_literal(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Literal;
@@ -165,7 +165,7 @@ ast_new_bool_literal(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_string_literal(MemoryArena* arena, SourceLocation* src_loc)
+new_string_literal(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Literal;
@@ -175,7 +175,7 @@ ast_new_string_literal(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_var_decl(MemoryArena* arena, SourceLocation* src_loc)
+new_var_decl(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_VarDecl;
@@ -184,7 +184,7 @@ ast_new_var_decl(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_while_stmt(MemoryArena* arena, SourceLocation* src_loc)
+new_while_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_WhileStmt;
@@ -193,7 +193,7 @@ ast_new_while_stmt(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_if_stmt(MemoryArena* arena, SourceLocation* src_loc)
+new_if_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IfStmt;
@@ -202,7 +202,7 @@ ast_new_if_stmt(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_return_stmt(MemoryArena* arena, SourceLocation* src_loc)
+new_return_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_ReturnStmt;
@@ -211,7 +211,7 @@ ast_new_return_stmt(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_break_stmt(MemoryArena* arena, SourceLocation* src_loc)
+new_break_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_BreakStmt;
@@ -220,7 +220,7 @@ ast_new_break_stmt(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_include_stmt(MemoryArena* arena, SourceLocation* src_loc)
+new_include_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IncludeStmt;
@@ -230,7 +230,7 @@ ast_new_include_stmt(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_empty_stmt(MemoryArena* arena, SourceLocation* src_loc)
+new_empty_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_EmptyStmt;
@@ -239,7 +239,7 @@ ast_new_empty_stmt(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_struct(MemoryArena* arena, SourceLocation* src_loc)
+new_struct(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Struct;
@@ -249,7 +249,7 @@ ast_new_struct(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
-ast_new_cast(MemoryArena* arena, SourceLocation* src_loc)
+new_cast(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Cast;
@@ -281,7 +281,7 @@ rest_of_type_id(MemoryArena* arena, TokenStream* input,
   if(input->token.kind == TokenKind_Star ||
      input->token.kind == TokenKind_Pointer)
   {
-    *node = ast_new_pointer(arena, &input->src_loc);
+    *node = new_pointer(arena, &input->src_loc);
     AstPointer* ptr = &(*node)->pointer;
     ptr->expr = expr;
 
@@ -300,7 +300,7 @@ type_id(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_Id)
   {
-    *node = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+    *node = new_id(arena, &input->src_loc, input->token.lexeme);
 
     get_next_token(arena, input);
     if(input->token.kind == TokenKind_Star)
@@ -362,7 +362,7 @@ block(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_OpenBrace)
   {
-    *node = ast_new_block(arena, &input->src_loc);
+    *node = new_block(arena, &input->src_loc);
 
     get_next_token(arena, input);
     if(success = statement_list(arena, input, &(*node)->block.stmt_list))
@@ -391,7 +391,7 @@ array_index(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_OpenBracket)
   {
-    *node = ast_new_array(arena, &input->src_loc);
+    *node = new_array(arena, &input->src_loc);
     AstArray* array = &(*node)->array;
     array->expr = expr;
 
@@ -423,7 +423,7 @@ rest_of_id(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_OpenParens)
   {
-    *node = ast_new_call(arena, &input->src_loc);
+    *node = new_call(arena, &input->src_loc);
     AstCall* call = &(*node)->call;
     call->id = id;
 
@@ -450,9 +450,10 @@ rest_of_id(MemoryArena* arena, TokenStream* input,
 }
 
 internal bool32
-factor(MemoryArena* arena, TokenStream* input,
-       AstNode** node)
+accessor(MemoryArena* arena, TokenStream* input,
+         AstNode** node)
 {
+  *node = 0;
   bool32 success = true;
 
   if(input->token.kind == TokenKind_OpenParens)
@@ -465,7 +466,8 @@ factor(MemoryArena* arena, TokenStream* input,
       {
         get_next_token(arena, input);
       }
-      else {
+      else
+      {
         compile_error(&input->src_loc, "Missing `)`");
         success = false;
       }
@@ -478,7 +480,7 @@ factor(MemoryArena* arena, TokenStream* input,
           input->token.kind == TokenKind_True ||
           input->token.kind == TokenKind_False)
   {
-    *node = ast_new_int_literal(arena, &input->src_loc);
+    *node = new_int_literal(arena, &input->src_loc);
     AstLiteral* literal = &(*node)->literal;
 
     if(input->token.kind == TokenKind_IntNum)
@@ -512,13 +514,13 @@ factor(MemoryArena* arena, TokenStream* input,
   }
   else if(input->token.kind == TokenKind_Id)
   {
-    *node = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+    *node = new_id(arena, &input->src_loc, input->token.lexeme);
 
     get_next_token(arena, input);
     success = rest_of_id(arena, input, *node, node);
 #if 0
     {
-      *node = ast_new_var_occur(arena, &input->src_loc);
+      *node = new_var_occur(arena, &input->src_loc);
       AstVarOccur* var_occur = &(*node)->var_occur;
       Symbol* symbol = lookup_symbol(symbol_table, id_name, SymbolKind_Var);
       if(symbol)
@@ -551,7 +553,7 @@ factor(MemoryArena* arena, TokenStream* input,
   }
   else if(input->token.kind == TokenKind_Cast)
   {
-    *node = ast_new_cast(arena, &input->src_loc);
+    *node = new_cast(arena, &input->src_loc);
     AstCast* cast = &(*node)->cast;
 
     get_next_token(arena, input);
@@ -595,8 +597,8 @@ factor(MemoryArena* arena, TokenStream* input,
 }
 
 internal bool32
-unary_factor(MemoryArena* arena, TokenStream* input,
-             AstNode** node)
+unary_accessor(MemoryArena* arena, TokenStream* input,
+               AstNode** node)
 {
   bool32 success = true;
   *node = 0;
@@ -608,7 +610,7 @@ unary_factor(MemoryArena* arena, TokenStream* input,
      input->token.kind == TokenKind_MinusMinus ||
      input->token.kind == TokenKind_PlusPlus)
   {
-    *node = ast_new_unr_expr(arena, &input->src_loc);
+    *node = new_unr_expr(arena, &input->src_loc);
     AstUnrExpr* expr = &(*node)->unr_expr;
 
     if(input->token.kind == TokenKind_Exclam)
@@ -625,25 +627,70 @@ unary_factor(MemoryArena* arena, TokenStream* input,
       expr->op = AstOpKind_Increment;
 
     get_next_token(arena, input);
-    if(success = unary_factor(arena, input, &expr->operand))
+    if(success = unary_accessor(arena, input, &expr->operand))
     {
       if(!expr->operand)
       {
-        compile_error(&input->src_loc, "Expression expected");
+        compile_error(&input->src_loc, "Expression operand expected");
         success = false;
       }
     }
   }
   else
   {
-    success = factor(arena, input, node);
+    success = accessor(arena, input, node);
   }
   return success;
 }
 
 internal bool32
-rest_of_factors(MemoryArena* arena, TokenStream* input,
-                AstNode* left_node, AstNode** node)
+rest_of_accessor(MemoryArena* arena, TokenStream* input,
+                 AstNode* left_node, AstNode** node)
+{
+  *node = left_node;
+  bool32 success = true;
+
+  if(input->token.kind == TokenKind_Dot)
+  {
+    *node = new_bin_expr(arena, &input->src_loc);
+    AstBinExpr* expr = &(*node)->bin_expr;
+    expr->lhs = left_node;
+    expr->op = AstOpKind_MemberAccess;
+
+    get_next_token(arena, input);
+    if(success = unary_accessor(arena, input, &expr->rhs))
+    {
+      if(expr->rhs)
+      {
+        success = rest_of_accessor(arena, input, *node, node);
+      }
+      else
+      {
+        compile_error(&input->src_loc, "Expression operand expected");
+        success = false;
+      }
+    }
+  }
+
+  return success;
+}
+
+internal bool32
+factor(MemoryArena* arena, TokenStream* input,
+       AstNode** node)
+{
+  bool32 success = true;
+
+  if((success = unary_accessor(arena, input, node)) && *node)
+  {
+    success = rest_of_accessor(arena, input, *node, node);
+  }
+  return success;
+}
+
+internal bool32
+rest_of_factor(MemoryArena* arena, TokenStream* input,
+               AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
@@ -653,15 +700,12 @@ rest_of_factors(MemoryArena* arena, TokenStream* input,
      input->token.kind == TokenKind_Percent ||
      input->token.kind == TokenKind_EqualsEquals ||
      input->token.kind == TokenKind_ExclamEquals ||
-     input->token.kind == TokenKind_AmprsndAmprsnd ||
-     input->token.kind == TokenKind_PipePipe ||
      input->token.kind == TokenKind_AngleLeft ||
      input->token.kind == TokenKind_AngleLeftEquals ||
      input->token.kind == TokenKind_AngleRight ||
-     input->token.kind == TokenKind_AngleRightEquals ||
-     input->token.kind == TokenKind_Dot)
+     input->token.kind == TokenKind_AngleRightEquals)
   {
-    *node = ast_new_bin_expr(arena, &input->src_loc);
+    *node = new_bin_expr(arena, &input->src_loc);
     AstBinExpr* expr = &(*node)->bin_expr;
     expr->lhs = left_node;
 
@@ -701,35 +745,23 @@ rest_of_factors(MemoryArena* arena, TokenStream* input,
     {
       expr->op = AstOpKind_LogicGreaterEquals;
     }
-    else if(input->token.kind == TokenKind_AmprsndAmprsnd)
-    {
-      expr->op = AstOpKind_LogicAnd;
-    }
-    else if(input->token.kind == TokenKind_PipePipe)
-    {
-      expr->op = AstOpKind_LogicOr;
-    }
-    else if(input->token.kind == TokenKind_Dot)
-    {
-      expr->op = AstOpKind_MemberAccess;
-    }
     else
       assert(false);
 
     get_next_token(arena, input);
-    if(success = unary_factor(arena, input, &expr->rhs))
+    if(success = factor(arena, input, &expr->rhs))
     {
       if(expr->rhs)
       {
-        success = rest_of_factors(arena, input, *node, node);
+        success = rest_of_factor(arena, input, *node, node);
       }
-      else {
-        compile_error(&input->src_loc, "Factor expected");
+      else
+      {
+        compile_error(&input->src_loc, "Expression operand expected");
         success = false;
       }
     }
   }
-
   return success;
 }
 
@@ -739,43 +771,71 @@ term(MemoryArena* arena, TokenStream* input,
 {
   bool32 success = true;
 
-  if((success = unary_factor(arena, input, node)) && (*node))
+  if((success = factor(arena, input, node)) && *node)
   {
-    success = rest_of_factors(arena, input, *node, node);
+    success = rest_of_factor(arena, input, *node, node);
   }
   return success;
 }
 
 internal bool32
-rest_of_terms(MemoryArena* arena, TokenStream* input,
-              AstNode* left_node, AstNode** node)
+rest_of_term(MemoryArena* arena, TokenStream* input,
+             AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
 
-  if(input->token.kind == TokenKind_Plus || input->token.kind == TokenKind_Minus)
+  if(input->token.kind == TokenKind_Plus ||
+     input->token.kind == TokenKind_Minus ||
+     input->token.kind == TokenKind_Pipe ||
+     input->token.kind == TokenKind_PipePipe ||
+     input->token.kind == TokenKind_Ampersand ||
+     input->token.kind == TokenKind_AmpersandAmpersand)
   {
-    *node = ast_new_bin_expr(arena, &input->src_loc);
+    *node = new_bin_expr(arena, &input->src_loc);
     AstBinExpr* expr = &(*node)->bin_expr;
     expr->lhs = left_node;
 
     if(input->token.kind == TokenKind_Plus)
+    {
       expr->op = AstOpKind_Add;
+    }
     else if(input->token.kind == TokenKind_Minus)
+    {
       expr->op = AstOpKind_Sub;
+    }
+    else if(input->token.kind == TokenKind_Pipe)
+    {
+      expr->op = AstOpKind_BitwiseOr;
+    }
+    else if(input->token.kind == TokenKind_PipePipe)
+    {
+      expr->op = AstOpKind_LogicOr;
+    }
+    else if(input->token.kind == TokenKind_Ampersand)
+    {
+      expr->op = AstOpKind_BitwiseAnd;
+    }
+    else if(input->token.kind == TokenKind_AmpersandAmpersand)
+    {
+      expr->op = AstOpKind_LogicAnd;
+    }
     else
       assert(false);
 
     get_next_token(arena, input);
 
-    if((success = term(arena, input, &expr->rhs)) && expr->rhs)
+    if(success = term(arena, input, &expr->rhs))
     {
-      success = rest_of_terms(arena, input, *node, node);
-    }
-    else
-    {
-      compile_error(&input->src_loc, "Expression term expected");
-      success = false;
+      if(expr->rhs)
+      {
+        success = rest_of_term(arena, input, *node, node);
+      }
+      else
+      {
+        compile_error(&input->src_loc, "Expression operand expected");
+        success = false;
+      }
     }
   }
 
@@ -783,31 +843,31 @@ rest_of_terms(MemoryArena* arena, TokenStream* input,
 }
 
 internal bool32
-assignment_term(MemoryArena* arena, TokenStream* input,
-                AstNode** node)
+assignment(MemoryArena* arena, TokenStream* input,
+           AstNode** node)
 {
   bool32 success = true;
 
-  if((success = term(arena, input, node)) && (*node))
+  if((success = term(arena, input, node)) && *node)
   {
-    success = rest_of_terms(arena, input, *node, node);
+    success = rest_of_term(arena, input, *node, node);
   }
   return success;
 }
 
 internal bool32
-rest_of_assignment_terms(MemoryArena* arena, TokenStream* input,
-                         AstNode* left_node, AstNode** node)
+rest_of_assignment(MemoryArena* arena, TokenStream* input,
+                   AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
 
   if(input->token.kind == TokenKind_Equals)
   {
-    *node = ast_new_bin_expr(arena, &input->src_loc);
+    *node = new_bin_expr(arena, &input->src_loc);
     AstBinExpr* expr = &(*node)->bin_expr;
-    expr->op = AstOpKind_Assign;
     expr->lhs = left_node;
+    expr->op = AstOpKind_Assign;
 
     get_next_token(arena, input);
     if(success = expression(arena, input, &expr->rhs))
@@ -829,9 +889,9 @@ expression(MemoryArena* arena, TokenStream* input,
 {
   bool32 success = true;
 
-  if((success = assignment_term(arena, input, node)) && (*node))
+  if((success = assignment(arena, input, node)) && (*node))
   {
-    success = rest_of_assignment_terms(arena, input, *node, node);
+    success = rest_of_assignment(arena, input, *node, node);
   }
   return success;
 }
@@ -846,13 +906,13 @@ formal_arg_decl(MemoryArena* arena, TokenStream* input,
   AstNode* type = 0;
   if((success = type_id(arena, input, &type)) && type)
   {
-    *node = ast_new_var_decl(arena, &input->src_loc);
+    *node = new_var_decl(arena, &input->src_loc);
     AstVarDecl* var_decl = &(*node)->var_decl;
     var_decl->type = type;
 
     if(input->token.kind == TokenKind_Id)
     {
-      var_decl->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+      var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
       get_next_token(arena, input);
       if(input->token.kind == TokenKind_OpenBracket)
@@ -880,13 +940,13 @@ var_decl(MemoryArena* arena, TokenStream* input,
   {
     get_next_token(arena, input);
 
-    *node = ast_new_var_decl(arena, &input->src_loc);
+    *node = new_var_decl(arena, &input->src_loc);
     AstVarDecl* var_decl = &(*node)->var_decl;
     if((success = type_id(arena, input, &var_decl->type)) && var_decl->type)
     {
       if(input->token.kind == TokenKind_Id)
       {
-        var_decl->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+        var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
         get_next_token(arena, input);
         if(input->token.kind == TokenKind_OpenBracket)
@@ -927,7 +987,7 @@ while_stmt(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_While)
   {
-    *node = ast_new_while_stmt(arena, &input->src_loc);
+    *node = new_while_stmt(arena, &input->src_loc);
     AstWhileStmt* while_stmt = &(*node)->while_stmt;
 
     get_next_token(arena, input);
@@ -1019,7 +1079,7 @@ if_stmt(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_If)
   {
-    *node = ast_new_if_stmt(arena, &input->src_loc);
+    *node = new_if_stmt(arena, &input->src_loc);
     AstIfStmt* if_stmt = &(*node)->if_stmt;
 
     get_next_token(arena, input);
@@ -1088,14 +1148,14 @@ proc_decl(MemoryArena* arena, TokenStream* input,
   {
     get_next_token(arena, input);
 
-    *node = ast_new_proc(arena, &input->src_loc);
+    *node = new_proc(arena, &input->src_loc);
     AstProc* proc = &(*node)->proc;
 
     if((success = type_id(arena, input, &proc->ret_type)) && proc->ret_type)
     {
       if(input->token.kind == TokenKind_Id)
       {
-        proc->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+        proc->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
         get_next_token(arena, input);
         if(input->token.kind == TokenKind_OpenParens)
@@ -1165,7 +1225,7 @@ include_stmt(MemoryArena* arena, TokenStream* input,
 
     if(input->token.kind == TokenKind_String)
     {
-      *node = ast_new_include_stmt(arena, &input->src_loc);
+      *node = new_include_stmt(arena, &input->src_loc);
       AstIncludeStmt* inc_stmt = &(*node)->inc_stmt;
 
       String str = {0};
@@ -1220,9 +1280,9 @@ enum_decl(MemoryArena* arena, TokenStream* input,
 
     if(input->token.kind == TokenKind_Id)
     {
-      *node = ast_new_enum(arena, &input->src_loc);
+      *node = new_enum(arena, &input->src_loc);
       AstEnum* enum_ = &(*node)->enum_;
-      enum_->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+      enum_->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
       get_next_token(arena, input);
       if(input->token.kind == TokenKind_OpenBrace)
@@ -1235,7 +1295,7 @@ enum_decl(MemoryArena* arena, TokenStream* input,
           member = 0;
           if(input->token.kind == TokenKind_Id)
           {
-            member = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+            member = new_id(arena, &input->src_loc, input->token.lexeme);
             list_append(arena, &enum_->member_list, member);
 
             get_next_token(arena, input);
@@ -1284,9 +1344,9 @@ struct_decl(MemoryArena* arena, TokenStream* input,
 
     if(input->token.kind == TokenKind_Id)
     {
-      *node = ast_new_struct(arena, &input->src_loc);
+      *node = new_struct(arena, &input->src_loc);
       AstStruct* struct_ = &(*node)->struct_;
-      struct_->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+      struct_->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
       get_next_token(arena, input);
       if(input->token.kind == TokenKind_OpenBrace)
@@ -1300,13 +1360,13 @@ struct_decl(MemoryArena* arena, TokenStream* input,
           AstNode* type = 0;
           if((success = type_id(arena, input, &type)) && type)
           {
-            member = ast_new_var_decl(arena, &input->src_loc);
+            member = new_var_decl(arena, &input->src_loc);
             AstVarDecl* var_decl = &member->var_decl;
             var_decl->type = type;
 
             if(input->token.kind == TokenKind_Id)
             {
-              var_decl->id = ast_new_id(arena, &input->src_loc, input->token.lexeme);
+              var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
               get_next_token(arena, input);
               if(input->token.kind == TokenKind_OpenBracket)
@@ -1411,7 +1471,7 @@ return_stmt(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_Return)
   {
-    *node = ast_new_return_stmt(arena, &input->src_loc);
+    *node = new_return_stmt(arena, &input->src_loc);
 
     get_next_token(arena, input);
     if(success = expression(arena, input, &(*node)->ret_stmt.expr))
@@ -1427,7 +1487,7 @@ return_stmt(MemoryArena* arena, TokenStream* input,
 
         if(ret_expr)
         {
-          AstNode* var_node = ast_new_var_occur(arena, &input->src_loc);
+          AstNode* var_node = new_var_occur(arena, &input->src_loc);
           AstVarOccur* var_occur = &var_node->var_occur;
           var_occur->data = &ret_proc->ret_var.data;
           var_occur->decl_block_offset = depth;
@@ -1442,7 +1502,7 @@ return_stmt(MemoryArena* arena, TokenStream* input,
             list_append(arena, &enclosing_block->local_occurs, var_node);
           }
 
-          AstNode* assgn_node = ast_new_bin_expr(arena, &input->src_loc);
+          AstNode* assgn_node = new_bin_expr(arena, &input->src_loc);
           AstBinExpr* assgn_expr = &assgn_node->bin_expr;
           assgn_expr->op = AstOpKind_Assign;
           assgn_expr->left_operand = var_node;
@@ -1472,7 +1532,7 @@ break_stmt(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_Break)
   {
-    *node = ast_new_break_stmt(arena, &input->src_loc);
+    *node = new_break_stmt(arena, &input->src_loc);
     get_next_token(arena, input);
     /*
     AstBreakStmt* break_stmt = &(*node)->break_stmt;
@@ -1532,7 +1592,7 @@ statement(MemoryArena* arena, TokenStream* input,
   else if(input->token.kind == TokenKind_Semicolon)
   {
     get_next_token(arena, input);
-    *node = ast_new_empty_stmt(arena, &input->src_loc);
+    *node = new_empty_stmt(arena, &input->src_loc);
   }
   else
   {
@@ -1549,7 +1609,7 @@ parse(MemoryArena* arena, TokenStream* input, AstNode** node)
 {
   bool32 success = true;
 
-  *node = ast_new_module(arena, &input->src_loc);
+  *node = new_module(arena, &input->src_loc);
 
   if(success = module(arena, input, &(*node)->module.node_list))
   {

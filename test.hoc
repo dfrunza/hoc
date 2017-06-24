@@ -9,6 +9,6 @@ include "hlib/minmax.hoc";
 
 proc int main()
 {
-  cast(int*)a.b + c.d * e.f;
+  x = *<int*>a;
 }
 

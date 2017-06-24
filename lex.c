@@ -229,6 +229,25 @@ loop:
     }
     token->lexeme = simple_lexeme_list[token->kind];
   }
+  else if(c == '<')
+  {
+    token->kind = TokenKind_AngleLeft;
+    ++input->cursor;
+    if(is_unary_leading_token(get_prev_token(input, 0)->kind))
+    {
+      token->kind = TokenKind_Cast;
+    }
+    else
+    {
+      c = *(++input->cursor);
+      if(c == '=')
+      {
+        token->kind = TokenKind_AngleLeftEquals;
+        ++input->cursor;
+      }
+    }
+    token->lexeme = simple_lexeme_list[token->kind];
+  }
   else if(c == '&')
   {
     token->kind = TokenKind_Ampersand;
@@ -309,17 +328,6 @@ loop:
     if(c == '=')
     {
       token->kind = TokenKind_EqualsEquals;
-      ++input->cursor;
-    }
-    token->lexeme = simple_lexeme_list[token->kind];
-  }
-  else if(c == '<')
-  {
-    token->kind = TokenKind_AngleLeft;
-    c = *(++input->cursor);
-    if(c == '=')
-    {
-      token->kind = TokenKind_AngleLeftEquals;
       ++input->cursor;
     }
     token->lexeme = simple_lexeme_list[token->kind];

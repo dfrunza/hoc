@@ -597,40 +597,30 @@ unary_expr(MemoryArena* arena, TokenStream* input,
     AstCast* cast = &(*node)->cast;
 
     get_next_token(arena, input);
-    if(input->token.kind == TokenKind_OpenParens)
+    if((success = type_id(arena, input, &cast->type)) && &cast->type)
     {
-      get_next_token(arena, input);
-
-      if((success = type_id(arena, input, &cast->type)) && &cast->type)
+      if(input->token.kind == TokenKind_AngleRight)
       {
-        if(input->token.kind == TokenKind_CloseParens)
-        {
-          get_next_token(arena, input);
+        get_next_token(arena, input);
 
-          if(success = factor(arena, input, &cast->expr))
-          {
-            if(!cast->expr)
-            {
-              compile_error(&input->src_loc, "Expression operand expected");
-              success = false;
-            }
-          }
-        }
-        else
+        if(success = factor(arena, input, &cast->expr))
         {
-          compile_error(&input->src_loc, "Missing `)`");
-          success = false;
+          if(!cast->expr)
+          {
+            compile_error(&input->src_loc, "Expression operand expected");
+            success = false;
+          }
         }
       }
       else
       {
-        compile_error(&input->src_loc, "Invalid type expression in cast(..)");
+        compile_error(&input->src_loc, "Missing `>`");
         success = false;
       }
     }
     else
     {
-      compile_error(&input->src_loc, "Expected `(`");
+      compile_error(&input->src_loc, "Invalid type expression");
       success = false;
     }
   }

@@ -1,9 +1,5 @@
 #include "syntax.h"
 
-internal bool32 expression(MemoryArena*, TokenStream*, AstNode**);
-internal bool32 statement(MemoryArena*, TokenStream*, AstNode**);
-internal bool32 module(MemoryArena*, TokenStream*, List*);
-
 internal bool32
 is_logical_operator(AstOpKind op)
 {
@@ -551,54 +547,13 @@ accessor(MemoryArena* arena, TokenStream* input,
     }
 #endif
   }
-  else if(input->token.kind == TokenKind_Cast)
-  {
-    *node = new_cast(arena, &input->src_loc);
-    AstCast* cast = &(*node)->cast;
-
-    get_next_token(arena, input);
-    if(input->token.kind == TokenKind_OpenParens)
-    {
-      get_next_token(arena, input);
-
-      if((success = type_id(arena, input, &cast->type)) && (&cast->type))
-      {
-        if(input->token.kind == TokenKind_CloseParens)
-        {
-          get_next_token(arena, input);
-
-          success = expression(arena, input, &cast->expr);
-          if(!cast->expr)
-          {
-            compile_error(&input->src_loc, "Invalid expression after cast(..)");
-            success = false;
-          }
-        }
-        else
-        {
-          compile_error(&input->src_loc, "Missing `)`");
-          success = false;
-        }
-      }
-      else
-      {
-        compile_error(&input->src_loc, "Invalid type expression in cast(..)");
-        success = false;
-      }
-    }
-    else
-    {
-      compile_error(&input->src_loc, "Missing `(`");
-      success = false;
-    }
-  }
 
   return success;
 }
 
 internal bool32
-unary_accessor(MemoryArena* arena, TokenStream* input,
-               AstNode** node)
+unary_expr(MemoryArena* arena, TokenStream* input,
+           AstNode** node)
 {
   bool32 success = true;
   *node = 0;
@@ -627,13 +582,56 @@ unary_accessor(MemoryArena* arena, TokenStream* input,
       expr->op = AstOpKind_Increment;
 
     get_next_token(arena, input);
-    if(success = unary_accessor(arena, input, &expr->operand))
+    if(success = unary_expr(arena, input, &expr->operand))
     {
       if(!expr->operand)
       {
         compile_error(&input->src_loc, "Expression operand expected");
         success = false;
       }
+    }
+  }
+  else if(input->token.kind == TokenKind_Cast)
+  {
+    *node = new_cast(arena, &input->src_loc);
+    AstCast* cast = &(*node)->cast;
+
+    get_next_token(arena, input);
+    if(input->token.kind == TokenKind_OpenParens)
+    {
+      get_next_token(arena, input);
+
+      if((success = type_id(arena, input, &cast->type)) && &cast->type)
+      {
+        if(input->token.kind == TokenKind_CloseParens)
+        {
+          get_next_token(arena, input);
+
+          if(success = factor(arena, input, &cast->expr))
+          {
+            if(!cast->expr)
+            {
+              compile_error(&input->src_loc, "Expression operand expected");
+              success = false;
+            }
+          }
+        }
+        else
+        {
+          compile_error(&input->src_loc, "Missing `)`");
+          success = false;
+        }
+      }
+      else
+      {
+        compile_error(&input->src_loc, "Invalid type expression in cast(..)");
+        success = false;
+      }
+    }
+    else
+    {
+      compile_error(&input->src_loc, "Expected `(`");
+      success = false;
     }
   }
   else
@@ -658,7 +656,7 @@ rest_of_accessor(MemoryArena* arena, TokenStream* input,
     expr->op = AstOpKind_MemberAccess;
 
     get_next_token(arena, input);
-    if(success = unary_accessor(arena, input, &expr->rhs))
+    if(success = unary_expr(arena, input, &expr->rhs))
     {
       if(expr->rhs)
       {
@@ -681,7 +679,7 @@ factor(MemoryArena* arena, TokenStream* input,
 {
   bool32 success = true;
 
-  if((success = unary_accessor(arena, input, node)) && *node)
+  if((success = unary_expr(arena, input, node)) && *node)
   {
     success = rest_of_accessor(arena, input, *node, node);
   }

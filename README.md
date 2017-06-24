@@ -1,4 +1,5 @@
 # hoc
-Hoc Programming Language and Compiler
+HoC Compiler
 
-Student project based on the book *Compilers: Principles, Techniques and Tools, by Aho et al.*
+Student project guided by *Compilers: Principles, Techniques and Tools, by Aho et al.*
+

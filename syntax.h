@@ -18,6 +18,7 @@ typedef enum
   AstOpKind_Assign,
   AstOpKind_Deref,
   AstOpKind_AddressOf,
+  AstOpKind_MemberAccess,
   
   AstOpKind_LogicEquals,
   AstOpKind_LogicNotEquals,
@@ -46,6 +47,7 @@ DEBUG_AstOpKind_tags[] =
   "AstOpKind_Assign",
   "AstOpKind_Deref",
   "AstOpKind_AddressOf",
+  "AstOpKind_MemberAccess",
   "AstOpKind_LogicEquals",
   "AstOpKind_LogicNotEquals",
   "AstOpKind_LogicLess",
@@ -81,7 +83,7 @@ typedef enum
   AstNodeKind_Array,
   AstNodeKind_Pointer,
   AstNodeKind_Struct,
-  AstNodeKind_Accessor,
+//  AstNodeKind_Accessor,
   AstNodeKind_Enum,
 
   AstNodeKind__Count,
@@ -184,8 +186,8 @@ AstVarOccur;
 typedef struct
 {
   AstOpKind op;
-  AstNode* left_operand;
-  AstNode* right_operand;
+  AstNode* lhs;
+  AstNode* rhs;
 
   /*
   char* label_end; // for boolean expressions

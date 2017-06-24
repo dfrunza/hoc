@@ -1,3 +1,45 @@
+////////////////////////////////////////////////////////////////////////////////
+//  Symbol table
+//
+
+typedef struct
+{
+  Symbol* symbol;
+  int scope_id;
+  int last_scope_id;
+  int nesting_depth;
+  int active_scopes[32];
+  MemoryArena* arena;
+}
+SymbolTable;
+
+typedef enum
+{
+  SymbolKind__Null,
+  SymbolKind_Keyword,
+  SymbolKind_Proc,
+  SymbolKind_Type,
+  SymbolKind_Var,
+}
+SymbolKind;
+
+typedef struct Symbol
+{
+  SymbolKind kind;
+  Symbol* next_symbol;
+
+  char* name;
+  int block_id;
+  int nesting_depth;
+
+  union {
+    TokenKind keyword;
+    AstNode* node;
+    Type* type;
+  };
+}
+Symbol;
+
 int
 block_find_owner(AstBlock* block, AstNodeKind kind, AstNode** result)
 {

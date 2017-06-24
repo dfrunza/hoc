@@ -1,8 +1,8 @@
 #pragma once
+#include "lib.h"
+#include "lex.h"
 
-////////////////////////////////////////////////////////////////////////////////
-//  Abstract syntax tree
-//
+typedef struct AstNode AstNode;
 
 typedef enum
 {
@@ -422,50 +422,6 @@ typedef struct AstNode
 }
 AstNode;
 
-////////////////////////////////////////////////////////////////////////////////
-//  Symbol table
-//
-
-typedef struct
-{
-  Symbol* symbol;
-  int scope_id;
-  int last_scope_id;
-  int nesting_depth;
-  int active_scopes[32];
-  MemoryArena* arena;
-}
-SymbolTable;
-
-typedef enum
-{
-  SymbolKind__Null,
-  SymbolKind_Keyword,
-  SymbolKind_Proc,
-  SymbolKind_Type,
-  SymbolKind_Var,
-}
-SymbolKind;
-
-typedef struct Symbol
-{
-  SymbolKind kind;
-  Symbol* next_symbol;
-
-  char* name;
-  int block_id;
-  int nesting_depth;
-
-  union {
-    TokenKind keyword;
-    AstNode* node;
-    Type* type;
-  };
-}
-Symbol;
-
-bool32 parse_expression(MemoryArena*, TokenStream*, AstNode**);
-bool32 parse_statement(MemoryArena*, TokenStream*, AstNode**);
-bool32 parse_module(MemoryArena*, TokenStream*, List*);
+bool32 parse(MemoryArena*, TokenStream*, AstNode**);
 void DEBUG_print_ast_node(String*, int, AstNode*, char*);
 

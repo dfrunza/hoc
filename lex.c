@@ -1,4 +1,31 @@
-Token*
+#include "lex.h"
+
+internal Token keyword_list[] = 
+{
+  {TokenKind_If, "if"},
+  {TokenKind_Else, "else"},
+  {TokenKind_While, "while"},
+  {TokenKind_Return, "return"},
+  {TokenKind_Break, "break"},
+  {TokenKind_Include, "include"},
+  {TokenKind_True, "true"},
+  {TokenKind_False, "false"},
+  {TokenKind_Cast, "cast"},
+  {TokenKind_Proc, "proc"},
+  {TokenKind_Var, "var"},
+  {TokenKind_Struct, "struct"},
+  {TokenKind_Enum, "enum"},
+  {TokenKind__Null, 0}, // terminator
+};
+
+internal char* simple_lexeme_list[] =
+{
+  "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "\\",
+  "+", "++", "-", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||", 
+  0,
+};
+
+internal Token*
 lookup_keyword(Token* list, char* lexeme)
 {
   Token* result = 0;
@@ -17,20 +44,20 @@ lookup_keyword(Token* list, char* lexeme)
   return result;
 }
 
-Token*
+internal Token*
 get_prev_token(TokenStream* input, int index)
 {
   assert(index == 0 || index == 1);
   return &input->prev_tokens[index];
 }
 
-bool32
+internal bool32
 token_is_keyword(TokenKind token_kind)
 {
   return (token_kind > TokenKind__KeywordBegin) && (token_kind < TokenKind__KeywordEnd);
 }
 
-char*
+internal char*
 lexeme_install_id(MemoryArena* arena, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
@@ -42,7 +69,7 @@ lexeme_install_id(MemoryArena* arena, char* begin_char, char* end_char)
   return lexeme;
 }
 
-char*
+internal char*
 lexeme_install_dquot_str(MemoryArena* arena, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
@@ -73,7 +100,7 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
   src_loc->file_path = file_path;
 }
 
-bool32
+internal bool32
 is_unary_leading_token(TokenKind token)
 {
   return token == TokenKind_Equals ||

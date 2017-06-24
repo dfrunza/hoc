@@ -1,53 +1,8 @@
-#pragma once
-#include <stdio.h>
-#include <stdlib.h>
-#include <windows.h>
+#include "lib.h"
 
-typedef unsigned char uchar;
-typedef unsigned short ushort;
-typedef unsigned int uint;
-typedef int bool32;
+internal bool32
+DEBUG_mem_clear_zero = true;
 
-typedef char int8;
-typedef short int16;
-typedef int int32;
-typedef long long int64;
-typedef unsigned char uint8;
-typedef unsigned short uint16;
-typedef unsigned int uint32;
-typedef unsigned long long uint64;
-typedef float float32;
-typedef double float64;
-
-#define KILOBYTE (1024ll)
-#define MEGABYTE (1024*KILOBYTE)
-#define false 0
-#define true  1
-#define inline __inline
-#define internal static
-
-internal bool32 DEBUG_mem_clear_zero = true;
-
-typedef struct
-{
-  uint8* base;
-  uint8* free;
-  uint8* limit;
-}
-MemoryArena;
-
-typedef struct
-{
-  char* head;
-  char* end;
-  MemoryArena* arena;
-}
-String;
-
-#define sizeof_array(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
-#define obj(STRUCT, FIELD) (&((STRUCT)->FIELD))
-
-/* WARNING: Maximum length of 'message' is 128 chars. */
 void
 DEBUG_output_short_cstr(char* message, ...)
 {
@@ -74,24 +29,6 @@ error(char* message, ...)
   va_end(args);
 }
 
-#define assert(EXPR)\
-if(!(EXPR))\
-{\
-  fprintf(stderr, "Assertion failed: %s\n", #EXPR);\
-  fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);\
-  fflush(stderr);\
-  *(int*)0 = 0;\
-}\
-
-int
-maxi(int a, int b)
-{
-  int m = a;
-  if(a < b)
-    m = b;
-  return m;
-}
-
 bool32
 char_is_letter(char ch)
 {
@@ -113,8 +50,6 @@ mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
   assert(arena->base <= (uint8*)ptr);
   assert(arena->free + elem_size <= arena->limit);
 }
-
-#define mem_zero(VAR) mem_zero_(VAR, sizeof(VAR))
 
 void
 mem_zero_(void* mem, size_t len)
@@ -172,9 +107,6 @@ mem_push_arena(MemoryArena* arena, size_t size)
   return sub_arena;
 }
 
-#define mem_push_struct(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT))
-#define mem_push_size(ARENA, COUNT) (mem_push_struct_(ARENA, sizeof(uint8), COUNT))
-
 void*
 mem_push_struct_(MemoryArena* arena, size_t elem_size, size_t count)
 {
@@ -197,8 +129,6 @@ arena_new(int size)
   return arena;
 }
 
-// The function assumes that all characters in the input string are digits,
-// except for the first, which could be the negative sign '-'
 bool32
 cstr_to_int(char* string, int* integer)
 {
@@ -364,7 +294,6 @@ str_init(String* string, MemoryArena* arena)
   string->end = string->head;
 }
 
-//NOTE: The 0-terminator is not counted.
 uint
 str_len(String* string)
 {
@@ -445,7 +374,6 @@ path_find_leaf(char* file_path)
   return leaf;
 }
 
-/* Writes over the 'file_path' string */
 char*
 path_make_stem(char* file_path)
 {
@@ -527,23 +455,6 @@ stdin_read(char buf[], int buf_size)
   return (int)bytes_read;
 }
 
-typedef struct ListItem_
-{
-  void* elem;
-  struct ListItem_* next;
-  struct ListItem_* prev;
-}
-ListItem;
-
-typedef struct
-{
-  ListItem** last;
-  ListItem** next_slot;
-  int count;
-  ListItem* first;
-}
-List;
-
 inline void
 list_init(List* list)
 {
@@ -584,9 +495,17 @@ list_append(MemoryArena* arena, List* list, void* elem)
   list_append_item(list, item);
 }
 
-inline ListItem*
-list_first_item(List* list)
+void
+compile_error(SourceLocation* src_loc, char* message, ...)
 {
-  return list->first;
-}
+  va_list args;
 
+  fprintf(stderr, "%s(%d) : ", src_loc->file_path, src_loc->line_nr);
+
+  va_start(args, message);
+  vfprintf(stderr, message, args);
+  fprintf(stderr, "\n");
+  va_end(args);
+
+  //DebugBreak();
+}

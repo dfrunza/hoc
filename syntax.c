@@ -1,10 +1,16 @@
-bool32
+#include "syntax.h"
+
+internal bool32 expression(MemoryArena*, TokenStream*, AstNode**);
+internal bool32 statement(MemoryArena*, TokenStream*, AstNode**);
+internal bool32 module(MemoryArena*, TokenStream*, List*);
+
+internal bool32
 is_logical_operator(AstOpKind op)
 {
   return op >= AstOpKind_LogicEquals && op <= AstOpKind_LogicNot;
 }
 
-AstNode*
+internal AstNode*
 ast_new_node(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -12,7 +18,7 @@ ast_new_node(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_module(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -42,7 +48,7 @@ ast_new_block(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 */
-AstNode*
+internal AstNode*
 ast_new_block(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -52,7 +58,7 @@ ast_new_block(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_id(MemoryArena* arena, SourceLocation* src_loc, char* name)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -62,7 +68,7 @@ ast_new_id(MemoryArena* arena, SourceLocation* src_loc, char* name)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_enum(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -72,7 +78,7 @@ ast_new_enum(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_pointer(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -81,7 +87,7 @@ ast_new_pointer(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_call(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -91,7 +97,7 @@ ast_new_call(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_array(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -100,7 +106,7 @@ ast_new_array(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_proc(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -110,7 +116,7 @@ ast_new_proc(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_bin_expr(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -119,7 +125,7 @@ ast_new_bin_expr(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_unr_expr(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -128,7 +134,7 @@ ast_new_unr_expr(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_int_literal(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -138,7 +144,7 @@ ast_new_int_literal(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_float_literal(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -148,7 +154,7 @@ ast_new_float_literal(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_bool_literal(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -158,7 +164,7 @@ ast_new_bool_literal(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_string_literal(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -168,7 +174,7 @@ ast_new_string_literal(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_var_decl(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -177,7 +183,7 @@ ast_new_var_decl(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_while_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -186,7 +192,7 @@ ast_new_while_stmt(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_if_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -195,7 +201,7 @@ ast_new_if_stmt(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_return_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -204,7 +210,7 @@ ast_new_return_stmt(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_break_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -213,7 +219,7 @@ ast_new_break_stmt(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_include_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -223,7 +229,7 @@ ast_new_include_stmt(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_empty_stmt(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -232,7 +238,7 @@ ast_new_empty_stmt(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_struct(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -242,7 +248,7 @@ ast_new_struct(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-AstNode*
+internal AstNode*
 ast_new_cast(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -251,7 +257,7 @@ ast_new_cast(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-void
+internal void
 expect_semicolon(MemoryArena* arena, TokenStream* input, bool32* success)
 {
   if(input->token.kind == TokenKind_Semicolon)
@@ -265,9 +271,9 @@ expect_semicolon(MemoryArena* arena, TokenStream* input, bool32* success)
   }
 }
 
-bool32
-parse_rest_of_type_id(MemoryArena* arena, TokenStream* input,
-                      AstNode* expr, AstNode** node)
+internal bool32
+rest_of_type_id(MemoryArena* arena, TokenStream* input,
+                AstNode* expr, AstNode** node)
 {
   *node = expr;
   bool32 success = true;
@@ -280,14 +286,14 @@ parse_rest_of_type_id(MemoryArena* arena, TokenStream* input,
     ptr->expr = expr;
 
     get_next_token(arena, input);
-    success = parse_rest_of_type_id(arena, input, *node, node);
+    success = rest_of_type_id(arena, input, *node, node);
   }
   return true;
 }
 
-bool32
-parse_type_id(MemoryArena* arena, TokenStream* input,
-              AstNode** node)
+internal bool32
+type_id(MemoryArena* arena, TokenStream* input,
+        AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -299,20 +305,20 @@ parse_type_id(MemoryArena* arena, TokenStream* input,
     get_next_token(arena, input);
     if(input->token.kind == TokenKind_Star)
     {
-      success = parse_rest_of_type_id(arena, input, *node, node);
+      success = rest_of_type_id(arena, input, *node, node);
     }
   }
   return success;
 }
 
-bool32
-parse_actual_argument_list(MemoryArena* arena, TokenStream* input,
-                           List* arg_list)
+internal bool32
+actual_argument_list(MemoryArena* arena, TokenStream* input,
+                     List* arg_list)
 {
   bool32 success = true;
   
   AstNode* arg_node = 0;
-  success = parse_expression(arena, input, &arg_node);
+  success = expression(arena, input, &arg_node);
   if(success && arg_node)
   {
     list_append(arena, arg_list, arg_node);
@@ -320,15 +326,15 @@ parse_actual_argument_list(MemoryArena* arena, TokenStream* input,
     if(input->token.kind == TokenKind_Comma)
     {
       get_next_token(arena, input);
-      success = parse_actual_argument_list(arena, input, arg_list);
+      success = actual_argument_list(arena, input, arg_list);
     }
   }
   return success;
 }
 
-bool32
-parse_statement_list(MemoryArena* arena, TokenStream* input,
-                     List* stmt_list)
+internal bool32
+statement_list(MemoryArena* arena, TokenStream* input,
+               List* stmt_list)
 {
   bool32 success = true;
 
@@ -338,7 +344,7 @@ parse_statement_list(MemoryArena* arena, TokenStream* input,
   AstNode* stmt_node = 0;
   do
   {
-    if((success = parse_statement(arena, input, &stmt_node)) && stmt_node)
+    if((success = statement(arena, input, &stmt_node)) && stmt_node)
     {
       list_append(arena, stmt_list, stmt_node);
     }
@@ -347,9 +353,9 @@ parse_statement_list(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_block(MemoryArena* arena, TokenStream* input,
-            AstNode** node)
+internal bool32
+block(MemoryArena* arena, TokenStream* input,
+      AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -359,7 +365,7 @@ parse_block(MemoryArena* arena, TokenStream* input,
     *node = ast_new_block(arena, &input->src_loc);
 
     get_next_token(arena, input);
-    if(success = parse_statement_list(arena, input, &(*node)->block.stmt_list))
+    if(success = statement_list(arena, input, &(*node)->block.stmt_list))
     {
       if(input->token.kind == TokenKind_CloseBrace)
       {
@@ -376,9 +382,9 @@ parse_block(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_array_index(MemoryArena* arena, TokenStream* input,
-                  AstNode* expr, AstNode** node)
+internal bool32
+array_index(MemoryArena* arena, TokenStream* input,
+            AstNode* expr, AstNode** node)
 {
   *node = expr;
   bool32 success = true;
@@ -390,13 +396,13 @@ parse_array_index(MemoryArena* arena, TokenStream* input,
     array->expr = expr;
 
     get_next_token(arena, input);
-    if(success = parse_expression(arena, input, &array->index))
+    if(success = expression(arena, input, &array->index))
     {
       if(input->token.kind == TokenKind_CloseBracket)
       {
         get_next_token(arena, input);
 
-        success = parse_array_index(arena, input, *node, node);
+        success = array_index(arena, input, *node, node);
       }
       else
       {
@@ -408,9 +414,9 @@ parse_array_index(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_rest_of_id(MemoryArena* arena, TokenStream* input,
-                 AstNode* id, AstNode** node)
+internal bool32
+rest_of_id(MemoryArena* arena, TokenStream* input,
+           AstNode* id, AstNode** node)
 {
   *node = id;
   bool32 success = true;
@@ -422,7 +428,7 @@ parse_rest_of_id(MemoryArena* arena, TokenStream* input,
     call->id = id;
 
     get_next_token(arena, input);
-    if(success = parse_actual_argument_list(arena, input, &call->actual_args))
+    if(success = actual_argument_list(arena, input, &call->actual_args))
     {
       if(input->token.kind == TokenKind_CloseParens)
       {
@@ -437,15 +443,15 @@ parse_rest_of_id(MemoryArena* arena, TokenStream* input,
   }
   else if(input->token.kind == TokenKind_OpenBracket)
   {
-    success = parse_array_index(arena, input, *node, node);
+    success = array_index(arena, input, *node, node);
   }
 
   return success;
 }
 
-bool32
-parse_factor(MemoryArena* arena, TokenStream* input,
-             AstNode** node)
+internal bool32
+factor(MemoryArena* arena, TokenStream* input,
+       AstNode** node)
 {
   bool32 success = true;
 
@@ -453,7 +459,7 @@ parse_factor(MemoryArena* arena, TokenStream* input,
   {
     get_next_token(arena, input);
 
-    if(success = parse_expression(arena, input, node))
+    if(success = expression(arena, input, node))
     {
       if(input->token.kind == TokenKind_CloseParens)
       {
@@ -509,7 +515,7 @@ parse_factor(MemoryArena* arena, TokenStream* input,
     *node = ast_new_id(arena, &input->src_loc, input->token.lexeme);
 
     get_next_token(arena, input);
-    success = parse_rest_of_id(arena, input, *node, node);
+    success = rest_of_id(arena, input, *node, node);
 #if 0
     {
       *node = ast_new_var_occur(arena, &input->src_loc);
@@ -553,13 +559,13 @@ parse_factor(MemoryArena* arena, TokenStream* input,
     {
       get_next_token(arena, input);
 
-      if((success = parse_type_id(arena, input, &cast->type)) && (&cast->type))
+      if((success = type_id(arena, input, &cast->type)) && (&cast->type))
       {
         if(input->token.kind == TokenKind_CloseParens)
         {
           get_next_token(arena, input);
 
-          success = parse_expression(arena, input, &cast->expr);
+          success = expression(arena, input, &cast->expr);
           if(!cast->expr)
           {
             compile_error(&input->src_loc, "Invalid expression after cast(..)");
@@ -588,9 +594,9 @@ parse_factor(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_unary_factor(MemoryArena* arena, TokenStream* input,
-                   AstNode** node)
+internal bool32
+unary_factor(MemoryArena* arena, TokenStream* input,
+             AstNode** node)
 {
   bool32 success = true;
   *node = 0;
@@ -619,7 +625,7 @@ parse_unary_factor(MemoryArena* arena, TokenStream* input,
       expr->op = AstOpKind_Increment;
 
     get_next_token(arena, input);
-    if(success = parse_unary_factor(arena, input, &expr->operand))
+    if(success = unary_factor(arena, input, &expr->operand))
     {
       if(!expr->operand)
       {
@@ -630,14 +636,14 @@ parse_unary_factor(MemoryArena* arena, TokenStream* input,
   }
   else
   {
-    success = parse_factor(arena, input, node);
+    success = factor(arena, input, node);
   }
   return success;
 }
 
-bool32
-parse_rest_of_factors(MemoryArena* arena, TokenStream* input,
-                      AstNode* left_node, AstNode** node)
+internal bool32
+rest_of_factors(MemoryArena* arena, TokenStream* input,
+                AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
@@ -711,11 +717,11 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input,
       assert(false);
 
     get_next_token(arena, input);
-    if(success = parse_unary_factor(arena, input, &expr->rhs))
+    if(success = unary_factor(arena, input, &expr->rhs))
     {
       if(expr->rhs)
       {
-        success = parse_rest_of_factors(arena, input, *node, node);
+        success = rest_of_factors(arena, input, *node, node);
       }
       else {
         compile_error(&input->src_loc, "Factor expected");
@@ -727,22 +733,22 @@ parse_rest_of_factors(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_term(MemoryArena* arena, TokenStream* input,
-           AstNode** node)
+internal bool32
+term(MemoryArena* arena, TokenStream* input,
+     AstNode** node)
 {
   bool32 success = true;
 
-  if((success = parse_unary_factor(arena, input, node)) && (*node))
+  if((success = unary_factor(arena, input, node)) && (*node))
   {
-    success = parse_rest_of_factors(arena, input, *node, node);
+    success = rest_of_factors(arena, input, *node, node);
   }
   return success;
 }
 
-bool32
-parse_rest_of_terms(MemoryArena* arena, TokenStream* input,
-                    AstNode* left_node, AstNode** node)
+internal bool32
+rest_of_terms(MemoryArena* arena, TokenStream* input,
+              AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
@@ -762,9 +768,9 @@ parse_rest_of_terms(MemoryArena* arena, TokenStream* input,
 
     get_next_token(arena, input);
 
-    if((success = parse_term(arena, input, &expr->rhs)) && expr->rhs)
+    if((success = term(arena, input, &expr->rhs)) && expr->rhs)
     {
-      success = parse_rest_of_terms(arena, input, *node, node);
+      success = rest_of_terms(arena, input, *node, node);
     }
     else
     {
@@ -776,22 +782,22 @@ parse_rest_of_terms(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_assignment_term(MemoryArena* arena, TokenStream* input,
-                      AstNode** node)
+internal bool32
+assignment_term(MemoryArena* arena, TokenStream* input,
+                AstNode** node)
 {
   bool32 success = true;
 
-  if((success = parse_term(arena, input, node)) && (*node))
+  if((success = term(arena, input, node)) && (*node))
   {
-    success = parse_rest_of_terms(arena, input, *node, node);
+    success = rest_of_terms(arena, input, *node, node);
   }
   return success;
 }
 
-bool32
-parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input,
-                               AstNode* left_node, AstNode** node)
+internal bool32
+rest_of_assignment_terms(MemoryArena* arena, TokenStream* input,
+                         AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
@@ -804,7 +810,7 @@ parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input,
     expr->lhs = left_node;
 
     get_next_token(arena, input);
-    if(success = parse_expression(arena, input, &expr->rhs))
+    if(success = expression(arena, input, &expr->rhs))
     {
       if(!expr->rhs)
       {
@@ -817,28 +823,28 @@ parse_rest_of_assignment_terms(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_expression(MemoryArena* arena, TokenStream* input,
-                 AstNode** node)
+internal bool32
+expression(MemoryArena* arena, TokenStream* input,
+           AstNode** node)
 {
   bool32 success = true;
 
-  if((success = parse_assignment_term(arena, input, node)) && (*node))
+  if((success = assignment_term(arena, input, node)) && (*node))
   {
-    success = parse_rest_of_assignment_terms(arena, input, *node, node);
+    success = rest_of_assignment_terms(arena, input, *node, node);
   }
   return success;
 }
 
-bool32
-parse_formal_arg_decl(MemoryArena* arena, TokenStream* input,
-                      AstNode** node)
+internal bool32
+formal_arg_decl(MemoryArena* arena, TokenStream* input,
+                AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
   AstNode* type = 0;
-  if((success = parse_type_id(arena, input, &type)) && type)
+  if((success = type_id(arena, input, &type)) && type)
   {
     *node = ast_new_var_decl(arena, &input->src_loc);
     AstVarDecl* var_decl = &(*node)->var_decl;
@@ -851,7 +857,7 @@ parse_formal_arg_decl(MemoryArena* arena, TokenStream* input,
       get_next_token(arena, input);
       if(input->token.kind == TokenKind_OpenBracket)
       {
-        success = parse_array_index(arena, input, var_decl->id, &var_decl->id);
+        success = array_index(arena, input, var_decl->id, &var_decl->id);
       }
     }
     else
@@ -863,9 +869,9 @@ parse_formal_arg_decl(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_var_decl(MemoryArena* arena, TokenStream* input,
-               AstNode** node)
+internal bool32
+var_decl(MemoryArena* arena, TokenStream* input,
+         AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -876,7 +882,7 @@ parse_var_decl(MemoryArena* arena, TokenStream* input,
 
     *node = ast_new_var_decl(arena, &input->src_loc);
     AstVarDecl* var_decl = &(*node)->var_decl;
-    if((success = parse_type_id(arena, input, &var_decl->type)) && var_decl->type)
+    if((success = type_id(arena, input, &var_decl->type)) && var_decl->type)
     {
       if(input->token.kind == TokenKind_Id)
       {
@@ -885,14 +891,14 @@ parse_var_decl(MemoryArena* arena, TokenStream* input,
         get_next_token(arena, input);
         if(input->token.kind == TokenKind_OpenBracket)
         {
-          success = parse_array_index(arena, input, var_decl->id, &var_decl->id);
+          success = array_index(arena, input, var_decl->id, &var_decl->id);
         }
 
         if(success && (input->token.kind == TokenKind_Equals))
         {
           get_next_token(arena, input);
 
-          if(success = parse_expression(arena, input, &var_decl->init_expr))
+          if(success = expression(arena, input, &var_decl->init_expr))
           {
             if(!var_decl->init_expr)
             {
@@ -912,9 +918,9 @@ parse_var_decl(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_while_stmt(MemoryArena* arena, TokenStream* input,
-                 AstNode** node)
+internal bool32
+while_stmt(MemoryArena* arena, TokenStream* input,
+           AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -929,7 +935,7 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input,
     {
       get_next_token(arena, input);
 
-      if(success = parse_expression(arena, input, &while_stmt->cond_expr))
+      if(success = expression(arena, input, &while_stmt->cond_expr))
       {
         if(input->token.kind == TokenKind_CloseParens)
         {
@@ -937,11 +943,11 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input,
 
           if(while_stmt->cond_expr)
           {
-            if(success = parse_block(arena, input, &while_stmt->body))
+            if(success = block(arena, input, &while_stmt->body))
             {
               if(!while_stmt->body)
               {
-                if(success = parse_statement(arena, input, &while_stmt->body))
+                if(success = statement(arena, input, &while_stmt->body))
                 {
                   if(!while_stmt->body)
                   {
@@ -975,9 +981,9 @@ parse_while_stmt(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_else_stmt(MemoryArena* arena, TokenStream* input,
-                AstNode** node)
+internal bool32
+else_stmt(MemoryArena* arena, TokenStream* input,
+          AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -986,11 +992,11 @@ parse_else_stmt(MemoryArena* arena, TokenStream* input,
   {
     get_next_token(arena, input);
 
-    if(success = parse_block(arena, input, node))
+    if(success = block(arena, input, node))
     {
       if(!(*node))
       {
-        if(success = parse_statement(arena, input, node))
+        if(success = statement(arena, input, node))
         {
           if(!(*node))
           {
@@ -1004,9 +1010,9 @@ parse_else_stmt(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_if_stmt(MemoryArena* arena, TokenStream* input,
-              AstNode** node)
+internal bool32
+if_stmt(MemoryArena* arena, TokenStream* input,
+        AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1021,7 +1027,7 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input,
     {
       get_next_token(arena, input);
 
-      if(success = parse_expression(arena, input, &if_stmt->cond_expr))
+      if(success = expression(arena, input, &if_stmt->cond_expr))
       {
         if(input->token.kind == TokenKind_CloseParens)
         {
@@ -1029,11 +1035,11 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input,
 
           if(if_stmt->cond_expr)
           {
-            if(success = parse_block(arena, input, &if_stmt->body))
+            if(success = block(arena, input, &if_stmt->body))
             {
               if(!if_stmt->body)
               {
-                if(success = parse_statement(arena, input, &if_stmt->body))
+                if(success = statement(arena, input, &if_stmt->body))
                 {
                   if(!if_stmt->body)
                   {
@@ -1045,7 +1051,7 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input,
               if(success)
               {
                 assert(if_stmt->body);
-                success = parse_else_stmt(arena, input, &if_stmt->else_body);
+                success = else_stmt(arena, input, &if_stmt->else_body);
               }
             }
           }
@@ -1071,9 +1077,9 @@ parse_if_stmt(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_proc_decl(MemoryArena* arena, TokenStream* input,
-                AstNode** node)
+internal bool32
+proc_decl(MemoryArena* arena, TokenStream* input,
+          AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1085,7 +1091,7 @@ parse_proc_decl(MemoryArena* arena, TokenStream* input,
     *node = ast_new_proc(arena, &input->src_loc);
     AstProc* proc = &(*node)->proc;
 
-    if((success = parse_type_id(arena, input, &proc->ret_type)) && proc->ret_type)
+    if((success = type_id(arena, input, &proc->ret_type)) && proc->ret_type)
     {
       if(input->token.kind == TokenKind_Id)
       {
@@ -1099,7 +1105,7 @@ parse_proc_decl(MemoryArena* arena, TokenStream* input,
           AstNode* arg = 0;
           do
           {
-            if((success = parse_formal_arg_decl(arena, input, &arg)) && arg)
+            if((success = formal_arg_decl(arena, input, &arg)) && arg)
             {
               list_append(arena, &proc->formal_args, arg);
               if(input->token.kind == TokenKind_Comma)
@@ -1120,7 +1126,7 @@ parse_proc_decl(MemoryArena* arena, TokenStream* input,
             if(input->token.kind == TokenKind_CloseParens)
             {
               get_next_token(arena, input);
-              if(success = parse_block(arena, input, &proc->body))
+              if(success = block(arena, input, &proc->body))
               {
                 if(!proc->body)
                 {
@@ -1146,9 +1152,9 @@ parse_proc_decl(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_include_stmt(MemoryArena* arena, TokenStream* input,
-                   AstNode** node)
+internal bool32
+include_stmt(MemoryArena* arena, TokenStream* input,
+             AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1179,7 +1185,7 @@ parse_include_stmt(MemoryArena* arena, TokenStream* input,
         token_stream_init(inc_input, hoc_text, inc_stmt->file_path);
 
         get_next_token(arena, inc_input);
-        success = parse_module(arena, inc_input, &inc_stmt->node_list);
+        success = module(arena, inc_input, &inc_stmt->node_list);
         if(inc_input->token.kind != TokenKind_EndOfInput)
         {
           compile_error(&input->src_loc, "Unexpected token: %s", input->token.lexeme);
@@ -1201,9 +1207,9 @@ parse_include_stmt(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_enum(MemoryArena* arena, TokenStream* input,
-           AstNode** node)
+internal bool32
+enum_decl(MemoryArena* arena, TokenStream* input,
+          AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1265,9 +1271,9 @@ parse_enum(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_struct(MemoryArena* arena, TokenStream* input,
-             AstNode** node)
+internal bool32
+struct_decl(MemoryArena* arena, TokenStream* input,
+            AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1292,7 +1298,7 @@ parse_struct(MemoryArena* arena, TokenStream* input,
         {
           member = 0;
           AstNode* type = 0;
-          if((success = parse_type_id(arena, input, &type)) && type)
+          if((success = type_id(arena, input, &type)) && type)
           {
             member = ast_new_var_decl(arena, &input->src_loc);
             AstVarDecl* var_decl = &member->var_decl;
@@ -1305,7 +1311,7 @@ parse_struct(MemoryArena* arena, TokenStream* input,
               get_next_token(arena, input);
               if(input->token.kind == TokenKind_OpenBracket)
               {
-                success = parse_array_index(arena, input, member, &member);
+                success = array_index(arena, input, member, &member);
               }
             }
 
@@ -1341,53 +1347,53 @@ parse_struct(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_module_element(MemoryArena* arena, TokenStream* input,
-                     AstNode** node)
+internal bool32
+module_element(MemoryArena* arena, TokenStream* input,
+               AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
   if(input->token.kind == TokenKind_Include)
   {
-    if(success = parse_include_stmt(arena, input, node))
+    if(success = include_stmt(arena, input, node))
     {
       expect_semicolon(arena, input, &success);
     }
   }
   else if(input->token.kind == TokenKind_Proc)
   {
-    success = parse_proc_decl(arena, input, node);
+    success = proc_decl(arena, input, node);
   }
   else if(input->token.kind == TokenKind_Var)
   {
-    if(success = parse_var_decl(arena, input, node))
+    if(success = var_decl(arena, input, node))
     {
       expect_semicolon(arena, input, &success);
     }
   }
   else if(input->token.kind == TokenKind_Struct)
   {
-    success = parse_struct(arena, input, node);
+    success = struct_decl(arena, input, node);
   }
   else if(input->token.kind == TokenKind_Enum)
   {
-    success = parse_enum(arena, input, node);
+    success = enum_decl(arena, input, node);
   }
 
   return success;
 }
 
-bool32
-parse_module(MemoryArena* arena, TokenStream* input,
-             List* node_list)
+internal bool32
+module(MemoryArena* arena, TokenStream* input,
+       List* node_list)
 {
   bool32 success = true;
 
   AstNode* node = 0;
   do
   {
-    if((success = parse_module_element(arena, input, &node)) && node)
+    if((success = module_element(arena, input, &node)) && node)
     {
       list_append(arena, node_list, node);
     }
@@ -1396,9 +1402,9 @@ parse_module(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_return_stmt(MemoryArena* arena, TokenStream* input,
-                  AstNode** node)
+internal bool32
+return_stmt(MemoryArena* arena, TokenStream* input,
+            AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1408,7 +1414,7 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input,
     *node = ast_new_return_stmt(arena, &input->src_loc);
 
     get_next_token(arena, input);
-    if(success = parse_expression(arena, input, &(*node)->ret_stmt.expr))
+    if(success = expression(arena, input, &(*node)->ret_stmt.expr))
     {
       /*
       AstNode* owner = 0;
@@ -1457,9 +1463,9 @@ parse_return_stmt(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_break_stmt(MemoryArena* arena, TokenStream* input,
-                 AstNode** node)
+internal bool32
+break_stmt(MemoryArena* arena, TokenStream* input,
+           AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1487,38 +1493,38 @@ parse_break_stmt(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
-parse_statement(MemoryArena* arena, TokenStream* input,
-                AstNode** node)
+internal bool32
+statement(MemoryArena* arena, TokenStream* input,
+          AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
   if(input->token.kind == TokenKind_If)
   {
-    success = parse_if_stmt(arena, input, node);
+    success = if_stmt(arena, input, node);
   }
   else if(input->token.kind == TokenKind_While)
   {
-    success = parse_while_stmt(arena, input, node);
+    success = while_stmt(arena, input, node);
   }
   else if(input->token.kind == TokenKind_Return)
   {
-    if(success = parse_return_stmt(arena, input, node))
+    if(success = return_stmt(arena, input, node))
     {
       expect_semicolon(arena, input, &success);
     }
   }
   else if(input->token.kind == TokenKind_Break)
   {
-    if(success = parse_break_stmt(arena, input, node))
+    if(success = break_stmt(arena, input, node))
     {
       expect_semicolon(arena, input, &success);
     }
   }
   else if(input->token.kind == TokenKind_Var)
   {
-    if(success = parse_var_decl(arena, input, node))
+    if(success = var_decl(arena, input, node))
     {
       expect_semicolon(arena, input, &success);
     }
@@ -1530,7 +1536,7 @@ parse_statement(MemoryArena* arena, TokenStream* input,
   }
   else
   {
-    if((success = parse_expression(arena, input, node)) && (*node))
+    if((success = expression(arena, input, node)) && (*node))
     {
       expect_semicolon(arena, input, &success);
     }
@@ -1545,7 +1551,7 @@ parse(MemoryArena* arena, TokenStream* input, AstNode** node)
 
   *node = ast_new_module(arena, &input->src_loc);
 
-  if(success = parse_module(arena, input, &(*node)->module.node_list))
+  if(success = module(arena, input, &(*node)->module.node_list))
   {
     if(input->token.kind != TokenKind_EndOfInput)
     {
@@ -1557,7 +1563,7 @@ parse(MemoryArena* arena, TokenStream* input, AstNode** node)
   return success;
 }
 
-void
+internal void
 DEBUG_print_tree_node(String* str, int indent_level, char* message, ...)
 {
   for(int i = 0; i < indent_level; i++)
@@ -1573,7 +1579,7 @@ DEBUG_print_tree_node(String* str, int indent_level, char* message, ...)
   str_append(str, "\n");
 }
 
-void
+internal void
 DEBUG_print_ast_node_list(String* str, int indent_level, List* node_list, char* tag)
 {
   if(node_list->count > 0)
@@ -1583,7 +1589,7 @@ DEBUG_print_ast_node_list(String* str, int indent_level, List* node_list, char* 
       DEBUG_print_tree_node(str, indent_level, tag);
       ++indent_level;
     }
-    for(ListItem* list_item = list_first_item(node_list);
+    for(ListItem* list_item = node_list->first;
         list_item;
         list_item = list_item->next)
     {
@@ -1709,7 +1715,6 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     else if(node->kind == AstNodeKind_Call)
     {
       AstCall* call = &node->call;
-      //++indent_level;
       DEBUG_print_ast_node(str, indent_level, call->id, "id");
       DEBUG_print_ast_node_list(str, indent_level, &call->actual_args, "actual_args");
     }

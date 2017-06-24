@@ -1,4 +1,5 @@
 #pragma once
+#include "lib.h"
 
 typedef enum TokenKind
 {
@@ -79,14 +80,6 @@ typedef struct
 }
 Token;
 
-typedef struct
-{
-  char* file_path;
-  int line_nr;
-  char* src_line;
-}
-SourceLocation;
-
 typedef struct TokenStream
 {
   Token prev_tokens[2];
@@ -98,28 +91,6 @@ typedef struct TokenStream
 }
 TokenStream;
 
-internal Token keyword_list[] = 
-{
-  {TokenKind_If, "if"},
-  {TokenKind_Else, "else"},
-  {TokenKind_While, "while"},
-  {TokenKind_Return, "return"},
-  {TokenKind_Break, "break"},
-  {TokenKind_Include, "include"},
-  {TokenKind_True, "true"},
-  {TokenKind_False, "false"},
-  {TokenKind_Cast, "cast"},
-  {TokenKind_Proc, "proc"},
-  {TokenKind_Var, "var"},
-  {TokenKind_Struct, "struct"},
-  {TokenKind_Enum, "enum"},
-  {TokenKind__Null, 0}, // terminator
-};
-
-internal char* simple_lexeme_list[] =
-{
-  "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "\\",
-  "+", "++", "-", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||", 
-  0,
-};
+void get_next_token(MemoryArena* arena, TokenStream* input);
+void token_stream_init(TokenStream* token_stream, char* text, char* file_path);
 

@@ -1,4 +1,4 @@
-#include "lib.c"
+#include "lib.h"
 #include "hasm.h"
 
 typedef struct

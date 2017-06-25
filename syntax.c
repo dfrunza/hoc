@@ -315,8 +315,7 @@ type_id(MemoryArena* arena, TokenStream* input,
   {
     *node = new_id(arena, &input->src_loc, input->token.lexeme);
 
-    get_next_token(arena, input);
-    if(input->token.kind == TokenKind_Star)
+    if(get_next_token(arena, input)->kind == TokenKind_Star)
       success = rest_of_type_id(arena, input, *node, node);
   }
   return success;
@@ -399,8 +398,7 @@ actual_arg_list(MemoryArena* arena, TokenStream* input,
       list_append(arena, arg_list, arg);
       if(input->token.kind == TokenKind_Comma)
       {
-        get_next_token(arena, input);
-        if(input->token.kind == TokenKind_CloseParens)
+        if(get_next_token(arena, input)->kind == TokenKind_CloseParens)
           success = compile_error(&input->src_loc, "(%d) Expected identifier, actual `%s`",
                                   __LINE__, input->token.lexeme);
       }
@@ -957,8 +955,8 @@ formal_arg_decl(MemoryArena* arena, TokenStream* input,
     if(input->token.kind == TokenKind_Id)
     {
       var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
-      get_next_token(arena, input);
-      if(input->token.kind == TokenKind_OpenBracket)
+
+      if(get_next_token(arena, input)->kind == TokenKind_OpenBracket)
         success = array_index(arena, input, var_decl->id, &var_decl->id);
     }
     else
@@ -988,8 +986,7 @@ var_decl(MemoryArena* arena, TokenStream* input,
       var_decl->type = type;
       var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
-      get_next_token(arena, input);
-      if(input->token.kind == TokenKind_OpenBracket)
+      if(get_next_token(arena, input)->kind == TokenKind_OpenBracket)
       {
         success = array_index(arena, input, var_decl->id, &var_decl->id);
         if(!success) goto end;
@@ -1033,8 +1030,7 @@ for_stmt(MemoryArena* arena, TokenStream* input,
     *node = new_for_stmt(arena, &input->src_loc);
     AstForStmt* for_stmt = &(*node)->for_stmt;
 
-    get_next_token(arena, input);
-    if(input->token.kind == TokenKind_OpenParens)
+    if(get_next_token(arena, input)->kind == TokenKind_OpenParens)
     {
       get_next_token(arena, input);
 
@@ -1088,8 +1084,7 @@ while_stmt(MemoryArena* arena, TokenStream* input,
     *node = new_while_stmt(arena, &input->src_loc);
     AstWhileStmt* while_stmt = &(*node)->while_stmt;
 
-    get_next_token(arena, input);
-    if(input->token.kind == TokenKind_OpenParens)
+    if(get_next_token(arena, input)->kind == TokenKind_OpenParens)
     {
       get_next_token(arena, input);
 
@@ -1170,8 +1165,7 @@ if_stmt(MemoryArena* arena, TokenStream* input,
     *node = new_if_stmt(arena, &input->src_loc);
     AstIfStmt* if_stmt = &(*node)->if_stmt;
 
-    get_next_token(arena, input);
-    if(input->token.kind == TokenKind_OpenParens)
+    if(get_next_token(arena, input)->kind == TokenKind_OpenParens)
     {
       get_next_token(arena, input);
 
@@ -1240,8 +1234,7 @@ proc_decl(MemoryArena* arena, TokenStream* input,
       {
         proc->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
-        get_next_token(arena, input);
-        if(input->token.kind == TokenKind_OpenParens)
+        if(get_next_token(arena, input)->kind == TokenKind_OpenParens)
         {
           get_next_token(arena, input);
 
@@ -1287,9 +1280,7 @@ include_stmt(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_Include)
   {
-    get_next_token(arena, input);
-
-    if(input->token.kind == TokenKind_String)
+    if(get_next_token(arena, input)->kind == TokenKind_String)
     {
       *node = new_include_stmt(arena, &input->src_loc);
       AstIncludeStmt* include = &(*node)->include;
@@ -1333,16 +1324,13 @@ enum_decl(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_Enum)
   {
-    get_next_token(arena, input);
-
-    if(input->token.kind == TokenKind_Id)
+    if(get_next_token(arena, input)->kind == TokenKind_Id)
     {
       *node = new_enum(arena, &input->src_loc);
       AstEnum* enum_ = &(*node)->enum_;
       enum_->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
-      get_next_token(arena, input);
-      if(input->token.kind == TokenKind_OpenBrace)
+      if(get_next_token(arena, input)->kind == TokenKind_OpenBrace)
       {
         get_next_token(arena, input);
 
@@ -1355,8 +1343,7 @@ enum_decl(MemoryArena* arena, TokenStream* input,
             member = new_id(arena, &input->src_loc, input->token.lexeme);
             list_append(arena, &enum_->member_list, member);
 
-            get_next_token(arena, input);
-            if(input->token.kind == TokenKind_Comma)
+            if(get_next_token(arena, input)->kind == TokenKind_Comma)
               get_next_token(arena, input);
             else if(input->token.kind != TokenKind_CloseBrace)
               member = 0;
@@ -1390,15 +1377,13 @@ struct_decl(MemoryArena* arena, TokenStream* input,
 
   if(input->token.kind == TokenKind_Struct)
   {
-    get_next_token(arena, input);
-    if(input->token.kind == TokenKind_Id)
+    if(get_next_token(arena, input)->kind == TokenKind_Id)
     {
       *node = new_struct(arena, &input->src_loc);
       AstStruct* struct_ = &(*node)->struct_;
       struct_->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
-      get_next_token(arena, input);
-      if(input->token.kind == TokenKind_OpenBrace)
+      if(get_next_token(arena, input)->kind == TokenKind_OpenBrace)
       {
         get_next_token(arena, input);
 
@@ -1420,8 +1405,7 @@ struct_decl(MemoryArena* arena, TokenStream* input,
               var_decl->type = type;
               var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
-              get_next_token(arena, input);
-              if(input->token.kind == TokenKind_OpenBracket)
+              if(get_next_token(arena, input)->kind == TokenKind_OpenBracket)
               {
                 success = array_index(arena, input, member, &member);
                 if(!success) goto end;

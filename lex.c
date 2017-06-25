@@ -133,7 +133,7 @@ is_leading_unary_token(TokenKind token)
       token == TokenKind_ExclamEquals;
 }
 
-void
+Token*
 get_next_token(MemoryArena* arena, TokenStream* input)
 {
   input->prev_tokens[1] = input->prev_tokens[0];
@@ -459,5 +459,6 @@ loop:
     simple_lexeme_list[TokenKind_Unknown][0] = c;
     token->lexeme = simple_lexeme_list[TokenKind_Unknown];
   }
+  return &input->token;
 }
 

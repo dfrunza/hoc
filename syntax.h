@@ -36,7 +36,6 @@ typedef enum
 
   AstOpKind_BitwiseAnd,
   AstOpKind_BitwiseOr,
-  AstOpKind_BitwiseNot,
 
   AstOpKind__Count,
 }
@@ -69,7 +68,9 @@ DEBUG_AstOpKind_tags[] =
   "AstOpKind_LogicAnd",
   "AstOpKind_LogicOr",
   "AstOpKind_LogicNot",
-  0, // guard
+  "AstOpKind_BitwiseAnd",
+  "AstOpKind_BitwiseOr",
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
 };
 
 typedef enum
@@ -95,7 +96,6 @@ typedef enum
   AstNodeKind_Array,
   AstNodeKind_Pointer,
   AstNodeKind_Struct,
-//  AstNodeKind_Accessor,
   AstNodeKind_Enum,
 
   AstNodeKind__Count,
@@ -128,7 +128,7 @@ DEBUG_AstNodeKind_tags[] =
   "AstNodeKind_Struct",
   "AstNodeKind_Accessor",
   "AstNodeKind_Enum",
-  0, // guard
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
 };
 
 typedef struct
@@ -236,7 +236,7 @@ DEBUG_AstLiteralKind_tags[] =
   "AstLiteralKind_Bool",
   "AstLiteralKind_String",
   "AstLiteralKind_Char",
-  0, // guard
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
 };
 
 typedef struct

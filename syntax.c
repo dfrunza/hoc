@@ -1055,7 +1055,7 @@ while_stmt(MemoryArena* arena, TokenStream* input,
                 {
                   if(!while_stmt->body)
                   {
-                    compile_error(&input->src_loc, "Statement(s) required");
+                    compile_error(&input->src_loc, "Statement(s) expected");
                     success = false;
                   }
                 }
@@ -1064,7 +1064,7 @@ while_stmt(MemoryArena* arena, TokenStream* input,
           }
           else
           {
-            compile_error(&input->src_loc, "Expression required");
+            compile_error(&input->src_loc, "Expression expected");
             success = false;
           }
         }
@@ -1104,7 +1104,7 @@ else_stmt(MemoryArena* arena, TokenStream* input,
         {
           if(!(*node))
           {
-            compile_error(&input->src_loc, "Statement(s) required");
+            compile_error(&input->src_loc, "Statement(s) expected");
             success = false;
           }
         }
@@ -1147,7 +1147,7 @@ if_stmt(MemoryArena* arena, TokenStream* input,
                 {
                   if(!if_stmt->body)
                   {
-                    compile_error(&input->src_loc, "Statement(s) required");
+                    compile_error(&input->src_loc, "Statement(s) expected");
                     success = false;
                   }
                 }
@@ -1161,7 +1161,7 @@ if_stmt(MemoryArena* arena, TokenStream* input,
           }
           else
           {
-            compile_error(&input->src_loc, "Expression required");
+            compile_error(&input->src_loc, "Expression expected");
             success = false;
           }
         }
@@ -1304,7 +1304,7 @@ include_stmt(MemoryArena* arena, TokenStream* input,
     }
     else
     {
-      compile_error(&input->src_loc, "String required after `include`\n");
+      compile_error(&input->src_loc, "String expected after `include`\n");
       success = false;
     }
   }

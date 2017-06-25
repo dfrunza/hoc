@@ -22,7 +22,7 @@ internal char* simple_lexeme_list[] =
 {
   "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "\\",
   "+", "++", "-", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||", 
-  0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
 };
 
 internal Token*
@@ -230,14 +230,13 @@ loop:
   else if(c == '<')
   {
     token->kind = TokenKind_AngleLeft;
-    ++input->cursor;
+    c = *(++input->cursor);
     if(is_leading_unary_token(get_prev_token(input, 0)->kind))
     {
       token->kind = TokenKind_Cast;
     }
     else
     {
-      c = *(++input->cursor);
       if(c == '=')
       {
         token->kind = TokenKind_AngleLeftEquals;

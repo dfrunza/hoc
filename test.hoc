@@ -9,6 +9,6 @@ include "hlib/minmax.hoc";
 
 proc int main()
 {
-  a++ = p++;
+  c = c + b * a;
 }
 

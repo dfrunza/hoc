@@ -9,6 +9,6 @@ include "hlib/minmax.hoc";
 
 proc int main()
 {
-  c = c + b * a;
+  for(int i = 0; i < N; ++i);
 }
 

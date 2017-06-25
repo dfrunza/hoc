@@ -51,6 +51,7 @@ typedef enum TokenKind
   TokenKind_If,
   TokenKind_Else,
   TokenKind_While,
+  TokenKind_For,
   TokenKind_Proc,
   TokenKind_Var,
   TokenKind_Struct,

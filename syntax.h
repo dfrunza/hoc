@@ -84,6 +84,7 @@ typedef enum
   AstNodeKind_Proc,
   AstNodeKind_Id,
   AstNodeKind_WhileStmt,
+  AstNodeKind_ForStmt,
   AstNodeKind_IfStmt,
   AstNodeKind_ReturnStmt,
   AstNodeKind_BreakStmt,
@@ -114,6 +115,7 @@ DEBUG_AstNodeKind_tags[] =
   "AstNodeKind_Proc",
   "AstNodeKind_Id",
   "AstNodeKind_WhileStmt",
+  "AstNodeKind_ForStmt",
   "AstNodeKind_IfStmt",
   "AstNodeKind_ReturnStmt",
   "AstNodeKind_BreakStmt",
@@ -367,6 +369,15 @@ typedef struct
 }
 AstWhileStmt;
 
+typedef struct
+{
+  AstNode* decl;
+  AstNode* cond_expr;
+  AstNode* loop_expr;
+  AstNode* body;
+}
+AstForStmt;
+
 /*
 typedef struct
 {
@@ -416,6 +427,7 @@ typedef struct AstNode
     AstReturnStmt ret_stmt;
     AstIfStmt if_stmt;
     AstWhileStmt while_stmt;
+    AstForStmt for_stmt;
     AstIncludeStmt inc_stmt;
     AstBlock block;
     AstCast cast;

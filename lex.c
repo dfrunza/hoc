@@ -15,7 +15,7 @@ internal Token keyword_list[] =
   {TokenKind_Var, "var"},
   {TokenKind_Struct, "struct"},
   {TokenKind_Enum, "enum"},
-  {TokenKind__Null, 0}, // terminator
+  {TokenKind__Null, 0}, /* terminator */
 };
 
 internal char unk_char[2] = {0};
@@ -25,7 +25,7 @@ internal char* simple_lexeme_tags[] =
   "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "\\",
   "+", "++", "-", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||",
   unk_char,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
 };
 
 internal Token*
@@ -65,7 +65,7 @@ install_id(MemoryArena* arena, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
 
-  //TODO: Search the lexeme, and if found, then return it.
+  /* TODO: Search the lexeme, and if found, then return it. */
   size_t len = end_char - begin_char + 1;
   char* lexeme = mem_push_struct(arena, char, len + 1);
   cstr_copy_substr(lexeme, begin_char, end_char);
@@ -79,45 +79,86 @@ is_valid_escape_char(char c)
     c == '\"' || c == '\'' || c == '\\';
 }
 
-internal char*
-install_dquoted_str(MemoryArena* arena,
-                    char* begin_char, char* end_char, int back_slash_count)
+typedef struct
 {
-  assert(end_char >= begin_char);
-  assert(*begin_char == '"' && *end_char == '"');
+  char quote;
+  int len;
+  char* begin;
+  char* end;
+}
+EscapedStr;
 
-  size_t len = (end_char - begin_char + 1) - (2/*quotes*/ + back_slash_count);
-  char* lexeme = mem_push_struct(arena, char, len+1); // +NULL
+internal bool
+escaped_string(TokenStream* input, EscapedStr* estr, char* file, int line)
+{
+  bool success = true;
+  estr->len = 0;
+  estr->end = input->cursor;
+  estr->begin = input->cursor;
 
-  char* dest_str = lexeme;
-  char* src_str = begin_char+1;
-  for(uint i = 0; i < len; i++)
+  /* find the closing `"` and count the length of the escaped string at the same time */
+  char c = *(++estr->end);
+  while(success && (c != estr->quote) && (c != '\0'))
   {
-    *dest_str = *src_str++;
-    if(*dest_str == '\\')
+    if(c == '\\')
     {
-      assert(*src_str != '\0');
-
-      if(*src_str == 't')
-        *dest_str = '\t';
-      else if(*src_str == 'n')
-        *dest_str = '\n';
-      else if(*src_str == 'r')
-        *dest_str = '\r';
-      else if(*src_str == '0')
-        *dest_str = '\0';
-      else if(*src_str == '"')
-        *dest_str = '"';
-      else if(*src_str == '\\')
-        *dest_str = '\\';
-      else if(*src_str == '\'')
-        *dest_str = '\'';
-      else
-        assert(false);
-      src_str++;
+      c = *(++estr->end);
+      if(!is_valid_escape_char(c))
+        success = compile_error(&input->src_loc, file, line, "Invalid escape char `%c`", c);
     }
-    dest_str++;
+    estr->len++;
+    c = *(++estr->end);
   }
+  if(*estr->end != estr->quote)
+    success = compile_error(&input->src_loc, file, line,
+                            "Malformed string literal, missing the closing `%c`", estr->quote);
+  assert((estr->end - estr->begin) >= 1);
+  return success;
+}
+
+internal char*
+install_escaped_str(MemoryArena* arena, EscapedStr* estr)
+{
+  assert(estr->begin <= estr->end);
+
+  char* lexeme = mem_push_struct(arena, char, estr->len+1); /* +NULL */
+
+  if(estr->len > 0)
+  {
+    assert((estr->end - estr->begin) >= 2);
+    char* dest_str = lexeme;
+    char* src_str = estr->begin+1;
+    for(int i = 0; i < estr->len; i++)
+    {
+      *dest_str = *src_str;
+      if(*dest_str == '\\')
+      {
+        src_str++;
+        assert(*src_str != '\0');
+
+        if(*src_str == 't')
+          *dest_str = '\t';
+        else if(*src_str == 'n')
+          *dest_str = '\n';
+        else if(*src_str == 'r')
+          *dest_str = '\r';
+        else if(*src_str == '0')
+          *dest_str = '\0';
+        else if(*src_str == '"')
+          *dest_str = '"';
+        else if(*src_str == '\\')
+          *dest_str = '\\';
+        else if(*src_str == '\'')
+          *dest_str = '\'';
+        else
+          assert(false);
+      }
+      src_str++;
+      dest_str++;
+    }
+  }
+  lexeme[estr->len] = '\0';
+
   return lexeme;
 }
 
@@ -128,8 +169,8 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
   token_stream->cursor = token_stream->text;
   SourceLocation* src_loc = &token_stream->src_loc;
   src_loc->line_nr = 1;
-  //TODO: Compute the absolute path to the file, so that Vim could properly
-  // jump from the QuickFix window to the error line in the file.
+  /* TODO: Compute the absolute path to the file, so that Vim could properly
+     jump from the QuickFix window to the error line in the file. */
   src_loc->file_path = file_path;
 }
 
@@ -334,47 +375,40 @@ loop:
   }
   else if(c == '"')
   {
-    /* double-quoted, escaped string */
+    /* double-quoted escaped string */
+    EscapedStr estr = {0};
+    estr.quote = '"';
 
-    bool success = true;
-    char* fwd_cursor = input->cursor;
-
-    /* find the closing `"` and count the `\` chars at the same time */
-    int back_slash_count = 0;
-    c = *(++fwd_cursor);
-    while(success && (c != '"') && (c != '\0'))
+    if(escaped_string(input, &estr, __FILE__, __LINE__))
     {
-      if(c == '\\')
-      {
-        c = *(++fwd_cursor);
-        if(!is_valid_escape_char(c))
-          success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                  "Invalid escape char `%c`", c);
-        back_slash_count++;
-      }
-      c = *(++fwd_cursor);
-    }
-
-    if(success)
-    {
-      if(c == '"')
-      {
-        char* lexeme = install_dquoted_str(arena, input->cursor, fwd_cursor, back_slash_count);
-        token->str = lexeme;
-        token->kind = TokenKind_String;
-        input->cursor = ++fwd_cursor;
-      }
-      else
-        success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Malformed string, missing the closing `\"`");
+      token->str = install_escaped_str(arena, &estr);;
+      token->kind = TokenKind_String;
+      input->cursor = ++estr.end;
     }
   }
-  /*
   else if(c == '\'')
   {
+    /* single-quoted escaped char */
+    EscapedStr estr = {0};
+    estr.quote = '\'';
 
+    if(escaped_string(input, &estr, __FILE__, __LINE__))
+    {
+      char* lexeme = install_escaped_str(arena, &estr);
+
+      if(estr.len != 1)
+      {
+        compile_error(&input->src_loc, __FILE__, __LINE__,
+                      "Invalid char literal '%s'", lexeme);
+      }
+      else
+      {
+        token->char_val = *lexeme;
+        token->kind = TokenKind_Char;
+        input->cursor = ++estr.end;
+      }
+    }
   }
-  */
   else if(c == '=')
   {
     token->kind = TokenKind_Equals;

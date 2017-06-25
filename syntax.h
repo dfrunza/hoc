@@ -70,7 +70,7 @@ DEBUG_AstOpKind_tags[] =
   "AstOpKind_LogicNot",
   "AstOpKind_BitwiseAnd",
   "AstOpKind_BitwiseOr",
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
 };
 
 typedef enum
@@ -131,7 +131,7 @@ DEBUG_AstNodeKind_tags[] =
   "AstNodeKind_Struct",
   "AstNodeKind_Enum",
   "AstNodeKind_Initializer",
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
 };
 
 typedef struct
@@ -239,7 +239,7 @@ DEBUG_AstLiteralKind_tags[] =
   "AstLiteralKind_Bool",
   "AstLiteralKind_String",
   "AstLiteralKind_Char",
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
 };
 
 typedef struct

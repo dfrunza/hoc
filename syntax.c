@@ -1800,7 +1800,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     else if(node->kind == AstNodeKind_EmptyStmt ||
             node->kind == AstNodeKind_BreakStmt)
     {
-      // do nothing
+      /* do nothing */
     }
     else if(node->kind == AstNodeKind_Struct)
     {

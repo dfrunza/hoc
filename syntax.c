@@ -291,8 +291,7 @@ rest_of_type_id(MemoryArena* arena, TokenStream* input,
   *node = expr;
   bool success = true;
   
-  if(input->token.kind == TokenKind_Star ||
-     input->token.kind == TokenKind_Pointer)
+  if(input->token.kind == TokenKind_Star)
   {
     *node = new_pointer(arena, &input->src_loc);
     AstPointer* ptr = &(*node)->pointer;
@@ -661,9 +660,9 @@ unary_expr(MemoryArena* arena, TokenStream* input,
   bool success = true;
 
   if(input->token.kind == TokenKind_Exclam ||
-     input->token.kind == TokenKind_Pointer ||
-     input->token.kind == TokenKind_AddressOf ||
-     input->token.kind == TokenKind_NegativeSign ||
+     input->token.kind == TokenKind_Star ||
+     input->token.kind == TokenKind_Ampersand ||
+     input->token.kind == TokenKind_Minus ||
      input->token.kind == TokenKind_MinusMinus ||
      input->token.kind == TokenKind_PlusPlus)
   {
@@ -672,11 +671,11 @@ unary_expr(MemoryArena* arena, TokenStream* input,
 
     if(input->token.kind == TokenKind_Exclam)
       expr->op = AstOpKind_LogicNot;
-    else if(input->token.kind == TokenKind_Pointer)
+    else if(input->token.kind == TokenKind_Star)
       expr->op = AstOpKind_Deref;
-    else if(input->token.kind == TokenKind_AddressOf)
+    else if(input->token.kind == TokenKind_Ampersand)
       expr->op = AstOpKind_AddressOf;
-    else if(input->token.kind == TokenKind_NegativeSign)
+    else if(input->token.kind == TokenKind_Minus)
       expr->op = AstOpKind_Neg;
     else if(input->token.kind == TokenKind_MinusMinus)
       expr->op = AstOpKind_PreDecrement;

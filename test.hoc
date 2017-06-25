@@ -10,9 +10,7 @@ include "hlib\\lex.hoc";
 
 proc int main()
 {
-  /*
   var char* c = "C:\\Program Files\\Microsoft\\Shitty Product\\devcrap.exe";
-  var char c = '';
-  */
+  var char c = 'A';
 }
 

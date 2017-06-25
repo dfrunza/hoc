@@ -22,8 +22,8 @@ internal char unk_char[2] = {0};
 
 internal char* simple_lexeme_tags[] =
 {
-  "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "\\",
-  "+", "++", "-", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||",
+  "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "/", "\\",
+  "+", "++", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&&", "|", "||",
   unk_char,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
 };
@@ -174,36 +174,6 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
   src_loc->file_path = file_path;
 }
 
-internal bool
-is_leading_unary_token(TokenKind token)
-{
-  return token == TokenKind_Equals ||
-      token == TokenKind_EqualsEquals ||
-      token == TokenKind_Semicolon ||
-      token == TokenKind_OpenParens ||
-      token == TokenKind_OpenBracket ||
-      token == TokenKind_OpenBrace ||
-      token == TokenKind_Star ||
-      token == TokenKind_Plus ||
-      token == TokenKind_Comma ||
-      token == TokenKind_FwdSlash ||
-      token == TokenKind_Return ||
-      token == TokenKind_Pointer ||
-      token == TokenKind_AddressOf ||
-      token == TokenKind_NegativeSign ||
-      token == TokenKind_AmpersandAmpersand ||
-      token == TokenKind_AngleLeft ||
-      token == TokenKind_AngleLeftEquals ||
-      token == TokenKind_AngleRight ||
-      token == TokenKind_AngleRightEquals ||
-      token == TokenKind_Pipe ||
-      token == TokenKind_PipePipe ||
-      token == TokenKind_Percent ||
-      token == TokenKind_FwdSlash ||
-      token == TokenKind_Exclam ||
-      token == TokenKind_ExclamEquals;
-}
-
 Token*
 get_next_token(MemoryArena* arena, TokenStream* input)
 {
@@ -285,31 +255,12 @@ loop:
       token->kind = TokenKind_MinusMinus;
       ++input->cursor;
     }
-    else if(is_leading_unary_token(get_prev_token(input, 0)->kind))
-    {
-       token->kind = TokenKind_NegativeSign;
-    }
-    token->lexeme = simple_lexeme_tags[token->kind];
-  }
-  else if(c == '*')
-  {
-    token->kind = TokenKind_Star;
-    ++input->cursor;
-    if(is_leading_unary_token(get_prev_token(input, 0)->kind))
-    {
-      token->kind = TokenKind_Pointer;
-    }
     token->lexeme = simple_lexeme_tags[token->kind];
   }
   else if(c == '<')
   {
     token->kind = TokenKind_AngleLeft;
     c = *(++input->cursor);
-    if(is_leading_unary_token(get_prev_token(input, 0)->kind))
-    {
-      token->kind = TokenKind_Cast;
-    }
-    else
     {
       if(c == '=')
       {
@@ -327,10 +278,6 @@ loop:
     {
       token->kind = TokenKind_AmpersandAmpersand;
       ++input->cursor;
-    }
-    else if(is_leading_unary_token(get_prev_token(input, 0)->kind))
-    {
-      token->kind = TokenKind_AddressOf;
     }
     token->lexeme = simple_lexeme_tags[token->kind];
   }
@@ -462,6 +409,12 @@ loop:
       token->kind = TokenKind_PlusPlus;
       ++input->cursor;
     }
+    token->lexeme = simple_lexeme_tags[token->kind];
+  }
+  else if(c == '*')
+  {
+    token->kind = TokenKind_Star;
+    ++input->cursor;
     token->lexeme = simple_lexeme_tags[token->kind];
   }
   else if(c == '%')

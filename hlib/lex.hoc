@@ -95,29 +95,17 @@ install_dquoted_str(MemoryArena* arena,
       assert(*src_str != '\0');
 
       if(*src_str == 't')
-      {
         *dest_str = '\t';
-      }
       else if(*src_str == 'n')
-      {
         *dest_str = '\n';
-      }
       else if(*src_str == 'r')
-      {
         *dest_str = '\r';
-      }
       else if(*src_str == '0')
-      {
         *dest_str = '\0';
-      }
       else if(*src_str == '"')
-      {
         *dest_str = '"';
-      }
       else if(*src_str == '\\')
-      {
         *dest_str = '\\';
-      }
       else
         assert(false);
       src_str++;

@@ -5,10 +5,12 @@ include "hlib/abs.hoc";
 include "hlib/gcd.hoc";
 include "hlib/fibo.hoc";
 include "hlib/minmax.hoc";
-*/
 include "hlib\lex.hoc";
+*/
 
 proc int main()
 {
+  var int64 a;
+  var int32 i = (*<int32*>a).b;
 }
 

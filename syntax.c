@@ -289,22 +289,6 @@ semicolon(MemoryArena* arena, TokenStream* input)
 }
 
 internal bool
-close_brace(MemoryArena* arena, TokenStream* input)
-{
-  bool success = true;
-  if(input->token.kind == TokenKind_CloseBrace)
-  {
-    get_next_token(arena, input);
-  }
-  else
-  {
-    compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`", __LINE__, input->token.lexeme);
-    success = false;
-  }
-  return success;
-}
-
-internal bool
 rest_of_type_id(MemoryArena* arena, TokenStream* input,
                 AstNode* expr, AstNode** node)
 {
@@ -337,9 +321,7 @@ type_id(MemoryArena* arena, TokenStream* input,
 
     get_next_token(arena, input);
     if(input->token.kind == TokenKind_Star)
-    {
       success = rest_of_type_id(arena, input, *node, node);
-    }
   }
   return success;
 }
@@ -360,9 +342,7 @@ initializer(MemoryArena* arena, TokenStream* input,
     if(success = initializer_member_list(arena, input, &initer->member_list))
     {
       if(input->token.kind == TokenKind_CloseBrace)
-      {
         get_next_token(arena, input);
-      }
       else
       {
         compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`", __LINE__, input->token.lexeme);
@@ -389,27 +369,19 @@ initializer_member_list(MemoryArena* arena, TokenStream* input,
       if(success = initializer(arena, input, &member))
       {
         if(input->token.kind == TokenKind_Comma)
-        {
           get_next_token(arena, input);
-        }
       }
     }
-
     if(success)
     {
       if(!member)
-      {
         success = expression(arena, input, &member);
-      }
 
       if(success && member)
       {
         list_append(arena, member_list, member);
-
         if(input->token.kind == TokenKind_Comma)
-        {
           get_next_token(arena, input);
-        }
       }
     }
   }
@@ -431,7 +403,6 @@ actual_arg_list(MemoryArena* arena, TokenStream* input,
     if(success && arg)
     {
       list_append(arena, arg_list, arg);
-
       if(input->token.kind == TokenKind_Comma)
       {
         get_next_token(arena, input);
@@ -458,14 +429,11 @@ formal_arg_list(MemoryArena* arena, TokenStream* input,
   {
     arg = 0;
     success = formal_arg_decl(arena, input, &arg);
-
     if(arg)
     {
       list_append(arena, arg_list, arg);
       if(input->token.kind == TokenKind_Comma)
-      {
         get_next_token(arena, input);
-      }
       else if(input->token.kind != TokenKind_CloseParens)
       {
         compile_error(&input->src_loc, "(%d) Missing `,`", __LINE__);
@@ -490,9 +458,7 @@ statement_list(MemoryArena* arena, TokenStream* input,
   do
   {
     if((success = statement(arena, input, &stmt)) && stmt)
-    {
       list_append(arena, stmt_list, stmt);
-    }
   }
   while(success && stmt);
   return success;
@@ -508,14 +474,11 @@ block(MemoryArena* arena, TokenStream* input,
   if(input->token.kind == TokenKind_OpenBrace)
   {
     *node = new_block(arena, &input->src_loc);
-
     get_next_token(arena, input);
     if(success = statement_list(arena, input, &(*node)->block.stmt_list))
     {
       if(input->token.kind == TokenKind_CloseBrace)
-      {
         get_next_token(arena, input);
-      }
       else
       {
         compile_error(&input->src_loc, "(%d) Missing `}`", __LINE__);
@@ -546,7 +509,6 @@ array_index(MemoryArena* arena, TokenStream* input,
       if(input->token.kind == TokenKind_CloseBracket)
       {
         get_next_token(arena, input);
-
         success = array_index(arena, input, *node, node);
       }
       else
@@ -576,9 +538,7 @@ rest_of_id(MemoryArena* arena, TokenStream* input,
     if(success = actual_arg_list(arena, input, &call->actual_args))
     {
       if(input->token.kind == TokenKind_CloseParens)
-      {
         get_next_token(arena, input);
-      }
       else
       {
         compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`", __LINE__, input->token.lexeme);
@@ -587,9 +547,7 @@ rest_of_id(MemoryArena* arena, TokenStream* input,
     }
   }
   else if(input->token.kind == TokenKind_OpenBracket)
-  {
     success = array_index(arena, input, *node, node);
-  }
 
   return success;
 }
@@ -608,9 +566,7 @@ accessor(MemoryArena* arena, TokenStream* input,
     if(success = expression(arena, input, node))
     {
       if(input->token.kind == TokenKind_CloseParens)
-      {
         get_next_token(arena, input);
-      }
       else
       {
         compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`", __LINE__, input->token.lexeme);
@@ -680,13 +636,9 @@ accessor(MemoryArena* arena, TokenStream* input,
         var_occur->var_decl = symbol->node;
 
         if(var_occur->decl_block_offset > 0)
-        {
           list_append(arena, &enclosing_block->nonlocal_occurs, *node);
-        }
         else if(var_occur->decl_block_offset == 0)
-        {
           list_append(arena, &enclosing_block->local_occurs, *node);
-        }
         else
           assert(false);
       }
@@ -716,13 +668,9 @@ postfix(MemoryArena* arena, TokenStream* input,
     expr->operand = left_node;
 
     if(input->token.kind == TokenKind_MinusMinus)
-    {
       expr->op = AstOpKind_PostDecrement;
-    }
     else if(input->token.kind == TokenKind_PlusPlus)
-    {
       expr->op = AstOpKind_PostIncrement;
-    }
     else
       assert(false);
 
@@ -748,29 +696,17 @@ unary_expr(MemoryArena* arena, TokenStream* input,
     AstUnrExpr* expr = &(*node)->unr_expr;
 
     if(input->token.kind == TokenKind_Exclam)
-    {
       expr->op = AstOpKind_LogicNot;
-    }
     else if(input->token.kind == TokenKind_Pointer)
-    {
       expr->op = AstOpKind_Deref;
-    }
     else if(input->token.kind == TokenKind_AddressOf)
-    {
       expr->op = AstOpKind_AddressOf;
-    }
     else if(input->token.kind == TokenKind_NegativeSign)
-    {
       expr->op = AstOpKind_Neg;
-    }
     else if(input->token.kind == TokenKind_MinusMinus)
-    {
       expr->op = AstOpKind_PreDecrement;
-    }
     else if(input->token.kind == TokenKind_PlusPlus)
-    {
       expr->op = AstOpKind_PreIncrement;
-    }
     else
       assert(false);
 
@@ -778,9 +714,7 @@ unary_expr(MemoryArena* arena, TokenStream* input,
     if(success = factor(arena, input, &expr->operand))
     {
       if(expr->operand)
-      {
         postfix(arena, input, expr->operand, &expr->operand);
-      }
       else
       {
         compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`", __LINE__, input->token.lexeme);
@@ -802,13 +736,10 @@ unary_expr(MemoryArena* arena, TokenStream* input,
       if(input->token.kind == TokenKind_AngleRight)
       {
         get_next_token(arena, input);
-
         if(success = factor(arena, input, &cast->expr))
         {
           if(cast->expr)
-          {
             postfix(arena, input, cast->expr, &cast->expr);
-          }
           else
           {
             compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`", __LINE__, input->token.lexeme);
@@ -831,9 +762,7 @@ unary_expr(MemoryArena* arena, TokenStream* input,
   else
   {
     if(success = accessor(arena, input, node))
-    {
       postfix(arena, input, *node, node);
-    }
   }
 end:
   return success;
@@ -857,9 +786,7 @@ rest_of_accessor(MemoryArena* arena, TokenStream* input,
     if(success = unary_expr(arena, input, &expr->rhs))
     {
       if(expr->rhs)
-      {
         success = rest_of_accessor(arena, input, *node, node);
-      }
       else
       {
         compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`", __LINE__, input->token.lexeme);
@@ -878,9 +805,7 @@ factor(MemoryArena* arena, TokenStream* input,
   bool success = true;
 
   if((success = unary_expr(arena, input, node)) && *node)
-  {
     success = rest_of_accessor(arena, input, *node, node);
-  }
   return success;
 }
 
@@ -906,41 +831,23 @@ rest_of_factor(MemoryArena* arena, TokenStream* input,
     expr->lhs = left_node;
 
     if(input->token.kind == TokenKind_Star)
-    {
       expr->op = AstOpKind_Mul;
-    }
     else if(input->token.kind == TokenKind_FwdSlash)
-    {
       expr->op = AstOpKind_Div;
-    }
     else if(input->token.kind == TokenKind_Percent)
-    {
       expr->op = AstOpKind_Mod;
-    }
     else if(input->token.kind == TokenKind_EqualsEquals)
-    {
       expr->op = AstOpKind_LogicEquals;
-    }
     else if(input->token.kind == TokenKind_ExclamEquals)
-    {
       expr->op = AstOpKind_LogicNotEquals;
-    }
     else if(input->token.kind == TokenKind_AngleLeft)
-    {
       expr->op = AstOpKind_LogicLess;
-    }
     else if(input->token.kind == TokenKind_AngleLeftEquals)
-    {
       expr->op = AstOpKind_LogicLessEquals;
-    }
     else if(input->token.kind == TokenKind_AngleRight)
-    {
       expr->op = AstOpKind_LogicGreater;
-    }
     else if(input->token.kind == TokenKind_AngleRightEquals)
-    {
       expr->op = AstOpKind_LogicGreaterEquals;
-    }
     else
       assert(false);
 
@@ -948,9 +855,7 @@ rest_of_factor(MemoryArena* arena, TokenStream* input,
     if(success = factor(arena, input, &expr->rhs))
     {
       if(expr->rhs)
-      {
         success = rest_of_factor(arena, input, *node, node);
-      }
       else
       {
         compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`", __LINE__, input->token.lexeme);
@@ -969,9 +874,7 @@ term(MemoryArena* arena, TokenStream* input,
   bool success = true;
 
   if((success = factor(arena, input, node)) && *node)
-  {
     success = rest_of_factor(arena, input, *node, node);
-  }
   return success;
 }
 
@@ -994,40 +897,25 @@ rest_of_term(MemoryArena* arena, TokenStream* input,
     expr->lhs = left_node;
 
     if(input->token.kind == TokenKind_Plus)
-    {
       expr->op = AstOpKind_Add;
-    }
     else if(input->token.kind == TokenKind_Minus)
-    {
       expr->op = AstOpKind_Sub;
-    }
     else if(input->token.kind == TokenKind_Pipe)
-    {
       expr->op = AstOpKind_BitwiseOr;
-    }
     else if(input->token.kind == TokenKind_PipePipe)
-    {
       expr->op = AstOpKind_LogicOr;
-    }
     else if(input->token.kind == TokenKind_Ampersand)
-    {
       expr->op = AstOpKind_BitwiseAnd;
-    }
     else if(input->token.kind == TokenKind_AmpersandAmpersand)
-    {
       expr->op = AstOpKind_LogicAnd;
-    }
     else
       assert(false);
 
     get_next_token(arena, input);
-
     if(success = term(arena, input, &expr->rhs))
     {
       if(expr->rhs)
-      {
         success = rest_of_term(arena, input, *node, node);
-      }
       else
       {
         compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`", __LINE__, input->token.lexeme);
@@ -1046,9 +934,7 @@ assignment(MemoryArena* arena, TokenStream* input,
   bool success = true;
 
   if((success = term(arena, input, node)) && *node)
-  {
     success = rest_of_term(arena, input, *node, node);
-  }
   return success;
 }
 
@@ -1087,9 +973,7 @@ expression(MemoryArena* arena, TokenStream* input,
   bool success = true;
 
   if((success = assignment(arena, input, node)) && *node)
-  {
     success = rest_of_assignment(arena, input, *node, node);
-  }
   return success;
 }
 
@@ -1110,12 +994,9 @@ formal_arg_decl(MemoryArena* arena, TokenStream* input,
     if(input->token.kind == TokenKind_Id)
     {
       var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
-
       get_next_token(arena, input);
       if(input->token.kind == TokenKind_OpenBracket)
-      {
         success = array_index(arena, input, var_decl->id, &var_decl->id);
-      }
     }
     else
     {
@@ -1209,9 +1090,7 @@ for_stmt(MemoryArena* arena, TokenStream* input,
       success = expression(arena, input, &for_stmt->loop_expr);
       if(!success) goto end;
       if(input->token.kind == TokenKind_CloseParens)
-      {
         get_next_token(arena, input);
-      }
       else
       {
         compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`", __LINE__, input->token.lexeme);
@@ -1266,7 +1145,6 @@ while_stmt(MemoryArena* arena, TokenStream* input,
       if(input->token.kind == TokenKind_CloseParens)
       {
         get_next_token(arena, input);
-
         if(while_stmt->cond_expr)
         {
           success = block(arena, input, &while_stmt->body);
@@ -1359,7 +1237,6 @@ if_stmt(MemoryArena* arena, TokenStream* input,
       if(input->token.kind == TokenKind_CloseParens)
       {
         get_next_token(arena, input);
-
         if(if_stmt->cond_expr)
         {
           success = block(arena, input, &if_stmt->body);
@@ -1440,9 +1317,7 @@ proc_decl(MemoryArena* arena, TokenStream* input,
             if(!success) goto end;
 
             if(!proc->body)
-            {
               success = semicolon(arena, input);
-            }
           }
           else
           {
@@ -1555,21 +1430,15 @@ enum_decl(MemoryArena* arena, TokenStream* input,
 
             get_next_token(arena, input);
             if(input->token.kind == TokenKind_Comma)
-            {
               get_next_token(arena, input);
-            }
             else if(input->token.kind != TokenKind_CloseBrace)
-            {
               member = 0;
-            }
           }
         }
         while(member);
 
         if(input->token.kind == TokenKind_CloseBrace)
-        {
           get_next_token(arena, input);
-        }
         else
         {
           compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`", __LINE__, input->token.lexeme);
@@ -1601,7 +1470,6 @@ struct_decl(MemoryArena* arena, TokenStream* input,
   if(input->token.kind == TokenKind_Struct)
   {
     get_next_token(arena, input);
-
     if(input->token.kind == TokenKind_Id)
     {
       *node = new_struct(arena, &input->src_loc);
@@ -1629,7 +1497,6 @@ struct_decl(MemoryArena* arena, TokenStream* input,
               member = new_var_decl(arena, &input->src_loc);
               AstVarDecl* var_decl = &member->var_decl;
               var_decl->type = type;
-
               var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
               get_next_token(arena, input);
@@ -1653,9 +1520,7 @@ struct_decl(MemoryArena* arena, TokenStream* input,
         while(member);
 
         if(input->token.kind == TokenKind_CloseBrace)
-        {
           get_next_token(arena, input);
-        }
         else
         {
           compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`", __LINE__, input->token.lexeme);
@@ -1703,25 +1568,15 @@ module_element(MemoryArena* arena, TokenStream* input,
   bool success = true;
 
   if(input->token.kind == TokenKind_Include)
-  {
     success = include_stmt(arena, input, node) && semicolon(arena, input);
-  }
   else if(input->token.kind == TokenKind_Proc)
-  {
     success = proc_decl(arena, input, node);
-  }
   else if(input->token.kind == TokenKind_Var)
-  {
     success = var_stmt(arena, input, node) && semicolon(arena, input);
-  }
   else if(input->token.kind == TokenKind_Struct)
-  {
     success = struct_decl(arena, input, node);
-  }
   else if(input->token.kind == TokenKind_Enum)
-  {
     success = enum_decl(arena, input, node);
-  }
   return success;
 }
 
@@ -1735,9 +1590,7 @@ module(MemoryArena* arena, TokenStream* input,
   do
   {
     if((success = module_element(arena, input, &node)) && node)
-    {
       list_append(arena, node_list, node);
-    }
   }
   while(success && node);
 
@@ -1852,29 +1705,17 @@ statement(MemoryArena* arena, TokenStream* input,
   bool success = true;
 
   if(input->token.kind == TokenKind_If)
-  {
     success = if_stmt(arena, input, node);
-  }
   else if(input->token.kind == TokenKind_While)
-  {
     success = while_stmt(arena, input, node);
-  }
   else if(input->token.kind == TokenKind_For)
-  {
     success = for_stmt(arena, input, node);
-  }
   else if(input->token.kind == TokenKind_Return)
-  {
     success = return_stmt(arena, input, node) && semicolon(arena, input);
-  }
   else if(input->token.kind == TokenKind_Break)
-  {
     success = break_stmt(arena, input, node) && semicolon(arena, input);
-  }
   else if(input->token.kind == TokenKind_Var)
-  {
     success = var_stmt(arena, input, node) && semicolon(arena, input);
-  }
   else if(input->token.kind == TokenKind_Semicolon)
   {
     get_next_token(arena, input);
@@ -1883,9 +1724,7 @@ statement(MemoryArena* arena, TokenStream* input,
   else
   {
     if((success = expression(arena, input, node)) && *node)
-    {
       success = semicolon(arena, input);
-    }
   }
   return success;
 }

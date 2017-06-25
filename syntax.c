@@ -319,23 +319,62 @@ type_id(MemoryArena* arena, TokenStream* input,
 }
 
 internal bool32
-actual_argument_list(MemoryArena* arena, TokenStream* input,
-                     List* arg_list)
+actual_arg_list(MemoryArena* arena, TokenStream* input,
+                List* arg_list)
 {
   bool32 success = true;
-  
-  AstNode* arg_node = 0;
-  success = expression(arena, input, &arg_node) && arg_node;
-  if(success)
-  {
-    list_append(arena, arg_list, arg_node);
 
-    if(input->token.kind == TokenKind_Comma)
+  AstNode* arg = 0;
+  do
+  {
+    arg = 0;
+    success = expression(arena, input, &arg);
+    if(success && arg)
     {
-      get_next_token(arena, input);
-      success = actual_argument_list(arena, input, arg_list);
+      list_append(arena, arg_list, arg);
+
+      if(input->token.kind == TokenKind_Comma)
+      {
+        get_next_token(arena, input);
+        if(input->token.kind == TokenKind_CloseParens)
+        {
+          compile_error(&input->src_loc, "(%d) Expected identifier, actual `%s`", __LINE__, input->token.lexeme);
+          success = false;
+        }
+      }
     }
   }
+  while(success && arg);
+  return success;
+}
+
+internal bool32
+formal_arg_list(MemoryArena* arena, TokenStream* input,
+                List* arg_list)
+{
+  bool32 success = true;
+
+  AstNode* arg = 0;
+  do
+  {
+    arg = 0;
+    success = formal_arg_decl(arena, input, &arg);
+
+    if(arg)
+    {
+      list_append(arena, arg_list, arg);
+      if(input->token.kind == TokenKind_Comma)
+      {
+        get_next_token(arena, input);
+      }
+      else if(input->token.kind != TokenKind_CloseParens)
+      {
+        compile_error(&input->src_loc, "(%d) Missing `,`", __LINE__);
+        success = false;
+      }
+    }
+  }
+  while(success && arg);
   return success;
 }
 
@@ -348,15 +387,15 @@ statement_list(MemoryArena* arena, TokenStream* input,
   while(input->token.kind == TokenKind_Semicolon)
     get_next_token(arena, input);
 
-  AstNode* stmt_node = 0;
+  AstNode* stmt = 0;
   do
   {
-    if((success = statement(arena, input, &stmt_node)) && stmt_node)
+    if((success = statement(arena, input, &stmt)) && stmt)
     {
-      list_append(arena, stmt_list, stmt_node);
+      list_append(arena, stmt_list, stmt);
     }
   }
-  while(success && stmt_node);
+  while(success && stmt);
   return success;
 }
 
@@ -435,7 +474,7 @@ rest_of_id(MemoryArena* arena, TokenStream* input,
     call->id = id;
 
     get_next_token(arena, input);
-    if(success = actual_argument_list(arena, input, &call->actual_args))
+    if(success = actual_arg_list(arena, input, &call->actual_args))
     {
       if(input->token.kind == TokenKind_CloseParens)
       {
@@ -443,7 +482,7 @@ rest_of_id(MemoryArena* arena, TokenStream* input,
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Missing `)`", __LINE__);
+        compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
@@ -475,7 +514,7 @@ accessor(MemoryArena* arena, TokenStream* input,
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Missing `)`", __LINE__);
+        compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
@@ -645,7 +684,7 @@ unary_expr(MemoryArena* arena, TokenStream* input,
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Operand expected", __LINE__);
+        compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
@@ -673,20 +712,20 @@ unary_expr(MemoryArena* arena, TokenStream* input,
           }
           else
           {
-            compile_error(&input->src_loc, "(%d) Operand expected", __LINE__);
+            compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`", __LINE__, input->token.lexeme);
             success = false;
           }
         }
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Missing `>`", __LINE__);
+        compile_error(&input->src_loc, "(%d) Expected `>`, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
     else
     {
-      compile_error(&input->src_loc, "(%d) Expected type identifier", __LINE__);
+      compile_error(&input->src_loc, "(%d) Expected type identifier, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }
@@ -724,7 +763,7 @@ rest_of_accessor(MemoryArena* arena, TokenStream* input,
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Operand expected", __LINE__);
+        compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
@@ -815,7 +854,7 @@ rest_of_factor(MemoryArena* arena, TokenStream* input,
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Operand expected", __LINE__);
+        compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
@@ -892,7 +931,7 @@ rest_of_term(MemoryArena* arena, TokenStream* input,
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Operand expected", __LINE__);
+        compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
@@ -933,7 +972,7 @@ rest_of_assignment(MemoryArena* arena, TokenStream* input,
     {
       if(!expr->rhs)
       {
-        compile_error(&input->src_loc, "(%d) Missing right side of assignment", __LINE__);
+        compile_error(&input->src_loc, "(%d) Expected operand, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
@@ -981,7 +1020,7 @@ formal_arg_decl(MemoryArena* arena, TokenStream* input,
     }
     else
     {
-      compile_error(&input->src_loc, "(%d) Identifier expected", __LINE__);
+      compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }
@@ -995,54 +1034,49 @@ var_decl(MemoryArena* arena, TokenStream* input,
   *node = 0;
   bool32 success = true;
 
-  if(input->token.kind == TokenKind_Var)
+  *node = new_var_decl(arena, &input->src_loc);
+  AstVarDecl* var_decl = &(*node)->var_decl;
+
+  success = type_id(arena, input, &var_decl->type);
+  if(!success) goto end;
+
+  if(var_decl->type)
   {
-    get_next_token(arena, input);
-
-    *node = new_var_decl(arena, &input->src_loc);
-    AstVarDecl* var_decl = &(*node)->var_decl;
-
-    success = type_id(arena, input, &var_decl->type);
-    if(!success) goto end;
-
-    if(var_decl->type)
+    if(input->token.kind == TokenKind_Id)
     {
-      if(input->token.kind == TokenKind_Id)
+      var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
+
+      get_next_token(arena, input);
+      if(input->token.kind == TokenKind_OpenBracket)
       {
-        var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
+        success = array_index(arena, input, var_decl->id, &var_decl->id);
+        if(!success) goto end;
+      }
 
+      if(input->token.kind == TokenKind_Equals)
+      {
         get_next_token(arena, input);
-        if(input->token.kind == TokenKind_OpenBracket)
-        {
-          success = array_index(arena, input, var_decl->id, &var_decl->id);
-          if(!success) goto end;
-        }
 
-        if(input->token.kind == TokenKind_Equals)
+        if(success = expression(arena, input, &var_decl->init_expr))
         {
-          get_next_token(arena, input);
-
-          if(success = expression(arena, input, &var_decl->init_expr))
+          if(!var_decl->init_expr)
           {
-            if(!var_decl->init_expr)
-            {
-              compile_error(&input->src_loc, "(%d) Expression expected", __LINE__);
-              success = false;
-            }
+            compile_error(&input->src_loc, "(%d) Expression expected, actual `%s`", __LINE__, input->token.lexeme);
+            success = false;
           }
         }
-      }
-      else
-      {
-        compile_error(&input->src_loc, "(%d) Identifier expected", __LINE__);
-        success = false;
       }
     }
     else
     {
-      compile_error(&input->src_loc, "(%d) Type identifier expected", __LINE__);
+      compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
+  }
+  else
+  {
+    compile_error(&input->src_loc, "(%d) Type identifier expected, actual `%s`", __LINE__, input->token.lexeme);
+    success = false;
   }
 end:
   return success;
@@ -1065,43 +1099,8 @@ for_stmt(MemoryArena* arena, TokenStream* input,
     {
       get_next_token(arena, input);
 
-      {
-        AstNode* node = new_var_decl(arena, &input->src_loc);
-        AstVarDecl* var_decl = &node->var_decl;
-
-        success = type_id(arena, input, &var_decl->type);
-        if(!success) goto end;
-
-        if(var_decl->type)
-        {
-          if(input->token.kind == TokenKind_Id)
-          {
-            var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
-
-            get_next_token(arena, input);
-            if(input->token.kind == TokenKind_OpenBracket)
-            {
-              success = array_index(arena, input, var_decl->id, &var_decl->id);
-              if(!success) goto end;
-            }
-
-            if(input->token.kind == TokenKind_Equals)
-            {
-              get_next_token(arena, input);
-
-              success = expression(arena, input, &var_decl->init_expr) && semicolon(arena, input);
-              if(!success) goto end;
-
-              if(!var_decl->init_expr)
-              {
-                compile_error(&input->src_loc, "(%d) Expression expected", __LINE__);
-                success = false; goto end;
-              }
-            }
-            for_stmt->decl = node;
-          }
-        }
-      }
+      success = var_decl(arena, input, &for_stmt->decl) && semicolon(arena, input);
+      if(!success) goto end;
 
       success = expression(arena, input, &for_stmt->cond_expr) && semicolon(arena, input);
       if(!success) goto end;
@@ -1114,7 +1113,7 @@ for_stmt(MemoryArena* arena, TokenStream* input,
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Expected `)`", __LINE__);
+        compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`", __LINE__, input->token.lexeme);
         success = false; goto end;
       }
 
@@ -1128,14 +1127,14 @@ for_stmt(MemoryArena* arena, TokenStream* input,
 
         if(!for_stmt->body)
         {
-          compile_error(&input->src_loc, "(%d) Statement(s) expected", __LINE__);
+          compile_error(&input->src_loc, "(%d) Statement(s) expected, actual `%s`", __LINE__, input->token.lexeme);
           success = false;
         }
       }
     }
     else
     {
-      compile_error(&input->src_loc, "(%d) Missing `(`", __LINE__);
+      compile_error(&input->src_loc, "(%d) Expected `(`, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }
@@ -1179,26 +1178,26 @@ while_stmt(MemoryArena* arena, TokenStream* input,
 
             if(!while_stmt->body)
             {
-              compile_error(&input->src_loc, "(%d) Statement(s) expected", __LINE__);
+              compile_error(&input->src_loc, "(%d) Statement(s) expected, actual `%s`", __LINE__, input->token.lexeme);
               success = false;
             }
           }
         }
         else
         {
-          compile_error(&input->src_loc, "(%d) Expression expected", __LINE__);
+          compile_error(&input->src_loc, "(%d) Expression expected, actual `%s`", __LINE__, input->token.lexeme);
           success = false;
         }
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Missing `)`", __LINE__);
+        compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
     else
     {
-      compile_error(&input->src_loc, "(%d) Missing `(`", __LINE__);
+      compile_error(&input->src_loc, "(%d) Expected `(`, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }
@@ -1227,7 +1226,7 @@ else_stmt(MemoryArena* arena, TokenStream* input,
 
       if(!(*node))
       {
-        compile_error(&input->src_loc, "(%d) Statement(s) expected", __LINE__);
+        compile_error(&input->src_loc, "(%d) Statement(s) expected, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
@@ -1271,7 +1270,7 @@ if_stmt(MemoryArena* arena, TokenStream* input,
 
             if(!if_stmt->body)
             {
-              compile_error(&input->src_loc, "(%d) Statement(s) expected", __LINE__);
+              compile_error(&input->src_loc, "(%d) Statement(s) expected, actual `%s`", __LINE__, input->token.lexeme);
               success = false; goto end;
             }
           }
@@ -1281,19 +1280,19 @@ if_stmt(MemoryArena* arena, TokenStream* input,
         }
         else
         {
-          compile_error(&input->src_loc, "(%d) Expression expected", __LINE__);
+          compile_error(&input->src_loc, "(%d) Expression expected, actual `%s`", __LINE__, input->token.lexeme);
           success = false;
         }
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Missing `)`", __LINE__);
+        compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
     else
     {
-      compile_error(&input->src_loc, "(%d) Missing `(`", __LINE__);
+      compile_error(&input->src_loc, "(%d) Expected `(`, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }
@@ -1329,27 +1328,8 @@ proc_decl(MemoryArena* arena, TokenStream* input,
         {
           get_next_token(arena, input);
 
-          AstNode* arg = 0;
-          do
-          {
-            success = formal_arg_decl(arena, input, &arg);
-            if(!success) goto end;
-
-            if(arg)
-            {
-              list_append(arena, &proc->formal_args, arg);
-              if(input->token.kind == TokenKind_Comma)
-              {
-                get_next_token(arena, input);
-              }
-              else if(input->token.kind != TokenKind_CloseParens)
-              {
-                compile_error(&input->src_loc, "(%d) Missing `,`", __LINE__);
-                success = false; goto end;
-              }
-            }
-          }
-          while(arg);
+          success = formal_arg_list(arena, input, &proc->formal_args);
+          if(!success) goto end;
 
           if(input->token.kind == TokenKind_CloseParens)
           {
@@ -1365,25 +1345,25 @@ proc_decl(MemoryArena* arena, TokenStream* input,
           }
           else
           {
-            compile_error(&input->src_loc, "(%d) Missing `)`", __LINE__);
+            compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`", __LINE__, input->token.lexeme);
             success = false;
           }
         }
         else
         {
-          compile_error(&input->src_loc, "(%d) Expected `(`", __LINE__);
+          compile_error(&input->src_loc, "(%d) Expected `(`, actual `%s`", __LINE__, input->token.lexeme);
           success = false;
         }
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Expected identifier", __LINE__);
+        compile_error(&input->src_loc, "(%d) Expected identifier, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
     else
     {
-      compile_error(&input->src_loc, "(%d) Expected type identifier", __LINE__);
+      compile_error(&input->src_loc, "(%d) Expected type identifier, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }
@@ -1441,7 +1421,7 @@ include_stmt(MemoryArena* arena, TokenStream* input,
     }
     else
     {
-      compile_error(&input->src_loc, "(%d) String expected after `include`", __LINE__);
+      compile_error(&input->src_loc, "(%d) String expected, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }
@@ -1498,19 +1478,19 @@ enum_decl(MemoryArena* arena, TokenStream* input,
         }
         else
         {
-          compile_error(&input->src_loc, "(%d) Missing `}`", __LINE__);
+          compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`", __LINE__, input->token.lexeme);
           success = false;
         }
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Expected `{`", __LINE__);
+        compile_error(&input->src_loc, "(%d) Expected `{`, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
     else
     {
-      compile_error(&input->src_loc, "(%d) Identifier expected", __LINE__);
+      compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }
@@ -1571,7 +1551,7 @@ struct_decl(MemoryArena* arena, TokenStream* input,
             }
             else
             {
-              compile_error(&input->src_loc, "(%d) Identifier expected", __LINE__);
+              compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`", __LINE__, input->token.lexeme);
               success = false; goto end;
             }
           }
@@ -1584,19 +1564,19 @@ struct_decl(MemoryArena* arena, TokenStream* input,
         }
         else
         {
-          compile_error(&input->src_loc, "(%d) Missing `}`", __LINE__);
+          compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`", __LINE__, input->token.lexeme);
           success = false;
         }
       }
       else
       {
-        compile_error(&input->src_loc, "(%d) Expected `{`", __LINE__);
+        compile_error(&input->src_loc, "(%d) Expected `{`, actual `%s`", __LINE__, input->token.lexeme);
         success = false;
       }
     }
     else
     {
-      compile_error(&input->src_loc, "(%d) Identifier expected", __LINE__);
+      compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }
@@ -1621,6 +1601,7 @@ module_element(MemoryArena* arena, TokenStream* input,
   }
   else if(input->token.kind == TokenKind_Var)
   {
+    get_next_token(arena, input);
     success = var_decl(arena, input, node) && semicolon(arena, input);
   }
   else if(input->token.kind == TokenKind_Struct)
@@ -1773,6 +1754,7 @@ statement(MemoryArena* arena, TokenStream* input,
   }
   else if(input->token.kind == TokenKind_Var)
   {
+    get_next_token(arena, input);
     success = var_decl(arena, input, node) && semicolon(arena, input);
   }
   else if(input->token.kind == TokenKind_Semicolon)
@@ -1802,7 +1784,7 @@ parse(MemoryArena* arena, TokenStream* input, AstNode** node)
   {
     if(input->token.kind != TokenKind_EndOfInput)
     {
-      compile_error(&input->src_loc, "(%d) Unexpected token: %s", __LINE__, input->token.lexeme);
+      compile_error(&input->src_loc, "(%d) Unexpected `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }

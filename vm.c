@@ -28,19 +28,19 @@ typedef enum
 }
 ExecResult;
 
-bool32
+bool
 check_stack_bounds(HocMachine* machine, int sp)
 {
   return sp >= 0 && sp*(int)VMWORD < machine->mem_size;
 }
 
-bool32
+bool
 check_memory_bounds(HocMachine* machine, int location)
 {
   return location >= 0 && location < machine->mem_size;
 }
 
-bool32
+bool
 check_instr_bounds(HasmCode* code, int address)
 {
   return address >= 0 && address < code->instr_count;
@@ -256,7 +256,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
         int32 arg1 = *(int32*)&memory[arg_sp*VMWORD];
         int32 arg2 = *(int32*)&memory[(arg_sp+1)*VMWORD];
 
-        bool32 result = 0;
+        bool result = 0;
         if(opcode == Opcode_AND) {
           result = arg1 && arg2;
         }
@@ -279,7 +279,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(check_stack_bounds(machine, arg_sp))
       {
         int32 arg = *(int32*)&memory[arg_sp*VMWORD];
-        *(int32*)&memory[arg_sp*VMWORD] = (bool32)!arg;
+        *(int32*)&memory[arg_sp*VMWORD] = (bool)!arg;
         machine->ip++;
       } else
         return ExecResult_InvalidMemoryAccess;
@@ -648,7 +648,7 @@ run_program(HocMachine* machine)
   return exec_result;
 }
 
-bool32
+bool
 load_hvm_code(HasmCode* code)
 {
   HRSRC res = FindResource(0, "CODE", "VM");

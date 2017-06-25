@@ -33,7 +33,7 @@ VmProgram;
 VmProgram*
 translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
 {
-  bool32 success = false;
+  bool success = false;
 
   /*
   init_global_basic_types(arena);
@@ -96,12 +96,12 @@ translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
   return vm_program;
 }
 
-bool32
+bool
 make_file_names(OutFileNames* out_files, char* stem)
 {
   int stem_len = cstr_len(stem);
   assert(stem_len > 0);
-  bool32 success = (stem_len > 0 && stem_len < 80);
+  bool success = (stem_len > 0 && stem_len < 80);
 
   if(success)
   {
@@ -130,14 +130,14 @@ make_file_names(OutFileNames* out_files, char* stem)
   return success;
 }
 
-bool32
+bool
 write_res_file(OutFileNames* out_files)
 {
   char buf[200];
   sprintf(buf, OUT_RC, out_files->irc.name);
   int text_len = cstr_len(buf);
   int bytes_written = file_write_bytes(out_files->rc.name, (uint8*)buf, text_len);
-  bool32 success = (bytes_written == text_len);
+  bool success = (bytes_written == text_len);
   if(success)
   {
     STARTUPINFO start_info = {0};
@@ -169,21 +169,21 @@ write_res_file(OutFileNames* out_files)
   return success;
 }
 
-bool32
+bool
 write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
 {
   int bytes_written = file_write_bytes(out_files->ir.name, (uint8*)vm_program->text.head, vm_program->text_len);
-  bool32 success = (bytes_written == vm_program->text_len);
+  bool success = (bytes_written == vm_program->text_len);
   if(!success)
     error("IR file '%s' incompletely written", out_files->ir.name);
   return success;
 }
 
-bool32
+bool
 write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
 {
   size_t bytes_written = file_write_bytes(out_files->irc.name, hasm_code->code_start, hasm_code->code_size);
-  bool32 success = (bytes_written == hasm_code->code_size);
+  bool success = (bytes_written == hasm_code->code_size);
   if(!success)
     error("IRC file '%s' incompletely written", out_files->irc.name);
   return success;
@@ -211,14 +211,14 @@ main(int argc, char* argv[])
         OutFileNames out_files = {0};
         char* file_stem = path_make_stem(file_path);
 
-        bool32 success = make_file_names(&out_files, file_stem) &&
+        bool success = make_file_names(&out_files, file_stem) &&
           write_ir_file(&out_files, vm_program);
 
         if(success)
         {
           HasmCode* hasm_code = 0;
           char* hasm_text = vm_program->text.head;
-          bool32 success = translate_ir_to_code(&arena, hasm_text, &hasm_code);
+          bool success = translate_ir_to_code(&arena, hasm_text, &hasm_code);
 
           if(success)
           {

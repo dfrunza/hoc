@@ -390,7 +390,7 @@ AstBreakStmt;
 typedef struct
 {
   AstNode* expr;
-  bool32 new_line;
+  bool new_line;
 }
 AstPrintStmt;
 */
@@ -441,6 +441,6 @@ typedef struct AstNode
 }
 AstNode;
 
-bool32 parse(MemoryArena*, TokenStream*, AstNode**);
+bool parse(MemoryArena*, TokenStream*, AstNode**);
 void DEBUG_print_ast_node(String*, int, AstNode*, char*);
 

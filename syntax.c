@@ -1,6 +1,6 @@
 #include "syntax.h"
 
-internal bool32
+internal bool
 is_logical_operator(AstOpKind op)
 {
   return op >= AstOpKind_LogicEquals && op <= AstOpKind_LogicNot;
@@ -262,10 +262,10 @@ new_cast(MemoryArena* arena, SourceLocation* src_loc)
   return node;
 }
 
-internal bool32
+internal bool
 semicolon(MemoryArena* arena, TokenStream* input)
 {
-  bool32 success = true;
+  bool success = true;
   if(input->token.kind == TokenKind_Semicolon)
   {
     get_next_token(arena, input);
@@ -278,12 +278,12 @@ semicolon(MemoryArena* arena, TokenStream* input)
   return success;
 }
 
-internal bool32
+internal bool
 rest_of_type_id(MemoryArena* arena, TokenStream* input,
                 AstNode* expr, AstNode** node)
 {
   *node = expr;
-  bool32 success = true;
+  bool success = true;
   
   if(input->token.kind == TokenKind_Star ||
      input->token.kind == TokenKind_Pointer)
@@ -298,12 +298,12 @@ rest_of_type_id(MemoryArena* arena, TokenStream* input,
   return true;
 }
 
-internal bool32
+internal bool
 type_id(MemoryArena* arena, TokenStream* input,
         AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Id)
   {
@@ -318,11 +318,11 @@ type_id(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 actual_arg_list(MemoryArena* arena, TokenStream* input,
                 List* arg_list)
 {
-  bool32 success = true;
+  bool success = true;
 
   AstNode* arg = 0;
   do
@@ -348,11 +348,11 @@ actual_arg_list(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 formal_arg_list(MemoryArena* arena, TokenStream* input,
                 List* arg_list)
 {
-  bool32 success = true;
+  bool success = true;
 
   AstNode* arg = 0;
   do
@@ -378,11 +378,11 @@ formal_arg_list(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 statement_list(MemoryArena* arena, TokenStream* input,
                List* stmt_list)
 {
-  bool32 success = true;
+  bool success = true;
 
   while(input->token.kind == TokenKind_Semicolon)
     get_next_token(arena, input);
@@ -399,12 +399,12 @@ statement_list(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 block(MemoryArena* arena, TokenStream* input,
       AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_OpenBrace)
   {
@@ -428,12 +428,12 @@ block(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 array_index(MemoryArena* arena, TokenStream* input,
             AstNode* expr, AstNode** node)
 {
   *node = expr;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_OpenBracket)
   {
@@ -460,12 +460,12 @@ array_index(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 rest_of_id(MemoryArena* arena, TokenStream* input,
            AstNode* id, AstNode** node)
 {
   *node = id;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_OpenParens)
   {
@@ -495,12 +495,12 @@ rest_of_id(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 accessor(MemoryArena* arena, TokenStream* input,
          AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_OpenParens)
   {
@@ -631,12 +631,12 @@ postfix(MemoryArena* arena, TokenStream* input,
   }
 }
 
-internal bool32
+internal bool
 unary_expr(MemoryArena* arena, TokenStream* input,
            AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Exclam ||
      input->token.kind == TokenKind_Pointer ||
@@ -740,12 +740,12 @@ end:
   return success;
 }
 
-internal bool32
+internal bool
 rest_of_accessor(MemoryArena* arena, TokenStream* input,
                  AstNode* left_node, AstNode** node)
 {
   *node = left_node;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Dot)
   {
@@ -772,11 +772,11 @@ rest_of_accessor(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 factor(MemoryArena* arena, TokenStream* input,
        AstNode** node)
 {
-  bool32 success = true;
+  bool success = true;
 
   if((success = unary_expr(arena, input, node)) && *node)
   {
@@ -785,12 +785,12 @@ factor(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 rest_of_factor(MemoryArena* arena, TokenStream* input,
                AstNode* left_node, AstNode** node)
 {
   *node = left_node;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Star ||
      input->token.kind == TokenKind_FwdSlash ||
@@ -863,11 +863,11 @@ rest_of_factor(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 term(MemoryArena* arena, TokenStream* input,
      AstNode** node)
 {
-  bool32 success = true;
+  bool success = true;
 
   if((success = factor(arena, input, node)) && *node)
   {
@@ -876,12 +876,12 @@ term(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 rest_of_term(MemoryArena* arena, TokenStream* input,
              AstNode* left_node, AstNode** node)
 {
   *node = left_node;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Plus ||
      input->token.kind == TokenKind_Minus ||
@@ -940,11 +940,11 @@ rest_of_term(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 assignment(MemoryArena* arena, TokenStream* input,
            AstNode** node)
 {
-  bool32 success = true;
+  bool success = true;
 
   if((success = term(arena, input, node)) && *node)
   {
@@ -953,12 +953,12 @@ assignment(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 rest_of_assignment(MemoryArena* arena, TokenStream* input,
                    AstNode* left_node, AstNode** node)
 {
   *node = left_node;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Equals)
   {
@@ -981,11 +981,11 @@ rest_of_assignment(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 expression(MemoryArena* arena, TokenStream* input,
            AstNode** node)
 {
-  bool32 success = true;
+  bool success = true;
 
   if((success = assignment(arena, input, node)) && *node)
   {
@@ -994,12 +994,12 @@ expression(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 formal_arg_decl(MemoryArena* arena, TokenStream* input,
                 AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   AstNode* type = 0;
   if((success = type_id(arena, input, &type)) && type)
@@ -1027,12 +1027,12 @@ formal_arg_decl(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 var_decl(MemoryArena* arena, TokenStream* input,
          AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   AstNode* type = 0;
   success = type_id(arena, input, &type);
@@ -1078,12 +1078,12 @@ end:
   return success;
 }
 
-internal bool32
+internal bool
 for_stmt(MemoryArena* arena, TokenStream* input,
          AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_For)
   {
@@ -1138,12 +1138,12 @@ end:
   return success;
 }
 
-internal bool32
+internal bool
 while_stmt(MemoryArena* arena, TokenStream* input,
            AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_While)
   {
@@ -1201,12 +1201,12 @@ end:
   return success;
 }
 
-internal bool32
+internal bool
 else_stmt(MemoryArena* arena, TokenStream* input,
           AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Else)
   {
@@ -1231,12 +1231,12 @@ end:
   return success;
 }
 
-internal bool32
+internal bool
 if_stmt(MemoryArena* arena, TokenStream* input,
         AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_If)
   {
@@ -1296,12 +1296,12 @@ end:
   return success;
 }
 
-internal bool32
+internal bool
 proc_decl(MemoryArena* arena, TokenStream* input,
           AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Proc)
   {
@@ -1367,12 +1367,12 @@ end:
   return success;
 }
 
-internal bool32
+internal bool
 include_stmt(MemoryArena* arena, TokenStream* input,
              AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Include)
   {
@@ -1417,12 +1417,12 @@ include_stmt(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 enum_decl(MemoryArena* arena, TokenStream* input,
           AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Enum)
   {
@@ -1486,12 +1486,12 @@ enum_decl(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 struct_decl(MemoryArena* arena, TokenStream* input,
             AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Struct)
   {
@@ -1573,12 +1573,12 @@ end:
   return success;
 }
 
-internal bool32
+internal bool
 var_stmt(MemoryArena* arena, TokenStream* input,
          AstNode** node)
 {
   *node = 0;
-  bool32 success = false;
+  bool success = false;
 
   get_next_token(arena, input);
   success = var_decl(arena, input, node);
@@ -1590,12 +1590,12 @@ var_stmt(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 module_element(MemoryArena* arena, TokenStream* input,
                AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Include)
   {
@@ -1620,11 +1620,11 @@ module_element(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 module(MemoryArena* arena, TokenStream* input,
        List* node_list)
 {
-  bool32 success = true;
+  bool success = true;
 
   AstNode* node = 0;
   do
@@ -1647,12 +1647,12 @@ module(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 return_stmt(MemoryArena* arena, TokenStream* input,
             AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Return)
   {
@@ -1709,12 +1709,12 @@ return_stmt(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 break_stmt(MemoryArena* arena, TokenStream* input,
            AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_Break)
   {
@@ -1739,12 +1739,12 @@ break_stmt(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-internal bool32
+internal bool
 statement(MemoryArena* arena, TokenStream* input,
           AstNode** node)
 {
   *node = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(input->token.kind == TokenKind_If)
   {
@@ -1785,10 +1785,10 @@ statement(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
-bool32
+bool
 parse(MemoryArena* arena, TokenStream* input, AstNode** node)
 {
-  bool32 success = true;
+  bool success = true;
 
   *node = new_module(arena, &input->src_loc);
   success = module(arena, input, &(*node)->module.node_list);

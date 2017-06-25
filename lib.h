@@ -7,15 +7,15 @@
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
-typedef int bool32;
+typedef int bool;
 
 typedef char int8;
 typedef short int16;
 typedef int int32;
-typedef long long int64;
 typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned int uint32;
+typedef long long int64;
 typedef unsigned long long uint64;
 typedef float float32;
 typedef double float64;
@@ -61,18 +61,18 @@ void* mem_push_struct_(MemoryArena* arena, size_t elem_size, size_t count);
 MemoryArena arena_new(int size);
 void DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena);
 
-bool32 char_is_letter(char ch);
-bool32 char_is_numeric(char c);
+bool char_is_letter(char ch);
+bool char_is_numeric(char c);
 
 /*
  * The function assumes that all characters in the input string are digits,
  * except for the first, which could be the negative sign '-'
  */
-bool32 cstr_to_int(char* string, int* integer);
+bool cstr_to_int(char* string, int* integer);
 
-bool32 cstr_to_float(char* string, float* result);
-bool32 cstr_start_with(char* str, char* prefix);
-bool32 cstr_match(char* str_a, char* str_b);
+bool cstr_to_float(char* string, float* result);
+bool cstr_start_with(char* str, char* prefix);
+bool cstr_match(char* str_a, char* str_b);
 int cstr_len(char* str);
 char* cstr_copy(char* dest_str, char* src_str);
 void cstr_copy_substr(char* dest_str, char* begin_char, char* end_char);

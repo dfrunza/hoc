@@ -36,10 +36,10 @@ new_product_type(MemoryArena* arena, Type* left, Type* right)
   return type;
 }
 
-bool32
+bool
 types_are_equal(Type* type_a, Type* type_b)
 {
-  bool32 are_equal = false;
+  bool are_equal = false;
 
   if(type_a->kind != TypeKind_TypeVar &&
      type_b->kind == type_a->kind)
@@ -86,10 +86,10 @@ type_set_union(Type* type_a, Type* type_b)
   }
 }
 
-bool32
+bool
 type_unification(Type* type_a, Type* type_b)
 {
-  bool32 success = false;
+  bool success = false;
   Type* repr_type_a = type_find_set_representative(type_a);
   Type* repr_type_b = type_find_set_representative(type_b);
 
@@ -215,11 +215,11 @@ type_substitution(MemoryArena* arena, List* tuple_list, Type* type)
   return subst;
 }
 
-bool32
+bool
 typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type** type)
 {
   Type* result = 0;
-  bool32 success = true;
+  bool success = true;
 
   if(expr_node->kind == AstNodeKind_Literal)
   {
@@ -374,10 +374,10 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
   return success;
 }
 
-bool32
+bool
 typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
 {
-  bool32 success = true;
+  bool success = true;
 
   if(stmt_node->kind == AstNodeKind_ReturnStmt)
   {
@@ -472,13 +472,13 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
   return success;
 }
 
-bool32
+bool
 typecheck_block(MemoryArena* arena, List* type_tuples, AstNode* block_node)
 {
   //TODO: Typecheck the block properly:
   // If the block is owned by a proc, then its type should be set to proc's type.
   // If the block is owned by 'if,while' (or anonymous) then its type should be 'void'.
-  bool32 success = true;
+  bool success = true;
   assert(block_node->kind == AstNodeKind_Block);
   AstBlock* block = &block_node->block;
 
@@ -510,10 +510,10 @@ typecheck_block(MemoryArena* arena, List* type_tuples, AstNode* block_node)
   return success;
 }
 
-bool32
+bool
 typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* proc_node)
 {
-  bool32 success = true;
+  bool success = true;
   assert(proc_node->kind == AstNodeKind_Proc);
   AstProc* proc = &proc_node->proc;
 
@@ -555,10 +555,10 @@ typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* proc_node)
   return success;
 }
 
-bool32
+bool
 typecheck_module(MemoryArena* arena, List* type_tuples, AstNode* module_node)
 {
-  bool32 success = true;
+  bool success = true;
   assert(module_node->kind == AstNodeKind_Module);
   AstModule* module = &module_node->module;
 

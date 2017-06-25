@@ -138,7 +138,7 @@ init_global_basic_types(MemoryArena* arena)
   basic_type_void = new_basic_type(arena, BasicTypeKind_Void);
 }
 
-bool32
+bool
 scope_begin(SymbolTable* symbol_table)
 {
   int scope_id = ++symbol_table->last_scope_id;

@@ -1,6 +1,6 @@
 #include "lib.h"
 
-internal bool32
+internal bool
 DEBUG_mem_clear_zero = true;
 
 void
@@ -29,13 +29,13 @@ error(char* message, ...)
   va_end(args);
 }
 
-bool32
+bool
 char_is_letter(char ch)
 {
   return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z');
 }
 
-bool32
+bool
 char_is_numeric(char c)
 {
   return '0' <= c && c <= '9';
@@ -129,10 +129,10 @@ arena_new(int size)
   return arena;
 }
 
-bool32
+bool
 cstr_to_int(char* string, int* integer)
 {
-  bool32 negative = false;
+  bool negative = false;
 
   if(*string == '-')
   {
@@ -165,11 +165,11 @@ cstr_to_int(char* string, int* integer)
   return true;
 }
 
-bool32
+bool
 cstr_to_float(char* string, float* result)
 {
 #if 0
-  bool32 negative = false;
+  bool negative = false;
 
   if(*string == '-')
   {
@@ -224,7 +224,7 @@ cstr_to_float(char* string, float* result)
   return true;
 }
 
-bool32
+bool
 cstr_start_with(char* str, char* prefix)
 {
   while(*str == *prefix)
@@ -234,11 +234,11 @@ cstr_start_with(char* str, char* prefix)
     if(*prefix == '\0')
       break;
   }
-  bool32 result = (*prefix == '\0');
+  bool result = (*prefix == '\0');
   return result;
 }
 
-bool32
+bool
 cstr_match(char* str_a, char* str_b)
 {
   while(*str_a == *str_b)
@@ -248,7 +248,7 @@ cstr_match(char* str_a, char* str_b)
     if(*str_a == '\0')
       break;
   }
-  bool32 result = (*str_a == *str_b);
+  bool result = (*str_a == *str_b);
   return result;
 }
 

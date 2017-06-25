@@ -54,7 +54,7 @@ get_prev_token(TokenStream* input, int index)
   return &input->prev_tokens[index];
 }
 
-internal bool32
+internal bool
 is_keyword(TokenKind token_kind)
 {
   return (token_kind > TokenKind__KeywordBegin) && (token_kind < TokenKind__KeywordEnd);
@@ -103,7 +103,7 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
   src_loc->file_path = file_path;
 }
 
-internal bool32
+internal bool
 is_leading_unary_token(TokenKind token)
 {
   return token == TokenKind_Equals ||
@@ -177,7 +177,7 @@ loop:
   else if(char_is_numeric(c))
   {
     char digit_buf[32] = {0};
-    bool32 is_float = false;
+    bool is_float = false;
     int i = 0;
     for(; i < sizeof_array(digit_buf)-1 && (char_is_numeric(c) || c == '.'); i++)
     {

@@ -92,7 +92,7 @@ find_label(SourceProgram* source, char* label_string)
   return result;
 }
 
-bool32
+bool
 is_valid_label(char *label)
 {
   char start_char = *label;
@@ -138,7 +138,7 @@ process_source_lines(SourceProgram* source)
   }
 }
 
-bool32
+bool
 build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
 {
   HasmCode* code = mem_push_struct(arena, HasmCode, 1);
@@ -439,10 +439,10 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
   return true;
 }
 
-bool32
+bool
 translate_ir_to_code(MemoryArena* arena, char* text, HasmCode** code)
 {
-  bool32 success = true;
+  bool success = true;
 
   SourceProgram source = {0};
   source.text = text;

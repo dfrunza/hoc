@@ -254,6 +254,16 @@ new_struct(MemoryArena* arena, SourceLocation* src_loc)
 }
 
 internal AstNode*
+new_initializer(MemoryArena* arena, SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  node->kind = AstNodeKind_Initializer;
+  list_init(&node->initer.member_list);
+  node->src_loc = *src_loc;
+  return node;
+}
+
+internal AstNode*
 new_cast(MemoryArena* arena, SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -273,6 +283,22 @@ semicolon(MemoryArena* arena, TokenStream* input)
   else
   {
     compile_error(&input->src_loc, "(%d) Expected `;`, actual `%s`", __LINE__, input->token.lexeme);
+    success = false;
+  }
+  return success;
+}
+
+internal bool
+close_brace(MemoryArena* arena, TokenStream* input)
+{
+  bool success = true;
+  if(input->token.kind == TokenKind_CloseBrace)
+  {
+    get_next_token(arena, input);
+  }
+  else
+  {
+    compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`", __LINE__, input->token.lexeme);
     success = false;
   }
   return success;
@@ -315,6 +341,79 @@ type_id(MemoryArena* arena, TokenStream* input,
       success = rest_of_type_id(arena, input, *node, node);
     }
   }
+  return success;
+}
+
+internal bool
+initializer(MemoryArena* arena, TokenStream* input,
+            AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  if(input->token.kind == TokenKind_OpenBrace)
+  {
+    get_next_token(arena, input);
+    *node = new_initializer(arena, &input->src_loc);
+    AstInitializer* initer = &(*node)->initer;
+
+    if(success = initializer_member_list(arena, input, &initer->member_list))
+    {
+      if(input->token.kind == TokenKind_CloseBrace)
+      {
+        get_next_token(arena, input);
+      }
+      else
+      {
+        compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`", __LINE__, input->token.lexeme);
+        success = false;
+      }
+    }
+  }
+
+  return success;
+}
+
+internal bool
+initializer_member_list(MemoryArena* arena, TokenStream* input,
+                        List* member_list)
+{
+  bool success = true;
+
+  AstNode* member = 0;
+  do
+  {
+    member = 0;
+    if(input->token.kind == TokenKind_OpenBrace)
+    {
+      if(success = initializer(arena, input, &member))
+      {
+        if(input->token.kind == TokenKind_Comma)
+        {
+          get_next_token(arena, input);
+        }
+      }
+    }
+
+    if(success)
+    {
+      if(!member)
+      {
+        success = expression(arena, input, &member);
+      }
+
+      if(success && member)
+      {
+        list_append(arena, member_list, member);
+
+        if(input->token.kind == TokenKind_Comma)
+        {
+          get_next_token(arena, input);
+        }
+      }
+    }
+  }
+  while(success && member);
   return success;
 }
 
@@ -1058,12 +1157,18 @@ var_decl(MemoryArena* arena, TokenStream* input,
       {
         get_next_token(arena, input);
 
-        if(success = expression(arena, input, &var_decl->init_expr))
+        success = initializer(arena, input, &var_decl->init_expr);
+        if(!success) goto end;
+
+        if(!var_decl->init_expr)
         {
-          if(!var_decl->init_expr)
+          if(success = expression(arena, input, &var_decl->init_expr))
           {
-            compile_error(&input->src_loc, "(%d) Expression expected, actual `%s`", __LINE__, input->token.lexeme);
-            success = false;
+            if(!var_decl->init_expr)
+            {
+              compile_error(&input->src_loc, "(%d) Expression expected, actual `%s`", __LINE__, input->token.lexeme);
+              success = false;
+            }
           }
         }
       }
@@ -1640,7 +1745,7 @@ module(MemoryArena* arena, TokenStream* input,
   {
     if(input->token.kind != TokenKind_EndOfInput)
     {
-      compile_error(&input->src_loc, "(%d) Unexpected `%s`", __LINE__, input->token.lexeme);
+      compile_error(&input->src_loc, "(%d) Unexpected token `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
   }
@@ -1974,6 +2079,11 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       AstEnum* enum_ = &node->enum_;
       DEBUG_print_ast_node(str, indent_level, enum_->id, "id");
       DEBUG_print_ast_node_list(str, indent_level, &enum_->member_list, "member_list");
+    }
+    else if(node->kind == AstNodeKind_Initializer)
+    {
+      AstInitializer* initer = &node->initer;
+      DEBUG_print_ast_node_list(str, indent_level, &initer->member_list, "member_list");
     }
     else
     {

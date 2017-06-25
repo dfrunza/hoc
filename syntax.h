@@ -98,6 +98,7 @@ typedef enum
   AstNodeKind_Pointer,
   AstNodeKind_Struct,
   AstNodeKind_Enum,
+  AstNodeKind_Initializer,
 
   AstNodeKind__Count,
 }
@@ -129,6 +130,7 @@ DEBUG_AstNodeKind_tags[] =
   "AstNodeKind_Pointer",
   "AstNodeKind_Struct",
   "AstNodeKind_Enum",
+  "AstNodeKind_Initializer",
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
 };
 
@@ -409,6 +411,12 @@ typedef struct
 }
 AstCast;
 
+typedef struct
+{
+  List member_list;
+}
+AstInitializer;
+
 typedef struct AstNode
 {
   AstNodeKind kind;
@@ -437,6 +445,7 @@ typedef struct AstNode
     AstStruct struct_;
     AstAccessor accessor;
     AstEnum enum_;
+    AstInitializer initer;
   };
 }
 AstNode;

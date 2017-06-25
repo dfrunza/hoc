@@ -311,7 +311,7 @@ str_debug_output(String* string)
 void
 str_stdout(String* string)
 {
-  printf(string->head);
+  fputs(string->head, stdout);
 }
 
 void
@@ -329,7 +329,7 @@ str_append(String* string, char* cstr)
 }
 
 void
-str_printf(String* string, char* message, va_list varargs)
+str_printf_va(String* string, char* message, va_list varargs)
 {
   assert(string->head && string->end && string->arena);
   MemoryArena* arena = string->arena;
@@ -340,6 +340,15 @@ str_printf(String* string, char* message, va_list varargs)
   string->end += len;
   assert(string->end < (char*)arena->limit);
   arena->free = (uint8*)string->end+1;
+}
+
+void
+str_printf(String* string, char* message, ...)
+{
+  va_list varargs;
+  va_start(varargs, message);
+  str_printf_va(string, message, varargs);
+  va_end(varargs);
 }
 
 void
@@ -363,7 +372,7 @@ path_find_leaf(char* file_path)
   char* p_char = file_path;
   char* leaf = p_char;
 
-  // Get the file name part
+  /* get the file name part */
   while(p_char && *p_char)
   {
     while(*p_char && *p_char != '\\')
@@ -379,7 +388,7 @@ path_make_stem(char* file_path)
 {
   char* leaf = path_find_leaf(file_path);
 
-  // Remove the filename extension
+  /* remove the filename extension */
   if(leaf)
   {
     char* p_char = leaf;
@@ -496,11 +505,12 @@ list_append(MemoryArena* arena, List* list, void* elem)
 }
 
 bool
-compile_error(SourceLocation* src_loc, char* message, ...)
+compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...)
 {
   va_list args;
 
-  fprintf(stderr, "%s(%d) : ", src_loc->file_path, src_loc->line_nr);
+  fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
+          path_make_stem(file), line);
 
   va_start(args, message);
   vfprintf(stderr, message, args);

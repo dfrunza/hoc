@@ -93,7 +93,7 @@ uint str_len(String* string);
 void str_debug_output(String* string);
 void str_stdout(String* string);
 void str_append(String* string, char* cstr);
-void str_printf(String* string, char* message, va_list varargs);
+void str_printf(String* string, char* message, ...);
 void str_tidyup(String* string);
 char* path_find_leaf(char* file_path);
 
@@ -135,5 +135,5 @@ typedef struct
 }
 SourceLocation;
 
-bool compile_error(SourceLocation* src_loc, char* message, ...);
+bool compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...);
 

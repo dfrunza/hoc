@@ -279,8 +279,8 @@ semicolon(MemoryArena* arena, TokenStream* input)
   if(input->token.kind == TokenKind_Semicolon)
     get_next_token(arena, input);
   else
-    success = compile_error(&input->src_loc, "(%d) Expected `;`, actual `%s`",
-                            __LINE__, input->token.lexeme);
+    success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                            "Expected `;`, actual `%s`", input->token.lexeme);
   return success;
 }
 
@@ -339,8 +339,8 @@ initializer(MemoryArena* arena, TokenStream* input,
       if(input->token.kind == TokenKind_CloseBrace)
         get_next_token(arena, input);
       else
-        success = compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `}`, actual `%s`", input->token.lexeme);
     }
   }
 
@@ -399,8 +399,8 @@ actual_arg_list(MemoryArena* arena, TokenStream* input,
       if(input->token.kind == TokenKind_Comma)
       {
         if(get_next_token(arena, input)->kind == TokenKind_CloseParens)
-          success = compile_error(&input->src_loc, "(%d) Expected identifier, actual `%s`",
-                                  __LINE__, input->token.lexeme);
+          success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                  "Identifier expected, actual `%s`", input->token.lexeme);
       }
     }
   }
@@ -425,8 +425,8 @@ formal_arg_list(MemoryArena* arena, TokenStream* input,
       if(input->token.kind == TokenKind_Comma)
         get_next_token(arena, input);
       else if(input->token.kind != TokenKind_CloseParens)
-        success = compile_error(&input->src_loc, "(%d) Expected `,`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `,`, actual `%s`", input->token.lexeme);
     }
   }
   while(success && arg);
@@ -468,8 +468,7 @@ block(MemoryArena* arena, TokenStream* input,
       if(input->token.kind == TokenKind_CloseBrace)
         get_next_token(arena, input);
       else
-        success = compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__, "Expected `}`, actual `%s`", input->token.lexeme);
     }
   }
 
@@ -498,8 +497,7 @@ array_index(MemoryArena* arena, TokenStream* input,
         success = array_index(arena, input, *node, node);
       }
       else
-        success = compile_error(&input->src_loc, "(%d) Expected `]`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__, "Expected `]`, actual `%s`", input->token.lexeme);
     }
   }
   return success;
@@ -524,8 +522,8 @@ rest_of_id(MemoryArena* arena, TokenStream* input,
       if(input->token.kind == TokenKind_CloseParens)
         get_next_token(arena, input);
       else
-        success = compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `)`, actual `%s`", input->token.lexeme);
     }
   }
   else if(input->token.kind == TokenKind_OpenBracket)
@@ -550,8 +548,8 @@ accessor(MemoryArena* arena, TokenStream* input,
       if(input->token.kind == TokenKind_CloseParens)
         get_next_token(arena, input);
       else
-        success = compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `)`, actual `%s`", input->token.lexeme);
     }
   }
   else if(input->token.kind == TokenKind_IntNum ||
@@ -623,7 +621,7 @@ accessor(MemoryArena* arena, TokenStream* input,
           assert(false);
       }
       else
-        success = compile_error(&input->src_loc, "(%d) Unknown identifier `%s`", __LINE__, id_name);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__, "Unknown identifier `%s`", id_name);
     }
 #endif
   }
@@ -693,8 +691,8 @@ unary_expr(MemoryArena* arena, TokenStream* input,
       if(expr->operand)
         postfix(arena, input, expr->operand, &expr->operand);
       else
-        success = compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Operand expected, actual `%s`", input->token.lexeme);
     }
   }
   else if(input->token.kind == TokenKind_Cast)
@@ -716,17 +714,17 @@ unary_expr(MemoryArena* arena, TokenStream* input,
           if(cast->expr)
             postfix(arena, input, cast->expr, &cast->expr);
           else
-            success = compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`",
-                                    __LINE__, input->token.lexeme);
+            success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                    "Operand expected, actual `%s`", input->token.lexeme);
         }
       }
       else
-        success = compile_error(&input->src_loc, "(%d) Expected `>`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `>`, actual `%s`", input->token.lexeme);
     }
     else
-      success = compile_error(&input->src_loc, "(%d) Expected type identifier, actual `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Type identifier expected, actual `%s`", input->token.lexeme);
   }
   else
   {
@@ -757,8 +755,8 @@ rest_of_accessor(MemoryArena* arena, TokenStream* input,
       if(expr->rhs)
         success = rest_of_accessor(arena, input, *node, node);
       else
-        success = compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Operand expected, actual `%s`", input->token.lexeme);
     }
   }
 
@@ -824,8 +822,8 @@ rest_of_factor(MemoryArena* arena, TokenStream* input,
       if(expr->rhs)
         success = rest_of_factor(arena, input, *node, node);
       else
-        success = compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Operand expected, actual `%s`", input->token.lexeme);
     }
   }
 
@@ -882,8 +880,8 @@ rest_of_term(MemoryArena* arena, TokenStream* input,
       if(expr->rhs)
         success = rest_of_term(arena, input, *node, node);
       else
-        success = compile_error(&input->src_loc, "(%d) Operand expected, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Operand expected, actual `%s`", input->token.lexeme);
     }
   }
 
@@ -919,8 +917,8 @@ rest_of_assignment(MemoryArena* arena, TokenStream* input,
     if(success = expression(arena, input, &expr->rhs))
     {
       if(!expr->rhs)
-        success = compile_error(&input->src_loc, "(%d) Expected operand, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Operand expected, actual `%s`", input->token.lexeme);
     }
   }
 
@@ -960,8 +958,8 @@ formal_arg_decl(MemoryArena* arena, TokenStream* input,
         success = array_index(arena, input, var_decl->id, &var_decl->id);
     }
     else
-      success = compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Identifier expected, actual `%s`", input->token.lexeme);
   }
   return success;
 }
@@ -1004,19 +1002,16 @@ var_decl(MemoryArena* arena, TokenStream* input,
           if(success = expression(arena, input, &var_decl->init_expr))
           {
             if(!var_decl->init_expr)
-              success = compile_error(&input->src_loc, "(%d) Expression expected, actual `%s`",
-                                      __LINE__, input->token.lexeme);
+              success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                      "Expression expected, actual `%s`", input->token.lexeme);
           }
         }
       }
     }
     else
-      success = compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Identifier expected, actual `%s`", input->token.lexeme);
   }
-  else
-    success = compile_error(&input->src_loc, "(%d) Type identifier expected, actual `%s`",
-                            __LINE__, input->token.lexeme);
 end:
   return success;
 }
@@ -1045,12 +1040,13 @@ for_stmt(MemoryArena* arena, TokenStream* input,
 
       success = expression(arena, input, &for_stmt->loop_expr);
       if(!success) goto end;
+
       if(input->token.kind == TokenKind_CloseParens)
         get_next_token(arena, input);
       else
       {
-        success = compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `)`, actual `%s`", input->token.lexeme);
         goto end;
       }
 
@@ -1063,13 +1059,13 @@ for_stmt(MemoryArena* arena, TokenStream* input,
         if(!success) goto end;
 
         if(!for_stmt->body)
-          success = compile_error(&input->src_loc, "(%d) Statement(s) expected, actual `%s`",
-                                  __LINE__, input->token.lexeme);
+          success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                  "Statement(s) expected, actual `%s`", input->token.lexeme);
       }
     }
     else
-      success = compile_error(&input->src_loc, "(%d) Expected `(`, actual `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Expected `(`, actual `%s`", input->token.lexeme);
   }
 end:
   return success;
@@ -1108,21 +1104,21 @@ while_stmt(MemoryArena* arena, TokenStream* input,
             if(!success) goto end;
 
             if(!while_stmt->body)
-              success = compile_error(&input->src_loc, "(%d) Statement(s) expected, actual `%s`",
-                                      __LINE__, input->token.lexeme);
+              success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                      "Statement(s) expected, actual `%s`", input->token.lexeme);
           }
         }
         else
-          success = compile_error(&input->src_loc, "(%d) Expression expected, actual `%s`",
-                                  __LINE__, input->token.lexeme);
+          success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                  "Expression expected, actual `%s`", input->token.lexeme);
       }
       else
-        success = compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `)`, actual `%s`", input->token.lexeme);
     }
     else
-      success = compile_error(&input->src_loc, "(%d) Expected `(`, actual `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Expected `(`, actual `%s`", input->token.lexeme);
   }
 end:
   return success;
@@ -1148,8 +1144,8 @@ else_stmt(MemoryArena* arena, TokenStream* input,
       if(!success) goto end;
 
       if(!(*node))
-        success = compile_error(&input->src_loc, "(%d) Statement(s) expected, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Statement(s) expected, actual `%s`", input->token.lexeme);
     }
   }
 end:
@@ -1189,8 +1185,8 @@ if_stmt(MemoryArena* arena, TokenStream* input,
 
             if(!if_stmt->body)
             {
-              success = compile_error(&input->src_loc, "(%d) Statement(s) expected, actual `%s`",
-                                      __LINE__, input->token.lexeme);
+              success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                      "Statement(s) expected, actual `%s`", input->token.lexeme);
               goto end;
             }
           }
@@ -1199,16 +1195,16 @@ if_stmt(MemoryArena* arena, TokenStream* input,
           success = else_stmt(arena, input, &if_stmt->else_body);
         }
         else
-          success = compile_error(&input->src_loc, "(%d) Expression expected, actual `%s`",
-                                  __LINE__, input->token.lexeme);
+          success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                  "Expression expected, actual `%s`", input->token.lexeme);
       }
       else
-        success = compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `)`, actual `%s`", input->token.lexeme);
     }
     else
-      success = compile_error(&input->src_loc, "(%d) Expected `(`, actual `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Expected `(`, actual `%s`", input->token.lexeme);
   }
 end:
   return success;
@@ -1255,20 +1251,20 @@ proc_decl(MemoryArena* arena, TokenStream* input,
               success = semicolon(arena, input);
           }
           else
-            success = compile_error(&input->src_loc, "(%d) Expected `)`, actual `%s`",
-                                    __LINE__, input->token.lexeme);
+            success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                    "Expected `)`, actual `%s`", input->token.lexeme);
         }
         else
-          success = compile_error(&input->src_loc, "(%d) Expected `(`, actual `%s`",
-                                  __LINE__, input->token.lexeme);
+          success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                  "Expected `(`, actual `%s`", input->token.lexeme);
       }
       else
-        success = compile_error(&input->src_loc, "(%d) Expected identifier, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Identifier expected, actual `%s`", input->token.lexeme);
     }
     else
-      success = compile_error(&input->src_loc, "(%d) Expected type identifier, actual `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Type identifier expected, actual `%s`", input->token.lexeme);
   }
 end:
   return success;
@@ -1308,12 +1304,12 @@ include_stmt(MemoryArena* arena, TokenStream* input,
         success = module(arena, inc_input, &include->node_list);
       }
       else
-        success = compile_error(&input->src_loc, "(%d) File could not be read: %s",
-                                __LINE__, include->file_path);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Could not read file `%s`", include->file_path);
     }
     else
-      success = compile_error(&input->src_loc, "(%d) String expected, actual `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "String expected, actual `%s`", input->token.lexeme);
   }
   return success;
 }
@@ -1357,16 +1353,16 @@ enum_decl(MemoryArena* arena, TokenStream* input,
         if(input->token.kind == TokenKind_CloseBrace)
           get_next_token(arena, input);
         else
-          success = compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`",
-                                  __LINE__, input->token.lexeme);
+          success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                  "Expected `}`, actual `%s`", input->token.lexeme);
       }
       else
-        success = compile_error(&input->src_loc, "(%d) Expected `{`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `{`, actual `%s`", input->token.lexeme);
     }
     else
-      success = compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Identifier expected, actual `%s`", input->token.lexeme);
   }
   return success;
 }
@@ -1420,8 +1416,8 @@ struct_decl(MemoryArena* arena, TokenStream* input,
             }
             else
             {
-              success = compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`",
-                                      __LINE__, input->token.lexeme);
+              success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                      "Identifier expected, actual `%s`", input->token.lexeme);
               goto end;
             }
           }
@@ -1431,16 +1427,16 @@ struct_decl(MemoryArena* arena, TokenStream* input,
         if(input->token.kind == TokenKind_CloseBrace)
           get_next_token(arena, input);
         else
-          success = compile_error(&input->src_loc, "(%d) Expected `}`, actual `%s`",
-                                  __LINE__, input->token.lexeme);
+          success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                  "Expected `}`, actual `%s`", input->token.lexeme);
       }
       else
-        success = compile_error(&input->src_loc, "(%d) Expected `{`, actual `%s`",
-                                __LINE__, input->token.lexeme);
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `{`, actual `%s`", input->token.lexeme);
     }
     else
-      success = compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Identifier expected, actual `%s`", input->token.lexeme);
   }
 end:
   return success;
@@ -1456,8 +1452,8 @@ var_stmt(MemoryArena* arena, TokenStream* input,
   get_next_token(arena, input);
   success = var_decl(arena, input, node);
   if(success && !node)
-    success = compile_error(&input->src_loc, "(%d) Type identifier expected, actual `%s`",
-                            __LINE__, input->token.lexeme);
+    success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                            "Type identifier expected, actual `%s`", input->token.lexeme);
   return success;
 }
 
@@ -1498,8 +1494,8 @@ module(MemoryArena* arena, TokenStream* input,
   if(success && !node)
   {
     if(input->token.kind != TokenKind_EndOfInput)
-      success = compile_error(&input->src_loc, "(%d) Unexpected token `%s`",
-                              __LINE__, input->token.lexeme);
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Unexpected token `%s`", input->token.lexeme);
   }
   return success;
 }
@@ -1648,7 +1644,7 @@ DEBUG_print_tree_node(String* str, int indent_level, char* message, ...)
 
   va_list varargs;
   va_start(varargs, message);
-  str_printf(str, message, varargs);
+  str_printf_va(str, message, varargs);
   va_end(varargs);
 
   str_append(str, "\n");

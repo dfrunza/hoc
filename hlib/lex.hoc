@@ -16,15 +16,13 @@ var Token keyword_list[] =
   {TokenKind__Null, 0},
 };
 
-var char* simple_lexeme_list[] =
+var char* simple_lexeme_tags[] =
 {
-  "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "_",
+  "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "\\",
   "+", "++", "-", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||",
   unk_char,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
-
-var char unk_char[2] = {};
 
 proc Token*
 lookup_keyword(Token* list, char* lexeme)
@@ -52,7 +50,7 @@ get_prev_token(TokenStream* input, int index)
   return &input.prev_tokens[index];
 }
 
-proc bool32
+proc bool
 is_keyword(TokenKind token_kind)
 {
   return (token_kind > TokenKind__KeywordBegin) && (token_kind < TokenKind__KeywordEnd);
@@ -63,27 +61,57 @@ install_id(MemoryArena* arena, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
 
+  /* TODO: Search the lexeme, and if found, then return it. */
   var size_t len = end_char - begin_char + 1;
   var char* lexeme = mem_push_struct(arena, char, len + 1);
   cstr_copy_substr(lexeme, begin_char, end_char);
   return lexeme;
 }
 
+proc bool
+is_valid_escape_char(char c)
+{
+  return c == 't' || c == 'n' || c == 'r' || c == '0' ||
+    c == '\"' || c == '\\';
+}
+
 proc char*
-install_dquot_str(MemoryArena* arena, char* begin_char, char* end_char)
+install_dquoted_str(MemoryArena* arena,
+                    char* begin_char, char* end_char, int back_slash_count)
 {
   assert(end_char >= begin_char);
-  assert(*begin_char == "'" && *end_char == "'"); 
-  var size_t len = (end_char - begin_char + 1) - 2;
-  var char* lexeme = mem_push_struct(arena, char, len + 1);
+  assert(*begin_char == '"' && *end_char == '"');
 
-  var char* dest_str = lexeme;
-  var char* src_str = begin_char+1;
+  size_t len = (end_char - begin_char + 1) - (2/*quotes*/ + back_slash_count);
+  char* lexeme = mem_push_struct(arena, char, len+1); // +NULL
+
+  char* dest_str = lexeme;
+  char* src_str = begin_char+1;
   for(uint i = 0; i < len; i++)
   {
-    *dest_str++ = *src_str++;
+    *dest_str = *src_str++;
+    if(*dest_str == '\\')
+    {
+      assert(*src_str != '\0');
+
+      if(*src_str == 't')
+        *dest_str = '\t';
+      else if(*src_str == 'n')
+        *dest_str = '\n';
+      else if(*src_str == 'r')
+        *dest_str = '\r';
+      else if(*src_str == '0')
+        *dest_str = '\0';
+      else if(*src_str == '"')
+        *dest_str = '"';
+      else if(*src_str == '\\')
+        *dest_str = '\\';
+      else
+        assert(false);
+      src_str++;
+    }
+    dest_str++;
   }
-  cstr_copy_substr(lexeme, begin_char+1, end_char-1);
   return lexeme;
 }
 
@@ -92,8 +120,10 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
 {
   token_stream.text = text;
   token_stream.cursor = token_stream.text;
-  var SourceLocation* src_loc = &token_stream.src_loc;
+  SourceLocation* src_loc = &token_stream.src_loc;
   src_loc.line_nr = 1;
+  //TODO: Compute the absolute path to the file, so that Vim could properly
+  // jump from the QuickFix window to the error line in the file.
   src_loc.file_path = file_path;
 }
 
@@ -127,22 +157,23 @@ is_leading_unary_token(TokenKind token)
       token == TokenKind_ExclamEquals;
 }
 
-proc void
+proc Token*
 get_next_token(MemoryArena* arena, TokenStream* input)
 {
   input.prev_tokens[1] = input.prev_tokens[0];
   input.prev_tokens[0] = input.token;
   mem_zero(&input.token);
-  var SourceLocation* src_loc = &input.src_loc;
+  SourceLocation* src_loc = &input.src_loc;
   src_loc.src_line = input.cursor;
-  var char c;
+  char c;
 
-  var Token* token = &input.token;
+  Token* token = &input.token;
+loop:
   c = *input.cursor;
-  while(c == " " || c == "\t" ||
-        c == "\r" || c == "\n")
+  while(c == ' ' || c == '\t' ||
+        c == '\r' || c == '\n')
   {
-    if(c == "\n")
+    if(c == '\n')
     {
       src_loc.line_nr++;
       src_loc.src_line = input.cursor;
@@ -150,32 +181,32 @@ get_next_token(MemoryArena* arena, TokenStream* input)
     c = *(++input.cursor);
   }
 
-  if(char_is_letter(c) || c == "_")
+  if(char_is_letter(c) || c == '_')
   {
-    var char* begin_char = input.cursor;
+    char* begin_char = input.cursor;
     c = *(++input.cursor);
 
-    while(char_is_letter(c) || char_is_numeric(c) || c == "_")
+    while(char_is_letter(c) || char_is_numeric(c) || c == '_')
       c = *(++input.cursor);
 
-    var char* end_char = input.cursor - 1;
-    var char* lexeme = install_id(arena, begin_char, end_char);
+    char* end_char = input.cursor - 1;
+    char* lexeme = install_id(arena, begin_char, end_char);
 
     token.kind = TokenKind_Id;
     token.lexeme = lexeme;
-    var Token* keyword = lookup_keyword(keyword_list, lexeme);
+    Token* keyword = lookup_keyword(keyword_list, lexeme);
     if(keyword)
       token.kind = keyword.kind;
   }
   else if(char_is_numeric(c))
   {
-    var char digit_buf[32] = 0;
-    var bool is_float = false;
-    var int i = 0;
-    for(; i < sizeof_array(digit_buf)-1 && (char_is_numeric(c) || c == "."); i++)
+    char digit_buf[32] = {0};
+    bool is_float = false;
+    int i = 0;
+    for(; i < sizeof_array(digit_buf)-1 && (char_is_numeric(c) || c == '.'); i++)
     {
       digit_buf[i] = c;
-      if(c == ".")
+      if(c == '.')
       {
         if(is_float)
           break;
@@ -183,7 +214,7 @@ get_next_token(MemoryArena* arena, TokenStream* input)
       }
       c = *(++input.cursor);
     }
-    digit_buf[i] = "\0";
+    digit_buf[i] = '\0';
 
     if(is_float)
     {
@@ -198,11 +229,11 @@ get_next_token(MemoryArena* arena, TokenStream* input)
       sscanf(digit_buf, "%d", token.int_val);
     }
   }
-  else if(c == "-")
+  else if(c == '-')
   {
     token.kind = TokenKind_Minus;
     c = *(++input.cursor);
-    if(c == "-")
+    if(c == '-')
     {
       token.kind = TokenKind_MinusMinus;
       ++input.cursor;
@@ -211,9 +242,9 @@ get_next_token(MemoryArena* arena, TokenStream* input)
     {
        token.kind = TokenKind_NegativeSign;
     }
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
   }
-  else if(c == "*")
+  else if(c == '*')
   {
     token.kind = TokenKind_Star;
     ++input.cursor;
@@ -221,9 +252,9 @@ get_next_token(MemoryArena* arena, TokenStream* input)
     {
       token.kind = TokenKind_Pointer;
     }
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
   }
-  else if(c == "<")
+  else if(c == '<')
   {
     token.kind = TokenKind_AngleLeft;
     c = *(++input.cursor);
@@ -233,19 +264,19 @@ get_next_token(MemoryArena* arena, TokenStream* input)
     }
     else
     {
-      if(c == "=")
+      if(c == '=')
       {
         token.kind = TokenKind_AngleLeftEquals;
         ++input.cursor;
       }
     }
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
   }
-  else if(c == "&")
+  else if(c == '&')
   {
     token.kind = TokenKind_Ampersand;
     c = *(++input.cursor);
-    if(c == "&")
+    if(c == '&')
     {
       token.kind = TokenKind_AmpersandAmpersand;
       ++input.cursor;
@@ -254,191 +285,210 @@ get_next_token(MemoryArena* arena, TokenStream* input)
     {
       token.kind = TokenKind_AddressOf;
     }
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
   }
-  else if(c == "/")
+  else if(c == '/')
   {
-    var char* fwd_cursor = input.cursor;
+    /* multi-line comments */
+    char* fwd_cursor = input.cursor;
 
     c = *(++fwd_cursor);
-    if(c == "*")
+    if(c == '*')
     {
       c = *(++fwd_cursor);
 
       while(true)
       {
-        while(c != "*" && c != "\0")
+        while(c != '*' && c != '\0')
         {
-          if(c == "\n")
+          if(c == '\n')
           {
             src_loc.line_nr++;
             src_loc.src_line = input.cursor;
           }
           c = *(++fwd_cursor);
         }
-        if(c == "*")
+        if(c == '*')
         {
           c = *(++fwd_cursor);
-          if(c == "/")
+          if(c == '/')
             break;
-        } else if(c == "\0")
+        } else if(c == '\0')
           break;
       }
       input.cursor = ++fwd_cursor;
+      goto loop;
     }
     else
     {
       token.kind = TokenKind_FwdSlash;
-      token.lexeme = simple_lexeme_list[token.kind];
+      token.lexeme = simple_lexeme_tags[token.kind];
       ++input.cursor;
     }
   }
-  else if(c == "'")
+  else if(c == '"')
   {
-    var char* fwd_cursor = input.cursor;
+    bool success = true;
 
+    /* double-quoted, escaped string */
+    char* fwd_cursor = input.cursor;
+
+    /* find the closing `"` and count the `\` chars at the same time */
+    int back_slash_count = 0;
     c = *(++fwd_cursor);
-    while(c != "'" && c != "\0")
-      c = *(++fwd_cursor);
-
-    if(c == "'")
+    while(success && (c != '"') && (c != '\0'))
     {
-      var char* lexeme = install_dquot_str(arena, input.cursor, fwd_cursor);
-      token.str = lexeme;
-      token.kind = TokenKind_String;
-      input.cursor = ++fwd_cursor;
+      if(c == '\\')
+      {
+        c = *(++fwd_cursor);
+        if(!is_valid_escape_char(c))
+          success = compile_error(&input.src_loc, "(%d) Invalid escape char `%c`", __LINE__, c);
+        back_slash_count++;
+      }
+      c = *(++fwd_cursor);
     }
-    else
-      compile_error(&input.src_loc, "Missing closing '");
+
+    if(success)
+    {
+      if(c == '"')
+      {
+        char* lexeme = install_dquoted_str(arena, input.cursor, fwd_cursor, back_slash_count);
+        token.str = lexeme;
+        token.kind = TokenKind_String;
+        input.cursor = ++fwd_cursor;
+      }
+      else
+        success = compile_error(&input.src_loc, "(%d) Malformed string, missing the closing `\"`", __LINE__);
+    }
   }
-  else if(c == "=")
+  else if(c == '=')
   {
     token.kind = TokenKind_Equals;
     c = *(++input.cursor);
-    if(c == "=")
+    if(c == '=')
     {
       token.kind = TokenKind_EqualsEquals;
       ++input.cursor;
     }
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
   }
-  else if(c == ">")
+  else if(c == '>')
   {
     token.kind = TokenKind_AngleRight;
     c = *(++input.cursor);
-    if(c == "=")
+    if(c == '=')
     {
       token.kind = TokenKind_AngleRightEquals;
       ++input.cursor;
     }
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
   }
-  else if(c == "|")
+  else if(c == '|')
   {
     token.kind = TokenKind_Pipe;
     c = *(++input.cursor);
-    if(c == "|")
+    if(c == '|')
     {
       token.kind = TokenKind_PipePipe;
       ++input.cursor;
     }
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
   }
-  else if(c == "!")
+  else if(c == '!')
   {
     token.kind = TokenKind_Exclam;
     c = *(++input.cursor);
-    if(c == "=")
+    if(c == '=')
     {
       token.kind = TokenKind_ExclamEquals;
       ++input.cursor;
     }
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
   }
-  else if(c == "+")
+  else if(c == '+')
   {
     token.kind = TokenKind_Plus;
     c = *(++input.cursor);
-    if(c == "+")
+    if(c == '+')
     {
       token.kind = TokenKind_PlusPlus;
       ++input.cursor;
     }
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
   }
-  else if(c == "%")
+  else if(c == '%')
   {
     token.kind = TokenKind_Percent;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == "_")
+  else if(c == '\\')
   {
     token.kind = TokenKind_BackSlash;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == ".")
+  else if(c == '.')
   {
     token.kind = TokenKind_Dot;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == "}")
+  else if(c == '}')
   {
     token.kind = TokenKind_CloseBrace;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == "{")
+  else if(c == '{')
   {
     token.kind = TokenKind_OpenBrace;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == "(")
+  else if(c == '(')
   {
     token.kind = TokenKind_OpenParens;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == ")")
+  else if(c == ')')
   {
     token.kind = TokenKind_CloseParens;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == ";")
+  else if(c == ';')
   {
     token.kind = TokenKind_Semicolon;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == ",")
+  else if(c == ',')
   {
     token.kind = TokenKind_Comma;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == ":")
+  else if(c == ':')
   {
     token.kind = TokenKind_Colon;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == "[")
+  else if(c == '[')
   {
     token.kind = TokenKind_OpenBracket;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == "]")
+  else if(c == ']')
   {
     token.kind = TokenKind_CloseBracket;
-    token.lexeme = simple_lexeme_list[token.kind];
+    token.lexeme = simple_lexeme_tags[token.kind];
     ++input.cursor;
   }
-  else if(c == "\0")
+  else if(c == '\0')
   {
     token.lexeme = 0;
     token.kind = TokenKind_EndOfInput;
@@ -446,7 +496,9 @@ get_next_token(MemoryArena* arena, TokenStream* input)
   else
   {
     token.kind = TokenKind_Unknown;
-    simple_lexeme_list[TokenKind_Unknown][0] = c;
-    token.lexeme = simple_lexeme_list[TokenKind_Unknown];
+    simple_lexeme_tags[TokenKind_Unknown][0] = c;
+    token.lexeme = simple_lexeme_tags[TokenKind_Unknown];
   }
+  return &input.token;
 }
+

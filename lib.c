@@ -495,7 +495,7 @@ list_append(MemoryArena* arena, List* list, void* elem)
   list_append_item(list, item);
 }
 
-void
+bool
 compile_error(SourceLocation* src_loc, char* message, ...)
 {
   va_list args;
@@ -507,5 +507,5 @@ compile_error(SourceLocation* src_loc, char* message, ...)
   fprintf(stderr, "\n");
   va_end(args);
 
-  //DebugBreak();
+  return false;
 }

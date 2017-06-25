@@ -135,4 +135,5 @@ typedef struct
 }
 SourceLocation;
 
-void compile_error(SourceLocation* src_loc, char* message, ...);
+bool compile_error(SourceLocation* src_loc, char* message, ...);
+

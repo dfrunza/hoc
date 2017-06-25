@@ -128,7 +128,6 @@ DEBUG_AstNodeKind_tags[] =
   "AstNodeKind_Array",
   "AstNodeKind_Pointer",
   "AstNodeKind_Struct",
-  "AstNodeKind_Accessor",
   "AstNodeKind_Enum",
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
 };

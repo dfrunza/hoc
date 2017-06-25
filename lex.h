@@ -38,6 +38,7 @@ typedef enum TokenKind
   TokenKind_AmpersandAmpersand,
   TokenKind_Pipe,
   TokenKind_PipePipe,
+  TokenKind_Unknown,
 
   TokenKind_Id,
   TokenKind_IntNum,

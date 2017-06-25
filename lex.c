@@ -18,10 +18,13 @@ internal Token keyword_list[] =
   {TokenKind__Null, 0}, // terminator
 };
 
+internal char unk_char[2] = {0};
+
 internal char* simple_lexeme_list[] =
 {
   "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "*", "/", "\\",
-  "+", "++", "-", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||", 
+  "+", "++", "-", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&", "&&", "|", "||",
+  unk_char,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // guards
 };
 
@@ -449,6 +452,12 @@ loop:
   {
     token->lexeme = 0;
     token->kind = TokenKind_EndOfInput;
+  }
+  else
+  {
+    token->kind = TokenKind_Unknown;
+    simple_lexeme_list[TokenKind_Unknown][0] = c;
+    token->lexeme = simple_lexeme_list[TokenKind_Unknown];
   }
 }
 

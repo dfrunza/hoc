@@ -1,12 +1,14 @@
+/*
 include "hlib/power.hoc";
 include "hlib/sqrt.hoc";
 include "hlib/abs.hoc";
 include "hlib/gcd.hoc";
 include "hlib/fibo.hoc";
 include "hlib/minmax.hoc";
+*/
+include "hlib\lex.hoc";
 
-proc int main(int x)
+proc int main()
 {
-  foo(a, b, *c());
 }
 

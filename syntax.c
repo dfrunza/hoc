@@ -272,7 +272,7 @@ semicolon(MemoryArena* arena, TokenStream* input)
   }
   else
   {
-    compile_error(&input->src_loc, "(%d) Missing `;`", __LINE__);
+    compile_error(&input->src_loc, "(%d) Expected `;`, actual `%s`", __LINE__, input->token.lexeme);
     success = false;
   }
   return success;
@@ -1034,16 +1034,17 @@ var_decl(MemoryArena* arena, TokenStream* input,
   *node = 0;
   bool32 success = true;
 
-  *node = new_var_decl(arena, &input->src_loc);
-  AstVarDecl* var_decl = &(*node)->var_decl;
-
-  success = type_id(arena, input, &var_decl->type);
+  AstNode* type = 0;
+  success = type_id(arena, input, &type);
   if(!success) goto end;
 
-  if(var_decl->type)
+  if(type)
   {
     if(input->token.kind == TokenKind_Id)
     {
+      *node = new_var_decl(arena, &input->src_loc);
+      AstVarDecl* var_decl = &(*node)->var_decl;
+      var_decl->type = type;
       var_decl->id = new_id(arena, &input->src_loc, input->token.lexeme);
 
       get_next_token(arena, input);
@@ -1072,11 +1073,6 @@ var_decl(MemoryArena* arena, TokenStream* input,
       compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`", __LINE__, input->token.lexeme);
       success = false;
     }
-  }
-  else
-  {
-    compile_error(&input->src_loc, "(%d) Type identifier expected, actual `%s`", __LINE__, input->token.lexeme);
-    success = false;
   }
 end:
   return success;
@@ -1404,14 +1400,7 @@ include_stmt(MemoryArena* arena, TokenStream* input,
         token_stream_init(inc_input, hoc_text, include->file_path);
 
         get_next_token(arena, inc_input);
-        if(success = module(arena, inc_input, &include->node_list))
-        {
-          if(inc_input->token.kind != TokenKind_EndOfInput)
-          {
-            compile_error(&input->src_loc, "(%d) Unexpected token: %s", __LINE__, input->token.lexeme);
-            success = false;
-          }
-        }
+        success = module(arena, inc_input, &include->node_list);
       }
       else
       {
@@ -1585,6 +1574,23 @@ end:
 }
 
 internal bool32
+var_stmt(MemoryArena* arena, TokenStream* input,
+         AstNode** node)
+{
+  *node = 0;
+  bool32 success = false;
+
+  get_next_token(arena, input);
+  success = var_decl(arena, input, node);
+  if(success && !node)
+  {
+    compile_error(&input->src_loc, "(%d) Type identifier expected, actual `%s`", __LINE__, input->token.lexeme);
+    success = false;
+  }
+  return success;
+}
+
+internal bool32
 module_element(MemoryArena* arena, TokenStream* input,
                AstNode** node)
 {
@@ -1601,8 +1607,7 @@ module_element(MemoryArena* arena, TokenStream* input,
   }
   else if(input->token.kind == TokenKind_Var)
   {
-    get_next_token(arena, input);
-    success = var_decl(arena, input, node) && semicolon(arena, input);
+    success = var_stmt(arena, input, node) && semicolon(arena, input);
   }
   else if(input->token.kind == TokenKind_Struct)
   {
@@ -1630,6 +1635,15 @@ module(MemoryArena* arena, TokenStream* input,
     }
   }
   while(success && node);
+
+  if(success && !node)
+  {
+    if(input->token.kind != TokenKind_EndOfInput)
+    {
+      compile_error(&input->src_loc, "(%d) Unexpected `%s`", __LINE__, input->token.lexeme);
+      success = false;
+    }
+  }
   return success;
 }
 
@@ -1754,8 +1768,7 @@ statement(MemoryArena* arena, TokenStream* input,
   }
   else if(input->token.kind == TokenKind_Var)
   {
-    get_next_token(arena, input);
-    success = var_decl(arena, input, node) && semicolon(arena, input);
+    success = var_stmt(arena, input, node) && semicolon(arena, input);
   }
   else if(input->token.kind == TokenKind_Semicolon)
   {
@@ -1778,17 +1791,7 @@ parse(MemoryArena* arena, TokenStream* input, AstNode** node)
   bool32 success = true;
 
   *node = new_module(arena, &input->src_loc);
-
   success = module(arena, input, &(*node)->module.node_list);
-  if(success)
-  {
-    if(input->token.kind != TokenKind_EndOfInput)
-    {
-      compile_error(&input->src_loc, "(%d) Unexpected `%s`", __LINE__, input->token.lexeme);
-      success = false;
-    }
-  }
-
   return success;
 }
 

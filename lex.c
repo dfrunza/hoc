@@ -101,7 +101,7 @@ token_stream_init(TokenStream* token_stream, char* text, char* file_path)
 }
 
 internal bool32
-is_unary_leading_token(TokenKind token)
+is_leading_unary_token(TokenKind token)
 {
   return token == TokenKind_Equals ||
       token == TokenKind_EqualsEquals ||
@@ -117,8 +117,6 @@ is_unary_leading_token(TokenKind token)
       token == TokenKind_Pointer ||
       token == TokenKind_AddressOf ||
       token == TokenKind_NegativeSign ||
-      token == TokenKind_MinusMinus ||
-      token == TokenKind_PlusPlus ||
       token == TokenKind_AmpersandAmpersand ||
       token == TokenKind_AngleLeft ||
       token == TokenKind_AngleLeftEquals ||
@@ -213,7 +211,7 @@ loop:
       token->kind = TokenKind_MinusMinus;
       ++input->cursor;
     }
-    else if(is_unary_leading_token(get_prev_token(input, 0)->kind))
+    else if(is_leading_unary_token(get_prev_token(input, 0)->kind))
     {
        token->kind = TokenKind_NegativeSign;
     }
@@ -223,7 +221,7 @@ loop:
   {
     token->kind = TokenKind_Star;
     ++input->cursor;
-    if(is_unary_leading_token(get_prev_token(input, 0)->kind))
+    if(is_leading_unary_token(get_prev_token(input, 0)->kind))
     {
       token->kind = TokenKind_Pointer;
     }
@@ -233,7 +231,7 @@ loop:
   {
     token->kind = TokenKind_AngleLeft;
     ++input->cursor;
-    if(is_unary_leading_token(get_prev_token(input, 0)->kind))
+    if(is_leading_unary_token(get_prev_token(input, 0)->kind))
     {
       token->kind = TokenKind_Cast;
     }
@@ -257,7 +255,7 @@ loop:
       token->kind = TokenKind_AmpersandAmpersand;
       ++input->cursor;
     }
-    else if(is_unary_leading_token(get_prev_token(input, 0)->kind))
+    else if(is_leading_unary_token(get_prev_token(input, 0)->kind))
     {
       token->kind = TokenKind_AddressOf;
     }

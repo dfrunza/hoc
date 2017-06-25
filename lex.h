@@ -34,8 +34,8 @@ typedef enum TokenKind
   TokenKind_AngleLeft,
   TokenKind_AngleLeftEquals,
   TokenKind_Ampersand,
-  TokenKind_AmpersandAmpersand,
   TokenKind_AddressOf,
+  TokenKind_AmpersandAmpersand,
   TokenKind_Pipe,
   TokenKind_PipePipe,
 

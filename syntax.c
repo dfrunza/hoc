@@ -553,6 +553,34 @@ accessor(MemoryArena* arena, TokenStream* input,
   return success;
 }
 
+internal void
+postfix(MemoryArena* arena, TokenStream* input,
+        AstNode* left_node, AstNode** node)
+{
+  *node = left_node;
+
+  if(input->token.kind == TokenKind_PlusPlus ||
+     input->token.kind == TokenKind_MinusMinus)
+  {
+    *node = new_unr_expr(arena, &input->src_loc);
+    AstUnrExpr* expr = &(*node)->unr_expr;
+    expr->operand = left_node;
+
+    if(input->token.kind == TokenKind_MinusMinus)
+    {
+      expr->op = AstOpKind_PostDecrement;
+    }
+    else if(input->token.kind == TokenKind_PlusPlus)
+    {
+      expr->op = AstOpKind_PostIncrement;
+    }
+    else
+      assert(false);
+
+    get_next_token(arena, input);
+  }
+}
+
 internal bool32
 unary_expr(MemoryArena* arena, TokenStream* input,
            AstNode** node)
@@ -602,26 +630,7 @@ unary_expr(MemoryArena* arena, TokenStream* input,
     {
       if(expr->operand)
       {
-        if(input->token.kind == TokenKind_PlusPlus ||
-           input->token.kind == TokenKind_MinusMinus)
-        {
-          AstNode* new_node = new_unr_expr(arena, &input->src_loc);
-          new_node->unr_expr.operand = expr->operand;
-          expr->operand = new_node;
-
-          if(input->token.kind == TokenKind_MinusMinus)
-          {
-            new_node->unr_expr.op = AstOpKind_PostDecrement;
-          }
-          else if(input->token.kind == TokenKind_PlusPlus)
-          {
-            new_node->unr_expr.op = AstOpKind_PostIncrement;
-          }
-          else
-            assert(false);
-
-          get_next_token(arena, input);
-        }
+        postfix(arena, input, expr->operand, &expr->operand);
       }
       else
       {
@@ -644,7 +653,11 @@ unary_expr(MemoryArena* arena, TokenStream* input,
 
         if(success = factor(arena, input, &cast->expr))
         {
-          if(!cast->expr)
+          if(cast->expr)
+          {
+            postfix(arena, input, cast->expr, &cast->expr);
+          }
+          else
           {
             compile_error(&input->src_loc, "Expression operand expected");
             success = false;
@@ -665,10 +678,9 @@ unary_expr(MemoryArena* arena, TokenStream* input,
   }
   else
   {
-    if(success = accessor(arena, input, node) && node)
+    if(success = accessor(arena, input, node))
     {
-#if 0
-#endif
+      postfix(arena, input, *node, node);
     }
   }
   return success;

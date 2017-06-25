@@ -1,6 +1,6 @@
 /*
-include "hlib/sqrt.hoc";
 include "hlib/power.hoc";
+include "hlib/sqrt.hoc";
 include "hlib/abs.hoc";
 include "hlib/gcd.hoc";
 include "hlib/fibo.hoc";
@@ -9,6 +9,6 @@ include "hlib/minmax.hoc";
 
 proc int main()
 {
-  *a++ = *++c;
+  a++ = p++;
 }
 

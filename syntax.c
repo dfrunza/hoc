@@ -1014,6 +1014,9 @@ var_decl(MemoryArena* arena, TokenStream* input,
       success = compile_error(&input->src_loc, "(%d) Identifier expected, actual `%s`",
                               __LINE__, input->token.lexeme);
   }
+  else
+    success = compile_error(&input->src_loc, "(%d) Type identifier expected, actual `%s`",
+                            __LINE__, input->token.lexeme);
 end:
   return success;
 }

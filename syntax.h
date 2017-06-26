@@ -322,9 +322,6 @@ typedef struct
 {
   List node_list;
 /*
-  List proc_list; // <AstProc>
-  AstNode* body;
-
   AstNode* main_proc;
   AstNode* main_call;
 */

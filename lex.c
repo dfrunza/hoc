@@ -163,7 +163,7 @@ install_escaped_str(MemoryArena* arena, EscapedStr* estr)
 }
 
 void
-token_stream_init(TokenStream* token_stream, char* text, char* file_path)
+init_token_stream(TokenStream* token_stream, char* text, char* file_path)
 {
   token_stream->text = text;
   token_stream->cursor = token_stream->text;

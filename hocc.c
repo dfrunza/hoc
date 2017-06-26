@@ -1,5 +1,6 @@
 #include "hasm.c"
 #include "syntax.h"
+#include "semantic.h"
 
 // User-defined PE resource:
 //   nameId  typeId  fileName
@@ -26,59 +27,52 @@ typedef struct
 {
   String text;
   int text_len;
-  List instr_list; // <Instruction>
+  List instr_list;
+  bool success;
 }
 VmProgram;
 
+static bool debug_enabled = true;
+
 VmProgram*
-translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
+translate(MemoryArena* arena, char* file_path, char* hoc_text)
 {
-  bool success = false;
-
-  /*
-  init_global_basic_types(arena);
-  list_init(&type_tuples);
-
-  SymbolTable symbol_table = {0};
-  symbol_table.arena = arena;
-  add_keyword_list(arena, &symbol_table);
-  */
+  VmProgram* vm_program = mem_push_struct(arena, VmProgram, 1);
+  list_init(&vm_program->instr_list);
+  vm_program->success = false;
 
   TokenStream token_stream = {0};
-  token_stream_init(&token_stream, hoc_text, file_path);
-
+  init_token_stream(&token_stream, hoc_text, file_path);
   get_next_token(arena, &token_stream);
 
-  AstNode* node = 0;
-  success = parse(arena, &token_stream, &node);
-  DEBUG_arena_print_occupancy("Parse", arena);
+  AstNode* ast = 0;
+  if(vm_program->success = parse(arena, &token_stream, &ast))
+  {
+    if(debug_enabled)
+    {
+      DEBUG_arena_print_occupancy("Parse", arena);
 
-  VmProgram* vm_program = 0;
+      String str = {0};
+      str_init(&str, arena);
+      DEBUG_print_ast_node(&str, 0, ast, 0);
+      str_stdout(&str);
+    }
 #if 1
-  {
-    String str = {0};
-    str_init(&str, arena);
-    DEBUG_print_ast_node(&str, 0, node, 0);
-    str_stdout(&str);
-  }
+    vm_program->success = semantic_analysis(arena, ast);
 #else
-  if(success)
-  {
     assert(symbol_table.scope_id == 0);
     assert(symbol_table.nesting_depth == 0);
 
-    if(typecheck_module(arena, &type_tuples, node))
+    if(typecheck_module(arena, &type_tuples, ast))
     {
       DEBUG_arena_print_occupancy("Typecheck", arena);
 
-      build_module(arena, &symbol_table, node);
+      build_module(arena, &symbol_table, ast);
       DEBUG_arena_print_occupancy("Runtime objects", arena);
 
-      AstModule* module = &node->module;
+      AstModule* module = &ast->module;
       if(module->main_call)
       {
-        vm_program = mem_push_struct(arena, VmProgram, 1);
-        list_init(&vm_program->instr_list);
         gen_module(arena, &vm_program->instr_list, module);
         DEBUG_arena_print_occupancy("Gen code", arena);
 
@@ -87,12 +81,10 @@ translate_hoc(MemoryArena* arena, char* file_path, char* hoc_text)
         DEBUG_arena_print_occupancy("Print code", arena);
       }
       else
-      {
         error("Missing main() procedure");
-      }
     }
-  }
 #endif
+  }
   return vm_program;
 }
 
@@ -201,13 +193,14 @@ main(int argc, char* argv[])
 
     char* file_path = argv[1];
     char* hoc_text = file_read_text(&arena, file_path);
-    DEBUG_arena_print_occupancy("Read text", &arena);
+    DEBUG_arena_print_occupancy("Read HoC text", &arena);
 
     if(hoc_text)
     {
-      VmProgram* vm_program = translate_hoc(&arena, file_path, hoc_text);
-      if(vm_program)
+      VmProgram* vm_program = translate(&arena, file_path, hoc_text);
+      if(vm_program->success)
       {
+#if 0
         OutFileNames out_files = {0};
         char* file_stem = path_make_stem(file_path);
 
@@ -225,17 +218,18 @@ main(int argc, char* argv[])
             if(success = write_irc_file(&out_files, hasm_code) && write_res_file(&out_files))
               ret = 0;
             else
-              error("Could not write IRC/RES file: %s, %s", out_files.irc.name, out_files.res.name);
+              error("Could not write HASM and RES file: `%s`, `%s`", out_files.irc.name, out_files.res.name);
           }
         }
         else
-          error("Could not write IR file: %s", out_files.ir.name);
+          error("Could not write file `%s`", out_files.ir.name);
+#endif
       }
-//      else
-//        error("Program could not be translated");
+      else
+        error("Program could not be translated");
     }
     else
-      error("File could not be read: %s", file_path);
+      error("Could not read file `%s`", file_path);
   }
   else
     error("Missing argument: input source file");

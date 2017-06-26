@@ -5,12 +5,12 @@ include "hlib\\abs.hoc";
 include "hlib\\gcd.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\minmax.hoc";
-*/
 include "hlib\\lex.hoc";
+*/
 
 proc int main()
 {
-  var char* c = "C:\\Program Files\\Microsoft\\Shitty Product\\devcrap.exe";
   var char c = 'A';
+  x = a + *<float*>b;
 }
 

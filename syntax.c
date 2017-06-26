@@ -694,7 +694,7 @@ unary_expr(MemoryArena* arena, TokenStream* input,
                                 "Operand expected, actual `%s`", input->token.lexeme);
     }
   }
-  else if(input->token.kind == TokenKind_Cast)
+  else if(input->token.kind == TokenKind_AngleLeft)
   {
     *node = new_cast(arena, &input->src_loc);
     AstCast* cast = &(*node)->cast;
@@ -1297,7 +1297,7 @@ include_stmt(MemoryArena* arena, TokenStream* input,
       if(hoc_text)
       {
         TokenStream* inc_input = mem_push_struct(arena, TokenStream, 1);
-        token_stream_init(inc_input, hoc_text, include->file_path);
+        init_token_stream(inc_input, hoc_text, include->file_path);
 
         get_next_token(arena, inc_input);
         success = module(arena, inc_input, &include->node_list);

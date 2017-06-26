@@ -1,4 +1,9 @@
 #pragma once
+#include "lib.h"
+#include "syntax.h"
+
+typedef struct Type Type;
+typedef struct Symbol Symbol;
 
 typedef enum
 {
@@ -68,7 +73,7 @@ ProductType;
 typedef struct Type
 {
   TypeKind kind;
-  Type* repr_type; // representative of the set of equivalent types
+  Type* repr_type; /* representative member of the set of equivalent types */
 
   union
   {
@@ -88,17 +93,41 @@ typedef struct
 }
 TypeTuple;
 
-Type* make_product_type(MemoryArena*, Type*, ListItem*);
-bool32 typecheck_block(MemoryArena*, List*, AstNode*);
+typedef enum
+{
+  SymbolKind__Null,
+  SymbolKind_Keyword,
+  SymbolKind_Proc,
+  SymbolKind_Type,
+  SymbolKind_Var,
+}
+SymbolKind;
 
-////////////////////////////////////////////////////////////////////////////////
+typedef struct Symbol
+{
+  SymbolKind kind;
+  Symbol* next_symbol;
 
-static List type_tuples;
-static int typevar_id = 1;
+  char* name;
+  int block_id;
+  int nesting_depth;
 
-static Type* basic_type_bool;
-static Type* basic_type_int;
-static Type* basic_type_char;
-static Type* basic_type_float;
-static Type* basic_type_void;
+  union {
+    //TokenKind keyword;
+    AstNode* node;
+    Type* type;
+  };
+}
+Symbol;
+
+typedef struct
+{
+  Symbol* symbol;
+  int scope_id;
+  int last_scope_id;
+  int nesting_depth;
+  int active_scopes[32];
+  MemoryArena* arena;
+}
+SymbolTable;
 

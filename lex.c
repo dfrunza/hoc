@@ -1,5 +1,7 @@
 #include "lex.h"
 
+extern MemoryArena* arena;
+
 internal Token keyword_list[] = 
 {
   {TokenKind_If, "if"},
@@ -63,7 +65,7 @@ is_keyword(TokenKind token_kind)
 }
 
 internal char*
-install_id(MemoryArena* arena, char* begin_char, char* end_char)
+install_id(char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
 
@@ -122,7 +124,7 @@ escaped_string(TokenStream* input, EscapedStr* estr, char* file, int line)
 }
 
 internal char*
-install_escaped_str(MemoryArena* arena, EscapedStr* estr)
+install_escaped_str(EscapedStr* estr)
 {
   assert(estr->begin <= estr->end);
 
@@ -180,7 +182,7 @@ init_token_stream(TokenStream* token_stream, char* text, char* file_path)
 }
 
 Token*
-get_next_token(MemoryArena* arena, TokenStream* input)
+get_next_token(TokenStream* input)
 {
   input->prev_tokens[1] = input->prev_tokens[0];
   input->prev_tokens[0] = input->token;
@@ -212,7 +214,7 @@ loop:
       c = *(++input->cursor);
 
     char* end_char = input->cursor - 1;
-    char* lexeme = install_id(arena, begin_char, end_char);
+    char* lexeme = install_id(begin_char, end_char);
 
     token->kind = TokenKind_Id;
     token->lexeme = lexeme;
@@ -336,7 +338,7 @@ loop:
 
     if(escaped_string(input, &estr, __FILE__, __LINE__))
     {
-      token->str = install_escaped_str(arena, &estr);;
+      token->str = install_escaped_str(&estr);;
       token->kind = TokenKind_String;
       input->cursor = ++estr.end;
     }
@@ -349,7 +351,7 @@ loop:
 
     if(escaped_string(input, &estr, __FILE__, __LINE__))
     {
-      char* lexeme = install_escaped_str(arena, &estr);
+      char* lexeme = install_escaped_str(&estr);
 
       if(estr.len != 1)
       {

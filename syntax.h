@@ -467,6 +467,6 @@ typedef struct AstNode
 }
 AstNode;
 
-bool parse(MemoryArena*, TokenStream*, AstNode**);
+bool parse(TokenStream*, AstNode**);
 void DEBUG_print_ast_node(String*, int, AstNode*, char*);
 

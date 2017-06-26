@@ -12,7 +12,7 @@ if not exist .\bin mkdir .\bin
 pushd .\bin
 
 set C_flags=-Od -W4 -nologo -MTd -Zo -Zi -Gm- -GR- -EHa- -FC -D_CRT_SECURE_NO_WARNINGS ^
-                  -wd4201 -wd4127 -wd4100 -wd4706 -wd4013 -wd4211
+                  -wd4201 -wd4127 -wd4100 -wd4706 -wd4211
 set L_flags=-incremental:no -opt:ref -subsystem:console
 
 set prog=test

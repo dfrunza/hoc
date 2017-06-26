@@ -91,7 +91,7 @@ typedef struct
   Type* key;
   Type* value;
 }
-TypeTuple;
+TypePair;
 
 typedef enum
 {
@@ -127,7 +127,10 @@ typedef struct
   int last_scope_id;
   int nesting_depth;
   int active_scopes[32];
-  MemoryArena* arena;
 }
 SymbolTable;
+
+void init_types();
+bool semantic_analysis(AstNode* ast);
+
 

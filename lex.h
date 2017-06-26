@@ -92,6 +92,6 @@ typedef struct TokenStream
 }
 TokenStream;
 
-Token* get_next_token(MemoryArena* arena, TokenStream* input);
-void token_stream_init(TokenStream* token_stream, char* text, char* file_path);
+Token* get_next_token(TokenStream* input);
+void init_token_stream(TokenStream* token_stream, char* text, char* file_path);
 

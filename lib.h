@@ -52,13 +52,13 @@ typedef struct
 }
 MemoryArena;
 
-MemoryArena mem_push_arena(MemoryArena* arena, size_t size);
+MemoryArena* arena_new(int size);
+MemoryArena* mem_push_arena(MemoryArena* arena, size_t size);
 #define mem_push_struct(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT))
 #define mem_push_size(ARENA, COUNT) (mem_push_struct_(ARENA, sizeof(uint8), COUNT))
 #define mem_zero(VAR) mem_zero_(VAR, sizeof(VAR))
 void mem_zero_(void* mem, size_t len);
 void* mem_push_struct_(MemoryArena* arena, size_t elem_size, size_t count);
-MemoryArena arena_new(int size);
 void DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena);
 
 bool char_is_letter(char ch);
@@ -94,6 +94,7 @@ void str_debug_output(String* string);
 void str_stdout(String* string);
 void str_append(String* string, char* cstr);
 void str_printf(String* string, char* message, ...);
+void str_printf_va(String* string, char* message, va_list varargs);
 void str_tidyup(String* string);
 char* path_find_leaf(char* file_path);
 

@@ -1,41 +1,26 @@
-#include "hasm.c"
-#include "syntax.h"
-#include "semantic.h"
+#include "hocc.h"
 
-// User-defined PE resource:
-//   nameId  typeId  fileName
-#define OUT_RC "CODE  VM  \"%s\""
+internal bool debug_enabled = true;
+MemoryArena* arena = 0;
 
-typedef struct
+bool
+compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...)
 {
-  char* name;
-  int len;
-}
-FileName;
+  va_list args;
 
-typedef struct
-{
-  char strings[4*80 + 4*10];
-  FileName ir;
-  FileName irc;
-  FileName rc;
-  FileName res;
-}
-OutFileNames;
+  fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
+          path_make_stem(file), line);
 
-typedef struct
-{
-  String text;
-  int text_len;
-  List instr_list;
-  bool success;
-}
-VmProgram;
+  va_start(args, message);
+  vfprintf(stderr, message, args);
+  fprintf(stderr, "\n");
+  va_end(args);
 
-static bool debug_enabled = true;
+  return false;
+}
 
 VmProgram*
-translate(MemoryArena* arena, char* file_path, char* hoc_text)
+translate(char* file_path, char* hoc_text)
 {
   VmProgram* vm_program = mem_push_struct(arena, VmProgram, 1);
   list_init(&vm_program->instr_list);
@@ -43,10 +28,10 @@ translate(MemoryArena* arena, char* file_path, char* hoc_text)
 
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
-  get_next_token(arena, &token_stream);
+  get_next_token(&token_stream);
 
   AstNode* ast = 0;
-  if(vm_program->success = parse(arena, &token_stream, &ast))
+  if(vm_program->success = parse(&token_stream, &ast))
   {
     if(debug_enabled)
     {
@@ -58,7 +43,7 @@ translate(MemoryArena* arena, char* file_path, char* hoc_text)
       str_stdout(&str);
     }
 #if 1
-    vm_program->success = semantic_analysis(arena, ast);
+    vm_program->success = semantic_analysis(ast);
 #else
     assert(symbol_table.scope_id == 0);
     assert(symbol_table.nesting_depth == 0);
@@ -188,16 +173,16 @@ main(int argc, char* argv[])
 
   if(argc >= 2)
   {
-    MemoryArena arena = arena_new(500*KILOBYTE);
-    DEBUG_arena_print_occupancy("", &arena);
+    arena = arena_new(500*KILOBYTE);
+    DEBUG_arena_print_occupancy("", arena);
 
     char* file_path = argv[1];
-    char* hoc_text = file_read_text(&arena, file_path);
-    DEBUG_arena_print_occupancy("Read HoC text", &arena);
+    char* hoc_text = file_read_text(arena, file_path);
+    DEBUG_arena_print_occupancy("Read HoC text", arena);
 
     if(hoc_text)
     {
-      VmProgram* vm_program = translate(&arena, file_path, hoc_text);
+      VmProgram* vm_program = translate(file_path, hoc_text);
       if(vm_program->success)
       {
 #if 0

@@ -1,7 +1,7 @@
 #include "lib.h"
 
-internal bool
-DEBUG_mem_clear_zero = true;
+internal bool dbg_zero_mem = true;
+internal bool dbg_check_bounds = true;
 
 void
 DEBUG_output_short_cstr(char* message, ...)
@@ -54,21 +54,15 @@ mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
 void
 mem_zero_(void* mem, size_t len)
 {
-  if(DEBUG_mem_clear_zero)
-  {
-    memset(mem, 0, len);
-  }
+  memset(mem, 0, len);
 }
 
 void
 mem_zero_range(void* start, void* one_past_end)
 {
-  if(DEBUG_mem_clear_zero)
-  {
-    size_t len = (uint8*)one_past_end - (uint8*)start;
-    assert(len >= 0);
-    mem_zero_(start, len);
-  }
+  size_t len = (uint8*)one_past_end - (uint8*)start;
+  assert(len >= 0);
+  mem_zero_(start, len);
 }
 
 void
@@ -92,19 +86,26 @@ DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
   DEBUG_output_short_cstr("used: %.2f%% -- %s\n", in_use*100, tag);
 }
 
-MemoryArena
+MemoryArena*
 mem_push_arena(MemoryArena* arena, size_t size)
 {
   assert(size > 0);
 
   MemoryArena sub_arena = {0};
-  sub_arena.base = arena->free;
+  sub_arena.base = arena->free + sizeof(MemoryArena);
   sub_arena.free = sub_arena.base;
-  arena->free = sub_arena.base + size;
-  arena_check_bounds(arena);
+
+  MemoryArena* sub_arena_p = (MemoryArena*)arena->free;
+  arena->free = arena->free + size + sizeof(MemoryArena);
+  if(dbg_check_bounds)
+    arena_check_bounds(arena);
+
   sub_arena.limit = arena->free;
-  mem_zero_range(sub_arena.base, sub_arena.limit);
-  return sub_arena;
+  *sub_arena_p = sub_arena;
+
+  if(dbg_zero_mem)
+    mem_zero_range(sub_arena.base, sub_arena.limit);
+  return sub_arena_p;
 }
 
 void*
@@ -114,18 +115,21 @@ mem_push_struct_(MemoryArena* arena, size_t elem_size, size_t count)
 
   void* element = arena->free;
   arena->free = arena->free + elem_size*count;
-  arena_check_bounds(arena);
-  mem_zero_range(element, arena->free);
+
+  if(dbg_check_bounds)
+    arena_check_bounds(arena);
+  if(dbg_zero_mem)
+    mem_zero_range(element, arena->free);
   return element;
 }
 
-MemoryArena
+MemoryArena*
 arena_new(int size)
 {
-  MemoryArena arena = {0};
-  arena.free = malloc(size);
-  arena.base = arena.free;
-  arena.limit = arena.free + size;
+  MemoryArena* arena = malloc(size + sizeof(MemoryArena));
+  arena->base = (uint8*)arena + sizeof(MemoryArena);
+  arena->free = arena->base;
+  arena->limit = arena->free + size;
   return arena;
 }
 
@@ -507,18 +511,4 @@ list_append(MemoryArena* arena, List* list, void* elem)
   list_append_item(list, item);
 }
 
-bool
-compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...)
-{
-  va_list args;
 
-  fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
-          path_make_stem(file), line);
-
-  va_start(args, message);
-  vfprintf(stderr, message, args);
-  fprintf(stderr, "\n");
-  va_end(args);
-
-  return false;
-}

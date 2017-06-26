@@ -1,8 +1,10 @@
 #include "lib.h"
 #include "semantic.h"
 
-static List type_tuples;
-static int typevar_id = 1;
+extern MemoryArena* arena;
+
+internal List subst_list;
+internal int typevar_id = 1;
 
 Type* basic_type_bool;
 Type* basic_type_int;
@@ -11,7 +13,7 @@ Type* basic_type_float;
 Type* basic_type_void;
 
 Type*
-new_basic_type(MemoryArena* arena, BasicTypeKind kind)
+new_basic_type(BasicTypeKind kind)
 {
   Type* type = mem_push_struct(arena, Type, 1);
   type->kind = TypeKind_Basic;
@@ -20,7 +22,7 @@ new_basic_type(MemoryArena* arena, BasicTypeKind kind)
 }
 
 internal Type*
-new_proc_type(MemoryArena* arena, Type* args, Type* ret)
+new_proc_type(Type* args, Type* ret)
 {
   Type* type = mem_push_struct(arena, Type, 1);
   type->kind = TypeKind_Proc;
@@ -30,7 +32,7 @@ new_proc_type(MemoryArena* arena, Type* args, Type* ret)
 }
 
 internal Type*
-new_typevar(MemoryArena* arena)
+new_typevar()
 {
   Type* type = mem_push_struct(arena, Type, 1);
   type->kind = TypeKind_TypeVar;
@@ -39,7 +41,7 @@ new_typevar(MemoryArena* arena)
 }
 
 internal Type*
-new_product_type(MemoryArena* arena, Type* left, Type* right)
+new_product_type(Type* left, Type* right)
 {
   Type* type = mem_push_struct(arena, Type, 1);
   type->kind = TypeKind_Product;
@@ -49,15 +51,15 @@ new_product_type(MemoryArena* arena, Type* left, Type* right)
 }
 
 void
-init_types(MemoryArena* arena)
+init_types()
 {
-  basic_type_bool = new_basic_type(arena, BasicTypeKind_Bool);
-  basic_type_int = new_basic_type(arena, BasicTypeKind_Int);
-  basic_type_char = new_basic_type(arena, BasicTypeKind_Char);
-  basic_type_float = new_basic_type(arena, BasicTypeKind_Float);
-  basic_type_void = new_basic_type(arena, BasicTypeKind_Void);
+  basic_type_bool = new_basic_type(BasicTypeKind_Bool);
+  basic_type_int = new_basic_type(BasicTypeKind_Int);
+  basic_type_char = new_basic_type(BasicTypeKind_Char);
+  basic_type_float = new_basic_type(BasicTypeKind_Float);
+  basic_type_void = new_basic_type(BasicTypeKind_Void);
 
-  list_init(&type_tuples);
+  list_init(&subst_list);
 }
 
 internal bool
@@ -78,7 +80,7 @@ types_are_equal(Type* type_a, Type* type_b)
 }
 
 internal Type*
-copy_type(MemoryArena* arena, Type* type)
+copy_type(Type* type)
 {
   Type* copy = mem_push_struct(arena, Type, 1);
   *copy = *type;
@@ -159,7 +161,7 @@ unification(Type* type_a, Type* type_b)
 
 #if 0
 internal Type*
-make_product_type(MemoryArena* arena, Type* type_in, ListItem* list_item)
+make_product_type(Type* type_in, ListItem* list_item)
 {
   Type* type_out = type_in;
 
@@ -173,27 +175,27 @@ make_product_type(MemoryArena* arena, Type* type_in, ListItem* list_item)
 }
 #endif
 
-internal TypeTuple*
-new_type_tuple(MemoryArena* arena, Type* key, Type* value)
+internal TypePair*
+new_type_pair(Type* key, Type* value)
 {
-  TypeTuple* tuple = mem_push_struct(arena, TypeTuple, 1);
-  tuple->key = key;
-  tuple->value = value;
-  return tuple;
+  TypePair* pair = mem_push_struct(arena, TypePair, 1);
+  pair->key = key;
+  pair->value = value;
+  return pair;
 }
 
-internal TypeTuple*
-type_find_tuple(List* tuple_list, Type* type)
+internal TypePair*
+find_pair(List* subst_list, Type* type)
 {
-  TypeTuple* result = 0;
-  for(ListItem* list_item = tuple_list->first;
+  TypePair* result = 0;
+  for(ListItem* list_item = subst_list->first;
       list_item;
       list_item = list_item->next)
   {
-    TypeTuple* tuple = list_item->elem;
-    if(tuple->key == type)
+    TypePair* pair = list_item->elem;
+    if(pair->key == type)
     {
-      result = tuple;
+      result = pair;
       break;
     }
   }
@@ -201,22 +203,22 @@ type_find_tuple(List* tuple_list, Type* type)
 }
 
 internal Type*
-substitution(MemoryArena* arena, List* tuple_list, Type* type)
+substitution(List* subst_list, Type* type)
 {
   type = find_set_representative(type);
   Type* subst = 0;
 
-  TypeTuple* tuple = type_find_tuple(tuple_list, type);
-  if(tuple)
+  TypePair* pair = find_pair(subst_list, type);
+  if(pair)
   {
-    subst = tuple->value;
+    subst = pair->value;
   }
   else
   {
-    subst = copy_type(arena, type);
+    subst = copy_type(type);
 
-    tuple = new_type_tuple(arena, type, subst);
-    list_append(arena, tuple_list, tuple);
+    pair = new_type_pair(type, subst);
+    list_append(arena, subst_list, pair);
 
     if(subst->kind == TypeKind_TypeVar)
     {
@@ -224,17 +226,17 @@ substitution(MemoryArena* arena, List* tuple_list, Type* type)
     }
     else if(subst->kind == TypeKind_Proc)
     {
-      subst->proc.args = substitution(arena, tuple_list, subst->proc.args);
-      subst->proc.ret = substitution(arena, tuple_list, subst->proc.ret);
+      subst->proc.args = substitution(subst_list, subst->proc.args);
+      subst->proc.ret = substitution(subst_list, subst->proc.ret);
     }
     else if(subst->kind == TypeKind_Product)
     {
-      subst->product.left = substitution(arena, tuple_list, subst->product.left);
-      subst->product.right = substitution(arena, tuple_list, subst->product.right);
+      subst->product.left = substitution(subst_list, subst->product.left);
+      subst->product.right = substitution(subst_list, subst->product.right);
     }
     else if(subst->kind == TypeKind_Pointer)
     {
-      subst->ptr.pointee = substitution(arena, tuple_list, subst->ptr.pointee);
+      subst->ptr.pointee = substitution(subst_list, subst->ptr.pointee);
     }
     // else fall-thru
   }
@@ -243,21 +245,21 @@ substitution(MemoryArena* arena, List* tuple_list, Type* type)
 
 #if 0
 internal bool
-typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type** type)
+typecheck_expr(List* subst_list, AstNode* expr_node, Type** type)
 {
   Type* result = 0;
   bool success = true;
 
   if(expr_node->kind == AstNodeKind_Literal)
   {
-    result = substitution(arena, type_tuples, expr_node->type);
+    result = substitution(subst_list, expr_node->type);
   }
   else if(expr_node->kind == AstNodeKind_VarOccur)
   {
     AstNode* var_decl_node = expr_node->var_occur.var_decl;
     if(success = unification(expr_node->type, var_decl_node->type))
     {
-      result = substitution(arena, type_tuples, expr_node->type);
+      result = substitution(subst_list, expr_node->type);
     }
     else
       compile_error(&expr_node->src_loc, "Type error: %s", expr_node->var_occur.name);
@@ -270,8 +272,8 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
     Type* left_type = 0;
     Type* right_type = 0;
 
-    if(success = typecheck_expr(arena, type_tuples, left_operand, &left_type) &&
-       typecheck_expr(arena, type_tuples, right_operand, &right_type))
+    if(success = typecheck_expr(subst_list, left_operand, &left_type) &&
+       typecheck_expr(subst_list, right_operand, &right_type))
     {
       if(success = unification(left_type, right_type))
       {
@@ -287,7 +289,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
         }
 
         if(success)
-          result = substitution(arena, type_tuples, expr_node->type);
+          result = substitution(subst_list, expr_node->type);
       }
       else
         compile_error(&expr_node->src_loc, "Type error: bin expr");
@@ -299,7 +301,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
     AstNode* operand = unr_expr->operand;
     Type* operand_type = 0;
 
-    if(success = typecheck_expr(arena, type_tuples, operand, &operand_type))
+    if(success = typecheck_expr(subst_list, operand, &operand_type))
     {
       if(unr_expr->op == AstOpKind_LogicNot)
       {
@@ -314,7 +316,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
 
       if(success)
       {
-        result = substitution(arena, type_tuples, expr_node->type);
+        result = substitution(subst_list, expr_node->type);
       }
     }
   }
@@ -332,7 +334,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
           list_item = list_item->next)
       {
         AstNode* arg_node = list_item->elem;
-        success = typecheck_expr(arena, type_tuples, arg_node, &arg_type) &&
+        success = typecheck_expr(subst_list, arg_node, &arg_type) &&
           unification(arg_node->type, arg_type);
       }
     }
@@ -347,16 +349,16 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
       {
         ListItem* list_item = list_first_item(&call->actual_args);
         AstNode* arg_node = list_item->elem;
-        args_type = make_product_type(arena, arg_node->type, list_item->next);
+        args_type = make_product_type(arg_node->type, list_item->next);
       }
       else if(arg_count < 0)
         assert(false);
 
-      Type* proc_type = new_proc_type(arena, args_type, proc->ret_type);
+      Type* proc_type = new_proc_type(args_type, proc->ret_type);
       if(success = unification(proc_type, call->proc->type) &&
          unification(expr_node->type, proc->ret_type))
       {
-        result = substitution(arena, type_tuples, expr_node->type);
+        result = substitution(subst_list, expr_node->type);
       }
       else
         compile_error(&expr_node->src_loc, "Type error: %s(..)", call->name);
@@ -365,13 +367,13 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
   else if(expr_node->kind == AstNodeKind_Cast)
   {
     Type* expr_type = 0;
-    if(!typecheck_expr(arena, type_tuples, expr_node->cast.expr, &expr_type))
+    if(!typecheck_expr(subst_list, expr_node->cast.expr, &expr_type))
     {
       compile_error(&expr_node->src_loc, "Type error: cast expr");
       return false;
     }
 
-    result = substitution(arena, type_tuples, expr_node->cast.to_type);
+    result = substitution(subst_list, expr_node->cast.to_type);
 
     {
       Type* type_from = find_set_representative(expr_type);
@@ -402,7 +404,7 @@ typecheck_expr(MemoryArena* arena, List* type_tuples, AstNode* expr_node, Type**
 }
 
 internal bool
-typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
+typecheck_stmt(List* subst_list, AstNode* stmt_node)
 {
   bool success = true;
 
@@ -412,7 +414,7 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
     Type* ret_type = basic_type_void;
     if(ret_stmt->ret_expr)
     {
-      success = typecheck_expr(arena, type_tuples, ret_stmt->ret_expr, &ret_type) &&
+      success = typecheck_expr(subst_list, ret_stmt->ret_expr, &ret_type) &&
         unification(ret_type, ret_stmt->proc->ret_type);
       if(!success)
         compile_error(&stmt_node->src_loc, "Type error: return stmt");
@@ -438,29 +440,29 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
   else if(stmt_node->kind == AstNodeKind_BinExpr)
   {
     Type* expr_type = 0;
-    success = typecheck_expr(arena, type_tuples, stmt_node, &expr_type);
+    success = typecheck_expr(subst_list, stmt_node, &expr_type);
   }
   else if(stmt_node->kind == AstNodeKind_IfStmt)
   {
     AstIfStmt* if_stmt = &stmt_node->if_stmt;
     Type* cond_type = 0;
-    if(success = typecheck_expr(arena, type_tuples, if_stmt->cond_expr, &cond_type))
+    if(success = typecheck_expr(subst_list, if_stmt->cond_expr, &cond_type))
     {
       if(success = unification(cond_type, basic_type_bool))
       {
         AstNode* body_node = if_stmt->body;
         if(body_node->kind == AstNodeKind_Block)
-          success = typecheck_block(arena, type_tuples, body_node);
+          success = typecheck_block(subst_list, body_node);
         else
-          success = typecheck_stmt(arena, type_tuples, body_node);
+          success = typecheck_stmt(subst_list, body_node);
 
         AstNode* else_node = if_stmt->else_body;
         if(else_node)
         {
           if(else_node->kind == AstNodeKind_Block)
-            success = typecheck_block(arena, type_tuples, else_node);
+            success = typecheck_block(subst_list, else_node);
           else
-            success = typecheck_stmt(arena, type_tuples, else_node);
+            success = typecheck_stmt(subst_list, else_node);
         }
       }
       else
@@ -471,15 +473,15 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
   {
     AstWhileStmt* while_stmt = &stmt_node->while_stmt;
     Type* cond_type = 0;
-    if(success = typecheck_expr(arena, type_tuples, while_stmt->cond_expr, &cond_type))
+    if(success = typecheck_expr(subst_list, while_stmt->cond_expr, &cond_type))
     {
       if(success = unification(cond_type, basic_type_bool))
       {
         AstNode* body_node = while_stmt->body;
         if(body_node->kind == AstNodeKind_Block)
-          success = typecheck_block(arena, type_tuples, body_node);
+          success = typecheck_block(subst_list, body_node);
         else
-          success = typecheck_stmt(arena, type_tuples, body_node);
+          success = typecheck_stmt(subst_list, body_node);
       }
       else
         compile_error(&stmt_node->src_loc, "Type error: while stmt");
@@ -500,7 +502,7 @@ typecheck_stmt(MemoryArena* arena, List* type_tuples, AstNode* stmt_node)
 }
 
 internal bool
-typecheck_block(MemoryArena* arena, List* type_tuples, AstNode* block_node)
+typecheck_block(List* subst_list, AstNode* block_node)
 {
   //TODO: Typecheck the block properly:
   // If the block is owned by a proc, then its type should be set to proc's type.
@@ -528,7 +530,7 @@ typecheck_block(MemoryArena* arena, List* type_tuples, AstNode* block_node)
         list_item = list_item->next)
     {
       AstNode* stmt_node = list_item->elem;
-      success = typecheck_stmt(arena, type_tuples, stmt_node);
+      success = typecheck_stmt(subst_list, stmt_node);
     }
   }
   else
@@ -538,7 +540,7 @@ typecheck_block(MemoryArena* arena, List* type_tuples, AstNode* block_node)
 }
 
 internal bool
-typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* proc_node)
+typecheck_proc(List* subst_list, AstNode* proc_node)
 {
   bool success = true;
   assert(proc_node->kind == AstNodeKind_Proc);
@@ -563,15 +565,15 @@ typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* proc_node)
     {
       ListItem* list_item = list_first_item(&proc->formal_args);
       AstNode* arg_node = list_item->elem;
-      args_type = make_product_type(arena, arg_node->type, list_item->next);
+      args_type = make_product_type(arg_node->type, list_item->next);
     }
     else if(arg_count < 0)
       assert(false);
 
-    Type* proc_type = new_proc_type(arena, args_type, proc->ret_type);
+    Type* proc_type = new_proc_type(args_type, proc->ret_type);
     if(success = unification(proc_type, proc_node->type))
     {
-      success = typecheck_block(arena, type_tuples, proc->body);
+      success = typecheck_block(subst_list, proc->body);
     }
     else
       error("Type error: %s()", proc->name);
@@ -583,7 +585,7 @@ typecheck_proc(MemoryArena* arena, List* type_tuples, AstNode* proc_node)
 }
 
 internal bool
-typecheck_module(MemoryArena* arena, List* type_tuples, AstNode* module_node)
+typecheck_module(List* subst_list, AstNode* module_node)
 {
   bool success = true;
   assert(module_node->kind == AstNodeKind_Module);
@@ -595,7 +597,7 @@ typecheck_module(MemoryArena* arena, List* type_tuples, AstNode* module_node)
   {
     AstNode* proc = list_item->elem;
     assert(proc->kind == AstNodeKind_Proc);
-    success = typecheck_proc(arena, type_tuples, proc);
+    success = typecheck_proc(subst_list, proc);
   }
   return success;
 }

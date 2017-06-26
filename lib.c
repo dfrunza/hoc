@@ -323,9 +323,12 @@ str_append(String* string, char* cstr)
   assert(string->end == (char*)arena->free-1);
 
   int len = cstr_len(cstr);
-  mem_push_struct(arena, char, len);
-  cstr_copy(string->end, cstr);
-  string->end = (char*)arena->free-1;
+  if(len > 0)
+  {
+    mem_push_struct(arena, char, len);
+    cstr_copy(string->end, cstr);
+    string->end = (char*)arena->free-1;
+  }
 }
 
 void

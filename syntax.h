@@ -19,6 +19,7 @@ typedef enum
   AstOpKind_Deref,
   AstOpKind_AddressOf,
   AstOpKind_MemberAccess,
+  AstOpKind_PtrMemberAccess,
   AstOpKind_PreDecrement,
   AstOpKind_PostDecrement,
   AstOpKind_PreIncrement,
@@ -55,6 +56,7 @@ DEBUG_AstOpKind_tags[] =
   "AstOpKind_Deref",
   "AstOpKind_AddressOf",
   "AstOpKind_MemberAccess",
+  "AstOpKind_PtrMemberAccess",
   "AstOpKind_PreDecrement",
   "AstOpKind_PostDecrement",
   "AstOpKind_PreIncrement",
@@ -88,10 +90,12 @@ typedef enum
   AstNodeKind_IfStmt,
   AstNodeKind_ReturnStmt,
   AstNodeKind_BreakStmt,
+  AstNodeKind_ContinueStmt,
+  AstNodeKind_GotoStmt,
+  AstNodeKind_Label,
   AstNodeKind_IncludeStmt,
   AstNodeKind_EmptyStmt,
   AstNodeKind_Module,
-  AstNodeKind_Noop,
   AstNodeKind_Cast,
   AstNodeKind_Call,
   AstNodeKind_Array,
@@ -120,10 +124,12 @@ DEBUG_AstNodeKind_tags[] =
   "AstNodeKind_IfStmt",
   "AstNodeKind_ReturnStmt",
   "AstNodeKind_BreakStmt",
+  "AstNodeKind_ContinueStmt",
+  "AstNodeKind_GotoStmt",
+  "AstNodeKind_Label",
   "AstNodeKind_IncludeStmt",
   "AstNodeKind_EmptyStmt",
   "AstNodeKind_Module",
-  "AstNodeKind_Noop",
   "AstNodeKind_Cast",
   "AstNodeKind_Call",
   "AstNodeKind_Array",
@@ -311,6 +317,18 @@ AstReturnStmt;
 typedef struct
 {
   AstNode* id;
+}
+AstGotoStmt;
+
+typedef struct
+{
+  AstNode* id;
+}
+AstLabel;
+
+typedef struct
+{
+  AstNode* id;
   List actual_args;
 /*
   AstNode* proc;
@@ -429,6 +447,8 @@ typedef struct AstNode
     AstLiteral literal;
     AstProc proc;
     AstReturnStmt ret_stmt;
+    AstGotoStmt goto_stmt;
+    AstLabel label;
     AstIfStmt if_stmt;
     AstWhileStmt while_stmt;
     AstForStmt for_stmt;

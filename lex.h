@@ -6,6 +6,7 @@ typedef enum TokenKind
   TokenKind__Null,
   /* 'Simple' tokens must be listed at the beginning of the enum */
   TokenKind_Dot,
+  TokenKind_ArrowRight,
   TokenKind_OpenBracket,
   TokenKind_CloseBracket,
   TokenKind_OpenParens,
@@ -55,6 +56,8 @@ typedef enum TokenKind
   TokenKind_Struct,
   TokenKind_Return,
   TokenKind_Break,
+  TokenKind_Continue,
+  TokenKind_Goto,
   TokenKind_Include,
   TokenKind_Enum,
   TokenKind__KeywordEnd,

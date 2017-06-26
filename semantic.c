@@ -66,6 +66,37 @@ add_builtin_type(MemoryArena* arena, SymbolTable* symtab, char* name, Type* type
   return symbol;
 }
 
+Symbol*
+add_keyword(MemoryArena* arena, SymbolTable* symtab, char* name, TokenKind token_kind)
+{
+  Symbol* symbol = add_symbol(arena, symtab, name, SymbolKind_Keyword);
+  symbol->keyword = token_kind;
+  return symbol;
+}
+
+void
+register_builtin_symbols(MemoryArena* arena, SymbolTable* symtab)
+{
+  add_builtin_type(arena, symtab, "bool", basic_type_bool);
+  add_builtin_type(arena, symtab, "int", basic_type_int);
+  add_builtin_type(arena, symtab, "char", basic_type_char);
+  add_builtin_type(arena, symtab, "float", basic_type_float);
+  add_builtin_type(arena, symtab, "void", basic_type_void);
+
+  add_keyword(arena, symtab, "var", TokenKind_Var);
+  add_keyword(arena, symtab, "proc", TokenKind_Proc);
+  add_keyword(arena, symtab, "if", TokenKind_If);
+  add_keyword(arena, symtab, "else", TokenKind_Else);
+  add_keyword(arena, symtab, "while", TokenKind_While);
+  add_keyword(arena, symtab, "for", TokenKind_For);
+  add_keyword(arena, symtab, "return", TokenKind_Return);
+  add_keyword(arena, symtab, "break", TokenKind_Break);
+  add_keyword(arena, symtab, "continue", TokenKind_Break);
+  add_keyword(arena, symtab, "include", TokenKind_Include);
+  add_keyword(arena, symtab, "true", TokenKind_True);
+  add_keyword(arena, symtab, "false", TokenKind_False);
+}
+
 internal bool
 scope_begin(SymbolTable* symtab)
 {
@@ -99,6 +130,21 @@ scope_end(SymbolTable* symtab)
   symtab->symbol = symbol;
 }
 
+internal bool
+module(MemoryArena* arena, SymbolTable* symtab, AstNode* ast)
+{
+  bool success = true;
+  AstModule* ast_module = &ast->module;
+
+  for(ListItem* list_item = ast_module->node_list.first;
+      list_item;
+      list_item = list_item->next)
+  {
+
+  }
+  return success;
+}
+
 bool
 semantic_analysis(MemoryArena* arena, AstNode* ast)
 {
@@ -107,21 +153,11 @@ semantic_analysis(MemoryArena* arena, AstNode* ast)
   SymbolTable symtab = {0};
   symtab.arena = arena;
 
-  add_builtin_type(arena, &symtab, "bool", basic_type_bool);
-  add_builtin_type(arena, &symtab, "int", basic_type_int);
-  add_builtin_type(arena, &symtab, "char", basic_type_char);
-  add_builtin_type(arena, &symtab, "float", basic_type_float);
-  add_builtin_type(arena, &symtab, "void", basic_type_void);
+  register_builtin_symbols(arena, &symtab);
 
   bool success = true;
-  if(ast->kind == AstNodeKind_Module)
-  {
-
-  }
-  else
-  {
-    success = compile_error(&ast->src_loc, __FILE__, __LINE__, "ast->kind != AstNodeKind_Module");
-  }
+  assert(ast->kind == AstNodeKind_Module);
+  success = module(arena, &symtab, ast);
 
   return success;
 }

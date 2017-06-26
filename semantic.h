@@ -113,7 +113,7 @@ typedef struct Symbol
   int nesting_depth;
 
   union {
-    //TokenKind keyword;
+    TokenKind keyword;
     AstNode* node;
     Type* type;
   };

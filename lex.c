@@ -8,6 +8,8 @@ internal Token keyword_list[] =
   {TokenKind_For, "for"},
   {TokenKind_Return, "return"},
   {TokenKind_Break, "break"},
+  {TokenKind_Continue, "continue"},
+  {TokenKind_Goto, "goto"},
   {TokenKind_Include, "include"},
   {TokenKind_True, "true"},
   {TokenKind_False, "false"},
@@ -22,7 +24,7 @@ internal char unk_char[2] = {0};
 
 internal char* simple_lexeme_tags[] =
 {
-  "(null)", ".", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "/", "\\",
+  "(null)", ".", "->", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "/", "\\",
   "+", "++", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&&", "|", "||",
   unk_char,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
@@ -109,9 +111,12 @@ escaped_string(TokenStream* input, EscapedStr* estr, char* file, int line)
     estr->len++;
     c = *(++estr->end);
   }
-  if(*estr->end != estr->quote)
-    success = compile_error(&input->src_loc, file, line,
-                            "Malformed string literal, missing the closing `%c`", estr->quote);
+  if(success)
+  {
+    if(*estr->end != estr->quote)
+      success = compile_error(&input->src_loc, file, line,
+                              "Malformed string literal, missing the closing `%c`", estr->quote);
+  }
   assert((estr->end - estr->begin) >= 1);
   return success;
 }
@@ -255,18 +260,21 @@ loop:
       token->kind = TokenKind_MinusMinus;
       ++input->cursor;
     }
+    else if(c == '>')
+    {
+      token->kind = TokenKind_ArrowRight;
+      ++input->cursor;
+    }
     token->lexeme = simple_lexeme_tags[token->kind];
   }
   else if(c == '<')
   {
     token->kind = TokenKind_AngleLeft;
     c = *(++input->cursor);
+    if(c == '=')
     {
-      if(c == '=')
-      {
-        token->kind = TokenKind_AngleLeftEquals;
-        ++input->cursor;
-      }
+      token->kind = TokenKind_AngleLeftEquals;
+      ++input->cursor;
     }
     token->lexeme = simple_lexeme_tags[token->kind];
   }

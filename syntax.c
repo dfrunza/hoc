@@ -71,7 +71,7 @@ new_enum(SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Enum;
-  list_init(&node->enum_.member_list);
+  list_init(&node->enum_decl.member_list);
   node->src_loc = *src_loc;
   return node;
 }
@@ -273,11 +273,21 @@ new_empty_stmt(SourceLocation* src_loc)
 }
 
 internal AstNode*
+new_union(SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  node->kind = AstNodeKind_Union;
+  list_init(&node->union_decl.member_list);
+  node->src_loc = *src_loc;
+  return node;
+}
+
+internal AstNode*
 new_struct(SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Struct;
-  list_init(&node->struct_.member_list);
+  list_init(&node->struct_decl.member_list);
   node->src_loc = *src_loc;
   return node;
 }
@@ -1337,8 +1347,8 @@ enum_decl(TokenStream* input, AstNode** node)
     if(get_next_token(input)->kind == TokenKind_Id)
     {
       *node = new_enum(&input->src_loc);
-      AstEnum* enum_ = &(*node)->enum_;
-      enum_->id = new_id(&input->src_loc, input->token.lexeme);
+      AstEnum* enum_decl = &(*node)->enum_decl;
+      enum_decl->id = new_id(&input->src_loc, input->token.lexeme);
 
       if(get_next_token(input)->kind == TokenKind_OpenBrace)
       {
@@ -1351,7 +1361,7 @@ enum_decl(TokenStream* input, AstNode** node)
           if(input->token.kind == TokenKind_Id)
           {
             member = new_id(&input->src_loc, input->token.lexeme);
-            list_append(arena, &enum_->member_list, member);
+            list_append(arena, &enum_decl->member_list, member);
 
             if(get_next_token(input)->kind == TokenKind_Comma)
               get_next_token(input);
@@ -1378,6 +1388,29 @@ enum_decl(TokenStream* input, AstNode** node)
   return success;
 }
 
+internal bool struct_member_list(TokenStream*, List*);
+internal bool
+union_decl(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  if(input->token.kind == TokenKind_Union)
+  {
+    *node = new_union(&input->src_loc);
+    AstUnion* union_decl = &(*node)->union_decl;
+
+    if(get_next_token(input)->kind == TokenKind_Id)
+    {
+      union_decl->id = new_id(&input->src_loc, input->token.lexeme);
+      get_next_token(input);
+    }
+
+    success = struct_member_list(input, &union_decl->member_list);
+  }
+  return success;
+}
+
 internal bool
 struct_decl(TokenStream* input, AstNode** node)
 {
@@ -1386,68 +1419,92 @@ struct_decl(TokenStream* input, AstNode** node)
 
   if(input->token.kind == TokenKind_Struct)
   {
+    *node = new_struct(&input->src_loc);
+    AstStruct* struct_decl = &(*node)->struct_decl;
+
     if(get_next_token(input)->kind == TokenKind_Id)
     {
-      *node = new_struct(&input->src_loc);
-      AstStruct* struct_ = &(*node)->struct_;
-      struct_->id = new_id(&input->src_loc, input->token.lexeme);
+      struct_decl->id = new_id(&input->src_loc, input->token.lexeme);
+      get_next_token(input);
+    }
 
-      if(get_next_token(input)->kind == TokenKind_OpenBrace)
+    success = struct_member_list(input, &struct_decl->member_list);
+  }
+  return success;
+}
+
+internal bool
+struct_member_list(TokenStream* input, List* member_list)
+{
+  bool success = true;
+
+  if(input->token.kind == TokenKind_OpenBrace)
+  {
+    get_next_token(input);
+
+    AstNode* member = 0;
+    do
+    {
+      member = 0;
+      AstNode* type = 0;
+
+      success = type_id(input, &type);
+      if(!success) goto end;
+
+      if(!type)
       {
-        get_next_token(input);
+        if(input->token.kind == TokenKind_Union)
+          success = union_decl(input, &type);
+        else if(input->token.kind == TokenKind_Struct)
+          success = struct_decl(input, &type);
 
-        AstNode* member = 0;
-        do
+        if(!success) goto end;
+      }
+
+      if(type)
+      {
+        member = new_var_decl(&input->src_loc);
+        AstVarDecl* var_decl = &member->var_decl;
+        var_decl->type = type;
+
+        if(input->token.kind == TokenKind_Id)
         {
-          member = 0;
-          AstNode* type = 0;
+          var_decl->id = new_id(&input->src_loc, input->token.lexeme);
 
-          success = type_id(input, &type);
-          if(!success) goto end;
-
-          if(type)
+          if(get_next_token(input)->kind == TokenKind_OpenBracket)
           {
-            if(input->token.kind == TokenKind_Id)
-            {
-              member = new_var_decl(&input->src_loc);
-              AstVarDecl* var_decl = &member->var_decl;
-              var_decl->type = type;
-              var_decl->id = new_id(&input->src_loc, input->token.lexeme);
-
-              if(get_next_token(input)->kind == TokenKind_OpenBracket)
-              {
-                success = array_index(input, member, &member);
-                if(!success) goto end;
-              }
-
-              assert(member);
-              list_append(arena, &struct_->member_list, member);
-              success = semicolon(input);
-            }
-            else
-            {
-              success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                      "Identifier expected, actual `%s`", input->token.lexeme);
-              goto end;
-            }
+            success = array_index(input, member, &member);
+            if(!success) goto end;
           }
         }
-        while(member);
-
-        if(input->token.kind == TokenKind_CloseBrace)
-          get_next_token(input);
+        else if(type->kind == AstNodeKind_Struct ||
+                type->kind == AstNodeKind_Union)
+        {
+          /* anonymous struct/union */
+        }
         else
+        {
           success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                  "Expected `}`, actual `%s`", input->token.lexeme);
+                                  "Identifier expected, actual `%s`", input->token.lexeme);
+          goto end;
+        }
+
+        list_append(arena, member_list, member);
+        success = semicolon(input);
+        if(!success) goto end;
       }
-      else
-        success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Expected `{`, actual `%s`", input->token.lexeme);
     }
+    while(member);
+
+    if(input->token.kind == TokenKind_CloseBrace)
+      get_next_token(input);
     else
       success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                              "Identifier expected, actual `%s`", input->token.lexeme);
+                              "Expected `}`, actual `%s`", input->token.lexeme);
   }
+  else
+    success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                            "Expected `{`, actual `%s`", input->token.lexeme);
 end:
   return success;
 }
@@ -1480,6 +1537,8 @@ module_element(TokenStream* input, AstNode** node)
     success = var_stmt(input, node) && semicolon(input);
   else if(input->token.kind == TokenKind_Struct)
     success = struct_decl(input, node);
+  else if(input->token.kind == TokenKind_Union)
+    success = union_decl(input, node);
   else if(input->token.kind == TokenKind_Enum)
     success = enum_decl(input, node);
   return success;
@@ -1889,15 +1948,21 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     }
     else if(node->kind == AstNodeKind_Struct)
     {
-      AstStruct* struct_ = &node->struct_;
-      DEBUG_print_ast_node(str, indent_level, struct_->id, "id");
-      DEBUG_print_ast_node_list(str, indent_level, &struct_->member_list, "member_list");
+      AstStruct* struct_decl = &node->struct_decl;
+      DEBUG_print_ast_node(str, indent_level, struct_decl->id, "id");
+      DEBUG_print_ast_node_list(str, indent_level, &struct_decl->member_list, "member_list");
+    }
+    else if(node->kind == AstNodeKind_Union)
+    {
+      AstUnion* union_decl = &node->union_decl;
+      DEBUG_print_ast_node(str, indent_level, union_decl->id, "id");
+      DEBUG_print_ast_node_list(str, indent_level, &union_decl->member_list, "member_list");
     }
     else if(node->kind == AstNodeKind_Enum)
     {
-      AstEnum* enum_ = &node->enum_;
-      DEBUG_print_ast_node(str, indent_level, enum_->id, "id");
-      DEBUG_print_ast_node_list(str, indent_level, &enum_->member_list, "member_list");
+      AstEnum* enum_decl = &node->enum_decl;
+      DEBUG_print_ast_node(str, indent_level, enum_decl->id, "id");
+      DEBUG_print_ast_node_list(str, indent_level, &enum_decl->member_list, "member_list");
     }
     else if(node->kind == AstNodeKind_Initializer)
     {

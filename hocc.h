@@ -64,6 +64,7 @@ typedef enum TokenKind
   TokenKind_Proc,
   TokenKind_Var,
   TokenKind_Struct,
+  TokenKind_Union,
   TokenKind_Return,
   TokenKind_Break,
   TokenKind_Continue,
@@ -204,6 +205,7 @@ typedef enum
   AstNodeKind_Array,
   AstNodeKind_Pointer,
   AstNodeKind_Struct,
+  AstNodeKind_Union,
   AstNodeKind_Enum,
   AstNodeKind_Initializer,
 
@@ -238,6 +240,7 @@ DEBUG_AstNodeKind_tags[] =
   "AstNodeKind_Array",
   "AstNodeKind_Pointer",
   "AstNodeKind_Struct",
+  "AstNodeKind_Union",
   "AstNodeKind_Enum",
   "AstNodeKind_Initializer",
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
@@ -454,7 +457,7 @@ typedef struct
   AstNode* id;
   List member_list;
 }
-AstStruct;
+AstStruct, AstUnion;
 
 typedef struct
 {
@@ -562,9 +565,10 @@ typedef struct AstNode
     AstCall call;
     AstArray array;
     AstPointer pointer;
-    AstStruct struct_;
+    AstStruct struct_decl;
+    AstUnion union_decl;
     AstAccessor accessor;
-    AstEnum enum_;
+    AstEnum enum_decl;
     AstInitializer initer;
   };
 }

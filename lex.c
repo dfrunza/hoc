@@ -18,6 +18,7 @@ internal Token keyword_list[] =
   {TokenKind_Proc, "proc"},
   {TokenKind_Var, "var"},
   {TokenKind_Struct, "struct"},
+  {TokenKind_Union, "union"},
   {TokenKind_Enum, "enum"},
   {TokenKind__Null, 0}, /* terminator */
 };

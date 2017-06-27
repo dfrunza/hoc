@@ -1,5 +1,4 @@
-#include "lib.h"
-#include "semantic.h"
+#include "hocc.h"
 
 extern MemoryArena* arena;
 

@@ -1,4 +1,4 @@
-#include "syntax.h"
+#include "hocc.h"
 
 extern MemoryArena* arena;
 

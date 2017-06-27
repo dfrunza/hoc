@@ -36,7 +36,7 @@ goto :end
 :end
 popd
 
-cloc.exe hasm.h lex.h lib.h runtime_obj.h syntax.h codegen.c hasm.c ^
-hocc.c lex.c lib.c runtime_obj.c semantic.c semantic.h syntax.c typecheck.c vm.c
+cloc.exe hasm.h hocc.h runtime_obj.h codegen.c hasm.c ^
+hocc.c lex.c lib.c runtime_obj.c semantic.c syntax.c typecheck.c vm.c
 
 

@@ -1,4 +1,4 @@
-#include "lex.h"
+#include "hocc.h"
 
 extern MemoryArena* arena;
 

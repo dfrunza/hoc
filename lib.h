@@ -1,5 +1,4 @@
 #pragma once
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
@@ -128,13 +127,4 @@ List* list_new(MemoryArena* arena);
 void list_append_item(List* list, ListItem* item);
 void list_append(MemoryArena* arena, List* list, void* elem);
 
-typedef struct
-{
-  char* file_path;
-  int line_nr;
-  char* src_line;
-}
-SourceLocation;
-
-bool compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...);
 

@@ -51,15 +51,18 @@ typedef struct MemoryArena
   uint8* free;
   uint8* cap;
   MemoryArena* host;
+  int sub_arena_count;
 }
 MemoryArena;
 
 MemoryArena* arena_new(int size);
 MemoryArena* arena_pop(MemoryArena* arena);
-MemoryArena* mem_push_arena(MemoryArena* arena, size_t size);
+MemoryArena* arena_push(MemoryArena* arena, size_t size);
+void arena_free(MemoryArena* arena);
+void arena_reset(MemoryArena* arena);
 #define mem_push_struct(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT))
 #define mem_push_size(ARENA, COUNT) (mem_push_struct_(ARENA, sizeof(uint8), COUNT))
-#define mem_zero(VAR) mem_zero_(VAR, sizeof(VAR))
+#define mem_zero(VAR, TYPE) (mem_zero_(VAR, sizeof(TYPE)))
 void mem_zero_(void* mem, size_t len);
 void* mem_push_struct_(MemoryArena* arena, size_t elem_size, size_t count);
 void DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena);

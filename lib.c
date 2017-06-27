@@ -48,7 +48,7 @@ void
 mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
 {
   assert(arena->base <= (uint8*)ptr);
-  assert(arena->free + elem_size <= arena->cap);
+  assert((arena->free + elem_size) < arena->cap);
 }
 
 void
@@ -66,9 +66,17 @@ mem_zero_range(void* start, void* one_past_end)
 }
 
 void
-arena_reset(MemoryArena* arena)
+arena_free(MemoryArena* arena)
 {
   arena->free = arena->base;
+}
+
+void
+arena_reset(MemoryArena* arena)
+{
+  arena->base = (uint8*)arena + sizeof(MemoryArena);
+  arena->free = arena->base;
+  assert(arena->free < arena->cap);
 }
 
 MemoryArena*
@@ -76,23 +84,20 @@ arena_pop(MemoryArena* arena)
 {
   MemoryArena* host = arena->host;
   assert(host->free == arena->cap);
-  assert(host->base <= (uint8*)arena);
+  assert(host->base == host->free);
   if(dbg_zero_mem)
-    mem_zero_range(arena->base, arena->cap);
+    mem_zero_range((uint8*)arena, arena->cap);
   host->free = (uint8*)arena;
+
+  if(--host->sub_arena_count > 0)
+    host->base = host->free;
+  else
+    host->base = (uint8*)host + sizeof(MemoryArena);
   return host;
 }
 
-void
-DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
-{
-  size_t total_avail = arena->cap - arena->base;
-  double in_use = (arena->free - arena->base) / (double)total_avail;
-  DEBUG_output_short_cstr("used: %.2f%% -- %s\n", in_use*100, tag);
-}
-
 MemoryArena*
-mem_push_arena(MemoryArena* arena, size_t size)
+arena_push(MemoryArena* arena, size_t size)
 {
   assert(size > 0);
 
@@ -104,6 +109,8 @@ mem_push_arena(MemoryArena* arena, size_t size)
   arena->free = arena->free + size + sizeof(MemoryArena);
   if(dbg_check_bounds)
     arena_check_bounds(arena);
+  arena->base = arena->free;
+  arena->sub_arena_count++;
 
   sub_arena.cap = arena->free;
   sub_arena.host = arena;
@@ -133,11 +140,39 @@ MemoryArena*
 arena_new(int size)
 {
   MemoryArena* arena = malloc(size + sizeof(MemoryArena));
+  mem_zero(arena, MemoryArena);
   arena->base = (uint8*)arena + sizeof(MemoryArena);
   arena->free = arena->base;
   arena->cap = arena->free + size;
-  arena->host = 0;
   return arena;
+}
+
+typedef struct
+{
+  size_t total_avail;
+  double in_use;
+}
+ArenaUsage;
+
+ArenaUsage
+arena_usage(MemoryArena* arena)
+{
+  ArenaUsage usage = {0};
+#if 1
+  uint8* base = (uint8*)arena + sizeof(MemoryArena);
+#else
+  uint8* base = arena->base;
+#endif
+  usage.total_avail = arena->cap - base;
+  usage.in_use = (arena->free - base) / (double)usage.total_avail;
+  return usage;
+}
+
+void
+DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
+{
+  ArenaUsage usage = arena_usage(arena);
+  DEBUG_output_short_cstr("in_use: %.2f%% -- %s\n", usage.in_use*100, tag);
 }
 
 bool

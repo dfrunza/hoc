@@ -186,7 +186,7 @@ get_next_token(TokenStream* input)
 {
   input->prev_tokens[1] = input->prev_tokens[0];
   input->prev_tokens[0] = input->token;
-  mem_zero(&input->token);
+  mem_zero(&input->token, Token);
   SourceLocation* src_loc = &input->src_loc;
   src_loc->src_line = input->cursor;
   char c;

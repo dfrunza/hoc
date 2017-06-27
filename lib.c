@@ -48,7 +48,7 @@ void
 mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
 {
   assert(arena->base <= (uint8*)ptr);
-  assert(arena->free + elem_size <= arena->limit);
+  assert(arena->free + elem_size <= arena->cap);
 }
 
 void
@@ -71,17 +71,22 @@ arena_reset(MemoryArena* arena)
   arena->free = arena->base;
 }
 
-void
-arena_set_watermark(MemoryArena* arena, void* ptr)
+MemoryArena*
+arena_pop(MemoryArena* arena)
 {
-  mem_check_bounds_(arena, 0, ptr);
-  arena->free = ptr;
+  MemoryArena* host = arena->host;
+  assert(host->free == arena->cap);
+  assert(host->base <= (uint8*)arena);
+  if(dbg_zero_mem)
+    mem_zero_range(arena->base, arena->cap);
+  host->free = (uint8*)arena;
+  return host;
 }
 
 void
 DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
 {
-  size_t total_avail = arena->limit - arena->base;
+  size_t total_avail = arena->cap - arena->base;
   double in_use = (arena->free - arena->base) / (double)total_avail;
   DEBUG_output_short_cstr("used: %.2f%% -- %s\n", in_use*100, tag);
 }
@@ -100,11 +105,12 @@ mem_push_arena(MemoryArena* arena, size_t size)
   if(dbg_check_bounds)
     arena_check_bounds(arena);
 
-  sub_arena.limit = arena->free;
+  sub_arena.cap = arena->free;
+  sub_arena.host = arena;
   *sub_arena_p = sub_arena;
 
   if(dbg_zero_mem)
-    mem_zero_range(sub_arena.base, sub_arena.limit);
+    mem_zero_range(sub_arena.base, sub_arena.cap);
   return sub_arena_p;
 }
 
@@ -129,7 +135,8 @@ arena_new(int size)
   MemoryArena* arena = malloc(size + sizeof(MemoryArena));
   arena->base = (uint8*)arena + sizeof(MemoryArena);
   arena->free = arena->base;
-  arena->limit = arena->free + size;
+  arena->cap = arena->free + size;
+  arena->host = 0;
   return arena;
 }
 
@@ -345,7 +352,7 @@ str_printf_va(String* string, char* message, va_list varargs)
 
   int len = vsprintf(string->end, message, varargs);
   string->end += len;
-  assert(string->end < (char*)arena->limit);
+  assert(string->end < (char*)arena->cap);
   arena->free = (uint8*)string->end+1;
 }
 

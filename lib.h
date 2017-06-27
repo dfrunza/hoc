@@ -43,15 +43,19 @@ void DEBUG_output_short_cstr(char* message, ...);
 
 void error(char* message, ...);
 
-typedef struct
+typedef struct MemoryArena MemoryArena;
+
+typedef struct MemoryArena
 {
   uint8* base;
   uint8* free;
-  uint8* limit;
+  uint8* cap;
+  MemoryArena* host;
 }
 MemoryArena;
 
 MemoryArena* arena_new(int size);
+MemoryArena* arena_pop(MemoryArena* arena);
 MemoryArena* mem_push_arena(MemoryArena* arena, size_t size);
 #define mem_push_struct(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT))
 #define mem_push_size(ARENA, COUNT) (mem_push_struct_(ARENA, sizeof(uint8), COUNT))

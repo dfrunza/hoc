@@ -1788,12 +1788,6 @@ DEBUG_print_line(String* str, int indent_level, char* message, ...)
 }
 
 internal void
-DEBUG_print_unescaped_line(String* str, int indent_level, char* message)
-{
-
-}
-
-internal void
 DEBUG_print_ast_node_list(String* str, int indent_level, List* node_list, char* tag)
 {
   if(node_list->count > 0)
@@ -1897,7 +1891,24 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       else if(lit->kind == AstLiteralKind_Bool)
         DEBUG_print_line(str, indent_level, "bool_val: %d", lit->bool_val);
       else if(lit->kind == AstLiteralKind_Char)
-        DEBUG_print_line(str, indent_level, "char_val: '%c'", lit->char_val);
+      {
+        char buf[3] = {0};
+
+        if(lit->char_val == '\0')
+          cstr_copy(buf, "\\0");
+        else if(lit->char_val == '\t')
+          cstr_copy(buf, "\\t");
+        else if(lit->char_val == '\n')
+          cstr_copy(buf, "\\n");
+        else if(lit->char_val == '\r')
+          cstr_copy(buf, "\\r");
+        else if(lit->char_val == '\'')
+          cstr_copy(buf, "\\'");
+        else
+          *buf = lit->char_val;
+
+        DEBUG_print_line(str, indent_level, "char_val: '%s'", buf);
+      }
       else if(lit->kind == AstLiteralKind_String)
         DEBUG_print_line(str, indent_level, "str: \"%s\"", lit->str);
       else

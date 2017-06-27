@@ -33,6 +33,7 @@ VmProgram;
 
 internal bool debug_enabled = true;
 MemoryArena* arena = 0;
+MemoryArena* dbg_arena = 0;
 
 bool
 compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...)
@@ -69,9 +70,12 @@ translate(char* file_path, char* hoc_text)
       DEBUG_arena_print_occupancy("Parse", arena);
 
       String str = {0};
-      str_init(&str, arena);
+      str_init(&str, dbg_arena);
       DEBUG_print_ast_node(&str, 0, ast, 0);
       str_stdout(&str);
+
+      DEBUG_arena_print_occupancy("Print string (dbg_arena)", dbg_arena);
+      arena_free(dbg_arena);
     }
 #if 1
     vm_program->success = semantic_analysis(ast);
@@ -204,8 +208,9 @@ main(int argc, char* argv[])
 
   if(argc >= 2)
   {
-    arena = arena_new(500*KILOBYTE);
-    DEBUG_arena_print_occupancy("", arena);
+    arena = arena_new(1*MEGABYTE);
+    if(debug_enabled)
+      dbg_arena = arena_push(arena, 500*KILOBYTE);
 
     char* file_path = argv[1];
     char* hoc_text = file_read_text(arena, file_path);

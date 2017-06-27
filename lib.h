@@ -47,7 +47,7 @@ typedef struct MemoryArena MemoryArena;
 
 typedef struct MemoryArena
 {
-  uint8* base;
+  uint8* alloc;
   uint8* free;
   uint8* cap;
   MemoryArena* host;
@@ -74,9 +74,9 @@ bool char_is_numeric(char c);
  * The function assumes that all characters in the input string are digits,
  * except for the first, which could be the negative sign '-'
  */
-bool cstr_to_int(char* string, int* integer);
+bool cstr_to_int(char* str, int* integer);
 
-bool cstr_to_float(char* string, float* result);
+bool cstr_to_float(char* str, float* result);
 bool cstr_start_with(char* str, char* prefix);
 bool cstr_match(char* str_a, char* str_b);
 int cstr_len(char* str);
@@ -91,17 +91,19 @@ typedef struct
 }
 String;
 
-void str_init(String* string, MemoryArena* arena);
+void str_init(String* str, MemoryArena* arena);
 
 /* The 0-terminator is not counted. */
-uint str_len(String* string);
+uint str_len(String* str);
 
-void str_debug_output(String* string);
-void str_stdout(String* string);
-void str_append(String* string, char* cstr);
-void str_printf(String* string, char* message, ...);
-void str_printf_va(String* string, char* message, va_list varargs);
-void str_tidyup(String* string);
+void str_debug_output(String* str);
+void str_stdout(String* str);
+void str_append(String* str, char* cstr);
+void str_printf(String* str, char* message, ...);
+void str_printf_va(String* str, char* message, va_list varargs);
+void str_tidyup(String* str);
+void str_free(String* str);
+
 char* path_find_leaf(char* file_path);
 
 /* Writes over the 'file_path' string */

@@ -47,7 +47,7 @@ char_is_numeric(char c)
 void
 mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
 {
-  assert(arena->base <= (uint8*)ptr);
+  assert(arena->alloc <= (uint8*)ptr);
   assert((arena->free + elem_size) < arena->cap);
 }
 
@@ -68,14 +68,14 @@ mem_zero_range(void* start, void* one_past_end)
 void
 arena_free(MemoryArena* arena)
 {
-  arena->free = arena->base;
+  arena->free = arena->alloc;
 }
 
 void
 arena_reset(MemoryArena* arena)
 {
-  arena->base = (uint8*)arena + sizeof(MemoryArena);
-  arena->free = arena->base;
+  arena->alloc = (uint8*)arena + sizeof(MemoryArena);
+  arena->free = arena->alloc;
   assert(arena->free < arena->cap);
 }
 
@@ -84,15 +84,15 @@ arena_pop(MemoryArena* arena)
 {
   MemoryArena* host = arena->host;
   assert(host->free == arena->cap);
-  assert(host->base == host->free);
+  assert(host->alloc == host->free);
   if(dbg_zero_mem)
     mem_zero_range((uint8*)arena, arena->cap);
   host->free = (uint8*)arena;
 
   if(--host->sub_arena_count > 0)
-    host->base = host->free;
+    host->alloc = host->free;
   else
-    host->base = (uint8*)host + sizeof(MemoryArena);
+    host->alloc = (uint8*)host + sizeof(MemoryArena);
   return host;
 }
 
@@ -102,14 +102,14 @@ arena_push(MemoryArena* arena, size_t size)
   assert(size > 0);
 
   MemoryArena sub_arena = {0};
-  sub_arena.base = arena->free + sizeof(MemoryArena);
-  sub_arena.free = sub_arena.base;
+  sub_arena.alloc = arena->free + sizeof(MemoryArena);
+  sub_arena.free = sub_arena.alloc;
 
   MemoryArena* sub_arena_p = (MemoryArena*)arena->free;
   arena->free = arena->free + size + sizeof(MemoryArena);
   if(dbg_check_bounds)
     arena_check_bounds(arena);
-  arena->base = arena->free;
+  arena->alloc = arena->free;
   arena->sub_arena_count++;
 
   sub_arena.cap = arena->free;
@@ -117,7 +117,7 @@ arena_push(MemoryArena* arena, size_t size)
   *sub_arena_p = sub_arena;
 
   if(dbg_zero_mem)
-    mem_zero_range(sub_arena.base, sub_arena.cap);
+    mem_zero_range(sub_arena.alloc, sub_arena.cap);
   return sub_arena_p;
 }
 
@@ -141,8 +141,8 @@ arena_new(int size)
 {
   MemoryArena* arena = malloc(size + sizeof(MemoryArena));
   mem_zero(arena, MemoryArena);
-  arena->base = (uint8*)arena + sizeof(MemoryArena);
-  arena->free = arena->base;
+  arena->alloc = (uint8*)arena + sizeof(MemoryArena);
+  arena->free = arena->alloc;
   arena->cap = arena->free + size;
   return arena;
 }
@@ -158,10 +158,10 @@ ArenaUsage
 arena_usage(MemoryArena* arena)
 {
   ArenaUsage usage = {0};
-#if 1
+#if 0
   uint8* base = (uint8*)arena + sizeof(MemoryArena);
 #else
-  uint8* base = arena->base;
+  uint8* base = arena->alloc;
 #endif
   usage.total_avail = arena->cap - base;
   usage.in_use = (arena->free - base) / (double)usage.total_avail;
@@ -176,22 +176,22 @@ DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
 }
 
 bool
-cstr_to_int(char* string, int* integer)
+cstr_to_int(char* str, int* integer)
 {
   bool negative = false;
 
-  if(*string == '-')
+  if(*str == '-')
   {
     negative = true;
-    string++;
+    str++;
   }
 
-  char c = *string++;
+  char c = *str++;
   if(char_is_numeric(c))
   {
     int result = (int)(c - '0');
 
-    for(c = *string++; c != '\0'; c = *string++)
+    for(c = *str++; c != '\0'; c = *str++)
     {
       if(char_is_numeric(c))
       {
@@ -212,22 +212,22 @@ cstr_to_int(char* string, int* integer)
 }
 
 bool
-cstr_to_float(char* string, float* result)
+cstr_to_float(char* str, float* result)
 {
 #if 0
   bool negative = false;
 
-  if(*string == '-')
+  if(*str == '-')
   {
     negative = true;
-    string++;
+    str++;
   }
 
-  char c = *string++;
+  char c = *str++;
   if(char_is_numeric(c))
   {
     int int_part = (c - '0');
-    for(c = *string++; c != '\0' && c != '.'; c = *string++)
+    for(c = *str++; c != '\0' && c != '.'; c = *str++)
     {
       if(char_is_numeric(c))
       {
@@ -243,8 +243,8 @@ cstr_to_float(char* string, float* result)
     {
       float fract_part = 0.0;
 
-      c = *string++;
-      for(c = *string++; c != '\0'; c = *string++)
+      c = *str++;
+      for(c = *str++; c != '\0'; c = *str++)
       {
         if(char_is_numeric(c))
         {
@@ -263,7 +263,7 @@ cstr_to_float(char* string, float* result)
   else
     return false;
 #else
-  if(sscanf(string, "%f", result) != 1)
+  if(sscanf(str, "%f", result) != 1)
     return false;
 #endif
 
@@ -332,87 +332,98 @@ cstr_copy_substr(char* dest_str, char* begin_char, char* end_char)
 }
 
 void
-str_init(String* string, MemoryArena* arena)
+str_init(String* str, MemoryArena* arena)
 {
-  string->arena = arena;
-  string->head = mem_push_struct(arena, char, 1);
-  *string->head = '\0';
-  string->end = string->head;
+  str->arena = arena;
+  str->head = mem_push_struct(arena, char, 1);
+  *str->head = '\0';
+  str->end = str->head;
 }
 
 uint
-str_len(String* string)
+str_len(String* str)
 {
-  assert(string->head <= string->end);
-  uint len = (uint)(string->end - string->head);
+  assert(str->head <= str->end);
+  uint len = (uint)(str->end - str->head);
   return len;
 }
 
 void
-str_debug_output(String* string)
+str_debug_output(String* str)
 {
-  OutputDebugString(string->head);
+  OutputDebugString(str->head);
 }
 
 void
-str_stdout(String* string)
+str_stdout(String* str)
 {
-  fputs(string->head, stdout);
+  fputs(str->head, stdout);
 }
 
 void
-str_append(String* string, char* cstr)
+str_append(String* str, char* cstr)
 {
-  assert(string->head && string->end && string->arena);
-  MemoryArena* arena = string->arena;
-  assert(string->head <= string->end);
-  assert(string->end == (char*)arena->free-1);
+  assert(str->head && str->end && str->arena);
+  MemoryArena* arena = str->arena;
+  assert(str->head <= str->end);
+  assert(str->end == (char*)arena->free-1);
 
   int len = cstr_len(cstr);
   if(len > 0)
   {
     mem_push_struct(arena, char, len);
-    cstr_copy(string->end, cstr);
-    string->end = (char*)arena->free-1;
+    cstr_copy(str->end, cstr);
+    str->end = (char*)arena->free-1;
   }
 }
 
 void
-str_printf_va(String* string, char* message, va_list varargs)
+str_printf_va(String* str, char* message, va_list varargs)
 {
-  assert(string->head && string->end && string->arena);
-  MemoryArena* arena = string->arena;
-  assert(string->head <= string->end);
-  assert(string->end == (char*)arena->free-1);
+  assert(str->head && str->end && str->arena);
+  MemoryArena* arena = str->arena;
+  assert(str->head <= str->end);
+  assert(str->end == (char*)arena->free-1);
 
-  int len = vsprintf(string->end, message, varargs);
-  string->end += len;
-  assert(string->end < (char*)arena->cap);
-  arena->free = (uint8*)string->end+1;
+  int len = vsprintf(str->end, message, varargs);
+  str->end += len;
+  assert(str->end < (char*)arena->cap);
+  arena->free = (uint8*)str->end+1;
 }
 
 void
-str_printf(String* string, char* message, ...)
+str_printf(String* str, char* message, ...)
 {
   va_list varargs;
   va_start(varargs, message);
-  str_printf_va(string, message, varargs);
+  str_printf_va(str, message, varargs);
   va_end(varargs);
 }
 
 void
-str_tidyup(String* string)
+str_tidyup(String* str)
 {
-  assert(string->head <= string->end);
-  if(string->end > string->head)
+  assert(str->head <= str->end);
+  if(str->end > str->head)
   {
-    char* p_end = string->end - 1;
-    while(p_end >= string->head && *p_end)
+    char* p_end = str->end - 1;
+    while(p_end >= str->head && *p_end)
       p_end--;
-    string->end = p_end;
-    MemoryArena* arena = string->arena;
-    arena->free = (uint8*)string->end+1;
+    str->end = p_end;
+    MemoryArena* arena = str->arena;
+    arena->free = (uint8*)str->end+1;
   }
+}
+
+void
+str_free(String* str)
+{
+  assert(str->head <= str->end);
+  MemoryArena* arena = str->arena;
+  assert(str->head <= str->end);
+  assert(str->end == (char*)arena->free-1);
+
+  arena->free = (uint8*)str->head;
 }
 
 char*

@@ -67,18 +67,28 @@ translate(char* file_path, char* hoc_text)
   {
     if(debug_enabled)
     {
-      DEBUG_arena_print_occupancy("Parse", arena);
+      DEBUG_arena_print_occupancy("After syntactic analysis", arena);
 
       String str = {0};
       str_init(&str, dbg_arena);
       DEBUG_print_ast_node(&str, 0, ast, 0);
-      str_stdout(&str);
-
-      DEBUG_arena_print_occupancy("Print string (dbg_arena)", dbg_arena);
+      str_dump_to_file(&str, "syntax.txt");
       arena_free(dbg_arena);
     }
 #if 1
-    vm_program->success = semantic_analysis(ast);
+    if(vm_program->success = semantic_analysis(ast))
+    {
+      if(debug_enabled)
+      {
+        DEBUG_arena_print_occupancy("After semantic analysis", arena);
+
+        String str = {0};
+        str_init(&str, dbg_arena);
+        DEBUG_print_ast_node(&str, 0, ast, 0);
+        str_dump_to_file(&str, "semantic.txt");
+        arena_free(dbg_arena);
+      }
+    }
 #else
     assert(symbol_table.scope_id == 0);
     assert(symbol_table.nesting_depth == 0);

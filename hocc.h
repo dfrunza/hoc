@@ -558,7 +558,7 @@ typedef struct AstNode
     AstIfStmt if_stmt;
     AstWhileStmt while_stmt;
     AstForStmt for_stmt;
-    AstIncludeStmt include;
+    AstIncludeStmt include_stmt;
     AstBlock block;
     AstCast cast;
     AstId id;

@@ -62,7 +62,7 @@ void arena_free(MemoryArena* arena);
 void arena_reset(MemoryArena* arena);
 #define mem_push_struct(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT))
 #define mem_push_size(ARENA, COUNT) (mem_push_struct_(ARENA, sizeof(uint8), COUNT))
-#define mem_zero(VAR, TYPE) (mem_zero_(VAR, sizeof(TYPE)))
+#define mem_zero_struct(VAR, TYPE) (mem_zero_(VAR, sizeof(TYPE)))
 void mem_zero_(void* mem, size_t len);
 void* mem_push_struct_(MemoryArena* arena, size_t elem_size, size_t count);
 void DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena);
@@ -98,6 +98,7 @@ uint str_len(String* str);
 
 void str_debug_output(String* str);
 void str_stdout(String* str);
+bool str_dump_to_file(String* str, char* file_path);
 void str_append(String* str, char* cstr);
 void str_printf(String* str, char* message, ...);
 void str_printf_va(String* str, char* message, va_list varargs);
@@ -114,20 +115,18 @@ uint file_write_bytes(char* file_path, uint8* text, size_t count);
 char* file_read_text(MemoryArena* arena, char* file_path);
 int stdin_read(char buf[], int buf_size);
 
-typedef struct ListItem_
+typedef struct ListItem
 {
   void* elem;
-  struct ListItem_* next;
-  struct ListItem_* prev;
+  struct ListItem* next;
+  struct ListItem* prev;
 }
 ListItem;
 
 typedef struct
 {
-  ListItem** last;
-  ListItem** next_slot;
-  int count;
   ListItem* first;
+  ListItem* last;
 }
 List;
 
@@ -135,5 +134,8 @@ inline void list_init(List* list);
 List* list_new(MemoryArena* arena);
 void list_append_item(List* list, ListItem* item);
 void list_append(MemoryArena* arena, List* list, void* elem);
+
+/* Insert list `a` into `b` and delete the item `b` from `list_b`. */
+void list_replace_at(List* list_a, List* list_b, ListItem* at_b_item);
 
 

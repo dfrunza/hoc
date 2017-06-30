@@ -140,7 +140,7 @@ MemoryArena*
 arena_new(int size)
 {
   MemoryArena* arena = malloc(size + sizeof(MemoryArena));
-  mem_zero(arena, MemoryArena);
+  mem_zero_struct(arena, MemoryArena);
   arena->alloc = (uint8*)arena + sizeof(MemoryArena);
   arena->free = arena->alloc;
   arena->cap = arena->free + size;
@@ -426,6 +426,14 @@ str_free(String* str)
   arena->free = (uint8*)str->head;
 }
 
+bool
+str_dump_to_file(String* str, char* file_path)
+{
+  int char_count = str_len(str);
+  int bytes_written = file_write_bytes(file_path, (uint8*)str->head, str_len(str));
+  return (char_count == bytes_written);
+}
+
 char*
 path_find_leaf(char* file_path)
 {
@@ -527,8 +535,7 @@ stdin_read(char buf[], int buf_size)
 inline void
 list_init(List* list)
 {
-  list->last = &list->first;
-  list->next_slot = &list->first;
+  mem_zero_struct(list, List);
 }
 
 List*
@@ -542,18 +549,14 @@ list_new(MemoryArena* arena)
 void
 list_append_item(List* list, ListItem* item)
 {
-  ListItem* prev = *list->last;
-  *list->next_slot = item;
-
-  ListItem* last = *list->last;
-  item->prev = prev;
-  last->next = item;
+  if(list->last)
+  {
+    item->prev = list->last;
+    list->last->next = item;
+    list->last = item;
+  } else
+    list->first = list->last = item;
   item->next = 0;
-
-  list->last = &last->next;
-  list->next_slot = &item->next;
-
-  list->count++;
 }
 
 void
@@ -564,4 +567,32 @@ list_append(MemoryArena* arena, List* list, void* elem)
   list_append_item(list, item);
 }
 
+void
+list_replace_at(List* list_a, List* list_b, ListItem* at_b_item)
+{
+  ListItem* prev_b_item = at_b_item->prev;
+  ListItem* next_b_item = at_b_item->next;
+
+  if(list_a->first)
+  {
+    if(prev_b_item)
+      prev_b_item->next = list_a->first;
+    else
+      list_b->first = list_a->first;
+  } else
+  {
+    if(prev_b_item)
+      prev_b_item->next = next_b_item;
+    else
+      list_b->first = next_b_item;
+  }
+
+  if(next_b_item)
+  {
+    next_b_item->prev = list_a->last;
+    if(list_a->last)
+      list_a->last->next = next_b_item;
+  } else
+    list_b->last = list_a->last;
+}
 

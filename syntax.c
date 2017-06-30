@@ -259,7 +259,7 @@ new_include_stmt(SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IncludeStmt;
   node->src_loc = *src_loc;
-  list_init(&node->include.node_list);
+  list_init(&node->include_stmt.node_list);
   return node;
 }
 
@@ -1304,7 +1304,7 @@ include_stmt(TokenStream* input, AstNode** node)
     if(get_next_token(input)->kind == TokenKind_String)
     {
       *node = new_include_stmt(&input->src_loc);
-      AstIncludeStmt* include = &(*node)->include;
+      AstIncludeStmt* include_stmt = &(*node)->include_stmt;
 
       String str = {0};
       str_init(&str, arena);
@@ -1312,22 +1312,22 @@ include_stmt(TokenStream* input, AstNode** node)
       path_make_dir(str.head);
       str_tidyup(&str);
       str_append(&str, input->token.str);
-      include->file_path = str.head;
+      include_stmt->file_path = str.head;
 
       get_next_token(input);
 
-      char* hoc_text = file_read_text(arena, include->file_path);
+      char* hoc_text = file_read_text(arena, include_stmt->file_path);
       if(hoc_text)
       {
         TokenStream* inc_input = mem_push_struct(arena, TokenStream, 1);
-        init_token_stream(inc_input, hoc_text, include->file_path);
+        init_token_stream(inc_input, hoc_text, include_stmt->file_path);
 
         get_next_token(inc_input);
-        success = module(inc_input, &include->node_list);
+        success = module(inc_input, &include_stmt->node_list);
       }
       else
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Could not read file `%s`", include->file_path);
+                                "Could not read file `%s`", include_stmt->file_path);
     }
     else
       success = compile_error(&input->src_loc, __FILE__, __LINE__,
@@ -1790,7 +1790,7 @@ DEBUG_print_line(String* str, int indent_level, char* message, ...)
 internal void
 DEBUG_print_ast_node_list(String* str, int indent_level, List* node_list, char* tag)
 {
-  if(node_list->count > 0)
+  if(node_list->first)
   {
     if(tag)
     {
@@ -1827,7 +1827,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     }
     else if(node->kind == AstNodeKind_IncludeStmt)
     {
-      AstIncludeStmt* inc = &node->include;
+      AstIncludeStmt* inc = &node->include_stmt;
       DEBUG_print_line(str, indent_level, "file_path: \"%s\"", inc->file_path);
       DEBUG_print_ast_node_list(str, indent_level, &inc->node_list, "node_list");
     }

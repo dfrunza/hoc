@@ -131,17 +131,42 @@ scope_end(SymbolTable* symtab)
   symtab->symbol = symbol;
 }
 
+internal void
+include_stmt(SymbolTable* symtab, List* include_list, List* module_list, ListItem* module_list_item)
+{
+  for(ListItem* list_item = include_list->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    AstNode* node = list_item->elem;
+    if(node->kind == AstNodeKind_IncludeStmt)
+    {
+      AstIncludeStmt* include_node = &node->include_stmt;
+      include_stmt(symtab, &include_node->node_list, include_list, list_item);
+    }
+  }
+  list_replace_at(include_list, module_list, module_list_item);
+
+  mem_zero_struct(include_list, List);
+  list_init(include_list);
+}
+
 internal bool
 module(SymbolTable* symtab, AstNode* ast)
 {
   bool success = true;
-  AstModule* ast_module = &ast->module;
+  AstModule* module_ast = &ast->module;
 
-  for(ListItem* list_item = ast_module->node_list.first;
+  for(ListItem* list_item = module_ast->node_list.first;
       list_item;
       list_item = list_item->next)
   {
-
+    AstNode* node = list_item->elem;
+    if(node->kind == AstNodeKind_IncludeStmt)
+    {
+      AstIncludeStmt* include_node = &node->include_stmt;
+      include_stmt(symtab, &include_node->node_list, &module_ast->node_list, list_item);
+    }
   }
   return success;
 }

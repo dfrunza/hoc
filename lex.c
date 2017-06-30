@@ -66,7 +66,7 @@ is_keyword(TokenKind token_kind)
 }
 
 internal char*
-install_id(char* begin_char, char* end_char)
+install_lexeme(char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
 
@@ -187,7 +187,7 @@ get_next_token(TokenStream* input)
 {
   input->prev_tokens[1] = input->prev_tokens[0];
   input->prev_tokens[0] = input->token;
-  mem_zero(&input->token, Token);
+  mem_zero_struct(&input->token, Token);
   SourceLocation* src_loc = &input->src_loc;
   src_loc->src_line = input->cursor;
   char c;
@@ -215,7 +215,7 @@ loop:
       c = *(++input->cursor);
 
     char* end_char = input->cursor - 1;
-    char* lexeme = install_id(begin_char, end_char);
+    char* lexeme = install_lexeme(begin_char, end_char);
 
     token->kind = TokenKind_Id;
     token->lexeme = lexeme;
@@ -240,6 +240,7 @@ loop:
       c = *(++input->cursor);
     }
     digit_buf[i] = '\0';
+    token->lexeme = install_lexeme(digit_buf, digit_buf + i-1);
 
     if(is_float)
     {

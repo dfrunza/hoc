@@ -1,3 +1,5 @@
+include "abs.hoc";
+
 proc int gcd_(int a, int b)
 {
   var int result = a;

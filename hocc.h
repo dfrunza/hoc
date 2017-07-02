@@ -120,7 +120,7 @@ typedef enum
   AstOpKind_Neg,
 
   AstOpKind_Assign,
-  AstOpKind_Deref,
+  AstOpKind_Pointer,
   AstOpKind_AddressOf,
   AstOpKind_MemberAccess,
   AstOpKind_PtrMemberAccess,
@@ -157,7 +157,7 @@ DEBUG_AstOpKind_tags[] =
   "AstOpKind_Mod",
   "AstOpKind_Neg",
   "AstOpKind_Assign",
-  "AstOpKind_Deref",
+  "AstOpKind_Pointer",
   "AstOpKind_AddressOf",
   "AstOpKind_MemberAccess",
   "AstOpKind_PtrMemberAccess",
@@ -445,6 +445,7 @@ AstCall;
 typedef struct
 {
   List node_list;
+  List includes;
 /*
   AstNode* main_proc;
   AstNode* main_call;

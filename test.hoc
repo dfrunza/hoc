@@ -1,12 +1,16 @@
 /*
+include "hlib\\minmax.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\power.hoc";
 include "hlib\\gcd.hoc";
 include "hlib\\abs.hoc";
 include "hlib\\fibo.hoc";
-include "hlib\\minmax.hoc";
 include "hlib\\syntax.hoc";
 include "hlib\\lex.hoc";
 */
 
-var int d;
+proc int main()
+{
+  /*a = (*int)*float;*/
+  a = (*int)(c + b);
+}

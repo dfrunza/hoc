@@ -361,6 +361,12 @@ type_id(TokenStream* input,
 
 internal bool initializer(TokenStream*, AstNode**);
 internal bool expression(TokenStream*, AstNode**);
+internal bool statement(TokenStream*, AstNode**);
+internal bool formal_arg_decl(TokenStream*, AstNode**);
+internal bool unary_expr(TokenStream*, AstNode**);
+internal bool module(TokenStream*, List*);
+internal bool struct_member_list(TokenStream*, List*);
+
 internal bool
 initializer_member_list(TokenStream* input, List* member_list)
 {
@@ -445,7 +451,6 @@ actual_arg_list(TokenStream* input, List* arg_list)
   return success;
 }
 
-internal bool formal_arg_decl(TokenStream*, AstNode**);
 internal bool
 formal_arg_list(TokenStream* input, List* arg_list)
 {
@@ -470,7 +475,6 @@ formal_arg_list(TokenStream* input, List* arg_list)
   return success;
 }
 
-internal bool statement(TokenStream*, AstNode**);
 internal bool
 statement_list(TokenStream* input, List* stmt_list)
 {
@@ -566,102 +570,6 @@ rest_of_id(TokenStream* input, AstNode* id, AstNode** node)
   return success;
 }
 
-internal bool
-accessor(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = true;
-
-  if(input->token.kind == TokenKind_OpenParens)
-  {
-    get_next_token(input);
-
-    if(success = expression(input, node))
-    {
-      if(input->token.kind == TokenKind_CloseParens)
-        get_next_token(input);
-      else
-        success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Expected `)`, actual `%s`", input->token.lexeme);
-    }
-  }
-  else if(input->token.kind == TokenKind_IntNum ||
-          input->token.kind == TokenKind_FloatNum ||
-          input->token.kind == TokenKind_Char ||
-          input->token.kind == TokenKind_String ||
-          input->token.kind == TokenKind_True ||
-          input->token.kind == TokenKind_False)
-  {
-    *node = new_int_literal(&input->src_loc);
-    AstLiteral* literal = &(*node)->literal;
-
-    if(input->token.kind == TokenKind_IntNum)
-    {
-      literal->kind = AstLiteralKind_Int;
-      literal->int_val = *input->token.int_val;
-    }
-    else if(input->token.kind == TokenKind_FloatNum)
-    {
-      literal->kind = AstLiteralKind_Float;
-      literal->float_val = *input->token.float_val;
-    }
-    else if(input->token.kind == TokenKind_True ||
-            input->token.kind == TokenKind_False)
-    {
-      literal->kind = AstLiteralKind_Bool;
-      literal->bool_val = (input->token.kind == TokenKind_True ? 1 : 0);
-    }
-    else if(input->token.kind == TokenKind_Char)
-    {
-      literal->kind = AstLiteralKind_Char;
-      literal->char_val = input->token.char_val;
-    }
-    else if(input->token.kind == TokenKind_String)
-    {
-      literal->kind = AstLiteralKind_String;
-      literal->str = input->token.str;
-    }
-    else
-      assert(false);
-
-    get_next_token(input);
-  }
-  else if(input->token.kind == TokenKind_Id)
-  {
-    *node = new_id(&input->src_loc, input->token.lexeme);
-
-    get_next_token(input);
-    success = rest_of_id(input, *node, node);
-#if 0
-    {
-      *node = new_var_occur(&input->src_loc);
-      AstVarOccur* var_occur = &(*node)->var_occur;
-      Symbol* symbol = lookup_symbol(symbol_table, id_name, SymbolKind_Var);
-      if(symbol)
-      {
-        var_occur->name = symbol->name;
-
-        AstVarDecl* var_decl = &symbol->node->var_decl;
-        var_occur->data = &var_decl->data;
-        var_occur->decl_block_offset = (symbol_table->nesting_depth - symbol->nesting_depth);
-        var_occur->var_decl = symbol->node;
-
-        if(var_occur->decl_block_offset > 0)
-          list_append(arena, &enclosing_block->nonlocal_occurs, *node);
-        else if(var_occur->decl_block_offset == 0)
-          list_append(arena, &enclosing_block->local_occurs, *node);
-        else
-          assert(false);
-      }
-      else
-        success = compile_error(&input->src_loc, __FILE__, __LINE__, "Unknown identifier `%s`", id_name);
-    }
-#endif
-  }
-
-  return success;
-}
-
 internal void
 postfix(TokenStream* input, AstNode* left_node, AstNode** node)
 {
@@ -683,88 +591,6 @@ postfix(TokenStream* input, AstNode* left_node, AstNode** node)
 
     get_next_token(input);
   }
-}
-
-internal bool factor(TokenStream*, AstNode**);
-internal bool
-unary_expr(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = true;
-
-  if(input->token.kind == TokenKind_Exclam ||
-     input->token.kind == TokenKind_Star ||
-     input->token.kind == TokenKind_Ampersand ||
-     input->token.kind == TokenKind_Minus ||
-     input->token.kind == TokenKind_MinusMinus ||
-     input->token.kind == TokenKind_PlusPlus)
-  {
-    *node = new_unr_expr(&input->src_loc);
-    AstUnrExpr* expr = &(*node)->unr_expr;
-
-    if(input->token.kind == TokenKind_Exclam)
-      expr->op = AstOpKind_LogicNot;
-    else if(input->token.kind == TokenKind_Star)
-      expr->op = AstOpKind_Deref;
-    else if(input->token.kind == TokenKind_Ampersand)
-      expr->op = AstOpKind_AddressOf;
-    else if(input->token.kind == TokenKind_Minus)
-      expr->op = AstOpKind_Neg;
-    else if(input->token.kind == TokenKind_MinusMinus)
-      expr->op = AstOpKind_PreDecrement;
-    else if(input->token.kind == TokenKind_PlusPlus)
-      expr->op = AstOpKind_PreIncrement;
-    else
-      assert(false);
-
-    get_next_token(input);
-    if(success = factor(input, &expr->operand))
-    {
-      if(expr->operand)
-        postfix(input, expr->operand, &expr->operand);
-      else
-        success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Operand expected, actual `%s`", input->token.lexeme);
-    }
-  }
-  else if(input->token.kind == TokenKind_AngleLeft)
-  {
-    *node = new_cast(&input->src_loc);
-    AstCast* cast = &(*node)->cast;
-
-    get_next_token(input);
-    success = type_id(input, &cast->type);
-    if(!success) goto end;
-
-    if(cast->type)
-    {
-      if(input->token.kind == TokenKind_AngleRight)
-      {
-        get_next_token(input);
-        if(success = factor(input, &cast->expr))
-        {
-          if(cast->expr)
-            postfix(input, cast->expr, &cast->expr);
-          else
-            success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                    "Operand expected, actual `%s`", input->token.lexeme);
-        }
-      }
-      else
-        success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Expected `>`, actual `%s`", input->token.lexeme);
-    }
-    else
-      success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                              "Type identifier expected, actual `%s`", input->token.lexeme);
-  }
-  else
-  {
-    if(success = accessor(input, node))
-      postfix(input, *node, node);
-  }
-end:
-  return success;
 }
 
 internal bool
@@ -950,6 +776,164 @@ rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                 "Operand expected, actual `%s`", input->token.lexeme);
     }
+  }
+
+  return success;
+}
+
+internal bool
+accessor(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  if(input->token.kind == TokenKind_OpenParens)
+  {
+    get_next_token(input);
+
+    if(success = expression(input, node))
+    {
+      if(input->token.kind == TokenKind_CloseParens)
+      {
+        get_next_token(input);
+
+        AstNode* rest = 0;
+        if((success = accessor(input, &rest)) && rest)
+        {
+          AstNode* type = *node;
+          *node = new_cast(&input->src_loc);
+          AstCast* cast = &(*node)->cast;
+          cast->type = type;
+          cast->expr = rest;
+        }
+      }
+      else
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `)`, actual `%s`", input->token.lexeme);
+    }
+  }
+  else if(input->token.kind == TokenKind_IntNum ||
+          input->token.kind == TokenKind_FloatNum ||
+          input->token.kind == TokenKind_Char ||
+          input->token.kind == TokenKind_String ||
+          input->token.kind == TokenKind_True ||
+          input->token.kind == TokenKind_False)
+  {
+    *node = new_int_literal(&input->src_loc);
+    AstLiteral* literal = &(*node)->literal;
+
+    if(input->token.kind == TokenKind_IntNum)
+    {
+      literal->kind = AstLiteralKind_Int;
+      literal->int_val = *input->token.int_val;
+    }
+    else if(input->token.kind == TokenKind_FloatNum)
+    {
+      literal->kind = AstLiteralKind_Float;
+      literal->float_val = *input->token.float_val;
+    }
+    else if(input->token.kind == TokenKind_True ||
+            input->token.kind == TokenKind_False)
+    {
+      literal->kind = AstLiteralKind_Bool;
+      literal->bool_val = (input->token.kind == TokenKind_True ? 1 : 0);
+    }
+    else if(input->token.kind == TokenKind_Char)
+    {
+      literal->kind = AstLiteralKind_Char;
+      literal->char_val = input->token.char_val;
+    }
+    else if(input->token.kind == TokenKind_String)
+    {
+      literal->kind = AstLiteralKind_String;
+      literal->str = input->token.str;
+    }
+    else
+      assert(false);
+
+    get_next_token(input);
+  }
+  else if(input->token.kind == TokenKind_Id)
+  {
+    *node = new_id(&input->src_loc, input->token.lexeme);
+
+    get_next_token(input);
+    success = rest_of_id(input, *node, node);
+#if 0
+    {
+      *node = new_var_occur(&input->src_loc);
+      AstVarOccur* var_occur = &(*node)->var_occur;
+      Symbol* symbol = lookup_symbol(symbol_table, id_name, SymbolKind_Var);
+      if(symbol)
+      {
+        var_occur->name = symbol->name;
+
+        AstVarDecl* var_decl = &symbol->node->var_decl;
+        var_occur->data = &var_decl->data;
+        var_occur->decl_block_offset = (symbol_table->nesting_depth - symbol->nesting_depth);
+        var_occur->var_decl = symbol->node;
+
+        if(var_occur->decl_block_offset > 0)
+          list_append(arena, &enclosing_block->nonlocal_occurs, *node);
+        else if(var_occur->decl_block_offset == 0)
+          list_append(arena, &enclosing_block->local_occurs, *node);
+        else
+          assert(false);
+      }
+      else
+        success = compile_error(&input->src_loc, __FILE__, __LINE__, "Unknown identifier `%s`", id_name);
+    }
+#endif
+  }
+
+  return success;
+}
+
+internal bool
+unary_expr(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  if(input->token.kind == TokenKind_Exclam ||
+     input->token.kind == TokenKind_Star ||
+     input->token.kind == TokenKind_Ampersand ||
+     input->token.kind == TokenKind_Minus ||
+     input->token.kind == TokenKind_MinusMinus ||
+     input->token.kind == TokenKind_PlusPlus)
+  {
+    *node = new_unr_expr(&input->src_loc);
+    AstUnrExpr* expr = &(*node)->unr_expr;
+
+    if(input->token.kind == TokenKind_Exclam)
+      expr->op = AstOpKind_LogicNot;
+    else if(input->token.kind == TokenKind_Star)
+      expr->op = AstOpKind_Pointer;
+    else if(input->token.kind == TokenKind_Ampersand)
+      expr->op = AstOpKind_AddressOf;
+    else if(input->token.kind == TokenKind_Minus)
+      expr->op = AstOpKind_Neg;
+    else if(input->token.kind == TokenKind_MinusMinus)
+      expr->op = AstOpKind_PreDecrement;
+    else if(input->token.kind == TokenKind_PlusPlus)
+      expr->op = AstOpKind_PreIncrement;
+    else
+      assert(false);
+
+    get_next_token(input);
+    if(success = factor(input, &expr->operand))
+    {
+      if(expr->operand)
+        postfix(input, expr->operand, &expr->operand);
+      else
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Operand expected, actual `%s`", input->token.lexeme);
+    }
+  }
+  else
+  {
+    if(success = accessor(input, node))
+      postfix(input, *node, node);
   }
 
   return success;
@@ -1292,7 +1276,6 @@ end:
   return success;
 }
 
-internal bool module(TokenStream*, List*);
 internal bool
 include_stmt(TokenStream* input, AstNode** node)
 {
@@ -1388,7 +1371,6 @@ enum_decl(TokenStream* input, AstNode** node)
   return success;
 }
 
-internal bool struct_member_list(TokenStream*, List*);
 internal bool
 union_decl(TokenStream* input, AstNode** node)
 {

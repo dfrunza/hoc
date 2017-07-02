@@ -12,5 +12,5 @@ include "hlib\\lex.hoc";
 proc int main()
 {
   /*a = (*int)*float;*/
-  a = (*int)(c + b);
+  a = (*int)a.b;
 }

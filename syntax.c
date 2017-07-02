@@ -366,6 +366,7 @@ internal bool formal_arg_decl(TokenStream*, AstNode**);
 internal bool unary_expr(TokenStream*, AstNode**);
 internal bool module(TokenStream*, List*);
 internal bool struct_member_list(TokenStream*, List*);
+internal bool accessor(TokenStream*, AstNode**);
 
 internal bool
 initializer_member_list(TokenStream* input, List* member_list)
@@ -612,7 +613,7 @@ rest_of_accessor(TokenStream* input, AstNode* left_node, AstNode** node)
       expr->op = AstOpKind_PtrMemberAccess;
 
     get_next_token(input);
-    if(success = unary_expr(input, &expr->rhs))
+    if(success = accessor(input, &expr->rhs))
     {
       if(expr->rhs)
         success = rest_of_accessor(input, *node, node);
@@ -798,7 +799,7 @@ accessor(TokenStream* input, AstNode** node)
         get_next_token(input);
 
         AstNode* rest = 0;
-        if((success = accessor(input, &rest)) && rest)
+        if((success = accessor(input, &rest)) && rest && (success = rest_of_accessor(input, rest, &rest)))
         {
           AstNode* type = *node;
           *node = new_cast(&input->src_loc);
@@ -982,6 +983,10 @@ var_decl(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
+#if 0
+  AstNode* type = 0;
+  if((success = accessor(input, &type)))
+#else
   AstNode* type = 0;
   success = type_id(input, &type);
   if(!success) goto end;
@@ -1025,6 +1030,7 @@ var_decl(TokenStream* input, AstNode** node)
   }
 end:
   return success;
+#endif
 }
 
 internal bool
@@ -1515,14 +1521,14 @@ module_element(TokenStream* input, AstNode** node)
     success = include_stmt(input, node) && semicolon(input);
   else if(input->token.kind == TokenKind_Proc)
     success = proc_decl(input, node);
-  else if(input->token.kind == TokenKind_Var)
-    success = var_stmt(input, node) && semicolon(input);
   else if(input->token.kind == TokenKind_Struct)
     success = struct_decl(input, node);
   else if(input->token.kind == TokenKind_Union)
     success = union_decl(input, node);
   else if(input->token.kind == TokenKind_Enum)
     success = enum_decl(input, node);
+  else if(input->token.kind == TokenKind_Var)
+    success = var_stmt(input, node) && semicolon(input);
   return success;
 }
 

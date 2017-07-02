@@ -47,22 +47,13 @@ typedef enum TokenKind
   TokenKind_Pipe,
   TokenKind_PipePipe,
   TokenKind_Unknown,
+  TokenKind_EndOfInput,
 
-  TokenKind_Id,
-  TokenKind_IntNum,
-  TokenKind_FloatNum,
-  TokenKind_String,
-  TokenKind_Char,
-  TokenKind_True,
-  TokenKind_False,
-
-  TokenKind__KeywordBegin,
   TokenKind_If,
   TokenKind_Else,
   TokenKind_While,
   TokenKind_For,
   TokenKind_Proc,
-  TokenKind_Var,
   TokenKind_Struct,
   TokenKind_Union,
   TokenKind_Return,
@@ -71,9 +62,14 @@ typedef enum TokenKind
   TokenKind_Goto,
   TokenKind_Include,
   TokenKind_Enum,
-  TokenKind__KeywordEnd,
+  TokenKind_True,
+  TokenKind_False,
 
-  TokenKind_EndOfInput,
+  TokenKind_Id,
+  TokenKind_IntNum,
+  TokenKind_FloatNum,
+  TokenKind_String,
+  TokenKind_Char,
 }
 TokenKind;
 
@@ -708,5 +704,7 @@ SymbolTable;
 
 void init_types();
 bool semantic_analysis(AstNode* ast);
+void print_char(char buf[3], char raw_char);
+char* get_token_printstr(Token* token);
 
 

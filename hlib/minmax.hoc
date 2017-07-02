@@ -1,6 +1,6 @@
 proc int max(int a, int b)
 {
-  var int result = a;
+  int result = a;
   if(a < b)
     result = b;
   return result;
@@ -8,7 +8,7 @@ proc int max(int a, int b)
 
 proc int min(int a, int b)
 {
-  var int result = a;
+  int result = a;
   if(a > b)
     result = b;
   return result;

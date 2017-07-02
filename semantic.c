@@ -84,7 +84,6 @@ register_builtin_symbols(SymbolTable* symtab)
   add_builtin_type(symtab, "float", basic_type_float);
   add_builtin_type(symtab, "void", basic_type_void);
 
-  add_keyword(symtab, "var", TokenKind_Var);
   add_keyword(symtab, "proc", TokenKind_Proc);
   add_keyword(symtab, "if", TokenKind_If);
   add_keyword(symtab, "else", TokenKind_Else);

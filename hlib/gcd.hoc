@@ -2,11 +2,11 @@ include "abs.hoc";
 
 proc int gcd_(int a, int b)
 {
-  var int result = a;
+  int result = a;
   if(b != 0)
   {
     result = b;
-    var int r = a % b;
+    int r = a % b;
     if(r == 0)
       result = b;
     else

@@ -3,7 +3,7 @@ include "minmax.hoc";
 
 proc int sqrt_iter(int x, int g)
 {
-  var int r = x/g;
+  int r = x/g;
 
   if(r != g)
   {
@@ -19,8 +19,8 @@ proc int sqrt_iter(int x, int g)
  */
 proc int sqrt_floor(int x)
 {
-  var int g = x;
-  var int r = 1;
+  int g = x;
+  int r = 1;
 
   while((g > 0) && (g != r))
   {

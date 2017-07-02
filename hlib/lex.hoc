@@ -34,6 +34,7 @@ enum TokenKind
   TokenKind_Pipe,
   TokenKind_PipePipe,
   TokenKind_Unknown,
+  TokenKind_EndOfInput,
 
   TokenKind_Id,
   TokenKind_IntNum,
@@ -58,21 +59,19 @@ enum TokenKind
   TokenKind_Include,
   TokenKind_Enum,
   TokenKind__KeywordEnd,
-
-  TokenKind_EndOfInput,
 }
 
 struct Token
 {
   TokenKind kind;
-  char* lexeme;
+  *char lexeme;
 
   union
   {
-    int* int_val;
-    float* float_val;
+    *int int_val;
+    *float float_val;
     char char_val;
-    char* str;
+    *char str;
   };
 }
 
@@ -80,16 +79,16 @@ struct TokenStream
 {
   Token prev_tokens[2];
   Token token;
-  char* text;
-  char* cursor;
+  *char text;
+  *char cursor;
 
   SourceLocation src_loc;
 }
 
-proc Token* get_next_token(TokenStream* input);
-proc void init_token_stream(TokenStream* token_stream, char* text, char* file_path);
+proc *Token get_next_token(*TokenStream input);
+proc void init_token_stream(*TokenStream token_stream, *char text, *char file_path);
 
-var Token keyword_list[] = 
+Token[] keyword_list = 
 {
   {TokenKind_If, "if"},
   {TokenKind_Else, "else"},
@@ -109,9 +108,9 @@ var Token keyword_list[] =
   {TokenKind__Null, 0}, /* terminator */
 };
 
-var char unk_char[2] = {0};
+char[2] unk_char = {0};
 
-var char* simple_lexeme_tags[] =
+*char[] simple_lexeme_tags =
 {
   "(null)", ".", "->", "[", "]", "(", ")", "{", "}", ";", ":", ",", "%", "*", "/", "\\",
   "+", "++", "-", "--", "!", "!=", "=", "==", ">", ">=", "<", "<=", "&", "&&", "|", "||",
@@ -119,11 +118,11 @@ var char* simple_lexeme_tags[] =
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
 };
 
-proc Token*
-lookup_keyword(Token* list, char* lexeme)
+proc *Token
+lookup_keyword(*Token list, *char lexeme)
 {
-  var Token* result = 0;
-  var Token* token;
+  *Token result = 0;
+  *Token token;
 
   for(int i = 0;
       (token = &list[i])->kind;
@@ -138,8 +137,8 @@ lookup_keyword(Token* list, char* lexeme)
   return result;
 }
 
-proc Token*
-get_prev_token(TokenStream* input, int index)
+proc *Token
+get_prev_token(*TokenStream input, int index)
 {
   assert(index == 0 || index == 1);
   return &input->prev_tokens[index];
@@ -151,14 +150,14 @@ is_keyword(TokenKind token_kind)
   return (token_kind > TokenKind__KeywordBegin) && (token_kind < TokenKind__KeywordEnd);
 }
 
-proc char*
-install_id(MemoryArena* arena, char* begin_char, char* end_char)
+proc *char
+install_id(*MemoryArena arena, *char begin_char, *char end_char)
 {
   assert(end_char >= begin_char);
 
   /* TODO: Search the lexeme, and if found, then return it. */
-  var size_t len = end_char - begin_char + 1;
-  var char* lexeme = mem_push_struct(arena, char, len + 1);
+  size_t len = end_char - begin_char + 1;
+  char* lexeme = mem_push_struct(arena, char, len + 1);
   cstr_copy_substr(lexeme, begin_char, end_char);
   return lexeme;
 }
@@ -174,20 +173,20 @@ struct EscapedStr
 {
   char quote;
   int len;
-  char* begin;
-  char* end;
+  *char begin;
+  *char end;
 }
 
 proc bool
-escaped_string(TokenStream* input, EscapedStr* estr, char* file, int line)
+escaped_string(*TokenStream input, *EscapedStr estr, *char file, int line)
 {
-  var bool success = true;
+  bool success = true;
   estr->len = 0;
   estr->end = input->cursor;
   estr->begin = input->cursor;
 
   /* find the closing `"` and count the length of the escaped string at the same time */
-  var char c = *(++estr->end);
+  char c = *(++estr->end);
   while(success && (c != estr->quote) && (c != '\0'))
   {
     if(c == '\\')
@@ -209,18 +208,18 @@ escaped_string(TokenStream* input, EscapedStr* estr, char* file, int line)
   return success;
 }
 
-proc char*
-install_escaped_str(MemoryArena* arena, EscapedStr* estr)
+proc *char
+install_escaped_str(*MemoryArena arena, *EscapedStr estr)
 {
   assert(estr->begin <= estr->end);
 
-  var char* lexeme = mem_push_struct(arena, char, estr->len+1); /* +NULL */
+  *char lexeme = mem_push_struct(arena, char, estr->len+1); /* +NULL */
 
   if(estr->len > 0)
   {
     assert((estr->end - estr->begin) >= 2);
-    var char* dest_str = lexeme;
-    var char* src_str = estr->begin+1;
+    *char dest_str = lexeme;
+    *char src_str = estr->begin+1;
     for(int i = 0; i < estr->len; i++)
     {
       *dest_str = *src_str;
@@ -256,28 +255,28 @@ install_escaped_str(MemoryArena* arena, EscapedStr* estr)
 }
 
 proc void
-init_token_stream(TokenStream* token_stream, char* text, char* file_path)
+init_token_stream(*TokenStream token_stream, *char text, *char file_path)
 {
   token_stream->text = text;
   token_stream->cursor = token_stream->text;
-  var SourceLocation* src_loc = &token_stream->src_loc;
+  *SourceLocation src_loc = &token_stream->src_loc;
   src_loc->line_nr = 1;
   /* TODO: Compute the absolute path to the file, so that Vim could properly
      jump from the QuickFix window to the error line in the file. */
   src_loc->file_path = file_path;
 }
 
-proc Token*
-get_next_token(MemoryArena* arena, TokenStream* input)
+proc *Token
+get_next_token(*MemoryArena arena, *TokenStream input)
 {
   input->prev_tokens[1] = input->prev_tokens[0];
   input->prev_tokens[0] = input->token;
   mem_zero(&input->token);
-  var SourceLocation* src_loc = &input->src_loc;
+  *SourceLocation src_loc = &input->src_loc;
   src_loc->src_line = input->cursor;
   char c;
 
-  var Token* token = &input->token;
+  *Token token = &input->token;
 loop:
   c = *input->cursor;
   while(c == ' ' || c == '\t' ||
@@ -293,26 +292,26 @@ loop:
 
   if(char_is_letter(c) || c == '_')
   {
-    var char* begin_char = input->cursor;
+    *char begin_char = input->cursor;
     c = *(++input->cursor);
 
     while(char_is_letter(c) || char_is_numeric(c) || c == '_')
       c = *(++input->cursor);
 
-    var char* end_char = input->cursor - 1;
-    var char* lexeme = install_id(arena, begin_char, end_char);
+    *char end_char = input->cursor - 1;
+    char* lexeme = install_id(arena, begin_char, end_char);
 
     token->kind = TokenKind_Id;
     token->lexeme = lexeme;
-    var Token* keyword = lookup_keyword(keyword_list, lexeme);
+    *Token keyword = lookup_keyword(keyword_list, lexeme);
     if(keyword)
       token->kind = keyword->kind;
   }
   else if(char_is_numeric(c))
   {
-    var char digit_buf[32] = {0};
-    var bool is_float = false;
-    var int i = 0;
+    char[32] digit_buf = {0};
+    bool is_float = false;
+    int i = 0;
     for(; i < sizeof_array(digit_buf)-1 && (char_is_numeric(c) || c == '.'); i++)
     {
       digit_buf[i] = c;
@@ -382,7 +381,7 @@ loop:
   else if(c == '/')
   {
     /* multi-line comments */
-    var char* fwd_cursor = input->cursor;
+    *char fwd_cursor = input->cursor;
 
     c = *(++fwd_cursor);
     if(c == '*')
@@ -421,7 +420,7 @@ loop:
   else if(c == '"')
   {
     /* double-quoted escaped string */
-    var EscapedStr estr = {0};
+    EscapedStr estr = {0};
     estr.quote = '"';
 
     if(escaped_string(input, &estr, __FILE__, __LINE__))
@@ -434,12 +433,12 @@ loop:
   else if(c == '\'')
   {
     /* single-quoted escaped char */
-    var EscapedStr estr = {0};
+    EscapedStr estr = {0};
     estr.quote = '\'';
 
     if(escaped_string(input, &estr, __FILE__, __LINE__))
     {
-      char* lexeme = install_escaped_str(arena, &estr);
+      *char lexeme = install_escaped_str(arena, &estr);
 
       if(estr.len != 1)
       {

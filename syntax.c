@@ -664,6 +664,9 @@ term(TokenStream* input, AstNode** node)
       var_decl->id = new_id(&input->src_loc, input->token.lexeme);
 
       get_next_token(input);
+      success = rest_of_id(input, var_decl->id, &var_decl->id);
+      if(!success) goto end;
+
       if(input->token.kind == TokenKind_Equals)
       {
         get_next_token(input);

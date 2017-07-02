@@ -9,8 +9,11 @@ include "hlib\\syntax.hoc";
 include "hlib\\lex.hoc";
 */
 
-proc int main()
-{
-  *int b;
-  *b = ++(a--);
-}
+/*array of char ptr*/
+*float a[];
+
+/* ptr to char array */
+/*
+*char[] a; 
+*/
+

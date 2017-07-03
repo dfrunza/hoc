@@ -332,6 +332,7 @@ internal bool module(TokenStream*, List*);
 internal bool struct_member_list(TokenStream*, List*);
 internal bool accessor(TokenStream*, AstNode**);
 internal bool type_expr(TokenStream*, AstNode**);
+internal bool var_decl(TokenStream*, AstNode**);
 
 internal bool
 initializer_member_list(TokenStream* input, List* member_list)
@@ -939,7 +940,7 @@ for_stmt(TokenStream* input, AstNode** node)
     {
       get_next_token(input);
 
-      success = expression(input, &for_stmt->decl) && semicolon(input);
+      success = var_decl(input, &for_stmt->decl) && semicolon(input);
       if(!success) goto end;
 
       success = expression(input, &for_stmt->cond_expr) && semicolon(input);
@@ -1347,7 +1348,10 @@ struct_member_list(TokenStream* input, List* member_list)
         var_decl->type = type;
 
         if(input->token.kind == TokenKind_Id)
+        {
           var_decl->id = new_id(&input->src_loc, input->token.lexeme);
+          get_next_token(input);
+        }
         else if(type->kind == AstNodeKind_Struct ||
                 type->kind == AstNodeKind_Union)
         {
@@ -1450,8 +1454,7 @@ var_decl(TokenStream* input, AstNode** node)
       var_decl->type = type;
       var_decl->id = new_id(&input->src_loc, input->token.lexeme);
 
-      get_next_token(input);
-      if(input->token.kind == TokenKind_Equals)
+      if(get_next_token(input)->kind == TokenKind_Equals)
       {
         get_next_token(input);
 
@@ -1473,9 +1476,6 @@ var_decl(TokenStream* input, AstNode** node)
       success = compile_error(&input->src_loc, __FILE__, __LINE__,
                               "Identifier expected, actual `%s`", get_token_printstr(&input->token));
   }
-  else
-    success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                            "Type expression expected, actual `%s`", get_token_printstr(&input->token));
 end:
   return success;
 }
@@ -1486,11 +1486,15 @@ var_stmt(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = false;
 
-  get_next_token(input);
-  success = var_decl(input, node);
-  if(success && !node)
-    success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                            "Identifier expected, actual `%s`", get_token_printstr(&input->token));
+  if(input->token.kind == TokenKind_Var)
+  {
+    get_next_token(input);
+    if((success = var_decl(input, node)) && !*node)
+    {
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Variable declaration expected, actual `%s`", get_token_printstr(&input->token));
+    }
+  }
   return success;
 }
 
@@ -1611,18 +1615,17 @@ label(TokenStream* input, AstNode* id, AstNode** node)
   *node = id;
   bool success = true;
 
-  if(input->token.kind == TokenKind_Colon &&
-     id->kind == AstNodeKind_Id)
+  if(input->token.kind == TokenKind_Colon)
   {
-    *node = new_label(&input->src_loc);
-    AstLabel* label = &(*node)->label;
-    label->id = id;
-
-    if(input->token.kind == TokenKind_Colon)
-      get_next_token(input);
+    get_next_token(input);
+    if(id->kind == AstNodeKind_Id)
+    {
+      *node = new_label(&input->src_loc);
+      AstLabel* label = &(*node)->label;
+      label->id = id;
+    }
     else
-      success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                              "Expected `:`, actual `%s`", get_token_printstr(&input->token));
+      success = compile_error(&input->src_loc, __FILE__, __LINE__, "Label identifier expected");
   }
   return success;
 }
@@ -1729,8 +1732,8 @@ statement(TokenStream* input, AstNode** node)
     {
       if(*node)
       {
-        if((*node)->kind == AstNodeKind_Id)
-          label(input, *node, node);
+        if(input->token.kind == TokenKind_Colon)
+          success = label(input, *node, node);
         else
           success = semicolon(input);
       }

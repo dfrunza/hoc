@@ -31,8 +31,11 @@ typedef struct
 }
 VmProgram;
 
+
 internal bool debug_enabled = true;
+#define arena_size (5*MEGABYTE)
 MemoryArena* arena = 0;
+#define dbg_arena_size (arena_size/2)
 MemoryArena* dbg_arena = 0;
 
 bool
@@ -218,9 +221,9 @@ main(int argc, char* argv[])
 
   if(argc >= 2)
   {
-    arena = arena_new(1*MEGABYTE);
+    arena = arena_new(arena_size);
     if(debug_enabled)
-      dbg_arena = arena_push(arena, 500*KILOBYTE);
+      dbg_arena = arena_push(arena, dbg_arena_size);
 
     char* file_path = argv[1];
     char* hoc_text = file_read_text(arena, file_path);
@@ -265,5 +268,6 @@ main(int argc, char* argv[])
   else
     error("Missing argument: input source file");
 
+  getc(stdin);
   return ret;
 }

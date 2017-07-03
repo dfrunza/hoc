@@ -1,18 +1,11 @@
 /*
-include "hlib\\power.hoc";
-include "hlib\\gcd.hoc";
-include "hlib\\abs.hoc";
-include "hlib\\fibo.hoc";
-include "hlib\\sqrt.hoc";
-include "hlib\\minmax.hoc";
 include "hlib\\syntax.hoc";
 include "hlib\\lex.hoc";
+include "hlib\\sqrt.hoc";
+include "hlib\\fibo.hoc";
+include "hlib\\abs.hoc";
+include "hlib\\gcd.hoc";
+include "hlib\\power.hoc";
+include "hlib\\minmax.hoc";
 */
 
-var int[]* a;
-
-proc int*[10] foo(Cat*[10] cats)
-{
-  var bool*[10] my_bitches;
-  return &my_bitches;
-}

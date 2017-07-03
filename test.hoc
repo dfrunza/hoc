@@ -9,3 +9,4 @@ include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
 */
 
+i = *j->p.d;

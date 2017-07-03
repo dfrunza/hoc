@@ -117,7 +117,7 @@ typedef enum
   AstOpKind_Neg,
 
   AstOpKind_Assign,
-  AstOpKind_Pointer,
+  AstOpKind_PtrDeref,
   AstOpKind_AddressOf,
   AstOpKind_MemberAccess,
   AstOpKind_PtrMemberAccess,
@@ -154,7 +154,7 @@ DEBUG_AstOpKind_tags[] =
   "AstOpKind_Mod",
   "AstOpKind_Neg",
   "AstOpKind_Assign",
-  "AstOpKind_Pointer",
+  "AstOpKind_PtrDeref",
   "AstOpKind_AddressOf",
   "AstOpKind_MemberAccess",
   "AstOpKind_PtrMemberAccess",

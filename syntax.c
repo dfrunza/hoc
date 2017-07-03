@@ -750,25 +750,31 @@ accessor(TokenStream* input, AstNode** node)
   {
     get_next_token(input);
 
-    if(success = expression(input, node))
+    if(success = type_expr(input, node))
     {
-      if(input->token.kind == TokenKind_CloseParens)
+      if(*node)
       {
-        get_next_token(input);
-
-        AstNode* rest = 0;
-        if((success = accessor(input, &rest)) && rest && (success = rest_of_accessor(input, rest, &rest)))
+        if(input->token.kind == TokenKind_CloseParens)
         {
-          AstNode* type = *node;
-          *node = new_cast(&input->src_loc);
-          AstCast* cast = &(*node)->cast;
-          cast->type = type;
-          cast->expr = rest;
+          get_next_token(input);
+
+          AstNode* rest = 0;
+          if((success = accessor(input, &rest)) && rest && (success = rest_of_accessor(input, rest, &rest)))
+          {
+            AstNode* type = *node;
+            *node = new_cast(&input->src_loc);
+            AstCast* cast = &(*node)->cast;
+            cast->type = type;
+            cast->expr = rest;
+          }
         }
+        else
+          success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                  "Expected `)`, actual `%s`", get_token_printstr(&input->token));
       }
       else
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Expected `)`, actual `%s`", get_token_printstr(&input->token));
+                                "Type expression expected, actual `%s`", get_token_printstr(&input->token));
     }
   }
   else if(input->token.kind == TokenKind_IntNum ||
@@ -867,7 +873,7 @@ unary_expr(TokenStream* input, AstNode** node)
     if(input->token.kind == TokenKind_Exclam)
       expr->op = AstOpKind_LogicNot;
     else if(input->token.kind == TokenKind_Star)
-      expr->op = AstOpKind_Pointer;
+      expr->op = AstOpKind_PtrDeref;
     else if(input->token.kind == TokenKind_Ampersand)
       expr->op = AstOpKind_AddressOf;
     else if(input->token.kind == TokenKind_Minus)

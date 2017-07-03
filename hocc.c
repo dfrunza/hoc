@@ -268,6 +268,8 @@ main(int argc, char* argv[])
   else
     error("Missing argument: input source file");
 
+#if 0
   getc(stdin);
+#endif
   return ret;
 }

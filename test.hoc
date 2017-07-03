@@ -9,11 +9,10 @@ include "hlib\\syntax.hoc";
 include "hlib\\lex.hoc";
 */
 
-/*array of char ptr*/
-*float a[];
+var int[]* a;
 
-/* ptr to char array */
-/*
-*char[] a; 
-*/
-
+proc int*[10] foo(Cat*[10] cats)
+{
+  var bool*[10] my_bitches;
+  return &my_bitches;
+}

@@ -49,6 +49,7 @@ typedef enum TokenKind
   TokenKind_Unknown,
   TokenKind_EndOfInput,
 
+  TokenKind_Var,
   TokenKind_If,
   TokenKind_Else,
   TokenKind_While,

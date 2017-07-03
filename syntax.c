@@ -331,6 +331,7 @@ internal bool unary_expr(TokenStream*, AstNode**);
 internal bool module(TokenStream*, List*);
 internal bool struct_member_list(TokenStream*, List*);
 internal bool accessor(TokenStream*, AstNode**);
+internal bool type_expr(TokenStream*, AstNode**);
 
 internal bool
 initializer_member_list(TokenStream* input, List* member_list)
@@ -653,42 +654,7 @@ term(TokenStream* input, AstNode** node)
   bool success = true;
 
   if((success = factor(input, node)) && *node)
-  {
-    if(input->token.kind == TokenKind_Id)
-    {
-      // var decl
-      AstNode* type = *node;
-      *node = new_var_decl(&input->src_loc);
-      AstVarDecl* var_decl = &(*node)->var_decl;
-      var_decl->type = type;
-      var_decl->id = new_id(&input->src_loc, input->token.lexeme);
-
-      get_next_token(input);
-      success = rest_of_id(input, var_decl->id, &var_decl->id);
-      if(!success) goto end;
-
-      if(input->token.kind == TokenKind_Equals)
-      {
-        get_next_token(input);
-
-        success = initializer(input, &var_decl->init_expr);
-        if(!success) goto end;
-
-        if(!var_decl->init_expr)
-        {
-          if(success = expression(input, &var_decl->init_expr))
-          {
-            if(!var_decl->init_expr)
-              success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                      "Expression expected, actual `%s`", get_token_printstr(&input->token));
-          }
-        }
-      }
-    }
-    else
-      success = rest_of_factor(input, *node, node);
-  }
-end:
+    success = rest_of_factor(input, *node, node);
   return success;
 }
 
@@ -943,7 +909,7 @@ formal_arg_decl(TokenStream* input, AstNode** node)
   bool success = true;
 
   AstNode* type = 0;
-  if((success = factor(input, &type)) && type)
+  if((success = type_expr(input, &type)) && type)
   {
     *node = new_var_decl(&input->src_loc);
     AstVarDecl* var_decl = &(*node)->var_decl;
@@ -952,13 +918,8 @@ formal_arg_decl(TokenStream* input, AstNode** node)
     if(input->token.kind == TokenKind_Id)
     {
       var_decl->id = new_id(&input->src_loc, input->token.lexeme);
-
-      if(get_next_token(input)->kind == TokenKind_OpenBracket)
-        success = array_index(input, var_decl->id, &var_decl->id);
+      get_next_token(input);
     }
-    else
-      success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                              "Identifier expected, actual `%s`", get_token_printstr(&input->token));
   }
   return success;
 }
@@ -1166,7 +1127,7 @@ proc_decl(TokenStream* input, AstNode** node)
     *node = new_proc(&input->src_loc);
     AstProc* proc = &(*node)->proc;
 
-    success = factor(input, &proc->ret_type);
+    success = type_expr(input, &proc->ret_type);
     if(!success) goto end;
 
     if(proc->ret_type)
@@ -1206,7 +1167,7 @@ proc_decl(TokenStream* input, AstNode** node)
     }
     else
       success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                              "Identifier expected, actual `%s`", get_token_printstr(&input->token));
+                              "Type expression expected, actual `%s`", get_token_printstr(&input->token));
   }
 end:
   return success;
@@ -1366,7 +1327,7 @@ struct_member_list(TokenStream* input, List* member_list)
       member = 0;
       AstNode* type = 0;
 
-      success = factor(input, &type);
+      success = type_expr(input, &type);
       if(!success) goto end;
 
       if(!type)
@@ -1386,15 +1347,7 @@ struct_member_list(TokenStream* input, List* member_list)
         var_decl->type = type;
 
         if(input->token.kind == TokenKind_Id)
-        {
           var_decl->id = new_id(&input->src_loc, input->token.lexeme);
-
-          if(get_next_token(input)->kind == TokenKind_OpenBracket)
-          {
-            success = array_index(input, member, &member);
-            if(!success) goto end;
-          }
-        }
         else if(type->kind == AstNodeKind_Struct ||
                 type->kind == AstNodeKind_Union)
         {
@@ -1428,12 +1381,128 @@ end:
 }
 
 internal bool
+rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
+{
+  *node = expr;
+  bool success = true;
+  
+  if(input->token.kind == TokenKind_Star)
+  {
+    *node = new_pointer(&input->src_loc);
+    AstPointer* ptr = &(*node)->pointer;
+    ptr->expr = expr;
+
+    get_next_token(input);
+    success = rest_of_type_expr(input, *node, node);
+  }
+  else if(input->token.kind == TokenKind_OpenBracket)
+  {
+    *node = new_array(&input->src_loc);
+    AstArray* array = &(*node)->array;
+    array->expr = expr;
+
+    get_next_token(input);
+    if(success = expression(input, &array->index))
+    {
+      if(input->token.kind == TokenKind_CloseBracket)
+      {
+        get_next_token(input);
+        success = rest_of_type_expr(input, *node, node);
+      }
+      else
+        success = compile_error(&input->src_loc, __FILE__, __LINE__, "Expected `]`, actual `%s`", get_token_printstr(&input->token));
+    }
+  }
+  return true;
+}
+
+internal bool
+type_expr(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  if(input->token.kind == TokenKind_Id)
+  {
+    *node = new_id(&input->src_loc, input->token.lexeme);
+    get_next_token(input);
+    success = rest_of_type_expr(input, *node, node);
+  }
+  return success;
+}
+
+internal bool
+var_decl(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  AstNode* type = 0;
+  success = type_expr(input, &type);
+  if(!success) goto end;
+
+  if(type)
+  {
+    if(input->token.kind == TokenKind_Id)
+    {
+      *node = new_var_decl(&input->src_loc);
+      AstVarDecl* var_decl = &(*node)->var_decl;
+      var_decl->type = type;
+      var_decl->id = new_id(&input->src_loc, input->token.lexeme);
+
+      get_next_token(input);
+      if(input->token.kind == TokenKind_Equals)
+      {
+        get_next_token(input);
+
+        success = initializer(input, &var_decl->init_expr);
+        if(!success) goto end;
+
+        if(!var_decl->init_expr)
+        {
+          if(success = expression(input, &var_decl->init_expr))
+          {
+            if(!var_decl->init_expr)
+              success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                      "Expression expected, actual `%s`", get_token_printstr(&input->token));
+          }
+        }
+      }
+    }
+    else
+      success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                              "Identifier expected, actual `%s`", get_token_printstr(&input->token));
+  }
+  else
+    success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                            "Type expression expected, actual `%s`", get_token_printstr(&input->token));
+end:
+  return success;
+}
+
+internal bool
+var_stmt(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = false;
+
+  get_next_token(input);
+  success = var_decl(input, node);
+  if(success && !node)
+    success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                            "Identifier expected, actual `%s`", get_token_printstr(&input->token));
+  return success;
+}
+
+internal bool
 module_element(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
 
-  if(input->token.kind == TokenKind_Include)
+  if(input->token.kind == TokenKind_Var)
+    success = var_stmt(input, node) && semicolon(input);
+  else if(input->token.kind == TokenKind_Include)
     success = include_stmt(input, node) && semicolon(input);
   else if(input->token.kind == TokenKind_Proc)
     success = proc_decl(input, node);
@@ -1631,7 +1700,9 @@ statement(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
-  if(input->token.kind == TokenKind_If)
+  if(input->token.kind == TokenKind_Var)
+    success = var_stmt(input, node) && semicolon(input);
+  else if(input->token.kind == TokenKind_If)
     success = if_stmt(input, node);
   else if(input->token.kind == TokenKind_While)
     success = while_stmt(input, node);

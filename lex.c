@@ -4,6 +4,7 @@ extern MemoryArena* arena;
 
 internal Token keyword_list[] = 
 {
+  {TokenKind_Var, "var"},
   {TokenKind_If, "if"},
   {TokenKind_Else, "else"},
   {TokenKind_While, "while"},
@@ -248,6 +249,8 @@ get_token_printstr(Token* token)
     result = "||";
   else if(token->kind == TokenKind_EndOfInput)
     result = "end-of-file";
+  else if(token->kind == TokenKind_Var)
+    result = "var";
   else if(token->kind == TokenKind_If)
     result = "if";
   else if(token->kind == TokenKind_Else)

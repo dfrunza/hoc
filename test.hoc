@@ -1,12 +1,25 @@
 /*
+include "hlib\\gcd.hoc";
 include "hlib\\syntax.hoc";
 include "hlib\\lex.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\abs.hoc";
-include "hlib\\gcd.hoc";
 include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
 */
+include "hlib\\cats.hoc";
 
-i = *j->p.d;
+proc void main()
+{
+  var int i;
+  var float j;
+
+  a = b;
+}
+
+proc void zoo()
+{
+}
+
+

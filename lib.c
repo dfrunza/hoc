@@ -3,6 +3,7 @@
 internal bool dbg_zero_mem = true;
 internal bool dbg_check_bounds = true;
 
+#if 0
 void
 DEBUG_output_short_cstr(char* message, ...)
 {
@@ -15,6 +16,7 @@ DEBUG_output_short_cstr(char* message, ...)
 
   OutputDebugString(strbuf);
 }
+#endif
 
 void
 error(char* message, ...)
@@ -172,7 +174,7 @@ void
 DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
 {
   ArenaUsage usage = arena_usage(arena);
-  DEBUG_output_short_cstr("in_use: %.2f%% -- %s\n", usage.in_use*100, tag);
+  printf("in_use: %.2f%% -- %s\n", usage.in_use*100, tag);
 }
 
 bool

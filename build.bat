@@ -22,7 +22,7 @@ cl %C_flags% ..\hocc.c lib.obj lex.obj syntax.obj semantic.obj typecheck.obj /li
 
 rem NOTE: The full path to the .hoc source is needed for Vim QuickFix to work properly.
 if %errorlevel% neq 0 goto :end
-hocc.exe %cd%\..\%prog%.hoc > debug.txt
+hocc.exe %cd%\..\%prog%.hoc > out_debug.txt
 
 rem if %errorlevel% neq 0 goto :hocc_error
 rem ..\ctime.exe cl %C_flags% ..\vm.c %prog%.res /link %L_flags% /Fe:%prog%.exe 

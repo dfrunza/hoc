@@ -143,39 +143,6 @@ typedef enum
 }
 AstOpKind;
 
-internal char*
-DEBUG_AstOpKind_tags[] =
-{
-  "AstOpKind__Null",
-  "AstOpKind_Add",
-  "AstOpKind_Sub",
-  "AstOpKind_Div",
-  "AstOpKind_Mul",
-  "AstOpKind_Mod",
-  "AstOpKind_Neg",
-  "AstOpKind_Assign",
-  "AstOpKind_PtrDeref",
-  "AstOpKind_AddressOf",
-  "AstOpKind_MemberAccess",
-  "AstOpKind_PtrMemberAccess",
-  "AstOpKind_PreDecrement",
-  "AstOpKind_PostDecrement",
-  "AstOpKind_PreIncrement",
-  "AstOpKind_PostIncrement",
-  "AstOpKind_LogicEquals",
-  "AstOpKind_LogicNotEquals",
-  "AstOpKind_LogicLess",
-  "AstOpKind_LogicLessEquals",
-  "AstOpKind_LogicGreater",
-  "AstOpKind_LogicGreaterEquals",
-  "AstOpKind_LogicAnd",
-  "AstOpKind_LogicOr",
-  "AstOpKind_LogicNot",
-  "AstOpKind_BitwiseAnd",
-  "AstOpKind_BitwiseOr",
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
-};
-
 typedef enum
 {
   AstNodeKind__Null,
@@ -209,39 +176,6 @@ typedef enum
   AstNodeKind__Count,
 }
 AstNodeKind;
-
-internal char*
-DEBUG_AstNodeKind_tags[] = 
-{
-  "AstNodeKind__Null",
-  "AstNodeKind_BinExpr",
-  "AstNodeKind_UnrExpr",
-  "AstNodeKind_Literal",
-  "AstNodeKind_VarDecl",
-  "AstNodeKind_Block",
-  "AstNodeKind_Proc",
-  "AstNodeKind_Id",
-  "AstNodeKind_WhileStmt",
-  "AstNodeKind_ForStmt",
-  "AstNodeKind_IfStmt",
-  "AstNodeKind_ReturnStmt",
-  "AstNodeKind_BreakStmt",
-  "AstNodeKind_ContinueStmt",
-  "AstNodeKind_GotoStmt",
-  "AstNodeKind_Label",
-  "AstNodeKind_IncludeStmt",
-  "AstNodeKind_EmptyStmt",
-  "AstNodeKind_Module",
-  "AstNodeKind_Cast",
-  "AstNodeKind_Call",
-  "AstNodeKind_Array",
-  "AstNodeKind_Pointer",
-  "AstNodeKind_Struct",
-  "AstNodeKind_Union",
-  "AstNodeKind_Enum",
-  "AstNodeKind_Initializer",
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
-};
 
 typedef struct
 {
@@ -288,6 +222,7 @@ typedef struct
   AstNode* type;
   AstNode* id;
   AstNode* init_expr;
+
   /*
   DataArea data;
   Type* var_type;
@@ -339,18 +274,6 @@ typedef enum
 }
 AstLiteralKind;
 
-internal char*
-DEBUG_AstLiteralKind_tags[] =
-{
-  "AstLiteralKind__Null",
-  "AstLiteralKind_Int",
-  "AstLiteralKind_Float",
-  "AstLiteralKind_Bool",
-  "AstLiteralKind_String",
-  "AstLiteralKind_Char",
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 /* guards */
-};
-
 typedef struct
 {
   AstLiteralKind kind;
@@ -370,15 +293,15 @@ typedef struct AstBlock
 {
   List stmt_list;
 
-/*
   AstNode* owner;
   int block_id;
   int nesting_depth;
-  struct AstBlock* enclosing_block;
-  List decl_vars; // <AstNode>
-  List local_occurs; // <AstNode>
-  List nonlocal_occurs; // <AstNode>
-  List access_links; // <AccessLink>
+  struct AstNode* encl_block;
+/*
+  List decl_vars;
+  List local_occurs;
+  List nonlocal_occurs;
+  List access_links;
 
   int links_size;
   int locals_size;
@@ -421,13 +344,7 @@ typedef struct
 {
   AstNode* id;
 }
-AstGotoStmt;
-
-typedef struct
-{
-  AstNode* id;
-}
-AstLabel;
+AstGotoStmt, AstLabel;
 
 typedef struct
 {
@@ -439,30 +356,33 @@ typedef struct
 }
 AstCall;
 
+#if 0
 typedef struct
 {
-  List node_list;
-  List includes;
+  //List node_list;
+
+  AstNode* body; /* AstBlock */
+}
+AstModule;
+#endif
+
+typedef struct
+{
+  char* file_path;
+  AstNode* body;
 /*
   AstNode* main_proc;
   AstNode* main_call;
 */
 }
-AstModule;
+AstModule, AstIncludeStmt;
 
 typedef struct
 {
   AstNode* id;
   List member_list;
 }
-AstStruct, AstUnion;
-
-typedef struct
-{
-  AstNode* id;
-  List member_list;
-}
-AstEnum;
+AstStruct, AstUnion, AstEnum;
 
 typedef struct
 {
@@ -515,13 +435,6 @@ typedef struct
 }
 AstPrintStmt;
 */
-
-typedef struct
-{
-  char* file_path;
-  List node_list;
-}
-AstIncludeStmt;
 
 typedef struct
 {
@@ -669,7 +582,6 @@ TypePair;
 typedef enum
 {
   SymbolKind__Null,
-  SymbolKind_Keyword,
   SymbolKind_Proc,
   SymbolKind_Type,
   SymbolKind_Var,
@@ -686,20 +598,21 @@ typedef struct Symbol
   int nesting_depth;
 
   union {
-    TokenKind keyword;
     AstNode* node;
     Type* type;
   };
 }
 Symbol;
 
+#define MAX_SCOPE_NESTING_DEPTH 32
 typedef struct
 {
   Symbol* symbol;
   int scope_id;
   int last_scope_id;
   int nesting_depth;
-  int active_scopes[32];
+  int active_scopes[MAX_SCOPE_NESTING_DEPTH];
+  AstNode* active_blocks[MAX_SCOPE_NESTING_DEPTH];
 }
 SymbolTable;
 
@@ -707,5 +620,6 @@ void init_types();
 bool semantic_analysis(AstNode* ast);
 void print_char(char buf[3], char raw_char);
 char* get_token_printstr(Token* token);
+char* get_ast_kind_printstr(AstNodeKind);
 
 

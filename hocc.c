@@ -33,7 +33,7 @@ VmProgram;
 
 
 internal bool debug_enabled = true;
-#define arena_size (5*MEGABYTE)
+#define arena_size (2*MEGABYTE)
 MemoryArena* arena = 0;
 #define dbg_arena_size (arena_size/2)
 MemoryArena* dbg_arena = 0;
@@ -54,6 +54,77 @@ compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...)
   return false;
 }
 
+void
+DEBUG_print_sizeof_ast_structs()
+{
+  typedef struct 
+  {
+    AstNodeKind kind;
+    int size;
+  } StructInfo;
+
+#define make_struct_info(KIND, STRUCT) \
+  struct_info[KIND].kind = KIND; \
+  struct_info[KIND].size = sizeof(STRUCT); \
+
+#define make_zero_struct_info(KIND) \
+  struct_info[KIND].kind = KIND; \
+  struct_info[KIND].size = 0; \
+
+  internal StructInfo struct_info[AstNodeKind__Count] = {0};
+  assert(AstNodeKind__Null == 0);
+  make_zero_struct_info(AstNodeKind__Null);
+  make_struct_info(AstNodeKind_BinExpr, AstBinExpr);
+  make_struct_info(AstNodeKind_UnrExpr, AstUnrExpr);
+  make_struct_info(AstNodeKind_Literal, AstLiteral);
+  make_struct_info(AstNodeKind_VarDecl, AstVarDecl);
+  make_struct_info(AstNodeKind_Block, AstBlock);
+  make_struct_info(AstNodeKind_Proc, AstProc);
+  make_struct_info(AstNodeKind_Id, AstId);
+  make_struct_info(AstNodeKind_WhileStmt, AstWhileStmt);
+  make_struct_info(AstNodeKind_ForStmt, AstForStmt);
+  make_struct_info(AstNodeKind_IfStmt, AstIfStmt);
+  make_struct_info(AstNodeKind_ReturnStmt, AstReturnStmt);
+  make_zero_struct_info(AstNodeKind_BreakStmt);
+  make_zero_struct_info(AstNodeKind_ContinueStmt);
+  make_struct_info(AstNodeKind_GotoStmt, AstGotoStmt);
+  make_struct_info(AstNodeKind_Label, AstLabel);
+  make_struct_info(AstNodeKind_IncludeStmt, AstIncludeStmt);
+  make_zero_struct_info(AstNodeKind_EmptyStmt);
+  make_struct_info(AstNodeKind_Module, AstModule);
+  make_struct_info(AstNodeKind_Cast, AstCast);
+  make_struct_info(AstNodeKind_Call, AstCall);
+  make_struct_info(AstNodeKind_Array, AstArray);
+  make_struct_info(AstNodeKind_Pointer, AstPointer);
+  make_struct_info(AstNodeKind_Struct, AstStruct);
+  make_struct_info(AstNodeKind_Union, AstUnion);
+  make_struct_info(AstNodeKind_Enum, AstEnum);
+  make_struct_info(AstNodeKind_Initializer, AstInitializer);
+
+#undef make_struct_info
+#undef make_zero_size_info
+
+  // sort the array
+  for(int i = 1; i < AstNodeKind__Count; i++)
+  {
+    int j = i;
+    while(struct_info[j].size < struct_info[j-1].size)
+    {
+      StructInfo value_at_j = struct_info[j];
+      struct_info[j] = struct_info[j-1];
+      struct_info[j-1] = value_at_j;
+      j = j-1;
+    }
+  }
+
+  printf("AstNode.size = %d bytes\n", sizeof(AstNode));
+  for(int i = AstNodeKind__Count-1; i >= 0; i--)
+  {
+    StructInfo* info = &struct_info[i];
+    printf("%s.size = %d bytes\n", get_ast_kind_printstr(info->kind), info->size);
+  }
+}
+
 VmProgram*
 translate(char* file_path, char* hoc_text)
 {
@@ -70,12 +141,12 @@ translate(char* file_path, char* hoc_text)
   {
     if(debug_enabled)
     {
-      DEBUG_arena_print_occupancy("After syntactic analysis", arena);
+      DEBUG_arena_print_occupancy("Post syntactic analysis", arena);
 
       String str = {0};
       str_init(&str, dbg_arena);
       DEBUG_print_ast_node(&str, 0, ast, 0);
-      str_dump_to_file(&str, "syntax.txt");
+      str_dump_to_file(&str, "out_syntax.txt");
       arena_free(dbg_arena);
     }
 #if 1
@@ -83,12 +154,12 @@ translate(char* file_path, char* hoc_text)
     {
       if(debug_enabled)
       {
-        DEBUG_arena_print_occupancy("After semantic analysis", arena);
+        DEBUG_arena_print_occupancy("Post semantic analysis", arena);
 
         String str = {0};
         str_init(&str, dbg_arena);
         DEBUG_print_ast_node(&str, 0, ast, 0);
-        str_dump_to_file(&str, "semantic.txt");
+        str_dump_to_file(&str, "out_semantic.txt");
         arena_free(dbg_arena);
       }
     }
@@ -223,7 +294,10 @@ main(int argc, char* argv[])
   {
     arena = arena_new(arena_size);
     if(debug_enabled)
+    {
       dbg_arena = arena_push(arena, dbg_arena_size);
+      DEBUG_print_sizeof_ast_structs();
+    }
 
     char* file_path = argv[1];
     char* hoc_text = file_read_text(arena, file_path);

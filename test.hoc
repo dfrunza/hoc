@@ -1,17 +1,19 @@
+include "hlib\\power.hoc";
 /*
+include "hlib\\fibo.hoc";
+include "hlib\\gcd.hoc";
 include "hlib\\lex.hoc";
 include "hlib\\sqrt.hoc";
-include "hlib\\gcd.hoc";
 include "hlib\\syntax.hoc";
 include "hlib\\cats.hoc";
-include "hlib\\fibo.hoc";
 include "hlib\\abs.hoc";
-include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
 */
 
-proc void main()
+proc void main(int a, int b)
 {
+  var int x;
+  x = a + b;
 }
 
 

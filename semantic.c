@@ -10,6 +10,15 @@ extern Type* basic_type_void;
 
 internal SymbolTable* symtab = 0;
 
+internal AstNode*
+new_var_occur(SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  node->kind = AstNodeKind_VarOccur;
+  node->src_loc = *src_loc;
+  return node;
+}
+
 #if 0
 internal int
 block_find_owner(AstBlock* block, AstNodeKind kind, AstNode** result)
@@ -60,7 +69,7 @@ add_symbol(char* name, SymbolKind kind)
   return symbol;
 }
 
-Symbol*
+internal Symbol*
 add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == TypeKind_Basic);
@@ -69,7 +78,7 @@ add_builtin_type(char* name, Type* type)
   return symbol;
 }
 
-void
+internal void
 register_builtin_ids()
 {
   add_builtin_type("bool", basic_type_bool);
@@ -79,19 +88,17 @@ register_builtin_ids()
   add_builtin_type("void", basic_type_void);
 }
 
-bool
-register_new_id(AstNode* node, SymbolKind symkind)
+internal bool
+register_new_id(char* name, AstNode* node, SymbolKind symkind)
 {
-  assert(node->kind == AstNodeKind_Id);
   bool success = true;
 
-  AstId* id = &node->id;
-  Symbol* id_sym = lookup_symbol(id->name, symkind);
+  Symbol* id_sym = lookup_symbol(name, symkind);
   if(id_sym)
-    success = compile_error(&node->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`", id_sym->name);
+    success = compile_error(&node->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`", name);
   else
   {
-    id_sym = add_symbol(id->name, symkind);
+    id_sym = add_symbol(name, symkind);
     id_sym->node = node;
   }
   return success;
@@ -140,6 +147,8 @@ scope_end()
 }
 
 internal bool do_block(AstNode*, AstNode*);
+internal bool do_bin_expr(AstNode*, AstNode*);
+internal bool do_operand(AstNode*, AstNode*);
 
 internal void
 do_include_stmt(List* include_list, List* module_list, ListItem* module_list_item)
@@ -153,7 +162,7 @@ do_include_stmt(List* include_list, List* module_list, ListItem* module_list_ite
     {
       AstIncludeStmt* include_node = &node->include_stmt;
       AstBlock* incl_block = &include_node->body->block;
-      do_include_stmt(&incl_block->stmt_list, include_list, list_item);
+      do_include_stmt(&incl_block->node_list, include_list, list_item);
     }
   }
   list_replace_at(include_list, module_list, module_list_item);
@@ -163,13 +172,126 @@ do_include_stmt(List* include_list, List* module_list, ListItem* module_list_ite
 }
 
 internal bool
-do_var_decl(AstNode* node)
+do_var_decl(AstNode* block_node, AstNode* var_node)
 {
-  assert(node->kind == AstNodeKind_VarDecl);
+  assert(block_node->kind == AstNodeKind_Block);
+  assert(var_node->kind == AstNodeKind_VarDecl);
   bool success = true;
 
-  AstVarDecl* var_decl = &node->var_decl;
-  success = register_new_id(var_decl->id, SymbolKind_Var);
+  AstVarDecl* var_decl = &var_node->var_decl;
+  AstId* id = &var_decl->id->id;
+  if(success = register_new_id(id->name, var_node, SymbolKind_Var))
+  {
+    var_decl->decl_block = block_node;
+    AstBlock* block = &block_node->block;
+    list_append(arena, &block->decl_vars, var_node);
+    if(var_decl->init_expr)
+    {
+      AstNode* assign_node = new_bin_expr(&var_node->src_loc);
+      AstBinExpr* bin_expr = &assign_node->bin_expr;
+      bin_expr->op = AstOpKind_Assign;
+      bin_expr->lhs = new_id(&var_node->src_loc, id->name);;
+      bin_expr->rhs = var_decl->init_expr;
+
+      if(success = do_bin_expr(block_node, assign_node))
+        list_append(arena, &block->stmts, assign_node);
+    }
+  }
+  return success;
+}
+
+internal bool
+do_bin_expr(AstNode* block_node, AstNode* expr_node)
+{
+  assert(block_node->kind == AstNodeKind_Block);
+  assert(expr_node->kind == AstNodeKind_BinExpr);
+  bool success = true;
+
+  AstBinExpr* bin_expr = &expr_node->bin_expr;
+  success = do_operand(block_node, bin_expr->lhs) && do_operand(block_node, bin_expr->rhs);
+  return success;
+}
+
+internal bool
+do_unr_expr(AstNode* block_node, AstNode* expr_node)
+{
+  assert(block_node->kind == AstNodeKind_Block);
+  assert(expr_node->kind == AstNodeKind_UnrExpr);
+  bool success = true;
+
+  AstUnrExpr* unr_expr = &expr_node->unr_expr;
+  success = do_operand(block_node, unr_expr->operand);
+  return success;
+}
+
+internal bool
+do_operand(AstNode* block_node, AstNode* operand)
+{
+  assert(block_node->kind == AstNodeKind_Block);
+  bool success = true;
+
+  if(operand->kind == AstNodeKind_Id)
+  {
+    AstId* id = &operand->id;
+    Symbol* id_sym = lookup_symbol(id->name, SymbolKind_Var);
+    if(id_sym)
+    {
+      AstNode* decl_node = id_sym->node;
+      assert(decl_node->kind == AstNodeKind_VarDecl); // ...I think
+      // transmute operand to VarOccur
+      operand->kind = AstNodeKind_VarOccur;
+      AstVarOccur* var_occur = &operand->var_occur;
+      var_occur->name = id_sym->name;
+      var_occur->var_decl = decl_node;
+
+      AstVarDecl* var_decl = &decl_node->var_decl;
+      AstNode* decl_block = var_decl->decl_block;
+      var_occur->decl_block = decl_block;
+      var_occur->occur_block = block_node;
+      var_occur->decl_block_offset = block_node->block.nesting_depth - decl_block->block.nesting_depth;
+
+      AstBlock* block = &block_node->block;
+      if(var_occur->decl_block_offset > 0)
+        list_append(arena, &block->nonlocals, operand);
+      else if(var_occur->decl_block_offset == 0)
+        list_append(arena, &block->locals, operand);
+      else
+        assert(false);
+    }
+    else
+      success = compile_error(&operand->src_loc, __FILE__, __LINE__, "Unknown identifier `%s`", id->name);
+  }
+  else if(operand->kind == AstNodeKind_BinExpr)
+    success = do_bin_expr(block_node, operand);
+  else if(operand->kind == AstNodeKind_UnrExpr)
+    success = do_unr_expr(block_node, operand);
+  else if(operand->kind == AstNodeKind_Literal)
+  { /* do nothing */ }
+  else
+    printf("TODO: %s\n", get_ast_kind_printstr(operand->kind));
+  return success;
+}
+
+internal bool
+do_proc_formal_args(AstNode* block_node, List* formal_args)
+{
+  assert(block_node->kind == AstNodeKind_Block);
+  bool success = true;
+
+  for(ListItem* list_item = formal_args->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    AstNode* node = list_item->elem;
+    assert(node->kind == AstNodeKind_VarDecl);
+    AstVarDecl* var_decl = &node->var_decl;
+    if(var_decl->id)
+      do_var_decl(block_node, node);
+    else
+      success = compile_error(&node->src_loc, __FILE__, __LINE__,
+                              "Missing identifier: %s", get_ast_kind_printstr(node->kind));
+    assert(!var_decl->init_expr); /* enforced by parser */
+  }
   return success;
 }
 
@@ -180,9 +302,24 @@ do_procedure(AstNode* node)
   bool success = true;
 
   AstProc* proc = &node->proc;
-  if(success = register_new_id(proc->id, SymbolKind_Proc))
-    success = do_block(node, proc->body);
+  if(success = register_new_id(proc->id->id.name, node, SymbolKind_Proc))
+  {
+    if(proc->body)
+    {
+      success = scope_begin(proc->body);
+      if(!success) goto end;
 
+      success = do_proc_formal_args(proc->body, &proc->formal_args);
+      if(!success) goto end;
+
+      success = do_block(node, proc->body);
+      if(!success) goto end;
+
+      scope_end();
+    }
+  }
+
+end:
   return success;
 }
 
@@ -198,13 +335,13 @@ do_block(AstNode* owner_node, AstNode* block_node)
 
   if(owner_node->kind == AstNodeKind_Module)
   {
-    for(ListItem* list_item = block->stmt_list.first;
+    for(ListItem* list_item = block->node_list.first;
         list_item;
         list_item = list_item->next)
     {
       AstNode* stmt_node = list_item->elem;
       if(stmt_node->kind == AstNodeKind_VarDecl)
-        do_var_decl(stmt_node);
+        do_var_decl(block_node, stmt_node);
       else if(stmt_node->kind == AstNodeKind_Proc)
         do_procedure(stmt_node);
       else if(stmt_node->kind == AstNodeKind_Label ||
@@ -230,13 +367,15 @@ do_block(AstNode* owner_node, AstNode* block_node)
   }
   else if(owner_node->kind == AstNodeKind_Proc)
   {
-    for(ListItem* list_item = block->stmt_list.first;
+    for(ListItem* list_item = block->node_list.first;
         list_item;
         list_item = list_item->next)
     {
       AstNode* stmt_node = list_item->elem;
       if(stmt_node->kind == AstNodeKind_VarDecl)
-        do_var_decl(stmt_node);
+        do_var_decl(block_node, stmt_node);
+      else if(stmt_node->kind == AstNodeKind_BinExpr)
+        do_bin_expr(block_node, stmt_node);
       else if(stmt_node->kind == AstNodeKind_WhileStmt ||
               stmt_node->kind == AstNodeKind_ForStmt ||
               stmt_node->kind == AstNodeKind_IfStmt ||
@@ -246,7 +385,6 @@ do_block(AstNode* owner_node, AstNode* block_node)
               stmt_node->kind == AstNodeKind_GotoStmt ||
               stmt_node->kind == AstNodeKind_Label ||
               stmt_node->kind == AstNodeKind_Call ||
-              stmt_node->kind == AstNodeKind_BinExpr ||
               stmt_node->kind == AstNodeKind_UnrExpr)
       {
         printf("TODO: %s\n", get_ast_kind_printstr(stmt_node->kind));
@@ -270,7 +408,7 @@ do_module(AstNode* node)
   AstBlock* block = &module->body->block;
 
   // process the includes
-  for(ListItem* list_item = block->stmt_list.first;
+  for(ListItem* list_item = block->node_list.first;
       list_item;
       list_item = list_item->next)
   {
@@ -279,7 +417,7 @@ do_module(AstNode* node)
     {
       AstIncludeStmt* include_node = &node->include_stmt;
       AstBlock* incl_block = &include_node->body->block;
-      do_include_stmt(&incl_block->stmt_list, &block->stmt_list, list_item);
+      do_include_stmt(&incl_block->node_list, &block->node_list, list_item);
     }
   }
 

@@ -42,7 +42,9 @@ new_block(SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Block;
   node->src_loc = *src_loc;
-  list_init(&node->block.stmt_list);
+  list_init(&node->block.node_list);
+  list_init(&node->block.decl_vars);
+  list_init(&node->block.stmts);
   return node;
 }
 
@@ -52,12 +54,11 @@ new_module(SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_Module;
   node->src_loc = *src_loc;
-  //list_init(&node->module.node_list);
   node->module.body = new_block(src_loc);
   return node;
 }
 
-internal AstNode*
+AstNode*
 new_id(SourceLocation* src_loc, char* name)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -115,7 +116,7 @@ new_proc(SourceLocation* src_loc)
   return node;
 }
 
-internal AstNode*
+AstNode*
 new_bin_expr(SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -260,7 +261,6 @@ new_include_stmt(SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IncludeStmt;
   node->src_loc = *src_loc;
-  //list_init(&node->include_stmt.node_list);
   node->include_stmt.body = new_block(src_loc);
   return node;
 }
@@ -380,6 +380,8 @@ get_ast_kind_printstr(AstNodeKind kind)
     result = "Literal";
   else if(kind == AstNodeKind_VarDecl)
     result = "VarDecl";
+  else if(kind == AstNodeKind_VarOccur)
+    result = "VarOccur";
   else if(kind == AstNodeKind_Block)
     result = "Block";
   else if(kind == AstNodeKind_Proc)
@@ -604,7 +606,7 @@ do_block(TokenStream* input, AstNode** node)
   {
     *node = new_block(&input->src_loc);
     get_next_token(input);
-    if(success = do_statement_list(input, &(*node)->block.stmt_list))
+    if(success = do_statement_list(input, &(*node)->block.node_list))
     {
       if(input->token.kind == TokenKind_CloseBrace)
         get_next_token(input);
@@ -1346,7 +1348,7 @@ do_include_stmt(TokenStream* input, AstNode** node)
 
         get_next_token(inc_input);
         AstBlock* block = &include_stmt->body->block;
-        success = do_module(inc_input, &block->stmt_list);
+        success = do_module(inc_input, &block->node_list);
       }
       else
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
@@ -1920,7 +1922,7 @@ parse(TokenStream* input, AstNode** node)
   module->file_path = input->src_loc.file_path;
 
   AstBlock* block = &module->body->block;
-  success = do_module(input, &block->stmt_list);
+  success = do_module(input, &block->node_list);
   return success;
 }
 
@@ -2000,6 +2002,11 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       DEBUG_print_ast_node(str, indent_level, var_decl->id, "id");
       DEBUG_print_ast_node(str, indent_level, var_decl->init_expr, "init_expr");
     }
+    else if(node->kind == AstNodeKind_VarOccur)
+    {
+      AstVarOccur* var_occur = &node->var_occur;
+      DEBUG_print_line(str, indent_level, "name: %s", var_occur->name);
+    }
     else if(node->kind == AstNodeKind_Id)
     {
       AstId* id = &node->id;
@@ -2007,7 +2014,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     }
     else if(node->kind == AstNodeKind_Block)
     {
-      DEBUG_print_ast_node_list(str, indent_level, &node->block.stmt_list, "stmt_list");
+      DEBUG_print_ast_node_list(str, indent_level, &node->block.node_list, "node_list");
     }
     else if(node->kind == AstNodeKind_BinExpr)
     {

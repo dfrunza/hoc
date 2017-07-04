@@ -150,6 +150,7 @@ typedef enum
   AstNodeKind_UnrExpr,
   AstNodeKind_Literal,
   AstNodeKind_VarDecl,
+  AstNodeKind_VarOccur,
   AstNodeKind_Block,
   AstNodeKind_Proc,
   AstNodeKind_Id,
@@ -222,6 +223,7 @@ typedef struct
   AstNode* id;
   AstNode* init_expr;
 
+  AstNode* decl_block;
   /*
   DataArea data;
   Type* var_type;
@@ -229,17 +231,19 @@ typedef struct
 }
 AstVarDecl;
 
-/*
 typedef struct
 {
   char* name;
   AstNode* var_decl;
+  AstNode* decl_block;
+  AstNode* occur_block;
   int decl_block_offset;
+/*
   AccessLink* link;
   DataArea* data;
+*/
 }
 AstVarOccur;
-*/
 
 typedef struct
 {
@@ -290,16 +294,17 @@ AstLiteral;
 
 typedef struct AstBlock
 {
-  List stmt_list;
+  List node_list;
 
   AstNode* owner;
   int block_id;
   int nesting_depth;
   struct AstNode* encl_block;
-/*
   List decl_vars;
-  List local_occurs;
-  List nonlocal_occurs;
+  List stmts;
+  List locals;
+  List nonlocals;
+/*
   List access_links;
 
   int links_size;
@@ -458,6 +463,7 @@ typedef struct AstNode
   {
     AstModule module;
     AstVarDecl var_decl;
+    AstVarOccur var_occur;
     AstBinExpr bin_expr;
     AstUnrExpr unr_expr;
     AstLiteral literal;
@@ -622,5 +628,7 @@ char* get_token_printstr(Token* token);
 char* get_ast_kind_printstr(AstNodeKind);
 bool is_literal_token(TokenKind);
 void putback_token(TokenStream*);
+AstNode* new_bin_expr(SourceLocation*);
+AstNode* new_id(SourceLocation*, char*);
 
 

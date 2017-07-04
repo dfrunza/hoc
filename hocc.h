@@ -91,7 +91,7 @@ Token;
 
 typedef struct TokenStream
 {
-  Token prev_tokens[2];
+  struct TokenStream* prev_state;
   Token token;
   char* text;
   char* cursor;
@@ -162,7 +162,6 @@ typedef enum
   AstNodeKind_GotoStmt,
   AstNodeKind_Label,
   AstNodeKind_IncludeStmt,
-  AstNodeKind_EmptyStmt,
   AstNodeKind_Module,
   AstNodeKind_Cast,
   AstNodeKind_Call,
@@ -621,5 +620,7 @@ bool semantic_analysis(AstNode* ast);
 void print_char(char buf[3], char raw_char);
 char* get_token_printstr(Token* token);
 char* get_ast_kind_printstr(AstNodeKind);
+bool is_literal_token(TokenKind);
+void putback_token(TokenStream*);
 
 

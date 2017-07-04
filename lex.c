@@ -42,17 +42,16 @@ lookup_keyword(Token* list, char* lexeme)
   return result;
 }
 
-internal Token*
-get_prev_token(TokenStream* input, int index)
+bool
+is_keyword_token(TokenKind kind)
 {
-  assert(index == 0 || index == 1);
-  return &input->prev_tokens[index];
+  return (kind >= TokenKind_If) && (kind <= TokenKind_False);
 }
 
-internal bool
-is_keyword(TokenKind token_kind)
+bool
+is_literal_token(TokenKind kind)
 {
-  return (token_kind >= TokenKind_If) && (token_kind <= TokenKind_Enum);
+  return (kind >= TokenKind_IntNum) && (kind <= TokenKind_Char);
 }
 
 internal char*
@@ -293,22 +292,28 @@ get_token_printstr(Token* token)
 }
 
 void
-init_token_stream(TokenStream* token_stream, char* text, char* file_path)
+init_token_stream(TokenStream* stream, char* text, char* file_path)
 {
-  token_stream->text = text;
-  token_stream->cursor = token_stream->text;
-  SourceLocation* src_loc = &token_stream->src_loc;
+  stream->text = text;
+  stream->cursor = stream->text;
+  SourceLocation* src_loc = &stream->src_loc;
   src_loc->line_nr = 1;
   /* TODO: Compute the absolute path to the file, so that Vim could properly
      jump from the QuickFix window to the error line in the file. */
   src_loc->file_path = file_path;
+  stream->prev_state = mem_push_struct(arena, TokenStream, 1);
+}
+
+void
+putback_token(TokenStream* input)
+{
+  *input = *input->prev_state;
 }
 
 Token*
 get_next_token(TokenStream* input)
 {
-  input->prev_tokens[1] = input->prev_tokens[0];
-  input->prev_tokens[0] = input->token;
+  *input->prev_state = *input;
   mem_zero_struct(&input->token, Token);
   SourceLocation* src_loc = &input->src_loc;
   src_loc->src_line = input->cursor;

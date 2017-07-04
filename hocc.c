@@ -90,7 +90,6 @@ DEBUG_print_sizeof_ast_structs()
   make_struct_info(AstNodeKind_GotoStmt, AstGotoStmt);
   make_struct_info(AstNodeKind_Label, AstLabel);
   make_struct_info(AstNodeKind_IncludeStmt, AstIncludeStmt);
-  make_zero_struct_info(AstNodeKind_EmptyStmt);
   make_struct_info(AstNodeKind_Module, AstModule);
   make_struct_info(AstNodeKind_Cast, AstCast);
   make_struct_info(AstNodeKind_Call, AstCall);
@@ -107,13 +106,13 @@ DEBUG_print_sizeof_ast_structs()
   // sort the array
   for(int i = 1; i < AstNodeKind__Count; i++)
   {
-    int j = i;
-    while(struct_info[j].size < struct_info[j-1].size)
+    for(int j = i;
+        struct_info[j].size < struct_info[j-1].size;
+        j--)
     {
       StructInfo value_at_j = struct_info[j];
       struct_info[j] = struct_info[j-1];
       struct_info[j-1] = value_at_j;
-      j = j-1;
     }
   }
 

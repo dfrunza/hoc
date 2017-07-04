@@ -3,21 +3,6 @@
 internal bool dbg_zero_mem = true;
 internal bool dbg_check_bounds = true;
 
-#if 0
-void
-DEBUG_output_short_cstr(char* message, ...)
-{
-  static char strbuf[128] = {0};
-  va_list args;
-
-  va_start(args, message);
-  vsprintf(strbuf, message, args);
-  va_end(args);
-
-  OutputDebugString(strbuf);
-}
-#endif
-
 void
 error(char* message, ...)
 {

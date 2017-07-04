@@ -8,7 +8,7 @@ extern Type* basic_type_char;
 extern Type* basic_type_float;
 extern Type* basic_type_void;
 
-internal SymbolTable* symtab;
+internal SymbolTable* symtab = 0;
 
 #if 0
 internal int
@@ -245,7 +245,6 @@ do_block(AstNode* owner_node, AstNode* block_node)
               stmt_node->kind == AstNodeKind_ContinueStmt ||
               stmt_node->kind == AstNodeKind_GotoStmt ||
               stmt_node->kind == AstNodeKind_Label ||
-              stmt_node->kind == AstNodeKind_EmptyStmt ||
               stmt_node->kind == AstNodeKind_Call ||
               stmt_node->kind == AstNodeKind_BinExpr ||
               stmt_node->kind == AstNodeKind_UnrExpr)
@@ -256,8 +255,8 @@ do_block(AstNode* owner_node, AstNode* block_node)
         assert(false);
     }
   }
-end:
   scope_end();
+end:
   return success;
 }
 

@@ -1,21 +1,17 @@
 /*
+include "hlib\\lex.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\gcd.hoc";
 include "hlib\\syntax.hoc";
-include "hlib\\lex.hoc";
+include "hlib\\cats.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\abs.hoc";
 include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
-include "hlib\\cats.hoc";
 */
 
 proc void main()
 {
-  /*
-  r = (r+g)/2;
-  */
-  r = <int>(*<int*[]>(a) + b);
 }
 
 

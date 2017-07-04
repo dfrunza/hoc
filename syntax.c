@@ -581,12 +581,12 @@ do_statement_list(TokenStream* input, List* stmt_list)
 {
   bool success = true;
 
-  while(input->token.kind == TokenKind_Semicolon)
-    get_next_token(input);
-
   AstNode* stmt = 0;
   do
   {
+    while(input->token.kind == TokenKind_Semicolon)
+      get_next_token(input);
+
     if((success = do_statement(input, &stmt)) && stmt)
       list_append(arena, stmt_list, stmt);
   }

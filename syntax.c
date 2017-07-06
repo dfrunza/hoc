@@ -729,13 +729,7 @@ do_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
 
   if(input->token.kind == TokenKind_Star ||
      input->token.kind == TokenKind_FwdSlash ||
-     input->token.kind == TokenKind_Percent ||
-     input->token.kind == TokenKind_EqualsEquals ||
-     input->token.kind == TokenKind_ExclamEquals ||
-     input->token.kind == TokenKind_AngleLeft ||
-     input->token.kind == TokenKind_AngleLeftEquals ||
-     input->token.kind == TokenKind_AngleRight ||
-     input->token.kind == TokenKind_AngleRightEquals)
+     input->token.kind == TokenKind_Percent)
   {
     *node = new_bin_expr(&input->src_loc);
     AstBinExpr* expr = &(*node)->bin_expr;
@@ -747,18 +741,6 @@ do_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
       expr->op = AstOpKind_Div;
     else if(input->token.kind == TokenKind_Percent)
       expr->op = AstOpKind_Mod;
-    else if(input->token.kind == TokenKind_EqualsEquals)
-      expr->op = AstOpKind_LogicEquals;
-    else if(input->token.kind == TokenKind_ExclamEquals)
-      expr->op = AstOpKind_LogicNotEquals;
-    else if(input->token.kind == TokenKind_AngleLeft)
-      expr->op = AstOpKind_LogicLess;
-    else if(input->token.kind == TokenKind_AngleLeftEquals)
-      expr->op = AstOpKind_LogicLessEquals;
-    else if(input->token.kind == TokenKind_AngleRight)
-      expr->op = AstOpKind_LogicGreater;
-    else if(input->token.kind == TokenKind_AngleRightEquals)
-      expr->op = AstOpKind_LogicGreaterEquals;
     else
       assert(false);
 
@@ -848,12 +830,32 @@ do_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
   *node = left_node;
   bool success = true;
 
-  if(input->token.kind == TokenKind_Equals)
+  if(input->token.kind == TokenKind_Equals ||
+     input->token.kind == TokenKind_EqualsEquals ||
+     input->token.kind == TokenKind_ExclamEquals ||
+     input->token.kind == TokenKind_AngleLeft ||
+     input->token.kind == TokenKind_AngleLeftEquals ||
+     input->token.kind == TokenKind_AngleRight ||
+     input->token.kind == TokenKind_AngleRightEquals)
   {
     *node = new_bin_expr(&input->src_loc);
     AstBinExpr* expr = &(*node)->bin_expr;
     expr->lhs = left_node;
-    expr->op = AstOpKind_Assign;
+
+    if(input->token.kind == TokenKind_Equals)
+      expr->op = AstOpKind_Assign;
+    else if(input->token.kind == TokenKind_EqualsEquals)
+      expr->op = AstOpKind_LogicEquals;
+    else if(input->token.kind == TokenKind_ExclamEquals)
+      expr->op = AstOpKind_LogicNotEquals;
+    else if(input->token.kind == TokenKind_AngleLeft)
+      expr->op = AstOpKind_LogicLess;
+    else if(input->token.kind == TokenKind_AngleLeftEquals)
+      expr->op = AstOpKind_LogicLessEquals;
+    else if(input->token.kind == TokenKind_AngleRight)
+      expr->op = AstOpKind_LogicGreater;
+    else if(input->token.kind == TokenKind_AngleRightEquals)
+      expr->op = AstOpKind_LogicGreaterEquals;
 
     get_next_token(input);
     if(success = do_expression(input, &expr->rhs))

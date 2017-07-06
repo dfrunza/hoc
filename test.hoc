@@ -1,5 +1,5 @@
-include "hlib\\power.hoc";
 /*
+include "hlib\\power.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\gcd.hoc";
 include "hlib\\lex.hoc";
@@ -12,8 +12,14 @@ include "hlib\\minmax.hoc";
 
 proc void main(int a, int b)
 {
-  var int x;
-  x = a + b;
+  for(int i = 0; i < a+b; i++)
+  {
+    if(a)
+      if(b)
+        a = a+b;
+      else
+        a = 22;
+  }
 }
 
 

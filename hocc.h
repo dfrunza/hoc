@@ -360,16 +360,6 @@ typedef struct
 }
 AstCall;
 
-#if 0
-typedef struct
-{
-  //List node_list;
-
-  AstNode* body; /* AstBlock */
-}
-AstModule;
-#endif
-
 typedef struct
 {
   char* file_path;

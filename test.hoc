@@ -10,16 +10,12 @@ include "hlib\\abs.hoc";
 include "hlib\\minmax.hoc";
 */
 
-proc void main(int a, int b)
+proc int main(int a, int b)
 {
-  for(int i = 0; i < a+b; i++)
-  {
-    if(a)
-      if(b)
-        a = a+b;
-      else
-        a = 22;
-  }
+  if(1)
+    return a+b;
+  else
+    return a-b;
 }
 
 

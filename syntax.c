@@ -174,7 +174,7 @@ new_string_literal(SourceLocation* src_loc)
   return node;
 }
 
-internal AstNode*
+AstNode*
 new_var_decl(SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode, 1);
@@ -261,7 +261,7 @@ new_include_stmt(SourceLocation* src_loc)
   AstNode* node = mem_push_struct(arena, AstNode, 1);
   node->kind = AstNodeKind_IncludeStmt;
   node->src_loc = *src_loc;
-  node->include_stmt.body = new_block(src_loc);
+  node->incl_stmt.body = new_block(src_loc);
   return node;
 }
 
@@ -1330,7 +1330,7 @@ do_include_stmt(TokenStream* input, AstNode** node)
     if(get_next_token(input)->kind == TokenKind_String)
     {
       *node = new_include_stmt(&input->src_loc);
-      AstIncludeStmt* include_stmt = &(*node)->include_stmt;
+      AstIncludeStmt* incl_stmt = &(*node)->incl_stmt;
 
       String str = {0};
       str_init(&str, arena);
@@ -1338,23 +1338,23 @@ do_include_stmt(TokenStream* input, AstNode** node)
       path_make_dir(str.head);
       str_tidyup(&str);
       str_append(&str, input->token.str);
-      include_stmt->file_path = str.head;
+      incl_stmt->file_path = str.head;
 
       get_next_token(input);
 
-      char* hoc_text = file_read_text(arena, include_stmt->file_path);
+      char* hoc_text = file_read_text(arena, incl_stmt->file_path);
       if(hoc_text)
       {
         TokenStream* inc_input = mem_push_struct(arena, TokenStream, 1);
-        init_token_stream(inc_input, hoc_text, include_stmt->file_path);
+        init_token_stream(inc_input, hoc_text, incl_stmt->file_path);
 
         get_next_token(inc_input);
-        AstBlock* block = &include_stmt->body->block;
+        AstBlock* block = &incl_stmt->body->block;
         success = do_module(inc_input, &block->node_list);
       }
       else
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Could not read file `%s`", include_stmt->file_path);
+                                "Could not read file `%s`", incl_stmt->file_path);
     }
     else
       success = compile_error(&input->src_loc, __FILE__, __LINE__,
@@ -1539,7 +1539,7 @@ do_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
   if(input->token.kind == TokenKind_Star)
   {
     *node = new_pointer(&input->src_loc);
-    AstPointer* ptr = &(*node)->pointer;
+    AstPointer* ptr = &(*node)->ptr;
     ptr->expr = expr;
 
     get_next_token(input);
@@ -1580,35 +1580,6 @@ do_type_expr(TokenStream* input, AstNode** node)
   }
   return success;
 }
-
-#if 0
-internal bool
-try_cast_expr(TokenStream* input, AstNode* left_node, AstNode** node)
-{
-  *node = left_node;
-  bool success = true;
-
-  if(input->token.kind == TokenKind_Star)
-  {
-    // pointer
-    *node = new_pointer(&input->src_loc);
-    AstPointer* ptr = &(*node)->pointer;
-    ptr->expr = left_node;
-
-    get_next_token(input);
-    success = try_cast_expr(input, *node, node);
-  }
-  else
-  {
-    if(input->token.kind != TokenKind_CloseParens)
-      success = false;
-  }
-
-  if(!success)
-    putback_token(input);
-  return success;
-}
-#endif
 
 internal bool
 do_var_decl(TokenStream* input, AstNode** node)
@@ -1985,7 +1956,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     }
     else if(node->kind == AstNodeKind_IncludeStmt)
     {
-      AstIncludeStmt* inc = &node->include_stmt;
+      AstIncludeStmt* inc = &node->incl_stmt;
       DEBUG_print_line(str, indent_level, "file_path: \"%s\"", inc->file_path);
       DEBUG_print_ast_node(str, indent_level, inc->body, "body");
     }
@@ -2092,7 +2063,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     }
     else if(node->kind == AstNodeKind_Pointer)
     {
-      AstPointer* ptr = &node->pointer;
+      AstPointer* ptr = &node->ptr;
       DEBUG_print_ast_node(str, indent_level, ptr->expr, "expr");
     }
     else if(node->kind == AstNodeKind_Call)

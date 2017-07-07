@@ -315,11 +315,12 @@ AstBlock;
 
 typedef struct
 {
-  AstNode* ret_type;
+  AstNode* ret_type; // syntactic node
   AstNode* id;
   List formal_args;
   AstNode* body;
 
+  AstNode* ret_var; // semantic node
   /*
   Type* ret_type;
   AstVarDecl ret_var;
@@ -336,11 +337,9 @@ AstProc;
 typedef struct
 {
   AstNode* expr;
-/*
-  AstNode* assgn_expr;
+
   int depth;
-  AstProc* proc;
-*/
+  AstNode* proc;
 }
 AstReturnStmt;
 
@@ -464,13 +463,13 @@ typedef struct AstNode
     AstIfStmt if_stmt;
     AstWhileStmt while_stmt;
     AstForStmt for_stmt;
-    AstIncludeStmt include_stmt;
+    AstIncludeStmt incl_stmt;
     AstBlock block;
     AstCast cast;
     AstId id;
     AstCall call;
     AstArray array;
-    AstPointer pointer;
+    AstPointer ptr;
     AstStruct struct_decl;
     AstUnion union_decl;
     AstAccessor accessor;
@@ -620,5 +619,6 @@ bool is_literal_token(TokenKind);
 void putback_token(TokenStream*);
 AstNode* new_bin_expr(SourceLocation*);
 AstNode* new_id(SourceLocation*, char*);
+AstNode* new_var_decl(SourceLocation*);
 
 

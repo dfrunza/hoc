@@ -365,25 +365,25 @@ str_append(String* str, char* cstr)
 }
 
 void
-str_printf_va(String* str, char* message, va_list varargs)
+str_printf_va(String* str, char* fmessage, va_list varargs)
 {
   assert(str->head && str->end && str->arena);
   MemoryArena* arena = str->arena;
   assert(str->head <= str->end);
   assert(str->end == (char*)arena->free-1);
 
-  int len = vsprintf(str->end, message, varargs);
+  int len = vsprintf(str->end, fmessage, varargs);
   str->end += len;
   assert(str->end < (char*)arena->cap);
   arena->free = (uint8*)str->end+1;
 }
 
 void
-str_printf(String* str, char* message, ...)
+str_printf(String* str, char* fmessage, ...)
 {
   va_list varargs;
-  va_start(varargs, message);
-  str_printf_va(str, message, varargs);
+  va_start(varargs, fmessage);
+  str_printf_va(str, fmessage, varargs);
   va_end(varargs);
 }
 

@@ -310,9 +310,10 @@ putback_token(TokenStream* input)
   *input = *input->prev_state;
 }
 
-Token*
+bool
 get_next_token(TokenStream* input)
 {
+  bool success = true;
   *input->prev_state = *input;
   mem_zero_struct(&input->token, Token);
   SourceLocation* src_loc = &input->src_loc;
@@ -461,7 +462,7 @@ loop:
     EscapedStr estr = {0};
     estr.quote = '"';
 
-    if(escaped_string(input, &estr, __FILE__, __LINE__))
+    if(success = escaped_string(input, &estr, __FILE__, __LINE__))
     {
       token->str = install_escaped_str(&estr);;
       token->kind = TokenKind_String;
@@ -474,15 +475,12 @@ loop:
     EscapedStr estr = {0};
     estr.quote = '\'';
 
-    if(escaped_string(input, &estr, __FILE__, __LINE__))
+    if(success = escaped_string(input, &estr, __FILE__, __LINE__))
     {
       char* lexeme = install_escaped_str(&estr);
 
       if(estr.len != 1)
-      {
-        compile_error(&input->src_loc, __FILE__, __LINE__,
-                      "Invalid char literal '%s'", lexeme);
-      }
+        success = compile_error(&input->src_loc, __FILE__, __LINE__, "Invalid char literal '%s'", lexeme);
       else
       {
         token->char_val = *lexeme;
@@ -615,6 +613,6 @@ loop:
     token->kind = TokenKind_Unknown;
     token->char_val = c;
   }
-  return &input->token;
+  return success;
 }
 

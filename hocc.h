@@ -100,7 +100,7 @@ typedef struct TokenStream
 }
 TokenStream;
 
-Token* get_next_token(TokenStream* input);
+bool get_next_token(TokenStream* input);
 void init_token_stream(TokenStream* token_stream, char* text, char* file_path);
 
 typedef struct AstNode AstNode;

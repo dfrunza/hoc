@@ -1,6 +1,10 @@
 #pragma once
 #include "lib.h"
 
+typedef struct AstNode AstNode;
+typedef struct Type Type;
+typedef struct Symbol Symbol;
+
 typedef struct
 {
   char* file_path;
@@ -8,8 +12,6 @@ typedef struct
   char* src_line;
 }
 SourceLocation;
-
-bool compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...);
 
 typedef enum TokenKind
 {
@@ -99,11 +101,6 @@ typedef struct TokenStream
   SourceLocation src_loc;
 }
 TokenStream;
-
-bool get_next_token(TokenStream* input);
-void init_token_stream(TokenStream* token_stream, char* text, char* file_path);
-
-typedef struct AstNode AstNode;
 
 typedef enum
 {
@@ -479,12 +476,6 @@ typedef struct AstNode
 }
 AstNode;
 
-bool parse(TokenStream*, AstNode**);
-void DEBUG_print_ast_node(String*, int, AstNode*, char*);
-
-typedef struct Type Type;
-typedef struct Symbol Symbol;
-
 typedef enum
 {
   TypeKind__Null,
@@ -610,6 +601,11 @@ typedef struct
 }
 SymbolTable;
 
+bool compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...);
+bool get_next_token(TokenStream* input);
+void init_token_stream(TokenStream* token_stream, char* text, char* file_path);
+bool parse(TokenStream*, AstNode**);
+void DEBUG_print_ast_node(String*, int, AstNode*, char*);
 void init_types();
 bool semantic_analysis(AstNode* ast);
 void print_char(char buf[3], char raw_char);
@@ -620,5 +616,4 @@ void putback_token(TokenStream*);
 AstNode* new_bin_expr(SourceLocation*);
 AstNode* new_id(SourceLocation*, char*);
 AstNode* new_var_decl(SourceLocation*);
-
 

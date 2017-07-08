@@ -12,11 +12,16 @@ include "hlib\\minmax.hoc";
 
 proc int main(int a, int b)
 {
-  var char* s = "abc;
-  if(1)
-    return a+b;
+  var int c;
+  if(c)
+  {
+    c = a+b;
+  }
   else
-    return a-b;
+  {
+    c = a*b;
+  }
+  return c;
 }
 
 

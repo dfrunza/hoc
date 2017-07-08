@@ -335,10 +335,17 @@ typedef struct
 {
   AstNode* expr;
 
-  int depth;
   AstNode* proc;
+  int nesting_depth;
 }
 AstReturnStmt;
+
+typedef struct
+{
+  AstNode* loop;
+  int nesting_depth;
+}
+AstLoopCtrl;
 
 typedef struct
 {
@@ -408,24 +415,6 @@ typedef struct
 }
 AstForStmt;
 
-/*
-typedef struct
-{
-  AstWhileStmt* while_stmt;
-  int depth;
-}
-AstBreakStmt;
-*/
-
-/*
-typedef struct
-{
-  AstNode* expr;
-  bool new_line;
-}
-AstPrintStmt;
-*/
-
 typedef struct
 {
   AstNode* type;
@@ -460,6 +449,7 @@ typedef struct AstNode
     AstIfStmt if_stmt;
     AstWhileStmt while_stmt;
     AstForStmt for_stmt;
+    AstLoopCtrl loop_ctrl;
     AstIncludeStmt incl_stmt;
     AstBlock block;
     AstCast cast;

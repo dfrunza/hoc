@@ -1052,14 +1052,7 @@ do_for_stmt(TokenStream* input, AstNode** node)
         if(success = get_next_token(input) && do_block(input, &for_stmt->body))
         {
           if(!for_stmt->body)
-          {
-            if(success = do_statement(input, &for_stmt->body))
-            {
-              if(!for_stmt->body)
-                success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                        "Statement(s) required, at `%s`", get_token_printstr(&input->token));
-            }
-          }
+            success = do_statement(input, &for_stmt->body);
         }
       }
       else
@@ -1100,13 +1093,7 @@ do_while_stmt(TokenStream* input, AstNode** node)
           if(!(success = do_block(input, &while_stmt->body))) return success;
 
           if(!while_stmt->body)
-          {
-            if(!(success = do_statement(input, &while_stmt->body))) return success;
-
-            if(!while_stmt->body)
-              success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                      "Statement(s) required, at `%s`", get_token_printstr(&input->token));
-          }
+            success = do_statement(input, &while_stmt->body);
         }
         else
           success = compile_error(&input->src_loc, __FILE__, __LINE__,
@@ -1133,15 +1120,8 @@ do_else_stmt(TokenStream* input, AstNode** node)
   {
     if(success = get_next_token(input) && do_block(input, node))
     {
-      if(!(*node))
-      {
-        if(success = do_statement(input, node))
-        {
-          if(!(*node))
-            success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                    "Statement(s) required, at `%s`", get_token_printstr(&input->token));
-        }
-      }
+      if(!*node)
+        success = do_statement(input, node);
     }
   }
   return success;
@@ -1166,25 +1146,16 @@ do_if_stmt(TokenStream* input, AstNode** node)
 
       if(input->token.kind == TokenKind_CloseParens)
       {
-        if(!(success = get_next_token(input))) return success;
         if(if_stmt->cond_expr)
         {
-          if(!(success = do_block(input, &if_stmt->body))) return success;
+          success = get_next_token(input) && do_block(input, &if_stmt->body);
+          if(!success) return success;
 
           if(!if_stmt->body)
-          {
-            if(!(success = do_statement(input, &if_stmt->body))) return success;
-
-            if(!if_stmt->body)
-              success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                      "Statement(s) required, at `%s`", get_token_printstr(&input->token));
-          }
+            success = do_statement(input, &if_stmt->body);
 
           if(success)
-          {
-            assert(if_stmt->body);
             success = do_else_stmt(input, &if_stmt->else_body);
-          }
         }
         else
           success = compile_error(&input->src_loc, __FILE__, __LINE__,
@@ -1710,21 +1681,6 @@ do_break_stmt(TokenStream* input, AstNode** node)
   {
     *node = new_break_stmt(&input->src_loc);
     success = get_next_token(input);
-    /*
-    AstBreakStmt* break_stmt = &(*node)->break_stmt;
-
-    AstNode* owner = 0;
-    int depth = block_find_owner(enclosing_block, AstNodeKind_WhileStmt, &owner);
-    if(owner)
-    {
-      break_stmt->while_stmt = &owner->while_stmt;
-      break_stmt->depth = depth + 1;
-    }
-    else {
-      compile_error(&input->src_loc, "`break`: enclosing `while` statement not found");
-      success = false;
-    }
-    */
   }
   return success;
 }

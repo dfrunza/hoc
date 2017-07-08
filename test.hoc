@@ -12,16 +12,16 @@ include "hlib\\minmax.hoc";
 
 proc int main(int a, int b)
 {
-  var int c;
-  if(c)
+  while(a)
   {
-    c = a+b;
+    for(int i = 0; i<10; i++)
+    {
+      if(a < i)
+        break;
+      /* TODO: fix bug!!!*/
+      else
+    }
+    break;
   }
-  else
-  {
-    c = a*b;
-  }
-  return c;
 }
-
 

@@ -78,6 +78,7 @@ DEBUG_print_sizeof_ast_structs()
   make_struct_info(AstNodeKind_UnrExpr, AstUnrExpr);
   make_struct_info(AstNodeKind_Literal, AstLiteral);
   make_struct_info(AstNodeKind_VarDecl, AstVarDecl);
+  make_struct_info(AstNodeKind_VarOccur, AstVarOccur);
   make_struct_info(AstNodeKind_Block, AstBlock);
   make_struct_info(AstNodeKind_Proc, AstProc);
   make_struct_info(AstNodeKind_Id, AstId);
@@ -103,6 +104,7 @@ DEBUG_print_sizeof_ast_structs()
 #undef make_struct_info
 #undef make_zero_size_info
 
+#if 1
   // sort the array
   for(int i = 1; i < AstNodeKind__Count; i++)
   {
@@ -115,6 +117,7 @@ DEBUG_print_sizeof_ast_structs()
       struct_info[j-1] = value_at_j;
     }
   }
+#endif
 
   printf("AstNode.size = %d bytes\n", sizeof(AstNode));
   for(int i = AstNodeKind__Count-1; i >= 0; i--)

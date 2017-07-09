@@ -9,7 +9,6 @@ extern Type* basic_type_float;
 extern Type* basic_type_void;
 
 internal SymbolTable* symtab = 0;
-internal int temp_var_id = 0;
 
 internal AstNode*
 new_var_occur(SourceLocation* src_loc)
@@ -21,11 +20,11 @@ new_var_occur(SourceLocation* src_loc)
 }
 
 internal AstNode*
-make_temp_var_id(SourceLocation* src_loc, char* label)
+make_ret_var_id(SourceLocation* src_loc, char* proc_name)
 {
   String str = {0};
   str_init(&str, arena);
-  str_printf(&str, "$%s%d", label, temp_var_id++);
+  str_printf(&str, "$%s", proc_name);
   return new_id(src_loc, str.head);
 }
 
@@ -88,20 +87,19 @@ register_builtin_ids()
 internal bool
 register_new_id(char* name, AstNode* node, SymbolKind symkind)
 {
-  bool success = true;
-
   Symbol* id_sym = lookup_symbol(name, symkind);
   if(id_sym && (id_sym->block_id == symtab->scope_id))
   {
-    success = compile_error(&node->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`...", name)
-      & compile_error(&id_sym->node->src_loc, __FILE__, __LINE__, "...see previous declaration of `%s`", name);
+    compile_error(&node->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`...", name);
+    compile_error(&id_sym->node->src_loc, __FILE__, __LINE__, "...see previous declaration of `%s`", name);
+    return false;
   }
   else
   {
     id_sym = add_symbol(name, symkind);
     id_sym->node = node;
   }
-  return success;
+  return true;
 }
 
 internal bool
@@ -283,9 +281,9 @@ do_proc_ret_var(AstNode* block, AstNode* proc)
   assert(proc->kind == AstNodeKind_Proc);
   bool success = true;
   proc->proc.ret_var = new_var_decl(&proc->src_loc);
-  AstNode* ret_var = proc->proc.ret_var;
-  ret_var->var_decl.id = make_temp_var_id(&proc->src_loc, "ret");
-  success = do_var_decl(block, ret_var);
+  AstNode* var_decl = proc->proc.ret_var;
+  var_decl->var_decl.id = make_ret_var_id(&proc->src_loc, proc->proc.id->id.name);
+  success = do_var_decl(block, proc->proc.ret_var);
   return success;
 }
 
@@ -356,7 +354,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       success = (stmt->for_stmt.decl_expr ? do_var_decl(stmt->for_stmt.body, stmt->for_stmt.decl_expr) : 1);
       if(success)
       {
-        success = do_block(proc, stmt, stmt, stmt->for_stmt.body) // will set the block->owner field
+        success = do_block(proc, stmt, stmt, stmt->for_stmt.body) // will set the block->owner field, so do it first
           && (stmt->for_stmt.cond_expr ? do_expression(stmt->for_stmt.body, stmt->for_stmt.cond_expr) : 1)
           && (stmt->for_stmt.loop_expr ? do_expression(stmt->for_stmt.body, stmt->for_stmt.loop_expr) : 1);
       }

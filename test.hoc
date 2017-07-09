@@ -1,5 +1,5 @@
-include "hlib\\gcd.hoc";
 /*
+include "hlib\\gcd.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\power.hoc";
@@ -8,11 +8,15 @@ include "hlib\\syntax.hoc";
 include "hlib\\lex.hoc";
 */
 
-proc int main(int a, int b)
+var int c;
+
+proc int main(int a, int[] b)
 {
-  var int i = 0;
+  var int* i;
+  i = &c;
   for(int i; i < 10; i++)
-    a = a;
+    a = a + b[i];
+  return a;
 }
 
 

@@ -1159,13 +1159,13 @@ do_else_stmt(TokenStream* input, AstNode** node)
     if(success = get_next_token(input) && do_block(input, node))
     {
       if(!*node)
-        success = do_statement(input, node);
-
-      if(success && !*node)
       {
-        putback_token(input);
-        success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Statement required, at `%s`", get_token_printstr(&input->token));
+        if((success = do_statement(input, node)) && !*node)
+        {
+          putback_token(input);
+          success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                  "Statement required, at `%s`", get_token_printstr(&input->token));
+        }
       }
     }
   }
@@ -1968,8 +1968,9 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       DEBUG_print_ast_node(str, indent_level, node->call.id, "id");
       DEBUG_print_ast_node_list(str, indent_level, &node->call.actual_args, "actual_args");
     }
-    else if(node->kind == AstNodeKind_BreakStmt ||
-            node->kind == AstNodeKind_ContinueStmt)
+    else if(node->kind == AstNodeKind_BreakStmt
+            || node->kind == AstNodeKind_ContinueStmt
+            || node->kind == AstNodeKind_EmptyStmt)
     {
       /* nothing to do */
     }
@@ -2000,8 +2001,6 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     {
       DEBUG_print_ast_node(str, indent_level, node->label.id, "id");
     }
-    else if(node->kind == AstNodeKind_EmptyStmt)
-    { /* nothing to do */ }
     else
     {
       assert(false);

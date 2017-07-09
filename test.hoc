@@ -1,19 +1,18 @@
-/*
-include "hlib\\power.hoc";
-include "hlib\\fibo.hoc";
 include "hlib\\gcd.hoc";
-include "hlib\\lex.hoc";
+/*
 include "hlib\\sqrt.hoc";
-include "hlib\\syntax.hoc";
-include "hlib\\cats.hoc";
-include "hlib\\abs.hoc";
+include "hlib\\fibo.hoc";
+include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
+include "hlib\\syntax.hoc";
+include "hlib\\lex.hoc";
 */
 
 proc int main(int a, int b)
 {
   var int i = 0;
-  for(; i < 10; i++)
+  for(int i; i < 10; i++)
     a = a;
 }
+
 

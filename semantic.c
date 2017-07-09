@@ -91,7 +91,7 @@ register_new_id(char* name, AstNode* node, SymbolKind symkind)
   bool success = true;
 
   Symbol* id_sym = lookup_symbol(name, symkind);
-  if(id_sym && (id_sym->block_id == get_active_block()->block.block_id))
+  if(id_sym && (id_sym->block_id == symtab->scope_id))
   {
     success = compile_error(&node->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`...", name)
       & compile_error(&id_sym->node->src_loc, __FILE__, __LINE__, "...see previous declaration of `%s`", name);
@@ -238,8 +238,18 @@ do_expression(AstNode* block, AstNode* expr_node)
   }
   else if(expr_node->kind == AstNodeKind_Literal)
   { /* nothing to do */ }
+  else if(expr_node->kind == AstNodeKind_Call)
+  {
+    printf("TODO: %s():%d\n", expr_node->call.id->id.name, expr_node->src_loc.line_nr);
+  }
   else
+  {
+#if 1
+    printf("TODO: %s\n", get_ast_kind_printstr(expr_node->kind));
+#else
     assert(!"Not implemented");
+#endif
+  }
 
   return success;
 }
@@ -361,23 +371,26 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       {
         if(success = scope_begin(stmt->if_stmt.body))
         {
-          success = do_block(proc, stmt, loop, stmt->if_stmt.body);
+          success = do_block(proc, loop, stmt, stmt->if_stmt.body);
           scope_end();
         }
       }
       else
         success = do_statement(proc, block, loop, stmt->if_stmt.body);
 
-      if(stmt->if_stmt.else_body->kind == AstNodeKind_Block)
+      if(stmt->if_stmt.else_body)
       {
-        if(success = scope_begin(stmt->if_stmt.else_body))
+        if(stmt->if_stmt.else_body->kind == AstNodeKind_Block)
         {
-          success = do_block(proc, stmt, loop, stmt->if_stmt.else_body);
-          scope_end();
+          if(success = scope_begin(stmt->if_stmt.else_body))
+          {
+            success = do_block(proc, stmt, loop, stmt->if_stmt.else_body);
+            scope_end();
+          }
         }
+        else
+          success = do_statement(proc, block, loop, stmt->if_stmt.else_body);
       }
-      else
-        success = do_statement(proc, block, loop, stmt->if_stmt.else_body);
     }
   }
   else if(stmt->kind == AstNodeKind_ReturnStmt)
@@ -455,7 +468,7 @@ do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
   if(owner && (owner->kind == AstNodeKind_Module))
   {
     for(ListItem* list_item = block->block.node_list.first;
-        list_item;
+        list_item && success;
         list_item = list_item->next)
     {
       AstNode* stmt = list_item->elem;

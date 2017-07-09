@@ -29,37 +29,6 @@ make_temp_var_id(SourceLocation* src_loc, char* label)
   return new_id(src_loc, str.head);
 }
 
-#if 0
-internal bool
-contains_kind(AstNodeKind set[], AstNodeKind value)
-{
-  for(int i = 0; i < sizeof_array(set); i++)
-  {
-    if(set[i] == value)
-      return true;
-  }
-  return false;
-}
-#endif
-
-internal int
-find_owner_block(AstBlock* block, AstNodeKind kind, AstNode** result)
-{
-  int depth = 0;
-  AstNode* owner = 0;
-  while(block)
-  {
-    owner = block->owner;
-    if(owner->kind == kind)
-      break;
-    depth++;
-    assert(block->encl_block->kind == AstNodeKind_Block);
-    block = &block->encl_block->block;
-  }
-  *result = owner;
-  return depth;
-}
-
 internal Symbol*
 lookup_symbol(char* name, SymbolKind kind)
 {
@@ -76,6 +45,12 @@ lookup_symbol(char* name, SymbolKind kind)
     symbol = symbol->next_symbol;
   }
   return result;
+}
+
+internal AstNode*
+get_active_block()
+{
+  return symtab->active_blocks[symtab->nesting_depth];
 }
 
 internal Symbol*
@@ -116,8 +91,11 @@ register_new_id(char* name, AstNode* node, SymbolKind symkind)
   bool success = true;
 
   Symbol* id_sym = lookup_symbol(name, symkind);
-  if(id_sym)
-    success = compile_error(&node->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`", name);
+  if(id_sym && (id_sym->block_id == get_active_block()->block.block_id))
+  {
+    success = compile_error(&node->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`...", name)
+      & compile_error(&id_sym->node->src_loc, __FILE__, __LINE__, "...see previous declaration of `%s`", name);
+  }
   else
   {
     id_sym = add_symbol(name, symkind);
@@ -311,11 +289,13 @@ do_procedure(AstNode* proc)
   {
     if(proc->proc.body)
     {
-      success = scope_begin(proc->proc.body)
-        && do_proc_formal_args(proc->proc.body, &proc->proc.formal_args)
-        && do_proc_ret_var(proc->proc.body, proc)
-        && do_block(proc, 0, proc, proc->proc.body);
-      scope_end();
+      if(success = scope_begin(proc->proc.body))
+      {
+        success = do_proc_formal_args(proc->proc.body, &proc->proc.formal_args)
+          && do_proc_ret_var(proc->proc.body, proc)
+          && do_block(proc, 0, proc, proc->proc.body);
+        scope_end();
+      }
     }
   }
 
@@ -347,54 +327,57 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   {
     if(success = do_expression(block, stmt->while_stmt.cond_expr))
     {
-      if(stmt->while_stmt.body)
+      if(stmt->while_stmt.body->kind == AstNodeKind_Block)
       {
-        if(stmt->while_stmt.body->kind == AstNodeKind_Block)
+        if(success = scope_begin(stmt->while_stmt.body))
         {
-          success = scope_begin(stmt->while_stmt.body) && do_block(proc, stmt, stmt, stmt->while_stmt.body);
+          success = do_block(proc, stmt, stmt, stmt->while_stmt.body);
           scope_end();
         }
-        else
-          success = do_statement(proc, block, stmt, stmt->while_stmt.body);
       }
+      else
+        success = do_statement(proc, block, stmt, stmt->while_stmt.body);
     }
   }
   else if(stmt->kind == AstNodeKind_ForStmt)
   {
-    success = scope_begin(stmt->for_stmt.body)
-      && do_var_decl(stmt->for_stmt.body, stmt->for_stmt.decl)
-      && do_expression(stmt->for_stmt.body, stmt->for_stmt.cond_expr)
-      && do_expression(stmt->for_stmt.body, stmt->for_stmt.loop_expr)
-      && do_block(proc, stmt, stmt, stmt->for_stmt.body);
-    scope_end();
+    if(success = scope_begin(stmt->for_stmt.body))
+    {
+      success = (stmt->for_stmt.decl_expr ? do_var_decl(stmt->for_stmt.body, stmt->for_stmt.decl_expr) : 1);
+      if(success)
+      {
+        success = do_block(proc, stmt, stmt, stmt->for_stmt.body) // will set the block->owner field
+          && (stmt->for_stmt.cond_expr ? do_expression(stmt->for_stmt.body, stmt->for_stmt.cond_expr) : 1)
+          && (stmt->for_stmt.loop_expr ? do_expression(stmt->for_stmt.body, stmt->for_stmt.loop_expr) : 1);
+      }
+      scope_end();
+    }
   }
   else if(stmt->kind == AstNodeKind_IfStmt)
   {
     if(success = do_expression(block, stmt->if_stmt.cond_expr))
     {
-      if(stmt->if_stmt.body)
+      if(stmt->if_stmt.body->kind == AstNodeKind_Block)
       {
-        if(stmt->if_stmt.body->kind == AstNodeKind_Block)
+        if(success = scope_begin(stmt->if_stmt.body))
         {
-          success = scope_begin(stmt->if_stmt.body)
-            && do_block(proc, stmt, loop, stmt->if_stmt.body);
+          success = do_block(proc, stmt, loop, stmt->if_stmt.body);
           scope_end();
         }
-        else
-          success = do_statement(proc, block, loop, stmt->if_stmt.body);
       }
+      else
+        success = do_statement(proc, block, loop, stmt->if_stmt.body);
 
-      if(stmt->if_stmt.else_body)
+      if(stmt->if_stmt.else_body->kind == AstNodeKind_Block)
       {
-        if(stmt->if_stmt.else_body->kind == AstNodeKind_Block)
+        if(success = scope_begin(stmt->if_stmt.else_body))
         {
-          success = scope_begin(stmt->if_stmt.else_body)
-            && do_block(proc, stmt, loop, stmt->if_stmt.else_body);
+          success = do_block(proc, stmt, loop, stmt->if_stmt.else_body);
           scope_end();
         }
-        else
-          success = do_statement(proc, block, loop, stmt->if_stmt.else_body);
       }
+      else
+        success = do_statement(proc, block, loop, stmt->if_stmt.else_body);
     }
   }
   else if(stmt->kind == AstNodeKind_ReturnStmt)

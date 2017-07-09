@@ -310,6 +310,15 @@ putback_token(TokenStream* input)
   *input = *input->prev_state;
 }
 
+Token*
+get_prev_token(TokenStream* input)
+{
+  Token* token = &input->token;
+  if(input->prev_state)
+    token = &input->prev_state->token;
+  return token;
+}
+
 bool
 get_next_token(TokenStream* input)
 {

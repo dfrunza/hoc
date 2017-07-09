@@ -670,8 +670,11 @@ do_rest_of_accessor(TokenStream* input, AstNode* left_node, AstNode** node)
       if(expr->rhs)
         success = do_rest_of_accessor(input, *node, node);
       else
+      {
+        putback_token(input);
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                 "Operand expected, at `%s`", get_token_printstr(&input->token));
+      }
     }
   }
   else if(input->token.kind == TokenKind_PlusPlus ||
@@ -732,8 +735,11 @@ do_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
       if(expr->rhs)
         success = do_rest_of_factor(input, *node, node);
       else
+      {
+        putback_token(input);
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                 "Operand expected, at `%s`", get_token_printstr(&input->token));
+      }
     }
   }
 
@@ -787,8 +793,11 @@ do_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
       if(expr->rhs)
         success = do_rest_of_term(input, *node, node);
       else
+      {
+        putback_token(input);
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                 "Operand expected, at `%s`", get_token_printstr(&input->token));
+      }
     }
   }
 
@@ -841,8 +850,11 @@ do_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
     if(success = get_next_token(input) && do_expression(input, &expr->rhs))
     {
       if(!expr->rhs)
+      {
+        putback_token(input);
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                 "Operand expected, at `%s`", get_token_printstr(&input->token));
+      }
     }
   }
 
@@ -868,8 +880,11 @@ do_accessor(TokenStream* input, AstNode** node)
                                   "Expected `)`, actual `%s`", get_token_printstr(&input->token));
       }
       else
+      {
+        putback_token(input);
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                 "Expression expected, at `%s`", get_token_printstr(&input->token));
+      }
     }
   }
   else if(is_literal_token(input->token.kind) ||
@@ -953,8 +968,11 @@ do_unary_expr(TokenStream* input, AstNode** node)
     if(success = get_next_token(input) && do_factor(input, &expr->operand))
     {
       if(!expr->operand)
+      {
+        putback_token(input);
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                 "Operand expected, at `%s`", get_token_printstr(&input->token));
+      }
     }
   }
   else if(input->token.kind == TokenKind_AngleLeft)
@@ -970,8 +988,11 @@ do_unary_expr(TokenStream* input, AstNode** node)
         if(cast->type)
           success = get_next_token(input) && do_unary_expr(input, &cast->expr);
         else
+        {
+          putback_token(input);
           success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                   "Type expression required, at `%s`", get_token_printstr(&input->token));
+        }
       }
       else
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
@@ -1031,7 +1052,7 @@ do_for_stmt(TokenStream* input, AstNode** node)
 
     if(input->token.kind == TokenKind_OpenParens)
     {
-      success = get_next_token(input) && do_var_decl(input, &for_stmt->decl)
+      success = get_next_token(input) && do_var_decl(input, &for_stmt->decl_expr)
         && do_semicolon(input)
         && do_expression(input, &for_stmt->cond_expr)
         && do_semicolon(input)
@@ -1043,7 +1064,23 @@ do_for_stmt(TokenStream* input, AstNode** node)
         if(success = get_next_token(input) && do_block(input, &for_stmt->body))
         {
           if(!for_stmt->body)
-            success = do_statement(input, &for_stmt->body);
+          {
+            if(success = do_statement(input, &for_stmt->body))
+            {
+              if(for_stmt->body)
+              {
+                AstNode* block = new_block(&input->src_loc);
+                list_append(arena, &block->block.node_list, for_stmt->body);
+                for_stmt->body = block;
+              }
+              else
+              {
+                putback_token(input);
+                success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                        "Statement required, at `%s`", get_token_printstr(&input->token));
+              }
+            }
+          }
         }
       }
       else
@@ -1075,24 +1112,34 @@ do_while_stmt(TokenStream* input, AstNode** node)
       success = get_next_token(input) && do_expression(input, &while_stmt->cond_expr);
       if(!success) return success;
 
-      if(input->token.kind == TokenKind_CloseParens)
+      if(while_stmt->cond_expr)
       {
-        if(!(success = get_next_token(input))) return success;
-
-        if(while_stmt->cond_expr)
+        if(input->token.kind == TokenKind_CloseParens)
         {
+          if(!(success = get_next_token(input))) return success;
+
           if(!(success = do_block(input, &while_stmt->body))) return success;
 
           if(!while_stmt->body)
-            success = do_statement(input, &while_stmt->body);
+          {
+            if((success = do_statement(input, &while_stmt->body)) && !while_stmt->body)
+            {
+              putback_token(input);
+              success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                      "Statement required, at `%s`", get_token_printstr(&input->token));
+            }
+          }
         }
         else
           success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                  "Expression required, at `%s`", get_token_printstr(&input->token));
+                                  "Expected `)`, actual `%s`", get_token_printstr(&input->token));
       }
       else
+      {
+        putback_token(input);
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Expected `)`, actual `%s`", get_token_printstr(&input->token));
+                                "Expression required, at `%s`", get_token_printstr(&input->token));
+      }
     }
     else
       success = compile_error(&input->src_loc, __FILE__, __LINE__,
@@ -1114,9 +1161,12 @@ do_else_stmt(TokenStream* input, AstNode** node)
       if(!*node)
         success = do_statement(input, node);
 
-      if(!*node)
+      if(success && !*node)
+      {
+        putback_token(input);
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                 "Statement required, at `%s`", get_token_printstr(&input->token));
+      }
     }
   }
   return success;
@@ -1154,13 +1204,19 @@ do_if_stmt(TokenStream* input, AstNode** node)
             if(if_stmt->body)
               success = do_else_stmt(input, &if_stmt->else_body);
             else
+            {
+              putback_token(input);
               success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                       "Statement required, at `%s`", get_token_printstr(&input->token));
+            }
           }
         }
         else
+        {
+          putback_token(input);
           success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                   "Expression required, at `%s`", get_token_printstr(&input->token));
+        }
       }
       else
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
@@ -1222,8 +1278,11 @@ do_proc_decl(TokenStream* input, AstNode** node)
                                   "Identifier expected, actual `%s`", get_token_printstr(&input->token));
       }
       else
+      {
+        putback_token(input);
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                 "Type expression required, at `%s`", get_token_printstr(&input->token));
+      }
     }
   }
   return success;
@@ -1517,8 +1576,11 @@ do_var_decl(TokenStream* input, AstNode** node)
             if(success = do_expression(input, &var_decl->init_expr))
             {
               if(!var_decl->init_expr)
+              {
+                putback_token(input);
                 success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                         "Expression required, at `%s`", get_token_printstr(&input->token));
+              }
             }
           }
         }
@@ -1542,8 +1604,11 @@ do_var_stmt(TokenStream* input, AstNode** node)
     if(success = get_next_token(input) && do_var_decl(input, node))
     {
       if(!*node)
+      {
+        putback_token(input);
         success = compile_error(&input->src_loc, __FILE__, __LINE__,
                                 "Variable declaration required, at `%s`", get_token_printstr(&input->token));
+      }
     }
   }
   return success;
@@ -1695,11 +1760,9 @@ do_statement(TokenStream* input, AstNode** node)
   if(input->token.kind == TokenKind_Var)
     success = do_var_stmt(input, node) && do_semicolon(input);
   else if(input->token.kind == TokenKind_If)
-  {
     success = do_if_stmt(input, node);
-    if(success && (input->token.kind == TokenKind_Else))
-      success = compile_error(&input->src_loc, __FILE__, __LINE__, "Unmatched `else`");
-  }
+  else if(input->token.kind == TokenKind_Else)
+    success = compile_error(&input->src_loc, __FILE__, __LINE__, "Unmatched `else`");
   else if(input->token.kind == TokenKind_While)
     success = do_while_stmt(input, node);
   else if(input->token.kind == TokenKind_For)
@@ -1881,7 +1944,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     }
     else if(node->kind == AstNodeKind_ForStmt)
     {
-      DEBUG_print_ast_node(str, indent_level, node->for_stmt.decl, "decl");
+      DEBUG_print_ast_node(str, indent_level, node->for_stmt.decl_expr, "decl_expr");
       DEBUG_print_ast_node(str, indent_level, node->for_stmt.cond_expr, "cond_expr");
       DEBUG_print_ast_node(str, indent_level, node->for_stmt.loop_expr, "loop_expr");
       DEBUG_print_ast_node(str, indent_level, node->for_stmt.body, "body");

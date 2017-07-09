@@ -12,30 +12,8 @@ include "hlib\\minmax.hoc";
 
 proc int main(int a, int b)
 {
-  while(1)
-  {
-    if(1)
-      a = 10;
-    else if(2)
-      b = 80;
-    else if(3)
-      b = 50;
-    else if(4)
-      b = 60;
-    else
-      b = 70;
-  }
-  /*
-  while(a)
-  {
-    for(int i = 0; i<10; i++)
-    {
-      if(a < i)
-        break;
-      else
-    }
-    break;
-  }
-  */
+  var int i = 0;
+  for(; i < 10; i++)
+    a = a;
 }
 

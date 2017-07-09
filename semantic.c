@@ -454,6 +454,8 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   {
     assert(!"Not implemented");
   }
+  else if(stmt->kind == AstNodeKind_EmptyStmt)
+  { /* nothing to do */ }
   else
     assert(false);
   return success;

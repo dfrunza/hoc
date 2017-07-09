@@ -169,6 +169,7 @@ typedef enum
   AstNodeKind_Union,
   AstNodeKind_Enum,
   AstNodeKind_Initializer,
+  AstNodeKind_EmptyStmt,
 
   AstNodeKind__Count,
 }

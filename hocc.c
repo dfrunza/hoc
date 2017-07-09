@@ -100,6 +100,7 @@ DEBUG_print_sizeof_ast_structs()
   make_struct_info(AstNodeKind_Union, AstUnion);
   make_struct_info(AstNodeKind_Enum, AstEnum);
   make_struct_info(AstNodeKind_Initializer, AstInitializer);
+  make_zero_struct_info(AstNodeKind_EmptyStmt);
 
 #undef make_struct_info
 #undef make_zero_size_info

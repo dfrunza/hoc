@@ -31,11 +31,11 @@ typedef struct
 }
 VmProgram;
 
+#define ARENA_SIZE (2*MEGABYTE)
+#define DBG_ARENA_SIZE (ARENA_SIZE/2)
 
 internal bool debug_enabled = true;
-#define arena_size (2*MEGABYTE)
 MemoryArena* arena = 0;
-#define dbg_arena_size (arena_size/2)
 MemoryArena* dbg_arena = 0;
 
 bool
@@ -131,7 +131,7 @@ DEBUG_print_sizeof_ast_structs()
 VmProgram*
 translate(char* file_path, char* hoc_text)
 {
-  VmProgram* vm_program = mem_push_struct(arena, VmProgram, 1);
+  VmProgram* vm_program = mem_push_struct(arena, VmProgram);
   list_init(&vm_program->instr_list);
   vm_program->success = false;
 
@@ -295,10 +295,10 @@ main(int argc, char* argv[])
 
   if(argc >= 2)
   {
-    arena = arena_new(arena_size);
+    arena = arena_new(ARENA_SIZE);
     if(debug_enabled)
     {
-      dbg_arena = arena_push(arena, dbg_arena_size);
+      dbg_arena = arena_push(arena, DBG_ARENA_SIZE);
       DEBUG_print_sizeof_ast_structs();
     }
 

@@ -13,7 +13,7 @@ internal SymbolTable* symtab = 0;
 internal AstNode*
 new_var_occur(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_VarOccur;
   node->src_loc = *src_loc;
   return node;
@@ -55,7 +55,7 @@ get_active_block()
 internal Symbol*
 add_symbol(char* name, SymbolKind kind)
 {
-  Symbol* symbol = mem_push_struct(arena, Symbol, 1);
+  Symbol* symbol = mem_push_struct(arena, Symbol);
   symbol->kind = kind;
   symbol->name = name;
   symbol->block_id = symtab->scope_id;
@@ -238,7 +238,11 @@ do_expression(AstNode* block, AstNode* expr_node)
   { /* nothing to do */ }
   else if(expr_node->kind == AstNodeKind_Call)
   {
+#if 1
     printf("TODO: %s():%d\n", expr_node->call.id->id.name, expr_node->src_loc.line_nr);
+#else
+    assert(!"Not implemented");
+#endif
   }
   else
   {
@@ -538,7 +542,7 @@ semantic_analysis(AstNode* node)
 {
   init_types();
 
-  symtab = mem_push_struct(arena, SymbolTable, 1);
+  symtab = mem_push_struct(arena, SymbolTable);
   register_builtin_ids(symtab);
 
   bool success = true;

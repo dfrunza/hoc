@@ -1,7 +1,20 @@
 #include "hocc.h"
 
-internal bool dbg_zero_mem = true;
-internal bool dbg_check_bounds = true;
+internal bool dbg_zero_arena = false;
+internal bool dbg_check_arena_bounds = true;
+internal bool dbg_assert = true;
+
+void
+assert_f(char* expr, char* file, int line)
+{
+  if(dbg_assert)
+  {
+    fprintf(stderr, "Assertion fired `%s`\n", expr);
+    fprintf(stderr, "%s:%d\n", file, line);
+    fflush(stderr);
+    *(int*)0 = 0;
+  }
+}
 
 void
 error(char* message, ...)
@@ -28,18 +41,18 @@ char_is_numeric(char c)
   return '0' <= c && c <= '9';
 }
 
-#define struct_check_bounds(ARENA, TYPE, STRUCT) mem_check_bounds_(ARENA, sizeof(TYPE), STRUCT)
-#define arena_check_bounds(ARENA) mem_check_bounds_((ARENA), 0, (ARENA)->free)
+#define struct_check_bounds(ARENA, TYPE, STRUCT) mem_check_bounds_f(ARENA, sizeof(TYPE), STRUCT)
+#define arena_check_bounds(ARENA) mem_check_bounds_f((ARENA), 0, (ARENA)->free)
 
 void
-mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
+mem_check_bounds_f(MemoryArena* arena, int elem_size, void* ptr)
 {
   assert(arena->alloc <= (uint8*)ptr);
   assert((arena->free + elem_size) < arena->cap);
 }
 
 void
-mem_zero_(void* mem, size_t len)
+mem_zero_f(void* mem, size_t len)
 {
   memset(mem, 0, len);
 }
@@ -49,7 +62,7 @@ mem_zero_range(void* start, void* one_past_end)
 {
   size_t len = (uint8*)one_past_end - (uint8*)start;
   assert(len >= 0);
-  mem_zero_(start, len);
+  mem_zero_f(start, len);
 }
 
 void
@@ -72,7 +85,7 @@ arena_pop(MemoryArena* arena)
   MemoryArena* host = arena->host;
   assert(host->free == arena->cap);
   assert(host->alloc == host->free);
-  if(dbg_zero_mem)
+  if(dbg_zero_arena)
     mem_zero_range((uint8*)arena, arena->cap);
   host->free = (uint8*)arena;
 
@@ -94,7 +107,7 @@ arena_push(MemoryArena* arena, size_t size)
 
   MemoryArena* sub_arena_p = (MemoryArena*)arena->free;
   arena->free = arena->free + size + sizeof(MemoryArena);
-  if(dbg_check_bounds)
+  if(dbg_check_arena_bounds)
     arena_check_bounds(arena);
   arena->alloc = arena->free;
   arena->sub_arena_count++;
@@ -103,22 +116,22 @@ arena_push(MemoryArena* arena, size_t size)
   sub_arena.host = arena;
   *sub_arena_p = sub_arena;
 
-  if(dbg_zero_mem)
+  if(dbg_zero_arena)
     mem_zero_range(sub_arena.alloc, sub_arena.cap);
   return sub_arena_p;
 }
 
 void*
-mem_push_struct_(MemoryArena* arena, size_t elem_size, size_t count)
+mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_mem)
 {
   assert(count > 0);
 
   void* element = arena->free;
   arena->free = arena->free + elem_size*count;
 
-  if(dbg_check_bounds)
+  if(dbg_check_arena_bounds)
     arena_check_bounds(arena);
-  if(dbg_zero_mem)
+  if(zero_mem)
     mem_zero_range(element, arena->free);
   return element;
 }
@@ -126,8 +139,8 @@ mem_push_struct_(MemoryArena* arena, size_t elem_size, size_t count)
 MemoryArena*
 arena_new(int size)
 {
-  MemoryArena* arena = malloc(size + sizeof(MemoryArena));
-  mem_zero_struct(arena, MemoryArena);
+  void* raw_mem = VirtualAlloc(0, size + sizeof(MemoryArena), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+  MemoryArena* arena = raw_mem;
   arena->alloc = (uint8*)arena + sizeof(MemoryArena);
   arena->free = arena->alloc;
   arena->cap = arena->free + size;
@@ -298,11 +311,8 @@ char*
 cstr_copy(char* dest_str, char* src_str)
 {
   do
-  {
     *dest_str++ = *src_str++;
-  }
   while(*src_str);
-
   return dest_str;
 }
 
@@ -314,15 +324,15 @@ cstr_copy_substr(char* dest_str, char* begin_char, char* end_char)
   do
     *dest_str++ = *src_str++;
   while(src_str <= end_char);
-
-  dest_str = 0;
 }
+
+/* TODO: Check arena boundaries in the str_* functions */
 
 void
 str_init(String* str, MemoryArena* arena)
 {
   str->arena = arena;
-  str->head = mem_push_struct(arena, char, 1);
+  str->head = mem_push_struct(arena, char);
   *str->head = '\0';
   str->end = str->head;
 }
@@ -333,12 +343,6 @@ str_len(String* str)
   assert(str->head <= str->end);
   uint len = (uint)(str->end - str->head);
   return len;
-}
-
-void
-str_debug_output(String* str)
-{
-  OutputDebugString(str->head);
 }
 
 void
@@ -358,7 +362,7 @@ str_append(String* str, char* cstr)
   int len = cstr_len(cstr);
   if(len > 0)
   {
-    mem_push_struct(arena, char, len);
+    mem_push_count_nz(arena, char, len); // will implicitly check bounds
     cstr_copy(str->end, cstr);
     str->end = (char*)arena->free-1;
   }
@@ -419,6 +423,14 @@ str_dump_to_file(String* str, char* file_path)
   int char_count = str_len(str);
   int bytes_written = file_write_bytes(file_path, (uint8*)str->head, str_len(str));
   return (char_count == bytes_written);
+}
+
+char*
+str_cap(String* str)
+{
+  *(str->end++) = 0;
+  assert(str->end < (char*)str->arena->cap);
+  return str->head;
 }
 
 char*
@@ -486,7 +498,7 @@ file_read_text(MemoryArena* arena, char* file_path)
     fseek(file, 0, SEEK_END);
     uint32 file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
-    text = (char*)mem_push_size(arena, file_size+1); // + NULL-terminator
+    text = mem_push_count_nz(arena, char, file_size+1); // + NULL-terminator
     fread(text, file_size, 1, file);
     fclose(file);
     text[file_size] = '\0';
@@ -519,7 +531,7 @@ stdin_read(char buf[], int buf_size)
   return (int)bytes_read;
 }
 
-inline void
+void
 list_init(List* list)
 {
   mem_zero_struct(list, List);
@@ -528,7 +540,7 @@ list_init(List* list)
 List*
 list_new(MemoryArena* arena)
 {
-  List* list = mem_push_struct(arena, List, 1);
+  List* list = mem_push_struct(arena, List);
   list_init(list);
   return list;
 }
@@ -549,7 +561,7 @@ list_append_item(List* list, ListItem* item)
 void
 list_append(MemoryArena* arena, List* list, void* elem)
 {
-  ListItem* item = mem_push_struct(arena, ListItem, 1);
+  ListItem* item = mem_push_struct(arena, ListItem);
   item->elem = elem;
   list_append_item(list, item);
 }

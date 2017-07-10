@@ -61,8 +61,9 @@ install_lexeme(char* begin_char, char* end_char)
 
   /* TODO: Search the lexeme, and if found, then return it. */
   size_t len = end_char - begin_char + 1;
-  char* lexeme = mem_push_struct(arena, char, len + 1);
+  char* lexeme = mem_push_count_nz(arena, char, len + 1); // +NULL
   cstr_copy_substr(lexeme, begin_char, end_char);
+  lexeme[len] = 0; // cap the string
   return lexeme;
 }
 
@@ -118,7 +119,7 @@ install_escaped_str(EscapedStr* estr)
 {
   assert(estr->begin <= estr->end);
 
-  char* lexeme = mem_push_struct(arena, char, estr->len+1); /* +NULL */
+  char* lexeme = mem_push_count_nz(arena, char, estr->len+1); /* +NULL */
 
   if(estr->len > 0)
   {
@@ -301,7 +302,7 @@ init_token_stream(TokenStream* stream, char* text, char* file_path)
   /* TODO: Compute the absolute path to the file, so that Vim could properly
      jump from the QuickFix window to the error line in the file. */
   src_loc->file_path = file_path;
-  stream->prev_state = mem_push_struct(arena, TokenStream, 1);
+  stream->prev_state = mem_push_struct(arena, TokenStream);
 }
 
 void
@@ -382,13 +383,13 @@ loop:
     if(is_float)
     {
       token->kind = TokenKind_FloatNum;
-      token->float_val = mem_push_struct(arena, float, 1);
+      token->float_val = mem_push_struct(arena, float);
       sscanf(digit_buf, "%f", token->float_val);
     }
     else
     {
       token->kind = TokenKind_IntNum;
-      token->int_val = mem_push_struct(arena, int, 1);
+      token->int_val = mem_push_struct(arena, int);
       sscanf(digit_buf, "%d", token->int_val);
     }
   }

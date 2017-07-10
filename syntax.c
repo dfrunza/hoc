@@ -11,7 +11,7 @@ is_logical_operator(AstOpKind op)
 internal AstNode*
 new_node(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->src_loc = *src_loc;
   return node;
 }
@@ -19,7 +19,7 @@ new_node(SourceLocation* src_loc)
 internal AstNode*
 new_block(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Block;
   node->src_loc = *src_loc;
   list_init(&node->block.node_list);
@@ -31,7 +31,7 @@ new_block(SourceLocation* src_loc)
 internal AstNode*
 new_module(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Module;
   node->src_loc = *src_loc;
   node->module.body = new_block(src_loc);
@@ -41,7 +41,7 @@ new_module(SourceLocation* src_loc)
 AstNode*
 new_id(SourceLocation* src_loc, char* name)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Id;
   node->src_loc = *src_loc;
   node->id.name = name;
@@ -51,7 +51,7 @@ new_id(SourceLocation* src_loc, char* name)
 internal AstNode*
 new_enum(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Enum;
   list_init(&node->enum_decl.member_list);
   node->src_loc = *src_loc;
@@ -61,7 +61,7 @@ new_enum(SourceLocation* src_loc)
 internal AstNode*
 new_pointer(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Pointer;
   node->src_loc = *src_loc;
   return node;
@@ -70,7 +70,7 @@ new_pointer(SourceLocation* src_loc)
 internal AstNode*
 new_call(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Call;
   list_init(&node->call.actual_args);
   node->src_loc = *src_loc;
@@ -80,7 +80,7 @@ new_call(SourceLocation* src_loc)
 internal AstNode*
 new_array(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Array;
   node->src_loc = *src_loc;
   return node;
@@ -89,7 +89,7 @@ new_array(SourceLocation* src_loc)
 internal AstNode*
 new_proc(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Proc;
   list_init(&node->proc.formal_args);
   node->src_loc = *src_loc;
@@ -99,7 +99,7 @@ new_proc(SourceLocation* src_loc)
 AstNode*
 new_bin_expr(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_BinExpr;
   node->src_loc = *src_loc;
   return node;
@@ -108,7 +108,7 @@ new_bin_expr(SourceLocation* src_loc)
 internal AstNode*
 new_unr_expr(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_UnrExpr;
   node->src_loc = *src_loc;
   return node;
@@ -117,7 +117,7 @@ new_unr_expr(SourceLocation* src_loc)
 internal AstNode*
 new_int_literal(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Literal;
   node->literal.kind = AstLiteralKind_Int;
   node->src_loc = *src_loc;
@@ -127,7 +127,7 @@ new_int_literal(SourceLocation* src_loc)
 internal AstNode*
 new_float_literal(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Literal;
   node->literal.kind = AstLiteralKind_Float;
   node->src_loc = *src_loc;
@@ -137,7 +137,7 @@ new_float_literal(SourceLocation* src_loc)
 internal AstNode*
 new_bool_literal(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Literal;
   node->literal.kind = AstLiteralKind_Bool;
   node->src_loc = *src_loc;
@@ -147,7 +147,7 @@ new_bool_literal(SourceLocation* src_loc)
 internal AstNode*
 new_string_literal(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Literal;
   node->literal.kind = AstLiteralKind_String;
   node->src_loc = *src_loc;
@@ -157,7 +157,7 @@ new_string_literal(SourceLocation* src_loc)
 AstNode*
 new_var_decl(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_VarDecl;
   node->src_loc = *src_loc;
   return node;
@@ -166,7 +166,7 @@ new_var_decl(SourceLocation* src_loc)
 internal AstNode*
 new_while_stmt(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_WhileStmt;
   node->src_loc = *src_loc;
   return node;
@@ -175,7 +175,7 @@ new_while_stmt(SourceLocation* src_loc)
 internal AstNode*
 new_for_stmt(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_ForStmt;
   node->src_loc = *src_loc;
   return node;
@@ -184,7 +184,7 @@ new_for_stmt(SourceLocation* src_loc)
 internal AstNode*
 new_if_stmt(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_IfStmt;
   node->src_loc = *src_loc;
   return node;
@@ -193,7 +193,7 @@ new_if_stmt(SourceLocation* src_loc)
 internal AstNode*
 new_return_stmt(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_ReturnStmt;
   node->src_loc = *src_loc;
   return node;
@@ -202,7 +202,7 @@ new_return_stmt(SourceLocation* src_loc)
 internal AstNode*
 new_goto_stmt(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_GotoStmt;
   node->src_loc = *src_loc;
   return node;
@@ -211,7 +211,7 @@ new_goto_stmt(SourceLocation* src_loc)
 internal AstNode*
 new_label(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Label;
   node->src_loc = *src_loc;
   return node;
@@ -220,7 +220,7 @@ new_label(SourceLocation* src_loc)
 internal AstNode*
 new_continue_stmt(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_ContinueStmt;
   node->src_loc = *src_loc;
   return node;
@@ -229,7 +229,7 @@ new_continue_stmt(SourceLocation* src_loc)
 internal AstNode*
 new_break_stmt(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_BreakStmt;
   node->src_loc = *src_loc;
   return node;
@@ -238,7 +238,7 @@ new_break_stmt(SourceLocation* src_loc)
 internal AstNode*
 new_include_stmt(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_IncludeStmt;
   node->src_loc = *src_loc;
   node->incl_stmt.body = new_block(src_loc);
@@ -248,7 +248,7 @@ new_include_stmt(SourceLocation* src_loc)
 internal AstNode*
 new_union(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Union;
   list_init(&node->union_decl.member_list);
   node->src_loc = *src_loc;
@@ -258,7 +258,7 @@ new_union(SourceLocation* src_loc)
 internal AstNode*
 new_struct(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Struct;
   list_init(&node->struct_decl.member_list);
   node->src_loc = *src_loc;
@@ -268,7 +268,7 @@ new_struct(SourceLocation* src_loc)
 internal AstNode*
 new_initializer(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Initializer;
   list_init(&node->initer.member_list);
   node->src_loc = *src_loc;
@@ -278,7 +278,7 @@ new_initializer(SourceLocation* src_loc)
 internal AstNode*
 new_cast(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Cast;
   node->src_loc = *src_loc;
   return node;
@@ -287,7 +287,7 @@ new_cast(SourceLocation* src_loc)
 internal AstNode*
 new_empty_stmt(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode, 1);
+  AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_EmptyStmt;
   node->src_loc = *src_loc;
   return node;
@@ -1308,13 +1308,13 @@ do_include_stmt(TokenStream* input, AstNode** node)
       path_make_dir(str.head);
       str_tidyup(&str);
       str_append(&str, input->token.str);
-      incl_stmt->file_path = str.head;
+      incl_stmt->file_path = str_cap(&str);
 
       if(!(success = get_next_token(input))) return success;
       char* hoc_text = file_read_text(arena, incl_stmt->file_path);
       if(hoc_text)
       {
-        TokenStream* inc_input = mem_push_struct(arena, TokenStream, 1);
+        TokenStream* inc_input = mem_push_struct(arena, TokenStream);
         init_token_stream(inc_input, hoc_text, incl_stmt->file_path);
 
         if(success = get_next_token(inc_input))

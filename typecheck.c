@@ -14,7 +14,7 @@ Type* basic_type_void;
 Type*
 new_basic_type(BasicTypeKind kind)
 {
-  Type* type = mem_push_struct(arena, Type, 1);
+  Type* type = mem_push_struct(arena, Type);
   type->kind = TypeKind_Basic;
   type->basic.kind = kind;
   return type;
@@ -23,7 +23,7 @@ new_basic_type(BasicTypeKind kind)
 internal Type*
 new_proc_type(Type* args, Type* ret)
 {
-  Type* type = mem_push_struct(arena, Type, 1);
+  Type* type = mem_push_struct(arena, Type);
   type->kind = TypeKind_Proc;
   type->proc.args = args;
   type->proc.ret = ret;
@@ -33,7 +33,7 @@ new_proc_type(Type* args, Type* ret)
 internal Type*
 new_typevar()
 {
-  Type* type = mem_push_struct(arena, Type, 1);
+  Type* type = mem_push_struct(arena, Type);
   type->kind = TypeKind_TypeVar;
   type->typevar.id = typevar_id++;
   return type;
@@ -42,7 +42,7 @@ new_typevar()
 internal Type*
 new_product_type(Type* left, Type* right)
 {
-  Type* type = mem_push_struct(arena, Type, 1);
+  Type* type = mem_push_struct(arena, Type);
   type->kind = TypeKind_Product;
   type->product.left = left;
   type->product.right = right;
@@ -81,7 +81,7 @@ types_are_equal(Type* type_a, Type* type_b)
 internal Type*
 copy_type(Type* type)
 {
-  Type* copy = mem_push_struct(arena, Type, 1);
+  Type* copy = mem_push_struct(arena, Type);
   *copy = *type;
   return copy;
 }
@@ -177,7 +177,7 @@ make_product_type(Type* type_in, ListItem* list_item)
 internal TypePair*
 new_type_pair(Type* key, Type* value)
 {
-  TypePair* pair = mem_push_struct(arena, TypePair, 1);
+  TypePair* pair = mem_push_struct(arena, TypePair);
   pair->key = key;
   pair->value = value;
   return pair;

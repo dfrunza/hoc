@@ -8,15 +8,10 @@ include "hlib\\syntax.hoc";
 include "hlib\\lex.hoc";
 */
 
-var int c;
+var int g;
 
-proc int main(int a, int[] b)
+proc int main()
 {
-  var int* i;
-  i = &c;
-  for(int i; i < 10; i++)
-    a = a + b[i];
-  return a;
+  return 0;
 }
-
 

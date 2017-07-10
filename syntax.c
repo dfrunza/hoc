@@ -1557,39 +1557,45 @@ do_var_decl(TokenStream* input, AstNode** node)
   bool success = true;
 
   AstNode* type = 0;
-  if((success = do_type_expr(input, &type)) && type)
+  if(input->token.kind == TokenKind_Id)
   {
-    if(input->token.kind == TokenKind_Id)
+    if((success = do_type_expr(input, &type)) && type)
     {
-      *node = new_var_decl(&input->src_loc);
-      AstVarDecl* var_decl = &(*node)->var_decl;
-      var_decl->type = type;
-      var_decl->id = new_id(&input->src_loc, input->token.lexeme);
-
-      if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
-         && (success = get_next_token(input)))
+      if(input->token.kind == TokenKind_Id)
       {
-        if(success = do_initializer(input, &var_decl->init_expr))
+        *node = new_var_decl(&input->src_loc);
+        AstVarDecl* var_decl = &(*node)->var_decl;
+        var_decl->type = type;
+        var_decl->id = new_id(&input->src_loc, input->token.lexeme);
+
+        if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
+           && (success = get_next_token(input)))
         {
-          if(!var_decl->init_expr)
+          if(success = do_initializer(input, &var_decl->init_expr))
           {
-            if(success = do_expression(input, &var_decl->init_expr))
+            if(!var_decl->init_expr)
             {
-              if(!var_decl->init_expr)
+              if(success = do_expression(input, &var_decl->init_expr))
               {
-                putback_token(input);
-                success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                        "Expression required, at `%s`", get_token_printstr(&input->token));
+                if(!var_decl->init_expr)
+                {
+                  putback_token(input);
+                  success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                          "Expression required, at `%s`", get_token_printstr(&input->token));
+                }
               }
             }
           }
         }
       }
+      else
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Identifier expected, actual `%s`", get_token_printstr(&input->token));
     }
-    else
-      success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                              "Identifier expected, actual `%s`", get_token_printstr(&input->token));
   }
+  else
+    success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                            "Identifier expected, actual `%s`", get_token_printstr(&input->token));
   return success;
 }
 
@@ -1600,17 +1606,7 @@ do_var_stmt(TokenStream* input, AstNode** node)
   bool success = false;
 
   if(input->token.kind == TokenKind_Var)
-  {
-    if(success = get_next_token(input) && do_var_decl(input, node))
-    {
-      if(!*node)
-      {
-        putback_token(input);
-        success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Variable declaration required, at `%s`", get_token_printstr(&input->token));
-      }
-    }
-  }
+    success = get_next_token(input) && do_var_decl(input, node);
   return success;
 }
 

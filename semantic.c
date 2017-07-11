@@ -9,6 +9,7 @@ extern Type* basic_type_float;
 extern Type* basic_type_void;
 
 internal SymbolTable* symtab = 0;
+internal int last_block_id = 0;
 
 internal bool do_block(AstNode*, AstNode*, AstNode*, AstNode*);
 internal bool do_expression(AstNode*, AstNode*);
@@ -36,7 +37,7 @@ lookup_symbol(char* name, SymbolKind kind)
 {
   Symbol* result = 0;
 
-  Symbol* symbol = symtab->symbol;
+  Symbol* symbol = symtab->curr_symbol;
   while(symbol)
   {
     if(symbol->kind == kind && cstr_match(symbol->name, name))
@@ -44,38 +45,41 @@ lookup_symbol(char* name, SymbolKind kind)
       result = symbol;
       break;
     }
-    symbol = symbol->next_symbol;
+    symbol = symbol->prev_symbol;
   }
   return result;
 }
 
-internal AstBlock*
-get_active_block()
-{
-  return &symtab->active_blocks[symtab->nesting_depth]->block;
-}
-
-internal AstBlock*
+internal AstNode*
 get_module_block()
 {
-  return &symtab->active_blocks[1]->block;
+  return symtab->active_blocks[1];
 }
 
 internal Symbol*
-add_symbol(char* name, AstBlock* block, SymbolKind kind)
+find_last_symbol_in_block(AstNode* block)
+{
+  Symbol* symbol = symtab->curr_symbol;
+  while(symbol && (symbol->block_id > block->block.block_id))
+    symbol = symbol->prev_symbol;
+  return symbol;
+}
+
+internal Symbol*
+add_symbol(char* name, AstNode* block, SymbolKind kind)
 {
   Symbol* symbol = mem_push_struct(arena, Symbol);
   symbol->kind = kind;
   symbol->name = name;
 #if 0
-  symbol->block_id = symtab->scope_id;
+  symbol->block_id = symtab->block_id;
   symbol->nesting_depth = symtab->nesting_depth;
 #else
-  symbol->block_id = block->block_id;
-  symbol->nesting_depth = block->nesting_depth;
+  symbol->block_id = block->block.block_id;
+  symbol->nesting_depth = block->block.nesting_depth;
 #endif
-  symbol->next_symbol = symtab->symbol;
-  symtab->symbol = symbol;
+  symbol->prev_symbol = symtab->curr_symbol;
+  symtab->curr_symbol = symbol;
   return symbol;
 }
 
@@ -117,14 +121,14 @@ register_new_id(AstNode* id, SymbolKind symkind)
 {
   assert(id->kind == AstNodeKind_Id);
   Symbol* sym = lookup_symbol(id->id.name, symkind);
-  if(sym && (sym->block_id == symtab->scope_id))
+  if(sym && (sym->block_id == symtab->curr_block->block.block_id))
   {
     compile_error(&id->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`...", id->id.name);
     compile_error(&id->src_loc, __FILE__, __LINE__, "...see previous declaration of `%s`", id->id.name);
     return 0;
   }
   else
-    sym = add_symbol(id->id.name, get_active_block(), symkind);
+    sym = add_symbol(id->id.name, symtab->curr_block, symkind);
   return sym;
 }
 
@@ -139,27 +143,23 @@ register_proc(AstNode* id)
 }
 
 internal bool
-scope_begin(AstNode* node)
+scope_begin(AstNode* block)
 {
-  assert(node->kind == AstNodeKind_Block);
-  AstBlock* block = &node->block;
+  assert(block->kind == AstNodeKind_Block);
+  block->block.block_id = ++last_block_id;
+  block->block.encl_block = symtab->curr_block;
 
-  int scope_id = ++symtab->last_scope_id;
-  symtab->scope_id = scope_id;
-  block->block_id = scope_id;
-  block->encl_block = symtab->active_blocks[symtab->nesting_depth];
-
-  int nesting_depth = ++symtab->nesting_depth;
-  if(nesting_depth < sizeof_array(symtab->active_scopes))
+  ++symtab->nesting_depth;
+  if(symtab->nesting_depth < sizeof_array(symtab->active_blocks))
   {
-    symtab->active_scopes[nesting_depth] = scope_id;
-    symtab->active_blocks[nesting_depth] = node;
-    block->nesting_depth = nesting_depth;
+    block->block.nesting_depth = symtab->nesting_depth;
+    symtab->active_blocks[symtab->nesting_depth] = block;
+    symtab->curr_block = block;
   }
   else
   {
-    compile_error(&node->src_loc, __FILE__, __LINE__,
-                  "Maximum scope nesting depth has been reached: %d", sizeof_array(symtab->active_scopes));
+    compile_error(&block->src_loc, __FILE__, __LINE__,
+                  "Maximum scope nesting depth has been reached: %d", sizeof_array(symtab->active_blocks));
     return false;
   }
 
@@ -169,15 +169,25 @@ scope_begin(AstNode* node)
 internal void
 scope_end()
 {
-  int nesting_depth = --symtab->nesting_depth;
-  int scope_id = symtab->active_scopes[nesting_depth];
-  assert(scope_id >= 0);
-  symtab->scope_id = scope_id;
+  assert(symtab->curr_block == symtab->active_blocks[symtab->nesting_depth]);
 
-  Symbol* symbol = symtab->symbol;
-  while(symbol && symbol->block_id > symtab->scope_id)
-    symbol = symbol->next_symbol;
-  symtab->symbol = symbol;
+  --symtab->nesting_depth;
+  if(symtab->nesting_depth > 0)
+  {
+    AstNode* block = symtab->active_blocks[symtab->nesting_depth];
+    assert(block->kind == AstNodeKind_Block);
+    assert(block->block.block_id > 0);
+    symtab->curr_block = block;
+
+#if 0
+    Symbol* symbol = symtab->symbol;
+    while(symbol && symbol->block_id > symtab->block_id)
+      symbol = symbol->prev_symbol;
+#endif
+    symtab->curr_symbol = find_last_symbol_in_block(symtab->curr_block);
+  }
+  else
+    assert(symtab->nesting_depth == 0);
 }
 
 internal void

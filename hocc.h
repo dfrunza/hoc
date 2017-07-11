@@ -583,7 +583,7 @@ SymbolKind;
 typedef struct Symbol
 {
   SymbolKind kind;
-  Symbol* next_symbol;
+  Symbol* prev_symbol;
 
   char* name;
   int block_id;
@@ -591,24 +591,15 @@ typedef struct Symbol
 
   AstNode* node;
   Type* type;
-
-  /*
-  struct {
-    Type* ret_type;
-    Type* args_type;
-  } proc;
-  */
 }
 Symbol;
 
-#define MAX_SCOPE_NESTING_DEPTH 32
+#define MAX_SCOPE_NESTING_DEPTH 100
 typedef struct
 {
-  Symbol* symbol;
-  int scope_id;
-  int last_scope_id;
+  Symbol* curr_symbol;
+  AstNode* curr_block;
   int nesting_depth;
-  int active_scopes[MAX_SCOPE_NESTING_DEPTH];
   AstNode* active_blocks[MAX_SCOPE_NESTING_DEPTH];
 }
 SymbolTable;

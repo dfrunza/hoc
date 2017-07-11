@@ -9,7 +9,7 @@ assert_f(char* expr, char* file, int line)
 {
   if(dbg_assert)
   {
-    fprintf(stderr, "Assertion fired %s\n", expr);
+    fprintf(stderr, "Assertion fired (%s)\n", expr);
     fprintf(stderr, "%s:%d\n", file, line);
     fflush(stderr);
     *(int*)0 = 0;

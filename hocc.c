@@ -31,12 +31,23 @@ typedef struct
 }
 VmProgram;
 
-#define ARENA_SIZE (2*MEGABYTE)
-#define DBG_ARENA_SIZE (ARENA_SIZE/2)
+#define ARENA_SIZE (3*MEGABYTE)
+#define DBG_ARENA_SIZE (ARENA_SIZE/3)
+#define SYM_ARENA_SIZE (ARENA_SIZE/20)
 
 internal bool debug_enabled = true;
 MemoryArena* arena = 0;
 MemoryArena* dbg_arena = 0;
+MemoryArena* sym_arena = 0;
+
+void
+DEBUG_print_arena_usage(char* tag)
+{
+  ArenaUsage usage = arena_usage(arena);
+  ArenaUsage sym_usage = arena_usage(sym_arena);
+  printf("arena in_use: %.2f%% -- %s\n", usage.in_use*100, tag);
+  printf("sym_arena in_use: %.2f%% -- %s\n", sym_usage.in_use*100, tag);
+}
 
 bool
 compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...)
@@ -144,7 +155,7 @@ translate(char* file_path, char* hoc_text)
   {
     if(debug_enabled)
     {
-      DEBUG_arena_print_occupancy("Post syntactic analysis", arena);
+      DEBUG_print_arena_usage("Post syntactic analysis");
 
       String str = {0};
       str_init(&str, dbg_arena);
@@ -157,7 +168,7 @@ translate(char* file_path, char* hoc_text)
     {
       if(debug_enabled)
       {
-        DEBUG_arena_print_occupancy("Post semantic analysis", arena);
+        DEBUG_print_arena_usage("Post semantic analysis");
 
         String str = {0};
         str_init(&str, dbg_arena);
@@ -299,12 +310,13 @@ main(int argc, char* argv[])
     if(debug_enabled)
     {
       dbg_arena = arena_push(arena, DBG_ARENA_SIZE);
+      sym_arena = arena_push(arena, SYM_ARENA_SIZE);
       DEBUG_print_sizeof_ast_structs();
     }
 
     char* file_path = argv[1];
     char* hoc_text = file_read_text(arena, file_path);
-    DEBUG_arena_print_occupancy("Read HoC text", arena);
+    DEBUG_print_arena_usage("Read HoC text");
 
     if(hoc_text)
     {

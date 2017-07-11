@@ -1,6 +1,7 @@
 #include "hocc.h"
 
 extern MemoryArena* arena;
+extern MemoryArena* sym_arena;
 
 extern Type* basic_type_bool;
 extern Type* basic_type_int;
@@ -66,20 +67,16 @@ find_last_symbol_in_block(AstNode* block)
 }
 
 internal Symbol*
-add_symbol(char* name, AstNode* block, SymbolKind kind)
+add_symbol(char* name, SymbolKind kind)
 {
-  Symbol* symbol = mem_push_struct(arena, Symbol);
+  Symbol* symbol = mem_push_struct(sym_arena, Symbol);
   symbol->kind = kind;
   symbol->name = name;
-#if 0
   symbol->block_id = symtab->block_id;
   symbol->nesting_depth = symtab->nesting_depth;
-#else
-  symbol->block_id = block->block.block_id;
-  symbol->nesting_depth = block->block.nesting_depth;
-#endif
   symbol->prev_symbol = symtab->curr_symbol;
   symtab->curr_symbol = symbol;
+  symtab->sym_count++;
   return symbol;
 }
 
@@ -87,7 +84,7 @@ internal Symbol*
 add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == TypeKind_Basic);
-  Symbol* symbol = add_symbol(name, get_module_block(), SymbolKind_Type);
+  Symbol* symbol = add_symbol(name, SymbolKind_Type);
   symbol->type = type;
   return symbol;
 }
@@ -109,7 +106,7 @@ register_type_sym(AstNode* id)
   Symbol* sym = lookup_symbol(id->id.name, SymbolKind_Type);
   if(!sym)
   {
-    sym = add_symbol(id->id.name, get_module_block(), SymbolKind_Type);
+    sym = add_symbol(id->id.name, SymbolKind_Type);
     sym->type = new_typevar();
   }
   id->type = sym->type;
@@ -121,14 +118,14 @@ register_new_id(AstNode* id, SymbolKind symkind)
 {
   assert(id->kind == AstNodeKind_Id);
   Symbol* sym = lookup_symbol(id->id.name, symkind);
-  if(sym && (sym->block_id == symtab->curr_block->block.block_id))
+  if(sym && (sym->block_id == symtab->block_id))
   {
     compile_error(&id->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`...", id->id.name);
     compile_error(&id->src_loc, __FILE__, __LINE__, "...see previous declaration of `%s`", id->id.name);
     return 0;
   }
   else
-    sym = add_symbol(id->id.name, symtab->curr_block, symkind);
+    sym = add_symbol(id->id.name, symkind);
   return sym;
 }
 
@@ -138,7 +135,7 @@ register_proc(AstNode* id)
   assert(id->kind == AstNodeKind_Id);
   Symbol* sym = lookup_symbol(id->id.name, SymbolKind_Proc);
   if(!sym)
-    sym = add_symbol(id->id.name, get_module_block(), SymbolKind_Proc);
+    sym = add_symbol(id->id.name, SymbolKind_Proc);
   return sym;
 }
 
@@ -146,7 +143,8 @@ internal bool
 scope_begin(AstNode* block)
 {
   assert(block->kind == AstNodeKind_Block);
-  block->block.block_id = ++last_block_id;
+  symtab->block_id =++last_block_id; 
+  block->block.block_id = symtab->block_id;
   block->block.encl_block = symtab->curr_block;
 
   ++symtab->nesting_depth;
@@ -179,12 +177,13 @@ scope_end()
     assert(block->block.block_id > 0);
     symtab->curr_block = block;
 
-#if 0
-    Symbol* symbol = symtab->symbol;
-    while(symbol && symbol->block_id > symtab->block_id)
+#if 1
+    Symbol* symbol = symtab->curr_symbol;
+    while(symbol && (symbol->block_id > symtab->block_id))
       symbol = symbol->prev_symbol;
-#endif
+#else
     symtab->curr_symbol = find_last_symbol_in_block(symtab->curr_block);
+#endif
   }
   else
     assert(symtab->nesting_depth == 0);
@@ -222,7 +221,7 @@ do_var_decl(AstNode* block, AstNode* var)
   Symbol* sym = register_new_id(id, SymbolKind_Var);
   if(success = to_bool(sym))
   {
-    sym->node = id;
+    sym->node = var;
     var->var_decl.decl_block = block;
     list_append(arena, &block->block.decl_vars, var);
     if(var->var_decl.init_expr)
@@ -283,7 +282,7 @@ do_expression(AstNode* block, AstNode* expr_node)
   { /* nothing to do */ }
   else if(expr_node->kind == AstNodeKind_Call)
   {
-#if 0
+#if 1
     printf("TODO: %s():%d\n", expr_node->call.id->id.name, expr_node->src_loc.line_nr);
 #else
     assert(!"Not implemented");
@@ -374,7 +373,7 @@ do_procedure(AstNode* proc)
         Symbol* type_sym = lookup_symbol(ret_type->id.name, SymbolKind_Type);
         if(!type_sym)
         {
-          type_sym = add_symbol(ret_type->id.name, get_module_block(), SymbolKind_Type);
+          type_sym = add_symbol(ret_type->id.name, SymbolKind_Type);
           type_sym->type = new_typevar();
         }
         if(ret_type->type)
@@ -386,6 +385,7 @@ do_procedure(AstNode* proc)
            && do_proc_ret_var(proc->proc.body, proc))
         {
           proc->type = new_proc_type(make_type_of_node_list(&proc->proc.formal_args), proc->proc.ret_var->type);
+          proc_sym->type = proc->type;
           success = do_block(proc, 0, proc, proc->proc.body);
         }
         scope_end();
@@ -532,6 +532,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   }
   else if(stmt->kind == AstNodeKind_Call)
   {
+#if 0
     AstNode* id = stmt->call.id;
     Symbol* proc_sym = lookup_symbol(id->id.name, SymbolKind_Proc);
     if(proc_sym)
@@ -546,6 +547,9 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
     else
       assert(false);
     assert(stmt->type);
+#else
+    printf("TODO: %s():%d\n", stmt->call.id->id.name, stmt->src_loc.line_nr);
+#endif
   }
   else if(stmt->kind == AstNodeKind_GotoStmt
           || stmt->kind == AstNodeKind_Label)

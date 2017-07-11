@@ -46,11 +46,19 @@ typedef struct MemoryArena
 }
 MemoryArena;
 
+typedef struct
+{
+  size_t total_avail;
+  double in_use;
+}
+ArenaUsage;
+
 MemoryArena* arena_new(int size);
 MemoryArena* arena_pop(MemoryArena* arena);
 MemoryArena* arena_push(MemoryArena* arena, size_t size);
 void arena_free(MemoryArena* arena);
 void arena_reset(MemoryArena* arena);
+ArenaUsage arena_usage(MemoryArena* arena);
 #define mem_push_struct(ARENA, TYPE)\
   ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), 1, true))
 #define mem_push_count(ARENA, TYPE, COUNT)\
@@ -61,7 +69,6 @@ void arena_reset(MemoryArena* arena);
   (mem_zero_f(VAR, sizeof(TYPE)))
 void mem_zero_f(void* mem, size_t len);
 void* mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_mem);
-void DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena);
 
 bool char_is_letter(char ch);
 bool char_is_numeric(char c);

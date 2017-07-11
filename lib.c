@@ -149,13 +149,6 @@ arena_new(int size)
   return arena;
 }
 
-typedef struct
-{
-  size_t total_avail;
-  double in_use;
-}
-ArenaUsage;
-
 ArenaUsage
 arena_usage(MemoryArena* arena)
 {
@@ -168,13 +161,6 @@ arena_usage(MemoryArena* arena)
   usage.total_avail = arena->cap - base;
   usage.in_use = (arena->free - base) / (double)usage.total_avail;
   return usage;
-}
-
-void
-DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena)
-{
-  ArenaUsage usage = arena_usage(arena);
-  printf("in_use: %.2f%% -- %s\n", usage.in_use*100, tag);
 }
 
 bool

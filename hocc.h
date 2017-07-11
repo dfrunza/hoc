@@ -599,8 +599,10 @@ typedef struct
 {
   Symbol* curr_symbol;
   AstNode* curr_block;
+  int block_id;
   int nesting_depth;
   AstNode* active_blocks[MAX_SCOPE_NESTING_DEPTH];
+  int sym_count;
 }
 SymbolTable;
 
@@ -610,6 +612,7 @@ void putback_token(TokenStream* input);
 void init_token_stream(TokenStream* token_stream, char* text, char* file_path);
 bool parse(TokenStream* input, AstNode** node);
 void DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag);
+void DEBUG_print_arena_usage(char* tag);
 void init_types();
 bool semantic_analysis(AstNode* ast);
 void print_char(char buf[3], char raw_char);

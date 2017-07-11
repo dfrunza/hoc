@@ -10,6 +10,9 @@ extern Type* basic_type_void;
 
 internal SymbolTable* symtab = 0;
 
+internal bool do_block(AstNode*, AstNode*, AstNode*, AstNode*);
+internal bool do_expression(AstNode*, AstNode*);
+
 internal AstNode*
 new_var_occur(SourceLocation* src_loc)
 {
@@ -46,20 +49,31 @@ lookup_symbol(char* name, SymbolKind kind)
   return result;
 }
 
-internal AstNode*
+internal AstBlock*
 get_active_block()
 {
-  return symtab->active_blocks[symtab->nesting_depth];
+  return &symtab->active_blocks[symtab->nesting_depth]->block;
+}
+
+internal AstBlock*
+get_module_block()
+{
+  return &symtab->active_blocks[1]->block;
 }
 
 internal Symbol*
-add_symbol(char* name, SymbolKind kind)
+add_symbol(char* name, AstBlock* block, SymbolKind kind)
 {
   Symbol* symbol = mem_push_struct(arena, Symbol);
   symbol->kind = kind;
   symbol->name = name;
+#if 0
   symbol->block_id = symtab->scope_id;
   symbol->nesting_depth = symtab->nesting_depth;
+#else
+  symbol->block_id = block->block_id;
+  symbol->nesting_depth = block->nesting_depth;
+#endif
   symbol->next_symbol = symtab->symbol;
   symtab->symbol = symbol;
   return symbol;
@@ -69,13 +83,13 @@ internal Symbol*
 add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == TypeKind_Basic);
-  Symbol* symbol = add_symbol(name, SymbolKind_Type);
+  Symbol* symbol = add_symbol(name, get_module_block(), SymbolKind_Type);
   symbol->type = type;
   return symbol;
 }
 
 internal void
-register_builtin_ids()
+register_builtin_types()
 {
   add_builtin_type("bool", basic_type_bool);
   add_builtin_type("int", basic_type_int);
@@ -84,22 +98,44 @@ register_builtin_ids()
   add_builtin_type("void", basic_type_void);
 }
 
-internal bool
-register_new_id(char* name, AstNode* node, SymbolKind symkind)
+internal Symbol*
+register_type_sym(AstNode* id)
 {
-  Symbol* id_sym = lookup_symbol(name, symkind);
-  if(id_sym && (id_sym->block_id == symtab->scope_id))
+  assert(id->kind == AstNodeKind_Id);
+  Symbol* sym = lookup_symbol(id->id.name, SymbolKind_Type);
+  if(!sym)
   {
-    compile_error(&node->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`...", name);
-    compile_error(&id_sym->node->src_loc, __FILE__, __LINE__, "...see previous declaration of `%s`", name);
-    return false;
+    sym = add_symbol(id->id.name, get_module_block(), SymbolKind_Type);
+    sym->type = new_typevar();
+  }
+  id->type = sym->type;
+  return sym;
+}
+
+internal Symbol*
+register_new_id(AstNode* id, SymbolKind symkind)
+{
+  assert(id->kind == AstNodeKind_Id);
+  Symbol* sym = lookup_symbol(id->id.name, symkind);
+  if(sym && (sym->block_id == symtab->scope_id))
+  {
+    compile_error(&id->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`...", id->id.name);
+    compile_error(&id->src_loc, __FILE__, __LINE__, "...see previous declaration of `%s`", id->id.name);
+    return 0;
   }
   else
-  {
-    id_sym = add_symbol(name, symkind);
-    id_sym->node = node;
-  }
-  return true;
+    sym = add_symbol(id->id.name, get_active_block(), symkind);
+  return sym;
+}
+
+internal Symbol*
+register_proc(AstNode* id)
+{
+  assert(id->kind == AstNodeKind_Id);
+  Symbol* sym = lookup_symbol(id->id.name, SymbolKind_Proc);
+  if(!sym)
+    sym = add_symbol(id->id.name, get_module_block(), SymbolKind_Proc);
+  return sym;
 }
 
 internal bool
@@ -144,9 +180,6 @@ scope_end()
   symtab->symbol = symbol;
 }
 
-internal bool do_block(AstNode*, AstNode*, AstNode*, AstNode*);
-internal bool do_expression(AstNode*, AstNode*);
-
 internal void
 do_include_stmt(List* include_list, List* module_list, ListItem* module_list_item)
 {
@@ -174,19 +207,21 @@ do_var_decl(AstNode* block, AstNode* var)
   assert(var->kind == AstNodeKind_VarDecl);
   bool success = true;
 
-  AstVarDecl* var_decl = &var->var_decl;
-  AstId* id = &var_decl->id->id;
-  if(success = register_new_id(id->name, var, SymbolKind_Var))
+  var->type = register_type_sym(var->var_decl.type)->type;
+  AstNode* id = var->var_decl.id;
+  Symbol* sym = register_new_id(id, SymbolKind_Var);
+  if(success = to_bool(sym))
   {
-    var_decl->decl_block = block;
+    sym->node = id;
+    var->var_decl.decl_block = block;
     list_append(arena, &block->block.decl_vars, var);
-    if(var_decl->init_expr)
+    if(var->var_decl.init_expr)
     {
       AstNode* assign_node = new_bin_expr(&var->src_loc);
       AstBinExpr* bin_expr = &assign_node->bin_expr;
       bin_expr->op = AstOpKind_Assign;
-      bin_expr->lhs = new_id(&var->src_loc, id->name);;
-      bin_expr->rhs = var_decl->init_expr;
+      bin_expr->lhs = new_id(&var->src_loc, id->id.name);;
+      bin_expr->rhs = var->var_decl.init_expr;
 
       if(success = do_expression(block, assign_node))
         list_append(arena, &block->block.stmts, assign_node);
@@ -208,14 +243,14 @@ do_expression(AstNode* block, AstNode* expr_node)
     success = do_expression(block, expr_node->unr_expr.operand);
   else if(expr_node->kind == AstNodeKind_Id)
   {
-    Symbol* id_sym = lookup_symbol(expr_node->id.name, SymbolKind_Var);
-    if(id_sym)
+    Symbol* sym = lookup_symbol(expr_node->id.name, SymbolKind_Var);
+    if(sym)
     {
-      AstNode* decl_node = id_sym->node;
+      AstNode* decl_node = sym->node;
       assert(decl_node->kind == AstNodeKind_VarDecl); // ...I think
       // transmute operand to VarOccur
       expr_node->kind = AstNodeKind_VarOccur;
-      expr_node->var_occur.name = id_sym->name;
+      expr_node->var_occur.name = sym->name;
       expr_node->var_occur.var_decl = decl_node;
 
       AstVarDecl* var_decl = &decl_node->var_decl;
@@ -238,7 +273,7 @@ do_expression(AstNode* block, AstNode* expr_node)
   { /* nothing to do */ }
   else if(expr_node->kind == AstNodeKind_Call)
   {
-#if 1
+#if 0
     printf("TODO: %s():%d\n", expr_node->call.id->id.name, expr_node->src_loc.line_nr);
 #else
     assert(!"Not implemented");
@@ -287,8 +322,28 @@ do_proc_ret_var(AstNode* block, AstNode* proc)
   proc->proc.ret_var = new_var_decl(&proc->src_loc);
   AstNode* var_decl = proc->proc.ret_var;
   var_decl->var_decl.id = make_ret_var_id(&proc->src_loc, proc->proc.id->id.name);
+  var_decl->var_decl.type = proc->proc.ret_type;
   success = do_var_decl(block, proc->proc.ret_var);
   return success;
+}
+
+internal Type*
+make_type_of_node_list(List* node_list)
+{
+  Type* type = basic_type_void;
+  ListItem* first_item = node_list->first;
+  if(first_item)
+  {
+    type = ((AstNode*)first_item->elem)->type;
+    for(ListItem* list_item = first_item->next;
+        list_item;
+        list_item = list_item->next)
+    {
+      AstNode* node = list_item->elem;
+      type = new_product_type(type, node->type);
+    }
+  }
+  return type;
 }
 
 internal bool
@@ -297,18 +352,37 @@ do_procedure(AstNode* proc)
   assert(proc->kind == AstNodeKind_Proc);
   bool success = true;
 
-  if(success = register_new_id(proc->proc.id->id.name, proc, SymbolKind_Proc))
+  Symbol* proc_sym = register_new_id(proc->proc.id, SymbolKind_Proc);
+  if(success = to_bool(proc_sym))
   {
+    proc_sym->node = proc;
     if(proc->proc.body)
     {
       if(success = scope_begin(proc->proc.body))
       {
-        success = do_proc_formal_args(proc->proc.body, &proc->proc.formal_args)
-          && do_proc_ret_var(proc->proc.body, proc)
-          && do_block(proc, 0, proc, proc->proc.body);
+        AstNode* ret_type = proc->proc.ret_type;
+        Symbol* type_sym = lookup_symbol(ret_type->id.name, SymbolKind_Type);
+        if(!type_sym)
+        {
+          type_sym = add_symbol(ret_type->id.name, get_module_block(), SymbolKind_Type);
+          type_sym->type = new_typevar();
+        }
+        if(ret_type->type)
+          type_unification(ret_type->type, type_sym->type);
+        else
+          ret_type->type = type_sym->type;
+
+        if(success = do_proc_formal_args(proc->proc.body, &proc->proc.formal_args)
+           && do_proc_ret_var(proc->proc.body, proc))
+        {
+          proc->type = new_proc_type(make_type_of_node_list(&proc->proc.formal_args), proc->proc.ret_var->type);
+          success = do_block(proc, 0, proc, proc->proc.body);
+        }
         scope_end();
       }
     }
+    else
+      assert(!"not implemented : proc without body");
   }
 
   return success;
@@ -446,9 +520,25 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       success = compile_error(&stmt->src_loc, __FILE__, __LINE__,
                               "Unexpected `%s` at this location", get_ast_kind_printstr(stmt->kind));
   }
+  else if(stmt->kind == AstNodeKind_Call)
+  {
+    AstNode* id = stmt->call.id;
+    Symbol* proc_sym = lookup_symbol(id->id.name, SymbolKind_Proc);
+    if(proc_sym)
+      stmt->type = proc_sym->type;
+    else if(proc_sym = register_proc(id))
+    {
+      assert(!proc_sym->node);
+      if(!proc_sym->type)
+        proc_sym->type = new_proc_type(make_type_of_node_list(&stmt->call.args), new_typevar());
+      stmt->type = proc_sym->type;
+    }
+    else
+      assert(false);
+    assert(stmt->type);
+  }
   else if(stmt->kind == AstNodeKind_GotoStmt
-          || stmt->kind == AstNodeKind_Label
-          || stmt->kind == AstNodeKind_Call)
+          || stmt->kind == AstNodeKind_Label)
   {
     assert(!"Not implemented");
   }
@@ -465,7 +555,7 @@ do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
   assert(block->kind == AstNodeKind_Block);
   bool success = true;
 
-  block->block.owner = owner;
+  //block->block.owner = owner;
 
   if(owner && (owner->kind == AstNodeKind_Module))
   {
@@ -533,7 +623,12 @@ do_module(AstNode* module)
     }
   }
 
-  success = do_block(0, 0, module, module->module.body);
+  if(success = scope_begin(module->module.body))
+  {
+    register_builtin_types();
+    success = do_block(0, 0, module, module->module.body);
+    scope_end();
+  }
   return success;
 }
 
@@ -543,7 +638,6 @@ semantic_analysis(AstNode* node)
   init_types();
 
   symtab = mem_push_struct(arena, SymbolTable);
-  register_builtin_ids(symtab);
 
   bool success = true;
   assert(node->kind == AstNodeKind_Module);

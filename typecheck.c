@@ -11,7 +11,7 @@ Type* basic_type_char;
 Type* basic_type_float;
 Type* basic_type_void;
 
-Type*
+internal Type*
 new_basic_type(BasicTypeKind kind)
 {
   Type* type = mem_push_struct(arena, Type);
@@ -20,7 +20,7 @@ new_basic_type(BasicTypeKind kind)
   return type;
 }
 
-internal Type*
+Type*
 new_proc_type(Type* args, Type* ret)
 {
   Type* type = mem_push_struct(arena, Type);
@@ -30,7 +30,7 @@ new_proc_type(Type* args, Type* ret)
   return type;
 }
 
-internal Type*
+Type*
 new_typevar()
 {
   Type* type = mem_push_struct(arena, Type);
@@ -39,7 +39,7 @@ new_typevar()
   return type;
 }
 
-internal Type*
+Type*
 new_product_type(Type* left, Type* right)
 {
   Type* type = mem_push_struct(arena, Type);
@@ -66,14 +66,12 @@ types_are_equal(Type* type_a, Type* type_b)
 {
   bool are_equal = false;
 
-  if(type_a->kind != TypeKind_TypeVar &&
-     type_b->kind == type_a->kind)
+  if((type_a->kind != TypeKind_TypeVar) && (type_b->kind == type_a->kind))
   {
     if(type_a->kind == TypeKind_Basic)
-    {
       are_equal = (type_a->basic.kind == type_b->basic.kind);
-    }
-    else assert(false);
+    else
+      assert(false);
   }
   return are_equal;
 }
@@ -102,24 +100,19 @@ internal void
 set_union(Type* type_a, Type* type_b)
 {
   if(type_a->kind == TypeKind_TypeVar)
-  {
     type_a->repr_type = type_b;
-  }
   else
-  {
     type_b->repr_type = type_a;
-  }
 }
 
-internal bool
-unification(Type* type_a, Type* type_b)
+bool
+type_unification(Type* type_a, Type* type_b)
 {
   bool success = false;
   Type* repr_type_a = find_set_representative(type_a);
   Type* repr_type_b = find_set_representative(type_b);
 
-  if(repr_type_a->kind == TypeKind_TypeVar ||
-     repr_type_b->kind == TypeKind_TypeVar)
+  if(repr_type_a->kind == TypeKind_TypeVar || repr_type_b->kind == TypeKind_TypeVar)
   {
     set_union(repr_type_a, repr_type_b);
     success = true;
@@ -127,31 +120,21 @@ unification(Type* type_a, Type* type_b)
   else if(repr_type_a->kind == repr_type_b->kind)
   {
     if(repr_type_a == repr_type_b)
-    {
       success = true;
-    }
     else if(repr_type_a->kind == TypeKind_Basic)
-    {
       success = (repr_type_a->basic.kind == repr_type_b->basic.kind);
-    }
     else
     {
       set_union(repr_type_a, repr_type_b);
 
       if(repr_type_a->kind == TypeKind_Proc)
-      {
-        success = unification(repr_type_a->proc.args, repr_type_b->proc.args) &&
-          unification(repr_type_a->proc.ret, repr_type_b->proc.ret);
-      }
+        success = type_unification(repr_type_a->proc.args, repr_type_b->proc.args)
+          && type_unification(repr_type_a->proc.ret, repr_type_b->proc.ret);
       else if(repr_type_a->kind == TypeKind_Product)
-      {
-        success = unification(repr_type_a->product.left, repr_type_b->product.left) &&
-          unification(repr_type_a->product.right, repr_type_b->product.right);
-      }
+        success = type_unification(repr_type_a->product.left, repr_type_b->product.left)
+          && type_unification(repr_type_a->product.right, repr_type_b->product.right);
       else if(repr_type_a->kind == TypeKind_Pointer)
-      {
-        success = unification(repr_type_a->ptr.pointee, repr_type_b->ptr.pointee);
-      }
+        success = type_unification(repr_type_a->ptr.pointee, repr_type_b->ptr.pointee);
     }
   }
 
@@ -256,7 +239,7 @@ typecheck_expr(List* subst_list, AstNode* expr_node, Type** type)
   else if(expr_node->kind == AstNodeKind_VarOccur)
   {
     AstNode* var_decl_node = expr_node->var_occur.var_decl;
-    if(success = unification(expr_node->type, var_decl_node->type))
+    if(success = type_unification(expr_node->type, var_decl_node->type))
     {
       result = substitution(subst_list, expr_node->type);
     }
@@ -274,16 +257,16 @@ typecheck_expr(List* subst_list, AstNode* expr_node, Type** type)
     if(success = typecheck_expr(subst_list, left_operand, &left_type) &&
        typecheck_expr(subst_list, right_operand, &right_type))
     {
-      if(success = unification(left_type, right_type))
+      if(success = type_unification(left_type, right_type))
       {
         if(is_logical_operator(bin_expr->op))
         {
-          if(!(success = unification(expr_node->type, basic_type_bool)))
+          if(!(success = type_unification(expr_node->type, basic_type_bool)))
             compile_error(&expr_node->src_loc, "Type error: bool");
         }
         else
         {
-          if(!(success = unification(expr_node->type, left_type)))
+          if(!(success = type_unification(expr_node->type, left_type)))
             compile_error(&expr_node->src_loc, "Type error: bin expr");
         }
 
@@ -304,12 +287,12 @@ typecheck_expr(List* subst_list, AstNode* expr_node, Type** type)
     {
       if(unr_expr->op == AstOpKind_LogicNot)
       {
-        if(!(success = unification(expr_node->type, basic_type_bool)))
+        if(!(success = type_unification(expr_node->type, basic_type_bool)))
           compile_error(&expr_node->src_loc, "Type error: bool");
       }
       else
       {
-        if(!(success = unification(expr_node->type, operand_type)))
+        if(!(success = type_unification(expr_node->type, operand_type)))
           compile_error(&expr_node->src_loc, "Type error: unr expr");
       }
 
@@ -334,7 +317,7 @@ typecheck_expr(List* subst_list, AstNode* expr_node, Type** type)
       {
         AstNode* arg_node = list_item->elem;
         success = typecheck_expr(subst_list, arg_node, &arg_type) &&
-          unification(arg_node->type, arg_type);
+          type_unification(arg_node->type, arg_type);
       }
     }
 
@@ -354,8 +337,8 @@ typecheck_expr(List* subst_list, AstNode* expr_node, Type** type)
         assert(false);
 
       Type* proc_type = new_proc_type(args_type, proc->ret_type);
-      if(success = unification(proc_type, call->proc->type) &&
-         unification(expr_node->type, proc->ret_type))
+      if(success = type_unification(proc_type, call->proc->type) &&
+         type_unification(expr_node->type, proc->ret_type))
       {
         result = substitution(subst_list, expr_node->type);
       }
@@ -414,26 +397,26 @@ typecheck_stmt(List* subst_list, AstNode* stmt_node)
     if(ret_stmt->ret_expr)
     {
       success = typecheck_expr(subst_list, ret_stmt->ret_expr, &ret_type) &&
-        unification(ret_type, ret_stmt->proc->ret_type);
+        type_unification(ret_type, ret_stmt->proc->ret_type);
       if(!success)
         compile_error(&stmt_node->src_loc, "Type error: return stmt");
     }
     if(success)
     {
-      success = unification(stmt_node->type, ret_type);
+      success = type_unification(stmt_node->type, ret_type);
       if(!success)
         compile_error(&stmt_node->src_loc, "Type error: return stmt");
     }
   }
   else if(stmt_node->kind == AstNodeKind_VarDecl)
   {
-    if(!(success = unification(stmt_node->type, stmt_node->var_decl.var_type)))
+    if(!(success = type_unification(stmt_node->type, stmt_node->var_decl.var_type)))
       compile_error(&stmt_node->src_loc, "Type error: %s", stmt_node->var_decl.name);
   }
   else if(stmt_node->kind == AstNodeKind_VarOccur)
   {
     AstNode* var_decl_node = stmt_node->var_occur.var_decl;
-    if(!(success = unification(stmt_node->type, var_decl_node->var_decl.var_type)))
+    if(!(success = type_unification(stmt_node->type, var_decl_node->var_decl.var_type)))
       compile_error(&stmt_node->src_loc, "Type error: %s", stmt_node->var_occur.name);
   }
   else if(stmt_node->kind == AstNodeKind_BinExpr)
@@ -447,7 +430,7 @@ typecheck_stmt(List* subst_list, AstNode* stmt_node)
     Type* cond_type = 0;
     if(success = typecheck_expr(subst_list, if_stmt->cond_expr, &cond_type))
     {
-      if(success = unification(cond_type, basic_type_bool))
+      if(success = type_unification(cond_type, basic_type_bool))
       {
         AstNode* body_node = if_stmt->body;
         if(body_node->kind == AstNodeKind_Block)
@@ -474,7 +457,7 @@ typecheck_stmt(List* subst_list, AstNode* stmt_node)
     Type* cond_type = 0;
     if(success = typecheck_expr(subst_list, while_stmt->cond_expr, &cond_type))
     {
-      if(success = unification(cond_type, basic_type_bool))
+      if(success = type_unification(cond_type, basic_type_bool))
       {
         AstNode* body_node = while_stmt->body;
         if(body_node->kind == AstNodeKind_Block)
@@ -519,7 +502,7 @@ typecheck_block(List* subst_list, AstNode* block_node)
     assert(var_decl_node->kind == AstNodeKind_VarDecl);
     AstVarDecl* var_decl = &var_decl_node->var_decl;
 
-    success = unification(var_decl_node->type, var_decl->var_type);
+    success = type_unification(var_decl_node->type, var_decl->var_type);
   }
   if(success)
   {
@@ -552,7 +535,7 @@ typecheck_proc(List* subst_list, AstNode* proc_node)
   {
     AstNode* var_decl_node = list_item->elem;
     assert(var_decl_node->kind == AstNodeKind_VarDecl);
-    success = unification(var_decl_node->type, var_decl_node->var_decl.var_type);
+    success = type_unification(var_decl_node->type, var_decl_node->var_decl.var_type);
   }
 
   if(success)
@@ -570,7 +553,7 @@ typecheck_proc(List* subst_list, AstNode* proc_node)
       assert(false);
 
     Type* proc_type = new_proc_type(args_type, proc->ret_type);
-    if(success = unification(proc_type, proc_node->type))
+    if(success = type_unification(proc_type, proc_node->type))
     {
       success = typecheck_block(subst_list, proc->body);
     }

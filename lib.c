@@ -9,7 +9,7 @@ assert_f(char* expr, char* file, int line)
 {
   if(dbg_assert)
   {
-    fprintf(stderr, "Assertion fired `%s`\n", expr);
+    fprintf(stderr, "Assertion fired %s\n", expr);
     fprintf(stderr, "%s:%d\n", file, line);
     fflush(stderr);
     *(int*)0 = 0;
@@ -41,8 +41,10 @@ char_is_numeric(char c)
   return '0' <= c && c <= '9';
 }
 
-#define struct_check_bounds(ARENA, TYPE, STRUCT) mem_check_bounds_f(ARENA, sizeof(TYPE), STRUCT)
-#define arena_check_bounds(ARENA) mem_check_bounds_f((ARENA), 0, (ARENA)->free)
+#define struct_check_bounds(ARENA, TYPE, STRUCT)\
+  mem_check_bounds_f(ARENA, sizeof(TYPE), STRUCT)
+#define arena_check_bounds(ARENA)\
+  mem_check_bounds_f((ARENA), 0, (ARENA)->free)
 
 void
 mem_check_bounds_f(MemoryArena* arena, int elem_size, void* ptr)

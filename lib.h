@@ -26,20 +26,22 @@ typedef double float64;
 #define inline __inline
 #define internal static
 
-#define assert(EXPR) if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__)
-#define sizeof_array(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
+#define assert(EXPR)\
+  if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__)
+#define sizeof_array(ARRAY)\
+  (sizeof(ARRAY)/sizeof(ARRAY[0]))
+#define to_bool(EXPR)\
+  ((EXPR) ? true : false)
 
 void assert_f(char* expr, char* file, int line);
 void error(char* message, ...);
-
-typedef struct MemoryArena MemoryArena;
 
 typedef struct MemoryArena
 {
   uint8* alloc;
   uint8* free;
   uint8* cap;
-  MemoryArena* host;
+  struct MemoryArena* host;
   int sub_arena_count;
 }
 MemoryArena;
@@ -49,10 +51,14 @@ MemoryArena* arena_pop(MemoryArena* arena);
 MemoryArena* arena_push(MemoryArena* arena, size_t size);
 void arena_free(MemoryArena* arena);
 void arena_reset(MemoryArena* arena);
-#define mem_push_struct(ARENA, TYPE) ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), 1, true))
-#define mem_push_count(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, true))
-#define mem_push_count_nz(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, false))
-#define mem_zero_struct(VAR, TYPE) (mem_zero_f(VAR, sizeof(TYPE)))
+#define mem_push_struct(ARENA, TYPE)\
+  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), 1, true))
+#define mem_push_count(ARENA, TYPE, COUNT)\
+  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, true))
+#define mem_push_count_nz(ARENA, TYPE, COUNT)\
+  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, false))
+#define mem_zero_struct(VAR, TYPE)\
+  (mem_zero_f(VAR, sizeof(TYPE)))
 void mem_zero_f(void* mem, size_t len);
 void* mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_mem);
 void DEBUG_arena_print_occupancy(char* tag, MemoryArena* arena);

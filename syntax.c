@@ -2,6 +2,14 @@
 
 extern MemoryArena* arena;
 
+internal bool do_initializer(TokenStream*, AstNode**);
+internal bool do_expression(TokenStream*, AstNode**);
+internal bool do_statement(TokenStream*, AstNode**);
+internal bool do_accessor(TokenStream*, AstNode**);
+internal bool do_unary_expr(TokenStream*, AstNode**);
+internal bool do_module(TokenStream*, List*);
+internal bool do_struct_member_list(TokenStream*, List*);
+
 internal bool
 is_logical_operator(AstOpKind op)
 {
@@ -72,7 +80,7 @@ new_call(SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Call;
-  list_init(&node->call.actual_args);
+  list_init(&node->call.args);
   node->src_loc = *src_loc;
   return node;
 }
@@ -439,17 +447,6 @@ get_literal_printstr(AstLiteralKind kind)
   return result;
 }
 
-internal bool do_initializer(TokenStream*, AstNode**);
-internal bool do_expression(TokenStream*, AstNode**);
-internal bool do_statement(TokenStream*, AstNode**);
-internal bool do_formal_arg_decl(TokenStream*, AstNode**);
-internal bool do_unary_expr(TokenStream*, AstNode**);
-internal bool do_module(TokenStream*, List*);
-internal bool do_struct_member_list(TokenStream*, List*);
-internal bool do_accessor(TokenStream*, AstNode**);
-internal bool do_type_expr(TokenStream*, AstNode**);
-internal bool do_var_decl(TokenStream*, AstNode**);
-
 internal bool
 do_semicolon(TokenStream* input)
 {
@@ -546,29 +543,6 @@ do_actual_arg_list(TokenStream* input, List* arg_list)
 }
 
 internal bool
-do_formal_arg_list(TokenStream* input, List* arg_list)
-{
-  bool success = true;
-
-  AstNode* arg = 0;
-  do
-  {
-    arg = 0;
-    if((success = do_formal_arg_decl(input, &arg)) && arg)
-    {
-      list_append(arena, arg_list, arg);
-      if(input->token.kind == TokenKind_Comma)
-        success = get_next_token(input);
-      else if(input->token.kind != TokenKind_CloseParens)
-        success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Expected `,`, actual `%s`", get_token_printstr(&input->token));
-    }
-  }
-  while(success && arg);
-  return success;
-}
-
-internal bool
 do_statement_list(TokenStream* input, List* stmt_list)
 {
   bool success = true;
@@ -619,7 +593,7 @@ do_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
     AstCall* call = &(*node)->call;
     call->id = left_node;
 
-    if(success = get_next_token(input) && do_actual_arg_list(input, &call->actual_args))
+    if(success = get_next_token(input) && do_actual_arg_list(input, &call->args))
     {
       if(input->token.kind == TokenKind_CloseParens)
         success = get_next_token(input);
@@ -935,6 +909,96 @@ do_accessor(TokenStream* input, AstNode** node)
 }
 
 internal bool
+do_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
+{
+  *node = expr;
+  bool success = true;
+  
+  if(input->token.kind == TokenKind_Star)
+  {
+    *node = new_pointer(&input->src_loc);
+    AstPointer* ptr = &(*node)->ptr;
+    ptr->expr = expr;
+
+    success = get_next_token(input) && do_rest_of_type_expr(input, *node, node);
+  }
+  else if(input->token.kind == TokenKind_OpenBracket)
+  {
+    *node = new_array(&input->src_loc);
+    AstArray* array = &(*node)->array;
+    array->expr = expr;
+
+    if(success = get_next_token(input) && do_expression(input, &array->index))
+    {
+      if(input->token.kind == TokenKind_CloseBracket)
+        success = get_next_token(input) && do_rest_of_type_expr(input, *node, node);
+      else
+        success = compile_error(&input->src_loc, __FILE__, __LINE__, "Expected `]`, actual `%s`", get_token_printstr(&input->token));
+    }
+  }
+  return true;
+}
+
+internal bool
+do_type_expr(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  if(input->token.kind == TokenKind_Id)
+  {
+    *node = new_id(&input->src_loc, input->token.lexeme);
+    success = get_next_token(input) && do_rest_of_type_expr(input, *node, node);
+  }
+  return success;
+}
+
+internal bool
+do_formal_arg(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  AstNode* type = 0;
+  if((success = do_type_expr(input, &type)) && type)
+  {
+    *node = new_var_decl(&input->src_loc);
+    AstVarDecl* var_decl = &(*node)->var_decl;
+    var_decl->type = type;
+
+    if(input->token.kind == TokenKind_Id)
+    {
+      var_decl->id = new_id(&input->src_loc, input->token.lexeme);
+      success = get_next_token(input);
+    }
+  }
+  return success;
+}
+
+internal bool
+do_formal_arg_list(TokenStream* input, List* arg_list)
+{
+  bool success = true;
+
+  AstNode* arg = 0;
+  do
+  {
+    arg = 0;
+    if((success = do_formal_arg(input, &arg)) && arg)
+    {
+      list_append(arena, arg_list, arg);
+      if(input->token.kind == TokenKind_Comma)
+        success = get_next_token(input);
+      else if(input->token.kind != TokenKind_CloseParens)
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Expected `,`, actual `%s`", get_token_printstr(&input->token));
+    }
+  }
+  while(success && arg);
+  return success;
+}
+
+internal bool
 do_unary_expr(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1016,24 +1080,51 @@ do_expression(TokenStream* input, AstNode** node)
 }
 
 internal bool
-do_formal_arg_decl(TokenStream* input, AstNode** node)
+do_var_decl(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
 
   AstNode* type = 0;
-  if((success = do_type_expr(input, &type)) && type)
+  if(input->token.kind == TokenKind_Id)
   {
-    *node = new_var_decl(&input->src_loc);
-    AstVarDecl* var_decl = &(*node)->var_decl;
-    var_decl->type = type;
-
-    if(input->token.kind == TokenKind_Id)
+    if((success = do_type_expr(input, &type)) && type)
     {
-      var_decl->id = new_id(&input->src_loc, input->token.lexeme);
-      success = get_next_token(input);
+      if(input->token.kind == TokenKind_Id)
+      {
+        *node = new_var_decl(&input->src_loc);
+        AstVarDecl* var_decl = &(*node)->var_decl;
+        var_decl->type = type;
+        var_decl->id = new_id(&input->src_loc, input->token.lexeme);
+
+        if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
+           && (success = get_next_token(input)))
+        {
+          if(success = do_initializer(input, &var_decl->init_expr))
+          {
+            if(!var_decl->init_expr)
+            {
+              if(success = do_expression(input, &var_decl->init_expr))
+              {
+                if(!var_decl->init_expr)
+                {
+                  putback_token(input);
+                  success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                          "Expression required, at `%s`", get_token_printstr(&input->token));
+                }
+              }
+            }
+          }
+        }
+      }
+      else
+        success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                                "Identifier expected, actual `%s`", get_token_printstr(&input->token));
     }
   }
+  else
+    success = compile_error(&input->src_loc, __FILE__, __LINE__,
+                            "Identifier expected, actual `%s`", get_token_printstr(&input->token));
   return success;
 }
 
@@ -1506,100 +1597,6 @@ do_struct_member_list(TokenStream* input, List* member_list)
 }
 
 internal bool
-do_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
-{
-  *node = expr;
-  bool success = true;
-  
-  if(input->token.kind == TokenKind_Star)
-  {
-    *node = new_pointer(&input->src_loc);
-    AstPointer* ptr = &(*node)->ptr;
-    ptr->expr = expr;
-
-    success = get_next_token(input) && do_rest_of_type_expr(input, *node, node);
-  }
-  else if(input->token.kind == TokenKind_OpenBracket)
-  {
-    *node = new_array(&input->src_loc);
-    AstArray* array = &(*node)->array;
-    array->expr = expr;
-
-    if(success = get_next_token(input) && do_expression(input, &array->index))
-    {
-      if(input->token.kind == TokenKind_CloseBracket)
-        success = get_next_token(input) && do_rest_of_type_expr(input, *node, node);
-      else
-        success = compile_error(&input->src_loc, __FILE__, __LINE__, "Expected `]`, actual `%s`", get_token_printstr(&input->token));
-    }
-  }
-  return true;
-}
-
-internal bool
-do_type_expr(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = true;
-
-  if(input->token.kind == TokenKind_Id)
-  {
-    *node = new_id(&input->src_loc, input->token.lexeme);
-    success = get_next_token(input) && do_rest_of_type_expr(input, *node, node);
-  }
-  return success;
-}
-
-internal bool
-do_var_decl(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = true;
-
-  AstNode* type = 0;
-  if(input->token.kind == TokenKind_Id)
-  {
-    if((success = do_type_expr(input, &type)) && type)
-    {
-      if(input->token.kind == TokenKind_Id)
-      {
-        *node = new_var_decl(&input->src_loc);
-        AstVarDecl* var_decl = &(*node)->var_decl;
-        var_decl->type = type;
-        var_decl->id = new_id(&input->src_loc, input->token.lexeme);
-
-        if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
-           && (success = get_next_token(input)))
-        {
-          if(success = do_initializer(input, &var_decl->init_expr))
-          {
-            if(!var_decl->init_expr)
-            {
-              if(success = do_expression(input, &var_decl->init_expr))
-              {
-                if(!var_decl->init_expr)
-                {
-                  putback_token(input);
-                  success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                          "Expression required, at `%s`", get_token_printstr(&input->token));
-                }
-              }
-            }
-          }
-        }
-      }
-      else
-        success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                                "Identifier expected, actual `%s`", get_token_printstr(&input->token));
-    }
-  }
-  else
-    success = compile_error(&input->src_loc, __FILE__, __LINE__,
-                            "Identifier expected, actual `%s`", get_token_printstr(&input->token));
-  return success;
-}
-
-internal bool
 do_var_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1962,7 +1959,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     else if(node->kind == AstNodeKind_Call)
     {
       DEBUG_print_ast_node(str, indent_level, node->call.id, "id");
-      DEBUG_print_ast_node_list(str, indent_level, &node->call.actual_args, "actual_args");
+      DEBUG_print_ast_node_list(str, indent_level, &node->call.args, "args");
     }
     else if(node->kind == AstNodeKind_BreakStmt
             || node->kind == AstNodeKind_ContinueStmt

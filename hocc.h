@@ -294,7 +294,7 @@ typedef struct AstBlock
 {
   List node_list;
 
-  AstNode* owner;
+  //AstNode* owner;
   int block_id;
   int nesting_depth;
   struct AstNode* encl_block;
@@ -357,7 +357,7 @@ AstGotoStmt, AstLabel;
 typedef struct
 {
   AstNode* id;
-  List actual_args;
+  List args;
 /*
   AstNode* proc;
 */
@@ -448,7 +448,7 @@ struct AstNode
 typedef struct AstNode
 {
   AstNodeKind kind;
-  //Type* type;
+  Type* type;
   SourceLocation src_loc;
 
   union
@@ -589,10 +589,15 @@ typedef struct Symbol
   int block_id;
   int nesting_depth;
 
-  union {
-    AstNode* node;
-    Type* type;
-  };
+  AstNode* node;
+  Type* type;
+
+  /*
+  struct {
+    Type* ret_type;
+    Type* args_type;
+  } proc;
+  */
 }
 Symbol;
 
@@ -623,5 +628,8 @@ bool is_literal_token(TokenKind kind);
 AstNode* new_bin_expr(SourceLocation* src_loc);
 AstNode* new_id(SourceLocation* src_loc, char* name);
 AstNode* new_var_decl(SourceLocation* src_loc);
-
+Type* new_proc_type(Type* args, Type* ret);
+Type* new_typevar();
+Type* new_product_type(Type* left, Type* right);
+bool type_unification(Type* type_a, Type* type_b);
 

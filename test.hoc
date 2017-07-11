@@ -1,5 +1,5 @@
-include "hlib\\gcd.hoc";
 /*
+include "hlib\\gcd.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\power.hoc";
@@ -10,6 +10,9 @@ include "hlib\\lex.hoc";
 
 proc int main()
 {
-  return 0;
+  foo();
 }
 
+proc void foo()
+{
+}

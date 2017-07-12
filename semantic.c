@@ -344,37 +344,6 @@ make_type_of_node_list(List* node_list)
   return type;
 }
 
-#if 0
-internal bool
-do_proc(AstNode* proc)
-{
-  assert(proc->kind == AstNodeKind_Proc);
-  bool success = true;
-
-  if(success = scope_begin(proc->proc.body))
-  {
-    AstNode* ret_type = proc->proc.ret_type;
-    Symbol* type_sym = lookup_symbol(ret_type->id.name, SymbolKind_Type);
-    if(!type_sym)
-    {
-      type_sym = add_symbol(ret_type->id.name, SymbolKind_Type);
-      type_sym->type = new_typevar();
-    }
-    ret_type->type = type_sym->type;
-
-    if(success = do_proc_formal_args(proc->proc.body, &proc->proc.formal_args)
-       && do_proc_ret_var(proc->proc.body, proc))
-    {
-      proc->type = new_proc_type(make_type_of_node_list(&proc->proc.formal_args), proc->proc.ret_var->type);
-      proc_sym->type = proc->type;
-      success = do_block(proc, 0, proc, proc->proc.body);
-    }
-    scope_end();
-  }
-  return success;
-}
-#endif
-
 internal bool
 do_proc_decl(AstNode* proc)
 {
@@ -424,8 +393,16 @@ do_proc_decl(AstNode* proc)
       }
       else if(registered_proc->proc.is_decl && !proc->proc.is_decl)
       {
-        proc_sym->node = proc;
-        proc_sym->type = proc->type;
+        if(type_unification(registered_proc->type, proc->type))
+        {
+          proc_sym->node = proc;
+          proc_sym->type = proc->type;
+        }
+        else
+        {
+          success = compile_error(&proc->src_loc, "Inconsistent proc type...");
+          compile_error(&registered_proc->src_loc, "...see decl");
+        }
       }
       /* else fall-thru */
     }
@@ -574,6 +551,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
     Symbol* proc_sym = lookup_symbol(id->id.name, SymbolKind_Proc);
     if(proc_sym)
     {
+      assert(!"do_call_args()");
       stmt->type = new_proc_type(make_type_of_node_list(&stmt->call.args), new_typevar());
       if(!type_unification(proc_sym->type, stmt->type))
       {

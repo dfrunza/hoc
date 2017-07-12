@@ -8,14 +8,15 @@ include "hlib\\syntax.hoc";
 include "hlib\\lex.hoc";
 */
 
-proc void foo();
+proc void foo(int b);
 
 proc int main()
 {
-  foo();
+  var int c;
+  foo(c);
 }
 
-proc void foo()
+proc void foo(int a)
 {
   return;
 }

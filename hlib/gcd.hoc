@@ -1,19 +1,6 @@
 include "abs.hoc";
 
-proc int gcd_(int a, int b)
-{
-  var int result = a;
-  if(b != 0)
-  {
-    result = b;
-    var int r = a % b;
-    if(r == 0)
-      result = b;
-    else
-      result = gcd_(b, r);
-  }
-  return result;
-}
+proc int gcd_(int a, int b);
 
 /*
    Greatest Common Divisor
@@ -31,4 +18,18 @@ proc int lcm(int a, int b)
   return abs(a*b)/gcd(a, b);
 }
 
+proc int gcd_(int a, int b)
+{
+  var int result = a;
+  if(b != 0)
+  {
+    result = b;
+    var int r = a % b;
+    if(r == 0)
+      result = b;
+    else
+      result = gcd_(b, r);
+  }
+  return result;
+}
 

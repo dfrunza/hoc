@@ -396,54 +396,52 @@ do_proc_decl(AstNode* proc)
        && do_proc_ret_var(proc->proc.body, proc))
     {
       proc->type = new_proc_type(make_type_of_node_list(&proc->proc.formal_args), proc->proc.ret_var->type);
-      success = do_block(proc, 0, proc, proc->proc.body);
+
+      Symbol* proc_sym = lookup_symbol(proc->proc.id->id.name, SymbolKind_Proc);
+      if(proc_sym)
+      {
+        AstNode* registered_proc = proc_sym->node;
+        assert(registered_proc && registered_proc->kind == AstNodeKind_Proc);
+
+        if(registered_proc->proc.is_decl && proc->proc.is_decl)
+        {
+          if(!type_unification(registered_proc->type, proc->type))
+          {
+            success = compile_error(&proc->src_loc, "Inconsistent proc type...");
+            compile_error(&registered_proc->src_loc, "...see previous decl");
+          }
+        }
+        else if(!registered_proc->proc.is_decl && !proc->proc.is_decl)
+        {
+          success = compile_error(&proc->src_loc, "Proc redefinition...");
+          compile_error(&registered_proc->src_loc, "...see previous def");
+        }
+        else if(registered_proc->proc.is_decl && !proc->proc.is_decl)
+        {
+          if(type_unification(registered_proc->type, proc->type))
+          {
+            proc_sym->node = proc;
+            proc_sym->type = proc->type;
+          }
+          else
+          {
+            success = compile_error(&proc->src_loc, "Inconsistent proc type...");
+            compile_error(&registered_proc->src_loc, "...see decl");
+          }
+        }
+        /* else fall-thru */
+      }
+      else if(success = to_bool(proc_sym = register_new_id(proc->proc.id, SymbolKind_Proc)))
+      {
+        proc_sym->node = proc;
+        proc_sym->type = proc->type;
+      }
+
+      if(success)
+        success = do_block(proc, 0, proc, proc->proc.body);
     }
     scope_end();
   }
-
-  if(success)
-  {
-    Symbol* proc_sym = lookup_symbol(proc->proc.id->id.name, SymbolKind_Proc);
-    if(proc_sym)
-    {
-      AstNode* registered_proc = proc_sym->node;
-      assert(registered_proc && registered_proc->kind == AstNodeKind_Proc);
-
-      if(registered_proc->proc.is_decl && proc->proc.is_decl)
-      {
-        if(!type_unification(registered_proc->type, proc->type))
-        {
-          success = compile_error(&proc->src_loc, "Inconsistent proc type...");
-          compile_error(&registered_proc->src_loc, "...see previous decl");
-        }
-      }
-      else if(!registered_proc->proc.is_decl && !proc->proc.is_decl)
-      {
-        success = compile_error(&proc->src_loc, "Proc redefinition...");
-        compile_error(&registered_proc->src_loc, "...see previous def");
-      }
-      else if(registered_proc->proc.is_decl && !proc->proc.is_decl)
-      {
-        if(type_unification(registered_proc->type, proc->type))
-        {
-          proc_sym->node = proc;
-          proc_sym->type = proc->type;
-        }
-        else
-        {
-          success = compile_error(&proc->src_loc, "Inconsistent proc type...");
-          compile_error(&registered_proc->src_loc, "...see decl");
-        }
-      }
-      /* else fall-thru */
-    }
-    else if(success = to_bool(proc_sym = register_new_id(proc->proc.id, SymbolKind_Proc)))
-    {
-      proc_sym->node = proc;
-      proc_sym->type = proc->type;
-    }
-  }
-
   return success;
 }
 

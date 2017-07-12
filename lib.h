@@ -26,16 +26,6 @@ typedef double float64;
 #define inline __inline
 #define internal static
 
-#define assert(EXPR)\
-  if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__)
-#define sizeof_array(ARRAY)\
-  (sizeof(ARRAY)/sizeof(ARRAY[0]))
-#define to_bool(EXPR)\
-  ((EXPR) ? true : false)
-
-void assert_f(char* expr, char* file, int line);
-void error(char* message, ...);
-
 typedef struct MemoryArena
 {
   uint8* alloc;
@@ -52,6 +42,39 @@ typedef struct
   double in_use;
 }
 ArenaUsage;
+
+typedef struct
+{
+  char* head;
+  char* end;
+  MemoryArena* arena;
+}
+String;
+
+typedef struct ListItem
+{
+  void* elem;
+  struct ListItem* next;
+  struct ListItem* prev;
+}
+ListItem;
+
+typedef struct
+{
+  ListItem* first;
+  ListItem* last;
+}
+List;
+
+#define assert(EXPR)\
+  if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__)
+#define sizeof_array(ARRAY)\
+  (sizeof(ARRAY)/sizeof(ARRAY[0]))
+#define to_bool(EXPR)\
+  ((EXPR) ? true : false)
+
+void assert_f(char* expr, char* file, int line);
+void error(char* message, ...);
 
 MemoryArena* arena_new(int size);
 MemoryArena* arena_pop(MemoryArena* arena);
@@ -86,14 +109,6 @@ int cstr_len(char* str);
 char* cstr_copy(char* dest_str, char* src_str);
 void cstr_copy_substr(char* dest_str, char* begin_char, char* end_char);
 
-typedef struct
-{
-  char* head;
-  char* end;
-  MemoryArena* arena;
-}
-String;
-
 void str_init(String* str, MemoryArena* arena);
 
 /* The 0-terminator is not counted. */
@@ -118,21 +133,6 @@ char* path_make_dir(char* file_path);
 uint file_write_bytes(char* file_path, uint8* text, size_t count);
 char* file_read_text(MemoryArena* arena, char* file_path);
 int stdin_read(char buf[], int buf_size);
-
-typedef struct ListItem
-{
-  void* elem;
-  struct ListItem* next;
-  struct ListItem* prev;
-}
-ListItem;
-
-typedef struct
-{
-  ListItem* first;
-  ListItem* last;
-}
-List;
 
 inline void list_init(List* list);
 List* list_new(MemoryArena* arena);

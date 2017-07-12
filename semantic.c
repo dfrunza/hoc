@@ -11,9 +11,19 @@ extern Type* basic_type_void;
 
 internal SymbolTable* symtab = 0;
 internal int last_block_id = 0;
+internal int tempvar_id = 0;
 
 internal bool do_block(AstNode*, AstNode*, AstNode*, AstNode*);
 internal bool do_expression(AstNode*, AstNode*);
+
+internal AstNode*
+make_tempvar_id(SourceLocation* src_loc, char* label)
+{
+  String str = {0};
+  str_init(&str, arena);
+  str_printf(&str, "$%s%d", label, tempvar_id++);
+  return new_id(src_loc, str.head);
+}
 
 internal AstNode*
 new_var_occur(SourceLocation* src_loc)
@@ -22,15 +32,6 @@ new_var_occur(SourceLocation* src_loc)
   node->kind = AstNodeKind_VarOccur;
   node->src_loc = *src_loc;
   return node;
-}
-
-internal AstNode*
-make_ret_var_id(SourceLocation* src_loc, char* proc_name)
-{
-  String str = {0};
-  str_init(&str, arena);
-  str_printf(&str, "$%s", proc_name);
-  return new_id(src_loc, str.head);
 }
 
 internal Symbol*
@@ -120,22 +121,12 @@ register_new_id(AstNode* id, SymbolKind symkind)
   Symbol* sym = lookup_symbol(id->id.name, symkind);
   if(sym && (sym->block_id == symtab->block_id))
   {
-    compile_error(&id->src_loc, __FILE__, __LINE__, "Symbol re-declaration `%s`...", id->id.name);
-    compile_error(&id->src_loc, __FILE__, __LINE__, "...see previous declaration of `%s`", id->id.name);
+    compile_error(&id->src_loc, "Symbol redeclaration `%s`...", id->id.name);
+    compile_error(&id->src_loc, "...see previous declaration of `%s`", id->id.name);
     return 0;
   }
   else
     sym = add_symbol(id->id.name, symkind);
-  return sym;
-}
-
-internal Symbol*
-register_proc(AstNode* id)
-{
-  assert(id->kind == AstNodeKind_Id);
-  Symbol* sym = lookup_symbol(id->id.name, SymbolKind_Proc);
-  if(!sym)
-    sym = add_symbol(id->id.name, SymbolKind_Proc);
   return sym;
 }
 
@@ -156,8 +147,7 @@ scope_begin(AstNode* block)
   }
   else
   {
-    compile_error(&block->src_loc, __FILE__, __LINE__,
-                  "Maximum scope nesting depth has been reached: %d", sizeof_array(symtab->active_blocks));
+    compile_error(&block->src_loc, "Maximum scope nesting depth has been reached: %d", sizeof_array(symtab->active_blocks));
     return false;
   }
 
@@ -276,7 +266,7 @@ do_expression(AstNode* block, AstNode* expr_node)
         assert(false);
     }
     else
-      success = compile_error(&expr_node->src_loc, __FILE__, __LINE__, "Unknown identifier `%s`", expr_node->id.name);
+      success = compile_error(&expr_node->src_loc, "Unknown identifier `%s`", expr_node->id.name);
   }
   else if(expr_node->kind == AstNodeKind_Literal)
   { /* nothing to do */ }
@@ -316,8 +306,7 @@ do_proc_formal_args(AstNode* block, List* formal_args)
     if(var_decl->id)
       success = do_var_decl(block, node);
     else
-      success = compile_error(&node->src_loc, __FILE__, __LINE__,
-                              "Missing identifier: %s", get_ast_kind_printstr(node->kind));
+      success = compile_error(&node->src_loc, "Missing identifier: %s", get_ast_kind_printstr(node->kind));
     assert(!var_decl->init_expr); /* enforced by parser */
   }
   return success;
@@ -330,7 +319,7 @@ do_proc_ret_var(AstNode* block, AstNode* proc)
   bool success = true;
   proc->proc.ret_var = new_var_decl(&proc->src_loc);
   AstNode* var_decl = proc->proc.ret_var;
-  var_decl->var_decl.id = make_ret_var_id(&proc->src_loc, proc->proc.id->id.name);
+  var_decl->var_decl.id = make_tempvar_id(&proc->src_loc, "ret");
   var_decl->var_decl.type = proc->proc.ret_type;
   success = do_var_decl(block, proc->proc.ret_var);
   return success;
@@ -355,44 +344,96 @@ make_type_of_node_list(List* node_list)
   return type;
 }
 
+#if 0
 internal bool
-do_procedure(AstNode* proc)
+do_proc(AstNode* proc)
 {
   assert(proc->kind == AstNodeKind_Proc);
   bool success = true;
 
-  Symbol* proc_sym = register_new_id(proc->proc.id, SymbolKind_Proc);
-  if(success = to_bool(proc_sym))
+  if(success = scope_begin(proc->proc.body))
   {
-    proc_sym->node = proc;
-    if(proc->proc.body)
+    AstNode* ret_type = proc->proc.ret_type;
+    Symbol* type_sym = lookup_symbol(ret_type->id.name, SymbolKind_Type);
+    if(!type_sym)
     {
-      if(success = scope_begin(proc->proc.body))
-      {
-        AstNode* ret_type = proc->proc.ret_type;
-        Symbol* type_sym = lookup_symbol(ret_type->id.name, SymbolKind_Type);
-        if(!type_sym)
-        {
-          type_sym = add_symbol(ret_type->id.name, SymbolKind_Type);
-          type_sym->type = new_typevar();
-        }
-        if(ret_type->type)
-          type_unification(ret_type->type, type_sym->type);
-        else
-          ret_type->type = type_sym->type;
-
-        if(success = do_proc_formal_args(proc->proc.body, &proc->proc.formal_args)
-           && do_proc_ret_var(proc->proc.body, proc))
-        {
-          proc->type = new_proc_type(make_type_of_node_list(&proc->proc.formal_args), proc->proc.ret_var->type);
-          proc_sym->type = proc->type;
-          success = do_block(proc, 0, proc, proc->proc.body);
-        }
-        scope_end();
-      }
+      type_sym = add_symbol(ret_type->id.name, SymbolKind_Type);
+      type_sym->type = new_typevar();
     }
-    else
-      assert(!"not implemented : proc without body");
+    ret_type->type = type_sym->type;
+
+    if(success = do_proc_formal_args(proc->proc.body, &proc->proc.formal_args)
+       && do_proc_ret_var(proc->proc.body, proc))
+    {
+      proc->type = new_proc_type(make_type_of_node_list(&proc->proc.formal_args), proc->proc.ret_var->type);
+      proc_sym->type = proc->type;
+      success = do_block(proc, 0, proc, proc->proc.body);
+    }
+    scope_end();
+  }
+  return success;
+}
+#endif
+
+internal bool
+do_proc_decl(AstNode* proc)
+{
+  assert(proc->kind == AstNodeKind_Proc);
+  bool success = true;
+
+  if(success = scope_begin(proc->proc.body))
+  {
+    AstNode* ret_type = proc->proc.ret_type;
+    Symbol* type_sym = lookup_symbol(ret_type->id.name, SymbolKind_Type);
+    if(!type_sym)
+    {
+      type_sym = add_symbol(ret_type->id.name, SymbolKind_Type);
+      type_sym->type = new_typevar();
+    }
+    ret_type->type = type_sym->type;
+
+    if(success = do_proc_formal_args(proc->proc.body, &proc->proc.formal_args)
+       && do_proc_ret_var(proc->proc.body, proc))
+    {
+      proc->type = new_proc_type(make_type_of_node_list(&proc->proc.formal_args), proc->proc.ret_var->type);
+      success = do_block(proc, 0, proc, proc->proc.body);
+    }
+    scope_end();
+  }
+
+  if(success)
+  {
+    Symbol* proc_sym = lookup_symbol(proc->proc.id->id.name, SymbolKind_Proc);
+    if(proc_sym)
+    {
+      AstNode* registered_proc = proc_sym->node;
+      assert(registered_proc && registered_proc->kind == AstNodeKind_Proc);
+
+      if(registered_proc->proc.is_decl && proc->proc.is_decl)
+      {
+        if(!type_unification(registered_proc->type, proc->type))
+        {
+          success = compile_error(&proc->src_loc, "Inconsistent proc type...");
+          compile_error(&registered_proc->src_loc, "...see previous decl");
+        }
+      }
+      else if(!registered_proc->proc.is_decl && !proc->proc.is_decl)
+      {
+        success = compile_error(&proc->src_loc, "Proc redefinition...");
+        compile_error(&registered_proc->src_loc, "...see previous def");
+      }
+      else if(registered_proc->proc.is_decl && !proc->proc.is_decl)
+      {
+        proc_sym->node = proc;
+        proc_sym->type = proc->type;
+      }
+      /* else fall-thru */
+    }
+    else if(success = to_bool(proc_sym = register_new_id(proc->proc.id, SymbolKind_Proc)))
+    {
+      proc_sym->node = proc;
+      proc_sym->type = proc->type;
+    }
   }
 
   return success;
@@ -416,8 +457,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
        || stmt->unr_expr.op == AstOpKind_PreIncrement)
       success = do_expression(block, stmt);
     else
-      success = compile_error(&stmt->src_loc, __FILE__, __LINE__,
-                              "Unexpected statement %s", get_ast_kind_printstr(stmt->kind));
+      success = compile_error(&stmt->src_loc, "Unexpected statement %s", get_ast_kind_printstr(stmt->kind));
   }
   else if(stmt->kind == AstNodeKind_WhileStmt)
   {
@@ -499,13 +539,12 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       }
     }
     else
-      success = compile_error(&stmt->src_loc, __FILE__, __LINE__, "Unexpected `return` at this location");
+      success = compile_error(&stmt->src_loc, "Unexpected `return` at this location");
   }
   else if(stmt->kind == AstNodeKind_Id ||
           stmt->kind == AstNodeKind_Literal)
   {
-    success = compile_error(&stmt->src_loc, __FILE__, __LINE__,
-                            "Unexpected statement `%s` at this location", get_ast_kind_printstr(stmt->kind));
+    success = compile_error(&stmt->src_loc, "Unexpected statement `%s` at this location", get_ast_kind_printstr(stmt->kind));
   }
   else if(stmt->kind == AstNodeKind_BreakStmt || stmt->kind == AstNodeKind_ContinueStmt)
   {
@@ -527,29 +566,23 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
         assert(loop_body == stmt);
     }
     else
-      success = compile_error(&stmt->src_loc, __FILE__, __LINE__,
-                              "Unexpected `%s` at this location", get_ast_kind_printstr(stmt->kind));
+      success = compile_error(&stmt->src_loc, "Unexpected `%s` at this location", get_ast_kind_printstr(stmt->kind));
   }
   else if(stmt->kind == AstNodeKind_Call)
   {
-#if 0
     AstNode* id = stmt->call.id;
     Symbol* proc_sym = lookup_symbol(id->id.name, SymbolKind_Proc);
     if(proc_sym)
-      stmt->type = proc_sym->type;
-    else if(proc_sym = register_proc(id))
     {
-      assert(!proc_sym->node);
-      if(!proc_sym->type)
-        proc_sym->type = new_proc_type(make_type_of_node_list(&stmt->call.args), new_typevar());
-      stmt->type = proc_sym->type;
+      stmt->type = new_proc_type(make_type_of_node_list(&stmt->call.args), new_typevar());
+      if(!type_unification(proc_sym->type, stmt->type))
+      {
+        success = compile_error(&stmt->src_loc, "Incompatible call and proc decl types...");
+        compile_error(&proc_sym->node->src_loc, "...see proc decl");
+      }
     }
     else
-      assert(false);
-    assert(stmt->type);
-#else
-    printf("TODO: %s():%d\n", stmt->call.id->id.name, stmt->src_loc.line_nr);
-#endif
+      success = compile_error(&stmt->src_loc, "Unknown procedure `%s`", id->id.name);
   }
   else if(stmt->kind == AstNodeKind_GotoStmt
           || stmt->kind == AstNodeKind_Label)
@@ -581,15 +614,14 @@ do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
       if(stmt->kind == AstNodeKind_VarDecl)
         success = do_var_decl(block, stmt);
       else if(stmt->kind == AstNodeKind_Proc)
-        success = do_procedure(stmt);
+        success = do_proc_decl(stmt);
       else if(stmt->kind == AstNodeKind_Label
               || stmt->kind == AstNodeKind_Call
               || stmt->kind == AstNodeKind_Id
               || stmt->kind == AstNodeKind_Literal
               || stmt->kind == AstNodeKind_BinExpr
               || stmt->kind == AstNodeKind_UnrExpr)
-        success = compile_error(&stmt->src_loc, __FILE__, __LINE__,
-                                "Unexpected statement %s", get_ast_kind_printstr(stmt->kind));
+        success = compile_error(&stmt->src_loc, "Unexpected statement %s", get_ast_kind_printstr(stmt->kind));
       else if(stmt->kind == AstNodeKind_Struct
               || stmt->kind == AstNodeKind_Union
               || stmt->kind == AstNodeKind_Enum)

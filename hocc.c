@@ -50,7 +50,7 @@ DEBUG_print_arena_usage(char* tag)
 }
 
 bool
-compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...)
+compile_error_f(SourceLocation* src_loc, char* file, int line, char* message, ...)
 {
   va_list args;
 

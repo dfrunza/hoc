@@ -319,6 +319,7 @@ typedef struct
   AstNode* body;
 
   AstNode* ret_var; // semantic node
+  bool is_decl;
   /*
   Type* ret_type;
   AstVarDecl ret_var;
@@ -606,24 +607,29 @@ typedef struct
 }
 SymbolTable;
 
-bool compile_error(SourceLocation* src_loc, char* file, int line, char* message, ...);
+#define compile_error(SRC, MESSAGE, ...)\
+  compile_error_f((SRC), __FILE__, __LINE__,(MESSAGE), __VA_ARGS__)
+
+bool compile_error_f(SourceLocation* src_loc, char* file, int line, char* message, ...);
 bool get_next_token(TokenStream* input);
 void putback_token(TokenStream* input);
 void init_token_stream(TokenStream* token_stream, char* text, char* file_path);
-bool parse(TokenStream* input, AstNode** node);
-void DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag);
-void DEBUG_print_arena_usage(char* tag);
-void init_types();
-bool semantic_analysis(AstNode* ast);
 void print_char(char buf[3], char raw_char);
+bool is_literal_token(TokenKind kind);
 char* get_token_printstr(Token* token);
 char* get_ast_kind_printstr(AstNodeKind kind);
-bool is_literal_token(TokenKind kind);
+void DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag);
+void DEBUG_print_arena_usage(char* tag);
+bool parse(TokenStream* input, AstNode** node);
+void init_types();
+bool semantic_analysis(AstNode* ast);
 AstNode* new_bin_expr(SourceLocation* src_loc);
 AstNode* new_id(SourceLocation* src_loc, char* name);
 AstNode* new_var_decl(SourceLocation* src_loc);
+AstNode* new_block(SourceLocation* src_loc);
 Type* new_proc_type(Type* args, Type* ret);
 Type* new_typevar();
 Type* new_product_type(Type* left, Type* right);
 bool type_unification(Type* type_a, Type* type_b);
+
 

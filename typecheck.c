@@ -49,6 +49,35 @@ new_product_type(Type* left, Type* right)
   return type;
 }
 
+Type*
+new_array_type(int dim, Type* elem_type)
+{
+  Type* type = mem_push_struct(arena, Type);
+  type->kind = TypeKind_Array;
+  type->array.dim = dim;
+  type->array.elem_type = elem_type;
+  return type;
+}
+
+Type*
+make_type_of_node_list(List* node_list)
+{
+  Type* type = basic_type_void;
+  ListItem* first_item = node_list->first;
+  if(first_item)
+  {
+    type = ((AstNode*)first_item->elem)->type;
+    for(ListItem* list_item = first_item->next;
+        list_item;
+        list_item = list_item->next)
+    {
+      AstNode* node = list_item->elem;
+      type = new_product_type(type, node->type);
+    }
+  }
+  return type;
+}
+
 void
 init_types()
 {
@@ -126,6 +155,7 @@ type_unification(Type* type_a, Type* type_b)
     else
     {
       set_union(repr_type_a, repr_type_b);
+      assert(repr_type_a->kind == repr_type_b->kind);
 
       if(repr_type_a->kind == TypeKind_Proc)
         success = type_unification(repr_type_a->proc.args, repr_type_b->proc.args)
@@ -135,6 +165,11 @@ type_unification(Type* type_a, Type* type_b)
           && type_unification(repr_type_a->product.right, repr_type_b->product.right);
       else if(repr_type_a->kind == TypeKind_Pointer)
         success = type_unification(repr_type_a->ptr.pointee, repr_type_b->ptr.pointee);
+      else if(repr_type_a->kind == TypeKind_Array)
+        success = (repr_type_a->array.dim == repr_type_b->array.dim)
+          && type_unification(repr_type_a->array.elem_type, repr_type_b->array.elem_type);
+      else
+        assert(false);
     }
   }
 
@@ -203,9 +238,7 @@ substitution(List* subst_list, Type* type)
     list_append(arena, subst_list, pair);
 
     if(subst->kind == TypeKind_TypeVar)
-    {
       subst->typevar.id = typevar_id++;
-    }
     else if(subst->kind == TypeKind_Proc)
     {
       subst->proc.args = substitution(subst_list, subst->proc.args);
@@ -217,10 +250,11 @@ substitution(List* subst_list, Type* type)
       subst->product.right = substitution(subst_list, subst->product.right);
     }
     else if(subst->kind == TypeKind_Pointer)
-    {
       subst->ptr.pointee = substitution(subst_list, subst->ptr.pointee);
-    }
-    // else fall-thru
+    else if(subst->kind == TypeKind_Array)
+      subst->array.elem_type = substitution(subst_list, subst->array.elem_type);
+    else
+      assert(false);
   }
   return subst;
 }

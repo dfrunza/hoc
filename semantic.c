@@ -230,6 +230,49 @@ do_var_decl(AstNode* block, AstNode* var)
 }
 
 internal bool
+do_call_args(AstNode* block, AstNode* call)
+{
+  assert(call->kind == AstNodeKind_Call);
+  bool success = true;
+
+  for(ListItem* list_item = call->call.args.first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    AstNode* arg = list_item->elem;
+    success = do_expression(block, arg);
+  }
+  return success;
+}
+
+internal bool
+do_call(AstNode* block, AstNode* call)
+{
+  assert(call->kind == AstNodeKind_Call);
+  bool success = true;
+
+  AstNode* id = call->call.id;
+  Symbol* proc_sym = lookup_symbol(id->id.name, SymbolKind_Proc);
+  if(proc_sym)
+  {
+    if(success = do_call_args(block, call))
+    {
+      call->type = new_proc_type(make_type_of_node_list(&call->call.args), new_typevar());
+      if(type_unification(proc_sym->type, call->type))
+        call->call.proc = proc_sym->node;
+      else
+      {
+        success = compile_error(&call->src_loc, "Call and proc types are not equivalent");
+        compile_error(&proc_sym->node->src_loc, "...see proc decl");
+      }
+    }
+  }
+  else
+    success = compile_error(&call->src_loc, "Unknown procedure `%s`", id->id.name);
+  return success;
+}
+
+internal bool
 do_expression(AstNode* block, AstNode* expr_node)
 {
   assert(block->kind == AstNodeKind_Block);
@@ -245,15 +288,15 @@ do_expression(AstNode* block, AstNode* expr_node)
     Symbol* sym = lookup_symbol(expr_node->id.name, SymbolKind_Var);
     if(sym)
     {
-      AstNode* decl_node = sym->node;
-      assert(decl_node->kind == AstNodeKind_VarDecl); // ...I think
+      AstNode* var_decl = sym->node;
+      assert(var_decl->kind == AstNodeKind_VarDecl); // ...I think
       // transmute operand to VarOccur
       expr_node->kind = AstNodeKind_VarOccur;
       expr_node->var_occur.name = sym->name;
-      expr_node->var_occur.var_decl = decl_node;
+      expr_node->var_occur.var_decl = var_decl;
+      expr_node->type = var_decl->type;
 
-      AstVarDecl* var_decl = &decl_node->var_decl;
-      AstNode* decl_block = var_decl->decl_block;
+      AstNode* decl_block = var_decl->var_decl.decl_block;
       expr_node->var_occur.decl_block = decl_block;
       expr_node->var_occur.occur_block = block;
       expr_node->var_occur.decl_block_offset = block->block.nesting_depth - decl_block->block.nesting_depth;
@@ -269,15 +312,22 @@ do_expression(AstNode* block, AstNode* expr_node)
       success = compile_error(&expr_node->src_loc, "Unknown identifier `%s`", expr_node->id.name);
   }
   else if(expr_node->kind == AstNodeKind_Literal)
-  { /* nothing to do */ }
-  else if(expr_node->kind == AstNodeKind_Call)
   {
-#if 1
-    printf("TODO: %s():%d\n", expr_node->call.id->id.name, expr_node->src_loc.line_nr);
-#else
-    assert(!"Not implemented");
-#endif
+    if(expr_node->literal.kind == AstLiteralKind_Int)
+      expr_node->type = basic_type_int;
+    else if(expr_node->literal.kind == AstLiteralKind_Float)
+      expr_node->type = basic_type_float;
+    else if(expr_node->literal.kind == AstLiteralKind_Bool)
+      expr_node->type = basic_type_bool;
+    else if(expr_node->literal.kind == AstLiteralKind_Char)
+      expr_node->type = basic_type_char;
+    else if(expr_node->literal.kind == AstLiteralKind_String)
+      expr_node->type = new_array_type(-1, basic_type_char);
+    else
+      assert(false);
   }
+  else if(expr_node->kind == AstNodeKind_Call)
+    success = do_call(block, expr_node);
   else
   {
 #if 1
@@ -323,25 +373,6 @@ do_proc_ret_var(AstNode* block, AstNode* proc)
   var_decl->var_decl.type = proc->proc.ret_type;
   success = do_var_decl(block, proc->proc.ret_var);
   return success;
-}
-
-internal Type*
-make_type_of_node_list(List* node_list)
-{
-  Type* type = basic_type_void;
-  ListItem* first_item = node_list->first;
-  if(first_item)
-  {
-    type = ((AstNode*)first_item->elem)->type;
-    for(ListItem* list_item = first_item->next;
-        list_item;
-        list_item = list_item->next)
-    {
-      AstNode* node = list_item->elem;
-      type = new_product_type(type, node->type);
-    }
-  }
-  return type;
 }
 
 internal bool
@@ -425,7 +456,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   if(stmt->kind == AstNodeKind_VarDecl)
     success = do_var_decl(block, stmt);
   else if(stmt->kind == AstNodeKind_BinExpr)
-    success = do_expression(block, stmt);
+   success = do_expression(block, stmt);
   else if(stmt->kind == AstNodeKind_UnrExpr)
   {
     if(stmt->unr_expr.op == AstOpKind_PostDecrement
@@ -546,26 +577,15 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       success = compile_error(&stmt->src_loc, "Unexpected `%s` at this location", get_ast_kind_printstr(stmt->kind));
   }
   else if(stmt->kind == AstNodeKind_Call)
-  {
-    AstNode* id = stmt->call.id;
-    Symbol* proc_sym = lookup_symbol(id->id.name, SymbolKind_Proc);
-    if(proc_sym)
-    {
-      assert(!"do_call_args()");
-      stmt->type = new_proc_type(make_type_of_node_list(&stmt->call.args), new_typevar());
-      if(!type_unification(proc_sym->type, stmt->type))
-      {
-        success = compile_error(&stmt->src_loc, "Incompatible call and proc decl types...");
-        compile_error(&proc_sym->node->src_loc, "...see proc decl");
-      }
-    }
-    else
-      success = compile_error(&stmt->src_loc, "Unknown procedure `%s`", id->id.name);
-  }
+    success = do_call(block, stmt);
   else if(stmt->kind == AstNodeKind_GotoStmt
           || stmt->kind == AstNodeKind_Label)
   {
+#if 1
+    printf("TODO: %s\n", get_ast_kind_printstr(stmt->kind));
+#else
     assert(!"Not implemented");
+#endif
   }
   else if(stmt->kind == AstNodeKind_EmptyStmt)
   { /* nothing to do */ }

@@ -268,8 +268,8 @@ typedef enum
   AstLiteralKind_Int,
   AstLiteralKind_Float,
   AstLiteralKind_Bool,
-  AstLiteralKind_String,
   AstLiteralKind_Char,
+  AstLiteralKind_String,
   
   AstLiteralKind__Count,
 }
@@ -359,9 +359,7 @@ typedef struct
 {
   AstNode* id;
   List args;
-/*
   AstNode* proc;
-*/
 }
 AstCall;
 
@@ -549,6 +547,13 @@ typedef struct
 }
 ProductType;
 
+typedef struct
+{
+  int dim;
+  Type* elem_type;
+}
+ArrayType;
+
 typedef struct Type
 {
   TypeKind kind;
@@ -560,6 +565,7 @@ typedef struct Type
     PointerType ptr;
     ProcType proc;
     ProductType product;
+    ArrayType array;
     TypeVar typevar;
   };
 }
@@ -630,6 +636,8 @@ AstNode* new_block(SourceLocation* src_loc);
 Type* new_proc_type(Type* args, Type* ret);
 Type* new_typevar();
 Type* new_product_type(Type* left, Type* right);
+Type* new_array_type(int dim, Type* elem_type);
+Type* make_type_of_node_list(List* node_list);
 bool type_unification(Type* type_a, Type* type_b);
 
 

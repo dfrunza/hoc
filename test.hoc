@@ -8,14 +8,14 @@ include "hlib\\syntax.hoc";
 include "hlib\\lex.hoc";
 */
 
+proc int bar();
+
 proc int foo(char a, int m)
 {
-  return foo('\t', 0);
+  return 0;
 }
 
 proc int main()
 {
-  var int r = foo('a', 12);
-  var int p = foo('a', 1) + foo('b', 2);
 }
 

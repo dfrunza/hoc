@@ -101,20 +101,6 @@ register_builtin_types()
 }
 
 internal Symbol*
-register_type_sym(AstNode* id)
-{
-  assert(id->kind == AstNodeKind_Id);
-  Symbol* sym = lookup_symbol(id->id.name, SymbolKind_Type);
-  if(!sym)
-  {
-    sym = add_symbol(id->id.name, SymbolKind_Type);
-    sym->type = new_typevar();
-  }
-  id->type = sym->type;
-  return sym;
-}
-
-internal Symbol*
 register_new_id(AstNode* id, SymbolKind symkind)
 {
   assert(id->kind == AstNodeKind_Id);
@@ -206,26 +192,42 @@ do_var_decl(AstNode* block, AstNode* var)
   assert(var->kind == AstNodeKind_VarDecl);
   bool success = true;
 
-  var->type = register_type_sym(var->var_decl.type)->type;
-  AstNode* id = var->var_decl.id;
-  Symbol* sym = register_new_id(id, SymbolKind_Var);
-  if(success = to_bool(sym))
+  AstNode* type_id = var->var_decl.type;
+  if(type_id->kind == AstNodeKind_Id)
   {
-    sym->node = var;
-    var->var_decl.decl_block = block;
-    list_append(arena, &block->block.decl_vars, var);
-    if(var->var_decl.init_expr)
+    Symbol* type_sym = lookup_symbol(type_id->id.name, SymbolKind_Type);
+    if(type_sym)
     {
-      AstNode* assign_node = new_bin_expr(&var->src_loc);
-      AstBinExpr* bin_expr = &assign_node->bin_expr;
-      bin_expr->op = AstOpKind_Assign;
-      bin_expr->lhs = new_id(&var->src_loc, id->id.name);;
-      bin_expr->rhs = var->var_decl.init_expr;
+      type_id->type = type_sym->type;
+      var->type = type_sym->type;
 
-      if(success = do_expression(block, assign_node))
-        list_append(arena, &block->block.stmts, assign_node);
+      AstNode* id = var->var_decl.id;
+      Symbol* sym = register_new_id(id, SymbolKind_Var);
+      if(success = to_bool(sym))
+      {
+        sym->node = var;
+        sym->type = type_sym->type;
+
+        var->var_decl.decl_block = block;
+        list_append(arena, &block->block.decl_vars, var);
+        if(var->var_decl.init_expr)
+        {
+          AstNode* assign_node = new_bin_expr(&var->src_loc);
+          AstBinExpr* bin_expr = &assign_node->bin_expr;
+          bin_expr->op = AstOpKind_Assign;
+          bin_expr->lhs = new_id(&var->src_loc, id->id.name);;
+          bin_expr->rhs = var->var_decl.init_expr;
+
+          if(success = do_expression(block, assign_node))
+            list_append(arena, &block->block.stmts, assign_node);
+        }
+      }
     }
+    else
+      success = compile_error(&type_id->src_loc, "Unknown type `%s`", type_id->id.name);
   }
+  else
+    assert(!"only simple types are supported");
   return success;
 }
 
@@ -279,8 +281,10 @@ do_expression(AstNode* block, AstNode* expr_node)
   bool success = true;
 
   if(expr_node->kind == AstNodeKind_BinExpr)
+  {
     success = do_expression(block, expr_node->bin_expr.lhs)
       && do_expression(block, expr_node->bin_expr.rhs);
+  }
   else if(expr_node->kind == AstNodeKind_UnrExpr)
     success = do_expression(block, expr_node->unr_expr.operand);
   else if(expr_node->kind == AstNodeKind_Id)
@@ -347,7 +351,7 @@ do_proc_formal_args(AstNode* block, List* formal_args)
   bool success = true;
 
   for(ListItem* list_item = formal_args->first;
-      list_item;
+      list_item && success;
       list_item = list_item->next)
   {
     AstNode* node = list_item->elem;
@@ -383,15 +387,6 @@ do_proc_decl(AstNode* proc)
 
   if(success = scope_begin(proc->proc.body))
   {
-    AstNode* ret_type = proc->proc.ret_type;
-    Symbol* type_sym = lookup_symbol(ret_type->id.name, SymbolKind_Type);
-    if(!type_sym)
-    {
-      type_sym = add_symbol(ret_type->id.name, SymbolKind_Type);
-      type_sym->type = new_typevar();
-    }
-    ret_type->type = type_sym->type;
-
     if(success = do_proc_formal_args(proc->proc.body, &proc->proc.formal_args)
        && do_proc_ret_var(proc->proc.body, proc))
     {
@@ -531,6 +526,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
     {
       stmt->ret_stmt.proc = proc;
       stmt->ret_stmt.nesting_depth = block->block.nesting_depth - proc->proc.body->block.nesting_depth;
+      stmt->type = basic_type_void;
 
       AstNode* ret_expr = stmt->ret_stmt.expr;
       if(ret_expr)
@@ -541,6 +537,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
         assign->bin_expr.lhs = ret_var->var_decl.id;
         assign->bin_expr.rhs = ret_expr;
         stmt->ret_stmt.expr = assign;
+
         success = do_expression(proc->proc.body, stmt->ret_stmt.expr);
       }
     }

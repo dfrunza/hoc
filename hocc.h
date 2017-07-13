@@ -590,14 +590,13 @@ SymbolKind;
 typedef struct Symbol
 {
   SymbolKind kind;
-  Symbol* prev_symbol;
 
+  Symbol* prev_symbol;
   char* name;
   int block_id;
   int nesting_depth;
 
   AstNode* node;
-  Type* type;
 }
 Symbol;
 

@@ -8,11 +8,11 @@ include "hlib\\syntax.hoc";
 include "hlib\\lex.hoc";
 */
 
-proc int bar();
+proc int bar(int a);
 
 proc int foo(char a, int m)
 {
-  return 0;
+  foo('a', 0);
 }
 
 proc int main()

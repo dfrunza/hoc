@@ -53,6 +53,13 @@ lookup_symbol(char* name, SymbolKind kind)
 }
 
 internal AstNode*
+lookup_symbol_node(char* name, SymbolKind kind)
+{
+  Symbol* symbol = lookup_symbol(name, kind);
+  return symbol ? symbol->node : 0;
+}
+
+internal AstNode*
 get_module_block()
 {
   return symtab->active_blocks[1];
@@ -82,25 +89,6 @@ add_symbol(char* name, SymbolKind kind)
 }
 
 internal Symbol*
-add_builtin_type(char* name, Type* type)
-{
-  assert(type->kind == TypeKind_Basic);
-  Symbol* symbol = add_symbol(name, SymbolKind_Type);
-  symbol->type = type;
-  return symbol;
-}
-
-internal void
-register_builtin_types()
-{
-  add_builtin_type("bool", basic_type_bool);
-  add_builtin_type("int", basic_type_int);
-  add_builtin_type("char", basic_type_char);
-  add_builtin_type("float", basic_type_float);
-  add_builtin_type("void", basic_type_void);
-}
-
-internal Symbol*
 register_new_id(AstNode* id, SymbolKind symkind)
 {
   assert(id->kind == AstNodeKind_Id);
@@ -114,6 +102,27 @@ register_new_id(AstNode* id, SymbolKind symkind)
   else
     sym = add_symbol(id->id.name, symkind);
   return sym;
+}
+
+internal Symbol*
+add_builtin_type(char* name, Type* type)
+{
+  assert(type->kind == TypeKind_Basic);
+  AstNode* type_id = new_id(mem_push_struct(arena, SourceLocation), name);
+  type_id->type = type;
+  Symbol* symbol = register_new_id(type_id, SymbolKind_Type);
+  symbol->node = type_id;
+  return symbol;
+}
+
+internal void
+register_builtin_types()
+{
+  add_builtin_type("bool", basic_type_bool);
+  add_builtin_type("int", basic_type_int);
+  add_builtin_type("char", basic_type_char);
+  add_builtin_type("float", basic_type_float);
+  add_builtin_type("void", basic_type_void);
 }
 
 internal bool
@@ -195,18 +204,17 @@ do_var_decl(AstNode* block, AstNode* var)
   AstNode* type_id = var->var_decl.type;
   if(type_id->kind == AstNodeKind_Id)
   {
-    Symbol* type_sym = lookup_symbol(type_id->id.name, SymbolKind_Type);
-    if(type_sym)
+    AstNode* type = lookup_symbol_node(type_id->id.name, SymbolKind_Type);
+    if(type)
     {
-      type_id->type = type_sym->type;
-      var->type = type_sym->type;
+      type_id->type = type->type;
+      var->type = type->type;
 
       AstNode* id = var->var_decl.id;
       Symbol* sym = register_new_id(id, SymbolKind_Var);
       if(success = to_bool(sym))
       {
         sym->node = var;
-        sym->type = type_sym->type;
 
         var->var_decl.decl_block = block;
         list_append(arena, &block->block.decl_vars, var);
@@ -254,18 +262,23 @@ do_call(AstNode* block, AstNode* call)
   bool success = true;
 
   AstNode* id = call->call.id;
-  Symbol* proc_sym = lookup_symbol(id->id.name, SymbolKind_Proc);
-  if(proc_sym)
+  AstNode* registered_proc = lookup_symbol_node(id->id.name, SymbolKind_Proc);
+  if(registered_proc)
   {
     if(success = do_call_args(block, call))
     {
-      call->type = new_proc_type(make_type_of_node_list(&call->call.args), new_typevar());
-      if(type_unification(proc_sym->type, call->type))
-        call->call.proc = proc_sym->node;
+      assert(registered_proc->type->kind == TypeKind_Proc);
+      Type* ret_type = registered_proc->type->proc.ret;
+      Type* proc_type = new_proc_type(make_type_of_node_list(&call->call.args), ret_type);
+      if(type_unification(registered_proc->type, proc_type))
+      {
+        call->call.proc = registered_proc;
+        call->type = ret_type;
+      }
       else
       {
-        success = compile_error(&call->src_loc, "Call and proc types are not equivalent");
-        compile_error(&proc_sym->node->src_loc, "...see proc decl");
+        success = compile_error(&call->src_loc, "Missmatch between call and proc signature");
+        compile_error(&registered_proc->src_loc, "...see proc decl");
       }
     }
   }
@@ -289,14 +302,13 @@ do_expression(AstNode* block, AstNode* expr_node)
     success = do_expression(block, expr_node->unr_expr.operand);
   else if(expr_node->kind == AstNodeKind_Id)
   {
-    Symbol* sym = lookup_symbol(expr_node->id.name, SymbolKind_Var);
-    if(sym)
+    AstNode* var_decl = lookup_symbol_node(expr_node->id.name, SymbolKind_Var);
+    if(var_decl)
     {
-      AstNode* var_decl = sym->node;
       assert(var_decl->kind == AstNodeKind_VarDecl); // ...I think
       // transmute operand to VarOccur
       expr_node->kind = AstNodeKind_VarOccur;
-      expr_node->var_occur.name = sym->name;
+      expr_node->var_occur.name = expr_node->id.name;
       expr_node->var_occur.var_decl = var_decl;
       expr_node->type = var_decl->type;
 
@@ -402,7 +414,7 @@ do_proc_decl(AstNode* proc)
         {
           if(!type_unification(registered_proc->type, proc->type))
           {
-            success = compile_error(&proc->src_loc, "Inconsistent proc type...");
+            success = compile_error(&proc->src_loc, "Inconsistent proc signature...");
             compile_error(&registered_proc->src_loc, "...see previous decl");
           }
         }
@@ -414,23 +426,17 @@ do_proc_decl(AstNode* proc)
         else if(registered_proc->proc.is_decl && !proc->proc.is_decl)
         {
           if(type_unification(registered_proc->type, proc->type))
-          {
             proc_sym->node = proc;
-            proc_sym->type = proc->type;
-          }
           else
           {
-            success = compile_error(&proc->src_loc, "Inconsistent proc type...");
+            success = compile_error(&proc->src_loc, "Inconsistent proc signature...");
             compile_error(&registered_proc->src_loc, "...see decl");
           }
         }
         /* else fall-thru */
       }
       else if(success = to_bool(proc_sym = register_new_id(proc->proc.id, SymbolKind_Proc)))
-      {
         proc_sym->node = proc;
-        proc_sym->type = proc->type;
-      }
 
       if(success)
         success = do_block(proc, 0, proc, proc->proc.body);

@@ -54,8 +54,10 @@ compile_error_f(SourceLocation* src_loc, char* file, int line, char* message, ..
 {
   va_list args;
 
-  fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
-          path_make_stem(file), line);
+  if(src_loc->line_nr > 0)
+    fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr, path_make_stem(file), line);
+  else
+    fprintf(stderr, ": (%s:%d) ", path_make_stem(file), line);
 
   va_start(args, message);
   vfprintf(stderr, message, args);

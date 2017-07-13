@@ -269,12 +269,9 @@ do_call(AstNode* block, AstNode* call)
     {
       assert(registered_proc->type->kind == TypeKind_Proc);
       Type* ret_type = registered_proc->type->proc.ret;
-      Type* proc_type = new_proc_type(make_type_of_node_list(&call->call.args), ret_type);
-      if(type_unification(registered_proc->type, proc_type))
-      {
+      call->type = new_proc_type(make_type_of_node_list(&call->call.args), ret_type);
+      if(type_unification(registered_proc->type, call->type))
         call->call.proc = registered_proc;
-        call->type = ret_type;
-      }
       else
       {
         success = compile_error(&call->src_loc, "Missmatch between call and proc signature");
@@ -295,8 +292,14 @@ do_expression(AstNode* block, AstNode* expr_node)
 
   if(expr_node->kind == AstNodeKind_BinExpr)
   {
-    success = do_expression(block, expr_node->bin_expr.lhs)
-      && do_expression(block, expr_node->bin_expr.rhs);
+    if(success = do_expression(block, expr_node->bin_expr.lhs)
+      && do_expression(block, expr_node->bin_expr.rhs))
+    {
+      if(type_unification(expr_node->bin_expr.lhs->type, expr_node->bin_expr.rhs->type))
+        expr_node->type = expr_node->bin_expr.lhs->type;
+      else
+        success = compile_error(&expr_node->src_loc, "Left and right hand-side type missmatch");
+    }
   }
   else if(expr_node->kind == AstNodeKind_UnrExpr)
     success = do_expression(block, expr_node->unr_expr.operand);
@@ -343,7 +346,10 @@ do_expression(AstNode* block, AstNode* expr_node)
       assert(false);
   }
   else if(expr_node->kind == AstNodeKind_Call)
-    success = do_call(block, expr_node);
+  {
+    if(success = do_call(block, expr_node))
+      expr_node->type = expr_node->type->proc.ret;
+  }
   else
   {
 #if 1
@@ -578,7 +584,10 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       success = compile_error(&stmt->src_loc, "Unexpected `%s` at this location", get_ast_kind_printstr(stmt->kind));
   }
   else if(stmt->kind == AstNodeKind_Call)
-    success = do_call(block, stmt);
+  {
+    if(success = do_call(block, stmt))
+      stmt->type = basic_type_void;
+  }
   else if(stmt->kind == AstNodeKind_GotoStmt
           || stmt->kind == AstNodeKind_Label)
   {

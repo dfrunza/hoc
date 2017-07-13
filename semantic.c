@@ -298,11 +298,19 @@ do_expression(AstNode* block, AstNode* expr_node)
       if(type_unification(expr_node->bin_expr.lhs->type, expr_node->bin_expr.rhs->type))
         expr_node->type = expr_node->bin_expr.lhs->type;
       else
-        success = compile_error(&expr_node->src_loc, "Left and right hand-side type missmatch");
+        success = compile_error(&expr_node->src_loc, "Operands in bin. expr. are not of the same type");
     }
   }
   else if(expr_node->kind == AstNodeKind_UnrExpr)
-    success = do_expression(block, expr_node->unr_expr.operand);
+  {
+    if(success = do_expression(block, expr_node->unr_expr.operand))
+    {
+      if(expr_node->unr_expr.op == AstOpKind_AddressOf)
+        expr_node->type = new_pointer_type(expr_node->unr_expr.operand->type);
+      else
+        assert(!"not implemented");
+    }
+  }
   else if(expr_node->kind == AstNodeKind_Id)
   {
     AstNode* var_decl = lookup_symbol_node(expr_node->id.name, SymbolKind_Var);
@@ -358,7 +366,6 @@ do_expression(AstNode* block, AstNode* expr_node)
     assert(!"Not implemented");
 #endif
   }
-
   return success;
 }
 
@@ -460,7 +467,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
 
   if(stmt->kind == AstNodeKind_VarDecl)
     success = do_var_decl(block, stmt);
-  else if(stmt->kind == AstNodeKind_BinExpr)
+  else if(stmt->kind == AstNodeKind_BinExpr || stmt->kind == AstNodeKind_Call)
    success = do_expression(block, stmt);
   else if(stmt->kind == AstNodeKind_UnrExpr)
   {
@@ -506,30 +513,35 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   {
     if(success = do_expression(block, stmt->if_stmt.cond_expr))
     {
-      if(stmt->if_stmt.body->kind == AstNodeKind_Block)
+      if(stmt->if_stmt.cond_expr->type == basic_type_bool)
       {
-        if(success = scope_begin(stmt->if_stmt.body))
+        if(stmt->if_stmt.body->kind == AstNodeKind_Block)
         {
-          success = do_block(proc, loop, stmt, stmt->if_stmt.body);
-          scope_end();
-        }
-      }
-      else
-        success = do_statement(proc, block, loop, stmt->if_stmt.body);
-
-      if(stmt->if_stmt.else_body)
-      {
-        if(stmt->if_stmt.else_body->kind == AstNodeKind_Block)
-        {
-          if(success = scope_begin(stmt->if_stmt.else_body))
+          if(success = scope_begin(stmt->if_stmt.body))
           {
-            success = do_block(proc, stmt, loop, stmt->if_stmt.else_body);
+            success = do_block(proc, loop, stmt, stmt->if_stmt.body);
             scope_end();
           }
         }
         else
-          success = do_statement(proc, block, loop, stmt->if_stmt.else_body);
+          success = do_statement(proc, block, loop, stmt->if_stmt.body);
+
+        if(stmt->if_stmt.else_body)
+        {
+          if(stmt->if_stmt.else_body->kind == AstNodeKind_Block)
+          {
+            if(success = scope_begin(stmt->if_stmt.else_body))
+            {
+              success = do_block(proc, stmt, loop, stmt->if_stmt.else_body);
+              scope_end();
+            }
+          }
+          else
+            success = do_statement(proc, block, loop, stmt->if_stmt.else_body);
+        }
       }
+      else
+        success = compile_error(&stmt->src_loc, "Boolean expression required");
     }
   }
   else if(stmt->kind == AstNodeKind_ReturnStmt)
@@ -582,11 +594,6 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
     }
     else
       success = compile_error(&stmt->src_loc, "Unexpected `%s` at this location", get_ast_kind_printstr(stmt->kind));
-  }
-  else if(stmt->kind == AstNodeKind_Call)
-  {
-    if(success = do_call(block, stmt))
-      stmt->type = basic_type_void;
   }
   else if(stmt->kind == AstNodeKind_GotoStmt
           || stmt->kind == AstNodeKind_Label)

@@ -50,12 +50,21 @@ new_product_type(Type* left, Type* right)
 }
 
 Type*
-new_array_type(int dim, Type* elem_type)
+new_array_type(int dim, Type* elem)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = TypeKind_Array;
   type->array.dim = dim;
-  type->array.elem_type = elem_type;
+  type->array.elem = elem;
+  return type;
+}
+
+Type*
+new_pointer_type(Type* pointee)
+{
+  Type* type = mem_push_struct(arena, Type);
+  type->kind = TypeKind_Pointer;
+  type->ptr.pointee = pointee;
   return type;
 }
 
@@ -167,7 +176,7 @@ type_unification(Type* type_a, Type* type_b)
         success = type_unification(repr_type_a->ptr.pointee, repr_type_b->ptr.pointee);
       else if(repr_type_a->kind == TypeKind_Array)
         success = (repr_type_a->array.dim == repr_type_b->array.dim)
-          && type_unification(repr_type_a->array.elem_type, repr_type_b->array.elem_type);
+          && type_unification(repr_type_a->array.elem, repr_type_b->array.elem);
       else
         assert(false);
     }
@@ -252,7 +261,7 @@ substitution(List* subst_list, Type* type)
     else if(subst->kind == TypeKind_Pointer)
       subst->ptr.pointee = substitution(subst_list, subst->ptr.pointee);
     else if(subst->kind == TypeKind_Array)
-      subst->array.elem_type = substitution(subst_list, subst->array.elem_type);
+      subst->array.elem = substitution(subst_list, subst->array.elem);
     else
       assert(false);
   }

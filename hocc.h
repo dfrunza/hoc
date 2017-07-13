@@ -550,7 +550,7 @@ ProductType;
 typedef struct
 {
   int dim;
-  Type* elem_type;
+  Type* elem;
 }
 ArrayType;
 
@@ -634,6 +634,7 @@ AstNode* new_var_decl(SourceLocation* src_loc);
 AstNode* new_block(SourceLocation* src_loc);
 Type* new_proc_type(Type* args, Type* ret);
 Type* new_typevar();
+Type* new_pointer_type(Type* pointee);
 Type* new_product_type(Type* left, Type* right);
 Type* new_array_type(int dim, Type* elem_type);
 Type* make_type_of_node_list(List* node_list);

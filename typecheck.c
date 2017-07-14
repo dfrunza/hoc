@@ -144,7 +144,7 @@ set_union(Type* type_a, Type* type_b)
 }
 
 bool
-type_unification(Type* type_a, Type* type_b)
+type_unif(Type* type_a, Type* type_b)
 {
   bool success = false;
   Type* repr_type_a = find_set_representative(type_a);
@@ -167,16 +167,16 @@ type_unification(Type* type_a, Type* type_b)
       assert(repr_type_a->kind == repr_type_b->kind);
 
       if(repr_type_a->kind == TypeKind_Proc)
-        success = type_unification(repr_type_a->proc.args, repr_type_b->proc.args)
-          && type_unification(repr_type_a->proc.ret, repr_type_b->proc.ret);
+        success = type_unif(repr_type_a->proc.args, repr_type_b->proc.args)
+          && type_unif(repr_type_a->proc.ret, repr_type_b->proc.ret);
       else if(repr_type_a->kind == TypeKind_Product)
-        success = type_unification(repr_type_a->product.left, repr_type_b->product.left)
-          && type_unification(repr_type_a->product.right, repr_type_b->product.right);
+        success = type_unif(repr_type_a->product.left, repr_type_b->product.left)
+          && type_unif(repr_type_a->product.right, repr_type_b->product.right);
       else if(repr_type_a->kind == TypeKind_Pointer)
-        success = type_unification(repr_type_a->ptr.pointee, repr_type_b->ptr.pointee);
+        success = type_unif(repr_type_a->ptr.pointee, repr_type_b->ptr.pointee);
       else if(repr_type_a->kind == TypeKind_Array)
         success = (repr_type_a->array.dim == repr_type_b->array.dim)
-          && type_unification(repr_type_a->array.elem, repr_type_b->array.elem);
+          && type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
       else
         assert(false);
     }
@@ -213,7 +213,7 @@ find_pair(List* subst_list, Type* type)
 }
 
 internal Type*
-substitution(List* subst_list, Type* type)
+type_subst(List* subst_list, Type* type)
 {
   type = find_set_representative(type);
   Type* subst = 0;
@@ -234,18 +234,18 @@ substitution(List* subst_list, Type* type)
       subst->typevar.id = typevar_id++;
     else if(subst->kind == TypeKind_Proc)
     {
-      subst->proc.args = substitution(subst_list, subst->proc.args);
-      subst->proc.ret = substitution(subst_list, subst->proc.ret);
+      subst->proc.args = type_subst(subst_list, subst->proc.args);
+      subst->proc.ret = type_subst(subst_list, subst->proc.ret);
     }
     else if(subst->kind == TypeKind_Product)
     {
-      subst->product.left = substitution(subst_list, subst->product.left);
-      subst->product.right = substitution(subst_list, subst->product.right);
+      subst->product.left = type_subst(subst_list, subst->product.left);
+      subst->product.right = type_subst(subst_list, subst->product.right);
     }
     else if(subst->kind == TypeKind_Pointer)
-      subst->ptr.pointee = substitution(subst_list, subst->ptr.pointee);
+      subst->ptr.pointee = type_subst(subst_list, subst->ptr.pointee);
     else if(subst->kind == TypeKind_Array)
-      subst->array.elem = substitution(subst_list, subst->array.elem);
+      subst->array.elem = type_subst(subst_list, subst->array.elem);
     else
       assert(false);
   }

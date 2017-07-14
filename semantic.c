@@ -312,7 +312,7 @@ do_call(AstNode* block, AstNode* call)
       assert(registered_proc->type->kind == TypeKind_Proc);
       Type* ret_type = registered_proc->type->proc.ret;
       call->type = new_proc_type(make_type_of_node_list(&call->call.args), ret_type);
-      if(type_unification(registered_proc->type, call->type))
+      if(type_unif(registered_proc->type, call->type))
         call->call.proc = registered_proc;
       else
       {
@@ -337,12 +337,12 @@ do_expression(AstNode* block, AstNode* expr_node)
     if(success = do_expression(block, expr_node->bin_expr.lhs)
       && do_expression(block, expr_node->bin_expr.rhs))
     {
-      if(type_unification(expr_node->bin_expr.lhs->type, expr_node->bin_expr.rhs->type))
+      if(type_unif(expr_node->bin_expr.lhs->type, expr_node->bin_expr.rhs->type))
       {
         expr_node->type = expr_node->bin_expr.lhs->type;
         if(is_arithmetic_op(expr_node->bin_expr.op) || is_comparison_op(expr_node->bin_expr.op))
         {
-          if((expr_node->type == basic_type_int) || (expr_node->type == basic_type_float))
+          if(type_unif(expr_node->type, basic_type_int) || type_unif(expr_node->type, basic_type_float))
           {
             if(is_comparison_op(expr_node->bin_expr.op))
               expr_node->type = basic_type_bool;
@@ -351,7 +351,7 @@ do_expression(AstNode* block, AstNode* expr_node)
             success = compile_error(&expr_node->src_loc,
                                     "int/float operands are expected, actual `%s`", get_type_printstr(expr_node->type));
         }
-        else if(is_logic_op(expr_node->bin_expr.op) && (expr_node->type != basic_type_bool))
+        else if(is_logic_op(expr_node->bin_expr.op) && !type_unif(expr_node->type, basic_type_bool))
           success = compile_error(&expr_node->src_loc,
                                   "bool operands are expected, actual `%s`", get_type_printstr(expr_node->type));
       }
@@ -369,7 +369,7 @@ do_expression(AstNode* block, AstNode* expr_node)
         expr_node->type = new_pointer_type(operand->type);
       else if(expr_node->unr_expr.op == AstOpKind_Neg)
       {
-        if((operand->type == basic_type_int) || (operand->type == basic_type_float))
+        if(type_unif(operand->type, basic_type_int) || type_unif(operand->type, basic_type_float))
           expr_node->type = operand->type;
         else
           success = compile_error(&expr_node->src_loc,
@@ -377,7 +377,7 @@ do_expression(AstNode* block, AstNode* expr_node)
       }
       else if(is_logic_op(expr_node->unr_expr.op))
       {
-        if(operand->type == basic_type_bool)
+        if(type_unif(operand->type, basic_type_bool))
           expr_node->type = operand->type;
         else
           success = compile_error(&expr_node->src_loc,
@@ -510,7 +510,7 @@ do_proc_decl(AstNode* proc)
 
         if(registered_proc->proc.is_decl && proc->proc.is_decl)
         {
-          if(!type_unification(registered_proc->type, proc->type))
+          if(!type_unif(registered_proc->type, proc->type))
           {
             success = compile_error(&proc->src_loc, "Inconsistent proc signature...");
             compile_error(&registered_proc->src_loc, "...see previous decl");
@@ -523,7 +523,7 @@ do_proc_decl(AstNode* proc)
         }
         else if(registered_proc->proc.is_decl && !proc->proc.is_decl)
         {
-          if(type_unification(registered_proc->type, proc->type))
+          if(type_unif(registered_proc->type, proc->type))
             proc_sym->node = proc;
           else
           {
@@ -568,7 +568,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   {
     if(success = do_expression(block, stmt->while_stmt.cond_expr))
     {
-      if(stmt->while_stmt.cond_expr->type == basic_type_bool)
+      if(type_unif(stmt->while_stmt.cond_expr->type, basic_type_bool))
       {
         if(stmt->while_stmt.body->kind == AstNodeKind_Block)
         {
@@ -597,7 +597,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
           && (stmt->for_stmt.loop_expr ? do_expression(stmt->for_stmt.body, stmt->for_stmt.loop_expr) : 1);
         if(success)
         {
-          if(stmt->for_stmt.cond_expr->type != basic_type_bool)
+          if(!type_unif(stmt->for_stmt.cond_expr->type, basic_type_bool))
             success = compile_error(&stmt->src_loc, "Boolean expression is expected");
         }
       }
@@ -608,7 +608,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   {
     if(success = do_expression(block, stmt->if_stmt.cond_expr))
     {
-      if(stmt->if_stmt.cond_expr->type == basic_type_bool)
+      if(type_unif(stmt->if_stmt.cond_expr->type, basic_type_bool))
       {
         if(stmt->if_stmt.body->kind == AstNodeKind_Block)
         {
@@ -653,7 +653,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       {
         if(success = do_expression(block, ret_expr))
         {
-          if(type_unification(ret_expr->type, ret_var->type))
+          if(type_unif(ret_expr->type, ret_var->type))
           {
             AstNode* assign_expr = new_bin_expr(&stmt->src_loc);
             assign_expr->bin_expr.op = AstOpKind_Assign;
@@ -670,7 +670,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
         }
       }
       else
-        if(!(success = type_unification(ret_var->type, stmt->type)))
+        if(!(success = type_unif(ret_var->type, stmt->type)))
           success = compile_error(&stmt->src_loc,
                                   "`return` : expected `%s` type, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(stmt->type));
       if(success)

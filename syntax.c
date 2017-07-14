@@ -10,12 +10,6 @@ internal bool do_unary_expr(TokenStream*, AstNode**);
 internal bool do_module(TokenStream*, List*);
 internal bool do_struct_member_list(TokenStream*, List*);
 
-internal bool
-is_logical_operator(AstOpKind op)
-{
-  return op >= AstOpKind_LogicEquals && op <= AstOpKind_LogicNot;
-}
-
 internal AstNode*
 new_node(SourceLocation* src_loc)
 {

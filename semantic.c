@@ -47,11 +47,15 @@ is_arithmetic_op(AstOpKind op)
 internal bool
 is_logic_op(AstOpKind op)
 {
-  return op == AstOpKind_LogicOr || op == AstOpKind_LogicAnd
-    || op == AstOpKind_LogicEquals || op == AstOpKind_LogicNotEquals
-    || op == AstOpKind_LogicLess || op == AstOpKind_LogicLessEquals
-    || op == AstOpKind_LogicGreater || op == AstOpKind_LogicGreaterEquals
-    || op == AstOpKind_LogicNot;
+  return op == AstOpKind_LogicOr || op == AstOpKind_LogicAnd || op == AstOpKind_LogicNot;
+}
+
+internal bool
+is_comparison_op(AstOpKind op)
+{
+  return op == AstOpKind_LogicEquals || op == AstOpKind_LogicNotEquals
+      || op == AstOpKind_LogicLess || op == AstOpKind_LogicLessEquals
+      || op == AstOpKind_LogicGreater || op == AstOpKind_LogicGreaterEquals;
 }
 
 internal AstNode*
@@ -336,24 +340,49 @@ do_expression(AstNode* block, AstNode* expr_node)
       if(type_unification(expr_node->bin_expr.lhs->type, expr_node->bin_expr.rhs->type))
       {
         expr_node->type = expr_node->bin_expr.lhs->type;
-        if(is_arithmetic_op(expr_node->bin_expr.op)
-           && ((expr_node->type != basic_type_int) || (expr_node->type != basic_type_float)))
-          success = compile_error(&expr_node->src_loc,
-                                  "int/float operands required, actual `%s`", get_type_printstr(expr_node->type));
+        if(is_arithmetic_op(expr_node->bin_expr.op) || is_comparison_op(expr_node->bin_expr.op))
+        {
+          if((expr_node->type == basic_type_int) || (expr_node->type == basic_type_float))
+          {
+            if(is_comparison_op(expr_node->bin_expr.op))
+              expr_node->type = basic_type_bool;
+          }
+          else
+            success = compile_error(&expr_node->src_loc,
+                                    "int/float operands expected, actual `%s`", get_type_printstr(expr_node->type));
+        }
         else if(is_logic_op(expr_node->bin_expr.op) && (expr_node->type != basic_type_bool))
           success = compile_error(&expr_node->src_loc,
-                                  "bool operands required, actual `%s`", get_type_printstr(expr_node->type));
+                                  "bool operands expected, actual `%s`", get_type_printstr(expr_node->type));
       }
       else
-        success = compile_error(&expr_node->src_loc, "Operands in bin. expr. are not of the same type");
+        success = compile_error(&expr_node->src_loc, "Expected operands of same type");
     }
   }
   else if(expr_node->kind == AstNodeKind_UnrExpr)
   {
     if(success = do_expression(block, expr_node->unr_expr.operand))
     {
+      AstNode* operand = expr_node->unr_expr.operand;
+
       if(expr_node->unr_expr.op == AstOpKind_AddressOf)
-        expr_node->type = new_pointer_type(expr_node->unr_expr.operand->type);
+        expr_node->type = new_pointer_type(operand->type);
+      else if(expr_node->unr_expr.op == AstOpKind_Neg)
+      {
+        if((operand->type == basic_type_int) || (operand->type == basic_type_float))
+          expr_node->type = operand->type;
+        else
+          success = compile_error(&expr_node->src_loc,
+                                  "int/float operands expected, actual `%s`", get_type_printstr(operand->type));
+      }
+      else if(is_logic_op(expr_node->unr_expr.op))
+      {
+        if(operand->type == basic_type_bool)
+          expr_node->type = operand->type;
+        else
+          success = compile_error(&expr_node->src_loc,
+                                  "bool operand expected, actual `%s`", get_type_printstr(operand->type));
+      }
       else
         fail("not implemented");
     }
@@ -420,7 +449,7 @@ do_expression(AstNode* block, AstNode* expr_node)
   }
   else
   {
-    fail("TODO: %s", get_ast_kind_printstr(expr_node->kind));
+    fail("not implemented : %s", get_ast_kind_printstr(expr_node->kind));
   }
   return success;
 }
@@ -441,7 +470,7 @@ do_proc_formal_args(AstNode* block, List* formal_args)
     if(var_decl->id)
       success = do_var_decl(block, node);
     else
-      success = compile_error(&node->src_loc, "Missing identifier: %s", get_ast_kind_printstr(node->kind));
+      success = compile_error(&node->src_loc, "Missing identifier : %s", get_ast_kind_printstr(node->kind));
     assert(!var_decl->init_expr); /* enforced by parser */
   }
   return success;
@@ -539,16 +568,21 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   {
     if(success = do_expression(block, stmt->while_stmt.cond_expr))
     {
-      if(stmt->while_stmt.body->kind == AstNodeKind_Block)
+      if(stmt->while_stmt.cond_expr->type == basic_type_bool)
       {
-        if(success = scope_begin(stmt->while_stmt.body))
+        if(stmt->while_stmt.body->kind == AstNodeKind_Block)
         {
-          success = do_block(proc, stmt, stmt, stmt->while_stmt.body);
-          scope_end();
+          if(success = scope_begin(stmt->while_stmt.body))
+          {
+            success = do_block(proc, stmt, stmt, stmt->while_stmt.body);
+            scope_end();
+          }
         }
+        else
+          success = do_statement(proc, block, stmt, stmt->while_stmt.body);
       }
       else
-        success = do_statement(proc, block, stmt, stmt->while_stmt.body);
+        success = compile_error(&stmt->src_loc, "Boolean expression expected");
     }
   }
   else if(stmt->kind == AstNodeKind_ForStmt)
@@ -561,6 +595,11 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
         success = do_block(proc, stmt, stmt, stmt->for_stmt.body) // will set the block->owner field, so do it first
           && (stmt->for_stmt.cond_expr ? do_expression(stmt->for_stmt.body, stmt->for_stmt.cond_expr) : 1)
           && (stmt->for_stmt.loop_expr ? do_expression(stmt->for_stmt.body, stmt->for_stmt.loop_expr) : 1);
+        if(success)
+        {
+          if(stmt->for_stmt.cond_expr->type != basic_type_bool)
+            success = compile_error(&stmt->src_loc, "Boolean expression expected");
+        }
       }
       scope_end();
     }
@@ -597,7 +636,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
         }
       }
       else
-        success = compile_error(&stmt->src_loc, "Boolean expression required");
+        success = compile_error(&stmt->src_loc, "Boolean expression expected");
     }
   }
   else if(stmt->kind == AstNodeKind_ReturnStmt)
@@ -609,17 +648,26 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       stmt->type = basic_type_void;
 
       AstNode* ret_expr = stmt->ret_stmt.expr;
+      AstNode* ret_var = proc->proc.ret_var;
       if(ret_expr)
       {
-        AstNode* ret_var = proc->proc.ret_var;
-        AstNode* assign = new_bin_expr(&stmt->src_loc);
-        assign->bin_expr.op = AstOpKind_Assign;
-        assign->bin_expr.lhs = ret_var->var_decl.id;
-        assign->bin_expr.rhs = ret_expr;
-        stmt->ret_stmt.expr = assign;
+        AstNode* assign_expr = new_bin_expr(&stmt->src_loc);
+        assign_expr->bin_expr.op = AstOpKind_Assign;
+        assign_expr->bin_expr.lhs = ret_var->var_decl.id;
+        assign_expr->bin_expr.rhs = ret_expr;
 
-        success = do_expression(proc->proc.body, stmt->ret_stmt.expr);
+        if(success = do_expression(proc->proc.body, assign_expr))
+        {
+          stmt->ret_stmt.expr = assign_expr;
+          stmt->type = assign_expr->type;
+        }
       }
+      else
+        if(!(success = type_unification(ret_var->type, stmt->type)))
+          success = compile_error(&stmt->src_loc,
+                                  "`return` : expected `%s` type, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(stmt->type));
+      if(success)
+        assert(stmt->type == proc->proc.ret_var->type);
     }
     else
       success = compile_error(&stmt->src_loc, "Unexpected `return` at this location");
@@ -654,7 +702,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   else if(stmt->kind == AstNodeKind_GotoStmt
           || stmt->kind == AstNodeKind_Label)
   {
-    fail("TODO: %s\n", get_ast_kind_printstr(stmt->kind));
+    fail("not implemented : %s\n", get_ast_kind_printstr(stmt->kind));
   }
   else if(stmt->kind == AstNodeKind_EmptyStmt)
   { /* nothing to do */ }
@@ -689,6 +737,7 @@ do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
               || stmt->kind == AstNodeKind_BinExpr
               || stmt->kind == AstNodeKind_UnrExpr)
         success = compile_error(&stmt->src_loc, "Unexpected statement %s", get_ast_kind_printstr(stmt->kind));
+
       else if(stmt->kind == AstNodeKind_Struct
               || stmt->kind == AstNodeKind_Union
               || stmt->kind == AstNodeKind_Enum)

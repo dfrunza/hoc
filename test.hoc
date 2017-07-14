@@ -1,17 +1,13 @@
-/*
 include "hlib\\gcd.hoc";
-include "hlib\\sqrt.hoc";
-include "hlib\\fibo.hoc";
-include "hlib\\power.hoc";
+/*
 include "hlib\\minmax.hoc";
-include "hlib\\syntax.hoc";
-include "hlib\\lex.hoc";
+include "hlib\\power.hoc";
+include "hlib\\fibo.hoc";
+include "hlib\\sqrt.hoc";
 */
 
-proc int foo(char a, int m)
+proc int main()
 {
-  var int x = 1;
-  var bool x_b = false;
-  x = <bool>x_b;
+  var int result;
+  result = gcd(123, 321);
 }
-

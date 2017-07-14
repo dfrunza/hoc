@@ -9,12 +9,50 @@ extern Type* basic_type_char;
 extern Type* basic_type_float;
 extern Type* basic_type_void;
 
-internal SymbolTable* symtab = 0;
+SymbolTable* symtab = 0;
 internal int last_block_id = 0;
 internal int tempvar_id = 0;
 
 internal bool do_block(AstNode*, AstNode*, AstNode*, AstNode*);
 internal bool do_expression(AstNode*, AstNode*);
+
+internal char*
+get_type_printstr(Type* type)
+{
+  char* result = "???";
+  if(type->kind == TypeKind_Basic)
+  {
+    if(type->basic.kind == BasicTypeKind_Bool)
+      result = "bool";
+    else if(type->basic.kind == BasicTypeKind_Int)
+      result = "int";
+    else if(type->basic.kind == BasicTypeKind_Float)
+      result = "float";
+    else if(type->basic.kind == BasicTypeKind_Char)
+      result = "char";
+    else if(type->basic.kind == BasicTypeKind_Void)
+      result = "void";
+  }
+  return result;
+}
+
+internal bool
+is_arithmetic_op(AstOpKind op)
+{
+  return op == AstOpKind_Add || op == AstOpKind_Sub
+    || op == AstOpKind_Mul || op == AstOpKind_Div
+    || op == AstOpKind_Mod;
+}
+
+internal bool
+is_logic_op(AstOpKind op)
+{
+  return op == AstOpKind_LogicOr || op == AstOpKind_LogicAnd
+    || op == AstOpKind_LogicEquals || op == AstOpKind_LogicNotEquals
+    || op == AstOpKind_LogicLess || op == AstOpKind_LogicLessEquals
+    || op == AstOpKind_LogicGreater || op == AstOpKind_LogicGreaterEquals
+    || op == AstOpKind_LogicNot;
+}
 
 internal AstNode*
 make_tempvar_id(SourceLocation* src_loc, char* label)
@@ -296,7 +334,16 @@ do_expression(AstNode* block, AstNode* expr_node)
       && do_expression(block, expr_node->bin_expr.rhs))
     {
       if(type_unification(expr_node->bin_expr.lhs->type, expr_node->bin_expr.rhs->type))
+      {
         expr_node->type = expr_node->bin_expr.lhs->type;
+        if(is_arithmetic_op(expr_node->bin_expr.op)
+           && ((expr_node->type != basic_type_int) || (expr_node->type != basic_type_float)))
+          success = compile_error(&expr_node->src_loc,
+                                  "int/float operands required, actual `%s`", get_type_printstr(expr_node->type));
+        else if(is_logic_op(expr_node->bin_expr.op) && (expr_node->type != basic_type_bool))
+          success = compile_error(&expr_node->src_loc,
+                                  "bool operands required, actual `%s`", get_type_printstr(expr_node->type));
+      }
       else
         success = compile_error(&expr_node->src_loc, "Operands in bin. expr. are not of the same type");
     }
@@ -360,11 +407,7 @@ do_expression(AstNode* block, AstNode* expr_node)
   }
   else
   {
-#if 1
-    printf("TODO: %s\n", get_ast_kind_printstr(expr_node->kind));
-#else
-    assert(!"Not implemented");
-#endif
+    fail("TODO: %s", get_ast_kind_printstr(expr_node->kind));
   }
   return success;
 }
@@ -598,11 +641,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   else if(stmt->kind == AstNodeKind_GotoStmt
           || stmt->kind == AstNodeKind_Label)
   {
-#if 1
-    printf("TODO: %s\n", get_ast_kind_printstr(stmt->kind));
-#else
-    assert(!"Not implemented");
-#endif
+    fail("TODO: %s\n", get_ast_kind_printstr(stmt->kind));
   }
   else if(stmt->kind == AstNodeKind_EmptyStmt)
   { /* nothing to do */ }
@@ -641,7 +680,7 @@ do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
               || stmt->kind == AstNodeKind_Union
               || stmt->kind == AstNodeKind_Enum)
       {
-        assert(!"Not implemented");
+        fail("Not implemented");
       }
       else
         assert(false);

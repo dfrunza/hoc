@@ -558,6 +558,7 @@ typedef struct Type
 {
   TypeKind kind;
   Type* repr_type; /* representative member of the set of equivalent types */
+  AstNode* node;
 
   union
   {

@@ -32,38 +32,38 @@ typedef struct
 VmProgram;
 
 #define ARENA_SIZE (3*MEGABYTE)
-#define DBG_ARENA_SIZE (ARENA_SIZE/3)
-#define SYM_ARENA_SIZE (ARENA_SIZE/20)
+#define DEBUG_ARENA_SIZE (ARENA_SIZE/3)
+#define SYM_ARENA_SIZE (ARENA_SIZE/10)
 
-internal bool debug_enabled = true;
+internal bool DEBUG_enabled = true;
 MemoryArena* arena = 0;
-MemoryArena* dbg_arena = 0;
+MemoryArena* DEBUG_arena = 0;
 MemoryArena* sym_arena = 0;
+extern SymbolTable* symtab;
 
 void
 DEBUG_print_arena_usage(char* tag)
 {
   ArenaUsage usage = arena_usage(arena);
   ArenaUsage sym_usage = arena_usage(sym_arena);
-  printf("arena in_use: %.2f%% -- %s\n", usage.in_use*100, tag);
-  printf("sym_arena in_use: %.2f%% -- %s\n", sym_usage.in_use*100, tag);
+  printf("arena in_use : %.2f%% -- %s\n", usage.in_use*100, tag);
+  printf("sym_arena in_use : %.2f%% -- %s\n", sym_usage.in_use*100, tag);
 }
 
 bool
 compile_error_f(SourceLocation* src_loc, char* file, int line, char* message, ...)
 {
-  va_list args;
-
   if(src_loc->line_nr > 0)
     fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr, path_make_stem(file), line);
   else
     fprintf(stderr, ": (%s:%d) ", path_make_stem(file), line);
 
+  va_list args;
   va_start(args, message);
   vfprintf(stderr, message, args);
-  fprintf(stderr, "\n");
   va_end(args);
 
+  fprintf(stderr, "\n");
   return false;
 }
 
@@ -119,7 +119,7 @@ DEBUG_print_sizeof_ast_structs()
 #undef make_zero_size_info
 
 #if 1
-  // sort the array
+  // insertion-sort the array
   for(int i = 1; i < AstNodeKind__Count; i++)
   {
     for(int j = i;
@@ -155,29 +155,29 @@ translate(char* file_path, char* hoc_text)
   AstNode* ast = 0;
   if(vm_program->success = parse(&token_stream, &ast))
   {
-    if(debug_enabled)
-    {
+    if(DEBUG_enabled)
+    {/*>>>*/
       DEBUG_print_arena_usage("Post syntactic analysis");
 
       String str = {0};
-      str_init(&str, dbg_arena);
+      str_init(&str, DEBUG_arena);
       DEBUG_print_ast_node(&str, 0, ast, 0);
       str_dump_to_file(&str, "out_syntax.txt");
-      arena_free(dbg_arena);
-    }
+      arena_free(DEBUG_arena);
+    }/*<<<*/
 #if 1
     if(vm_program->success = semantic_analysis(ast))
     {
-      if(debug_enabled)
-      {
+      if(DEBUG_enabled)
+      {/*>>>*/
         DEBUG_print_arena_usage("Post semantic analysis");
 
         String str = {0};
-        str_init(&str, dbg_arena);
+        str_init(&str, DEBUG_arena);
         DEBUG_print_ast_node(&str, 0, ast, 0);
         str_dump_to_file(&str, "out_semantic.txt");
-        arena_free(dbg_arena);
-      }
+        arena_free(DEBUG_arena);
+      }/*<<<*/
     }
 #else
     assert(symbol_table.scope_id == 0);
@@ -213,9 +213,9 @@ make_file_names(OutFileNames* out_files, char* stem)
 {
   int stem_len = cstr_len(stem);
   assert(stem_len > 0);
-  bool success = (stem_len > 0 && stem_len < 80);
+  bool success = true;
 
-  if(success)
+  if(success = (stem_len > 0 && stem_len < 80))
   {
     char* str = out_files->strings;
 
@@ -237,7 +237,8 @@ make_file_names(OutFileNames* out_files, char* stem)
     sprintf(str, "%s.res", stem);
     out_files->res.name = str;
     out_files->res.len = cstr_len(out_files->res.name);
-  } else
+  }
+  else
     error("Length of file name out of range : '%s'", stem);
   return success;
 }
@@ -261,8 +262,7 @@ write_res_file(OutFileNames* out_files)
     PROCESS_INFORMATION proc_info = {0};
     sprintf(buf, "rc.exe /nologo /fo%s %s", out_files->res.name, out_files->rc.name);
     DWORD exit_code = 0;
-    success = CreateProcess(0, buf, 0, 0, true, 0, 0, 0, &start_info, &proc_info);
-    if(success)
+    if(success = CreateProcess(0, buf, 0, 0, true, 0, 0, 0, &start_info, &proc_info))
     {
       WaitForSingleObject(proc_info.hProcess, INFINITE);
       GetExitCodeProcess(proc_info.hProcess, &exit_code);
@@ -270,14 +270,12 @@ write_res_file(OutFileNames* out_files)
 
       CloseHandle(proc_info.hProcess);
       CloseHandle(proc_info.hThread);
-    } else {
-      error("Process could not be launched : %s", buf);
-      success = false;
     }
-  } else {
-    error("RC file '%s' incompletely written", out_files->rc.name);
-    success = false;
+    else
+      error("Process could not be launched : %s", buf);
   }
+  else
+    error("RC file '%s' incompletely written", out_files->rc.name);
   return success;
 }
 
@@ -304,27 +302,31 @@ write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
 int
 main(int argc, char* argv[])
 {
-  int ret = -1; // error
+  bool success = true;
 
-  if(argc >= 2)
+  if(success = (argc >= 2))
   {
     arena = arena_new(ARENA_SIZE);
-    if(debug_enabled)
-    {
-      dbg_arena = arena_push(arena, DBG_ARENA_SIZE);
-      sym_arena = arena_push(arena, SYM_ARENA_SIZE);
+    sym_arena = arena_push(arena, SYM_ARENA_SIZE);
+
+    if(DEBUG_enabled)
+    {/*>>>*/
+      assert(DEBUG_ARENA_SIZE > 0);
+      DEBUG_arena = arena_push(arena, DEBUG_ARENA_SIZE);
       DEBUG_print_sizeof_ast_structs();
-    }
+    }/*<<<*/
 
     char* file_path = argv[1];
     char* hoc_text = file_read_text(arena, file_path);
     DEBUG_print_arena_usage("Read HoC text");
 
-    if(hoc_text)
+    if(success = to_bool(hoc_text))
     {
       VmProgram* vm_program = translate(file_path, hoc_text);
-      if(vm_program->success)
+      if(success = vm_program->success)
       {
+        if(DEBUG_enabled)
+          printf("symbol count : %d\n", symtab->sym_count);
 #if 0
         OutFileNames out_files = {0};
         char* file_stem = path_make_stem(file_path);
@@ -362,5 +364,5 @@ main(int argc, char* argv[])
 #if 0
   getc(stdin);
 #endif
-  return ret;
+  return success ? 0 : -1;
 }

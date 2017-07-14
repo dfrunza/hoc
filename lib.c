@@ -1,22 +1,39 @@
 #include "hocc.h"
 
-internal bool dbg_zero_arena = false;
-internal bool dbg_check_arena_bounds = true;
-internal bool dbg_assert = true;
+internal bool DEBUG_zero_arena = false;
+internal bool DEBUG_check_arena_bounds = true;
+internal bool DEBUG_assert = true;
 
 void
-assert_f(char* expr, char* file, int line)
+assert_f(char* message, char* file, int line)
 {
-  if(dbg_assert)
+  if(DEBUG_assert)
   {
-    fprintf(stderr, "Assertion fired (%s)\n", expr);
-    fprintf(stderr, "%s:%d\n", file, line);
+    fprintf(stderr, "%s(%d) : assert | %s\n", file, line, message);
     fflush(stderr);
     *(int*)0 = 0;
   }
 }
 
 void
+fail_f(char* file, int line, char* message, ...)
+{
+  if(DEBUG_assert)
+  {
+    fprintf(stderr, "%s(%d) : fail | ", file, line);
+
+    va_list args;
+    va_start(args, message);
+    vfprintf(stderr, message, args);
+    va_end(args);
+
+    fprintf(stderr, "\n");
+    fflush(stderr);
+    *(int*)0 = 0;
+  }
+}
+
+bool
 error(char* message, ...)
 {
   va_list args;
@@ -27,6 +44,7 @@ error(char* message, ...)
   vprintf(message, args);
   printf("\n");
   va_end(args);
+  return false;
 }
 
 bool
@@ -87,7 +105,7 @@ arena_pop(MemoryArena* arena)
   MemoryArena* host = arena->host;
   assert(host->free == arena->cap);
   assert(host->alloc == host->free);
-  if(dbg_zero_arena)
+  if(DEBUG_zero_arena)
     mem_zero_range((uint8*)arena, arena->cap);
   host->free = (uint8*)arena;
 
@@ -109,7 +127,7 @@ arena_push(MemoryArena* arena, size_t size)
 
   MemoryArena* sub_arena_p = (MemoryArena*)arena->free;
   arena->free = arena->free + size + sizeof(MemoryArena);
-  if(dbg_check_arena_bounds)
+  if(DEBUG_check_arena_bounds)
     arena_check_bounds(arena);
   arena->alloc = arena->free;
   arena->sub_arena_count++;
@@ -118,7 +136,7 @@ arena_push(MemoryArena* arena, size_t size)
   sub_arena.host = arena;
   *sub_arena_p = sub_arena;
 
-  if(dbg_zero_arena)
+  if(DEBUG_zero_arena)
     mem_zero_range(sub_arena.alloc, sub_arena.cap);
   return sub_arena_p;
 }
@@ -131,7 +149,7 @@ mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_
   void* element = arena->free;
   arena->free = arena->free + elem_size*count;
 
-  if(dbg_check_arena_bounds)
+  if(DEBUG_check_arena_bounds)
     arena_check_bounds(arena);
   if(zero_mem)
     mem_zero_range(element, arena->free);

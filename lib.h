@@ -68,13 +68,16 @@ List;
 
 #define assert(EXPR)\
   if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__)
+#define fail(MESSAGE, ...)\
+  fail_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__);
 #define sizeof_array(ARRAY)\
   (sizeof(ARRAY)/sizeof(ARRAY[0]))
 #define to_bool(EXPR)\
   ((EXPR) ? true : false)
 
 void assert_f(char* expr, char* file, int line);
-void error(char* message, ...);
+void fail_f(char* file, int line, char* message, ...);
+bool error(char* message, ...);
 
 MemoryArena* arena_new(int size);
 MemoryArena* arena_pop(MemoryArena* arena);

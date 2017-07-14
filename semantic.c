@@ -349,11 +349,11 @@ do_expression(AstNode* block, AstNode* expr_node)
           }
           else
             success = compile_error(&expr_node->src_loc,
-                                    "int/float operands expected, actual `%s`", get_type_printstr(expr_node->type));
+                                    "int/float operands are expected, actual `%s`", get_type_printstr(expr_node->type));
         }
         else if(is_logic_op(expr_node->bin_expr.op) && (expr_node->type != basic_type_bool))
           success = compile_error(&expr_node->src_loc,
-                                  "bool operands expected, actual `%s`", get_type_printstr(expr_node->type));
+                                  "bool operands are expected, actual `%s`", get_type_printstr(expr_node->type));
       }
       else
         success = compile_error(&expr_node->src_loc, "Expected operands of same type");
@@ -373,7 +373,7 @@ do_expression(AstNode* block, AstNode* expr_node)
           expr_node->type = operand->type;
         else
           success = compile_error(&expr_node->src_loc,
-                                  "int/float operands expected, actual `%s`", get_type_printstr(operand->type));
+                                  "int/float operands are expected, actual `%s`", get_type_printstr(operand->type));
       }
       else if(is_logic_op(expr_node->unr_expr.op))
       {
@@ -582,7 +582,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
           success = do_statement(proc, block, stmt, stmt->while_stmt.body);
       }
       else
-        success = compile_error(&stmt->src_loc, "Boolean expression expected");
+        success = compile_error(&stmt->src_loc, "Boolean expression is expected");
     }
   }
   else if(stmt->kind == AstNodeKind_ForStmt)
@@ -598,7 +598,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
         if(success)
         {
           if(stmt->for_stmt.cond_expr->type != basic_type_bool)
-            success = compile_error(&stmt->src_loc, "Boolean expression expected");
+            success = compile_error(&stmt->src_loc, "Boolean expression is expected");
         }
       }
       scope_end();
@@ -636,7 +636,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
         }
       }
       else
-        success = compile_error(&stmt->src_loc, "Boolean expression expected");
+        success = compile_error(&stmt->src_loc, "Boolean expression is expected");
     }
   }
   else if(stmt->kind == AstNodeKind_ReturnStmt)
@@ -651,15 +651,22 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       AstNode* ret_var = proc->proc.ret_var;
       if(ret_expr)
       {
-        AstNode* assign_expr = new_bin_expr(&stmt->src_loc);
-        assign_expr->bin_expr.op = AstOpKind_Assign;
-        assign_expr->bin_expr.lhs = ret_var->var_decl.id;
-        assign_expr->bin_expr.rhs = ret_expr;
-
-        if(success = do_expression(proc->proc.body, assign_expr))
+        if(success = do_expression(block, ret_expr))
         {
-          stmt->ret_stmt.expr = assign_expr;
-          stmt->type = assign_expr->type;
+          if(type_unification(ret_expr->type, ret_var->type))
+          {
+            AstNode* assign_expr = new_bin_expr(&stmt->src_loc);
+            assign_expr->bin_expr.op = AstOpKind_Assign;
+            assign_expr->bin_expr.lhs = ret_var->var_decl.id;
+            assign_expr->bin_expr.rhs = ret_expr;
+            assign_expr->type = ret_expr->type;
+
+            stmt->ret_stmt.expr = assign_expr;
+            stmt->type = ret_expr->type;
+          }
+          else
+            success = compile_error(&stmt->src_loc,
+                                    "`return` : expected `%s` type, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(ret_expr->type));
         }
       }
       else

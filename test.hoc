@@ -10,4 +10,5 @@ proc int main()
 {
   var int result;
   result = gcd(123, 321);
+  return 0;
 }

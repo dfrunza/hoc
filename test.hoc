@@ -12,6 +12,6 @@ proc int foo(char a, int m)
 {
   var int x = 1;
   var bool x_b = false;
-  x = <int>x_b;
+  x = <bool>x_b;
 }
 

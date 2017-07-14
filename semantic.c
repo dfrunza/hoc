@@ -273,7 +273,7 @@ do_var_decl(AstNode* block, AstNode* var)
       success = compile_error(&type_id->src_loc, "Unknown type `%s`", type_id->id.name);
   }
   else
-    assert(!"only simple types are supported");
+    fail("only simple types are supported");
   return success;
 }
 
@@ -355,7 +355,7 @@ do_expression(AstNode* block, AstNode* expr_node)
       if(expr_node->unr_expr.op == AstOpKind_AddressOf)
         expr_node->type = new_pointer_type(expr_node->unr_expr.operand->type);
       else
-        assert(!"not implemented");
+        fail("not implemented");
     }
   }
   else if(expr_node->kind == AstNodeKind_Id)
@@ -404,6 +404,19 @@ do_expression(AstNode* block, AstNode* expr_node)
   {
     if(success = do_call(block, expr_node))
       expr_node->type = expr_node->type->proc.ret;
+  }
+  else if(expr_node->kind == AstNodeKind_Cast)
+  {
+    if(expr_node->cast.type->kind == AstNodeKind_Id)
+    {
+      AstNode* type = lookup_symbol_node(expr_node->cast.type->id.name, SymbolKind_Type);
+      if(type)
+        expr_node->type = type->type;
+      else
+        compile_error(&expr_node->src_loc, "Unknown type in cast");
+    }
+    else
+      fail("only simple types are supported");
   }
   else
   {

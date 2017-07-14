@@ -1,14 +1,14 @@
-include "hlib\\gcd.hoc";
+include "hlib\\sqrt.hoc";
 /*
+include "hlib\\gcd.hoc";
 include "hlib\\minmax.hoc";
 include "hlib\\power.hoc";
 include "hlib\\fibo.hoc";
-include "hlib\\sqrt.hoc";
 */
 
 proc int main()
 {
-  var int result;
-  result = gcd(123, 321);
+  var int result = sqrt_floor(23);
+  /*result = gcd(123, 321);*/
   return 0;
 }

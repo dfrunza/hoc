@@ -640,5 +640,6 @@ Type* new_product_type(Type* left, Type* right);
 Type* new_array_type(int dim, Type* elem_type);
 Type* make_type_of_node_list(List* node_list);
 bool type_unif(Type* type_a, Type* type_b);
+void build_runtime(AstNode* ast);
 
 

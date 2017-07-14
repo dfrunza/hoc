@@ -45,25 +45,25 @@ compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
 }
 
 void
-build_call(MemoryArena* arena, AstCall* call)
+do_call(MemoryArena* arena, AstCall* call)
 {
   for(ListItem* list_item = list_first_item(&call->actual_args);
       list_item;
       list_item = list_item->next)
   {
-    build_stmt(arena, list_item->elem);
+    do_stmt(arena, list_item->elem);
   }
 }
 
 void
-build_print_stmt(MemoryArena* arena, AstPrintStmt* print_stmt)
+do_print_stmt(MemoryArena* arena, AstPrintStmt* print_stmt)
 {
   if(print_stmt->expr)
-    build_stmt(arena, print_stmt->expr);
+    do_stmt(arena, print_stmt->expr);
 }
 
 void
-build_block(MemoryArena* arena, AstBlock* block)
+do_block(MemoryArena* arena, AstBlock* block)
 {
   List pre_fp_data = {0};
   list_init(&pre_fp_data);
@@ -120,13 +120,13 @@ build_block(MemoryArena* arena, AstBlock* block)
     block->locals_size += local->data.size;
   }
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
-  build_block_stmts(arena, &block->stmt_list);
+  do_block(arena, &block->stmt_list);
 }
 
 void
-build_while_stmt(MemoryArena* arena, AstWhileStmt* while_stmt)
+do_while_stmt(MemoryArena* arena, AstWhileStmt* while_stmt)
 {
-  build_stmt(arena, while_stmt->cond_expr);
+  do_stmt(arena, while_stmt->cond_expr);
 
   {
     /* labels */
@@ -147,15 +147,15 @@ build_while_stmt(MemoryArena* arena, AstWhileStmt* while_stmt)
   }
 
   if(while_stmt->body->kind == AstNodeKind_Block)
-    build_block(arena, &while_stmt->body->block);
+    do_block(arena, &while_stmt->body->block);
   else
-    build_stmt(arena, while_stmt->body);
+    do_stmt(arena, while_stmt->body);
 }
 
 void
-build_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
+do_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
 {
-  build_stmt(arena, if_stmt->cond_expr);
+  do_stmt(arena, if_stmt->cond_expr);
 
   {
     /* labels */
@@ -176,30 +176,24 @@ build_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
   }
 
   if(if_stmt->body->kind == AstNodeKind_Block)
-    build_block(arena, &if_stmt->body->block);
+    do_block(arena, &if_stmt->body->block);
   else
-    build_stmt(arena, if_stmt->body);
+    do_stmt(arena, if_stmt->body);
 
   if(if_stmt->else_body)
   {
     AstNode* else_node = if_stmt->else_body;
     if(else_node->kind == AstNodeKind_Block)
-    {
-      build_block(arena, &else_node->block);
-    }
+      do_block(arena, &else_node->block);
     else if(else_node->kind == AstNodeKind_IfStmt)
-    {
-      build_if_stmt(arena, &else_node->if_stmt);
-    }
+      do_if_stmt(arena, &else_node->if_stmt);
     else
-    {
-      build_stmt(arena, else_node);
-    }
+      do_stmt(arena, else_node);
   }
 }
 
 void
-build_bin_expr(MemoryArena* arena, AstBinExpr* bin_expr)
+do_bin_expr(MemoryArena* arena, AstBinExpr* bin_expr)
 {
   String label_id = {0};
   str_init(&label_id, arena);
@@ -211,54 +205,38 @@ build_bin_expr(MemoryArena* arena, AstBinExpr* bin_expr)
   str_append(&label, ".logic-end");
   bin_expr->label_end = label.head;
 
-  build_stmt(arena, bin_expr->left_operand);
-  build_stmt(arena, bin_expr->right_operand);
+  do_stmt(arena, bin_expr->left_operand);
+  do_stmt(arena, bin_expr->right_operand);
 }
 
 void
-build_unr_expr(MemoryArena* arena, AstUnrExpr* unr_expr)
+do_unr_expr(MemoryArena* arena, AstUnrExpr* unr_expr)
 {
-  build_stmt(arena, unr_expr->operand);
+  do_stmt(arena, unr_expr->operand);
 }
 
 void
-build_stmt(MemoryArena* arena, AstNode* node)
+do_stmt(MemoryArena* arena, AstNode* node)
 {
   if(node->kind == AstNodeKind_BinExpr)
-  {
-    build_bin_expr(arena, &node->bin_expr);
-  }
+    do_bin_expr(arena, &node->bin_expr);
   else if(node->kind == AstNodeKind_UnrExpr)
-  {
-    build_unr_expr(arena, &node->unr_expr);
-  }
+    do_unr_expr(arena, &node->unr_expr);
   else if(node->kind == AstNodeKind_Call)
-  {
-    build_call(arena, &node->call);
-  }
+    do_call(arena, &node->call);
   else if(node->kind == AstNodeKind_IfStmt)
-  {
-    build_if_stmt(arena, &node->if_stmt);
-  }
+    do_if_stmt(arena, &node->if_stmt);
   else if(node->kind == AstNodeKind_WhileStmt)
-  {
-    build_while_stmt(arena, &node->while_stmt);
-  }
+    do_while_stmt(arena, &node->while_stmt);
   else if(node->kind == AstNodeKind_PrintStmt)
-  {
-    build_print_stmt(arena, &node->print_stmt);
-  }
+    do_print_stmt(arena, &node->print_stmt);
   else if(node->kind == AstNodeKind_ReturnStmt)
   {
     if(node->ret_stmt.ret_expr)
-    {
-      build_stmt(arena, node->ret_stmt.ret_expr);
-    }
+      do_stmt(arena, node->ret_stmt.ret_expr);
   }
   else if(node->kind == AstNodeKind_Cast)
-  {
-    build_stmt(arena, node->cast.expr);
-  }
+    do_stmt(arena, node->cast.expr);
   else if(node->kind == AstNodeKind_VarOccur ||
           node->kind == AstNodeKind_BreakStmt ||
           node->kind == AstNodeKind_EmptyStmt ||
@@ -269,18 +247,18 @@ build_stmt(MemoryArena* arena, AstNode* node)
 }
 
 void
-build_block_stmts(MemoryArena* arena, List* stmt_list)
+do_block(MemoryArena* arena, List* stmt_list)
 {
   for(ListItem* list_item = list_first_item(stmt_list);
       list_item;
       list_item = list_item->next)
   {
-    build_stmt(arena, list_item->elem);
+    do_stmt(arena, list_item->elem);
   }
 }
 
 void
-build_proc(MemoryArena* arena, AstProc* proc)
+do_proc(MemoryArena* arena, AstProc* proc)
 {
   proc->label = proc->name;
 
@@ -330,11 +308,11 @@ build_proc(MemoryArena* arena, AstProc* proc)
     proc->locals_size += local->data.size;
   }
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
-  build_block_stmts(arena, &body_block->stmt_list);
+  do_block(arena, &body_block->stmt_list);
 }
  
 void
-build_module(MemoryArena* arena, SymbolTable* symbol_table, AstNode* module_node)
+build_runtime(MemoryArena* arena, SymbolTable* symbol_table, AstNode* module_node)
 {
   assert(module_node->kind == AstNodeKind_Module);
   AstModule* module = &module_node->module;
@@ -347,7 +325,7 @@ build_module(MemoryArena* arena, SymbolTable* symbol_table, AstNode* module_node
     assert(proc_node->kind == AstNodeKind_Proc);
     AstProc* proc = &proc_node->proc;
 
-    build_proc(arena, proc);
+    do_proc(arena, proc);
     if(cstr_match(proc->name, "main"))
     {
       module->main_proc = proc_node;
@@ -359,7 +337,7 @@ build_module(MemoryArena* arena, SymbolTable* symbol_table, AstNode* module_node
     AstNode* call_node = ast_new_call(arena, &module_node->src_loc);
     AstCall* call = &call_node->call;
     call->proc = module->main_proc;
-    build_call(arena, call);
+    do_call(arena, call);
     module->main_call = call_node;
   }
 }

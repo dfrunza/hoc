@@ -486,7 +486,6 @@ do_actual_arg_list(TokenStream* input, List* arg_list)
       list_append(arena, arg_list, arg);
       if(input->token.kind == TokenKind_Comma)
       {
-        
         if((success = get_next_token(input)) && input->token.kind == TokenKind_CloseParens)
           success = compile_error(&input->src_loc, "Identifier expected, actual `%s`", get_token_printstr(&input->token));
       }
@@ -972,26 +971,31 @@ do_unary_expr(TokenStream* input, AstNode** node)
       }
     }
   }
-  else if(input->token.kind == TokenKind_AngleLeft)
+  else if(input->token.kind == TokenKind_Cast)
   {
     // cast
     use(*node = new_cast(&input->src_loc), cast);
 
-    if(success = get_next_token(input) && do_type_expr(input, &cast->type))
+    if(success = get_next_token(input) && input->token.kind == TokenKind_OpenParens)
     {
-      if(input->token.kind == TokenKind_AngleRight)
+      if(success = get_next_token(input) && do_type_expr(input, &cast->type))
       {
-        if(cast->type)
-          success = get_next_token(input) && do_unary_expr(input, &cast->expr);
-        else
+        if(input->token.kind == TokenKind_CloseParens)
         {
-          putback_token(input);
-          success = compile_error(&input->src_loc, "Type expression required, at `%s`", get_token_printstr(&input->token));
+          if(cast->type)
+            success = get_next_token(input) && do_unary_expr(input, &cast->expr);
+          else
+          {
+            putback_token(input);
+            success = compile_error(&input->src_loc, "Type expression required, at `%s`", get_token_printstr(&input->token));
+          }
         }
+        else
+          success = compile_error(&input->src_loc, "Expected `)`, actual `%s`", get_token_printstr(&input->token));
       }
-      else
-        success = compile_error(&input->src_loc, "Expected `>`, actual `%s`", get_token_printstr(&input->token));
     }
+    else
+      success = compile_error(&input->src_loc, "Expected `(`, actual `%s`", get_token_printstr(&input->token));
   }
   else
     success = do_accessor(input, node);
@@ -1316,7 +1320,7 @@ do_include_stmt(TokenStream* input, AstNode** node)
 
         if(success = get_next_token(inc_input))
         {
-          AstBlock* block = &incl_stmt->body->block;
+          use(incl_stmt->body, block);
           success = do_module(inc_input, &block->node_list);
         }
       }

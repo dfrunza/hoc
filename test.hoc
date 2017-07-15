@@ -8,7 +8,7 @@ include "hlib\\fibo.hoc";
 
 proc int main()
 {
-  var int result = 0;
+ var int result = 0;
 }
 
 

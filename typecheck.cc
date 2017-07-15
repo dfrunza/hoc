@@ -1,5 +1,12 @@
 #include "hocc.h"
 
+typedef struct
+{
+  Type* key;
+  Type* value;
+}
+TypePair;
+
 extern MemoryArena* arena;
 
 local List subst_list;

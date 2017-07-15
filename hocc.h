@@ -1,6 +1,11 @@
 #pragma once
 #include "lib.h"
 
+#define ARENA_SIZE (3*MEGABYTE)
+#define DEBUG_ARENA_SIZE (ARENA_SIZE/3)
+#define SYM_ARENA_SIZE (ARENA_SIZE/10)
+#define MAX_SCOPE_NESTING_DEPTH 100
+
 typedef struct AstNode AstNode;
 typedef struct Type Type;
 typedef struct Symbol Symbol;
@@ -65,6 +70,7 @@ typedef enum TokenKind
   TokenKind_Goto,
   TokenKind_Include,
   TokenKind_Enum,
+  TokenKind_Cast,
   TokenKind_True,
   TokenKind_False,
 
@@ -147,7 +153,6 @@ typedef enum
   AstNodeKind_UnrExpr,
   AstNodeKind_Literal,
   AstNodeKind_VarDecl,
-//  AstNodeKind_VarOccur,
   AstNodeKind_Block,
   AstNodeKind_Proc,
   AstNodeKind_Id,
@@ -175,46 +180,6 @@ typedef enum
 }
 AstNodeKind;
 
-typedef struct
-{
-  char* name;
-}
-AstId;
-
-typedef struct
-{
-  int loc;
-  int size;
-}
-DataArea;
-
-typedef struct
-{
-  int actv_rec_offset;
-  DataArea data;
-}
-AccessLink;
-
-typedef struct
-{
-  AstNode* expr;
-}
-AstPointer;
-
-typedef struct
-{
-  AstNode* expr;
-  AstNode* index;
-}
-AstArray;
-
-typedef struct
-{
-  AstNode* lhs;
-  AstNode* rhs;
-}
-AstAccessor;
-
 typedef enum
 {
   AstLiteralKind__Null,
@@ -227,72 +192,6 @@ typedef enum
   AstLiteralKind__Count,
 }
 AstLiteralKind;
-
-
-typedef struct AstBlock
-{
-  List node_list;
-
-  //AstNode* owner;
-  int block_id;
-  int nesting_depth;
-  struct AstNode* encl_block;
-  List decl_vars;
-  List stmts;
-  List locals;
-  List nonlocals;
-/*
-  List access_links;
-
-  int links_size;
-  int locals_size;
-*/
-}
-AstBlock;
-
-typedef struct
-{
-  AstNode* loop;
-  int nesting_depth;
-}
-AstLoopCtrl;
-
-typedef struct
-{
-  AstNode* id;
-  List args;
-  AstNode* proc;
-}
-AstCall;
-
-typedef struct
-{
-  AstNode* id;
-  List member_list;
-}
-AstStruct, AstUnion, AstEnum;
-
-typedef struct
-{
-  AstNode* decl_expr;
-  AstNode* cond_expr;
-  AstNode* loop_expr;
-  AstNode* body;
-}
-AstForStmt;
-
-typedef struct
-{
-  AstNode* type;
-  AstNode* expr;
-}
-AstCast;
-
-typedef struct
-{
-  List member_list;
-}
-AstInitializer;
 
 typedef struct AstNode
 {
@@ -309,18 +208,15 @@ typedef struct AstNode
          AstNode* main_call;
          */
     }
-    module, incl_stmt;
+    module,
+    incl_stmt;
 
     struct {
       AstNode* type;
       AstNode* id;
       AstNode* init_expr;
-
-      //AstNode* decl_block;
     }
     var_decl;
-
-    //AstVarOccur var_occur;
 
     struct {
       AstOpKind op;
@@ -384,7 +280,8 @@ typedef struct AstNode
     struct {
       AstNode* id;
     }
-    goto_stmt, label;
+    goto_stmt,
+    label;
 
     struct {
       AstNode* cond_expr;
@@ -409,20 +306,87 @@ typedef struct AstNode
     }
     while_stmt;
 
-    AstForStmt for_stmt;
-    AstLoopCtrl loop_ctrl;
-//    AstIncludeStmt incl_stmt;
-    AstBlock block;
-    AstCast cast;
-    AstId id;
-    AstCall call;
-    AstArray array;
-    AstPointer ptr;
-    AstStruct struct_decl;
-    AstUnion union_decl;
-    AstAccessor accessor;
-    AstEnum enum_decl;
-    AstInitializer initer;
+    struct {
+      AstNode* decl_expr;
+      AstNode* cond_expr;
+      AstNode* loop_expr;
+      AstNode* body;
+    }
+    for_stmt;
+
+    struct {
+      AstNode* loop;
+      int nesting_depth;
+    }
+    loop_ctrl;
+
+    struct {
+      List node_list;
+
+      //AstNode* owner;
+      int block_id;
+      int nesting_depth;
+      struct AstNode* encl_block;
+      List decl_vars;
+      List stmts;
+      List locals;
+      List nonlocals;
+    /*
+      List access_links;
+
+      int links_size;
+      int locals_size;
+    */
+    }
+    block;
+
+    struct {
+      AstNode* type;
+      AstNode* expr;
+    }
+    cast;
+
+    struct {
+      char* name;
+    }
+    id;
+
+    struct {
+      AstNode* id;
+      List args;
+      AstNode* proc;
+    }
+    call;
+
+    struct {
+      AstNode* expr;
+      AstNode* index;
+    }
+    array;
+
+    struct {
+      AstNode* expr;
+    }
+    ptr;
+
+    struct {
+      AstNode* id;
+      List member_list;
+    }
+    struct_decl,
+    union_decl,
+    enum_decl;
+
+    struct {
+      AstNode* lhs;
+      AstNode* rhs;
+    }
+    accessor;
+
+    struct {
+      List member_list;
+    }
+    initer;
   };
 }
 AstNode;
@@ -505,10 +469,17 @@ Type;
 
 typedef struct
 {
-  Type* key;
-  Type* value;
+  int loc;
+  int size;
 }
-TypePair;
+DataArea;
+
+typedef struct
+{
+  int actv_rec_offset;
+  DataArea data;
+}
+AccessLink;
 
 typedef enum
 {
@@ -553,7 +524,6 @@ typedef struct Symbol
 }
 Symbol;
 
-#define MAX_SCOPE_NESTING_DEPTH 100
 typedef struct
 {
   Symbol* curr_symbol;
@@ -584,7 +554,6 @@ bool32 semantic_analysis(AstNode* ast);
 AstNode* new_bin_expr(SourceLocation* src_loc);
 AstNode* new_id(SourceLocation* src_loc, char* name);
 AstNode* new_var_decl(SourceLocation* src_loc);
-AstNode* new_block(SourceLocation* src_loc);
 Type* new_proc_type(Type* args, Type* ret);
 Type* new_typevar();
 Type* new_pointer_type(Type* pointee);

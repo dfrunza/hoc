@@ -20,6 +20,7 @@ local Token keyword_list[] =
   {TokenKind_Struct, "struct"},
   {TokenKind_Union, "union"},
   {TokenKind_Enum, "enum"},
+  {TokenKind_Cast, "cast"},
   {TokenKind__Null, 0}, /* terminator */
 };
 
@@ -275,6 +276,8 @@ get_token_printstr(Token* token)
     result = "include";
   else if(token->kind == TokenKind_Enum)
     result = "enum";
+  else if(token->kind == TokenKind_Cast)
+    result = "cast";
   else if(token->kind == TokenKind_True)
     result = "true";
   else if(token->kind == TokenKind_False)

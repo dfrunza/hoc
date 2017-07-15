@@ -31,10 +31,6 @@ typedef struct
 }
 VmProgram;
 
-#define ARENA_SIZE (3*MEGABYTE)
-#define DEBUG_ARENA_SIZE (ARENA_SIZE/3)
-#define SYM_ARENA_SIZE (ARENA_SIZE/10)
-
 local bool32 DEBUG_enabled = true;
 MemoryArena* arena = 0;
 MemoryArena* DEBUG_arena = 0;
@@ -81,40 +77,34 @@ DEBUG_print_sizeof_ast_structs()
   struct_info[KIND].kind = KIND; \
   struct_info[KIND].size = sizeof(STRUCT); \
 
-#define make_zero_struct_info(KIND) \
-  struct_info[KIND].kind = KIND; \
-  struct_info[KIND].size = 0; \
-
   local StructInfo struct_info[(int)AstNodeKind__Count] = {};
   assert(AstNodeKind__Null == 0);
-  make_zero_struct_info(AstNodeKind__Null);
-  //make_struct_info(AstNodeKind_BinExpr, AstBinExpr);
-  //make_struct_info(AstNodeKind_UnrExpr, AstUnrExpr);
-  //make_struct_info(AstNodeKind_Literal, AstLiteral);
-  //make_struct_info(AstNodeKind_VarDecl, AstVarDecl);
+  AstNode node;
+  mem_zero_struct(&node, AstNode);
+  make_struct_info(AstNodeKind_BinExpr, node.bin_expr);
+  make_struct_info(AstNodeKind_UnrExpr, node.unr_expr);
+  make_struct_info(AstNodeKind_Literal, node.literal);
+  make_struct_info(AstNodeKind_VarDecl, node.var_decl);
 //  make_struct_info(AstNodeKind_VarOccur, AstVarOccur);
-  make_struct_info(AstNodeKind_Block, AstBlock);
-  //make_struct_info(AstNodeKind_Proc, AstProc);
-  make_struct_info(AstNodeKind_Id, AstId);
-  //make_struct_info(AstNodeKind_WhileStmt, AstWhileStmt);
-  make_struct_info(AstNodeKind_ForStmt, AstForStmt);
-  //make_struct_info(AstNodeKind_IfStmt, AstIfStmt);
-  //make_struct_info(AstNodeKind_ReturnStmt, AstReturnStmt);
-  make_zero_struct_info(AstNodeKind_BreakStmt);
-  make_zero_struct_info(AstNodeKind_ContinueStmt);
-  //make_struct_info(AstNodeKind_GotoStmt, AstGotoStmt);
-  //make_struct_info(AstNodeKind_Label, AstLabel);
-  //make_struct_info(AstNodeKind_IncludeStmt, AstIncludeStmt);
-  //make_struct_info(AstNodeKind_Module, AstModule);
-  make_struct_info(AstNodeKind_Cast, AstCast);
-  make_struct_info(AstNodeKind_Call, AstCall);
-  make_struct_info(AstNodeKind_Array, AstArray);
-  make_struct_info(AstNodeKind_Pointer, AstPointer);
-  make_struct_info(AstNodeKind_Struct, AstStruct);
-  make_struct_info(AstNodeKind_Union, AstUnion);
-  make_struct_info(AstNodeKind_Enum, AstEnum);
-  make_struct_info(AstNodeKind_Initializer, AstInitializer);
-  make_zero_struct_info(AstNodeKind_EmptyStmt);
+  make_struct_info(AstNodeKind_Block, node.block);
+  make_struct_info(AstNodeKind_Proc, node.block);
+  make_struct_info(AstNodeKind_Id, node.id);
+  make_struct_info(AstNodeKind_WhileStmt, node.while_stmt);
+  make_struct_info(AstNodeKind_ForStmt, node.for_stmt);
+  make_struct_info(AstNodeKind_IfStmt, node.if_stmt);
+  make_struct_info(AstNodeKind_ReturnStmt, node.ret_stmt);
+  make_struct_info(AstNodeKind_GotoStmt, node.goto_stmt);
+  make_struct_info(AstNodeKind_Label, node.label);
+  make_struct_info(AstNodeKind_IncludeStmt, node.incl_stmt);
+  make_struct_info(AstNodeKind_Module, node.module);
+  make_struct_info(AstNodeKind_Cast, node.cast);
+  make_struct_info(AstNodeKind_Call, node.call);
+  make_struct_info(AstNodeKind_Array, node.array);
+  make_struct_info(AstNodeKind_Pointer, node.ptr);
+  make_struct_info(AstNodeKind_Struct, node.struct_decl);
+  make_struct_info(AstNodeKind_Union, node.union_decl);
+  make_struct_info(AstNodeKind_Enum, node.enum_decl);
+  make_struct_info(AstNodeKind_Initializer, node.initer);
 
 #undef make_struct_info
 #undef make_zero_size_info
@@ -138,7 +128,8 @@ DEBUG_print_sizeof_ast_structs()
   for(int i = AstNodeKind__Count-1; i >= 0; i--)
   {
     StructInfo* info = &struct_info[i];
-    printf("%s.size = %d bytes\n", get_ast_kind_printstr(info->kind), info->size);
+    if(info->size > 0)
+      printf("%s.size = %d bytes\n", get_ast_kind_printstr(info->kind), info->size);
   }
 }
 

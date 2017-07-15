@@ -180,6 +180,7 @@ proc void roar(Animal* a)
     // do the squeak
 }
 
+..............................
 WITH TYPES 1
 
 type AnimalKind: enum
@@ -228,6 +229,31 @@ Animal* animal;
 p_roar = &roar;
 p_roar(animal); // call proc
 
+........................
+WITH TYPES 3
+
+type main : proc int main()
+{
+  return sqrt_floor(23);
+}
+
+var main* p_main;
+p_main();
+
+type A : struct A
+{
+};
+
+type char8 : char;
+type A : proc int foo();
+type E : enum E {a, b, c};
+
+var enum E e;
+var E e;
+var E* e1, e2;
+var []E* aye1;
+
+..........................
 WITHOUT TYPES
 
 enum AnimalKind

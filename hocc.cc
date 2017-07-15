@@ -27,7 +27,7 @@ typedef struct
   String text;
   int text_len;
   List instr_list;
-  bool success;
+  bool32 success;
 }
 VmProgram;
 
@@ -35,7 +35,7 @@ VmProgram;
 #define DEBUG_ARENA_SIZE (ARENA_SIZE/3)
 #define SYM_ARENA_SIZE (ARENA_SIZE/10)
 
-internal bool DEBUG_enabled = true;
+local bool32 DEBUG_enabled = true;
 MemoryArena* arena = 0;
 MemoryArena* DEBUG_arena = 0;
 MemoryArena* sym_arena = 0;
@@ -50,13 +50,13 @@ DEBUG_print_arena_usage(char* tag)
   printf("sym_arena in_use : %.2f%% -- %s\n", sym_usage.in_use*100, tag);
 }
 
-bool
+bool32
 compile_error_f(SourceLocation* src_loc, char* file, int line, char* message, ...)
 {
   if(src_loc->line_nr > 0)
     fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr, path_make_stem(file), line);
   else
-    fprintf(stderr, ": (%s:%d) ", path_make_stem(file), line);
+    fprintf(stderr, "%s(%d) : ", file, line);
 
   va_list args;
   va_start(args, message);
@@ -74,7 +74,8 @@ DEBUG_print_sizeof_ast_structs()
   {
     AstNodeKind kind;
     int size;
-  } StructInfo;
+  }
+  StructInfo;
 
 #define make_struct_info(KIND, STRUCT) \
   struct_info[KIND].kind = KIND; \
@@ -84,27 +85,27 @@ DEBUG_print_sizeof_ast_structs()
   struct_info[KIND].kind = KIND; \
   struct_info[KIND].size = 0; \
 
-  internal StructInfo struct_info[AstNodeKind__Count] = {0};
+  local StructInfo struct_info[(int)AstNodeKind__Count] = {};
   assert(AstNodeKind__Null == 0);
   make_zero_struct_info(AstNodeKind__Null);
-  make_struct_info(AstNodeKind_BinExpr, AstBinExpr);
-  make_struct_info(AstNodeKind_UnrExpr, AstUnrExpr);
-  make_struct_info(AstNodeKind_Literal, AstLiteral);
-  make_struct_info(AstNodeKind_VarDecl, AstVarDecl);
-  make_struct_info(AstNodeKind_VarOccur, AstVarOccur);
+  //make_struct_info(AstNodeKind_BinExpr, AstBinExpr);
+  //make_struct_info(AstNodeKind_UnrExpr, AstUnrExpr);
+  //make_struct_info(AstNodeKind_Literal, AstLiteral);
+  //make_struct_info(AstNodeKind_VarDecl, AstVarDecl);
+//  make_struct_info(AstNodeKind_VarOccur, AstVarOccur);
   make_struct_info(AstNodeKind_Block, AstBlock);
-  make_struct_info(AstNodeKind_Proc, AstProc);
+  //make_struct_info(AstNodeKind_Proc, AstProc);
   make_struct_info(AstNodeKind_Id, AstId);
-  make_struct_info(AstNodeKind_WhileStmt, AstWhileStmt);
+  //make_struct_info(AstNodeKind_WhileStmt, AstWhileStmt);
   make_struct_info(AstNodeKind_ForStmt, AstForStmt);
-  make_struct_info(AstNodeKind_IfStmt, AstIfStmt);
-  make_struct_info(AstNodeKind_ReturnStmt, AstReturnStmt);
+  //make_struct_info(AstNodeKind_IfStmt, AstIfStmt);
+  //make_struct_info(AstNodeKind_ReturnStmt, AstReturnStmt);
   make_zero_struct_info(AstNodeKind_BreakStmt);
   make_zero_struct_info(AstNodeKind_ContinueStmt);
-  make_struct_info(AstNodeKind_GotoStmt, AstGotoStmt);
-  make_struct_info(AstNodeKind_Label, AstLabel);
-  make_struct_info(AstNodeKind_IncludeStmt, AstIncludeStmt);
-  make_struct_info(AstNodeKind_Module, AstModule);
+  //make_struct_info(AstNodeKind_GotoStmt, AstGotoStmt);
+  //make_struct_info(AstNodeKind_Label, AstLabel);
+  //make_struct_info(AstNodeKind_IncludeStmt, AstIncludeStmt);
+  //make_struct_info(AstNodeKind_Module, AstModule);
   make_struct_info(AstNodeKind_Cast, AstCast);
   make_struct_info(AstNodeKind_Call, AstCall);
   make_struct_info(AstNodeKind_Array, AstArray);
@@ -208,12 +209,12 @@ translate(char* file_path, char* hoc_text)
   return vm_program;
 }
 
-bool
+bool32
 make_file_names(OutFileNames* out_files, char* stem)
 {
   int stem_len = cstr_len(stem);
   assert(stem_len > 0);
-  bool success = true;
+  bool32 success = true;
 
   if(success = (stem_len > 0 && stem_len < 80))
   {
@@ -243,14 +244,14 @@ make_file_names(OutFileNames* out_files, char* stem)
   return success;
 }
 
-bool
+bool32
 write_res_file(OutFileNames* out_files)
 {
   char buf[200];
   sprintf(buf, OUT_RC, out_files->irc.name);
   int text_len = cstr_len(buf);
   int bytes_written = file_write_bytes(out_files->rc.name, (uint8*)buf, text_len);
-  bool success = (bytes_written == text_len);
+  bool32 success = (bytes_written == text_len);
   if(success)
   {
     STARTUPINFO start_info = {0};
@@ -279,21 +280,21 @@ write_res_file(OutFileNames* out_files)
   return success;
 }
 
-bool
+bool32
 write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
 {
   int bytes_written = file_write_bytes(out_files->ir.name, (uint8*)vm_program->text.head, vm_program->text_len);
-  bool success = (bytes_written == vm_program->text_len);
+  bool32 success = (bytes_written == vm_program->text_len);
   if(!success)
     error("IR file '%s' incompletely written", out_files->ir.name);
   return success;
 }
 
-bool
+bool32
 write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
 {
   size_t bytes_written = file_write_bytes(out_files->irc.name, hasm_code->code_start, hasm_code->code_size);
-  bool success = (bytes_written == hasm_code->code_size);
+  bool32 success = (bytes_written == hasm_code->code_size);
   if(!success)
     error("IRC file '%s' incompletely written", out_files->irc.name);
   return success;
@@ -302,7 +303,7 @@ write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
 int
 main(int argc, char* argv[])
 {
-  bool success = true;
+  bool32 success = true;
 
   if(success = (argc >= 2))
   {
@@ -331,14 +332,14 @@ main(int argc, char* argv[])
         OutFileNames out_files = {0};
         char* file_stem = path_make_stem(file_path);
 
-        bool success = make_file_names(&out_files, file_stem) &&
+        bool32 success = make_file_names(&out_files, file_stem) &&
           write_ir_file(&out_files, vm_program);
 
         if(success)
         {
           HasmCode* hasm_code = 0;
           char* hasm_text = vm_program->text.head;
-          bool success = translate_ir_to_code(&arena, hasm_text, &hasm_code);
+          bool32 success = translate_ir_to_code(&arena, hasm_text, &hasm_code);
 
           if(success)
           {

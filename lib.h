@@ -6,7 +6,7 @@
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
-typedef int bool;
+typedef int bool32;
 
 typedef char int8;
 typedef short int16;
@@ -24,7 +24,7 @@ typedef double float64;
 #define false 0
 #define true  1
 #define inline __inline
-#define internal static
+#define local static
 
 typedef struct MemoryArena
 {
@@ -66,18 +66,25 @@ typedef struct
 }
 List;
 
+#define use(STRUCT, FIELD)\
+  auto FIELD = &(STRUCT)->FIELD
+#define reuse(STRUCT, FIELD, VAR)\
+  auto VAR = &(STRUCT)->FIELD
+
 #define assert(EXPR)\
   if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__)
 #define fail(MESSAGE, ...)\
-  fail_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__);
+  fail_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__)
 #define sizeof_array(ARRAY)\
   (sizeof(ARRAY)/sizeof(ARRAY[0]))
 #define to_bool(EXPR)\
   ((EXPR) ? true : false)
+#define error(MESSAGE, ...)\
+  error_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__)
 
 void assert_f(char* expr, char* file, int line);
 void fail_f(char* file, int line, char* message, ...);
-bool error(char* message, ...);
+bool error_f(char* file, int line, char* message, ...);
 
 MemoryArena* arena_new(int size);
 MemoryArena* arena_pop(MemoryArena* arena);

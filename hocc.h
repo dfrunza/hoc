@@ -147,7 +147,7 @@ typedef enum
   AstNodeKind_UnrExpr,
   AstNodeKind_Literal,
   AstNodeKind_VarDecl,
-  AstNodeKind_VarOccur,
+//  AstNodeKind_VarOccur,
   AstNodeKind_Block,
   AstNodeKind_Proc,
   AstNodeKind_Id,
@@ -215,53 +215,6 @@ typedef struct
 }
 AstAccessor;
 
-typedef struct
-{
-  AstNode* type;
-  AstNode* id;
-  AstNode* init_expr;
-
-  AstNode* decl_block;
-  /*
-  DataArea data;
-  Type* var_type;
-  */
-}
-AstVarDecl;
-
-typedef struct
-{
-  char* name;
-  AstNode* var_decl;
-  AstNode* decl_block;
-  AstNode* occur_block;
-  int decl_block_offset;
-/*
-  AccessLink* link;
-  DataArea* data;
-*/
-}
-AstVarOccur;
-
-typedef struct
-{
-  AstOpKind op;
-  AstNode* lhs;
-  AstNode* rhs;
-
-  /*
-  char* label_end; // for boolean expressions
-  */
-}
-AstBinExpr;
-
-typedef struct
-{
-  AstOpKind op;
-  AstNode* operand;
-}
-AstUnrExpr;
-
 typedef enum
 {
   AstLiteralKind__Null,
@@ -275,20 +228,6 @@ typedef enum
 }
 AstLiteralKind;
 
-typedef struct
-{
-  AstLiteralKind kind;
-
-  union
-  {
-    int32 int_val;
-    float32 float_val;
-    int32 bool_val;
-    char char_val;
-    char* str;
-  };
-}
-AstLiteral;
 
 typedef struct AstBlock
 {
@@ -313,47 +252,10 @@ AstBlock;
 
 typedef struct
 {
-  AstNode* ret_type; // syntactic node
-  AstNode* id;
-  List formal_args;
-  AstNode* body;
-
-  AstNode* ret_var; // semantic node
-  bool is_decl;
-  /*
-  Type* ret_type;
-  AstVarDecl ret_var;
-
-  char* label;
-  char* label_end;
-  int ret_size;
-  int args_size;
-  int locals_size;
-  */
-}
-AstProc;
-
-typedef struct
-{
-  AstNode* expr;
-
-  AstNode* proc;
-  int nesting_depth;
-}
-AstReturnStmt;
-
-typedef struct
-{
   AstNode* loop;
   int nesting_depth;
 }
 AstLoopCtrl;
-
-typedef struct
-{
-  AstNode* id;
-}
-AstGotoStmt, AstLabel;
 
 typedef struct
 {
@@ -365,46 +267,10 @@ AstCall;
 
 typedef struct
 {
-  char* file_path;
-  AstNode* body;
-/*
-  AstNode* main_proc;
-  AstNode* main_call;
-*/
-}
-AstModule, AstIncludeStmt;
-
-typedef struct
-{
   AstNode* id;
   List member_list;
 }
 AstStruct, AstUnion, AstEnum;
-
-typedef struct
-{
-  AstNode* cond_expr;
-  AstNode* body;
-  AstNode* else_body;
-
-  /*
-  char* label_else;
-  char* label_end;
-  */
-}
-AstIfStmt;
-
-typedef struct
-{
-  AstNode* cond_expr;
-  AstNode* body;
-
-  /*
-  char* label_eval;
-  char* label_break;
-  */
-}
-AstWhileStmt;
 
 typedef struct
 {
@@ -428,45 +294,124 @@ typedef struct
 }
 AstInitializer;
 
-/*
-union U
-{
-  AstModule module;
-  AstVarDecl var_decl;
-  ...
-}
-
-struct AstNode
-{
-  AstNodeKind kind;
-  Type* type;
-  union U;
-}
-*/
-
 typedef struct AstNode
 {
   AstNodeKind kind;
   Type* type;
   SourceLocation src_loc;
 
-  union
-  {
-    AstModule module;
-    AstVarDecl var_decl;
-    AstVarOccur var_occur;
-    AstBinExpr bin_expr;
-    AstUnrExpr unr_expr;
-    AstLiteral literal;
-    AstProc proc;
-    AstReturnStmt ret_stmt;
-    AstGotoStmt goto_stmt;
-    AstLabel label;
-    AstIfStmt if_stmt;
-    AstWhileStmt while_stmt;
+  union {
+    struct {
+      char* file_path;
+      AstNode* body;
+      /*
+         AstNode* main_proc;
+         AstNode* main_call;
+         */
+    }
+    module, incl_stmt;
+
+    struct {
+      AstNode* type;
+      AstNode* id;
+      AstNode* init_expr;
+
+      //AstNode* decl_block;
+    }
+    var_decl;
+
+    //AstVarOccur var_occur;
+
+    struct {
+      AstOpKind op;
+      AstNode* lhs;
+      AstNode* rhs;
+
+      /*
+         char* label_end; // for boolean expressions
+         */
+    }
+    bin_expr;
+
+    struct {
+      AstOpKind op;
+      AstNode* operand;
+    }
+    unr_expr;
+
+    struct {
+      AstLiteralKind kind;
+
+      union {
+        int32 int_val;
+        float32 float_val;
+        int32 bool_val;
+        char char_val;
+        char* str;
+      };
+    }
+    literal;
+
+    struct {
+      AstNode* ret_type; // syntactic node
+      AstNode* id;
+      List formal_args;
+      AstNode* body;
+
+      AstNode* ret_var; // semantic node
+      bool32 is_decl;
+      /*
+      Type* ret_type;
+      AstVarDecl ret_var;
+
+      char* label;
+      char* label_end;
+      int ret_size;
+      int args_size;
+      int locals_size;
+      */
+    }
+    proc;
+
+    struct {
+      AstNode* expr;
+
+      AstNode* proc;
+      int nesting_depth;
+    }
+    ret_stmt;
+
+    struct {
+      AstNode* id;
+    }
+    goto_stmt, label;
+
+    struct {
+      AstNode* cond_expr;
+      AstNode* body;
+      AstNode* else_body;
+
+      /*
+      char* label_else;
+      char* label_end;
+      */
+    }
+    if_stmt;
+
+    struct {
+      AstNode* cond_expr;
+      AstNode* body;
+
+      /*
+      char* label_eval;
+      char* label_break;
+      */
+    }
+    while_stmt;
+
     AstForStmt for_stmt;
     AstLoopCtrl loop_ctrl;
-    AstIncludeStmt incl_stmt;
+//    AstIncludeStmt incl_stmt;
     AstBlock block;
     AstCast cast;
     AstId id;
@@ -504,12 +449,6 @@ typedef enum
 }
 UnaryCtorKind;
 
-typedef struct
-{
-  int id;
-}
-TypeVar;
-
 typedef enum
 {
   BasicTypeKind__Null,
@@ -521,53 +460,45 @@ typedef enum
 }
 BasicTypeKind;
 
-typedef struct
-{
-  BasicTypeKind kind;
-}
-BasicType;
-
-typedef struct
-{
-  Type* pointee;
-}
-PointerType;
-
-typedef struct
-{
-  Type* args;
-  Type* ret;
-}
-ProcType;
-
-typedef struct
-{
-  Type* left;
-  Type* right;
-}
-ProductType;
-
-typedef struct
-{
-  int dim;
-  Type* elem;
-}
-ArrayType;
-
 typedef struct Type
 {
   TypeKind kind;
   Type* repr_type; /* representative member of the set of equivalent types */
   AstNode* node;
 
-  union
-  {
-    BasicType basic;
-    PointerType ptr;
-    ProcType proc;
-    ProductType product;
-    ArrayType array;
-    TypeVar typevar;
+  union {
+    struct {
+      BasicTypeKind kind;
+    }
+    basic;
+
+    struct {
+      Type* pointee;
+    }
+    ptr;
+
+    struct {
+      Type* args;
+      Type* ret;
+    }
+    proc;
+
+    struct {
+      Type* left;
+      Type* right;
+    }
+    product;
+
+    struct {
+      int dim;
+      Type* elem;
+    }
+    array;
+
+    struct {
+      int id;
+    }
+    typevar;
   };
 }
 Type;
@@ -584,7 +515,8 @@ typedef enum
   SymbolKind__Null,
   SymbolKind_Proc,
   SymbolKind_Type,
-  SymbolKind_Var,
+  SymbolKind_VarOccur,
+  SymbolKind_VarDecl,
 }
 SymbolKind;
 
@@ -596,8 +528,28 @@ typedef struct Symbol
   char* name;
   int block_id;
   int nesting_depth;
-
   AstNode* node;
+  Type* type;
+
+  union {
+    struct {
+      Symbol* var_decl;
+      AstNode* decl_block;
+      AstNode* occur_block;
+      int decl_block_offset;
+      /*
+      AccessLink* link;
+      DataArea* data;
+      */
+    }
+    var_occur;
+
+    struct {
+      Type* type;
+      AstNode* decl_block;
+    }
+    var_decl;
+  };
 }
 Symbol;
 
@@ -616,19 +568,19 @@ SymbolTable;
 #define compile_error(SRC, MESSAGE, ...)\
   compile_error_f((SRC), __FILE__, __LINE__,(MESSAGE), __VA_ARGS__)
 
-bool compile_error_f(SourceLocation* src_loc, char* file, int line, char* message, ...);
-bool get_next_token(TokenStream* input);
+bool32 compile_error_f(SourceLocation* src_loc, char* file, int line, char* message, ...);
+bool32 get_next_token(TokenStream* input);
 void putback_token(TokenStream* input);
 void init_token_stream(TokenStream* token_stream, char* text, char* file_path);
 void print_char(char buf[3], char raw_char);
-bool is_literal_token(TokenKind kind);
+bool32 is_literal_token(TokenKind kind);
 char* get_token_printstr(Token* token);
 char* get_ast_kind_printstr(AstNodeKind kind);
 void DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag);
 void DEBUG_print_arena_usage(char* tag);
-bool parse(TokenStream* input, AstNode** node);
+bool32 parse(TokenStream* input, AstNode** node);
 void init_types();
-bool semantic_analysis(AstNode* ast);
+bool32 semantic_analysis(AstNode* ast);
 AstNode* new_bin_expr(SourceLocation* src_loc);
 AstNode* new_id(SourceLocation* src_loc, char* name);
 AstNode* new_var_decl(SourceLocation* src_loc);
@@ -639,7 +591,7 @@ Type* new_pointer_type(Type* pointee);
 Type* new_product_type(Type* left, Type* right);
 Type* new_array_type(int dim, Type* elem_type);
 Type* make_type_of_node_list(List* node_list);
-bool type_unif(Type* type_a, Type* type_b);
+bool32 type_unif(Type* type_a, Type* type_b);
 void build_runtime(AstNode* ast);
 
 

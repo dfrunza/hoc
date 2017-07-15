@@ -2,7 +2,7 @@
 
 extern MemoryArena* arena;
 
-internal Token keyword_list[] = 
+local Token keyword_list[] = 
 {
   {TokenKind_Var, "var"},
   {TokenKind_If, "if"},
@@ -23,7 +23,7 @@ internal Token keyword_list[] =
   {TokenKind__Null, 0}, /* terminator */
 };
 
-internal Token*
+local Token*
 lookup_keyword(Token* list, char* lexeme)
 {
   Token* result = 0;
@@ -42,19 +42,19 @@ lookup_keyword(Token* list, char* lexeme)
   return result;
 }
 
-bool
+bool32
 is_keyword_token(TokenKind kind)
 {
   return (kind >= TokenKind_If) && (kind <= TokenKind_False);
 }
 
-bool
+bool32
 is_literal_token(TokenKind kind)
 {
   return (kind >= TokenKind_IntNum) && (kind <= TokenKind_Char);
 }
 
-internal char*
+local char*
 install_lexeme(char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
@@ -67,7 +67,7 @@ install_lexeme(char* begin_char, char* end_char)
   return lexeme;
 }
 
-internal bool
+local bool32
 is_valid_escape_char(char c)
 {
   return c == 't' || c == 'n' || c == 'r' || c == '0' ||
@@ -83,10 +83,10 @@ typedef struct
 }
 EscapedStr;
 
-internal bool
+local bool32
 escaped_string(TokenStream* input, EscapedStr* estr, char* file, int line)
 {
-  bool success = true;
+  bool32 success = true;
   estr->len = 0;
   estr->end = input->cursor;
   estr->begin = input->cursor;
@@ -114,7 +114,7 @@ escaped_string(TokenStream* input, EscapedStr* estr, char* file, int line)
   return success;
 }
 
-internal char*
+local char*
 install_escaped_str(EscapedStr* estr)
 {
   assert(estr->begin <= estr->end);
@@ -320,10 +320,10 @@ get_prev_token(TokenStream* input)
   return token;
 }
 
-bool
+bool32
 get_next_token(TokenStream* input)
 {
-  bool success = true;
+  bool32 success = true;
   *input->prev_state = *input;
   mem_zero_struct(&input->token, Token);
   SourceLocation* src_loc = &input->src_loc;
@@ -364,7 +364,7 @@ loop:
   else if(char_is_numeric(c))
   {
     char digit_buf[32] = {0};
-    bool is_float = false;
+    bool32 is_float = false;
     int i = 0;
     for(; i < sizeof_array(digit_buf)-1 && (char_is_numeric(c) || c == '.'); i++)
     {

@@ -1,13 +1,13 @@
 #include "hocc.h"
 
-internal bool DEBUG_zero_arena = false;
-internal bool DEBUG_check_arena_bounds = true;
-internal bool DEBUG_assert = true;
+local bool DEBUG_zero_arena = false;
+local bool DEBUG_check_arena_bounds = true;
+local bool DEBUG_enabled = false;
 
 void
 assert_f(char* message, char* file, int line)
 {
-  if(DEBUG_assert)
+  if(DEBUG_enabled)
   {
     fprintf(stderr, "%s(%d) : assert | %s\n", file, line, message);
     fflush(stderr);
@@ -18,32 +18,30 @@ assert_f(char* message, char* file, int line)
 void
 fail_f(char* file, int line, char* message, ...)
 {
-  if(DEBUG_assert)
-  {
-    fprintf(stderr, "%s(%d) : fail | ", file, line);
+  fprintf(stderr, "%s(%d) : fail | ", file, line);
 
-    va_list args;
-    va_start(args, message);
-    vfprintf(stderr, message, args);
-    va_end(args);
+  va_list args;
+  va_start(args, message);
+  vfprintf(stderr, message, args);
+  va_end(args);
 
-    fprintf(stderr, "\n");
-    fflush(stderr);
-    *(int*)0 = 0;
-  }
+  fprintf(stderr, "\n");
+  fflush(stderr);
+  *(int*)0 = 0;
 }
 
 bool
-error(char* message, ...)
+error_f(char* file, int line, char* message, ...)
 {
-  va_list args;
-  // Commented out, because Vim is confused when it tries to jump to the error line
-//  fprintf(stdout, ":error : ");
+  fprintf(stderr, "%s(%d) : ", file, line);
 
+  va_list args;
   va_start(args, message);
-  vprintf(message, args);
-  printf("\n");
+  vfprintf(stderr, message, args);
   va_end(args);
+
+  fprintf(stderr, "\n");
+  fflush(stderr);
   return false;
 }
 
@@ -160,7 +158,7 @@ MemoryArena*
 arena_new(int size)
 {
   void* raw_mem = VirtualAlloc(0, size + sizeof(MemoryArena), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-  MemoryArena* arena = raw_mem;
+  MemoryArena* arena = (MemoryArena*)raw_mem;
   arena->alloc = (uint8*)arena + sizeof(MemoryArena);
   arena->free = arena->alloc;
   arena->cap = arena->free + size;

@@ -10,13 +10,13 @@ extern Type* basic_type_float;
 extern Type* basic_type_void;
 
 SymbolTable* symtab = 0;
-internal int last_block_id = 0;
-internal int tempvar_id = 0;
+local int last_block_id = 0;
+local int tempvar_id = 0;
 
-internal bool do_block(AstNode*, AstNode*, AstNode*, AstNode*);
-internal bool do_expression(AstNode*, AstNode*, AstNode**);
+local bool32 do_block(AstNode*, AstNode*, AstNode*, AstNode*);
+local bool32 do_expression(AstNode*, AstNode*, AstNode**);
 
-internal char*
+local char*
 get_type_printstr(Type* type)
 {
   char* result = "???";
@@ -36,7 +36,7 @@ get_type_printstr(Type* type)
   return result;
 }
 
-internal bool
+local bool32
 is_arithmetic_op(AstOpKind op)
 {
   return op == AstOpKind_Add || op == AstOpKind_Sub
@@ -44,13 +44,13 @@ is_arithmetic_op(AstOpKind op)
     || op == AstOpKind_Mod;
 }
 
-internal bool
+local bool32
 is_logic_op(AstOpKind op)
 {
   return op == AstOpKind_LogicOr || op == AstOpKind_LogicAnd || op == AstOpKind_LogicNot;
 }
 
-internal bool
+local bool32
 is_comparison_op(AstOpKind op)
 {
   return op == AstOpKind_LogicEquals || op == AstOpKind_LogicNotEquals
@@ -58,7 +58,7 @@ is_comparison_op(AstOpKind op)
       || op == AstOpKind_LogicGreater || op == AstOpKind_LogicGreaterEquals;
 }
 
-internal AstNode*
+local AstNode*
 make_tempvar_id(SourceLocation* src_loc, char* label)
 {
   String str = {0};
@@ -67,7 +67,8 @@ make_tempvar_id(SourceLocation* src_loc, char* label)
   return new_id(src_loc, str.head);
 }
 
-internal AstNode*
+#if 0
+local AstNode*
 new_var_occur(SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode);
@@ -75,8 +76,9 @@ new_var_occur(SourceLocation* src_loc)
   node->src_loc = *src_loc;
   return node;
 }
+#endif
 
-internal Symbol*
+local Symbol*
 lookup_symbol(char* name, SymbolKind kind)
 {
   Symbol* result = 0;
@@ -94,20 +96,15 @@ lookup_symbol(char* name, SymbolKind kind)
   return result;
 }
 
-internal AstNode*
+local AstNode*
 lookup_symbol_node(char* name, SymbolKind kind)
 {
   Symbol* symbol = lookup_symbol(name, kind);
   return symbol ? symbol->node : 0;
 }
 
-internal AstNode*
-get_module_block()
-{
-  return symtab->active_blocks[1];
-}
-
-internal Symbol*
+#if 0
+local Symbol*
 find_last_symbol_in_block(AstNode* block)
 {
   Symbol* symbol = symtab->curr_symbol;
@@ -115,8 +112,9 @@ find_last_symbol_in_block(AstNode* block)
     symbol = symbol->prev_symbol;
   return symbol;
 }
+#endif
 
-internal Symbol*
+local Symbol*
 add_symbol(char* name, SymbolKind kind)
 {
   Symbol* symbol = mem_push_struct(sym_arena, Symbol);
@@ -130,7 +128,7 @@ add_symbol(char* name, SymbolKind kind)
   return symbol;
 }
 
-internal Symbol*
+local Symbol*
 register_new_id(AstNode* id, SymbolKind symkind)
 {
   assert(id->kind == AstNodeKind_Id);
@@ -142,11 +140,14 @@ register_new_id(AstNode* id, SymbolKind symkind)
     return 0;
   }
   else
+  {
     sym = add_symbol(id->id.name, symkind);
+    sym->node = id;
+  }
   return sym;
 }
 
-internal Symbol*
+local Symbol*
 add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == TypeKind_Basic);
@@ -157,7 +158,7 @@ add_builtin_type(char* name, Type* type)
   return symbol;
 }
 
-internal void
+local void
 register_builtin_types()
 {
   add_builtin_type("bool", basic_type_bool);
@@ -167,7 +168,7 @@ register_builtin_types()
   add_builtin_type("void", basic_type_void);
 }
 
-internal bool
+local bool32
 scope_begin(AstNode* block)
 {
   assert(block->kind == AstNodeKind_Block);
@@ -184,14 +185,14 @@ scope_begin(AstNode* block)
   }
   else
   {
-    compile_error(&block->src_loc, "Maximum scope nesting depth has been reached: %d", sizeof_array(symtab->active_blocks));
+    compile_error(&block->src_loc, "Exceeded max scope nesting depth : %d", sizeof_array(symtab->active_blocks));
     return false;
   }
 
   return true;
 }
 
-internal void
+local void
 scope_end()
 {
   assert(symtab->curr_block == symtab->active_blocks[symtab->nesting_depth]);
@@ -216,14 +217,14 @@ scope_end()
     assert(symtab->nesting_depth == 0);
 }
 
-internal void
+local void
 do_include_stmt(List* include_list, List* module_list, ListItem* module_list_item)
 {
   for(ListItem* list_item = include_list->first;
       list_item;
       list_item = list_item->next)
   {
-    AstNode* stmt = list_item->elem;
+    auto stmt = (AstNode*)list_item->elem;
     if(stmt->kind == AstNodeKind_IncludeStmt)
     {
       AstNode* incl_block = stmt->incl_stmt.body;
@@ -236,41 +237,56 @@ do_include_stmt(List* include_list, List* module_list, ListItem* module_list_ite
   list_init(include_list);
 }
 
-internal bool
-do_var_decl(AstNode* block, AstNode* var)
+local bool32
+do_var_decl(AstNode* block, AstNode* var_decl)
 {
   assert(block->kind == AstNodeKind_Block);
-  assert(var->kind == AstNodeKind_VarDecl);
-  bool success = true;
+  assert(var_decl->kind == AstNodeKind_VarDecl);
+  bool32 success = true;
 
-  AstNode* type_id = var->var_decl.type;
+  AstNode* type_id = var_decl->var_decl.type;
   if(type_id->kind == AstNodeKind_Id)
   {
     AstNode* type = lookup_symbol_node(type_id->id.name, SymbolKind_Type);
     if(type)
     {
       type_id->type = type->type;
-      var->type = type->type;
+      var_decl->type = type->type;
 
-      AstNode* id = var->var_decl.id;
-      Symbol* sym = register_new_id(id, SymbolKind_Var);
+      AstNode* id = var_decl->var_decl.id;
+      Symbol* sym = register_new_id(id, SymbolKind_VarDecl);
       if(success = to_bool(sym))
       {
-        sym->node = var;
-
-        var->var_decl.decl_block = block;
-        list_append(arena, &block->block.decl_vars, var);
-        if(var->var_decl.init_expr)
+#if 0
+        sym->node = var_decl;
+        var_decl->var_decl.decl_block = block;
+        list_append(arena, &block->block.decl_vars, var_decl);
+        if(var_decl->var_decl.init_expr)
         {
-          AstNode* assign_node = new_bin_expr(&var->src_loc);
+          AstNode* assign_node = new_bin_expr(&var_decl->src_loc);
           AstBinExpr* bin_expr = &assign_node->bin_expr;
           bin_expr->op = AstOpKind_Assign;
-          bin_expr->lhs = new_id(&var->src_loc, id->id.name);;
-          bin_expr->rhs = var->var_decl.init_expr;
+          bin_expr->lhs = new_id(&var_decl->src_loc, id->id.name);;
+          bin_expr->rhs = var_decl->var_decl.init_expr;
 
           if(success = do_expression(block, assign_node, &assign_node))
             list_append(arena, &block->block.stmts, assign_node);
         }
+#else
+        sym->var_decl.decl_block = block;
+        list_append(arena, &block->block.decl_vars, sym);
+        if(var_decl->var_decl.init_expr)
+        {
+          AstNode* assign_node = new_bin_expr(&var_decl->src_loc);
+          //AstBinExpr* bin_expr = &assign_node->bin_expr;
+          assign_node->bin_expr.op = AstOpKind_Assign;
+          assign_node->bin_expr.lhs = new_id(&var_decl->src_loc, id->id.name);;
+          assign_node->bin_expr.rhs = var_decl->var_decl.init_expr;
+
+          if(success = do_expression(block, assign_node, &assign_node))
+            list_append(arena, &block->block.stmts, assign_node);
+        }
+#endif
       }
     }
     else
@@ -281,27 +297,27 @@ do_var_decl(AstNode* block, AstNode* var)
   return success;
 }
 
-internal bool
+local bool32
 do_call_args(AstNode* block, AstNode* call)
 {
   assert(call->kind == AstNodeKind_Call);
-  bool success = true;
+  bool32 success = true;
 
   for(ListItem* list_item = call->call.args.first;
       list_item && success;
       list_item = list_item->next)
   {
-    AstNode* arg = list_item->elem;
+    auto arg = (AstNode*)list_item->elem;
     success = do_expression(block, arg, &arg);
   }
   return success;
 }
 
-internal bool
+local bool32
 do_call(AstNode* block, AstNode* call)
 {
   assert(call->kind == AstNodeKind_Call);
-  bool success = true;
+  bool32 success = true;
 
   AstNode* id = call->call.id;
   AstNode* registered_proc = lookup_symbol_node(id->id.name, SymbolKind_Proc);
@@ -326,12 +342,12 @@ do_call(AstNode* block, AstNode* call)
   return success;
 }
 
-internal bool
+local bool32
 do_expression(AstNode* block, AstNode* expr_node, AstNode** xformed_node)
 {
   assert(block->kind == AstNodeKind_Block);
   *xformed_node = expr_node;
-  bool success = true;
+  bool32 success = true;
 
   if(expr_node->kind == AstNodeKind_BinExpr)
   {
@@ -383,7 +399,7 @@ do_expression(AstNode* block, AstNode* expr_node, AstNode** xformed_node)
           expr_node->type = operand->type;
         else
           success = compile_error(&expr_node->src_loc,
-                                  "bool operand expected, actual `%s`", get_type_printstr(operand->type));
+                                  "bool operand is expected, actual `%s`", get_type_printstr(operand->type));
       }
       else
         fail("not implemented");
@@ -391,7 +407,8 @@ do_expression(AstNode* block, AstNode* expr_node, AstNode** xformed_node)
   }
   else if(expr_node->kind == AstNodeKind_Id)
   {
-    AstNode* var_decl = lookup_symbol_node(expr_node->id.name, SymbolKind_Var);
+#if 0
+    AstNode* var_decl = lookup_symbol_node(expr_node->id.name, SymbolKind_VarOccur);
     if(var_decl)
     {
       assert(var_decl->kind == AstNodeKind_VarDecl);
@@ -416,6 +433,30 @@ do_expression(AstNode* block, AstNode* expr_node, AstNode** xformed_node)
     }
     else
       success = compile_error(&expr_node->src_loc, "Unknown identifier `%s`", expr_node->id.name);
+#else
+    Symbol* var_decl = lookup_symbol(expr_node->id.name, SymbolKind_VarDecl);
+    if(var_decl)
+    {
+      assert(var_decl->kind == SymbolKind_VarDecl);
+      Symbol* var_occur = add_symbol(expr_node->id.name, SymbolKind_VarOccur);
+      var_occur->var_occur.var_decl = var_decl;
+      var_occur->type = var_decl->type;
+
+      AstNode* decl_block = var_decl->var_decl.decl_block;
+      var_occur->var_occur.decl_block_offset = block->block.nesting_depth - decl_block->block.nesting_depth;
+      var_occur->var_occur.decl_block = decl_block;
+      var_occur->var_occur.occur_block = block;
+
+      if(var_occur->var_occur.decl_block_offset > 0)
+        list_append(arena, &block->block.nonlocals, var_occur);
+      else if(var_occur->var_occur.decl_block_offset == 0)
+        list_append(arena, &block->block.locals, var_occur);
+      else
+        assert(false);
+    }
+    else
+      success = compile_error(&expr_node->src_loc, "Unknown identifier `%s`", expr_node->id.name);
+#endif
   }
   else if(expr_node->kind == AstNodeKind_Literal)
   {
@@ -457,33 +498,33 @@ do_expression(AstNode* block, AstNode* expr_node, AstNode** xformed_node)
   return success;
 }
 
-internal bool
+local bool32
 do_proc_formal_args(AstNode* block, List* formal_args)
 {
   assert(block->kind == AstNodeKind_Block);
-  bool success = true;
+  bool32 success = true;
 
   for(ListItem* list_item = formal_args->first;
       list_item && success;
       list_item = list_item->next)
   {
-    AstNode* node = list_item->elem;
+    auto node = (AstNode*)list_item->elem;
     assert(node->kind == AstNodeKind_VarDecl);
-    AstVarDecl* var_decl = &node->var_decl;
-    if(var_decl->id)
+    //AstVarDecl* var_decl = &node->var_decl;
+    if(node->var_decl.id)
       success = do_var_decl(block, node);
     else
       success = compile_error(&node->src_loc, "Missing identifier : %s", get_ast_kind_printstr(node->kind));
-    assert(!var_decl->init_expr); /* enforced by parser */
+    assert(!node->var_decl.init_expr); /* enforced by parser */
   }
   return success;
 }
 
-internal bool
+local bool32
 do_proc_ret_var(AstNode* block, AstNode* proc)
 {
   assert(proc->kind == AstNodeKind_Proc);
-  bool success = true;
+  bool32 success = true;
   proc->proc.ret_var = new_var_decl(&proc->src_loc);
   AstNode* var_decl = proc->proc.ret_var;
   var_decl->var_decl.id = make_tempvar_id(&proc->src_loc, "ret");
@@ -492,11 +533,11 @@ do_proc_ret_var(AstNode* block, AstNode* proc)
   return success;
 }
 
-internal bool
+local bool32
 do_proc_decl(AstNode* proc)
 {
   assert(proc->kind == AstNodeKind_Proc);
-  bool success = true;
+  bool32 success = true;
 
   if(success = scope_begin(proc->proc.body))
   {
@@ -547,11 +588,11 @@ do_proc_decl(AstNode* proc)
   return success;
 }
 
-internal bool
+local bool32
 do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
 {
   assert(block->kind == AstNodeKind_Block);
-  bool success = true;
+  bool32 success = true;
 
   if(stmt->kind == AstNodeKind_VarDecl)
     success = do_var_decl(block, stmt);
@@ -728,11 +769,11 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   return success;
 }
 
-internal bool
+local bool32
 do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
 {
   assert(block->kind == AstNodeKind_Block);
-  bool success = true;
+  bool32 success = true;
 
   //block->block.owner = owner;
 
@@ -742,7 +783,7 @@ do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
         list_item && success;
         list_item = list_item->next)
     {
-      AstNode* stmt = list_item->elem;
+      auto stmt = (AstNode*)list_item->elem;
       if(stmt->kind == AstNodeKind_VarDecl)
         success = do_var_decl(block, stmt);
       else if(stmt->kind == AstNodeKind_Proc)
@@ -781,11 +822,11 @@ do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
   return success;
 }
 
-internal bool
+local bool32
 do_module(AstNode* module)
 {
   assert(module->kind == AstNodeKind_Module);
-  bool success = true;
+  bool32 success = true;
 
   AstNode* mod_block = module->module.body;
 
@@ -794,7 +835,7 @@ do_module(AstNode* module)
       list_item;
       list_item = list_item->next)
   {
-    AstNode* stmt = list_item->elem;
+    auto stmt = (AstNode*)list_item->elem;
     if(stmt->kind == AstNodeKind_IncludeStmt)
     {
       AstNode* incl_block = stmt->incl_stmt.body;
@@ -811,14 +852,14 @@ do_module(AstNode* module)
   return success;
 }
 
-bool
+bool32
 semantic_analysis(AstNode* node)
 {
   init_types();
 
   symtab = mem_push_struct(arena, SymbolTable);
 
-  bool success = true;
+  bool32 success = true;
   assert(node->kind == AstNodeKind_Module);
   success = do_module(node);
 

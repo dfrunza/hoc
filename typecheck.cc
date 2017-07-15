@@ -2,8 +2,8 @@
 
 extern MemoryArena* arena;
 
-internal List subst_list;
-internal int typevar_id = 1;
+local List subst_list;
+local int typevar_id = 1;
 
 Type* basic_type_bool;
 Type* basic_type_int;
@@ -11,7 +11,7 @@ Type* basic_type_char;
 Type* basic_type_float;
 Type* basic_type_void;
 
-internal Type*
+local Type*
 new_basic_type(BasicTypeKind kind)
 {
   Type* type = mem_push_struct(arena, Type);
@@ -80,7 +80,7 @@ make_type_of_node_list(List* node_list)
         list_item;
         list_item = list_item->next)
     {
-      AstNode* node = list_item->elem;
+      auto node = (AstNode*)list_item->elem;
       type = new_product_type(type, node->type);
     }
   }
@@ -99,7 +99,8 @@ init_types()
   list_init(&subst_list);
 }
 
-internal bool
+#if 0
+local bool
 types_are_equal(Type* type_a, Type* type_b)
 {
   bool are_equal = false;
@@ -113,8 +114,9 @@ types_are_equal(Type* type_a, Type* type_b)
   }
   return are_equal;
 }
+#endif
 
-internal Type*
+local Type*
 copy_type(Type* type)
 {
   Type* copy = mem_push_struct(arena, Type);
@@ -122,7 +124,7 @@ copy_type(Type* type)
   return copy;
 }
 
-internal Type*
+local Type*
 find_set_representative(Type* type)
 {
   Type* result = type;
@@ -134,7 +136,7 @@ find_set_representative(Type* type)
   return result;
 }
 
-internal void
+local void
 set_union(Type* type_a, Type* type_b)
 {
   if(type_a->kind == TypeKind_TypeVar)
@@ -143,10 +145,10 @@ set_union(Type* type_a, Type* type_b)
     type_b->repr_type = type_a;
 }
 
-bool
+bool32
 type_unif(Type* type_a, Type* type_b)
 {
-  bool success = false;
+  bool32 success = false;
   Type* repr_type_a = find_set_representative(type_a);
   Type* repr_type_b = find_set_representative(type_b);
 
@@ -185,7 +187,7 @@ type_unif(Type* type_a, Type* type_b)
   return success;
 }
 
-internal TypePair*
+local TypePair*
 new_type_pair(Type* key, Type* value)
 {
   TypePair* pair = mem_push_struct(arena, TypePair);
@@ -194,7 +196,7 @@ new_type_pair(Type* key, Type* value)
   return pair;
 }
 
-internal TypePair*
+local TypePair*
 find_pair(List* subst_list, Type* type)
 {
   TypePair* result = 0;
@@ -202,7 +204,7 @@ find_pair(List* subst_list, Type* type)
       list_item;
       list_item = list_item->next)
   {
-    TypePair* pair = list_item->elem;
+    auto pair = (TypePair*)list_item->elem;
     if(pair->key == type)
     {
       result = pair;
@@ -212,7 +214,7 @@ find_pair(List* subst_list, Type* type)
   return result;
 }
 
-internal Type*
+local Type*
 type_subst(List* subst_list, Type* type)
 {
   type = find_set_representative(type);

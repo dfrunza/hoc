@@ -1,25 +1,19 @@
 /*
-include "hlib\\sqrt.hoc";
 include "hlib\\gcd.hoc";
-include "hlib\\minmax.hoc";
 include "hlib\\power.hoc";
+include "hlib\\minmax.hoc";
+include "hlib\\sqrt.hoc";
 include "hlib\\fibo.hoc";
 */
-
 proc int foo(int a)
 {
-  if(true)
-  {
-    return 2;
-  }
+  var float b;
 }
 
 proc int main()
 {
-  var int a;
-  var bool b;
-  a = foo(44);
+  var int a = foo(44);
+  return foo(44) + 54;
 }
-
 
 

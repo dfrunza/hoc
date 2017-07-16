@@ -18,7 +18,6 @@ new_block(SourceLocation* src_loc)
   node->src_loc = *src_loc;
   list_init(&node->block.node_list);
   list_init(&node->block.decl_vars);
-  list_init(&node->block.stmts);
   return node;
 }
 

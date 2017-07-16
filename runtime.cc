@@ -127,7 +127,7 @@ do_block(MemoryArena* arena, AstNode* block_ast)
     block->locals_size += var_decl->data.size;
   }
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
-  do_block_stmts(arena, &block->stmts);
+  do_block_stmts(arena, &block->node_list);
 }
 
 local void
@@ -247,8 +247,7 @@ do_stmt(MemoryArena* arena, AstNode* ast)
   {
     if(ast->ret_stmt.expr)
       do_stmt(arena, ast->ret_stmt.expr);
-    else
-      fail("what do we do???!!");
+    /* else - it's OK */
   }
   else if(ast->kind == AstNodeKind_Cast)
     do_stmt(arena, ast->cast.expr);
@@ -327,7 +326,7 @@ do_proc(MemoryArena* arena, AstNode* proc_ast)
   }
 
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
-  do_block_stmts(arena, &body_block->stmts);
+  do_block_stmts(arena, &body_block->node_list);
 }
  
 bool32

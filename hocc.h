@@ -230,7 +230,10 @@ typedef struct AstNode
       AstNode* type;
       AstNode* id;
       AstNode* init_expr;
+
+      /* semantic */
       AstNode* decl_block;
+      AstNode* assign_expr;
 
       /* runtime */
       DataArea data;
@@ -314,6 +317,7 @@ typedef struct AstNode
       /* semantic */
       AstNode* proc;
       int nesting_depth;
+      AstNode* assign_expr;
     }
     ret_stmt;
 
@@ -367,7 +371,6 @@ typedef struct AstNode
       int nesting_depth;
       struct AstNode* encl_block;
       List decl_vars;
-      List stmts;
       List locals;
       List nonlocals;
 

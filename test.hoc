@@ -1,14 +1,21 @@
 /*
-include "hlib\\sqrt.hoc";
 include "hlib\\gcd.hoc";
+include "hlib\\sqrt.hoc";
 include "hlib\\minmax.hoc";
 include "hlib\\power.hoc";
 include "hlib\\fibo.hoc";
 */
 
+proc int foo(int a)
+{
+  return 2;
+}
+
 proc int main()
 {
- var int result = 0;
+  var int a;
+  a = foo(44);
 }
+
 
 

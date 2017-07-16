@@ -249,12 +249,12 @@ typedef struct AstNode
     literal;
 
     struct {
-      AstNode* ret_type; // syntactic node
+      AstNode* ret_type;
       AstNode* id;
       List formal_args;
       AstNode* body;
 
-      AstNode* ret_var; // semantic node
+      AstNode* ret_var_decl; // semantic node
       bool32 is_decl;
       /*
       Type* ret_type;
@@ -348,13 +348,13 @@ typedef struct AstNode
 
     struct {
       char* name;
+      Symbol* sym;
     }
     id;
 
     struct {
       AstNode* id;
       List args;
-      AstNode* proc;
     }
     call;
 
@@ -484,10 +484,12 @@ AccessLink;
 typedef enum
 {
   SymbolKind__Null,
-  SymbolKind_Proc,
-  SymbolKind_Type,
-  SymbolKind_VarOccur,
   SymbolKind_VarDecl,
+  SymbolKind_VarOccur,
+  SymbolKind_TypeDecl,
+  SymbolKind_TypeOccur,
+  SymbolKind_Proc,
+  SymbolKind_Call,
 }
 SymbolKind;
 
@@ -499,13 +501,11 @@ typedef struct Symbol
   char* name;
   int block_id;
   int nesting_depth;
-  AstNode* node;
-  Type* type;
+  AstNode* id;
 
   union {
     struct {
       Symbol* var_decl;
-      AstNode* decl_block;
       AstNode* occur_block;
       int decl_block_offset;
       /*
@@ -516,10 +516,24 @@ typedef struct Symbol
     var_occur;
 
     struct {
-      Type* type;
+      AstNode* ast;
       AstNode* decl_block;
     }
     var_decl;
+
+    struct {
+      AstNode* ast;
+      Symbol* proc;
+    }
+    call;
+
+    struct {
+      AstNode* ast;
+    }
+    proc;
+
+    Type* type_decl;
+    Type* type_occur;
   };
 }
 Symbol;
@@ -536,9 +550,9 @@ typedef struct
 SymbolTable;
 
 #define compile_error(SRC, MESSAGE, ...)\
-  compile_error_f((SRC), __FILE__, __LINE__,(MESSAGE), __VA_ARGS__)
+  compile_error_f(__FILE__, __LINE__, (SRC), (MESSAGE), __VA_ARGS__)
 
-bool32 compile_error_f(SourceLocation* src_loc, char* file, int line, char* message, ...);
+bool32 compile_error_f(char* file, int line, SourceLocation* src_loc, char* message, ...);
 bool32 get_next_token(TokenStream* input);
 void putback_token(TokenStream* input);
 void init_token_stream(TokenStream* token_stream, char* text, char* file_path);

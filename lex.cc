@@ -85,7 +85,7 @@ typedef struct
 EscapedStr;
 
 local bool32
-escaped_string(TokenStream* input, EscapedStr* estr, char* file, int line)
+escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
 {
   bool32 success = true;
   estr->len = 0;
@@ -100,7 +100,7 @@ escaped_string(TokenStream* input, EscapedStr* estr, char* file, int line)
     {
       c = *(++estr->end);
       if(!is_valid_escape_char(c))
-        success = compile_error_f(&input->src_loc, file, line, "Invalid escape char `%c`", c);
+        success = compile_error_f(file, line, &input->src_loc, "Invalid escape char `%c`", c);
     }
     estr->len++;
     c = *(++estr->end);
@@ -108,7 +108,7 @@ escaped_string(TokenStream* input, EscapedStr* estr, char* file, int line)
   if(success)
   {
     if(*estr->end != estr->quote)
-      success = compile_error_f(&input->src_loc, file, line,
+      success = compile_error_f(file, line, &input->src_loc, 
                                 "Malformed string literal, missing the closing `%c`", estr->quote);
   }
   assert((estr->end - estr->begin) >= 1);
@@ -475,7 +475,7 @@ loop:
     EscapedStr estr = {0};
     estr.quote = '"';
 
-    if(success = escaped_string(input, &estr, __FILE__, __LINE__))
+    if(success = escaped_string(__FILE__, __LINE__, input, &estr))
     {
       token->str = install_escaped_str(&estr);;
       token->kind = TokenKind_String;
@@ -488,7 +488,7 @@ loop:
     EscapedStr estr = {0};
     estr.quote = '\'';
 
-    if(success = escaped_string(input, &estr, __FILE__, __LINE__))
+    if(success = escaped_string(__FILE__, __LINE__, input, &estr))
     {
       char* lexeme = install_escaped_str(&estr);
 

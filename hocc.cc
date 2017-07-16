@@ -47,10 +47,14 @@ DEBUG_print_arena_usage(char* tag)
 }
 
 bool32
-compile_error_f(SourceLocation* src_loc, char* file, int line, char* message, ...)
+compile_error_f(char* file, int line, SourceLocation* src_loc, char* message, ...)
 {
+  char* filename_buf = mem_push_count_nz(arena, char, cstr_len(file));
+  cstr_copy(filename_buf, file);
+
   if(src_loc->line_nr > 0)
-    fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr, path_make_stem(file), line);
+    fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
+            path_make_stem(filename_buf), line);
   else
     fprintf(stderr, "%s(%d) : ", file, line);
 

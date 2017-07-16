@@ -67,17 +67,6 @@ make_tempvar_id(SourceLocation* src_loc, char* label)
   return new_id(src_loc, str.head);
 }
 
-#if 0
-local AstNode*
-new_var_occur(SourceLocation* src_loc)
-{
-  AstNode* node = mem_push_struct(arena, AstNode);
-  node->kind = AstNodeKind_VarOccur;
-  node->src_loc = *src_loc;
-  return node;
-}
-#endif
-
 local Symbol*
 lookup_symbol(char* name, SymbolKind kind)
 {
@@ -96,13 +85,6 @@ lookup_symbol(char* name, SymbolKind kind)
   return result;
 }
 
-local AstNode*
-lookup_symbol_node(char* name, SymbolKind kind)
-{
-  Symbol* symbol = lookup_symbol(name, kind);
-  return symbol ? symbol->node : 0;
-}
-
 #if 0
 local Symbol*
 find_last_symbol_in_block(AstNode* block)
@@ -115,17 +97,21 @@ find_last_symbol_in_block(AstNode* block)
 #endif
 
 local Symbol*
-add_symbol(char* name, SymbolKind kind)
+register_id(AstNode* id, SymbolKind kind)
 {
-  Symbol* symbol = mem_push_struct(sym_arena, Symbol);
-  symbol->kind = kind;
-  symbol->name = name;
-  symbol->block_id = symtab->block_id;
-  symbol->nesting_depth = symtab->nesting_depth;
-  symbol->prev_symbol = symtab->curr_symbol;
-  symtab->curr_symbol = symbol;
+  assert(id->kind == AstNodeKind_Id);
+  Symbol* sym = mem_push_struct(sym_arena, Symbol);
+  sym->kind = kind;
+  sym->name = id->id.name;
+  sym->block_id = symtab->block_id;
+  sym->nesting_depth = symtab->nesting_depth;
+  sym->prev_symbol = symtab->curr_symbol;
+  sym->id = id;
+  id->id.sym = sym;
+
+  symtab->curr_symbol = sym;
   symtab->sym_count++;
-  return symbol;
+  return sym;
 }
 
 local Symbol*
@@ -140,10 +126,7 @@ register_new_id(AstNode* id, SymbolKind symkind)
     return 0;
   }
   else
-  {
-    sym = add_symbol(id->id.name, symkind);
-    sym->node = id;
-  }
+    sym = register_id(id, symkind);
   return sym;
 }
 
@@ -152,14 +135,13 @@ add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == TypeKind_Basic);
   AstNode* type_id = new_id(mem_push_struct(arena, SourceLocation), name);
-  type_id->type = type;
-  Symbol* symbol = register_new_id(type_id, SymbolKind_Type);
-  symbol->node = type_id;
-  return symbol;
+  Symbol* sym = register_new_id(type_id, SymbolKind_TypeDecl);
+  sym->type_decl = type;
+  return sym;
 }
 
 local void
-register_builtin_types()
+add_builtin_types()
 {
   add_builtin_type("bool", basic_type_bool);
   add_builtin_type("int", basic_type_int);
@@ -169,11 +151,11 @@ register_builtin_types()
 }
 
 local bool32
-scope_begin(AstNode* node)
+scope_begin(AstNode* ast)
 {
-  assert(node->kind == AstNodeKind_Block);
+  assert(ast->kind == AstNodeKind_Block);
 
-  use(node, block);
+  use(ast, block);
   symtab->block_id =++last_block_id; 
   block->block_id = symtab->block_id;
   block->encl_block = symtab->curr_block;
@@ -182,12 +164,12 @@ scope_begin(AstNode* node)
   if(symtab->nesting_depth < sizeof_array(symtab->active_blocks))
   {
     block->nesting_depth = symtab->nesting_depth;
-    symtab->active_blocks[symtab->nesting_depth] = node;
-    symtab->curr_block = node;
+    symtab->active_blocks[symtab->nesting_depth] = ast;
+    symtab->curr_block = ast;
   }
   else
   {
-    compile_error(&node->src_loc, "Exceeded max scope nesting depth : %d", sizeof_array(symtab->active_blocks));
+    compile_error(&ast->src_loc, "Exceeded max scope nesting depth : %d", sizeof_array(symtab->active_blocks));
     return false;
   }
 
@@ -240,55 +222,42 @@ do_include_stmt(List* include_list, List* module_list, ListItem* module_list_ite
 }
 
 local bool32
-do_var_decl(AstNode* block, AstNode* var_decl)
+do_var_decl(AstNode* block, AstNode* var_decl_ast)
 {
   assert(block->kind == AstNodeKind_Block);
-  assert(var_decl->kind == AstNodeKind_VarDecl);
+  assert(var_decl_ast->kind == AstNodeKind_VarDecl);
   bool32 success = true;
 
-  AstNode* type_id = var_decl->var_decl.type;
+  AstNode* type_id = var_decl_ast->var_decl.type;
   if(type_id->kind == AstNodeKind_Id)
   {
-    AstNode* type = lookup_symbol_node(type_id->id.name, SymbolKind_Type);
-    if(type)
+    Symbol* type_decl_sym = lookup_symbol(type_id->id.name, SymbolKind_TypeDecl);
+    if(type_decl_sym)
     {
-      type_id->type = type->type;
-      var_decl->type = type->type;
+      assert(type_decl_sym->type_decl);
+      Symbol* type_occur_sym = register_id(type_id, SymbolKind_TypeOccur);
+      type_occur_sym->type_occur = type_decl_sym->type_decl;
+      type_id->type = type_decl_sym->type_decl;
 
-      AstNode* id = var_decl->var_decl.id;
-      Symbol* sym = register_new_id(id, SymbolKind_VarDecl);
-      if(success = to_bool(sym))
+      AstNode* var_id = var_decl_ast->var_decl.id;
+      var_id->type = type_decl_sym->type_decl;
+      Symbol* var_decl_sym = register_new_id(var_id, SymbolKind_VarDecl);
+      if(success = to_bool(var_decl_sym))
       {
-#if 0
-        sym->node = var_decl;
-        var_decl->var_decl.decl_block = block;
-        list_append(arena, &block->block.decl_vars, var_decl);
-        if(var_decl->var_decl.init_expr)
+        var_decl_ast->type = type_decl_sym->type_decl;
+        var_decl_sym->var_decl.ast = var_decl_ast;
+        list_append(arena, &block->block.decl_vars, var_decl_sym);
+        if(var_decl_ast->var_decl.init_expr)
         {
-          AstNode* assign_node = new_bin_expr(&var_decl->src_loc);
-          AstBinExpr* bin_expr = &assign_node->bin_expr;
-          bin_expr->op = AstOpKind_Assign;
-          bin_expr->lhs = new_id(&var_decl->src_loc, id->id.name);;
-          bin_expr->rhs = var_decl->var_decl.init_expr;
-
-          if(success = do_expression(block, assign_node, &assign_node))
-            list_append(arena, &block->block.stmts, assign_node);
-        }
-#else
-        sym->var_decl.decl_block = block;
-        list_append(arena, &block->block.decl_vars, sym);
-        if(var_decl->var_decl.init_expr)
-        {
-          AstNode* assign_node = new_bin_expr(&var_decl->src_loc);
+          AstNode* assign_node = new_bin_expr(&var_decl_ast->src_loc);
           use(assign_node, bin_expr);
           bin_expr->op = AstOpKind_Assign;
-          bin_expr->lhs = new_id(&var_decl->src_loc, id->id.name);;
-          bin_expr->rhs = var_decl->var_decl.init_expr;
+          bin_expr->lhs = new_id(&var_decl_ast->src_loc, var_id->id.name);;
+          bin_expr->rhs = var_decl_ast->var_decl.init_expr;
 
           if(success = do_expression(block, assign_node))
             list_append(arena, &block->block.stmts, assign_node);
         }
-#endif
       }
     }
     else
@@ -316,31 +285,37 @@ do_call_args(AstNode* block, AstNode* call)
 }
 
 local bool32
-do_call(AstNode* block, AstNode* call)
+do_call(AstNode* block, AstNode* call_node)
 {
-  assert(call->kind == AstNodeKind_Call);
+  assert(call_node->kind == AstNodeKind_Call);
   bool32 success = true;
 
-  AstNode* id = call->call.id;
-  AstNode* registered_proc = lookup_symbol_node(id->id.name, SymbolKind_Proc);
-  if(registered_proc)
+  AstNode* call_id = call_node->call.id;
+  Symbol* proc_sym = lookup_symbol(call_id->id.name, SymbolKind_Proc);
+  if(proc_sym)
   {
-    if(success = do_call_args(block, call))
+    Symbol* call_sym = register_id(call_id, SymbolKind_Call);
+
+    if(success = do_call_args(block, call_node))
     {
-      assert(registered_proc->type->kind == TypeKind_Proc);
-      Type* ret_type = registered_proc->type->proc.ret;
-      call->type = new_proc_type(make_type_of_node_list(&call->call.args), ret_type);
-      if(type_unif(registered_proc->type, call->type))
-        call->call.proc = registered_proc;
+      AstNode* registered_proc = proc_sym->proc.ast;
+      Type* ret_type = registered_proc->proc.ret_type->type;
+      call_node->type = new_proc_type(make_type_of_node_list(&call_node->call.args), ret_type);
+      if(type_unif(registered_proc->type, call_node->type))
+      {
+        call_sym->call.proc = proc_sym;
+        call_sym->call.ast = call_node;
+        call_id->type = ret_type;
+      }
       else
       {
-        success = compile_error(&call->src_loc, "Missmatch between call and proc signature");
+        success = compile_error(&call_node->src_loc, "Missmatch between call and proc signature");
         compile_error(&registered_proc->src_loc, "...see proc decl");
       }
     }
   }
   else
-    success = compile_error(&call->src_loc, "Unknown procedure `%s`", id->id.name);
+    success = compile_error(&call_node->src_loc, "Unknown procedure `%s`", call_id->id.name);
   return success;
 }
 
@@ -408,24 +383,21 @@ do_expression(AstNode* block, AstNode* expr_node)
   }
   else if(expr_node->kind == AstNodeKind_Id)
   {
-    Symbol* decl_sym = lookup_symbol(expr_node->id.name, SymbolKind_VarDecl);
-    if(decl_sym)
+    Symbol* var_decl_sym = lookup_symbol(expr_node->id.name, SymbolKind_VarDecl);
+    if(var_decl_sym)
     {
-      assert(decl_sym->kind == SymbolKind_VarDecl);
-      Symbol* occur_sym = add_symbol(expr_node->id.name, SymbolKind_VarOccur);
-      use(occur_sym, var_occur);
-      var_occur->var_decl = decl_sym;
-      occur_sym->type = decl_sym->type;
+      Symbol* var_occur_sym = register_id(expr_node, SymbolKind_VarOccur);
+      use(var_occur_sym, var_occur);
+      var_occur->var_decl = var_decl_sym;
+      expr_node->type = var_decl_sym->id->type;
 
-      auto decl_block = decl_sym->var_decl.decl_block;
-      var_occur->decl_block_offset = block->block.nesting_depth - decl_block->block.nesting_depth;
-      var_occur->decl_block = decl_block;
+      var_occur->decl_block_offset = block->block.nesting_depth - var_decl_sym->nesting_depth;
       var_occur->occur_block = block;
 
       if(var_occur->decl_block_offset > 0)
-        list_append(arena, &block->block.nonlocals, occur_sym);
+        list_append(arena, &block->block.nonlocals, var_occur_sym);
       else if(var_occur->decl_block_offset == 0)
-        list_append(arena, &block->block.locals, occur_sym);
+        list_append(arena, &block->block.locals, var_occur_sym);
       else
         assert(false);
     }
@@ -458,19 +430,20 @@ do_expression(AstNode* block, AstNode* expr_node)
     use(expr_node, cast);
     if(cast->type->kind == AstNodeKind_Id)
     {
-      AstNode* type = lookup_symbol_node(cast->type->id.name, SymbolKind_Type);
-      if(type)
-        expr_node->type = type->type;
+      Symbol* type_sym = lookup_symbol(cast->type->id.name, SymbolKind_TypeDecl);
+      if(type_sym)
+      {
+        assert(type_sym->type_decl);
+        expr_node->type = type_sym->type_decl;
+      }
       else
-        compile_error(&expr_node->src_loc, "Unknown type in cast");
+        compile_error(&expr_node->src_loc, "Unknown type `%s`", cast->type->id.name);
     }
     else
       fail("only simple types are supported");
   }
   else
-  {
     fail("not implemented : %s", get_ast_kind_printstr(expr_node->kind));
-  }
   return success;
 }
 
@@ -484,13 +457,13 @@ do_proc_formal_args(AstNode* block, List* formal_args)
       list_item && success;
       list_item = list_item->next)
   {
-    auto node = (AstNode*)list_item->elem;
-    assert(node->kind == AstNodeKind_VarDecl);
-    use(node, var_decl);
+    auto ast = (AstNode*)list_item->elem;
+    assert(ast->kind == AstNodeKind_VarDecl);
+    use(ast, var_decl);
     if(var_decl->id)
-      success = do_var_decl(block, node);
+      success = do_var_decl(block, ast);
     else
-      success = compile_error(&node->src_loc, "Missing identifier : %s", get_ast_kind_printstr(node->kind));
+      success = compile_error(&ast->src_loc, "Missing identifier : %s", get_ast_kind_printstr(ast->kind));
     assert(!var_decl->init_expr); /* enforced by parser */
   }
   return success;
@@ -501,62 +474,69 @@ do_proc_ret_var(AstNode* block, AstNode* proc)
 {
   assert(proc->kind == AstNodeKind_Proc);
   bool32 success = true;
-  use(proc->proc.ret_var = new_var_decl(&proc->src_loc), var_decl);
+  use(proc->proc.ret_var_decl = new_var_decl(&proc->src_loc), var_decl);
   var_decl->id = make_tempvar_id(&proc->src_loc, "ret");
   var_decl->type = proc->proc.ret_type;
-  success = do_var_decl(block, proc->proc.ret_var);
+  success = do_var_decl(block, proc->proc.ret_var_decl);
   return success;
 }
 
 local bool32
-do_proc_decl(AstNode* proc)
+do_proc_decl(AstNode* proc_ast)
 {
-  assert(proc->kind == AstNodeKind_Proc);
+  assert(proc_ast->kind == AstNodeKind_Proc);
   bool32 success = true;
+  use(proc_ast, proc);
 
-  if(success = scope_begin(proc->proc.body))
+  if(success = scope_begin(proc->body))
   {
-    if(success = do_proc_formal_args(proc->proc.body, &proc->proc.formal_args)
-       && do_proc_ret_var(proc->proc.body, proc))
+    if(success = do_proc_formal_args(proc->body, &proc->formal_args)
+       && do_proc_ret_var(proc->body, proc_ast))
     {
-      proc->type = new_proc_type(make_type_of_node_list(&proc->proc.formal_args), proc->proc.ret_var->type);
+      proc_ast->type = new_proc_type(make_type_of_node_list(&proc->formal_args), proc->ret_var_decl->type);
 
-      Symbol* proc_sym = lookup_symbol(proc->proc.id->id.name, SymbolKind_Proc);
+      Symbol* proc_sym = lookup_symbol(proc->id->id.name, SymbolKind_Proc);
       if(proc_sym)
       {
-        AstNode* registered_proc = proc_sym->node;
+        AstNode* registered_proc = proc_sym->proc.ast;
         assert(registered_proc && registered_proc->kind == AstNodeKind_Proc);
 
-        if(registered_proc->proc.is_decl && proc->proc.is_decl)
+        if(registered_proc->proc.is_decl && proc->is_decl)
         {
-          if(!type_unif(registered_proc->type, proc->type))
+          if(!type_unif(registered_proc->type, proc_ast->type))
           {
-            success = compile_error(&proc->src_loc, "Inconsistent proc signature...");
+            success = compile_error(&proc_ast->src_loc, "Inconsistent proc signature...");
             compile_error(&registered_proc->src_loc, "...see previous decl");
           }
         }
-        else if(!registered_proc->proc.is_decl && !proc->proc.is_decl)
+        else if(!registered_proc->proc.is_decl && !proc->is_decl)
         {
-          success = compile_error(&proc->src_loc, "Proc redefinition...");
+          success = compile_error(&proc_ast->src_loc, "Proc redefinition...");
           compile_error(&registered_proc->src_loc, "...see previous def");
         }
-        else if(registered_proc->proc.is_decl && !proc->proc.is_decl)
+        else if(registered_proc->proc.is_decl && !proc->is_decl)
         {
-          if(type_unif(registered_proc->type, proc->type))
-            proc_sym->node = proc;
+          if(type_unif(registered_proc->type, proc_ast->type))
+          {
+            proc_sym->proc.ast = proc_ast;
+            proc->id->id.sym = proc_sym;
+          }
           else
           {
-            success = compile_error(&proc->src_loc, "Inconsistent proc signature...");
+            success = compile_error(&proc_ast->src_loc, "Inconsistent proc signature...");
             compile_error(&registered_proc->src_loc, "...see decl");
           }
         }
         /* else fall-thru */
       }
-      else if(success = to_bool(proc_sym = register_new_id(proc->proc.id, SymbolKind_Proc)))
-        proc_sym->node = proc;
+      else if(success = to_bool(proc_sym = register_new_id(proc->id, SymbolKind_Proc)))
+      {
+        proc_sym->proc.ast = proc_ast;
+        proc->id->id.sym = proc_sym;
+      }
 
       if(success)
-        success = do_block(proc, 0, proc, proc->proc.body);
+        success = do_block(proc_ast, 0, proc_ast, proc->body);
     }
     scope_end();
   }
@@ -671,20 +651,19 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       stmt->type = basic_type_void;
 
       AstNode* ret_expr = ret_stmt->expr;
-      AstNode* ret_var = proc->proc.ret_var;
+      AstNode* ret_var = proc->proc.ret_var_decl;
       if(ret_expr)
       {
         assert(ret_var->kind == AstNodeKind_VarDecl);
 
-        if(success = do_expression(block, ret_expr) &&
-           do_expression(block, ret_var->var_decl.id))
+        if(success = do_expression(block, ret_expr))
         {
           if(type_unif(ret_expr->type, ret_var->type))
           {
             AstNode* assign_expr = new_bin_expr(&stmt->src_loc);
             use(assign_expr, bin_expr);
             bin_expr->op = AstOpKind_Assign;
-            bin_expr->lhs = ret_var->var_decl.id;
+            bin_expr->lhs = new_id(&ret_expr->src_loc, ret_var->var_decl.id->id.name);
             bin_expr->rhs = ret_expr;
             assign_expr->type = ret_expr->type;
 
@@ -693,15 +672,15 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
           }
           else
             success = compile_error(&stmt->src_loc,
-                                    "`return` : expected `%s` type, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(ret_expr->type));
+                                    "return type : expected `%s`, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(ret_expr->type));
         }
       }
       else
         if(!(success = type_unif(ret_var->type, stmt->type)))
           success = compile_error(&stmt->src_loc,
-                                  "`return` : expected `%s` type, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(stmt->type));
+                                  "return type : expected `%s`, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(stmt->type));
       if(success)
-        assert(stmt->type == proc->proc.ret_var->type);
+        assert(stmt->type == proc->proc.ret_var_decl->type);
     }
     else
       success = compile_error(&stmt->src_loc, "Unexpected `return` at this location");
@@ -822,7 +801,7 @@ do_module(AstNode* module)
 
   if(success = scope_begin(module->module.body))
   {
-    register_builtin_types();
+    add_builtin_types();
     success = do_block(0, 0, module, module->module.body);
     scope_end();
   }
@@ -830,15 +809,15 @@ do_module(AstNode* module)
 }
 
 bool32
-semantic_analysis(AstNode* node)
+semantic_analysis(AstNode* ast)
 {
   init_types();
 
   symtab = mem_push_struct(arena, SymbolTable);
 
   bool32 success = true;
-  assert(node->kind == AstNodeKind_Module);
-  success = do_module(node);
+  assert(ast->kind == AstNodeKind_Module);
+  success = do_module(ast);
 
   return success;
 }

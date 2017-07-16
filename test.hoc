@@ -1,6 +1,6 @@
 /*
-include "hlib\\gcd.hoc";
 include "hlib\\sqrt.hoc";
+include "hlib\\gcd.hoc";
 include "hlib\\minmax.hoc";
 include "hlib\\power.hoc";
 include "hlib\\fibo.hoc";
@@ -8,7 +8,10 @@ include "hlib\\fibo.hoc";
 
 proc int foo(int a)
 {
-  return 2;
+  if(true)
+  {
+    return 2;
+  }
 }
 
 proc int main()

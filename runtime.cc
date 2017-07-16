@@ -1,4 +1,13 @@
-void
+#include "hocc.h"
+
+extern MemoryArena* arena;
+
+local int last_label_id;
+
+local void do_stmt(MemoryArena* arena, AstNode* ast);
+local void do_block_stmts(MemoryArena* arena, List* stmt_list);
+
+local void
 make_unique_label(String* label)
 {
   sprintf(label->head, "L%d", last_label_id++);
@@ -8,14 +17,14 @@ make_unique_label(String* label)
   arena->free = (uint8*)label->end + 1;
 }
 
-int
+local int
 compute_data_loc(int sp, List* areas)
 {
-  for(ListItem* list_item = list_first_item(areas);
+  for(ListItem* list_item = areas->first;
       list_item;
       list_item = list_item->next)
   {
-    DataArea* data = list_item->elem;
+    auto data = (DataArea*)list_item->elem;
     data->loc = sp;
     assert(data->size > 0);
     sp += data->size;
@@ -23,19 +32,19 @@ compute_data_loc(int sp, List* areas)
   return sp;
 }
 
-void
+local void
 fixup_data_loc(int fp, List* areas)
 {
-  for(ListItem* list_item = list_first_item(areas);
+  for(ListItem* list_item = areas->first;
       list_item;
       list_item = list_item->next)
   {
-    DataArea* data = list_item->elem;
+    auto data = (DataArea*)list_item->elem;
     data->loc = data->loc - fp;
   }
 }
 
-void
+local void
 compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
 {
   int fp = compute_data_loc(0, pre_fp_data);
@@ -44,56 +53,54 @@ compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
   fixup_data_loc(fp, post_fp_data);
 }
 
-void
-do_call(MemoryArena* arena, AstCall* call)
+local void
+do_call(MemoryArena* arena, AstNode* call_ast)
 {
-  for(ListItem* list_item = list_first_item(&call->actual_args);
+  assert(call_ast->kind == AstNodeKind_Call);
+  use(call_ast, call);
+  for(ListItem* list_item = call->args.first;
       list_item;
       list_item = list_item->next)
   {
-    do_stmt(arena, list_item->elem);
+    do_stmt(arena, (AstNode*)list_item->elem);
   }
 }
 
-void
-do_print_stmt(MemoryArena* arena, AstPrintStmt* print_stmt)
+local void
+do_block(MemoryArena* arena, AstNode* block_ast)
 {
-  if(print_stmt->expr)
-    do_stmt(arena, print_stmt->expr);
-}
+  assert(block_ast->kind == AstNodeKind_Block);
 
-void
-do_block(MemoryArena* arena, AstBlock* block)
-{
+  use(block_ast, block);
   List pre_fp_data = {0};
   list_init(&pre_fp_data);
   List post_fp_data = {0};
   list_init(&post_fp_data);
 
   /* access links */
-  for(ListItem* list_item = list_first_item(&block->nonlocal_occurs);
+  for(ListItem* list_item = block->nonlocals.first;
       list_item;
       list_item = list_item->next)
   {
-    AstNode* occur_node = list_item->elem;
-    assert(occur_node->kind == AstNodeKind_VarOccur);
-    AstVarOccur* var_occur = &occur_node->var_occur;
+    auto occur_ast = (AstNode*)list_item->elem;
+    assert(occur_ast->kind == AstNodeKind_VarOccur);
+    use(occur_ast, var_occur);
 
     List* links_list = &block->access_links;
 
     AccessLink* link = 0;
-    for(ListItem* list_item = list_first_item(links_list);
+    for(ListItem* list_item = links_list->first;
         list_item;
         list_item = list_item->next)
     {
-      link = list_item->elem;
+      link = (AccessLink*)list_item->elem;
       if(link->actv_rec_offset == var_occur->decl_block_offset)
         break;
       link = 0;
     }
     if(!link)
     {
-      link = mem_push_struct(arena, AccessLink, 1);
+      link = mem_push_struct(arena, AccessLink);
       link->actv_rec_offset = var_occur->decl_block_offset;
       link->data.size = 1;
       list_append(arena, links_list, link);
@@ -103,29 +110,31 @@ do_block(MemoryArena* arena, AstBlock* block)
     var_occur->link = link;
   }
 
-  DataArea* old_fp = mem_push_struct(arena, DataArea, 1);
+  DataArea* old_fp = mem_push_struct(arena, DataArea);
   old_fp->size = 1;
   list_append(arena, &pre_fp_data, old_fp);
 
   /* locals*/
-  for(ListItem* list_item = list_first_item(&block->decl_vars);
+  for(ListItem* list_item = block->decl_vars.first;
       list_item;
       list_item = list_item->next)
   {
-    AstNode* node = list_item->elem;
-    assert(node->kind == AstNodeKind_VarDecl);
-    AstVarDecl* local = &node->var_decl;
+    auto ast = (AstNode*)list_item->elem;
+    assert(ast->kind == AstNodeKind_VarDecl);
+    use(ast, var_decl);
 
-    list_append(arena, &post_fp_data, &local->data);
-    block->locals_size += local->data.size;
+    list_append(arena, &post_fp_data, &var_decl->data);
+    block->locals_size += var_decl->data.size;
   }
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
-  do_block(arena, &block->stmt_list);
+  do_block_stmts(arena, &block->stmts);
 }
 
-void
-do_while_stmt(MemoryArena* arena, AstWhileStmt* while_stmt)
+local void
+do_while_stmt(MemoryArena* arena, AstNode* while_ast)
 {
+  assert(while_ast->kind == AstNodeKind_WhileStmt);
+  use(while_ast, while_stmt);
   do_stmt(arena, while_stmt->cond_expr);
 
   {
@@ -147,14 +156,16 @@ do_while_stmt(MemoryArena* arena, AstWhileStmt* while_stmt)
   }
 
   if(while_stmt->body->kind == AstNodeKind_Block)
-    do_block(arena, &while_stmt->body->block);
+    do_block(arena, while_stmt->body);
   else
     do_stmt(arena, while_stmt->body);
 }
 
-void
-do_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
+local void
+do_if_stmt(MemoryArena* arena, AstNode* if_ast)
 {
+  assert(if_ast->kind == AstNodeKind_IfStmt);
+  use(if_ast, if_stmt);
   do_stmt(arena, if_stmt->cond_expr);
 
   {
@@ -176,7 +187,7 @@ do_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
   }
 
   if(if_stmt->body->kind == AstNodeKind_Block)
-    do_block(arena, &if_stmt->body->block);
+    do_block(arena, if_stmt->body);
   else
     do_stmt(arena, if_stmt->body);
 
@@ -184,17 +195,20 @@ do_if_stmt(MemoryArena* arena, AstIfStmt* if_stmt)
   {
     AstNode* else_node = if_stmt->else_body;
     if(else_node->kind == AstNodeKind_Block)
-      do_block(arena, &else_node->block);
+      do_block(arena, else_node);
     else if(else_node->kind == AstNodeKind_IfStmt)
-      do_if_stmt(arena, &else_node->if_stmt);
+      do_if_stmt(arena, else_node);
     else
       do_stmt(arena, else_node);
   }
 }
 
-void
-do_bin_expr(MemoryArena* arena, AstBinExpr* bin_expr)
+local void
+do_bin_expr(MemoryArena* arena, AstNode* expr_ast)
 {
+  assert(expr_ast->kind == AstNodeKind_BinExpr);
+  use(expr_ast, bin_expr);
+
   String label_id = {0};
   str_init(&label_id, arena);
   make_unique_label(&label_id);
@@ -205,66 +219,70 @@ do_bin_expr(MemoryArena* arena, AstBinExpr* bin_expr)
   str_append(&label, ".logic-end");
   bin_expr->label_end = label.head;
 
-  do_stmt(arena, bin_expr->left_operand);
-  do_stmt(arena, bin_expr->right_operand);
+  do_stmt(arena, bin_expr->lhs);
+  do_stmt(arena, bin_expr->rhs);
 }
 
-void
-do_unr_expr(MemoryArena* arena, AstUnrExpr* unr_expr)
+local void
+do_unr_expr(MemoryArena* arena, AstNode* expr_ast)
 {
-  do_stmt(arena, unr_expr->operand);
+  assert(expr_ast->kind == AstNodeKind_UnrExpr);
+  do_stmt(arena, expr_ast->unr_expr.operand);
 }
 
-void
-do_stmt(MemoryArena* arena, AstNode* node)
+local void
+do_stmt(MemoryArena* arena, AstNode* ast)
 {
-  if(node->kind == AstNodeKind_BinExpr)
-    do_bin_expr(arena, &node->bin_expr);
-  else if(node->kind == AstNodeKind_UnrExpr)
-    do_unr_expr(arena, &node->unr_expr);
-  else if(node->kind == AstNodeKind_Call)
-    do_call(arena, &node->call);
-  else if(node->kind == AstNodeKind_IfStmt)
-    do_if_stmt(arena, &node->if_stmt);
-  else if(node->kind == AstNodeKind_WhileStmt)
-    do_while_stmt(arena, &node->while_stmt);
-  else if(node->kind == AstNodeKind_PrintStmt)
-    do_print_stmt(arena, &node->print_stmt);
-  else if(node->kind == AstNodeKind_ReturnStmt)
+  if(ast->kind == AstNodeKind_BinExpr)
+    do_bin_expr(arena, ast);
+  else if(ast->kind == AstNodeKind_UnrExpr)
+    do_unr_expr(arena, ast);
+  else if(ast->kind == AstNodeKind_Call)
+    do_call(arena, ast);
+  else if(ast->kind == AstNodeKind_IfStmt)
+    do_if_stmt(arena, ast);
+  else if(ast->kind == AstNodeKind_WhileStmt)
+    do_while_stmt(arena, ast);
+  else if(ast->kind == AstNodeKind_ReturnStmt)
   {
-    if(node->ret_stmt.ret_expr)
-      do_stmt(arena, node->ret_stmt.ret_expr);
+    if(ast->ret_stmt.expr)
+      do_stmt(arena, ast->ret_stmt.expr);
+    else
+      fail("what do we do???!!");
   }
-  else if(node->kind == AstNodeKind_Cast)
-    do_stmt(arena, node->cast.expr);
-  else if(node->kind == AstNodeKind_VarOccur ||
-          node->kind == AstNodeKind_BreakStmt ||
-          node->kind == AstNodeKind_EmptyStmt ||
-          node->kind == AstNodeKind_Literal)
+  else if(ast->kind == AstNodeKind_Cast)
+    do_stmt(arena, ast->cast.expr);
+  else if(ast->kind == AstNodeKind_VarOccur ||
+          ast->kind == AstNodeKind_BreakStmt ||
+          ast->kind == AstNodeKind_EmptyStmt ||
+          ast->kind == AstNodeKind_Literal)
     ;
   else
     assert(false);
 }
 
-void
-do_block(MemoryArena* arena, List* stmt_list)
+local void
+do_block_stmts(MemoryArena* arena, List* stmt_list)
 {
-  for(ListItem* list_item = list_first_item(stmt_list);
+  for(ListItem* list_item = stmt_list->first;
       list_item;
       list_item = list_item->next)
   {
-    do_stmt(arena, list_item->elem);
+    do_stmt(arena, (AstNode*)list_item->elem);
   }
 }
 
-void
-do_proc(MemoryArena* arena, AstProc* proc)
+local void
+do_proc(MemoryArena* arena, AstNode* proc_ast)
 {
-  proc->label = proc->name;
+  assert(proc_ast->kind == AstNodeKind_Proc);
+  use(proc_ast, proc);
+
+  proc->label = proc->id->id.name;
 
   String label = {0};
   str_init(&label, arena);
-  str_append(&label, proc->name);
+  str_append(&label, proc->id->id.name);
   str_append(&label, ".proc-end");
   proc->label_end = label.head;
 
@@ -273,72 +291,75 @@ do_proc(MemoryArena* arena, AstProc* proc)
   List post_fp_data = {0};
   list_init(&post_fp_data);
 
-  AstVarDecl* ret_var = &proc->ret_var;
+  auto ret_var = &proc->ret_var->var_decl;
   list_append(arena, &pre_fp_data, &ret_var->data);
   proc->ret_size = ret_var->data.size;
 
   /* formals */
-  for(ListItem* list_item = list_first_item(&proc->formal_args);
+  for(ListItem* list_item = proc->args.first;
       list_item;
       list_item = list_item->next)
   {
-    AstNode* node = list_item->elem;
-    assert(node->kind == AstNodeKind_VarDecl);
-    AstVarDecl* formal = &node->var_decl;
+    auto ast = (AstNode*)list_item->elem;
+    assert(ast->kind == AstNodeKind_VarDecl);
+    use(ast, var_decl);
 
-    list_append(arena, &pre_fp_data, &formal->data);
-    proc->args_size += formal->data.size;
+    list_append(arena, &pre_fp_data, &var_decl->data);
+    proc->args_size += var_decl->data.size;
   }
 
-  DataArea* ctrl_links = mem_push_struct(arena, DataArea, 1);
+  DataArea* ctrl_links = mem_push_struct(arena, DataArea);
   ctrl_links->size = 3; // fp,sp,ip
   list_append(arena, &pre_fp_data, ctrl_links);
 
-  AstBlock* body_block = &proc->body->block;
+  auto body_block = &proc->body->block;
   /* locals */
-  for(ListItem* list_item = list_first_item(&body_block->decl_vars);
+  for(ListItem* list_item = body_block->decl_vars.first;
       list_item;
       list_item = list_item->next)
   {
-    AstNode* node = list_item->elem;
-    assert(node->kind == AstNodeKind_VarDecl);
-    AstVarDecl* local = &node->var_decl;
+    auto ast = (AstNode*)list_item->elem;
+    assert(ast->kind == AstNodeKind_VarDecl);
+    use(ast, var_decl);
 
-    list_append(arena, &post_fp_data, &local->data);
-    proc->locals_size += local->data.size;
+    list_append(arena, &post_fp_data, &var_decl->data);
+    proc->locals_size += var_decl->data.size;
   }
+
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
-  do_block(arena, &body_block->stmt_list);
+  do_block_stmts(arena, &body_block->stmts);
 }
  
-void
-build_runtime(MemoryArena* arena, SymbolTable* symbol_table, AstNode* module_node)
+bool32
+build_runtime(AstNode* module_ast)
 {
-  assert(module_node->kind == AstNodeKind_Module);
-  AstModule* module = &module_node->module;
+  assert(module_ast->kind == AstNodeKind_Module);
+  bool32 success = true;
+  use(module_ast, module);
 
-  for(ListItem* list_item = list_first_item(&module->proc_list);
+  auto body_block = &module->body->block;
+  for(ListItem* list_item = body_block->node_list.first;
       list_item;
       list_item = list_item->next)
   {
-    AstNode* proc_node = list_item->elem;
-    assert(proc_node->kind == AstNodeKind_Proc);
-    AstProc* proc = &proc_node->proc;
-
-    do_proc(arena, proc);
-    if(cstr_match(proc->name, "main"))
-    {
-      module->main_proc = proc_node;
-    }
+    auto stmt_ast = (AstNode*)list_item->elem;
+    if(stmt_ast->kind == AstNodeKind_Proc)
+      do_proc(arena, stmt_ast);
+    else
+      fail("not implemented");
   }
 
-  if(module->main_proc)
+  Symbol* main_proc_sym = lookup_symbol("main", SymbolKind_Proc);
+  if(main_proc_sym)
   {
-    AstNode* call_node = ast_new_call(arena, &module_node->src_loc);
-    AstCall* call = &call_node->call;
+    AstNode* call_ast = new_call(&module_ast->src_loc);
+    use(call_ast, call);
     call->proc = module->main_proc;
-    do_call(arena, call);
-    module->main_call = call_node;
+    do_call(arena, call_ast);
+    module->main_call = call_ast;
   }
+  else
+    success = error("main() not found");
+  return success;
 }
 

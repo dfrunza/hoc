@@ -164,6 +164,9 @@ translate(char* file_path, char* hoc_text)
 #if 1
     if(vm_program->success = semantic_analysis(ast))
     {
+      assert(symtab->block_id == 0);
+      assert(symtab->nesting_depth == 0);
+
       if(DEBUG_enabled)
       {/*>>>*/
         DEBUG_print_arena_usage("Post semantic analysis");
@@ -174,6 +177,14 @@ translate(char* file_path, char* hoc_text)
         str_dump_to_file(&str, "out_semantic.txt");
         arena_free(DEBUG_arena);
       }/*<<<*/
+
+      if(vm_program->success = build_runtime(ast))
+      {
+        if(DEBUG_enabled)
+        {/*>>>*/
+          DEBUG_print_arena_usage("Post runtime build");
+        }/*<<<*/
+      }
     }
 #else
     assert(symbol_table.scope_id == 0);

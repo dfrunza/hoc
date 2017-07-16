@@ -61,7 +61,7 @@ new_pointer(SourceLocation* src_loc)
   return node;
 }
 
-local AstNode*
+AstNode*
 new_call(SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode);
@@ -85,7 +85,7 @@ new_proc(SourceLocation* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = AstNodeKind_Proc;
-  list_init(&node->proc.formal_args);
+  list_init(&node->proc.args);
   node->src_loc = *src_loc;
   return node;
 }
@@ -342,10 +342,8 @@ get_ast_kind_printstr(AstNodeKind kind)
     result = "Literal";
   else if(kind == AstNodeKind_VarDecl)
     result = "VarDecl";
-#if 0
   else if(kind == AstNodeKind_VarOccur)
     result = "VarOccur";
-#endif
   else if(kind == AstNodeKind_Block)
     result = "Block";
   else if(kind == AstNodeKind_Proc)
@@ -1269,7 +1267,7 @@ do_proc_decl(TokenStream* input, AstNode** node)
           {
             if(!(success = get_next_token(input))) return success;
 
-            if(success = do_formal_arg_list(input, &proc->formal_args))
+            if(success = do_formal_arg_list(input, &proc->args))
             {
               if(input->token.kind == TokenKind_CloseParens)
               {
@@ -1463,7 +1461,6 @@ do_struct_member_list(TokenStream* input, List* member_list)
         if(success && type)
         {
           member = new_var_decl(&input->src_loc);
-          //AstVarDecl* var_decl = &member->var_decl;
           member->var_decl.type = type;
 
           if(input->token.kind == TokenKind_Id)
@@ -1769,7 +1766,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     {
       DEBUG_print_ast_node(str, indent_level, node->proc.ret_type, "ret_type");
       DEBUG_print_ast_node(str, indent_level, node->proc.id, "id");
-      DEBUG_print_ast_node_list(str, indent_level, &node->proc.formal_args, "formal_args");
+      DEBUG_print_ast_node_list(str, indent_level, &node->proc.args, "args");
       DEBUG_print_ast_node(str, indent_level, node->proc.body, "body");
     }
     else if(node->kind == AstNodeKind_VarDecl)
@@ -1778,12 +1775,11 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       DEBUG_print_ast_node(str, indent_level, node->var_decl.id, "id");
       DEBUG_print_ast_node(str, indent_level, node->var_decl.init_expr, "init_expr");
     }
-#if 0
     else if(node->kind == AstNodeKind_VarOccur)
     {
-      DEBUG_print_line(str, indent_level, "name: %s", node->var_occur.name);
+      DEBUG_print_ast_node(str, indent_level, node->var_occur.id, "id");
+      DEBUG_print_line(str, indent_level, "decl_block_offset: %d", node->var_occur.decl_block_offset);
     }
-#endif
     else if(node->kind == AstNodeKind_Id)
     {
       DEBUG_print_line(str, indent_level, "name: %s", node->id.name);

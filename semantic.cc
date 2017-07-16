@@ -67,7 +67,7 @@ make_tempvar_id(SourceLocation* src_loc, char* label)
   return new_id(src_loc, str.head);
 }
 
-local Symbol*
+Symbol*
 lookup_symbol(char* name, SymbolKind kind)
 {
   Symbol* result = 0;
@@ -454,12 +454,12 @@ do_expression(AstNode* block, AstNode* expr_ast, AstNode** out_ast)
 }
 
 local bool32
-do_proc_formal_args(AstNode* block, List* formal_args)
+do_proc_formal_args(AstNode* block, List* args)
 {
   assert(block->kind == AstNodeKind_Block);
   bool32 success = true;
 
-  for(ListItem* list_item = formal_args->first;
+  for(ListItem* list_item = args->first;
       list_item && success;
       list_item = list_item->next)
   {
@@ -480,10 +480,10 @@ do_proc_ret_var(AstNode* block, AstNode* proc)
 {
   assert(proc->kind == AstNodeKind_Proc);
   bool32 success = true;
-  use(proc->proc.ret_var_decl = new_var_decl(&proc->src_loc), var_decl);
+  use(proc->proc.ret_var = new_var_decl(&proc->src_loc), var_decl);
   var_decl->id = make_tempvar_id(&proc->src_loc, "ret");
   var_decl->type = proc->proc.ret_type;
-  success = do_var_decl(block, proc->proc.ret_var_decl);
+  success = do_var_decl(block, proc->proc.ret_var);
   return success;
 }
 
@@ -496,10 +496,10 @@ do_proc_decl(AstNode* proc_ast)
 
   if(success = scope_begin(proc->body))
   {
-    if(success = do_proc_formal_args(proc->body, &proc->formal_args)
+    if(success = do_proc_formal_args(proc->body, &proc->args)
        && do_proc_ret_var(proc->body, proc_ast))
     {
-      proc_ast->type = new_proc_type(make_type_of_node_list(&proc->formal_args), proc->ret_var_decl->type);
+      proc_ast->type = new_proc_type(make_type_of_node_list(&proc->args), proc->ret_var->type);
 
       Symbol* proc_sym = lookup_symbol(proc->id->id.name, SymbolKind_Proc);
       if(proc_sym)
@@ -657,19 +657,21 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       stmt->type = basic_type_void;
 
       AstNode* ret_expr = ret_stmt->expr;
-      AstNode* ret_var = proc->proc.ret_var_decl;
+      AstNode* ret_var = proc->proc.ret_var;
+      assert(ret_var->kind == AstNodeKind_VarDecl);
       if(ret_expr)
       {
-        assert(ret_var->kind == AstNodeKind_VarDecl);
+        AstNode* lhs_expr = new_id(&ret_expr->src_loc, ret_var->var_decl.id->id.name);
 
-        if(success = do_expression(block, ret_expr, &ret_expr))
+        if(success = do_expression(block, ret_expr, &ret_expr) &&
+           do_expression(block, lhs_expr, &lhs_expr))
         {
           if(type_unif(ret_expr->type, ret_var->type))
           {
             AstNode* assign_expr = new_bin_expr(&stmt->src_loc);
             use(assign_expr, bin_expr);
             bin_expr->op = AstOpKind_Assign;
-            bin_expr->lhs = new_id(&ret_expr->src_loc, ret_var->var_decl.id->id.name);
+            bin_expr->lhs = lhs_expr;
             bin_expr->rhs = ret_expr;
             assign_expr->type = ret_expr->type;
 
@@ -686,7 +688,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
           success = compile_error(&stmt->src_loc,
                                   "return type : expected `%s`, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(stmt->type));
       if(success)
-        assert(stmt->type == proc->proc.ret_var_decl->type);
+        assert(type_unif(stmt->type, proc->proc.ret_var->type));
     }
     else
       success = compile_error(&stmt->src_loc, "Unexpected `return` at this location");
@@ -785,15 +787,16 @@ do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
 }
 
 local bool32
-do_module(AstNode* module)
+do_module(AstNode* mod_ast)
 {
-  assert(module->kind == AstNodeKind_Module);
+  assert(mod_ast->kind == AstNodeKind_Module);
   bool32 success = true;
+  use(mod_ast, module);
 
-  AstNode* mod_block = module->module.body;
+  auto mod_block = &module->body->block;
 
   // process the includes
-  for(ListItem* list_item = mod_block->block.node_list.first;
+  for(ListItem* list_item = mod_block->node_list.first;
       list_item;
       list_item = list_item->next)
   {
@@ -801,14 +804,14 @@ do_module(AstNode* module)
     if(stmt->kind == AstNodeKind_IncludeStmt)
     {
       AstNode* incl_block = stmt->incl_stmt.body;
-      do_include_stmt(&incl_block->block.node_list, &mod_block->block.node_list, list_item);
+      do_include_stmt(&incl_block->block.node_list, &mod_block->node_list, list_item);
     }
   }
 
-  if(success = scope_begin(module->module.body))
+  if(success = scope_begin(module->body))
   {
     add_builtin_types();
-    success = do_block(0, 0, module, module->module.body);
+    success = do_block(0, 0, mod_ast, module->body);
     scope_end();
   }
   return success;

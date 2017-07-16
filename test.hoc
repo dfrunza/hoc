@@ -14,6 +14,7 @@ proc int foo(int a)
 proc int main()
 {
   var int a;
+  var bool b;
   a = foo(44);
 }
 

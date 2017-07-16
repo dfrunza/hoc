@@ -153,6 +153,7 @@ typedef enum
   AstNodeKind_UnrExpr,
   AstNodeKind_Literal,
   AstNodeKind_VarDecl,
+  AstNodeKind_VarOccur,
   AstNodeKind_Block,
   AstNodeKind_Proc,
   AstNodeKind_Id,
@@ -215,8 +216,48 @@ typedef struct AstNode
       AstNode* type;
       AstNode* id;
       AstNode* init_expr;
+      AstNode* decl_block;
     }
     var_decl;
+
+    struct {
+      AstNode* id;
+      AstNode* var_decl;
+      AstNode* occur_block;
+      int decl_block_offset;
+      /*
+      AccessLink* link;
+      DataArea* data;
+      */
+    }
+    var_occur;
+
+    struct {
+      AstNode* ret_type;
+      AstNode* id;
+      List formal_args;
+      AstNode* body;
+
+      AstNode* ret_var_decl; // semantic node
+      bool32 is_decl;
+
+      /*
+      char* label;
+      char* label_end;
+      int ret_size;
+      int args_size;
+      int locals_size;
+      */
+    }
+    proc;
+
+    struct {
+      AstNode* id;
+      List args;
+
+      AstNode* proc;
+    }
+    call;
 
     struct {
       AstOpKind op;
@@ -247,27 +288,6 @@ typedef struct AstNode
       };
     }
     literal;
-
-    struct {
-      AstNode* ret_type;
-      AstNode* id;
-      List formal_args;
-      AstNode* body;
-
-      AstNode* ret_var_decl; // semantic node
-      bool32 is_decl;
-      /*
-      Type* ret_type;
-      AstVarDecl ret_var;
-
-      char* label;
-      char* label_end;
-      int ret_size;
-      int args_size;
-      int locals_size;
-      */
-    }
-    proc;
 
     struct {
       AstNode* expr;
@@ -351,12 +371,6 @@ typedef struct AstNode
       Symbol* sym;
     }
     id;
-
-    struct {
-      AstNode* id;
-      List args;
-    }
-    call;
 
     struct {
       AstNode* expr;
@@ -504,36 +518,8 @@ typedef struct Symbol
   AstNode* id;
 
   union {
-    struct {
-      Symbol* var_decl;
-      AstNode* occur_block;
-      int decl_block_offset;
-      /*
-      AccessLink* link;
-      DataArea* data;
-      */
-    }
-    var_occur;
-
-    struct {
-      AstNode* ast;
-      AstNode* decl_block;
-    }
-    var_decl;
-
-    struct {
-      AstNode* ast;
-      Symbol* proc;
-    }
-    call;
-
-    struct {
-      AstNode* ast;
-    }
-    proc;
-
-    Type* type_decl;
-    Type* type_occur;
+    AstNode* ast;
+    Type* type;
   };
 }
 Symbol;
@@ -568,6 +554,7 @@ bool32 semantic_analysis(AstNode* ast);
 AstNode* new_bin_expr(SourceLocation* src_loc);
 AstNode* new_id(SourceLocation* src_loc, char* name);
 AstNode* new_var_decl(SourceLocation* src_loc);
+AstNode* new_var_occur(SourceLocation* src_loc);
 Type* new_proc_type(Type* args, Type* ret);
 Type* new_typevar();
 Type* new_pointer_type(Type* pointee);

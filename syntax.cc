@@ -127,6 +127,15 @@ new_var_decl(SourceLocation* src_loc)
   return node;
 }
 
+AstNode*
+new_var_occur(SourceLocation* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode);
+  node->kind = AstNodeKind_VarOccur;
+  node->src_loc = *src_loc;
+  return node;
+}
+
 local AstNode*
 new_while_stmt(SourceLocation* src_loc)
 {

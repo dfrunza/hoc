@@ -1,5 +1,4 @@
-#include "lib.c"
-#include "hasm.h"
+#include "hocc.h"
 
 #define VMWORD (sizeof(int32))
 

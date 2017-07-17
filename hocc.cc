@@ -1,4 +1,3 @@
-#include "hasm.h"
 #include "hocc.h"
 
 // User-defined PE resource:
@@ -22,15 +21,6 @@ typedef struct
 }
 OutFileNames;
 
-typedef struct
-{
-  String text;
-  int text_len;
-  List instr_list;
-  bool32 success;
-}
-VmProgram;
-
 local bool32 DEBUG_enabled = true;
 MemoryArena* arena = 0;
 MemoryArena* DEBUG_arena = 0;
@@ -42,8 +32,9 @@ DEBUG_print_arena_usage(char* tag)
 {
   ArenaUsage usage = arena_usage(arena);
   ArenaUsage sym_usage = arena_usage(sym_arena);
-  printf("arena in_use : %.2f%% -- %s\n", usage.in_use*100, tag);
-  printf("sym_arena in_use : %.2f%% -- %s\n", sym_usage.in_use*100, tag);
+  printf("-----  %s  -----\n", tag);
+  printf("in_use(arena) : %.2f%%\n", usage.in_use*100);
+  printf("in_use(sym_arena) : %.2f%%\n", sym_usage.in_use*100);
 }
 
 bool32
@@ -153,7 +144,7 @@ translate(char* file_path, char* hoc_text)
   {
     if(DEBUG_enabled)
     {/*>>>*/
-      DEBUG_print_arena_usage("Post syntactic analysis");
+      DEBUG_print_arena_usage("Syntactic");
 
       String str = {0};
       str_init(&str, DEBUG_arena);
@@ -161,7 +152,6 @@ translate(char* file_path, char* hoc_text)
       str_dump_to_file(&str, "out_syntax.txt");
       arena_free(DEBUG_arena);
     }/*<<<*/
-#if 1
     if(vm_program->success = semantic_analysis(ast))
     {
       assert(symtab->block_id == 0);
@@ -169,7 +159,7 @@ translate(char* file_path, char* hoc_text)
 
       if(DEBUG_enabled)
       {/*>>>*/
-        DEBUG_print_arena_usage("Post semantic analysis");
+        DEBUG_print_arena_usage("Semantic");
 
         String str = {0};
         str_init(&str, DEBUG_arena);
@@ -181,36 +171,18 @@ translate(char* file_path, char* hoc_text)
       if(vm_program->success = build_runtime(ast))
       {
         if(DEBUG_enabled)
-        {/*>>>*/
-          DEBUG_print_arena_usage("Post runtime build");
-        }/*<<<*/
-      }
-    }
-#else
-    assert(symbol_table.scope_id == 0);
-    assert(symbol_table.nesting_depth == 0);
+          DEBUG_print_arena_usage("Runtime");
 
-    if(typecheck_module(arena, &type_tuples, ast))
-    {
-      DEBUG_arena_print_occupancy("Typecheck", arena);
-
-      build_module(arena, &symbol_table, ast);
-      DEBUG_arena_print_occupancy("Runtime objects", arena);
-
-      AstModule* module = &ast->module;
-      if(module->main_call)
-      {
-        gen_module(arena, &vm_program->instr_list, module);
-        DEBUG_arena_print_occupancy("Gen code", arena);
+        codegen(&vm_program->instr_list, ast);
+        if(DEBUG_enabled)
+          DEBUG_print_arena_usage("Codegen");
 
         str_init(&vm_program->text, arena);
         print_code(vm_program);
-        DEBUG_arena_print_occupancy("Print code", arena);
+        if(DEBUG_enabled)
+          DEBUG_print_arena_usage("Print code");
       }
-      else
-        error("Missing main() procedure");
     }
-#endif
   }
   return vm_program;
 }
@@ -324,6 +296,7 @@ main(int argc, char* argv[])
     }/*<<<*/
 
     char* file_path = argv[1];
+
     char* hoc_text = file_read_text(arena, file_path);
     DEBUG_print_arena_usage("Read HoC text");
 
@@ -334,30 +307,29 @@ main(int argc, char* argv[])
       {
         if(DEBUG_enabled)
           printf("symbol count : %d\n", symtab->sym_count);
-#if 0
+        
         OutFileNames out_files = {0};
-        char* file_stem = path_make_stem(file_path);
+        char* file_stem = mem_push_count_nz(arena, char, cstr_len(file_path));
+        cstr_copy(file_stem, file_path);
+        file_stem = path_make_stem(file_stem);
 
-        bool32 success = make_file_names(&out_files, file_stem) &&
+        success = make_file_names(&out_files, file_stem) &&
           write_ir_file(&out_files, vm_program);
 
         if(success)
         {
           HasmCode* hasm_code = 0;
-          char* hasm_text = vm_program->text.head;
-          bool32 success = translate_ir_to_code(&arena, hasm_text, &hasm_code);
+          char* hasm_text = str_cap(&vm_program->text);
 
-          if(success)
+          if(success = convert_hasm_to_bincode(hasm_text, &hasm_code))
           {
-            if(success = write_irc_file(&out_files, hasm_code) && write_res_file(&out_files))
-              ret = 0;
-            else
+            success = write_irc_file(&out_files, hasm_code) && write_res_file(&out_files);
+            if(!success)
               error("Could not write HASM and RES file: `%s`, `%s`", out_files.irc.name, out_files.res.name);
           }
         }
         else
           error("Could not write file `%s`", out_files.ir.name);
-#endif
       }
       else
         error("Program could not be translated");

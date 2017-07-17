@@ -6,14 +6,14 @@ include "hlib\\fibo.hoc";
 include "hlib\\sqrt.hoc";
 */
 
-proc int foo(int a)
+proc int foo()
 {
-  var float b;
+  return 123;
 }
 
 proc int main()
 {
-  return foo(1) + foo(2);
+  return foo();
 }
 
 

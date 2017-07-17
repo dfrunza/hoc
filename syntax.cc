@@ -986,11 +986,11 @@ do_unary_expr(TokenStream* input, AstNode** node)
 
     if(success = get_next_token(input) && input->token.kind == TokenKind_OpenParens)
     {
-      if(success = get_next_token(input) && do_type_expr(input, &cast->type))
+      if(success = get_next_token(input) && do_type_expr(input, &cast->to_type))
       {
         if(input->token.kind == TokenKind_CloseParens)
         {
-          if(cast->type)
+          if(cast->to_type)
             success = get_next_token(input) && do_unary_expr(input, &cast->expr);
           else
           {
@@ -1847,7 +1847,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     }
     else if(node->kind == AstNodeKind_Cast)
     {
-      DEBUG_print_ast_node(str, indent_level, node->cast.type, "type");
+      DEBUG_print_ast_node(str, indent_level, node->cast.to_type, "to_type");
       DEBUG_print_ast_node(str, indent_level, node->cast.expr, "expr");
     }
     else if(node->kind == AstNodeKind_Array)

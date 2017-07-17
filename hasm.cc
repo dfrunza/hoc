@@ -1,4 +1,6 @@
-#include "hasm.h"
+#include "hocc.h"
+
+extern MemoryArena* arena;
 
 typedef struct
 {
@@ -21,7 +23,7 @@ typedef struct
 }
 SourceProgram;
 
-int
+local int
 instr_to_components(char* str, char* components[], int max_component_count)
 {
   int component_count = 0;
@@ -58,7 +60,8 @@ instr_to_components(char* str, char* components[], int max_component_count)
   return component_count;
 }
 
-int
+#if 0
+local int
 find_instr_address_at_line(SourceProgram* source, int lineNr)
 {
   int result = -1;
@@ -74,8 +77,9 @@ find_instr_address_at_line(SourceProgram* source, int lineNr)
   }
   return result;
 }
+#endif
 
-Label*
+local Label*
 find_label(SourceProgram* source, char* label_string)
 {
   Label* result = 0;
@@ -91,7 +95,7 @@ find_label(SourceProgram* source, char* label_string)
   return result;
 }
 
-bool
+local bool32
 is_valid_label(char *label)
 {
   char start_char = *label;
@@ -137,20 +141,20 @@ process_source_lines(SourceProgram* source)
   }
 }
 
-bool
-build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
+local bool32
+build_bincode(SourceProgram* source, HasmCode** out_code)
 {
-  HasmCode* code = mem_push_struct(arena, HasmCode, 1);
+  HasmCode* code = mem_push_struct(arena, HasmCode);
   cstr_copy(code->groove, "IRC");
   code->code_start = (uint8*)code;
   code->instr_count = source->line_count;
-  code->instr_array = mem_push_struct(arena, Instruction, code->instr_count);
+  code->instr_array = mem_push_count_nz(arena, Instruction, code->instr_count);
   code->code_size = (int)((uint8*)arena->free - code->code_start);
   *out_code = code;
 
   for(int instr_address = 0; instr_address < code->instr_count; instr_address++)
   {
-    Instruction instr = {0};
+    Instruction instr = {};
     InstructionLine* instr_line = &source->lines[instr_address];
     instr.source_line_nr = instr_line->source_line_nr;
 
@@ -428,7 +432,8 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
         instr->param_type = ParamType_Int32;
         instr->param.int_val = label->instr_address;
       }
-      else {
+      else
+      {
         error("Label '%s' not found", instr->param.str);
         return false;
       }
@@ -438,15 +443,15 @@ build_ir_code(MemoryArena* arena, SourceProgram* source, HasmCode** out_code)
   return true;
 }
 
-bool
-translate_ir_to_code(MemoryArena* arena, char* text, HasmCode** code)
+bool32
+convert_hasm_to_bincode(char* text, HasmCode** code)
 {
-  bool success = true;
+  bool32 success = true;
 
   SourceProgram source = {0};
   source.text = text;
   process_source_lines(&source);
 
-  success = build_ir_code(arena, &source, code);
+  success = build_bincode(&source, code);
   return success;
 }

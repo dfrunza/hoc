@@ -161,12 +161,12 @@ do_while_stmt(AstNode* while_ast)
     str_init(&label, arena);
     str_append(&label, label_id.head);
     str_append(&label, ".while-expr");
-    while_stmt->label_eval = label.head;
+    while_stmt->label_eval = str_cap(&label);
 
     str_init(&label, arena);
     str_append(&label, label_id.head);
     str_append(&label, ".while-break");
-    while_stmt->label_break = label.head;
+    while_stmt->label_break = str_cap(&label);
   }
 
   if(while_stmt->body->kind == AstNodeKind_Block)
@@ -192,12 +192,12 @@ do_if_stmt(AstNode* if_ast)
     str_init(&label, arena);
     str_append(&label, label_id.head);
     str_append(&label, ".if-else");
-    if_stmt->label_else = label.head;
+    if_stmt->label_else = str_cap(&label);
 
     str_init(&label, arena);
     str_append(&label, label_id.head);
     str_append(&label, ".if-end");
-    if_stmt->label_end = label.head;
+    if_stmt->label_end = str_cap(&label);
   }
 
   if(if_stmt->body->kind == AstNodeKind_Block)
@@ -231,7 +231,7 @@ do_bin_expr(AstNode* expr_ast)
   str_init(&label, arena);
   str_append(&label, label_id.head);
   str_append(&label, ".logic-end");
-  bin_expr->label_end = label.head;
+  bin_expr->label_end = str_cap(&label);
 
   do_stmt(bin_expr->lhs);
   do_stmt(bin_expr->rhs);
@@ -297,7 +297,7 @@ do_proc(AstNode* proc_ast)
   str_init(&label, arena);
   str_append(&label, proc->id->id.name);
   str_append(&label, ".proc-end");
-  proc->label_end = label.head;
+  proc->label_end = str_cap(&label);
 
   List pre_fp_data = {0};
   list_init(&pre_fp_data);

@@ -534,13 +534,13 @@ do_expression(AstNode* block, AstNode* expr_ast, AstNode** out_ast)
   else if(expr_ast->kind == AstNodeKind_Cast)
   {
     use(expr_ast, cast);
-    if(cast->type->kind == AstNodeKind_Id)
+    if(cast->to_type->kind == AstNodeKind_Id)
     {
-      Symbol* type_sym = lookup_symbol(cast->type->id.name, SymbolKind_TypeDecl);
+      Symbol* type_sym = lookup_symbol(cast->to_type->id.name, SymbolKind_TypeDecl);
       if(type_sym)
         expr_ast->type = type_sym->type;
       else
-        compile_error(&expr_ast->src_loc, "Unknown type `%s`", cast->type->id.name);
+        compile_error(&expr_ast->src_loc, "Unknown type `%s`", cast->to_type->id.name);
     }
     else
       fail("only simple types are supported");

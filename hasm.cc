@@ -55,7 +55,8 @@ instr_to_components(char* str, char* components[], int max_component_count)
         component = char_ptr;
       }
     }
-  } while(*char_ptr != '\0' && *char_ptr != ';');
+  }
+  while(*char_ptr != '\0' && *char_ptr != ';');
 
   return component_count;
 }
@@ -142,10 +143,10 @@ process_source_lines(SourceProgram* source)
 }
 
 local bool32
-build_bincode(SourceProgram* source, HasmCode** out_code)
+build_bincode(SourceProgram* source, BinCode** out_code)
 {
-  HasmCode* code = mem_push_struct(arena, HasmCode);
-  cstr_copy(code->groove, "IRC");
+  BinCode* code = mem_push_struct(arena, BinCode);
+  cstr_copy(code->groove, BINCODE_GROOVE);
   code->code_start = (uint8*)code;
   code->instr_count = source->line_count;
   code->instr_array = mem_push_count_nz(arena, Instruction, code->instr_count);
@@ -164,136 +165,94 @@ build_bincode(SourceProgram* source, HasmCode** out_code)
     {
       char* mnemonic = components[0];
 
-      if(cstr_match(mnemonic, "pop")) {
+      if(cstr_match(mnemonic, "pop"))
         instr.opcode = Opcode_POP;
-      }
-      else if(cstr_match(mnemonic, "push")) {
+      else if(cstr_match(mnemonic, "push"))
         instr.opcode = Opcode_PUSH;
-      }
-      else if(cstr_match(mnemonic, "pushf")) {
+      else if(cstr_match(mnemonic, "pushf"))
         instr.opcode = Opcode_PUSHF;
-      }
-      else if(cstr_match(mnemonic, "store")) {
+      else if(cstr_match(mnemonic, "store"))
         instr.opcode = Opcode_STORE;
-      }
-      else if(cstr_match(mnemonic, "store8")) {
+      else if(cstr_match(mnemonic, "store8"))
         instr.opcode = Opcode_STORE8;
-      }
-      else if(cstr_match(mnemonic, "load")) {
+      else if(cstr_match(mnemonic, "load"))
         instr.opcode = Opcode_LOAD;
-      }
-      else if(cstr_match(mnemonic, "load8")) {
+      else if(cstr_match(mnemonic, "load8"))
         instr.opcode = Opcode_LOAD8;
-      }
-      else if(cstr_match(mnemonic, "add")) {
+      else if(cstr_match(mnemonic, "add"))
         instr.opcode = Opcode_ADD;
-      }
-      else if(cstr_match(mnemonic, "sub")) {
+      else if(cstr_match(mnemonic, "sub"))
         instr.opcode = Opcode_SUB;
-      }
-      else if(cstr_match(mnemonic, "mul")) {
+      else if(cstr_match(mnemonic, "mul"))
         instr.opcode = Opcode_MUL;
-      }
-      else if(cstr_match(mnemonic, "div")) {
+      else if(cstr_match(mnemonic, "div"))
         instr.opcode = Opcode_DIV;
-      }
-      else if(cstr_match(mnemonic, "mod")) {
+      else if(cstr_match(mnemonic, "mod"))
         instr.opcode = Opcode_MOD;
-      }
-      else if(cstr_match(mnemonic, "addf")) {
+      else if(cstr_match(mnemonic, "addf"))
         instr.opcode = Opcode_ADDF;
-      }
-      else if(cstr_match(mnemonic, "subf")) {
+      else if(cstr_match(mnemonic, "subf"))
         instr.opcode = Opcode_SUBF;
-      }
-      else if(cstr_match(mnemonic, "mulf")) {
+      else if(cstr_match(mnemonic, "mulf"))
         instr.opcode = Opcode_MULF;
-      }
-      else if(cstr_match(mnemonic, "divf")) {
+      else if(cstr_match(mnemonic, "divf"))
         instr.opcode = Opcode_DIVF;
-      }
-      else if(cstr_match(mnemonic, "negf")) {
+      else if(cstr_match(mnemonic, "negf"))
         instr.opcode = Opcode_NEGF;
-      }
-      else if(cstr_match(mnemonic, "incr")) {
+      else if(cstr_match(mnemonic, "incr"))
         instr.opcode = Opcode_INCR;
-      }
-      else if(cstr_match(mnemonic, "decr")) {
+      else if(cstr_match(mnemonic, "decr"))
         instr.opcode = Opcode_DECR;
-      }
-      else if(cstr_match(mnemonic, "halt")) {
+      else if(cstr_match(mnemonic, "halt"))
         instr.opcode = Opcode_HALT;
-      }
-      else if(cstr_match(mnemonic, "print")) {
+      else if(cstr_match(mnemonic, "print"))
         instr.opcode = Opcode_PRINT;
-      }
-      else if(cstr_match(mnemonic, "printnl")) {
+      else if(cstr_match(mnemonic, "printnl"))
         instr.opcode = Opcode_PRINTNL;
-      }
-      else if(cstr_match(mnemonic, "dup")) {
+      else if(cstr_match(mnemonic, "dup"))
         instr.opcode = Opcode_DUP;
-      }
-      else if(cstr_match(mnemonic, "goto")) {
+      else if(cstr_match(mnemonic, "goto"))
         instr.opcode = Opcode_GOTO;
-      }
-      else if(cstr_match(mnemonic, "jumpnz")) {
+      else if(cstr_match(mnemonic, "jumpnz"))
         instr.opcode = Opcode_JUMPNZ;
-      }
-      else if(cstr_match(mnemonic, "jumpz")) {
+      else if(cstr_match(mnemonic, "jumpz"))
         instr.opcode = Opcode_JUMPZ;
-      }
-      else if(cstr_match(mnemonic, "cmpeq")) {
+      else if(cstr_match(mnemonic, "cmpeq"))
         instr.opcode = Opcode_CMPEQ;
-      }
-      else if(cstr_match(mnemonic, "cmpneq")) {
+      else if(cstr_match(mnemonic, "cmpneq"))
         instr.opcode = Opcode_CMPNEQ;
-      }
-      else if(cstr_match(mnemonic, "cmplss")) {
+      else if(cstr_match(mnemonic, "cmplss"))
         instr.opcode = Opcode_CMPLSS;
-      }
-      else if(cstr_match(mnemonic, "cmpgrt")) {
+      else if(cstr_match(mnemonic, "cmpgrt"))
         instr.opcode = Opcode_CMPGRT;
-      }
-      else if(cstr_match(mnemonic, "and")) {
+      else if(cstr_match(mnemonic, "and"))
         instr.opcode = Opcode_AND;
-      }
-      else if(cstr_match(mnemonic, "or")) {
+      else if(cstr_match(mnemonic, "or"))
         instr.opcode = Opcode_OR;
-      }
-      else if(cstr_match(mnemonic, "not")) {
+      else if(cstr_match(mnemonic, "not"))
         instr.opcode = Opcode_NOT;
-      }
-      else if(cstr_match(mnemonic, "neg")) {
+      else if(cstr_match(mnemonic, "neg"))
         instr.opcode = Opcode_NEG;
-      }
-      else if(cstr_match(mnemonic, "label")) {
+      else if(cstr_match(mnemonic, "label"))
         instr.opcode = Opcode_LABEL;
-      }
-      else if(cstr_match(mnemonic, "noop")) {
+      else if(cstr_match(mnemonic, "noop"))
         instr.opcode = Opcode_NOOP;
-      }
-      else if(cstr_match(mnemonic, "call")) {
+      else if(cstr_match(mnemonic, "call"))
         instr.opcode = Opcode_CALL;
-      }
-      else if(cstr_match(mnemonic, "return")) {
+      else if(cstr_match(mnemonic, "return"))
         instr.opcode = Opcode_RETURN;
-      }
-      else if(cstr_match(mnemonic, "enter")) {
+      else if(cstr_match(mnemonic, "enter"))
         instr.opcode = Opcode_ENTER;
-      }
-      else if(cstr_match(mnemonic, "leave")) {
+      else if(cstr_match(mnemonic, "leave"))
         instr.opcode = Opcode_LEAVE;
-      }
-      else if(cstr_match(mnemonic, "alloc")) {
+      else if(cstr_match(mnemonic, "alloc"))
         instr.opcode = Opcode_ALLOC;
-      }
-      else if(cstr_match(mnemonic, "float_to_int")) {
+      else if(cstr_match(mnemonic, "float_to_int"))
         instr.opcode = Opcode_FLOAT_TO_INT;
-      }
-      else if(cstr_match(mnemonic, "int_to_float")) {
+      else if(cstr_match(mnemonic, "int_to_float"))
         instr.opcode = Opcode_INT_TO_FLOAT;
-      }
-      else {
+      else
+      {
         error("Invalid instruction: %s", mnemonic);
         return false;
       }
@@ -312,7 +271,8 @@ build_bincode(SourceProgram* source, HasmCode** out_code)
                 instr.param_type = ParamType_String;
                 instr.param.str = components[1];
               }
-              else {
+              else
+              {
                 error("Label must begin with a letter : %s", components[1]);
                 return false;
               }
@@ -369,11 +329,14 @@ build_bincode(SourceProgram* source, HasmCode** out_code)
 
                 if(!find_label(source, label.string))
                   source->labels[source->labesl_count++] = label;
-                else {
+                else
+                {
                   error("Duplicate label declaration '%s'", label.string);
                   return false;
                 }
-              } else {
+              }
+              else
+              {
                 error("Label '%s' does not begin with a letter", components[1]);
                 return false;
               }
@@ -411,7 +374,8 @@ build_bincode(SourceProgram* source, HasmCode** out_code)
       label_instr->param.int_val = target_instr_address;
       label->instr_address = target_instr_address;
     }
-    else {
+    else
+    {
       error("Could not find a non-label instruction following the label %s", label->string);
       return false;
     }
@@ -444,7 +408,7 @@ build_bincode(SourceProgram* source, HasmCode** out_code)
 }
 
 bool32
-convert_hasm_to_bincode(char* text, HasmCode** code)
+convert_hasm_to_bincode(char* text, BinCode** code)
 {
   bool32 success = true;
 

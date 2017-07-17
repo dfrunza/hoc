@@ -4,7 +4,7 @@
 
 typedef struct
 {
-  HasmCode* code;
+  BinCode* code;
   int32 mem_size;
   int32 fp;
   int32 sp;
@@ -27,25 +27,25 @@ typedef enum
 }
 ExecResult;
 
-bool
+local bool32
 check_stack_bounds(HocMachine* machine, int sp)
 {
   return sp >= 0 && sp*(int)VMWORD < machine->mem_size;
 }
 
-bool
+local bool32
 check_memory_bounds(HocMachine* machine, int location)
 {
   return location >= 0 && location < machine->mem_size;
 }
 
-bool
-check_instr_bounds(HasmCode* code, int address)
+local bool32
+check_instr_bounds(BinCode* code, int address)
 {
   return address >= 0 && address < code->instr_count;
 }
 
-ExecResult
+local ExecResult
 execute_instr(HocMachine* machine, Instruction* instr)
 {
   uint8* memory = machine->memory;
@@ -255,7 +255,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
         int32 arg1 = *(int32*)&memory[arg_sp*VMWORD];
         int32 arg2 = *(int32*)&memory[(arg_sp+1)*VMWORD];
 
-        bool result = 0;
+        bool32 result = 0;
         if(opcode == Opcode_AND) {
           result = arg1 && arg2;
         }
@@ -278,7 +278,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(check_stack_bounds(machine, arg_sp))
       {
         int32 arg = *(int32*)&memory[arg_sp*VMWORD];
-        *(int32*)&memory[arg_sp*VMWORD] = (bool)!arg;
+        *(int32*)&memory[arg_sp*VMWORD] = (bool32)!arg;
         machine->ip++;
       } else
         return ExecResult_InvalidMemoryAccess;
@@ -589,10 +589,10 @@ execute_instr(HocMachine* machine, Instruction* instr)
   return ExecResult_OK;
 }
 
-ExecResult
+local ExecResult
 run_program(HocMachine* machine)
 {
-  HasmCode* code = machine->code;
+  BinCode* code = machine->code;
 
   Instruction* instr;
   ExecResult exec_result = ExecResult_OK;
@@ -647,24 +647,26 @@ run_program(HocMachine* machine)
   return exec_result;
 }
 
-bool
-load_hvm_code(HasmCode* code)
+local bool32
+load_bincode(BinCode* code)
 {
   HRSRC res = FindResource(0, "CODE", "VM");
   if(res)
   {
     HGLOBAL res_data = LoadResource(0, res);
-    HasmCode* res_code = (HasmCode*)LockResource(res_data);
-    if(cstr_match(res_code->groove, "IRC"))
+    BinCode* res_code = (BinCode*)LockResource(res_data);
+    if(cstr_match(res_code->groove, BINCODE_GROOVE))
     {
       // Fix the pointers
       *code = *res_code;
       code->code_start = (uint8*)res_code;
-      code->instr_array = (Instruction*)(code->code_start + sizeof(HasmCode));
+      code->instr_array = (Instruction*)(code->code_start + sizeof(BinCode));
       return true;
-    } else
+    }
+    else
       error("Resource does not appear to be valid HVM code");
-  } else
+  }
+  else
     error("HVM code not found");
   return false;
 }
@@ -675,8 +677,8 @@ main(int argc, char* argv[])
   int ret = -1;
 
   HocMachine machine = {0};
-  HasmCode code = {0};
-  if(load_hvm_code(&code))
+  BinCode code = {0};
+  if(load_bincode(&code))
   {
     machine.mem_size = sizeof_array(machine.memory);
     machine.code = &code;

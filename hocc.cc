@@ -14,8 +14,8 @@ FileName;
 typedef struct
 {
   char strings[4*80 + 4*10];
-  FileName ir;
-  FileName irc;
+  FileName hasm;
+  FileName bincode;
   FileName rc;
   FileName res;
 }
@@ -198,15 +198,15 @@ make_file_names(OutFileNames* out_files, char* stem)
   {
     char* str = out_files->strings;
 
-    sprintf(str, "%s.ir", stem);
-    out_files->ir.name = str;
-    out_files->ir.len = cstr_len(out_files->ir.name);
-    str = out_files->ir.name + out_files->ir.len + 1;
+    sprintf(str, "%s.hasm", stem);
+    out_files->hasm.name = str;
+    out_files->hasm.len = cstr_len(out_files->hasm.name);
+    str = out_files->hasm.name + out_files->hasm.len + 1;
 
-    sprintf(str, "%s.irc", stem);
-    out_files->irc.name = str;
-    out_files->irc.len = cstr_len(out_files->irc.name);
-    str = out_files->irc.name + out_files->irc.len + 1;
+    sprintf(str, "%s.bincode", stem);
+    out_files->bincode.name = str;
+    out_files->bincode.len = cstr_len(out_files->bincode.name);
+    str = out_files->bincode.name + out_files->bincode.len + 1;
 
     sprintf(str, "%s.rc", stem);
     out_files->rc.name = str;
@@ -226,7 +226,7 @@ bool32
 write_res_file(OutFileNames* out_files)
 {
   char buf[200];
-  sprintf(buf, OUT_RC, out_files->irc.name);
+  sprintf(buf, OUT_RC, out_files->bincode.name);
   int text_len = cstr_len(buf);
   int bytes_written = file_write_bytes(out_files->rc.name, (uint8*)buf, text_len);
   bool32 success = (bytes_written == text_len);
@@ -261,20 +261,20 @@ write_res_file(OutFileNames* out_files)
 bool32
 write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
 {
-  int bytes_written = file_write_bytes(out_files->ir.name, (uint8*)vm_program->text.head, vm_program->text_len);
+  int bytes_written = file_write_bytes(out_files->hasm.name, (uint8*)vm_program->text.head, vm_program->text_len);
   bool32 success = (bytes_written == vm_program->text_len);
   if(!success)
-    error("IR file '%s' incompletely written", out_files->ir.name);
+    error("IR file '%s' incompletely written", out_files->hasm.name);
   return success;
 }
 
 bool32
-write_irc_file(OutFileNames* out_files, HasmCode* hasm_code)
+write_bincode_file(OutFileNames* out_files, BinCode* hasm_code)
 {
-  size_t bytes_written = file_write_bytes(out_files->irc.name, hasm_code->code_start, hasm_code->code_size);
+  size_t bytes_written = file_write_bytes(out_files->bincode.name, hasm_code->code_start, hasm_code->code_size);
   bool32 success = (bytes_written == hasm_code->code_size);
   if(!success)
-    error("IRC file '%s' incompletely written", out_files->irc.name);
+    error("bincode file '%s' incompletely written", out_files->bincode.name);
   return success;
 }
 
@@ -318,18 +318,22 @@ main(int argc, char* argv[])
 
         if(success)
         {
-          HasmCode* hasm_code = 0;
+          BinCode* bincode = 0;
           char* hasm_text = str_cap(&vm_program->text);
 
-          if(success = convert_hasm_to_bincode(hasm_text, &hasm_code))
+          if(success = convert_hasm_to_bincode(hasm_text, &bincode))
           {
-            success = write_irc_file(&out_files, hasm_code) && write_res_file(&out_files);
-            if(!success)
-              error("Could not write HASM and RES file: `%s`, `%s`", out_files.irc.name, out_files.res.name);
+            if(success = write_bincode_file(&out_files, bincode))
+            {
+              if(!write_res_file(&out_files))
+                error("Could not write resource file: `%s`", out_files.res.name);
+            }
+            else
+              error("Could not write bincode file: `%s`", out_files.bincode.name);
           }
         }
         else
-          error("Could not write file `%s`", out_files.ir.name);
+          error("Could not write hasm file `%s`", out_files.hasm.name);
       }
       else
         error("Program could not be translated");

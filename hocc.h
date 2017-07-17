@@ -5,6 +5,7 @@
 #define DEBUG_ARENA_SIZE (ARENA_SIZE/3)
 #define SYM_ARENA_SIZE (ARENA_SIZE/10)
 #define MAX_SCOPE_NESTING_DEPTH 100
+#define BINCODE_GROOVE "BIN"
 
 typedef struct AstNode AstNode;
 typedef struct Type Type;
@@ -651,7 +652,7 @@ typedef struct
   uint code_size;
   Instruction* instr_array;
 }
-HasmCode;
+BinCode;
 
 typedef struct
 {
@@ -694,6 +695,6 @@ bool32 type_unif(Type* type_a, Type* type_b);
 bool32 build_runtime(AstNode* ast);
 void codegen(List* code, AstNode* module_ast);
 void print_code(VmProgram* vm_program);
-bool32 convert_hasm_to_bincode(char* hasm_text, HasmCode** code);
+bool32 convert_hasm_to_bincode(char* hasm_text, BinCode** code);
 
 

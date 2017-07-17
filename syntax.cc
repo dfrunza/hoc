@@ -43,6 +43,13 @@ new_id(SourceLocation* src_loc, char* name)
   return node;
 }
 
+AstNode*
+clone_id(AstNode* id)
+{
+  assert(id->kind == AstNodeKind_Id);
+  return new_id(&id->src_loc, id->id.name);
+}
+
 local AstNode*
 new_enum(SourceLocation* src_loc)
 {
@@ -907,7 +914,7 @@ do_formal_arg(TokenStream* input, AstNode** node)
   if((success = do_type_expr(input, &type)) && type)
   {
     use(*node = new_var_decl(&input->src_loc), var_decl);
-    var_decl->type = type;
+    var_decl->type_id = type;
 
     if(input->token.kind == TokenKind_Id)
     {
@@ -1036,7 +1043,7 @@ do_var_decl(TokenStream* input, AstNode** node)
       {
         use(*node = new_var_decl(&input->src_loc), var_decl);
 
-        var_decl->type = type;
+        var_decl->type_id = type;
         var_decl->id = new_id(&input->src_loc, input->token.lexeme);
 
         if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
@@ -1462,7 +1469,7 @@ do_struct_member_list(TokenStream* input, List* member_list)
         if(success && type)
         {
           member = new_var_decl(&input->src_loc);
-          member->var_decl.type = type;
+          member->var_decl.type_id = type;
 
           if(input->token.kind == TokenKind_Id)
           {
@@ -1775,7 +1782,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     }
     else if(node->kind == AstNodeKind_VarDecl)
     {
-      DEBUG_print_ast_node(str, indent_level, node->var_decl.type, "type");
+      DEBUG_print_ast_node(str, indent_level, node->var_decl.type_id, "type_id");
       DEBUG_print_ast_node(str, indent_level, node->var_decl.id, "id");
       DEBUG_print_ast_node(str, indent_level, node->var_decl.init_expr, "init_expr");
     }

@@ -91,7 +91,7 @@ do_block(AstNode* block_ast)
   list_init(&post_fp_data);
 
   /* access links */
-  for(ListItem* list_item = block->nonlocals.first;
+  for(ListItem* list_item = block->nonlocal_occurs.first;
       list_item;
       list_item = list_item->next)
   {
@@ -127,7 +127,7 @@ do_block(AstNode* block_ast)
   old_fp->size = 1;
   list_append(arena, &pre_fp_data, old_fp);
 
-  /* locals*/
+  /* local decls */
   for(ListItem* list_item = block->decl_vars.first;
       list_item;
       list_item = list_item->next)
@@ -362,9 +362,13 @@ build_runtime(AstNode* module_ast)
       list_item;
       list_item = list_item->next)
   {
-    auto stmt_ast = (AstNode*)list_item->elem;
-    if(stmt_ast->kind == AstNodeKind_Proc)
-      do_proc(stmt_ast);
+    auto ast = (AstNode*)list_item->elem;
+    if(ast->kind == AstNodeKind_Proc)
+    {
+      //FIXME: Remove proc decls from the AST
+      //if(!ast->proc.is_decl)
+        do_proc(ast);
+    }
     else
       fail("not implemented");
   }

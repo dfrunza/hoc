@@ -535,7 +535,11 @@ codegen(List* code, AstNode* module_ast)
   {
     auto ast = (AstNode*)list_item->elem;
     if(ast->kind == AstNodeKind_Proc)
-      gen_proc(code, ast);
+    {
+      //FIXME: Remove proc decls from the AST
+      //if(!ast->proc.is_decl)
+        gen_proc(code, ast);
+    }
     else
       fail("not implemented");
   }

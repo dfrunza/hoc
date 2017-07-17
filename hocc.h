@@ -227,7 +227,7 @@ typedef struct AstNode
     incl_stmt;
 
     struct {
-      AstNode* type;
+      AstNode* type_id;
       AstNode* id;
       AstNode* init_expr;
 
@@ -375,8 +375,8 @@ typedef struct AstNode
       int nesting_depth;
       struct AstNode* encl_block;
       List decl_vars;
-      List locals;
-      List nonlocals;
+      //List local_occurs;
+      List nonlocal_occurs;
 
       /* runtime */
       List access_links;
@@ -682,6 +682,7 @@ bool32 semantic_analysis(AstNode* ast);
 Symbol* lookup_symbol(char* name, SymbolKind kind);
 AstNode* new_bin_expr(SourceLocation* src_loc);
 AstNode* new_id(SourceLocation* src_loc, char* name);
+AstNode* clone_id(AstNode* id);
 AstNode* new_var_decl(SourceLocation* src_loc);
 AstNode* new_var_occur(SourceLocation* src_loc);
 AstNode* new_call(SourceLocation* src_loc);

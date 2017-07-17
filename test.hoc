@@ -1,19 +1,21 @@
-/*
 include "hlib\\gcd.hoc";
+/*
 include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\sqrt.hoc";
 */
 
+/*
 proc int foo(int a)
 {
   return a*a;
 }
+*/
 
 proc int main()
 {
-  return foo(12);
+  return gcd(12, 30);
 }
 
 

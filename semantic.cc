@@ -183,7 +183,7 @@ register_var_decl(AstNode* var_decl_ast)
   assert(var_decl_ast->kind == AstNodeKind_VarDecl);
   bool32 success = true;
 
-  AstNode* type_id = var_decl_ast->var_decl.type;
+  AstNode* type_id = var_decl_ast->var_decl.type_id;
   if(type_id->kind == AstNodeKind_Id)
   {
     if(register_type_occur(type_id))
@@ -366,23 +366,24 @@ do_include_stmt(List* include_list, List* module_list, ListItem* module_list_ite
 }
 
 local bool32
-do_var_decl(AstNode* block, AstNode* var_decl_ast)
+do_var_decl(AstNode* block, AstNode* var_ast)
 {
   assert(block->kind == AstNodeKind_Block);
-  assert(var_decl_ast->kind == AstNodeKind_VarDecl);
+  assert(var_ast->kind == AstNodeKind_VarDecl);
   bool32 success = true;
 
-  if(success = register_var_decl(var_decl_ast))
+  if(success = register_var_decl(var_ast))
   {
-    use(var_decl_ast, var_decl);
+    use(var_ast, var_decl);
     var_decl->decl_block = block;
-    list_append(arena, &block->block.decl_vars, var_decl_ast);
+    list_append(arena, &block->block.decl_vars, var_ast);
+
     if(var_decl->init_expr)
     {
-      var_decl->assign_expr = new_bin_expr(&var_decl_ast->src_loc);
+      var_decl->assign_expr = new_bin_expr(&var_ast->src_loc);
       use(var_decl->assign_expr, bin_expr);
       bin_expr->op = AstOpKind_Assign;
-      bin_expr->lhs = new_id(&var_decl_ast->src_loc, var_decl->id->id.name);;
+      bin_expr->lhs = new_id(&var_ast->src_loc, var_decl->id->id.name);;
       bin_expr->rhs = var_decl->init_expr;
 
       success = do_expression(block, var_decl->assign_expr, &var_decl->assign_expr);
@@ -507,9 +508,11 @@ do_expression(AstNode* block, AstNode* expr_ast, AstNode** out_ast)
       var_occur->data = &var_decl->data;
 
       if(var_occur->decl_block_offset > 0)
-        list_append(arena, &block->block.nonlocals, occur_ast);
+        list_append(arena, &block->block.nonlocal_occurs, occur_ast);
+#if 0
       else if(var_occur->decl_block_offset == 0)
-        list_append(arena, &block->block.locals, occur_ast);
+        list_append(arena, &block->block.local_occurs, occur_ast);
+#endif
       else
         assert(false);
 
@@ -563,27 +566,29 @@ do_proc_formal_args(AstNode* block, List* args)
       list_item && success;
       list_item = list_item->next)
   {
-    auto ast = (AstNode*)list_item->elem;
-    assert(ast->kind == AstNodeKind_VarDecl);
-    use(ast, var_decl);
-    if(var_decl->id)
-      success = do_var_decl(block, ast);
-    else
-      success = compile_error(&ast->src_loc, "Missing identifier : %s", get_ast_kind_printstr(ast->kind));
-    assert(!var_decl->init_expr); /* enforced by parser */
+    auto arg_ast = (AstNode*)list_item->elem;
+    assert(arg_ast->kind == AstNodeKind_VarDecl);
+    use(arg_ast, var_decl);
+    assert(var_decl->id);
+    assert(!var_decl->init_expr);
+    if(success = register_var_decl(arg_ast))
+      var_decl->decl_block = block;
   }
   return success;
 }
 
 local bool32
-do_proc_ret_var(AstNode* block, AstNode* proc)
+do_proc_ret_var(AstNode* block, AstNode* proc_ast)
 {
-  assert(proc->kind == AstNodeKind_Proc);
+  assert(proc_ast->kind == AstNodeKind_Proc);
   bool32 success = true;
-  use(proc->proc.ret_var = new_var_decl(&proc->src_loc), var_decl);
-  var_decl->id = make_tempvar_id(&proc->src_loc, "ret");
-  var_decl->type = proc->proc.ret_type;
-  success = do_var_decl(block, proc->proc.ret_var);
+
+  use(proc_ast, proc);
+  use(proc->ret_var = new_var_decl(&proc_ast->src_loc), var_decl);
+  var_decl->id = make_tempvar_id(&proc_ast->src_loc, "ret");
+  var_decl->type_id = clone_id(proc->ret_type);
+  if(success = register_var_decl(proc->ret_var))
+    var_decl->decl_block = block;
   return success;
 }
 

@@ -2,6 +2,8 @@
 
 extern MemoryArena* arena;
 
+SourceLocation* deflt_src_loc;
+
 local bool32 do_initializer(TokenStream*, AstNode**);
 local bool32 do_expression(TokenStream*, AstNode**);
 local bool32 do_statement(TokenStream*, AstNode**);
@@ -1696,6 +1698,9 @@ parse(TokenStream* input, AstNode** node)
 
   use(*node = new_module(&input->src_loc), module);
   module->file_path = input->src_loc.file_path;
+
+  deflt_src_loc = mem_push_struct(arena, SourceLocation);
+  deflt_src_loc->file_path = module->file_path;
 
   AstNode* block = module->body;
   success = do_module(input, &block->block.node_list);

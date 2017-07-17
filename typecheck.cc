@@ -19,11 +19,12 @@ Type* basic_type_float;
 Type* basic_type_void;
 
 local Type*
-new_basic_type(BasicTypeKind kind)
+new_basic_type(BasicTypeKind kind, int size)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = TypeKind_Basic;
   type->basic.kind = kind;
+  type->basic.size = size;
   return type;
 }
 
@@ -97,11 +98,11 @@ make_type_of_node_list(List* node_list)
 void
 init_types()
 {
-  basic_type_bool = new_basic_type(BasicTypeKind_Bool);
-  basic_type_int = new_basic_type(BasicTypeKind_Int);
-  basic_type_char = new_basic_type(BasicTypeKind_Char);
-  basic_type_float = new_basic_type(BasicTypeKind_Float);
-  basic_type_void = new_basic_type(BasicTypeKind_Void);
+  basic_type_bool = new_basic_type(BasicTypeKind_Bool, 1);
+  basic_type_int = new_basic_type(BasicTypeKind_Int, 1);
+  basic_type_char = new_basic_type(BasicTypeKind_Char, 1);
+  basic_type_float = new_basic_type(BasicTypeKind_Float, 1);
+  basic_type_void = new_basic_type(BasicTypeKind_Void, 0);
 
   list_init(&subst_list);
 }

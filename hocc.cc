@@ -52,7 +52,7 @@ compile_error_f(char* file, int line, SourceLocation* src_loc, char* message, ..
   char* filename_buf = mem_push_count_nz(arena, char, cstr_len(file));
   cstr_copy(filename_buf, file);
 
-  if(src_loc->line_nr > 0)
+  if(src_loc->line_nr >= 0)
     fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
             path_make_stem(filename_buf), line);
   else

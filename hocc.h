@@ -220,7 +220,6 @@ typedef struct AstNode
       AstNode* body;
 
       /* runtime */
-      AstNode* main_proc;
       AstNode* main_call;
     }
     module,
@@ -468,6 +467,7 @@ typedef struct Type
   union {
     struct {
       BasicTypeKind kind;
+      int size; // in VM-words
     }
     basic;
 

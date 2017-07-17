@@ -9,6 +9,8 @@ extern Type* basic_type_char;
 extern Type* basic_type_float;
 extern Type* basic_type_void;
 
+extern SourceLocation* deflt_src_loc;
+
 SymbolTable* symtab = 0;
 local int last_block_id = 0;
 local int tempvar_id = 0;
@@ -273,7 +275,7 @@ add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == TypeKind_Basic);
   bool32 success = true;
-  AstNode* type_id = new_id(mem_push_struct(arena, SourceLocation), name);
+  AstNode* type_id = new_id(deflt_src_loc, name);
   success = register_new_id(type_id, SymbolKind_TypeDecl);
   assert(success);
   type_id->id.sym->type = type;
@@ -418,7 +420,8 @@ do_call(AstNode* block, AstNode* call_ast)
     Type* call_type = new_proc_type(make_type_of_node_list(&call->args), call_ast->type);
     if(!type_unif(call->proc->type, call_type))
     {
-      success = compile_error(&call_ast->src_loc, "Missmatch between call and proc signature");
+      success = compile_error(&call_ast->src_loc, "`%s(..)` call does not match proc signature",
+                              call->id->id.name);
       compile_error(&call->proc->src_loc, "...see proc decl");
     }
   }
@@ -604,7 +607,7 @@ do_proc_decl(AstNode* proc_ast)
 }
 
 local bool32
-do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
+do_statement(AstNode* encl_proc, AstNode* block, AstNode* encl_loop, AstNode* stmt)
 {
   assert(block->kind == AstNodeKind_Block);
   bool32 success = true;
@@ -634,12 +637,12 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
         {
           if(success = scope_begin(while_stmt->body))
           {
-            success = do_block(proc, stmt, stmt, while_stmt->body);
+            success = do_block(encl_proc, stmt, stmt, while_stmt->body);
             scope_end();
           }
         }
         else
-          success = do_statement(proc, block, stmt, while_stmt->body);
+          success = do_statement(encl_proc, block, stmt, while_stmt->body);
       }
       else
         success = compile_error(&stmt->src_loc, "Boolean expression is expected");
@@ -653,7 +656,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
       success = (for_stmt->decl_expr ? do_var_decl(for_stmt->body, for_stmt->decl_expr) : 1);
       if(success)
       {
-        success = do_block(proc, stmt, stmt, for_stmt->body) // will set the block->owner field, so do it first
+        success = do_block(encl_proc, stmt, stmt, for_stmt->body) // will set the block->owner field, so do it first
           && (for_stmt->cond_expr ? do_expression(for_stmt->body, for_stmt->cond_expr, &for_stmt->cond_expr) : 1)
           && (for_stmt->loop_expr ? do_expression(for_stmt->body, for_stmt->loop_expr, &for_stmt->loop_expr) : 1);
         if(success)
@@ -676,12 +679,12 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
         {
           if(success = scope_begin(if_stmt->body))
           {
-            success = do_block(proc, loop, stmt, if_stmt->body);
+            success = do_block(encl_proc, encl_loop, stmt, if_stmt->body);
             scope_end();
           }
         }
         else
-          success = do_statement(proc, block, loop, stmt->if_stmt.body);
+          success = do_statement(encl_proc, block, encl_loop, stmt->if_stmt.body);
 
         if(if_stmt->else_body)
         {
@@ -689,12 +692,12 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
           {
             if(success = scope_begin(if_stmt->else_body))
             {
-              success = do_block(proc, stmt, loop, if_stmt->else_body);
+              success = do_block(encl_proc, stmt, encl_loop, if_stmt->else_body);
               scope_end();
             }
           }
           else
-            success = do_statement(proc, block, loop, if_stmt->else_body);
+            success = do_statement(encl_proc, block, encl_loop, if_stmt->else_body);
         }
       }
       else
@@ -703,15 +706,15 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   }
   else if(stmt->kind == AstNodeKind_ReturnStmt)
   {
-    if(proc)
+    if(encl_proc)
     {
       use(stmt, ret_stmt);
-      ret_stmt->proc = proc;
-      ret_stmt->nesting_depth = block->block.nesting_depth - proc->proc.body->block.nesting_depth;
+      ret_stmt->proc = encl_proc;
+      ret_stmt->nesting_depth = block->block.nesting_depth - encl_proc->proc.body->block.nesting_depth;
       stmt->type = basic_type_void;
 
       AstNode* ret_expr = ret_stmt->expr;
-      AstNode* ret_var = proc->proc.ret_var;
+      AstNode* ret_var = encl_proc->proc.ret_var;
       assert(ret_var->kind == AstNodeKind_VarDecl);
 
       if(ret_expr)
@@ -730,7 +733,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
                                 "return type : expected `%s`, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(stmt->type));
       }
       if(success)
-        assert(type_unif(stmt->type, proc->proc.ret_var->type));
+        assert(type_unif(stmt->type, encl_proc->proc.ret_var->type));
     }
     else
       success = compile_error(&stmt->src_loc, "Unexpected `return` at this location");
@@ -742,16 +745,16 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
   }
   else if(stmt->kind == AstNodeKind_BreakStmt || stmt->kind == AstNodeKind_ContinueStmt)
   {
-    if(loop)
+    if(encl_loop)
     {
       use(stmt, loop_ctrl);
-      loop_ctrl->loop = loop;
+      loop_ctrl->loop = encl_loop;
 
       AstNode* loop_body = 0;
-      if(loop->kind == AstNodeKind_WhileStmt)
-        loop_body = loop->while_stmt.body;
-      else if(loop->kind = AstNodeKind_ForStmt)
-        loop_body = loop->for_stmt.body;
+      if(encl_loop->kind == AstNodeKind_WhileStmt)
+        loop_body = encl_loop->while_stmt.body;
+      else if(encl_loop->kind = AstNodeKind_ForStmt)
+        loop_body = encl_loop->for_stmt.body;
       assert(loop_body);
 
       loop_ctrl->nesting_depth = 0;
@@ -776,7 +779,7 @@ do_statement(AstNode* proc, AstNode* block, AstNode* loop, AstNode* stmt)
 }
 
 local bool32
-do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
+do_block(AstNode* encl_proc, AstNode* encl_loop, AstNode* owner, AstNode* block)
 {
   assert(block->kind == AstNodeKind_Block);
   bool32 success = true;
@@ -822,7 +825,7 @@ do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
         list_item && success;
         list_item = list_item->next)
     {
-      success = do_statement(proc, block, loop, (AstNode*)list_item->elem);
+      success = do_statement(encl_proc, block, encl_loop, (AstNode*)list_item->elem);
     }
   }
   else
@@ -831,31 +834,40 @@ do_block(AstNode* proc, AstNode* loop, AstNode* owner, AstNode* block)
 }
 
 local bool32
-do_module(AstNode* mod_ast)
+do_module(AstNode* module_ast)
 {
-  assert(mod_ast->kind == AstNodeKind_Module);
+  assert(module_ast->kind == AstNodeKind_Module);
   bool32 success = true;
-  use(mod_ast, module);
+  use(module_ast, module);
 
-  auto mod_block = &module->body->block;
-
-  // process the includes
-  for(ListItem* list_item = mod_block->node_list.first;
-      list_item;
-      list_item = list_item->next)
   {
-    auto stmt = (AstNode*)list_item->elem;
-    if(stmt->kind == AstNodeKind_IncludeStmt)
+    // process the includes
+    use(module->body, block);
+    for(ListItem* list_item = block->node_list.first;
+        list_item;
+        list_item = list_item->next)
     {
-      AstNode* incl_block = stmt->incl_stmt.body;
-      do_include_stmt(&incl_block->block.node_list, &mod_block->node_list, list_item);
+      auto stmt = (AstNode*)list_item->elem;
+      if(stmt->kind == AstNodeKind_IncludeStmt)
+      {
+        AstNode* incl_block = stmt->incl_stmt.body;
+        do_include_stmt(&incl_block->block.node_list, &block->node_list, list_item);
+      }
     }
   }
 
   if(success = scope_begin(module->body))
   {
     add_builtin_types();
-    success = do_block(0, 0, mod_ast, module->body);
+
+    if(success = do_block(0, 0, module_ast, module->body))
+    {
+      AstNode* main_call_ast = new_call(deflt_src_loc);
+      use(main_call_ast, call);
+      call->id = new_id(&module_ast->src_loc, "main");
+      if(success = do_call(module->body, main_call_ast))
+        module->main_call = main_call_ast;
+    }
     scope_end();
   }
   return success;

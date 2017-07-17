@@ -1,24 +1,15 @@
 /*
-include "hlib\\gcd.hoc";
-include "hlib\\power.hoc";
-include "hlib\\minmax.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\sqrt.hoc";
+include "hlib\\gcd.hoc";
+include "hlib\\abs.hoc";
+include "hlib\\power.hoc";
+include "hlib\\minmax.hoc";
 */
-
-proc int foo(int a);
-
-proc int foo(int a)
-{
-  if(a < 10)
-    return foo(a+1);
-  else
-    return 99;
-}
 
 proc int main()
 {
-  return foo(1);
+  return 11;
 }
 
 

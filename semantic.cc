@@ -343,7 +343,11 @@ scope_end()
 #endif
   }
   else
+  {
     assert(symtab->nesting_depth == 0);
+    symtab->block_id = 0;
+    symtab->curr_block = 0;
+  }
 }
 
 local void
@@ -404,7 +408,8 @@ do_call_args(AstNode* block, AstNode* call)
       list_item = list_item->next)
   {
     auto arg = (AstNode*)list_item->elem;
-    success = do_expression(block, arg, &arg);
+    if(success = do_expression(block, arg, &arg))
+      list_item->elem = arg;
   }
   return success;
 }
@@ -511,7 +516,7 @@ do_expression(AstNode* block, AstNode* expr_ast, AstNode** out_ast)
 
       if(var_occur->decl_block_offset > 0)
         list_append(arena, &block->block.nonlocal_occurs, occur_ast);
-      else
+      else if(var_occur->decl_block_offset < 0)
         assert(false);
 
       *out_ast = occur_ast;
@@ -731,7 +736,8 @@ do_statement(AstNode* encl_proc, AstNode* block, AstNode* encl_loop, AstNode* st
         bin_expr->lhs = new_id(&ret_expr->src_loc, ret_var->var_decl.id->id.name);
         bin_expr->rhs = ret_expr;
 
-        success = do_expression(block, ret_stmt->assign_expr, &ret_stmt->assign_expr);
+        if(success = do_expression(block, ret_stmt->assign_expr, &ret_stmt->assign_expr))
+          stmt->type = ret_stmt->assign_expr->type;
       }
       else if(!(success = type_unif(ret_var->type, stmt->type)))
       {

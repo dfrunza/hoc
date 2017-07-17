@@ -152,6 +152,7 @@ translate(char* file_path, char* hoc_text)
       str_dump_to_file(&str, "out_syntax.txt");
       arena_free(DEBUG_arena);
     }/*<<<*/
+
     if(vm_program->success = semantic_analysis(ast))
     {
       assert(symtab->block_id == 0);

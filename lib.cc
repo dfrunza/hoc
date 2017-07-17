@@ -2,7 +2,7 @@
 
 local bool DEBUG_zero_arena = false;
 local bool DEBUG_check_arena_bounds = true;
-local bool DEBUG_enabled = false;
+local bool DEBUG_enabled = true;
 
 void
 assert_f(char* message, char* file, int line)

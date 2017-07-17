@@ -221,7 +221,7 @@ typedef struct AstNode
       AstNode* body;
 
       /* runtime */
-      AstNode* main_call;
+      AstNode* main_stmt;
     }
     module,
     incl_stmt;

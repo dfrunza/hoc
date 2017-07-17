@@ -259,9 +259,9 @@ do_stmt(AstNode* ast)
     do_while_stmt(ast);
   else if(ast->kind == AstNodeKind_ReturnStmt)
   {
-    if(ast->ret_stmt.expr)
-      do_stmt(ast->ret_stmt.expr);
-    /* else - it's OK */
+    use(ast, ret_stmt);
+    if(ret_stmt->assign_expr)
+      do_stmt(ret_stmt->assign_expr);
   }
   else if(ast->kind == AstNodeKind_Cast)
     do_stmt(ast->cast.expr);
@@ -269,7 +269,13 @@ do_stmt(AstNode* ast)
           ast->kind == AstNodeKind_BreakStmt ||
           ast->kind == AstNodeKind_EmptyStmt ||
           ast->kind == AstNodeKind_Literal)
-    ;
+    ; /* no-op */
+  else if(ast->kind == AstNodeKind_VarDecl)
+  {
+    use(ast, var_decl);
+    if(var_decl->assign_expr)
+      do_stmt(var_decl->assign_expr);
+  }
   else
     assert(false);
 }
@@ -327,7 +333,7 @@ do_proc(AstNode* proc_ast)
   list_append(arena, &pre_fp_data, ctrl_links);
 
   auto body_block = &proc->body->block;
-  /* locals */
+  /* local decls */
   for(ListItem* list_item = body_block->decl_vars.first;
       list_item;
       list_item = list_item->next)
@@ -363,7 +369,7 @@ build_runtime(AstNode* module_ast)
       fail("not implemented");
   }
 
-  do_call(module->main_call);
+  do_stmt(module->main_stmt);
 
   return success;
 }

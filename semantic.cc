@@ -499,9 +499,12 @@ do_expression(AstNode* block, AstNode* expr_ast, AstNode** out_ast)
 
     if(success = register_var_occur(occur_ast))
     {
-      AstNode* decl_block = var_occur->var_decl->var_decl.decl_block;
+      auto var_decl = &var_occur->var_decl->var_decl;
+
+      AstNode* decl_block = var_decl->decl_block;
       var_occur->decl_block_offset = block->block.nesting_depth - decl_block->block.nesting_depth;
       var_occur->occur_block = block;
+      var_occur->data = &var_decl->data;
 
       if(var_occur->decl_block_offset > 0)
         list_append(arena, &block->block.nonlocals, occur_ast);
@@ -719,13 +722,13 @@ do_statement(AstNode* encl_proc, AstNode* block, AstNode* encl_loop, AstNode* st
 
       if(ret_expr)
       {
-        AstNode* assign_expr = new_bin_expr(&stmt->src_loc);
-        use(assign_expr, bin_expr);
+        ret_stmt->assign_expr = new_bin_expr(&stmt->src_loc);
+        use(ret_stmt->assign_expr, bin_expr);
         bin_expr->op = AstOpKind_Assign;
         bin_expr->lhs = new_id(&ret_expr->src_loc, ret_var->var_decl.id->id.name);
         bin_expr->rhs = ret_expr;
 
-        success = do_expression(block, assign_expr, &assign_expr);
+        success = do_expression(block, ret_stmt->assign_expr, &ret_stmt->assign_expr);
       }
       else if(!(success = type_unif(ret_var->type, stmt->type)))
       {
@@ -864,9 +867,14 @@ do_module(AstNode* module_ast)
     {
       AstNode* main_call_ast = new_call(deflt_src_loc);
       use(main_call_ast, call);
-      call->id = new_id(&module_ast->src_loc, "main");
+      call->id = new_id(deflt_src_loc, "main");
       if(success = do_call(module->body, main_call_ast))
-        module->main_call = main_call_ast;
+      {
+        if(type_unif(main_call_ast->type, basic_type_int))
+          module->main_stmt = main_call_ast;
+        else
+          success = compile_error(&call->proc->src_loc, "main() must return int");
+      }
     }
     scope_end();
   }

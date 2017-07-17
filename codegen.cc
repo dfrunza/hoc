@@ -486,28 +486,34 @@ gen_empty_stmt(List* code)
 }
 
 local void
-gen_statement(List* code, AstNode* stmt_ast)
+gen_statement(List* code, AstNode* ast)
 {
-  if(stmt_ast->kind == AstNodeKind_BinExpr)
+  if(ast->kind == AstNodeKind_BinExpr)
   {
-    assert(stmt_ast->bin_expr.op == AstOpKind_Assign);
-    gen_bin_expr(code, stmt_ast);
+    assert(ast->bin_expr.op == AstOpKind_Assign);
+    gen_bin_expr(code, ast);
     emit_instr(code, Opcode_POP);
   }
-  else if(stmt_ast->kind == AstNodeKind_Call)
+  else if(ast->kind == AstNodeKind_Call)
   {
-    gen_call(code, stmt_ast);
+    gen_call(code, ast);
     emit_instr(code, Opcode_POP);
   }
-  else if(stmt_ast->kind == AstNodeKind_ReturnStmt)
-    gen_return_stmt(code, stmt_ast);
-  else if(stmt_ast->kind == AstNodeKind_BreakStmt)
-    gen_break_stmt(code, stmt_ast);
-  else if(stmt_ast->kind == AstNodeKind_IfStmt)
-    gen_if_stmt(code, stmt_ast);
-  else if(stmt_ast->kind == AstNodeKind_WhileStmt)
-    gen_while_stmt(code, stmt_ast);
-  else if(stmt_ast->kind == AstNodeKind_EmptyStmt)
+  else if(ast->kind == AstNodeKind_VarDecl)
+  {
+    use(ast, var_decl);
+    if(var_decl->assign_expr)
+      gen_statement(code, var_decl->assign_expr);
+  }
+  else if(ast->kind == AstNodeKind_ReturnStmt)
+    gen_return_stmt(code, ast);
+  else if(ast->kind == AstNodeKind_BreakStmt)
+    gen_break_stmt(code, ast);
+  else if(ast->kind == AstNodeKind_IfStmt)
+    gen_if_stmt(code, ast);
+  else if(ast->kind == AstNodeKind_WhileStmt)
+    gen_while_stmt(code, ast);
+  else if(ast->kind == AstNodeKind_EmptyStmt)
     gen_empty_stmt(code);
   else
     assert(false);
@@ -519,7 +525,7 @@ codegen(List* code, AstNode* module_ast)
   assert(module_ast->kind == AstNodeKind_Module);
   use(module_ast, module);
 
-  gen_call(code, module->main_call);
+  gen_statement(code, module->main_stmt);
   emit_instr(code, Opcode_HALT);
 
   auto body_block = &module->body->block;

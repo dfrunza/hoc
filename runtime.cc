@@ -366,7 +366,7 @@ build_runtime(AstNode* module_ast)
     if(ast->kind == AstNodeKind_Proc)
     {
       //FIXME: Remove proc decls from the AST
-      //if(!ast->proc.is_decl)
+      if(!ast->proc.is_decl)
         do_proc(ast);
     }
     else

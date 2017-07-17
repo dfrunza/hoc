@@ -1,21 +1,24 @@
-include "hlib\\gcd.hoc";
 /*
+include "hlib\\gcd.hoc";
 include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\sqrt.hoc";
 */
 
-/*
+proc int foo(int a);
+
 proc int foo(int a)
 {
-  return a*a;
+  if(a < 10)
+    return foo(a+1);
+  else
+    return 99;
 }
-*/
 
 proc int main()
 {
-  return gcd(12, 30);
+  return foo(1);
 }
 
 

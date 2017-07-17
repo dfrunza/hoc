@@ -231,7 +231,8 @@ gen_call(List* code, AstNode* call_ast)
 {
   assert(call_ast->kind == AstNodeKind_Call);
   use(call_ast, call);
-  auto proc = &call->proc->proc;
+  AstNode* proc_ast = call->proc_sym->ast;
+  use(proc_ast, proc);
   emit_instr_int(code, Opcode_ALLOC, proc->ret_size);
 
   for(ListItem* list_item = call->args.first;
@@ -537,7 +538,7 @@ codegen(List* code, AstNode* module_ast)
     if(ast->kind == AstNodeKind_Proc)
     {
       //FIXME: Remove proc decls from the AST
-      //if(!ast->proc.is_decl)
+      if(!ast->proc.is_decl)
         gen_proc(code, ast);
     }
     else

@@ -261,8 +261,9 @@ register_call(AstNode* call_ast)
   {
     Symbol* call_sym = register_id(call->id, SymbolKind_Call);
     call_sym->ast = call_ast;
-    call->proc = proc_sym->ast;
-    Type* proc_type = call->proc->type;
+    //call->proc = proc_sym->ast;
+    call->proc_sym = proc_sym;
+    Type* proc_type = proc_sym->ast->type;
     call_ast->type = proc_type->proc.ret;
   }
   else
@@ -419,11 +420,12 @@ do_call(AstNode* block, AstNode* call_ast)
   {
     assert(call_ast->type);
     Type* call_type = new_proc_type(make_type_of_node_list(&call->args), call_ast->type);
-    if(!type_unif(call->proc->type, call_type))
+    AstNode* proc_ast = call->proc_sym->ast;
+    if(!type_unif(proc_ast->type, call_type))
     {
       success = compile_error(&call_ast->src_loc, "`%s(..)` call does not match proc signature",
                               call->id->id.name);
-      compile_error(&call->proc->src_loc, "...see proc decl");
+      compile_error(&proc_ast->src_loc, "...see proc decl");
     }
   }
   return success;
@@ -509,10 +511,6 @@ do_expression(AstNode* block, AstNode* expr_ast, AstNode** out_ast)
 
       if(var_occur->decl_block_offset > 0)
         list_append(arena, &block->block.nonlocal_occurs, occur_ast);
-#if 0
-      else if(var_occur->decl_block_offset == 0)
-        list_append(arena, &block->block.local_occurs, occur_ast);
-#endif
       else
         assert(false);
 
@@ -878,7 +876,10 @@ do_module(AstNode* module_ast)
         if(type_unif(main_call_ast->type, basic_type_int))
           module->main_stmt = main_call_ast;
         else
-          success = compile_error(&call->proc->src_loc, "main() must return int");
+        {
+          AstNode* proc_ast = call->proc_sym->ast;
+          success = compile_error(&proc_ast->src_loc, "main() must return int");
+        }
       }
     }
     scope_end();

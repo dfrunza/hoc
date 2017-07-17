@@ -278,7 +278,7 @@ typedef struct AstNode
       List args;
 
       /* semantic */
-      AstNode* proc;
+      Symbol* proc_sym;
     }
     call;
 
@@ -375,7 +375,6 @@ typedef struct AstNode
       int nesting_depth;
       struct AstNode* encl_block;
       List decl_vars;
-      //List local_occurs;
       List nonlocal_occurs;
 
       /* runtime */

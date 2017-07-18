@@ -84,7 +84,7 @@ List;
 
 void assert_f(char* expr, char* file, int line);
 void fail_f(char* file, int line, char* message, ...);
-bool error_f(char* file, int line, char* message, ...);
+bool32 error_f(char* file, int line, char* message, ...);
 
 MemoryArena* arena_new(int size);
 MemoryArena* arena_pop(MemoryArena* arena);
@@ -101,20 +101,20 @@ ArenaUsage arena_usage(MemoryArena* arena);
 #define mem_zero_struct(VAR, TYPE)\
   (mem_zero_f(VAR, sizeof(TYPE)))
 void mem_zero_f(void* mem, size_t len);
-void* mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_mem);
+void* mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool32 zero_mem);
 
-bool char_is_letter(char ch);
-bool char_is_numeric(char c);
+bool32 char_is_letter(char ch);
+bool32 char_is_numeric(char c);
 
 /*
  * The function assumes that all characters in the input string are digits,
  * except for the first, which could be the negative sign '-'
  */
-bool cstr_to_int(char* str, int* integer);
+bool32 cstr_to_int(char* str, int* integer);
 
-bool cstr_to_float(char* str, float* result);
-bool cstr_start_with(char* str, char* prefix);
-bool cstr_match(char* str_a, char* str_b);
+bool32 cstr_to_float(char* str, float* result);
+bool32 cstr_start_with(char* str, char* prefix);
+bool32 cstr_match(char* str_a, char* str_b);
 int cstr_len(char* str);
 char* cstr_copy(char* dest_str, char* src_str);
 void cstr_copy_substr(char* dest_str, char* begin_char, char* end_char);
@@ -126,7 +126,7 @@ uint str_len(String* str);
 
 void str_debug_output(String* str);
 void str_stdout(String* str);
-bool str_dump_to_file(String* str, char* file_path);
+bool32 str_dump_to_file(String* str, char* file_path);
 void str_append(String* str, char* cstr);
 void str_printf(String* str, char* message, ...);
 void str_printf_va(String* str, char* message, va_list varargs);

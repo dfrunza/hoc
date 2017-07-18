@@ -18,8 +18,8 @@ set L_flags=-incremental:no -opt:ref -subsystem:console
 set PROG=test
 
 ..\ctime.exe ^
-cl %C_flags% ..\hocc.cc ..\lib.cc ..\lex.cc ..\syntax.cc ..\semantic.cc ..\typecheck.cc ^
-  ..\runtime.cc ..\codegen.cc ..\hasm.cc /link %L_flags%
+cl %C_flags% ..\hocc.c ..\lib.c ..\lex.c ..\syntax.c ..\semantic.c ..\typecheck.c ^
+  ..\runtime.c ..\codegen.c ..\hasm.c /link %L_flags%
 
 rem NOTE: The full path to the .hoc source is needed for Vim QuickFix to work properly.
 if %errorlevel% neq 0 goto :end
@@ -27,7 +27,7 @@ hocc.exe %cd%\..\%PROG%.hoc > out_debug.txt
 
 if %errorlevel% neq 0 goto :hocc_error
 ..\ctime.exe ^
-cl %C_flags% /Fe:%PROG%.exe ..\vm.cc ..\lib.cc %PROG%.res /link %L_flags%
+cl %C_flags% /Fe:%PROG%.exe ..\vm.c ..\lib.c %PROG%.res /link %L_flags%
 
 goto :end
 
@@ -38,6 +38,6 @@ goto :end
 :end
 popd
 
-cloc.exe hocc.h codegen.cc hasm.cc hocc.cc lex.cc lib.cc runtime.cc semantic.cc syntax.cc typecheck.cc vm.cc
+cloc.exe hocc.h codegen.c hasm.c hocc.c lex.c lib.c runtime.c semantic.c syntax.c typecheck.c vm.c
 
 

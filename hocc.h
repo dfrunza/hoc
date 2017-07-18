@@ -214,11 +214,320 @@ typedef struct AstNode
   AstNodeKind kind;
   Type* type;
   SourceLocation src_loc;
+}
+AstNode;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  char* file_path;
+  AstNode* body;
+
+  /* runtime */
+  AstNode* main_stmt;
+}
+AstModule,
+AstInclStmt;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* type_id;
+  AstNode* id;
+  AstNode* init_expr;
+
+  /* semantic */
+  AstNode* decl_block;
+  AstNode* assign_expr;
+
+  /* runtime */
+  DataArea data;
+}
+AstVarDecl;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* id;
+
+  /* semantic */
+  AstNode* var_decl;
+  AstNode* occur_block;
+  int decl_block_offset;
+
+  /* runtime */
+  AccessLink* link;
+  DataArea* data;
+}
+AstVarOccur;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* ret_type;
+  AstNode* id;
+  List args;
+  AstNode* body;
+
+  /* semantic */
+  AstNode* ret_var;
+  bool32 is_decl;
+
+  /* runtime */
+  char* label;
+  char* label_end;
+  int ret_size;
+  int args_size;
+  int locals_size;
+}
+AstProc;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* id;
+  List args;
+
+  /* semantic */
+  Symbol* proc_sym;
+}
+AstCall;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstOpKind op;
+  AstNode* left_operand;
+  AstNode* right_operand;
+
+  /* runtime */
+  char* label_end; // for boolean expressions
+}
+AstBinExpr;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstOpKind op;
+  AstNode* operand;
+}
+AstUnrExpr;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstLiteralKind lit_kind;
+  union {
+    int32 int_val;
+    float32 float_val;
+    int32 bool_val;
+    char char_val;
+    char* str;
+  };
+}
+AstLiteral;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* expr;
+
+  /* semantic */
+  AstNode* proc;
+  int nesting_depth;
+  AstNode* assign_expr;
+}
+AstReturnStmt;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* id;
+}
+AstGotoStmt,
+AstLabel;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* cond_expr;
+  AstNode* body;
+  AstNode* else_body;
+
+  /* runtime */
+  char* label_else;
+  char* label_end;
+}
+AstIfStmt;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* cond_expr;
+  AstNode* body;
+
+  /* runtime */
+  char* label_eval;
+  char* label_break;
+}
+AstWhileStmt;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* decl_expr;
+  AstNode* cond_expr;
+  AstNode* loop_expr;
+  AstNode* body;
+
+  /* runtime */
+  char* label_eval;
+  char* label_break;
+}
+AstForStmt;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* loop;
+
+  /* semantic */
+  int nesting_depth;
+}
+AstLoopCtrl;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  List node_list;
+
+  /* semantic */
+  //AstNode* owner;
+  int block_id;
+  int nesting_depth;
+  struct AstNode* encl_block;
+  List decl_vars;
+  List nonlocal_occurs;
+
+  /* runtime */
+  List access_links;
+  int links_size;
+  int locals_size;
+}
+AstBlock;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* to_type;
+  AstNode* expr;
+}
+AstCast;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  char* name;
+
+  /* semantic */
+  Symbol* sym;
+}
+AstId;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* expr;
+  AstNode* index;
+}
+AstArray;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* expr;
+}
+AstPointer;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* id;
+  List member_list;
+}
+AstStruct,
+AstUnion,
+AstEnum;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  AstNode* left_operand;
+  AstNode* right_operand;
+}
+AstAccessor;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
+  List member_list;
+}
+AstIniter;
+
+typedef struct AstNode_
+{/*>>>*/
+  AstNodeKind kind;
+  Type* type;
+  SourceLocation src_loc;
 
   union {
     struct {
       char* file_path;
-      AstNode* body;
+      AstBlock* body;
 
       /* runtime */
       AstNode* main_stmt;
@@ -426,8 +735,8 @@ typedef struct AstNode
     }
     initer;
   };
-}
-AstNode;
+}/*<<<*/
+AstNode_;
 
 typedef enum
 {

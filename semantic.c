@@ -261,7 +261,6 @@ register_call(AstNode* call_ast)
   {
     Symbol* call_sym = register_id(call->id, SymbolKind_Call);
     call_sym->ast = call_ast;
-    //call->proc = proc_sym->ast;
     call->proc_sym = proc_sym;
     Type* proc_type = proc_sym->ast->type;
     call_ast->type = proc_type->proc.ret;

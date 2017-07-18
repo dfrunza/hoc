@@ -72,15 +72,16 @@ DEBUG_print_sizeof_ast_structs()
   struct_info[KIND].kind = KIND; \
   struct_info[KIND].size = sizeof(STRUCT); \
 
-  local StructInfo struct_info[(int)AstNodeKind__Count] = {};
+  local StructInfo struct_info[AstNodeKind__Count] = {0};
   assert(AstNodeKind__Null == 0);
   AstNode node;
   mem_zero_struct(&node, AstNode);
+#if 0
   make_struct_info(AstNodeKind_BinExpr, node.bin_expr);
   make_struct_info(AstNodeKind_UnrExpr, node.unr_expr);
   make_struct_info(AstNodeKind_Literal, node.literal);
   make_struct_info(AstNodeKind_VarDecl, node.var_decl);
-//  make_struct_info(AstNodeKind_VarOccur, AstVarOccur);
+  make_struct_info(AstNodeKind_VarOccur, AstVarOccur);
   make_struct_info(AstNodeKind_Block, node.block);
   make_struct_info(AstNodeKind_Proc, node.block);
   make_struct_info(AstNodeKind_Id, node.id);
@@ -100,6 +101,7 @@ DEBUG_print_sizeof_ast_structs()
   make_struct_info(AstNodeKind_Union, node.union_decl);
   make_struct_info(AstNodeKind_Enum, node.enum_decl);
   make_struct_info(AstNodeKind_Initializer, node.initer);
+#endif
 
 #undef make_struct_info
 #undef make_zero_size_info

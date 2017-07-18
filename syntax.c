@@ -12,58 +12,58 @@ local bool32 do_unary_expr(TokenStream*, AstNode**);
 local bool32 do_module(TokenStream*, List*);
 local bool32 do_struct_member_list(TokenStream*, List*);
 
-AstNode*
+AstBlock*
 new_block(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode);
+  AstBlock* node = mem_push_struct(arena, AstBlock);
   node->kind = AstNodeKind_Block;
   node->src_loc = *src_loc;
-  list_init(&node->block.node_list);
-  list_init(&node->block.decl_vars);
+  list_init(&node->node_list);
+  list_init(&node->decl_vars);
   return node;
 }
 
-local AstNode*
+local AstModule*
 new_module(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode);
+  AstModule* node = mem_push_struct(arena, AstModule);
   node->kind = AstNodeKind_Module;
   node->src_loc = *src_loc;
-  node->module.body = new_block(src_loc);
+  node->body = new_block(src_loc);
   return node;
 }
 
-AstNode*
+AstId*
 new_id(SourceLocation* src_loc, char* name)
 {
-  AstNode* node = mem_push_struct(arena, AstNode);
+  AstId* node = mem_push_struct(arena, AstId);
   node->kind = AstNodeKind_Id;
   node->src_loc = *src_loc;
-  node->id.name = name;
+  node->name = name;
   return node;
 }
 
-AstNode*
-clone_id(AstNode* id)
+AstId*
+clone_id(AstId* id)
 {
   assert(id->kind == AstNodeKind_Id);
-  return new_id(&id->src_loc, id->id.name);
+  return new_id(&id->src_loc, id->name);
 }
 
-local AstNode*
+local AstEnum*
 new_enum(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode);
+  AstEnum* node = mem_push_struct(arena, AstEnum);
   node->kind = AstNodeKind_Enum;
-  list_init(&node->enum_decl.member_list);
+  list_init(&node->member_list);
   node->src_loc = *src_loc;
   return node;
 }
 
-local AstNode*
+local AstPointer*
 new_pointer(SourceLocation* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode);
+  AstPointer* node = mem_push_struct(arena, AstPointer);
   node->kind = AstNodeKind_Pointer;
   node->src_loc = *src_loc;
   return node;

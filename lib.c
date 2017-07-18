@@ -1,8 +1,8 @@
 #include "hocc.h"
 
-local bool DEBUG_zero_arena = false;
-local bool DEBUG_check_arena_bounds = true;
-local bool DEBUG_enabled = true;
+local bool32 DEBUG_zero_arena = false;
+local bool32 DEBUG_check_arena_bounds = true;
+local bool32 DEBUG_enabled = true;
 
 void
 assert_f(char* message, char* file, int line)
@@ -30,7 +30,7 @@ fail_f(char* file, int line, char* message, ...)
   *(int*)0 = 0;
 }
 
-bool
+bool32
 error_f(char* file, int line, char* message, ...)
 {
   fprintf(stderr, "%s(%d) : ", file, line);
@@ -45,13 +45,13 @@ error_f(char* file, int line, char* message, ...)
   return false;
 }
 
-bool
+bool32
 char_is_letter(char ch)
 {
   return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z');
 }
 
-bool
+bool32
 char_is_numeric(char c)
 {
   return '0' <= c && c <= '9';
@@ -140,7 +140,7 @@ arena_push(MemoryArena* arena, size_t size)
 }
 
 void*
-mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_mem)
+mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool32 zero_mem)
 {
   assert(count > 0);
 
@@ -179,10 +179,10 @@ arena_usage(MemoryArena* arena)
   return usage;
 }
 
-bool
+bool32
 cstr_to_int(char* str, int* integer)
 {
-  bool negative = false;
+  bool32 negative = false;
 
   if(*str == '-')
   {
@@ -215,11 +215,11 @@ cstr_to_int(char* str, int* integer)
   return true;
 }
 
-bool
+bool32
 cstr_to_float(char* str, float* result)
 {
 #if 0
-  bool negative = false;
+  bool32 negative = false;
 
   if(*str == '-')
   {
@@ -274,7 +274,7 @@ cstr_to_float(char* str, float* result)
   return true;
 }
 
-bool
+bool32
 cstr_start_with(char* str, char* prefix)
 {
   while(*str == *prefix)
@@ -284,11 +284,11 @@ cstr_start_with(char* str, char* prefix)
     if(*prefix == '\0')
       break;
   }
-  bool result = (*prefix == '\0');
+  bool32 result = (*prefix == '\0');
   return result;
 }
 
-bool
+bool32
 cstr_match(char* str_a, char* str_b)
 {
   while(*str_a == *str_b)
@@ -298,7 +298,7 @@ cstr_match(char* str_a, char* str_b)
     if(*str_a == '\0')
       break;
   }
-  bool result = (*str_a == *str_b);
+  bool32 result = (*str_a == *str_b);
   return result;
 }
 
@@ -421,7 +421,7 @@ str_free(String* str)
   arena->free = (uint8*)str->head;
 }
 
-bool
+bool32
 str_dump_to_file(String* str, char* file_path)
 {
   int char_count = str_len(str);

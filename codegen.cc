@@ -79,17 +79,17 @@ gen_bin_expr(List* code, AstNode* expr_ast)
 
   if(bin_expr->op == AstOpKind_Assign)
   {
-    gen_load_rvalue(code, bin_expr->rhs);
+    gen_load_rvalue(code, bin_expr->right_operand);
 
-    assert(bin_expr->lhs->kind = AstNodeKind_VarOccur);
-    gen_load_lvalue(code, bin_expr->lhs);
+    assert(bin_expr->left_operand->kind = AstNodeKind_VarOccur);
+    gen_load_lvalue(code, bin_expr->left_operand);
 
     emit_instr(code, Opcode_STORE);
   }
   else
   {
-    gen_load_rvalue(code, bin_expr->lhs);
-    gen_load_rvalue(code, bin_expr->rhs);
+    gen_load_rvalue(code, bin_expr->left_operand);
+    gen_load_rvalue(code, bin_expr->right_operand);
 
     switch(bin_expr->op)
     {
@@ -153,7 +153,7 @@ gen_bin_expr(List* code, AstNode* expr_ast)
       case AstOpKind_LogicAnd:
       case AstOpKind_LogicOr:
       {
-        gen_load_rvalue(code, bin_expr->lhs);
+        gen_load_rvalue(code, bin_expr->left_operand);
         emit_instr(code, Opcode_DUP);
 
         if(bin_expr->op == AstOpKind_LogicAnd)
@@ -164,15 +164,15 @@ gen_bin_expr(List* code, AstNode* expr_ast)
           assert(false);
 
         emit_instr(code, Opcode_POP);
-        gen_load_rvalue(code, bin_expr->rhs);
+        gen_load_rvalue(code, bin_expr->right_operand);
         emit_instr_str(code, Opcode_LABEL, bin_expr->label_end);
       } break;
 
       case AstOpKind_LogicLessEquals:
       case AstOpKind_LogicGreaterEquals:
       {
-        gen_load_rvalue(code, bin_expr->lhs);
-        gen_load_rvalue(code, bin_expr->rhs);
+        gen_load_rvalue(code, bin_expr->left_operand);
+        gen_load_rvalue(code, bin_expr->right_operand);
         if(bin_expr->op == AstOpKind_LogicLessEquals)
           emit_instr(code, Opcode_CMPLSS);
         else if(bin_expr->op == AstOpKind_LogicGreaterEquals)
@@ -183,8 +183,8 @@ gen_bin_expr(List* code, AstNode* expr_ast)
 
         emit_instr_str(code, Opcode_JUMPNZ, bin_expr->label_end);
         emit_instr(code, Opcode_POP);
-        gen_load_rvalue(code, bin_expr->lhs);
-        gen_load_rvalue(code, bin_expr->rhs);
+        gen_load_rvalue(code, bin_expr->left_operand);
+        gen_load_rvalue(code, bin_expr->right_operand);
         emit_instr(code, Opcode_CMPEQ);
         emit_instr_str(code, Opcode_LABEL, bin_expr->label_end);
       } break;

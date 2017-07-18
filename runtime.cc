@@ -233,8 +233,8 @@ do_bin_expr(AstNode* expr_ast)
   str_append(&label, ".logic-end");
   bin_expr->label_end = str_cap(&label);
 
-  do_stmt(bin_expr->lhs);
-  do_stmt(bin_expr->rhs);
+  do_stmt(bin_expr->left_operand);
+  do_stmt(bin_expr->right_operand);
 }
 
 local void
@@ -313,7 +313,13 @@ do_proc(AstNode* proc_ast)
   auto ret_var_decl = &proc->ret_var->var_decl;
   ret_var_decl->data.size = get_type_size(proc->ret_var->type);
   proc->ret_size = ret_var_decl->data.size;
-  list_append(arena, &pre_fp_data, &ret_var_decl->data);
+  if(proc->ret_size > 0)
+    list_append(arena, &pre_fp_data, &ret_var_decl->data);
+  else
+  {
+    assert(proc->ret_size == 0);
+    assert(proc->ret_var->type == basic_type_void);
+  }
 
   /* formals */
   for(ListItem* list_item = proc->args.first;

@@ -284,8 +284,8 @@ typedef struct AstNode
 
     struct {
       AstOpKind op;
-      AstNode* lhs;
-      AstNode* rhs;
+      AstNode* left_operand;
+      AstNode* right_operand;
 
       /* runtime */
       char* label_end; // for boolean expressions
@@ -416,8 +416,8 @@ typedef struct AstNode
     enum_decl;
 
     struct {
-      AstNode* lhs;
-      AstNode* rhs;
+      AstNode* left_operand;
+      AstNode* right_operand;
     }
     accessor;
 
@@ -678,19 +678,19 @@ void DEBUG_print_arena_usage(char* tag);
 bool32 parse(TokenStream* input, AstNode** node);
 void init_types();
 bool32 semantic_analysis(AstNode* ast);
-Symbol* lookup_symbol(char* name, SymbolKind kind);
 AstNode* new_bin_expr(SourceLocation* src_loc);
 AstNode* new_id(SourceLocation* src_loc, char* name);
 AstNode* clone_id(AstNode* id);
 AstNode* new_var_decl(SourceLocation* src_loc);
 AstNode* new_var_occur(SourceLocation* src_loc);
 AstNode* new_call(SourceLocation* src_loc);
-Type* new_proc_type(Type* args, Type* ret);
 Type* new_typevar();
+Type* new_proc_type(Type* args, Type* ret);
 Type* new_pointer_type(Type* pointee);
 Type* new_product_type(Type* left, Type* right);
 Type* new_array_type(int dim, Type* elem_type);
 Type* make_type_of_node_list(List* node_list);
+Type* get_type_repr(Type* type);
 bool32 type_unif(Type* type_a, Type* type_b);
 bool32 build_runtime(AstNode* ast);
 void codegen(List* code, AstNode* module_ast);

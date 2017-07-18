@@ -388,8 +388,8 @@ do_var_decl(AstNode* block, AstNode* var_ast)
       var_decl->assign_expr = new_bin_expr(&var_ast->src_loc);
       use(var_decl->assign_expr, bin_expr);
       bin_expr->op = AstOpKind_Assign;
-      bin_expr->lhs = new_id(&var_ast->src_loc, var_decl->id->id.name);;
-      bin_expr->rhs = var_decl->init_expr;
+      bin_expr->left_operand = new_id(&var_ast->src_loc, var_decl->id->id.name);;
+      bin_expr->right_operand = var_decl->init_expr;
 
       success = do_expression(block, var_decl->assign_expr, &var_decl->assign_expr);
     }
@@ -446,12 +446,12 @@ do_expression(AstNode* block, AstNode* expr_ast, AstNode** out_ast)
   if(expr_ast->kind == AstNodeKind_BinExpr)
   {
     use(expr_ast, bin_expr);
-    if(success = do_expression(block, bin_expr->lhs, &bin_expr->lhs)
-      && do_expression(block, bin_expr->rhs, &bin_expr->rhs))
+    if(success = do_expression(block, bin_expr->left_operand, &bin_expr->left_operand)
+      && do_expression(block, bin_expr->right_operand, &bin_expr->right_operand))
     {
-      if(type_unif(bin_expr->lhs->type, bin_expr->rhs->type))
+      if(type_unif(bin_expr->left_operand->type, bin_expr->right_operand->type))
       {
-        expr_ast->type = bin_expr->lhs->type;
+        expr_ast->type = bin_expr->left_operand->type;
         if(is_arithmetic_op(bin_expr->op) || is_relation_op(bin_expr->op))
         {
           if(type_unif(expr_ast->type, basic_type_int) || type_unif(expr_ast->type, basic_type_float))
@@ -611,7 +611,17 @@ do_proc_decl(AstNode* proc_ast)
       scope_end();
 
       proc_ast->type = new_proc_type(make_type_of_node_list(&proc->args), proc->ret_var->type);
-      success = register_proc_decl(proc_ast);
+      //FIXME: HACK ALERT!
+      if((proc->ret_var->type != basic_type_void) && !proc->body->type)
+        success = compile_error(&proc_ast->src_loc, "Proc must return a `%s`", get_type_printstr(proc->ret_var->type));
+      else
+      {
+        if(proc->body->type)
+          assert(type_unif(proc->ret_var->type, proc->body->type));
+        proc->body->type = proc->ret_var->type;
+        success = register_proc_decl(proc_ast);
+      }
+      /////
     }
   }
   return success;
@@ -722,6 +732,7 @@ do_statement(AstNode* encl_proc, AstNode* block, AstNode* encl_loop, AstNode* st
       use(stmt, ret_stmt);
       ret_stmt->proc = encl_proc;
       ret_stmt->nesting_depth = block->block.nesting_depth - encl_proc->proc.body->block.nesting_depth;
+      assert(!stmt->type);
       stmt->type = basic_type_void;
 
       AstNode* ret_expr = ret_stmt->expr;
@@ -733,8 +744,8 @@ do_statement(AstNode* encl_proc, AstNode* block, AstNode* encl_loop, AstNode* st
         ret_stmt->assign_expr = new_bin_expr(&stmt->src_loc);
         use(ret_stmt->assign_expr, bin_expr);
         bin_expr->op = AstOpKind_Assign;
-        bin_expr->lhs = new_id(&ret_expr->src_loc, ret_var->var_decl.id->id.name);
-        bin_expr->rhs = ret_expr;
+        bin_expr->left_operand = new_id(&ret_expr->src_loc, ret_var->var_decl.id->id.name);
+        bin_expr->right_operand = ret_expr;
 
         if(success = do_expression(block, ret_stmt->assign_expr, &ret_stmt->assign_expr))
           stmt->type = ret_stmt->assign_expr->type;
@@ -744,8 +755,18 @@ do_statement(AstNode* encl_proc, AstNode* block, AstNode* encl_loop, AstNode* st
         success = compile_error(&stmt->src_loc,
                                 "return type : expected `%s`, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(stmt->type));
       }
+
       if(success)
-        assert(type_unif(stmt->type, encl_proc->proc.ret_var->type));
+      {
+        //FIXME: HACK ALERT!!
+        use(encl_proc, proc);
+        assert(type_unif(stmt->type, proc->ret_var->type));
+        if(proc->body->type)
+          success = type_unif(proc->body->type, stmt->type);
+        else
+          proc->body->type = stmt->type;
+        /////
+      }
     }
     else
       success = compile_error(&stmt->src_loc, "Unexpected `return` at this location");

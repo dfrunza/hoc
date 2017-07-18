@@ -596,16 +596,16 @@ do_rest_of_accessor(TokenStream* input, AstNode* left_node, AstNode** node)
      input->token.kind == TokenKind_ArrowRight)
   {
     use(*node = new_bin_expr(&input->src_loc), bin_expr);
-    bin_expr->lhs = left_node;
+    bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Dot)
       bin_expr->op = AstOpKind_MemberAccess;
     else if(input->token.kind == TokenKind_ArrowRight)
       bin_expr->op = AstOpKind_PtrMemberAccess;
 
-    if(success = get_next_token(input) && do_accessor(input, &bin_expr->rhs))
+    if(success = get_next_token(input) && do_accessor(input, &bin_expr->right_operand))
     {
-      if(bin_expr->rhs)
+      if(bin_expr->right_operand)
         success = do_rest_of_accessor(input, *node, node);
       else
       {
@@ -654,7 +654,7 @@ do_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
      input->token.kind == TokenKind_Percent)
   {
     use(*node = new_bin_expr(&input->src_loc), bin_expr);
-    bin_expr->lhs = left_node;
+    bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Star)
       bin_expr->op = AstOpKind_Mul;
@@ -665,9 +665,9 @@ do_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
     else
       assert(false);
 
-    if(success = get_next_token(input) && do_factor(input, &bin_expr->rhs))
+    if(success = get_next_token(input) && do_factor(input, &bin_expr->right_operand))
     {
-      if(bin_expr->rhs)
+      if(bin_expr->right_operand)
         success = do_rest_of_factor(input, *node, node);
       else
       {
@@ -704,7 +704,7 @@ do_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
      input->token.kind == TokenKind_AmpersandAmpersand)
   {
     use(*node = new_bin_expr(&input->src_loc), bin_expr);
-    bin_expr->lhs = left_node;
+    bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Plus)
       bin_expr->op = AstOpKind_Add;
@@ -721,9 +721,9 @@ do_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     else
       assert(false);
 
-    if(success = get_next_token(input) && do_term(input, &bin_expr->rhs))
+    if(success = get_next_token(input) && do_term(input, &bin_expr->right_operand))
     {
-      if(bin_expr->rhs)
+      if(bin_expr->right_operand)
         success = do_rest_of_term(input, *node, node);
       else
       {
@@ -761,7 +761,7 @@ do_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
      input->token.kind == TokenKind_AngleRightEquals)
   {
     use(*node = new_bin_expr(&input->src_loc), bin_expr);
-    bin_expr->lhs = left_node;
+    bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Equals)
       bin_expr->op = AstOpKind_Assign;
@@ -778,9 +778,9 @@ do_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
     else if(input->token.kind == TokenKind_AngleRightEquals)
       bin_expr->op = AstOpKind_LogicGreaterEquals;
 
-    if(success = get_next_token(input) && do_expression(input, &bin_expr->rhs))
+    if(success = get_next_token(input) && do_expression(input, &bin_expr->right_operand))
     {
-      if(!bin_expr->rhs)
+      if(!bin_expr->right_operand)
       {
         putback_token(input);
         success = compile_error(&input->src_loc, "Operand expected, at `%s`", get_token_printstr(&input->token));
@@ -1802,8 +1802,8 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     else if(node->kind == AstNodeKind_BinExpr)
     {
       DEBUG_print_line(str, indent_level, "op: %s", get_ast_op_printstr(node->bin_expr.op));
-      DEBUG_print_ast_node(str, indent_level, node->bin_expr.lhs, "lhs");
-      DEBUG_print_ast_node(str, indent_level, node->bin_expr.rhs, "rhs");
+      DEBUG_print_ast_node(str, indent_level, node->bin_expr.left_operand, "left_operand");
+      DEBUG_print_ast_node(str, indent_level, node->bin_expr.right_operand, "right_operand");
     }
     else if(node->kind == AstNodeKind_UnrExpr)
     {

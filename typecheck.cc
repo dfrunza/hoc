@@ -132,8 +132,8 @@ copy_type(Type* type)
   return copy;
 }
 
-local Type*
-find_set_representative(Type* type)
+Type*
+get_type_repr(Type* type)
 {
   Type* result = type;
   while(type->repr_type)
@@ -157,8 +157,8 @@ bool32
 type_unif(Type* type_a, Type* type_b)
 {
   bool32 success = false;
-  Type* repr_type_a = find_set_representative(type_a);
-  Type* repr_type_b = find_set_representative(type_b);
+  Type* repr_type_a = get_type_repr(type_a);
+  Type* repr_type_b = get_type_repr(type_b);
 
   if(repr_type_a->kind == TypeKind_TypeVar || repr_type_b->kind == TypeKind_TypeVar)
   {
@@ -225,7 +225,7 @@ find_pair(List* subst_list, Type* type)
 local Type*
 type_subst(List* subst_list, Type* type)
 {
-  type = find_set_representative(type);
+  type = get_type_repr(type);
   Type* subst = 0;
 
   TypePair* pair = find_pair(subst_list, type);

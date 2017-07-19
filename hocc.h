@@ -8,6 +8,7 @@
 #define BINCODE_GROOVE "BIN"
 
 typedef struct AstNode AstNode;
+typedef struct AstBlock AstBlock;
 typedef struct Type Type;
 typedef struct Symbol Symbol;
 
@@ -230,7 +231,6 @@ typedef struct
 }
 AstId;
 
-typedef struct AstBlock AstBlock;
 typedef struct AstBlock
 {
   AstNode;
@@ -299,7 +299,7 @@ typedef struct
   AstNode;
 
   /* syntactic */
-  AstNode* type_id;
+  AstNode* type_expr;
   AstId* id;
   AstNode* init_expr;
 
@@ -335,7 +335,7 @@ typedef struct
   AstNode;
 
   /* syntactic */
-  AstNode* ret_type;
+  AstNode* ret_type_expr;
   AstId* id;
   List args;
   AstBlock* body;

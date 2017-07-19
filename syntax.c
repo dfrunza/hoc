@@ -933,7 +933,7 @@ do_formal_arg(TokenStream* input, AstNode** node)
   {
     AstVarDecl* var_decl = new_var_decl(&input->src_loc);
     *node = (AstNode*)var_decl;
-    var_decl->type_id = type;
+    var_decl->type_expr = type;
 
     if(input->token.kind == TokenKind_Id)
     {
@@ -1065,7 +1065,7 @@ do_var_decl(TokenStream* input, AstNode** node)
         AstVarDecl* var_decl = new_var_decl(&input->src_loc);
         *node = (AstNode*)var_decl;
 
-        var_decl->type_id = type;
+        var_decl->type_expr = type;
         var_decl->id = new_id(&input->src_loc, input->token.lexeme);
 
         if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
@@ -1287,9 +1287,9 @@ do_proc_decl(TokenStream* input, AstNode** node)
     AstProc* proc = new_proc(&input->src_loc);
     *node = (AstNode*)proc;
 
-    if(success = get_next_token(input) && do_type_expr(input, &proc->ret_type))
+    if(success = get_next_token(input) && do_type_expr(input, &proc->ret_type_expr))
     {
-      if(proc->ret_type)
+      if(proc->ret_type_expr)
       {
         if(input->token.kind == TokenKind_Id)
         {
@@ -1500,7 +1500,7 @@ do_struct_member_list(TokenStream* input, List* member_list)
         {
           AstVarDecl* var_decl = new_var_decl(&input->src_loc);
           member = (AstNode*)var_decl;
-          var_decl->type_id = type;
+          var_decl->type_expr = type;
 
           if(input->token.kind == TokenKind_Id)
           {
@@ -1813,7 +1813,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     else if(node->kind == AstNodeKind_Proc)
     {
       AstProc* proc = (AstProc*)node;
-      DEBUG_print_ast_node(str, indent_level, proc->ret_type, "ret_type");
+      DEBUG_print_ast_node(str, indent_level, proc->ret_type_expr, "ret_type");
       DEBUG_print_ast_node(str, indent_level, (AstNode*)proc->id, "id");
       DEBUG_print_ast_node_list(str, indent_level, &proc->args, "args");
       DEBUG_print_ast_node(str, indent_level, (AstNode*)proc->body, "body");
@@ -1821,7 +1821,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     else if(node->kind == AstNodeKind_VarDecl)
     {
       AstVarDecl* var_decl = (AstVarDecl*)node;
-      DEBUG_print_ast_node(str, indent_level, var_decl->type_id, "type_id");
+      DEBUG_print_ast_node(str, indent_level, var_decl->type_expr, "type_id");
       DEBUG_print_ast_node(str, indent_level, (AstNode*)var_decl->id, "id");
       DEBUG_print_ast_node(str, indent_level, var_decl->init_expr, "init_expr");
     }

@@ -1,23 +1,16 @@
+/*
 include "hlib\\power.hoc";
 include "hlib\\gcd.hoc";
-/*
 include "hlib\\abs.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\minmax.hoc";
 */
 
-proc int foo();
-
-proc int foo()
-{
-  return 1001;
-}
-
 proc int main()
 {
-  /*return power(-2, 3);*/
-  return gcd(84, 30);
+  var char p;
+  return 0;
 }
 
 

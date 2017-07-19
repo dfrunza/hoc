@@ -117,22 +117,27 @@ register_id(AstId* id, SymbolKind kind)
 }
 
 local bool32
-register_type_occur(AstId* type_id)
+register_type_occur(AstNode* type_expr)
 {
-  assert(type_id->kind == AstNodeKind_Id);
   bool32 success = true;
 
-  Symbol* decl_sym = lookup_symbol(type_id->name, SymbolKind_TypeDecl);
-  if(decl_sym)
+  if(type_expr->kind == AstNodeKind_Id)
   {
-    assert(decl_sym->type);
-    Type* type = decl_sym->type;
-    Symbol* occur_sym = register_id(type_id, SymbolKind_TypeOccur);
-    occur_sym->type = type;
-    type_id->type = type;
+    AstId* type_id = (AstId*)type_expr;
+    Symbol* decl_sym = lookup_symbol(type_id->name, SymbolKind_TypeDecl);
+    if(decl_sym)
+    {
+      assert(decl_sym->type);
+      Type* type = decl_sym->type;
+      Symbol* occur_sym = register_id(type_id, SymbolKind_TypeOccur);
+      occur_sym->type = type;
+      type_id->type = type;
+    }
+    else
+      success = compile_error(&type_id->src_loc, "Unknown type `%s`", type_id->name);
   }
   else
-    success = compile_error(&type_id->src_loc, "Unknown type `%s`", type_id->name);
+    fail("only simple types are supported for now");
   return success;
 }
 
@@ -181,22 +186,17 @@ register_var_decl(AstVarDecl* var_decl)
 {
   bool32 success = true;
 
-  if(var_decl->type_id->kind == AstNodeKind_Id)
+  AstNode* type_expr = var_decl->type_expr;
+  if(register_type_occur(type_expr))
   {
-    AstId* type_id = (AstId*)var_decl->type_id;
-    if(register_type_occur(type_id))
+    AstId* var_id = var_decl->id;
+    var_id->type = type_expr->type;
+    if(success = register_new_id(var_id, SymbolKind_VarDecl))
     {
-      AstId* var_id = (AstId*)var_decl->id;
-      var_id->type = type_id->type;
-      if(success = register_new_id(var_id, SymbolKind_VarDecl))
-      {
-        var_decl->type = type_id->type;
-        var_id->sym->ast = (AstNode*)var_decl;
-      }
+      var_decl->type = type_expr->type;
+      var_id->sym->ast = (AstNode*)var_decl;
     }
   }
-  else
-    fail("only simple types are supported for now");
   return success;
 }
 
@@ -569,9 +569,10 @@ do_proc_ret_var(AstBlock* block, AstProc* proc)
   AstVarDecl* var_decl = new_var_decl(&proc->src_loc);
   proc->ret_var = var_decl;
   var_decl->id = make_tempvar_id(&proc->src_loc, "ret");
-  if(proc->ret_type->kind != AstNodeKind_Id)
-    fail("compound types not implemented");
-  var_decl->type_id = (AstNode*)clone_id((AstId*)proc->ret_type);
+  if(proc->ret_type_expr->kind == AstNodeKind_Id)
+    var_decl->type_expr = (AstNode*)clone_id((AstId*)proc->ret_type_expr);
+  else
+    fail("only simple types are supported");
   if(success = register_var_decl(var_decl))
     var_decl->decl_block = block;
   return success;

@@ -1,20 +1,22 @@
-include "hlib\\fibo.hoc";
-/*
-include "hlib\\sqrt.hoc";
-include "hlib\\gcd.hoc";
-include "hlib\\abs.hoc";
 include "hlib\\power.hoc";
+/*
+include "hlib\\abs.hoc";
+include "hlib\\gcd.hoc";
+include "hlib\\sqrt.hoc";
+include "hlib\\fibo.hoc";
 include "hlib\\minmax.hoc";
 */
 
-proc void foo()
+proc int foo();
+
+proc int foo()
 {
+  return 1001;
 }
 
 proc int main()
 {
-  fibo(10);
-  return 11;
+  return power(-2, 3);
 }
 
 

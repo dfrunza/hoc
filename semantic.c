@@ -258,7 +258,8 @@ register_call(AstCall* call)
     Symbol* call_sym = register_id(id, SymbolKind_Call);
     call_sym->ast = (AstNode*)call;
     call->proc_sym = proc_sym;
-    call->type = proc_sym->ast->type;
+    Type* proc_type = proc_sym->ast->type;
+    call->type = proc_type->proc.ret;
   }
   else
     success = compile_error(&call->src_loc, "Unknown proc `%s`", id->name);
@@ -594,7 +595,7 @@ do_proc_decl(AstProc* proc)
 
       proc->type = new_proc_type(make_type_of_node_list(&proc->args), proc->ret_var->type);
       //FIXME: HACK ALERT!
-      if((proc->ret_var->type != basic_type_void) && !proc->body->type)
+      if((proc->ret_var->type != basic_type_void) && !proc->body->type && !proc->is_decl)
         success = compile_error(&proc->src_loc, "Proc must return a `%s`", get_type_printstr(proc->ret_var->type));
       else
       {

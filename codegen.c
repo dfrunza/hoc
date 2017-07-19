@@ -3,7 +3,7 @@
 extern MemoryArena* arena;
 
 local void gen_load_rvalue(List*, AstNode*);
-local void gen_load_lvalue(List*, AstNode*);
+local void gen_load_lvalue(List*, AstVarOccur*);
 local void gen_statement(List*, AstNode*);
 
 local void
@@ -72,17 +72,14 @@ emit_instr_str(List* instr_list, Opcode opcode, char* str)
 }
 
 local void
-gen_bin_expr(List* code, AstNode* expr_ast)
+gen_bin_expr(List* code, AstBinExpr* bin_expr)
 {
-  assert(expr_ast->kind == AstNodeKind_BinExpr);
-  use(expr_ast, bin_expr);
-
   if(bin_expr->op == AstOpKind_Assign)
   {
     gen_load_rvalue(code, bin_expr->right_operand);
 
     assert(bin_expr->left_operand->kind = AstNodeKind_VarOccur);
-    gen_load_lvalue(code, bin_expr->left_operand);
+    gen_load_lvalue(code, (AstVarOccur*)bin_expr->left_operand);
 
     emit_instr(code, Opcode_STORE);
   }
@@ -99,11 +96,10 @@ gen_bin_expr(List* code, AstNode* expr_ast)
       case AstOpKind_Div:
       case AstOpKind_Mod:
       {
-        Type* expr_type = expr_ast->type;
+        Type* expr_type = bin_expr->type;
         if(expr_type->kind == TypeKind_Basic)
         {
-          use(expr_type, basic);
-          if(basic->kind == BasicTypeKind_Int)
+          if(expr_type->basic.kind == BasicTypeKind_Int)
           {
             if(bin_expr->op == AstOpKind_Add)
               emit_instr(code, Opcode_ADD);
@@ -116,7 +112,7 @@ gen_bin_expr(List* code, AstNode* expr_ast)
             else if(bin_expr->op == AstOpKind_Mod)
               emit_instr(code, Opcode_MOD);
           }
-          else if(basic->kind == BasicTypeKind_Float)
+          else if(expr_type->basic.kind == BasicTypeKind_Float)
           {
             if(bin_expr->op == AstOpKind_Add)
               emit_instr(code, Opcode_ADDF);
@@ -196,15 +192,12 @@ gen_bin_expr(List* code, AstNode* expr_ast)
 }
 
 local void
-gen_unr_expr(List* code, AstNode* expr_ast)
+gen_unr_expr(List* code, AstUnrExpr* unr_expr)
 {
-  assert(expr_ast->kind == AstNodeKind_UnrExpr);
-  use(expr_ast, unr_expr);
-
   gen_load_rvalue(code, unr_expr->operand);
   if(unr_expr->op == AstOpKind_Neg)
   {
-    Type* expr_type = expr_ast->type;
+    Type* expr_type = unr_expr->type;
     if(expr_type->kind == TypeKind_Basic)
     {
       if(expr_type->basic.kind == BasicTypeKind_Int)
@@ -227,12 +220,9 @@ gen_unr_expr(List* code, AstNode* expr_ast)
 }
 
 local void
-gen_call(List* code, AstNode* call_ast)
+gen_call(List* code, AstCall* call)
 {
-  assert(call_ast->kind == AstNodeKind_Call);
-  use(call_ast, call);
-  AstNode* proc_ast = call->proc_sym->ast;
-  use(proc_ast, proc);
+  AstProc* proc = (AstProc*)call->proc_sym->ast;
   emit_instr_int(code, Opcode_ALLOC, proc->ret_size);
 
   for(ListItem* list_item = call->args.first;
@@ -247,11 +237,8 @@ gen_call(List* code, AstNode* call_ast)
 }
 
 local void
-gen_cast(List* code, AstNode* cast_ast)
+gen_cast(List* code, AstCast* cast)
 {
-  assert(cast_ast->kind == AstNodeKind_Cast);
-  use(cast_ast, cast);
-
   gen_load_rvalue(code, cast->expr);
 
   Type* to_type = cast->to_type->type;
@@ -284,10 +271,8 @@ gen_cast(List* code, AstNode* cast_ast)
 }
 
 local void
-gen_load_lvalue(List* code, AstNode* var_ast)
+gen_load_lvalue(List* code, AstVarOccur* var_occur)
 {
-  assert(var_ast->kind == AstNodeKind_VarOccur);
-  use(var_ast, var_occur);
   DataArea* data = var_occur->data;
   AccessLink* link = var_occur->link;
 
@@ -309,43 +294,42 @@ gen_load_rvalue(List* code, AstNode* ast)
 {
   if(ast->kind == AstNodeKind_VarOccur)
   {
-    gen_load_lvalue(code, ast);
+    gen_load_lvalue(code, (AstVarOccur*)ast);
     emit_instr(code, Opcode_LOAD);
   }
   else if(ast->kind == AstNodeKind_Call)
-    gen_call(code, ast);
+    gen_call(code, (AstCall*)ast);
   else if(ast->kind == AstNodeKind_Literal)
   {
-    if(ast->literal.kind == AstLiteralKind_Int || ast->literal.kind == AstLiteralKind_Bool)
-      emit_instr_int(code, Opcode_PUSH, ast->literal.int_val);
-    else if(ast->literal.kind == AstLiteralKind_Float)
-      emit_instr_float(code, Opcode_PUSHF, ast->literal.float_val);
+    AstLiteral* literal = (AstLiteral*)ast;
+    if(literal->lit_kind == AstLiteralKind_Int || literal->lit_kind == AstLiteralKind_Bool)
+      emit_instr_int(code, Opcode_PUSH, literal->int_val);
+    else if(literal->kind == AstLiteralKind_Float)
+      emit_instr_float(code, Opcode_PUSHF, literal->float_val);
     else
       assert(false);
   }
   else if(ast->kind == AstNodeKind_BinExpr)
-    gen_bin_expr(code, ast);
+    gen_bin_expr(code, (AstBinExpr*)ast);
   else if(ast->kind == AstNodeKind_UnrExpr)
-    gen_unr_expr(code, ast);
+    gen_unr_expr(code, (AstUnrExpr*)ast);
   else if(ast->kind == AstNodeKind_Cast)
-    gen_cast(code, ast);
+    gen_cast(code, (AstCast*)ast);
   else
     assert(false);
 }
 
 local void
-gen_return_stmt(List* code, AstNode* ret_ast)
+gen_return_stmt(List* code, AstReturnStmt* ret_stmt)
 {
-  assert(ret_ast->kind == AstNodeKind_ReturnStmt);
-  use(ret_ast, ret_stmt);
-
   if(ret_stmt->assign_expr)
   {
-    gen_bin_expr(code, ret_stmt->assign_expr);
+    assert(ret_stmt->assign_expr->kind == AstNodeKind_BinExpr);
+    gen_bin_expr(code, (AstBinExpr*)ret_stmt->assign_expr);
     emit_instr(code, Opcode_POP);
   }
 
-  use(ret_stmt->proc, proc);
+  AstProc* proc = (AstProc*)ret_stmt->proc;
   int depth = ret_stmt->nesting_depth;
   while(depth--)
     emit_instr(code, Opcode_LEAVE);
@@ -353,37 +337,31 @@ gen_return_stmt(List* code, AstNode* ret_ast)
 }
 
 local void
-gen_break_stmt(List* code, AstNode* break_ast)
+gen_break_stmt(List* code, AstBreakStmt* break_stmt)
 {
-  assert(break_ast->kind == AstNodeKind_BreakStmt);
-  use(break_ast, loop_ctrl);
-
   char* label_break = 0;
-  auto loop = loop_ctrl->loop;
-  if(loop_ctrl->loop->kind == AstNodeKind_WhileStmt)
-    label_break = loop->while_stmt.label_break;
-  else if(loop_ctrl->loop->kind == AstNodeKind_WhileStmt)
-    label_break = loop->for_stmt.label_break;
+  AstNode* loop = break_stmt->loop;
+  if(loop->kind == AstNodeKind_WhileStmt)
+    label_break = ((AstWhileStmt*)loop)->label_break;
+  else if(loop->kind == AstNodeKind_ForStmt)
+    label_break = ((AstForStmt*)loop)->label_break;
   else
     assert(false);
 
-  int depth = loop_ctrl->nesting_depth;
+  int depth = break_stmt->nesting_depth;
   while(depth--)
     emit_instr(code, Opcode_LEAVE);
   emit_instr_str(code, Opcode_GOTO, label_break);
 }
 
 local void
-gen_block(List* code, AstNode* block_ast)
+gen_block(List* code, AstBlock* block)
 {
-  assert(block_ast->kind == AstNodeKind_Block);
-  use(block_ast, block);
-
   for(ListItem* list_item = block->access_links.first;
       list_item;
       list_item = list_item->next)
   {
-    auto link = (AccessLink*)list_item->elem;
+    AccessLink* link = (AccessLink*)list_item->elem;
     emit_instr_reg(code, Opcode_PUSH, RegName_FP);
     assert(link->actv_rec_offset > 0);
     int offset = link->actv_rec_offset - 1;
@@ -409,15 +387,12 @@ gen_block(List* code, AstNode* block_ast)
 }
 
 local void
-gen_proc(List* code, AstNode* proc_ast)
+gen_proc(List* code, AstProc* proc)
 {
-  assert(proc_ast->kind == AstNodeKind_Proc);
-  use(proc_ast, proc);
-
   emit_instr_str(code, Opcode_LABEL, proc->label);
   emit_instr_int(code, Opcode_ALLOC, proc->locals_size);
 
-  auto body_block = &proc->body->block;
+  AstBlock* body_block = (AstBlock*)proc->body;
   for(ListItem* list_item = body_block->node_list.first;
       list_item;
       list_item = list_item->next)
@@ -430,11 +405,8 @@ gen_proc(List* code, AstNode* proc_ast)
 }
 
 local void
-gen_if_stmt(List* code, AstNode* if_ast)
+gen_if_stmt(List* code, AstIfStmt* if_stmt)
 {
-  assert(if_ast->kind == AstNodeKind_IfStmt);
-  use(if_ast, if_stmt);
-
   gen_load_rvalue(code, if_stmt->cond_expr);
 
   if(if_stmt->else_body)
@@ -443,7 +415,7 @@ gen_if_stmt(List* code, AstNode* if_ast)
     emit_instr_str(code, Opcode_JUMPZ, if_stmt->label_end);
 
   if(if_stmt->body->kind == AstNodeKind_Block)
-    gen_block(code, if_stmt->body);
+    gen_block(code, (AstBlock*)if_stmt->body);
   else
     gen_statement(code, if_stmt->body);
 
@@ -454,7 +426,7 @@ gen_if_stmt(List* code, AstNode* if_ast)
     emit_instr_str(code, Opcode_LABEL, if_stmt->label_else);
     AstNode* else_body = if_stmt->else_body;
     if(else_body->kind == AstNodeKind_Block)
-      gen_block(code, else_body);
+      gen_block(code, (AstBlock*)else_body);
     else
       gen_statement(code, else_body);
   }
@@ -463,16 +435,13 @@ gen_if_stmt(List* code, AstNode* if_ast)
 }
 
 local void
-gen_while_stmt(List* code, AstNode* while_ast)
+gen_while_stmt(List* code, AstWhileStmt* while_stmt)
 {
-  assert(while_ast->kind == AstNodeKind_WhileStmt);
-  use(while_ast, while_stmt);
-
   emit_instr_str(code, Opcode_LABEL, while_stmt->label_eval);
   gen_load_rvalue(code, while_stmt->cond_expr);
   emit_instr_str(code, Opcode_JUMPZ, while_stmt->label_break);
   if(while_stmt->body->kind == AstNodeKind_Block)
-    gen_block(code, while_stmt->body);
+    gen_block(code, (AstBlock*)while_stmt->body);
   else
     gen_statement(code, while_stmt->body);
   emit_instr_str(code, Opcode_GOTO, while_stmt->label_eval);
@@ -491,29 +460,28 @@ gen_statement(List* code, AstNode* ast)
 {
   if(ast->kind == AstNodeKind_BinExpr)
   {
-    assert(ast->bin_expr.op == AstOpKind_Assign);
-    gen_bin_expr(code, ast);
+    gen_bin_expr(code, (AstBinExpr*)ast);
     emit_instr(code, Opcode_POP);
   }
   else if(ast->kind == AstNodeKind_Call)
   {
-    gen_call(code, ast);
+    gen_call(code, (AstCall*)ast);
     emit_instr(code, Opcode_POP);
   }
   else if(ast->kind == AstNodeKind_VarDecl)
   {
-    use(ast, var_decl);
+    AstVarDecl* var_decl = (AstVarDecl*)ast;
     if(var_decl->assign_expr)
       gen_statement(code, var_decl->assign_expr);
   }
   else if(ast->kind == AstNodeKind_ReturnStmt)
-    gen_return_stmt(code, ast);
+    gen_return_stmt(code, (AstReturnStmt*)ast);
   else if(ast->kind == AstNodeKind_BreakStmt)
-    gen_break_stmt(code, ast);
+    gen_break_stmt(code, (AstBreakStmt*)ast);
   else if(ast->kind == AstNodeKind_IfStmt)
-    gen_if_stmt(code, ast);
+    gen_if_stmt(code, (AstIfStmt*)ast);
   else if(ast->kind == AstNodeKind_WhileStmt)
-    gen_while_stmt(code, ast);
+    gen_while_stmt(code, (AstWhileStmt*)ast);
   else if(ast->kind == AstNodeKind_EmptyStmt)
     gen_empty_stmt(code);
   else
@@ -521,25 +489,23 @@ gen_statement(List* code, AstNode* ast)
 }
 
 void
-codegen(List* code, AstNode* module_ast)
+codegen(List* code, AstModule* module)
 {
-  assert(module_ast->kind == AstNodeKind_Module);
-  use(module_ast, module);
-
   gen_statement(code, module->main_stmt);
   emit_instr(code, Opcode_HALT);
 
-  auto body_block = &module->body->block;
+  AstBlock* body_block = (AstBlock*)module->body;
   for(ListItem* list_item = body_block->node_list.first;
       list_item;
       list_item = list_item->next)
   {
-    auto ast = (AstNode*)list_item->elem;
+    AstNode* ast = (AstNode*)list_item->elem;
     if(ast->kind == AstNodeKind_Proc)
     {
+      AstProc* proc = (AstProc*)ast;
       //FIXME: Remove proc decls from the AST
-      if(!ast->proc.is_decl)
-        gen_proc(code, ast);
+      if(!proc->is_decl)
+        gen_proc(code, proc);
     }
     else
       fail("not implemented");
@@ -572,7 +538,7 @@ print_code(VmProgram* vm_program)
       list_item;
       list_item = list_item->next)
   {
-    auto instr = (Instruction*)list_item->elem;
+    Instruction* instr = (Instruction*)list_item->elem;
     switch(instr->opcode)
     {
       case Opcode_PUSH:

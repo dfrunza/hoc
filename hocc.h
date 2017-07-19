@@ -1004,8 +1004,8 @@ Type* new_array_type(int dim, Type* elem_type);
 Type* make_type_of_node_list(List* node_list);
 Type* get_type_repr(Type* type);
 bool32 type_unif(Type* type_a, Type* type_b);
-bool32 build_runtime(AstNode* ast);
-void codegen(List* code, AstNode* module_ast);
+bool32 build_runtime(AstModule* ast);
+void codegen(List* code, AstModule* module);
 void print_code(VmProgram* vm_program);
 bool32 convert_hasm_to_bincode(char* hasm_text, BinCode** code);
 

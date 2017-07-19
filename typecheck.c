@@ -88,7 +88,7 @@ make_type_of_node_list(List* node_list)
         list_item;
         list_item = list_item->next)
     {
-      auto node = (AstNode*)list_item->elem;
+      AstNode* node = (AstNode*)list_item->elem;
       type = new_product_type(type, node->type);
     }
   }
@@ -212,7 +212,7 @@ find_pair(List* subst_list, Type* type)
       list_item;
       list_item = list_item->next)
   {
-    auto pair = (TypePair*)list_item->elem;
+    TypePair* pair = (TypePair*)list_item->elem;
     if(pair->key == type)
     {
       result = pair;

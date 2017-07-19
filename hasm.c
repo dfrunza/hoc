@@ -155,7 +155,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
 
   for(int instr_address = 0; instr_address < code->instr_count; instr_address++)
   {
-    Instruction instr = {};
+    Instruction instr = {0};
     InstructionLine* instr_line = &source->lines[instr_address];
     instr.source_line_nr = instr_line->source_line_nr;
 

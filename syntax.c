@@ -1901,7 +1901,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     }
     else if(node->kind == AstNodeKind_Cast)
     {
-      AstCast* cast = (AstCast*)cast;
+      AstCast* cast = (AstCast*)node;
       DEBUG_print_ast_node(str, indent_level, cast->to_type, "to_type");
       DEBUG_print_ast_node(str, indent_level, cast->expr, "expr");
     }

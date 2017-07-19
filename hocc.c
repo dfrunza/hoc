@@ -144,6 +144,7 @@ translate(char* file_path, char* hoc_text)
   AstNode* ast = 0;
   if(vm_program->success = parse(&token_stream, &ast))
   {
+    assert(ast->kind == AstNodeKind_Module);
     if(DEBUG_enabled)
     {/*>>>*/
       DEBUG_print_arena_usage("Syntactic");
@@ -171,12 +172,12 @@ translate(char* file_path, char* hoc_text)
         arena_free(DEBUG_arena);
       }/*<<<*/
 
-      if(vm_program->success = build_runtime(ast))
+      if(vm_program->success = build_runtime((AstModule*)ast))
       {
         if(DEBUG_enabled)
           DEBUG_print_arena_usage("Runtime");
 
-        codegen(&vm_program->instr_list, ast);
+        codegen(&vm_program->instr_list, (AstModule*)ast);
         if(DEBUG_enabled)
           DEBUG_print_arena_usage("Codegen");
 

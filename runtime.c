@@ -37,7 +37,7 @@ compute_data_loc(int sp, List* areas)
       list_item;
       list_item = list_item->next)
   {
-    auto data = (DataArea*)list_item->elem;
+    DataArea* data = (DataArea*)list_item->elem;
     data->loc = sp;
     assert(data->size > 0);
     sp += data->size;
@@ -52,7 +52,7 @@ fixup_data_loc(int fp, List* areas)
       list_item;
       list_item = list_item->next)
   {
-    auto data = (DataArea*)list_item->elem;
+    DataArea* data = (DataArea*)list_item->elem;
     data->loc = data->loc - fp;
   }
 }
@@ -67,10 +67,8 @@ compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
 }
 
 local void
-do_call(AstNode* call_ast)
+do_call(AstCall* call)
 {
-  assert(call_ast->kind == AstNodeKind_Call);
-  use(call_ast, call);
   for(ListItem* list_item = call->args.first;
       list_item;
       list_item = list_item->next)
@@ -80,11 +78,8 @@ do_call(AstNode* call_ast)
 }
 
 local void
-do_block(AstNode* block_ast)
+do_block(AstBlock* block)
 {
-  assert(block_ast->kind == AstNodeKind_Block);
-
-  use(block_ast, block);
   List pre_fp_data = {0};
   list_init(&pre_fp_data);
   List post_fp_data = {0};
@@ -95,10 +90,7 @@ do_block(AstNode* block_ast)
       list_item;
       list_item = list_item->next)
   {
-    auto occur_ast = (AstNode*)list_item->elem;
-    assert(occur_ast->kind == AstNodeKind_VarOccur);
-    use(occur_ast, var_occur);
-
+    AstVarOccur* var_occur = (AstVarOccur*)list_item->elem;
     List* links_list = &block->access_links;
 
     AccessLink* link = 0;
@@ -132,10 +124,8 @@ do_block(AstNode* block_ast)
       list_item;
       list_item = list_item->next)
   {
-    auto var_ast = (AstNode*)list_item->elem;
-    assert(var_ast->kind == AstNodeKind_VarDecl);
-    use(var_ast, var_decl);
-    var_decl->data.size = get_type_size(var_ast->type);
+    AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
+    var_decl->data.size = get_type_size(var_decl->type);
     block->locals_size += var_decl->data.size;
     list_append(arena, &post_fp_data, &var_decl->data);
   }
@@ -145,10 +135,8 @@ do_block(AstNode* block_ast)
 }
 
 local void
-do_while_stmt(AstNode* while_ast)
+do_while_stmt(AstWhileStmt* while_stmt)
 {
-  assert(while_ast->kind == AstNodeKind_WhileStmt);
-  use(while_ast, while_stmt);
   do_stmt(while_stmt->cond_expr);
 
   {
@@ -170,16 +158,14 @@ do_while_stmt(AstNode* while_ast)
   }
 
   if(while_stmt->body->kind == AstNodeKind_Block)
-    do_block(while_stmt->body);
+    do_block((AstBlock*)while_stmt->body);
   else
     do_stmt(while_stmt->body);
 }
 
 local void
-do_if_stmt(AstNode* if_ast)
+do_if_stmt(AstIfStmt* if_stmt)
 {
-  assert(if_ast->kind == AstNodeKind_IfStmt);
-  use(if_ast, if_stmt);
   do_stmt(if_stmt->cond_expr);
 
   {
@@ -201,7 +187,7 @@ do_if_stmt(AstNode* if_ast)
   }
 
   if(if_stmt->body->kind == AstNodeKind_Block)
-    do_block(if_stmt->body);
+    do_block((AstBlock*)if_stmt->body);
   else
     do_stmt(if_stmt->body);
 
@@ -209,20 +195,17 @@ do_if_stmt(AstNode* if_ast)
   {
     AstNode* else_node = if_stmt->else_body;
     if(else_node->kind == AstNodeKind_Block)
-      do_block(else_node);
+      do_block((AstBlock*)else_node);
     else if(else_node->kind == AstNodeKind_IfStmt)
-      do_if_stmt(else_node);
+      do_if_stmt((AstIfStmt*)else_node);
     else
       do_stmt(else_node);
   }
 }
 
 local void
-do_bin_expr(AstNode* expr_ast)
+do_bin_expr(AstBinExpr* bin_expr)
 {
-  assert(expr_ast->kind == AstNodeKind_BinExpr);
-  use(expr_ast, bin_expr);
-
   String label_id = {0};
   str_init(&label_id, arena);
   make_unique_label(&label_id);
@@ -238,33 +221,35 @@ do_bin_expr(AstNode* expr_ast)
 }
 
 local void
-do_unr_expr(AstNode* expr_ast)
+do_unr_expr(AstUnrExpr* unr_expr)
 {
-  assert(expr_ast->kind == AstNodeKind_UnrExpr);
-  do_stmt(expr_ast->unr_expr.operand);
+  do_stmt(unr_expr->operand);
 }
 
 local void
 do_stmt(AstNode* ast)
 {
   if(ast->kind == AstNodeKind_BinExpr)
-    do_bin_expr(ast);
+    do_bin_expr((AstBinExpr*)ast);
   else if(ast->kind == AstNodeKind_UnrExpr)
-    do_unr_expr(ast);
+    do_unr_expr((AstUnrExpr*)ast);
   else if(ast->kind == AstNodeKind_Call)
-    do_call(ast);
+    do_call((AstCall*)ast);
   else if(ast->kind == AstNodeKind_IfStmt)
-    do_if_stmt(ast);
+    do_if_stmt((AstIfStmt*)ast);
   else if(ast->kind == AstNodeKind_WhileStmt)
-    do_while_stmt(ast);
+    do_while_stmt((AstWhileStmt*)ast);
   else if(ast->kind == AstNodeKind_ReturnStmt)
   {
-    use(ast, ret_stmt);
+    AstReturnStmt* ret_stmt = (AstReturnStmt*)ast;
     if(ret_stmt->assign_expr)
       do_stmt(ret_stmt->assign_expr);
   }
   else if(ast->kind == AstNodeKind_Cast)
-    do_stmt(ast->cast.expr);
+  {
+    AstCast* cast = (AstCast*)ast;
+    do_stmt(cast->expr);
+  }
   else if(ast->kind == AstNodeKind_VarOccur ||
           ast->kind == AstNodeKind_BreakStmt ||
           ast->kind == AstNodeKind_EmptyStmt ||
@@ -272,7 +257,7 @@ do_stmt(AstNode* ast)
     ; /* no-op */
   else if(ast->kind == AstNodeKind_VarDecl)
   {
-    use(ast, var_decl);
+    AstVarDecl* var_decl = (AstVarDecl*)ast;
     if(var_decl->assign_expr)
       do_stmt(var_decl->assign_expr);
   }
@@ -292,16 +277,13 @@ do_block_stmts(List* stmt_list)
 }
 
 local void
-do_proc(AstNode* proc_ast)
+do_proc(AstProc* proc)
 {
-  assert(proc_ast->kind == AstNodeKind_Proc);
-  use(proc_ast, proc);
-
-  proc->label = proc->id->id.name;
+  proc->label = proc->id->name;
 
   String label = {0};
   str_init(&label, arena);
-  str_append(&label, proc->id->id.name);
+  str_append(&label, proc->id->name);
   str_append(&label, ".proc-end");
   proc->label_end = str_cap(&label);
 
@@ -310,11 +292,11 @@ do_proc(AstNode* proc_ast)
   List post_fp_data = {0};
   list_init(&post_fp_data);
 
-  auto ret_var_decl = &proc->ret_var->var_decl;
-  ret_var_decl->data.size = get_type_size(proc->ret_var->type);
-  proc->ret_size = ret_var_decl->data.size;
+  AstVarDecl* ret_var = (AstVarDecl*)proc->ret_var;
+  ret_var->data.size = get_type_size(ret_var->type);
+  proc->ret_size = ret_var->data.size;
   if(proc->ret_size > 0)
-    list_append(arena, &pre_fp_data, &ret_var_decl->data);
+    list_append(arena, &pre_fp_data, &ret_var->data);
   else
   {
     assert(proc->ret_size == 0);
@@ -326,10 +308,8 @@ do_proc(AstNode* proc_ast)
       list_item;
       list_item = list_item->next)
   {
-    auto var_ast = (AstNode*)list_item->elem;
-    assert(var_ast->kind == AstNodeKind_VarDecl);
-    use(var_ast, var_decl);
-    var_decl->data.size = get_type_size(var_ast->type);
+    AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
+    var_decl->data.size = get_type_size(var_decl->type);
     proc->args_size += var_decl->data.size;
     list_append(arena, &pre_fp_data, &var_decl->data);
   }
@@ -338,16 +318,14 @@ do_proc(AstNode* proc_ast)
   ctrl_links->size = 3; // fp,sp,ip
   list_append(arena, &pre_fp_data, ctrl_links);
 
-  auto body_block = &proc->body->block;
+  AstBlock* body_block = (AstBlock*)proc->body;
   /* local decls */
   for(ListItem* list_item = body_block->decl_vars.first;
       list_item;
       list_item = list_item->next)
   {
-    auto var_ast = (AstNode*)list_item->elem;
-    assert(var_ast->kind == AstNodeKind_VarDecl);
-    use(var_ast, var_decl);
-    var_decl->data.size = get_type_size(var_ast->type);
+    AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
+    var_decl->data.size = get_type_size(var_decl->type);
     proc->locals_size += var_decl->data.size;
     list_append(arena, &post_fp_data, &var_decl->data);
   }
@@ -357,23 +335,22 @@ do_proc(AstNode* proc_ast)
 }
  
 bool32
-build_runtime(AstNode* module_ast)
+build_runtime(AstModule* module)
 {
-  assert(module_ast->kind == AstNodeKind_Module);
   bool32 success = true;
-  use(module_ast, module);
 
-  auto body_block = &module->body->block;
+  AstBlock* body_block = (AstBlock*)module->body;
   for(ListItem* list_item = body_block->node_list.first;
       list_item;
       list_item = list_item->next)
   {
-    auto ast = (AstNode*)list_item->elem;
+    AstNode* ast = (AstNode*)list_item->elem;
     if(ast->kind == AstNodeKind_Proc)
     {
+      AstProc* proc = (AstProc*)ast;
       //FIXME: Remove proc decls from the AST
-      if(!ast->proc.is_decl)
-        do_proc(ast);
+      if(!proc->is_decl)
+        do_proc(proc);
     }
     else
       fail("not implemented");

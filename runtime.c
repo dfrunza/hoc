@@ -243,7 +243,7 @@ do_stmt(AstNode* ast)
   {
     AstReturnStmt* ret_stmt = (AstReturnStmt*)ast;
     if(ret_stmt->assign_expr)
-      do_stmt(ret_stmt->assign_expr);
+      do_stmt((AstNode*)ret_stmt->assign_expr);
   }
   else if(ast->kind == AstNodeKind_Cast)
   {
@@ -259,7 +259,7 @@ do_stmt(AstNode* ast)
   {
     AstVarDecl* var_decl = (AstVarDecl*)ast;
     if(var_decl->assign_expr)
-      do_stmt(var_decl->assign_expr);
+      do_stmt((AstNode*)var_decl->assign_expr);
   }
   else
     assert(false);
@@ -356,7 +356,7 @@ build_runtime(AstModule* module)
       fail("not implemented");
   }
 
-  do_stmt(module->main_stmt);
+  do_stmt((AstNode*)module->main_stmt);
 
   return success;
 }

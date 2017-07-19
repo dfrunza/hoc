@@ -29,7 +29,7 @@ new_module(SourceLocation* src_loc)
   AstModule* node = mem_push_struct(arena, AstModule);
   node->kind = AstNodeKind_Module;
   node->src_loc = *src_loc;
-  node->body = (AstNode*)new_block(src_loc);
+  node->body = new_block(src_loc);
   return node;
 }
 
@@ -222,7 +222,7 @@ new_include_stmt(SourceLocation* src_loc)
   AstIncludeStmt* node = mem_push_struct(arena, AstIncludeStmt);
   node->kind = AstNodeKind_IncludeStmt;
   node->src_loc = *src_loc;
-  node->body = (AstNode*)new_block(src_loc);
+  node->body = new_block(src_loc);
   return node;
 }
 
@@ -563,6 +563,8 @@ do_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
     assert(left_node->kind == AstNodeKind_Id);
     AstCall* call = new_call(&input->src_loc);
     *node = (AstNode*)call;
+    if(left_node->kind != AstNodeKind_Id)
+      fail("the proc call can be applied to plain identifiers only");
     call->id = (AstId*)left_node;
 
     if(success = get_next_token(input) && do_actual_arg_list(input, &call->args))
@@ -1109,7 +1111,7 @@ do_for_stmt(TokenStream* input, AstNode** node)
 
     if(input->token.kind == TokenKind_OpenParens)
     {
-      success = get_next_token(input) && do_var_decl(input, &for_stmt->decl_expr)
+      success = get_next_token(input) && do_var_decl(input, &(AstNode*)for_stmt->decl_expr)
         && do_semicolon(input)
         && do_expression(input, &for_stmt->cond_expr)
         && do_semicolon(input)
@@ -1118,17 +1120,17 @@ do_for_stmt(TokenStream* input, AstNode** node)
 
       if(input->token.kind == TokenKind_CloseParens)
       {
-        if(success = get_next_token(input) && do_block(input, &for_stmt->body))
+        if(success = get_next_token(input) && do_block(input, &(AstNode*)for_stmt->body))
         {
           if(!for_stmt->body)
           {
-            if(success = do_statement(input, &for_stmt->body))
+            if(success = do_statement(input, &(AstNode*)for_stmt->body))
             {
               if(for_stmt->body)
               {
                 AstBlock* block = new_block(&input->src_loc);
                 list_append(arena, &block->node_list, for_stmt->body);
-                for_stmt->body = (AstNode*)block;
+                for_stmt->body = block;
               }
               else
               {
@@ -1303,10 +1305,10 @@ do_proc_decl(TokenStream* input, AstNode** node)
             {
               if(input->token.kind == TokenKind_CloseParens)
               {
-                if(success = get_next_token(input) && do_block(input, &proc->body))
+                if(success = get_next_token(input) && do_block(input, &(AstNode*)proc->body))
                 {
                   if(!proc->body && (proc->is_decl = success = do_semicolon(input)))
-                    proc->body = (AstNode*)new_block(&(*node)->src_loc);
+                    proc->body = new_block(&(*node)->src_loc);
                 }
               }
               else
@@ -1800,13 +1802,13 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     {
       AstModule* module = (AstModule*)node;
       DEBUG_print_line(str, indent_level, "file_path: \"%s\"", module->file_path);
-      DEBUG_print_ast_node(str, indent_level, module->body, "body");
+      DEBUG_print_ast_node(str, indent_level, (AstNode*)module->body, "body");
     }
     else if(node->kind == AstNodeKind_IncludeStmt)
     {
       AstIncludeStmt* incl_stmt = (AstIncludeStmt*)node;
       DEBUG_print_line(str, indent_level, "file_path: \"%s\"", incl_stmt->file_path);
-      DEBUG_print_ast_node(str, indent_level, incl_stmt->body, "body");
+      DEBUG_print_ast_node(str, indent_level, (AstNode*)incl_stmt->body, "body");
     }
     else if(node->kind == AstNodeKind_Proc)
     {
@@ -1814,7 +1816,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       DEBUG_print_ast_node(str, indent_level, proc->ret_type, "ret_type");
       DEBUG_print_ast_node(str, indent_level, (AstNode*)proc->id, "id");
       DEBUG_print_ast_node_list(str, indent_level, &proc->args, "args");
-      DEBUG_print_ast_node(str, indent_level, proc->body, "body");
+      DEBUG_print_ast_node(str, indent_level, (AstNode*)proc->body, "body");
     }
     else if(node->kind == AstNodeKind_VarDecl)
     {
@@ -1894,10 +1896,10 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     else if(node->kind == AstNodeKind_ForStmt)
     {
       AstForStmt* for_stmt = (AstForStmt*)node;
-      DEBUG_print_ast_node(str, indent_level, for_stmt->decl_expr, "decl_expr");
+      DEBUG_print_ast_node(str, indent_level, (AstNode*)for_stmt->decl_expr, "decl_expr");
       DEBUG_print_ast_node(str, indent_level, for_stmt->cond_expr, "cond_expr");
       DEBUG_print_ast_node(str, indent_level, for_stmt->loop_expr, "loop_expr");
-      DEBUG_print_ast_node(str, indent_level, for_stmt->body, "body");
+      DEBUG_print_ast_node(str, indent_level, (AstNode*)for_stmt->body, "body");
     }
     else if(node->kind == AstNodeKind_Cast)
     {

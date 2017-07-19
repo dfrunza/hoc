@@ -141,22 +141,22 @@ translate(char* file_path, char* hoc_text)
   init_token_stream(&token_stream, hoc_text, file_path);
   get_next_token(&token_stream);
 
-  AstNode* ast = 0;
-  if(vm_program->success = parse(&token_stream, &ast))
+  AstModule* module = 0;
+  if(vm_program->success = parse(&token_stream, &(AstNode*)module))
   {
-    assert(ast->kind == AstNodeKind_Module);
+    assert(module->kind == AstNodeKind_Module);
     if(DEBUG_enabled)
     {/*>>>*/
       DEBUG_print_arena_usage("Syntactic");
 
       String str = {0};
       str_init(&str, DEBUG_arena);
-      DEBUG_print_ast_node(&str, 0, ast, 0);
+      DEBUG_print_ast_node(&str, 0, (AstNode*)module, 0);
       str_dump_to_file(&str, "out_syntax.txt");
       arena_free(DEBUG_arena);
     }/*<<<*/
 
-    if(vm_program->success = semantic_analysis(ast))
+    if(vm_program->success = semantic_analysis(module))
     {
       assert(symtab->block_id == 0);
       assert(symtab->nesting_depth == 0);
@@ -167,17 +167,17 @@ translate(char* file_path, char* hoc_text)
 
         String str = {0};
         str_init(&str, DEBUG_arena);
-        DEBUG_print_ast_node(&str, 0, ast, 0);
+        DEBUG_print_ast_node(&str, 0, (AstNode*)module, 0);
         str_dump_to_file(&str, "out_semantic.txt");
         arena_free(DEBUG_arena);
       }/*<<<*/
 
-      if(vm_program->success = build_runtime((AstModule*)ast))
+      if(vm_program->success = build_runtime(module))
       {
         if(DEBUG_enabled)
           DEBUG_print_arena_usage("Runtime");
 
-        codegen(&vm_program->instr_list, (AstModule*)ast);
+        codegen(&vm_program->instr_list, module);
         if(DEBUG_enabled)
           DEBUG_print_arena_usage("Codegen");
 

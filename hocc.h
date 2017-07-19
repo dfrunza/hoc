@@ -230,7 +230,8 @@ typedef struct
 }
 AstId;
 
-typedef struct
+typedef struct AstBlock AstBlock;
+typedef struct AstBlock
 {
   AstNode;
 
@@ -241,7 +242,7 @@ typedef struct
   //AstNode* owner;
   int block_id;
   int nesting_depth;
-  struct AstNode* encl_block;
+  AstBlock* encl_block;
   List decl_vars;
   List nonlocal_occurs;
 
@@ -271,11 +272,24 @@ typedef struct
   AstNode;
 
   /* syntactic */
+  AstId* id;
+  List args;
+
+  /* semantic */
+  Symbol* proc_sym;
+}
+AstCall;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
   char* file_path;
-  AstNode* body;
+  AstBlock* body;
 
   /* runtime */
-  AstNode* main_stmt;
+  AstCall* main_stmt;
 }
 AstModule,
 AstIncludeStmt;
@@ -290,8 +304,8 @@ typedef struct
   AstNode* init_expr;
 
   /* semantic */
-  AstNode* decl_block;
-  AstNode* assign_expr;
+  AstBlock* decl_block;
+  AstBinExpr* assign_expr;
 
   /* runtime */
   DataArea data;
@@ -306,8 +320,8 @@ typedef struct
   AstNode* id;
 
   /* semantic */
-  AstNode* var_decl;
-  AstNode* occur_block;
+  AstVarDecl* var_decl;
+  AstBlock* occur_block;
   int decl_block_offset;
 
   /* runtime */
@@ -324,10 +338,10 @@ typedef struct
   AstNode* ret_type;
   AstId* id;
   List args;
-  AstNode* body;
+  AstBlock* body;
 
   /* semantic */
-  AstNode* ret_var;
+  AstVarDecl* ret_var;
   bool32 is_decl;
 
   /* runtime */
@@ -338,19 +352,6 @@ typedef struct
   int locals_size;
 }
 AstProc;
-
-typedef struct
-{
-  AstNode;
-
-  /* syntactic */
-  AstId* id;
-  List args;
-
-  /* semantic */
-  Symbol* proc_sym;
-}
-AstCall;
 
 typedef struct
 {
@@ -386,9 +387,9 @@ typedef struct
   AstNode* expr;
 
   /* semantic */
-  AstNode* proc;
+  AstProc* proc;
   int nesting_depth;
-  AstNode* assign_expr;
+  AstBinExpr* assign_expr;
 }
 AstReturnStmt;
 
@@ -436,10 +437,10 @@ typedef struct
   AstNode;
 
   /* syntactic */
-  AstNode* decl_expr;
+  AstVarDecl* decl_expr;
   AstNode* cond_expr;
   AstNode* loop_expr;
-  AstNode* body;
+  AstBlock* body;
 
   /* runtime */
   char* label_eval;
@@ -520,226 +521,6 @@ typedef struct
   List member_list;
 }
 AstIniter;
-
-typedef struct AstNode_
-{/*>>>*/
-  AstNodeKind kind;
-  Type* type;
-  SourceLocation src_loc;
-
-  union {
-    struct {
-      char* file_path;
-      AstNode* body;
-
-      /* runtime */
-      AstNode* main_stmt;
-    }
-    module,
-    incl_stmt;
-
-    struct {
-      AstNode* type_id;
-      AstNode* id;
-      AstNode* init_expr;
-
-      /* semantic */
-      AstNode* decl_block;
-      AstNode* assign_expr;
-
-      /* runtime */
-      DataArea data;
-    }
-    var_decl;
-
-    struct {
-      AstNode* id;
-
-      /* semantic */
-      AstNode* var_decl;
-      AstNode* occur_block;
-      int decl_block_offset;
-
-      /* runtime */
-      AccessLink* link;
-      DataArea* data;
-    }
-    var_occur;
-
-    struct {
-      AstNode* ret_type;
-      AstNode* id;
-      List args;
-      AstNode* body;
-
-      /* semantic */
-      AstNode* ret_var;
-      bool32 is_decl;
-
-      /* runtime */
-      char* label;
-      char* label_end;
-      int ret_size;
-      int args_size;
-      int locals_size;
-    }
-    proc;
-
-    struct {
-      AstNode* id;
-      List args;
-
-      /* semantic */
-      Symbol* proc_sym;
-    }
-    call;
-
-    struct {
-      AstOpKind op;
-      AstNode* left_operand;
-      AstNode* right_operand;
-
-      /* runtime */
-      char* label_end; // for boolean expressions
-    }
-    bin_expr;
-
-    struct {
-      AstOpKind op;
-      AstNode* operand;
-    }
-    unr_expr;
-
-    struct {
-      AstLiteralKind kind;
-
-      union {
-        int32 int_val;
-        float32 float_val;
-        int32 bool_val;
-        char char_val;
-        char* str;
-      };
-    }
-    literal;
-
-    struct {
-      AstNode* expr;
-
-      /* semantic */
-      AstNode* proc;
-      int nesting_depth;
-      AstNode* assign_expr;
-    }
-    ret_stmt;
-
-    struct {
-      AstNode* id;
-    }
-    goto_stmt,
-    label;
-
-    struct {
-      AstNode* cond_expr;
-      AstNode* body;
-      AstNode* else_body;
-
-      /* runtime */
-      char* label_else;
-      char* label_end;
-    }
-    if_stmt;
-
-    struct {
-      AstNode* cond_expr;
-      AstNode* body;
-
-      /* runtime */
-      char* label_eval;
-      char* label_break;
-    }
-    while_stmt;
-
-    struct {
-      AstNode* decl_expr;
-      AstNode* cond_expr;
-      AstNode* loop_expr;
-      AstNode* body;
-
-      /* runtime */
-      char* label_eval;
-      char* label_break;
-    }
-    for_stmt;
-
-    struct {
-      AstNode* loop;
-      int nesting_depth;
-    }
-    loop_ctrl;
-
-    struct {
-      List node_list;
-
-      /* semantic */
-      //AstNode* owner;
-      int block_id;
-      int nesting_depth;
-      struct AstNode* encl_block;
-      List decl_vars;
-      List nonlocal_occurs;
-
-      /* runtime */
-      List access_links;
-      int links_size;
-      int locals_size;
-    }
-    block;
-
-    struct {
-      AstNode* to_type;
-      AstNode* expr;
-    }
-    cast;
-
-    struct {
-      char* name;
-      Symbol* sym;
-    }
-    id;
-
-    struct {
-      AstNode* expr;
-      AstNode* index;
-    }
-    array;
-
-    struct {
-      AstNode* expr;
-    }
-    ptr;
-
-    struct {
-      AstNode* id;
-      List member_list;
-    }
-    struct_decl,
-    union_decl,
-    enum_decl;
-
-    struct {
-      AstNode* left_operand;
-      AstNode* right_operand;
-    }
-    accessor;
-
-    struct {
-      List member_list;
-    }
-    initer;
-  };
-}/*<<<*/
-AstNode_;
 
 typedef enum
 {
@@ -850,10 +631,10 @@ Symbol;
 typedef struct
 {
   Symbol* curr_symbol;
-  AstNode* curr_block;
+  AstBlock* curr_block;
   int block_id;
   int nesting_depth;
-  AstNode* active_blocks[MAX_SCOPE_NESTING_DEPTH];
+  AstBlock* active_blocks[MAX_SCOPE_NESTING_DEPTH];
   int sym_count;
 }
 SymbolTable;
@@ -989,7 +770,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* ta
 void DEBUG_print_arena_usage(char* tag);
 bool32 parse(TokenStream* input, AstNode** node);
 void init_types();
-bool32 semantic_analysis(AstNode* ast);
+bool32 semantic_analysis(AstModule* ast);
 AstBinExpr* new_bin_expr(SourceLocation* src_loc);
 AstId* new_id(SourceLocation* src_loc, char* name);
 AstId* clone_id(AstId* id);

@@ -472,7 +472,7 @@ gen_statement(List* code, AstNode* ast)
   {
     AstVarDecl* var_decl = (AstVarDecl*)ast;
     if(var_decl->assign_expr)
-      gen_statement(code, var_decl->assign_expr);
+      gen_statement(code, (AstNode*)var_decl->assign_expr);
   }
   else if(ast->kind == AstNodeKind_ReturnStmt)
     gen_return_stmt(code, (AstReturnStmt*)ast);
@@ -491,7 +491,7 @@ gen_statement(List* code, AstNode* ast)
 void
 codegen(List* code, AstModule* module)
 {
-  gen_statement(code, module->main_stmt);
+  gen_statement(code, (AstNode*)module->main_stmt);
   emit_instr(code, Opcode_HALT);
 
   AstBlock* body_block = (AstBlock*)module->body;

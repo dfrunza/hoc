@@ -43,11 +43,18 @@ new_id(SourceLocation* src_loc, char* name)
   return node;
 }
 
-AstId*
-clone_id(AstId* id)
+AstNode*
+clone_ast_node(AstNode* node)
 {
-  assert(id->kind == AstNodeKind_Id);
-  return new_id(&id->src_loc, id->name);
+  AstNode* clone = 0;
+  if(node->kind == AstNodeKind_Id)
+  {
+    clone = (AstNode*)mem_push_struct(arena, AstId);
+    *(AstId*)clone = *(AstId*)node;
+  }
+  else
+    fail("not implemented");
+  return clone;
 }
 
 local AstEnum*

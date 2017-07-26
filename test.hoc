@@ -9,8 +9,10 @@ include "hlib\\minmax.hoc";
 
 proc int main()
 {
-  var char p;
-  return 0;
+  var char* a;
+  var char* b;
+  a = cast(char*)123;
+  return cast(int)a;
 }
 
 

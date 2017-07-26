@@ -121,7 +121,13 @@ register_type_occur(AstNode* type_expr)
 {
   bool32 success = true;
 
-  if(type_expr->kind == AstNodeKind_Id)
+  if(type_expr->kind == AstNodeKind_Pointer)
+  {
+    AstPointer* ptr_ast = (AstPointer*)type_expr;
+    register_type_occur(ptr_ast->expr);
+    ptr_ast->type = new_pointer_type(ptr_ast->expr->type);
+  }
+  else if(type_expr->kind == AstNodeKind_Id)
   {
     AstId* type_id = (AstId*)type_expr;
     Symbol* decl_sym = lookup_symbol(type_id->name, SymbolKind_TypeDecl);
@@ -137,7 +143,8 @@ register_type_occur(AstNode* type_expr)
       success = compile_error(&type_id->src_loc, "Unknown type `%s`", type_id->name);
   }
   else
-    fail("only simple types are supported for now");
+    assert(false);
+
   return success;
 }
 
@@ -525,17 +532,12 @@ do_expression(AstBlock* encl_block, AstNode* expr_ast, AstNode** out_ast)
   else if(expr_ast->kind == AstNodeKind_Cast)
   {
     AstCast* cast = (AstCast*)expr_ast;
-    if(cast->to_type->kind == AstNodeKind_Id)
+    if(success = register_type_occur(cast->to_type))
     {
-      AstId* to_type_id = (AstId*)cast->to_type;
-      Symbol* type_sym = lookup_symbol(to_type_id->name, SymbolKind_TypeDecl);
-      if(type_sym)
-        expr_ast->type = type_sym->type;
-      else
-        compile_error(&expr_ast->src_loc, "Unknown type `%s`", to_type_id->name);
+      cast->type = cast->to_type->type;
+      success = do_expression(encl_block, cast->expr, &cast->expr);
     }
-    else
-      fail("only simple types are supported");
+    //FIXME: Check the type conversion
   }
   else
     fail("not implemented : %s", get_ast_kind_printstr(expr_ast->kind));
@@ -569,10 +571,7 @@ do_proc_ret_var(AstBlock* block, AstProc* proc)
   AstVarDecl* var_decl = new_var_decl(&proc->src_loc);
   proc->ret_var = var_decl;
   var_decl->id = make_tempvar_id(&proc->src_loc, "ret");
-  if(proc->ret_type_expr->kind == AstNodeKind_Id)
-    var_decl->type_expr = (AstNode*)clone_id((AstId*)proc->ret_type_expr);
-  else
-    fail("only simple types are supported");
+  var_decl->type_expr = proc->ret_type_expr;
   if(success = register_var_decl(var_decl))
     var_decl->decl_block = block;
   return success;

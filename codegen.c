@@ -243,7 +243,7 @@ gen_cast(List* code, AstCast* cast)
 
   Type* to_type = cast->to_type->type;
   Type* from_type = cast->expr->type;
-  if(to_type->kind == TypeKind_Basic)
+  if(to_type->kind == TypeKind_Basic && from_type->kind == TypeKind_Basic)
   {
     if(from_type->basic.kind != to_type->basic.kind)
     {
@@ -251,23 +251,39 @@ gen_cast(List* code, AstCast* cast)
       {
         if(from_type->basic.kind == BasicTypeKind_Int)
           emit_instr(code, Opcode_INT_TO_FLOAT);
-        else assert(false);
+        else
+          assert(false);
       }
       else if(to_type->basic.kind == BasicTypeKind_Int)
       {
         if(from_type->basic.kind == BasicTypeKind_Float)
           emit_instr(code, Opcode_FLOAT_TO_INT);
-        else assert(false);
+        else
+          assert(false);
       }
       else if(to_type->basic.kind == BasicTypeKind_Bool)
       {
         if(from_type->basic.kind != BasicTypeKind_Int)
           assert(false);
       }
-      else assert(false);
+      else
+        assert(false);
     }
   }
-  else assert(false);
+  else
+  {
+    if(from_type->kind == TypeKind_Pointer)
+    {
+      if(to_type->kind == TypeKind_Basic && to_type->basic.kind == BasicTypeKind_Int)
+        ; /* ok */
+      else
+        assert(false);
+    }
+    else if(to_type->kind == TypeKind_Pointer)
+      ; /* do nothing */
+    else
+      assert(false);
+  }
 }
 
 local void
@@ -304,7 +320,7 @@ gen_load_rvalue(List* code, AstNode* ast)
     AstLiteral* literal = (AstLiteral*)ast;
     if(literal->lit_kind == AstLiteralKind_Int || literal->lit_kind == AstLiteralKind_Bool)
       emit_instr_int(code, Opcode_PUSH, literal->int_val);
-    else if(literal->kind == AstLiteralKind_Float)
+    else if(literal->lit_kind == AstLiteralKind_Float)
       emit_instr_float(code, Opcode_PUSHF, literal->float_val);
     else
       assert(false);

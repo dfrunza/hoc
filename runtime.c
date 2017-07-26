@@ -25,6 +25,8 @@ get_type_size(Type* type)
   int size = 0;
   if(type->kind == TypeKind_Basic)
     size = type->basic.size;
+  else if(type->kind == TypeKind_Pointer)
+    size = 1;
   else
     fail("not implemented");
   return size;

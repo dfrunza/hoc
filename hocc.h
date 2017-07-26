@@ -773,7 +773,7 @@ void init_types();
 bool32 semantic_analysis(AstModule* ast);
 AstBinExpr* new_bin_expr(SourceLocation* src_loc);
 AstId* new_id(SourceLocation* src_loc, char* name);
-AstId* clone_id(AstId* id);
+AstNode* clone_ast_node(AstNode* node);
 AstVarDecl* new_var_decl(SourceLocation* src_loc);
 AstVarOccur* new_var_occur(SourceLocation* src_loc);
 AstCall* new_call(SourceLocation* src_loc);

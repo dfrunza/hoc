@@ -241,48 +241,56 @@ gen_cast(List* code, AstCast* cast)
 {
   gen_load_rvalue(code, cast->expr);
 
-  Type* to_type = cast->to_type->type;
-  Type* from_type = cast->expr->type;
-  if(to_type->kind == TypeKind_Basic && from_type->kind == TypeKind_Basic)
+  Type* type_to = cast->type_to->type;
+  Type* type_from = cast->expr->type;
+  if(!types_are_equal(type_from, type_to))
   {
-    if(from_type->basic.kind != to_type->basic.kind)
+    if(type_to->kind == TypeKind_Basic && type_from->kind == TypeKind_Basic)
     {
-      if(to_type->basic.kind == BasicTypeKind_Float)
+      if(type_from->basic.kind != type_to->basic.kind)
       {
-        if(from_type->basic.kind == BasicTypeKind_Int)
-          emit_instr(code, Opcode_INT_TO_FLOAT);
+        if(type_to->basic.kind == BasicTypeKind_Float)
+        {
+          if(type_from->basic.kind == BasicTypeKind_Int)
+            emit_instr(code, Opcode_INT_TO_FLOAT);
+          else
+            assert(false);
+        }
+        else if(type_to->basic.kind == BasicTypeKind_Int)
+        {
+          if(type_from->basic.kind == BasicTypeKind_Float)
+            emit_instr(code, Opcode_FLOAT_TO_INT);
+          else
+            assert(false);
+        }
+        else if(type_to->basic.kind == BasicTypeKind_Bool)
+        {
+          if(type_from->basic.kind != BasicTypeKind_Int)
+            assert(false);
+        }
         else
           assert(false);
       }
-      else if(to_type->basic.kind == BasicTypeKind_Int)
-      {
-        if(from_type->basic.kind == BasicTypeKind_Float)
-          emit_instr(code, Opcode_FLOAT_TO_INT);
-        else
-          assert(false);
-      }
-      else if(to_type->basic.kind == BasicTypeKind_Bool)
-      {
-        if(from_type->basic.kind != BasicTypeKind_Int)
-          assert(false);
-      }
-      else
-        assert(false);
     }
-  }
-  else
-  {
-    if(from_type->kind == TypeKind_Pointer)
-    {
-      if(to_type->kind == TypeKind_Basic && to_type->basic.kind == BasicTypeKind_Int)
-        ; /* ok */
-      else
-        assert(false);
-    }
-    else if(to_type->kind == TypeKind_Pointer)
-      ; /* do nothing */
     else
-      assert(false);
+    {
+      if(type_from->kind == TypeKind_Pointer)
+      {
+        if(type_to->kind == TypeKind_Basic && type_to->basic.kind == BasicTypeKind_Int)
+          ; /* ok */
+        else
+          assert(false);
+      }
+      else if(type_to->kind == TypeKind_Pointer)
+      {
+        if(type_from->kind == TypeKind_Basic && type_from->basic.kind == BasicTypeKind_Int)
+          ; /* ok */
+        else
+          assert(false);
+      }
+      else
+        assert(false);
+    }
   }
 }
 

@@ -7,12 +7,17 @@ include "hlib\\fibo.hoc";
 include "hlib\\minmax.hoc";
 */
 
+proc char* foo(char* b)
+{
+  var char* a = b;
+  a = a + 10;
+  return a;
+}
+
 proc int main()
 {
-  var char* a;
-  var char* b;
-  a = cast(char*)123;
-  return cast(int)a;
+  var char* b = foo(cast(char*)3344);
+  return cast(int)b;
 }
 
 

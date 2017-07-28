@@ -52,6 +52,11 @@ clone_ast_node(AstNode* node)
     clone = (AstNode*)mem_push_struct(arena, AstId);
     *(AstId*)clone = *(AstId*)node;
   }
+  else if(node->kind == AstNodeKind_Pointer)
+  {
+    clone = (AstNode*)mem_push_struct(arena, AstPointer);
+    ((AstPointer*)clone)->expr = clone_ast_node(((AstPointer*)node)->expr);
+  }
   else
     fail("not implemented");
   return clone;
@@ -263,7 +268,7 @@ new_initializer(SourceLocation* src_loc)
   return node;
 }
 
-local AstCast*
+AstCast*
 new_cast(SourceLocation* src_loc)
 {
   AstCast* node = mem_push_struct(arena, AstCast);
@@ -1021,11 +1026,11 @@ do_unary_expr(TokenStream* input, AstNode** node)
 
     if(success = get_next_token(input) && input->token.kind == TokenKind_OpenParens)
     {
-      if(success = get_next_token(input) && do_type_expr(input, &cast->to_type))
+      if(success = get_next_token(input) && do_type_expr(input, &cast->type_to))
       {
         if(input->token.kind == TokenKind_CloseParens)
         {
-          if(cast->to_type)
+          if(cast->type_to)
             success = get_next_token(input) && do_unary_expr(input, &cast->expr);
           else
           {
@@ -1911,7 +1916,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     else if(node->kind == AstNodeKind_Cast)
     {
       AstCast* cast = (AstCast*)node;
-      DEBUG_print_ast_node(str, indent_level, cast->to_type, "to_type");
+      DEBUG_print_ast_node(str, indent_level, cast->type_to, "type_to");
       DEBUG_print_ast_node(str, indent_level, cast->expr, "expr");
     }
     else if(node->kind == AstNodeKind_Array)

@@ -107,22 +107,30 @@ init_types()
   list_init(&subst_list);
 }
 
-#if 0
-local bool
+bool32
 types_are_equal(Type* type_a, Type* type_b)
 {
-  bool are_equal = false;
+  bool32 are_equal = false;
 
   if((type_a->kind != TypeKind_TypeVar) && (type_b->kind == type_a->kind))
   {
     if(type_a->kind == TypeKind_Basic)
       are_equal = (type_a->basic.kind == type_b->basic.kind);
+    else if(type_a->kind == TypeKind_Proc)
+      are_equal = types_are_equal(type_a->proc.args, type_b->proc.args)
+        && types_are_equal(type_a->proc.ret, type_b->proc.ret);
+    else if(type_a->kind == TypeKind_Pointer)
+      are_equal = types_are_equal(type_a->ptr.pointee, type_b->ptr.pointee);
+    else if(type_a->kind == TypeKind_Product)
+      are_equal = types_are_equal(type_a->product.left, type_b->product.right);
+    else if(type_a->kind == TypeKind_Array)
+      are_equal = types_are_equal(type_a->array.elem, type_b->array.elem)
+        && type_a->array.dim == type_b->array.dim;
     else
       assert(false);
   }
   return are_equal;
 }
-#endif
 
 local Type*
 copy_type(Type* type)

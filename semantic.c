@@ -439,26 +439,36 @@ do_expression(AstBlock* encl_block, AstNode* expr_ast, AstNode** out_ast)
     if(success = do_expression(encl_block, bin_expr->left_operand, &bin_expr->left_operand)
       && do_expression(encl_block, bin_expr->right_operand, &bin_expr->right_operand))
     {
-      if(type_unif(bin_expr->left_operand->type, bin_expr->right_operand->type))
+      Type* left_type = bin_expr->left_operand->type;
+      Type* right_type = bin_expr->right_operand->type;
+      expr_ast->type = left_type;
+      if(type_unif(left_type, right_type))
       {
-        expr_ast->type = bin_expr->left_operand->type;
         if(is_arithmetic_op(bin_expr->op) || is_relation_op(bin_expr->op))
         {
-          if(type_unif(expr_ast->type, basic_type_int) || type_unif(expr_ast->type, basic_type_float))
+          if(types_are_equal(left_type, basic_type_int)
+             || types_are_equal(left_type, basic_type_float)
+             || left_type->kind == TypeKind_Pointer)
           {
             if(is_relation_op(bin_expr->op))
               expr_ast->type = basic_type_bool;
           }
           else
             success = compile_error(&expr_ast->src_loc,
-                                    "int/float operands are expected, actual `%s`", get_type_printstr(expr_ast->type));
+                                    "int or float operands are expected, actual `%s`", get_type_printstr(left_type));
         }
-        else if(is_logic_op(bin_expr->op) && !type_unif(expr_ast->type, basic_type_bool))
+        else if(is_logic_op(bin_expr->op) && !types_are_equal(left_type, basic_type_bool))
           success = compile_error(&expr_ast->src_loc,
-                                  "bool operands are expected, actual `%s`", get_type_printstr(expr_ast->type));
+                                  "bool operands are expected, actual `%s`", get_type_printstr(left_type));
       }
       else
+      {
+        if(left_type->kind == TypeKind_Pointer && types_are_equal(right_type, basic_type_int))
+        {
+          fail("work in progress");
+        }
         success = compile_error(&expr_ast->src_loc, "Expected operands of same type");
+      }
     }
   }
   else if(expr_ast->kind == AstNodeKind_UnrExpr)
@@ -532,12 +542,13 @@ do_expression(AstBlock* encl_block, AstNode* expr_ast, AstNode** out_ast)
   else if(expr_ast->kind == AstNodeKind_Cast)
   {
     AstCast* cast = (AstCast*)expr_ast;
-    if(success = register_type_occur(cast->to_type))
+    if(success = register_type_occur(cast->type_to))
     {
-      cast->type = cast->to_type->type;
+      cast->type = cast->type_to->type;
       success = do_expression(encl_block, cast->expr, &cast->expr);
     }
     //FIXME: Check the type conversion
+    //FIXME: Remove redundant cast, e.g. int a = cast(int)b;
   }
   else
     fail("not implemented : %s", get_ast_kind_printstr(expr_ast->kind));

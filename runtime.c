@@ -6,7 +6,7 @@ extern Type* basic_type_void;
 
 local int last_label_id;
 
-local void do_stmt(AstNode* ast);
+local void do_statement(AstNode* ast);
 local void do_block_stmts(List* stmt_list);
 
 local void
@@ -75,7 +75,7 @@ do_call(AstCall* call)
       list_item;
       list_item = list_item->next)
   {
-    do_stmt((AstNode*)list_item->elem);
+    do_statement((AstNode*)list_item->elem);
   }
 }
 
@@ -139,7 +139,7 @@ do_block(AstBlock* block)
 local void
 do_while_stmt(AstWhileStmt* while_stmt)
 {
-  do_stmt(while_stmt->cond_expr);
+  do_statement(while_stmt->cond_expr);
 
   {
     /* labels */
@@ -162,13 +162,13 @@ do_while_stmt(AstWhileStmt* while_stmt)
   if(while_stmt->body->kind == AstNodeKind_Block)
     do_block((AstBlock*)while_stmt->body);
   else
-    do_stmt(while_stmt->body);
+    do_statement(while_stmt->body);
 }
 
 local void
 do_if_stmt(AstIfStmt* if_stmt)
 {
-  do_stmt(if_stmt->cond_expr);
+  do_statement(if_stmt->cond_expr);
 
   {
     /* labels */
@@ -191,7 +191,7 @@ do_if_stmt(AstIfStmt* if_stmt)
   if(if_stmt->body->kind == AstNodeKind_Block)
     do_block((AstBlock*)if_stmt->body);
   else
-    do_stmt(if_stmt->body);
+    do_statement(if_stmt->body);
 
   if(if_stmt->else_body)
   {
@@ -201,7 +201,7 @@ do_if_stmt(AstIfStmt* if_stmt)
     else if(else_node->kind == AstNodeKind_IfStmt)
       do_if_stmt((AstIfStmt*)else_node);
     else
-      do_stmt(else_node);
+      do_statement(else_node);
   }
 }
 
@@ -218,18 +218,18 @@ do_bin_expr(AstBinExpr* bin_expr)
   str_append(&label, ".logic-end");
   bin_expr->label_end = str_cap(&label);
 
-  do_stmt(bin_expr->left_operand);
-  do_stmt(bin_expr->right_operand);
+  do_statement(bin_expr->left_operand);
+  do_statement(bin_expr->right_operand);
 }
 
 local void
 do_unr_expr(AstUnrExpr* unr_expr)
 {
-  do_stmt(unr_expr->operand);
+  do_statement(unr_expr->operand);
 }
 
 local void
-do_stmt(AstNode* ast)
+do_statement(AstNode* ast)
 {
   if(ast->kind == AstNodeKind_BinExpr)
     do_bin_expr((AstBinExpr*)ast);
@@ -245,12 +245,12 @@ do_stmt(AstNode* ast)
   {
     AstReturnStmt* ret_stmt = (AstReturnStmt*)ast;
     if(ret_stmt->assign_expr)
-      do_stmt((AstNode*)ret_stmt->assign_expr);
+      do_statement((AstNode*)ret_stmt->assign_expr);
   }
   else if(ast->kind == AstNodeKind_Cast)
   {
     AstCast* cast = (AstCast*)ast;
-    do_stmt(cast->expr);
+    do_statement(cast->expr);
   }
   else if(ast->kind == AstNodeKind_VarOccur ||
           ast->kind == AstNodeKind_BreakStmt ||
@@ -261,7 +261,7 @@ do_stmt(AstNode* ast)
   {
     AstVarDecl* var_decl = (AstVarDecl*)ast;
     if(var_decl->assign_expr)
-      do_stmt((AstNode*)var_decl->assign_expr);
+      do_statement((AstNode*)var_decl->assign_expr);
   }
   else
     assert(false);
@@ -274,7 +274,7 @@ do_block_stmts(List* stmt_list)
       list_item;
       list_item = list_item->next)
   {
-    do_stmt((AstNode*)list_item->elem);
+    do_statement((AstNode*)list_item->elem);
   }
 }
 
@@ -358,7 +358,7 @@ build_runtime(AstModule* module)
       fail("not implemented");
   }
 
-  do_stmt((AstNode*)module->main_stmt);
+  do_statement((AstNode*)module->main_stmt);
 
   return success;
 }

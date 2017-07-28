@@ -467,7 +467,7 @@ typedef struct
   AstNode;
 
   /* syntactic */
-  AstNode* to_type;
+  AstNode* type_to;
   AstNode* expr;
 }
 AstCast;
@@ -559,7 +559,7 @@ typedef struct Type
 {
   TypeKind kind;
   Type* repr_type; /* representative member of the set of equivalent types */
-  AstNode* node;
+  AstNode* ast;
 
   union {
     struct {
@@ -772,6 +772,7 @@ bool32 parse(TokenStream* input, AstNode** node);
 void init_types();
 bool32 semantic_analysis(AstModule* ast);
 AstBinExpr* new_bin_expr(SourceLocation* src_loc);
+AstCast* new_cast(SourceLocation* src_loc);
 AstId* new_id(SourceLocation* src_loc, char* name);
 AstNode* clone_ast_node(AstNode* node);
 AstVarDecl* new_var_decl(SourceLocation* src_loc);
@@ -785,6 +786,7 @@ Type* new_array_type(int dim, Type* elem_type);
 Type* make_type_of_node_list(List* node_list);
 Type* get_type_repr(Type* type);
 bool32 type_unif(Type* type_a, Type* type_b);
+bool32 types_are_equal(Type* type_a, Type* type_b);
 bool32 build_runtime(AstModule* ast);
 void codegen(List* code, AstModule* module);
 void print_code(VmProgram* vm_program);

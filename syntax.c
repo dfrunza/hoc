@@ -119,7 +119,7 @@ new_bin_expr(SourceLocation* src_loc)
   return node;
 }
 
-local AstUnrExpr*
+AstUnrExpr*
 new_unr_expr(SourceLocation* src_loc)
 {
   AstUnrExpr* node = mem_push_struct(arena, AstUnrExpr);
@@ -322,18 +322,18 @@ get_ast_op_printstr(AstOpKind op)
     result = "PreIncrement";
   else if(op == AstOpKind_PostIncrement)
     result = "PostIncrement";
-  else if(op == AstOpKind_LogicEquals)
-    result = "LogicEquals";
-  else if(op == AstOpKind_LogicNotEquals)
-    result = "LogicNotEquals";
-  else if(op == AstOpKind_LogicLess)
-    result = "LogicLess";
-  else if(op == AstOpKind_LogicLessEquals)
-    result = "LogicLessEquals";
-  else if(op == AstOpKind_LogicGreater)
-    result = "LogicGreater";
-  else if(op == AstOpKind_LogicGreaterEquals)
-    result = "LogicGreaterEquals";
+  else if(op == AstOpKind_Equals)
+    result = "Equals";
+  else if(op == AstOpKind_NotEquals)
+    result = "NotEquals";
+  else if(op == AstOpKind_Less)
+    result = "Less";
+  else if(op == AstOpKind_LessEquals)
+    result = "LessEquals";
+  else if(op == AstOpKind_Greater)
+    result = "Greater";
+  else if(op == AstOpKind_GreaterEquals)
+    result = "GreaterEquals";
   else if(op == AstOpKind_LogicAnd)
     result = "LogicAnd";
   else if(op == AstOpKind_LogicOr)
@@ -791,17 +791,17 @@ do_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
     if(input->token.kind == TokenKind_Equals)
       bin_expr->op = AstOpKind_Assign;
     else if(input->token.kind == TokenKind_EqualsEquals)
-      bin_expr->op = AstOpKind_LogicEquals;
+      bin_expr->op = AstOpKind_Equals;
     else if(input->token.kind == TokenKind_ExclamEquals)
-      bin_expr->op = AstOpKind_LogicNotEquals;
+      bin_expr->op = AstOpKind_NotEquals;
     else if(input->token.kind == TokenKind_AngleLeft)
-      bin_expr->op = AstOpKind_LogicLess;
+      bin_expr->op = AstOpKind_Less;
     else if(input->token.kind == TokenKind_AngleLeftEquals)
-      bin_expr->op = AstOpKind_LogicLessEquals;
+      bin_expr->op = AstOpKind_LessEquals;
     else if(input->token.kind == TokenKind_AngleRight)
-      bin_expr->op = AstOpKind_LogicGreater;
+      bin_expr->op = AstOpKind_Greater;
     else if(input->token.kind == TokenKind_AngleRightEquals)
-      bin_expr->op = AstOpKind_LogicGreaterEquals;
+      bin_expr->op = AstOpKind_GreaterEquals;
 
     if(success = get_next_token(input) && do_expression(input, &bin_expr->right_operand))
     {

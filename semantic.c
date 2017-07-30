@@ -55,9 +55,9 @@ is_logic_op(AstOpKind op)
 local bool32
 is_relation_op(AstOpKind op)
 {
-  return op == AstOpKind_LogicEquals || op == AstOpKind_LogicNotEquals
-      || op == AstOpKind_LogicLess || op == AstOpKind_LogicLessEquals
-      || op == AstOpKind_LogicGreater || op == AstOpKind_LogicGreaterEquals;
+  return op == AstOpKind_Equals || op == AstOpKind_NotEquals
+      || op == AstOpKind_Less || op == AstOpKind_LessEquals
+      || op == AstOpKind_Greater || op == AstOpKind_GreaterEquals;
 }
 
 local AstId*
@@ -428,81 +428,119 @@ do_call(AstBlock* block, AstCall* call)
 }
 
 local bool32
-do_expression(AstBlock* encl_block, AstNode* expr_ast, AstNode** out_ast)
+do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
 {
   bool32 success = true;
-  *out_ast = expr_ast;
+  *out_expr = expr;
 
-  if(expr_ast->kind == AstNodeKind_BinExpr)
+  if(expr->kind == AstNodeKind_BinExpr)
   {
-    AstBinExpr* bin_expr = (AstBinExpr*)expr_ast;
+    AstBinExpr* bin_expr = (AstBinExpr*)expr;
     if(success = do_expression(encl_block, bin_expr->left_operand, &bin_expr->left_operand)
       && do_expression(encl_block, bin_expr->right_operand, &bin_expr->right_operand))
     {
       Type* left_type = bin_expr->left_operand->type;
       Type* right_type = bin_expr->right_operand->type;
-      expr_ast->type = left_type;
+      expr->type = left_type;
+
       if(type_unif(left_type, right_type))
       {
-        if(is_arithmetic_op(bin_expr->op) || is_relation_op(bin_expr->op))
+        if(types_are_equal(left_type, basic_type_float))
         {
-          if(types_are_equal(left_type, basic_type_int)
-             || types_are_equal(left_type, basic_type_float)
-             || left_type->kind == TypeKind_Pointer)
+          if(is_arithmetic_op(bin_expr->op))
           {
-            if(is_relation_op(bin_expr->op))
-              expr_ast->type = basic_type_bool;
+            if(bin_expr->op == AstOpKind_Add)
+              bin_expr->op = AstOpKind_AddFloat;
+            else if(bin_expr->op == AstOpKind_Sub)
+              bin_expr->op = AstOpKind_SubFloat;
+            else if(bin_expr->op == AstOpKind_Div)
+              bin_expr->op = AstOpKind_DivFloat;
+            else if(bin_expr->op == AstOpKind_Mul)
+              bin_expr->op = AstOpKind_MulFloat;
+            else if(bin_expr->op == AstOpKind_Mod)
+              success = compile_error(&expr->src_loc, "Modulo operator cannot be applied to float operands");
+            else
+              assert(false);
           }
-          else
-            success = compile_error(&expr_ast->src_loc,
-                                    "int or float operands are expected, actual `%s`", get_type_printstr(left_type));
         }
-        else if(is_logic_op(bin_expr->op) && !types_are_equal(left_type, basic_type_bool))
-          success = compile_error(&expr_ast->src_loc,
-                                  "bool operands are expected, actual `%s`", get_type_printstr(left_type));
+
+        if(success)
+        {
+          if(is_arithmetic_op(bin_expr->op) || is_relation_op(bin_expr->op))
+          {
+            if(types_are_equal(left_type, basic_type_int)
+               || types_are_equal(left_type, basic_type_float)
+               || left_type->kind == TypeKind_Pointer)
+            {
+              if(is_relation_op(bin_expr->op))
+                expr->type = basic_type_bool;
+            }
+            else
+              success = compile_error(&expr->src_loc,
+                                      "int or float operands are expected, actual `%s`", get_type_printstr(left_type));
+          }
+          else if(is_logic_op(bin_expr->op) && !types_are_equal(left_type, basic_type_bool))
+            success = compile_error(&expr->src_loc,
+                                    "bool operands are expected, actual `%s`", get_type_printstr(left_type));
+        }
       }
       else
       {
+#if 0
         if(left_type->kind == TypeKind_Pointer && types_are_equal(right_type, basic_type_int))
         {
           fail("work in progress");
         }
-        success = compile_error(&expr_ast->src_loc, "Expected operands of same type");
+#endif
+        if(types_are_equal(left_type, basic_type_float) && types_are_equal(right_type, basic_type_int))
+        {
+          AstUnrExpr* int_to_float = new_unr_expr(&bin_expr->right_operand->src_loc);
+          int_to_float->op = AstOpKind_IntToFloat;
+          int_to_float->type = basic_type_float;
+          int_to_float->operand = bin_expr->right_operand;
+          bin_expr->right_operand = (AstNode*)int_to_float;
+        }
+        else
+          success = compile_error(&expr->src_loc, "Expression operands must be of same type");
       }
     }
   }
-  else if(expr_ast->kind == AstNodeKind_UnrExpr)
+  else if(expr->kind == AstNodeKind_UnrExpr)
   {
-    AstUnrExpr* unr_expr = (AstUnrExpr*)expr_ast;
+    AstUnrExpr* unr_expr = (AstUnrExpr*)expr;
     if(success = do_expression(encl_block, unr_expr->operand, &unr_expr->operand))
     {
       if(unr_expr->op == AstOpKind_AddressOf)
-        expr_ast->type = new_pointer_type(unr_expr->operand->type);
+        expr->type = new_pointer_type(unr_expr->operand->type);
       else if(unr_expr->op == AstOpKind_Neg)
       {
         if(type_unif(unr_expr->operand->type, basic_type_int)
            || type_unif(unr_expr->operand->type, basic_type_float))
-          expr_ast->type = unr_expr->operand->type;
+        {
+          expr->type = unr_expr->operand->type;
+          if(types_are_equal(unr_expr->operand->type, basic_type_float))
+            unr_expr->op = AstOpKind_NegFloat;
+        }
         else
-          success = compile_error(&expr_ast->src_loc,
-                                  "int/float operands are expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
+          success = compile_error(&expr->src_loc,
+                                  "int or float operands are expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
       }
       else if(is_logic_op(unr_expr->op))
       {
         if(type_unif(unr_expr->operand->type, basic_type_bool))
-          expr_ast->type = unr_expr->operand->type;
+          expr->type = unr_expr->operand->type;
         else
-          success = compile_error(&expr_ast->src_loc,
+          success = compile_error(&expr->src_loc,
                                   "bool operand is expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
       }
       else
         fail("not implemented");
     }
   }
-  else if(expr_ast->kind == AstNodeKind_Id)
+  else if(expr->kind == AstNodeKind_Id)
   {
-    AstVarOccur* var_occur = new_var_occur(&expr_ast->src_loc);
-    var_occur->id = expr_ast;
+    AstVarOccur* var_occur = new_var_occur(&expr->src_loc);
+    var_occur->id = expr;
 
     if(success = register_var_occur(var_occur))
     {
@@ -518,40 +556,61 @@ do_expression(AstBlock* encl_block, AstNode* expr_ast, AstNode** out_ast)
       else if(var_occur->decl_block_offset < 0)
         assert(false);
 
-      *out_ast = (AstNode*)var_occur;
+      *out_expr = (AstNode*)var_occur;
     }
   }
-  else if(expr_ast->kind == AstNodeKind_Literal)
+  else if(expr->kind == AstNodeKind_Literal)
   {
-    AstLiteral* literal = (AstLiteral*)expr_ast;
+    AstLiteral* literal = (AstLiteral*)expr;
     if(literal->lit_kind == AstLiteralKind_Int)
-      expr_ast->type = basic_type_int;
+      expr->type = basic_type_int;
     else if(literal->lit_kind == AstLiteralKind_Float)
-      expr_ast->type = basic_type_float;
+      expr->type = basic_type_float;
     else if(literal->lit_kind == AstLiteralKind_Bool)
-      expr_ast->type = basic_type_bool;
+      expr->type = basic_type_bool;
     else if(literal->lit_kind == AstLiteralKind_Char)
-      expr_ast->type = basic_type_char;
+      expr->type = basic_type_char;
     else if(literal->lit_kind == AstLiteralKind_String)
-      expr_ast->type = new_array_type(-1, basic_type_char);
+      expr->type = new_array_type(-1, basic_type_char);
     else
       assert(false);
   }
-  else if(expr_ast->kind == AstNodeKind_Call)
-    success = do_call(encl_block, (AstCall*)expr_ast);
-  else if(expr_ast->kind == AstNodeKind_Cast)
+  else if(expr->kind == AstNodeKind_Call)
+    success = do_call(encl_block, (AstCall*)expr);
+  else if(expr->kind == AstNodeKind_Cast)
   {
-    AstCast* cast = (AstCast*)expr_ast;
+    AstCast* cast = (AstCast*)expr;
     if(success = register_type_occur(cast->type_to))
     {
       cast->type = cast->type_to->type;
-      success = do_expression(encl_block, cast->expr, &cast->expr);
+      if(success = do_expression(encl_block, cast->expr, &cast->expr))
+      {
+        if(types_are_equal(cast->type, cast->expr->type))
+          *out_expr = cast->expr; /* cast is redundant; remove it */
+        else
+        {
+          if(types_are_equal(cast->type, basic_type_int))
+          {
+            if(types_are_equal(cast->expr->type, basic_type_float))
+            {
+              AstUnrExpr* float_to_int = new_unr_expr(&cast->src_loc);
+              float_to_int->op = AstOpKind_FloatToInt;
+              float_to_int->type = basic_type_int;
+              float_to_int->operand = cast->expr;
+              *out_expr = (AstNode*)float_to_int;
+            }
+            else if(types_are_equal(cast->expr->type, basic_type_bool))
+              ; /* noop */
+            else
+              success = compile_error(&expr->src_loc, "Conversion to int not possible");
+          }
+        }
+      }
     }
-    //FIXME: Check the type conversion
-    //FIXME: Remove redundant cast, e.g. int a = cast(int)b;
+    //FIXME: Check the type conversions
   }
   else
-    fail("not implemented : %s", get_ast_kind_printstr(expr_ast->kind));
+    fail("not implemented : %s", get_ast_kind_printstr(expr->kind));
   return success;
 }
 

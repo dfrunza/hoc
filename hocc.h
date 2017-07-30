@@ -135,6 +135,13 @@ typedef enum
   AstOpKind_Mod,
   AstOpKind_Neg,
 
+  AstOpKind_AddFloat,
+  AstOpKind_SubFloat,
+  AstOpKind_DivFloat,
+  AstOpKind_MulFloat,
+  AstOpKind_ModFloat,
+  AstOpKind_NegFloat,
+
   AstOpKind_Assign,
   AstOpKind_PtrDeref,
   AstOpKind_AddressOf,
@@ -145,18 +152,21 @@ typedef enum
   AstOpKind_PreIncrement,
   AstOpKind_PostIncrement,
   
-  AstOpKind_LogicEquals,
-  AstOpKind_LogicNotEquals,
-  AstOpKind_LogicLess,
-  AstOpKind_LogicLessEquals,
-  AstOpKind_LogicGreater,
-  AstOpKind_LogicGreaterEquals,
+  AstOpKind_Equals,
+  AstOpKind_NotEquals,
+  AstOpKind_Less,
+  AstOpKind_LessEquals,
+  AstOpKind_Greater,
+  AstOpKind_GreaterEquals,
   AstOpKind_LogicAnd,
   AstOpKind_LogicOr,
   AstOpKind_LogicNot,
 
   AstOpKind_BitwiseAnd,
   AstOpKind_BitwiseOr,
+
+  AstOpKind_IntToFloat,
+  AstOpKind_FloatToInt,
 
   AstOpKind__Count,
 }
@@ -778,6 +788,7 @@ AstNode* clone_ast_node(AstNode* node);
 AstVarDecl* new_var_decl(SourceLocation* src_loc);
 AstVarOccur* new_var_occur(SourceLocation* src_loc);
 AstCall* new_call(SourceLocation* src_loc);
+AstUnrExpr* new_unr_expr(SourceLocation* src_loc);
 Type* new_typevar();
 Type* new_proc_type(Type* args, Type* ret);
 Type* new_pointer_type(Type* pointee);

@@ -129,18 +129,18 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
       }
       break;
 
-      case AstOpKind_LogicEquals:
-      case AstOpKind_LogicNotEquals:
-      case AstOpKind_LogicLess:
-      case AstOpKind_LogicGreater:
+      case AstOpKind_Equals:
+      case AstOpKind_NotEquals:
+      case AstOpKind_Less:
+      case AstOpKind_Greater:
       {
-        if(bin_expr->op == AstOpKind_LogicEquals)
+        if(bin_expr->op == AstOpKind_Equals)
           emit_instr(code, Opcode_CMPEQ);
-        else if(bin_expr->op == AstOpKind_LogicNotEquals)
+        else if(bin_expr->op == AstOpKind_NotEquals)
           emit_instr(code, Opcode_CMPNEQ);
-        else if(bin_expr->op == AstOpKind_LogicLess)
+        else if(bin_expr->op == AstOpKind_Less)
           emit_instr(code, Opcode_CMPLSS);
-        else if(bin_expr->op == AstOpKind_LogicGreater)
+        else if(bin_expr->op == AstOpKind_Greater)
           emit_instr(code, Opcode_CMPGRT);
         else
           assert(false);
@@ -164,14 +164,14 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         emit_instr_str(code, Opcode_LABEL, bin_expr->label_end);
       } break;
 
-      case AstOpKind_LogicLessEquals:
-      case AstOpKind_LogicGreaterEquals:
+      case AstOpKind_LessEquals:
+      case AstOpKind_GreaterEquals:
       {
         gen_load_rvalue(code, bin_expr->left_operand);
         gen_load_rvalue(code, bin_expr->right_operand);
-        if(bin_expr->op == AstOpKind_LogicLessEquals)
+        if(bin_expr->op == AstOpKind_LessEquals)
           emit_instr(code, Opcode_CMPLSS);
-        else if(bin_expr->op == AstOpKind_LogicGreaterEquals)
+        else if(bin_expr->op == AstOpKind_GreaterEquals)
           emit_instr(code, Opcode_CMPGRT);
         else
           assert(false);
@@ -196,25 +196,18 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
 {
   gen_load_rvalue(code, unr_expr->operand);
   if(unr_expr->op == AstOpKind_Neg)
-  {
-    Type* expr_type = unr_expr->type;
-    if(expr_type->kind == TypeKind_Basic)
-    {
-      if(expr_type->basic.kind == BasicTypeKind_Int)
-        emit_instr(code, Opcode_NEG);
-      else if(expr_type->basic.kind == BasicTypeKind_Float)
-        emit_instr(code, Opcode_NEGF);
-      else
-        assert(false);
-    }
-    else
-      assert(false);
-  }
+    emit_instr(code, Opcode_NEG);
+  else if(unr_expr->op == AstOpKind_NegFloat)
+    emit_instr(code, Opcode_NEGF);
   else if(unr_expr->op == AstOpKind_LogicNot)
   {
     emit_instr_int(code, Opcode_PUSH, 0);
     emit_instr( code, Opcode_CMPEQ);
   }
+  else if(unr_expr->op == AstOpKind_IntToFloat)
+    emit_instr(code, Opcode_INT_TO_FLOAT);
+  else if(unr_expr->op == AstOpKind_FloatToInt)
+    emit_instr(code, Opcode_FLOAT_TO_INT);
   else
     assert(false);
 }
@@ -234,64 +227,6 @@ gen_call(List* code, AstCall* call)
 
   emit_instr_str(code, Opcode_CALL, proc->label);
   emit_instr_int(code, Opcode_POP, proc->args_size); // discard args
-}
-
-local void
-gen_cast(List* code, AstCast* cast)
-{
-  gen_load_rvalue(code, cast->expr);
-
-  Type* type_to = cast->type_to->type;
-  Type* type_from = cast->expr->type;
-  if(!types_are_equal(type_from, type_to))
-  {
-    if(type_to->kind == TypeKind_Basic && type_from->kind == TypeKind_Basic)
-    {
-      if(type_from->basic.kind != type_to->basic.kind)
-      {
-        if(type_to->basic.kind == BasicTypeKind_Float)
-        {
-          if(type_from->basic.kind == BasicTypeKind_Int)
-            emit_instr(code, Opcode_INT_TO_FLOAT);
-          else
-            assert(false);
-        }
-        else if(type_to->basic.kind == BasicTypeKind_Int)
-        {
-          if(type_from->basic.kind == BasicTypeKind_Float)
-            emit_instr(code, Opcode_FLOAT_TO_INT);
-          else
-            assert(false);
-        }
-        else if(type_to->basic.kind == BasicTypeKind_Bool)
-        {
-          if(type_from->basic.kind != BasicTypeKind_Int)
-            assert(false);
-        }
-        else
-          assert(false);
-      }
-    }
-    else
-    {
-      if(type_from->kind == TypeKind_Pointer)
-      {
-        if(type_to->kind == TypeKind_Basic && type_to->basic.kind == BasicTypeKind_Int)
-          ; /* ok */
-        else
-          assert(false);
-      }
-      else if(type_to->kind == TypeKind_Pointer)
-      {
-        if(type_from->kind == TypeKind_Basic && type_from->basic.kind == BasicTypeKind_Int)
-          ; /* ok */
-        else
-          assert(false);
-      }
-      else
-        assert(false);
-    }
-  }
 }
 
 local void
@@ -337,8 +272,6 @@ gen_load_rvalue(List* code, AstNode* ast)
     gen_bin_expr(code, (AstBinExpr*)ast);
   else if(ast->kind == AstNodeKind_UnrExpr)
     gen_unr_expr(code, (AstUnrExpr*)ast);
-  else if(ast->kind == AstNodeKind_Cast)
-    gen_cast(code, (AstCast*)ast);
   else
     assert(false);
 }

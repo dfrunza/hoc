@@ -234,7 +234,7 @@ p_roar(animal); // call proc
 ........................
 WITH TYPES 3
 
-type main : proc int main()
+type main proc int main()
 {
   return sqrt_floor(23);
 }
@@ -242,13 +242,13 @@ type main : proc int main()
 var main* p_main;
 p_main();
 
-type A : struct A
+type A struct A
 {
 };
 
-type char8 : char;
-type A : proc int foo();
-type E : enum E {a, b, c};
+type char8 char;
+type A proc int foo();
+type E enum E {a, b, c};
 
 var enum E e;
 var E e;
@@ -278,5 +278,20 @@ var proc void (Animal* a)* p_roar;
 
 proc void roar(struct Animal* a);
 var roar* p_roar; // ptr to proc type `roar`
+
+-----------------------------
+var int* a[]; // array of int pointers
+proc int* foo(); // ??? we want to return an array of int pointers
+
+var []int* a; // array of int pointers
+proc []int* foo(); // returns an array of int pointers
+
+------------------------------
+var [](proc []int* (int))* p_func; // p_func is an array of proc pointers; the proc returns an array of ints
+var proc int* [](int) *p_func[]; // -/- ditto
+
+proc int *foo[](int a); // foo is a proc that returns an array of ints
+var int *bar[]; // bar is an array of ints
+
 
 

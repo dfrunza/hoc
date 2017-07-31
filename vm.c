@@ -36,7 +36,7 @@ check_stack_bounds(HocMachine* machine, int sp)
 local bool32
 check_memory_bounds(HocMachine* machine, int location)
 {
-  return location >= 0 && location < machine->mem_size;
+  return location > 0 && location < machine->mem_size;
 }
 
 local bool32
@@ -683,6 +683,7 @@ main(int argc, char* argv[])
     machine.mem_size = sizeof_array(machine.memory);
     machine.code = &code;
 
+    machine.sp++; // 0-th cell reserved
     ret = (int)run_program(&machine);
   }
   return ret;

@@ -281,17 +281,14 @@ var roar* p_roar; // ptr to proc type `roar`
 
 -----------------------------
 var int* a[]; // array of int pointers
-proc int* foo(); // ??? we want to return an array of int pointers
-
-var []int* a; // array of int pointers
-proc []int* foo(); // returns an array of int pointers
+var int* proc(int)* p_proc; // pointer to proc
+var int* proc(int)* p_proc[10]; // array of 10 pointers to proc
+var struct {int a;} *a[10], **b;
 
 ------------------------------
-var [](proc []int* (int))* p_func; // p_func is an array of proc pointers; the proc returns an array of ints
-var proc int* [](int) *p_func[]; // -/- ditto
-
-proc int *foo[](int a); // foo is a proc that returns an array of ints
-var int *bar[]; // bar is an array of ints
+var [10]( [10]int* proc(int) )* p_func; // p_func is an array of proc pointers; the proc returns an array of ints
+var ([] ([]int* proc(int))* )* p_func; // p_func is a pointer to an array of proc pointers
+-------------------------------
 
 
 

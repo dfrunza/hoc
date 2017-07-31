@@ -904,6 +904,7 @@ do_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
   }
   else if(input->token.kind == TokenKind_OpenBracket)
   {
+#if 0
     AstArray* array = new_array(&input->src_loc);
     *node = (AstNode*)array;
     array->expr = expr;
@@ -915,6 +916,7 @@ do_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
       else
         success = compile_error(&input->src_loc,  "Expected `]`, actual `%s`", get_token_printstr(&input->token));
     }
+#endif
   }
   return true;
 }

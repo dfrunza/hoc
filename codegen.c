@@ -78,8 +78,19 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
   {
     gen_load_rvalue(code, bin_expr->right_operand);
 
-    assert(bin_expr->left_operand->kind = AstNodeKind_VarOccur);
-    gen_load_lvalue(code, (AstVarOccur*)bin_expr->left_operand);
+    if(bin_expr->left_operand->kind == AstNodeKind_VarOccur)
+      gen_load_lvalue(code, (AstVarOccur*)bin_expr->left_operand);
+    else if(bin_expr->left_operand->kind == AstNodeKind_UnrExpr)
+    {
+      AstUnrExpr* unr_expr = (AstUnrExpr*)bin_expr->left_operand;
+      if(unr_expr->op == AstOpKind_PtrDeref)
+      {
+        assert(unr_expr->operand->kind == AstNodeKind_VarOccur);
+        gen_load_rvalue(code, unr_expr->operand);
+      }
+      else
+        assert(false);
+    }
 
     emit_instr(code, Opcode_STORE);
   }
@@ -91,43 +102,23 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
     switch(bin_expr->op)
     {
       case AstOpKind_Add:
+        emit_instr(code, Opcode_ADD); break;
       case AstOpKind_Sub:
+        emit_instr(code, Opcode_SUB); break;
       case AstOpKind_Mul:
+        emit_instr(code, Opcode_MUL); break;
       case AstOpKind_Div:
+        emit_instr(code, Opcode_DIV); break;
       case AstOpKind_Mod:
-      {
-        Type* expr_type = bin_expr->type;
-        if(expr_type->kind == TypeKind_Basic)
-        {
-          if(expr_type->basic.kind == BasicTypeKind_Int)
-          {
-            if(bin_expr->op == AstOpKind_Add)
-              emit_instr(code, Opcode_ADD);
-            else if(bin_expr->op == AstOpKind_Sub)
-              emit_instr(code, Opcode_SUB);
-            else if(bin_expr->op == AstOpKind_Mul)
-              emit_instr(code, Opcode_MUL);
-            else if(bin_expr->op == AstOpKind_Div)
-              emit_instr(code, Opcode_DIV);
-            else if(bin_expr->op == AstOpKind_Mod)
-              emit_instr(code, Opcode_MOD);
-          }
-          else if(expr_type->basic.kind == BasicTypeKind_Float)
-          {
-            if(bin_expr->op == AstOpKind_Add)
-              emit_instr(code, Opcode_ADDF);
-            else if(bin_expr->op == AstOpKind_Sub)
-              emit_instr(code, Opcode_SUBF);
-            else if(bin_expr->op == AstOpKind_Mul)
-              emit_instr(code, Opcode_MULF);
-            else if(bin_expr->op == AstOpKind_Div)
-              emit_instr(code, Opcode_DIVF);
-          }
-        }
-        else
-          assert(false);
-      }
-      break;
+        emit_instr(code, Opcode_MOD); break;
+      case AstOpKind_AddFloat:
+        emit_instr(code, Opcode_ADDF); break;
+      case AstOpKind_SubFloat:
+        emit_instr(code, Opcode_SUBF); break;
+      case AstOpKind_MulFloat:
+        emit_instr(code, Opcode_MULF); break;
+      case AstOpKind_DivFloat:
+        emit_instr(code, Opcode_DIVF); break;
 
       case AstOpKind_Equals:
       case AstOpKind_NotEquals:
@@ -208,6 +199,11 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
     emit_instr(code, Opcode_INT_TO_FLOAT);
   else if(unr_expr->op == AstOpKind_FloatToInt)
     emit_instr(code, Opcode_FLOAT_TO_INT);
+  else if(unr_expr->op == AstOpKind_AddressOf)
+  {
+    assert(unr_expr->operand->kind == AstNodeKind_VarOccur);
+    gen_load_lvalue(code, (AstVarOccur*)unr_expr->operand);
+  }
   else
     assert(false);
 }

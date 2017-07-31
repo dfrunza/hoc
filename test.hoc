@@ -18,10 +18,10 @@ proc char* foo(char* b)
 
 proc int main()
 {
-  var float i;
-  var float f = 123.0;
-  i = cast(float)f;
-  return cast(int)i;
+  var int i = 12345;
+  var int* a = i;
+  *a = 54321;
+  return i;
 }
 
 

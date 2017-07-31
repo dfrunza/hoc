@@ -1,9 +1,9 @@
+include "hlib\\sqrt.hoc";
 /*
+include "hlib\\fibo.hoc";
 include "hlib\\gcd.hoc";
 include "hlib\\power.hoc";
 include "hlib\\abs.hoc";
-include "hlib\\sqrt.hoc";
-include "hlib\\fibo.hoc";
 include "hlib\\minmax.hoc";
 */
 
@@ -14,10 +14,14 @@ proc void foo(int** a)
 
 proc int main()
 {
+  /*
   var int* a = 0;
+  var []int** a = new [2]int**;
   foo(&a);
   *a = 88;
   return *a;
+  */
+  return cast(int)sqrt(16.0);
 }
 
 

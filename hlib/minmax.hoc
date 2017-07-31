@@ -14,3 +14,18 @@ proc int min(int a, int b)
   return result;
 }
 
+proc float fmax(float a, float b)
+{
+  var float result = a;
+  if(a < b)
+    result = b;
+  return result;
+}
+
+proc float fmin(float a, float b)
+{
+  var float result = a;
+  if(a > b)
+    result = b;
+  return result;
+}

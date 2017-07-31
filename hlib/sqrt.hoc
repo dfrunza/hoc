@@ -1,15 +1,15 @@
 include "abs.hoc";
 include "minmax.hoc";
 
-proc int sqrt_iter(int x, int g)
+proc float sqrt_iter(float x, float g)
 {
-  var int r = x/g;
+  var float r = x/g;
 
   if(r != g)
   {
-    r = (r+g)/2;
-    if(abs(r-g) == 1)
-      r = min(r, g);
+    r = (r+g)/2.0;
+    if(fabs(r-g) == 1.0)
+      r = fmin(r, g);
   }
   return r;
 }
@@ -17,12 +17,12 @@ proc int sqrt_iter(int x, int g)
 /*
    Computes the largest number 'r' such that 'r*r <= x'
  */
-proc int sqrt_floor(int x)
+proc float sqrt(float x)
 {
-  var int g = x;
-  var int r = 1;
+  var float g = x;
+  var float r = 1.0;
 
-  while((g > 0) && (g != r))
+  while((g > 0.0) && (g != r))
   {
     g = r;
     r = sqrt_iter(x, g);

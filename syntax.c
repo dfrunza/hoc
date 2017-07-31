@@ -1093,7 +1093,7 @@ do_var_decl(TokenStream* input, AstNode** node)
                 if(!var_decl->init_expr)
                 {
                   putback_token(input);
-                  success = compile_error(&input->src_loc, "Expression required, at `%s`", get_token_printstr(&input->token));
+                  success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
                 }
               }
             }
@@ -1101,11 +1101,32 @@ do_var_decl(TokenStream* input, AstNode** node)
         }
       }
       else
-        success = compile_error(&input->src_loc, "Identifier expected, actual `%s`", get_token_printstr(&input->token));
+        success = compile_error(&input->src_loc, "identifier expected, actual `%s`", get_token_printstr(&input->token));
     }
   }
   else
     success = compile_error(&input->src_loc, "Identifier expected, actual `%s`", get_token_printstr(&input->token));
+  return success;
+}
+
+local bool32
+do_new_stmt(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool32 success = false;
+
+  if(input->token.kind == TokenKind_New && get_next_token(input))
+  {
+    if(input->token.kind == TokenKind_Id)
+    {
+      AstNewStmt* new_stmt = new_new_stmt(&input->src_loc);
+      *node = (AstNewStmt*)new_stmt;
+
+//      new_stmt->type_expr = ;
+    }
+    else
+      success = compile_error(&input->src_loc, "identifier expected, actual `%s`", get_token_printstr(&input->token));
+  }
   return success;
 }
 
@@ -1722,6 +1743,8 @@ do_statement(TokenStream* input, AstNode** node)
     success = do_continue_stmt(input, node) && do_semicolon(input);
   else if(input->token.kind == TokenKind_Goto)
     success = do_goto_stmt(input, node) && do_semicolon(input);
+  else if(input->token.kind == TokenKind_New)
+    success = do_new_stmt(input, node) && do_semicolon(input);
   else if(input->token.kind == TokenKind_Semicolon)
   {
     *node = new_empty_stmt(&input->src_loc);

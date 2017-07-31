@@ -35,6 +35,8 @@ get_type_printstr(Type* type)
     else if(type->basic.kind == BasicTypeKind_Void)
       result = "void";
   }
+  else if(type->kind == TypeKind_Pointer)
+    result = "pointer";
   return result;
 }
 
@@ -470,6 +472,7 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
           {
             if(types_are_equal(left_type, basic_type_int)
                || types_are_equal(left_type, basic_type_float)
+               || types_are_equal(left_type, basic_type_char)
                || left_type->kind == TypeKind_Pointer)
             {
               if(is_relation_op(bin_expr->op))
@@ -477,7 +480,7 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
             }
             else
               success = compile_error(&expr->src_loc,
-                                      "int or float operands are expected, actual `%s`", get_type_printstr(left_type));
+                                      "int, float or char operands are expected, actual `%s`", get_type_printstr(left_type));
           }
           else if(is_logic_op(bin_expr->op) && !types_are_equal(left_type, basic_type_bool))
             success = compile_error(&expr->src_loc,
@@ -510,10 +513,18 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
               assert(false);
           }
         }
-        else if(left_type->kind == TypeKind_Pointer)
+        else if(types_are_equal(left_type, basic_type_bool)
+                || left_type->kind == TypeKind_Pointer)
           ;/*noop*/
         else
           success = compile_error(&expr->src_loc, "Cannot convert int to `%s`", get_type_printstr(left_type));
+      }
+      else if(types_are_equal(right_type, basic_type_char))
+      {
+        if(types_are_equal(left_type, basic_type_int))
+          bin_expr->right_operand->type = basic_type_int;
+        else
+          success = compile_error(&expr->src_loc, "Cannot convert char to `%s`", get_type_printstr(left_type));
       }
       else
         success = compile_error(&expr->src_loc, "Expression operands must be of same type");
@@ -522,43 +533,68 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
   else if(expr->kind == AstNodeKind_UnrExpr)
   {
     AstUnrExpr* unr_expr = (AstUnrExpr*)expr;
-    if(success = do_expression(encl_block, unr_expr->operand, &unr_expr->operand))
+    if(unr_expr->op == AstOpKind_PostIncrement)
     {
-      if(unr_expr->op == AstOpKind_AddressOf)
+#if 0
+      AstBinExpr* assign = new_bin_expr(&unr_expr->src_loc);
+      assign->op = AstOpKind_Assign;
+      assign->left_operand = unr_expr->operand;
+
+      AstBinExpr* incr_one = new_bin_expr(&unr_expr->src_loc);
+      incr_one->op = AstOpKind_Add;
+      incr_one->left_operand = unr_expr->operand;
+      AstLiteral* one = new_literal(&unr_expr->src_loc);
+      one->lit_kind = AstLiteralKind_Int;
+      one->int_val = 1;
+      incr_one->right_operand = (AstNode*)one;
+
+      assign->right_operand = (AstNode*)incr_one;
+      if(success = do_expression(encl_block, (AstNode*)assign, &(AstNode*)assign))
+        *out_expr = (AstNode*)assign;
+#else
+      fail("not implemented");
+#endif
+    }
+    else 
+    {
+      if(success = do_expression(encl_block, unr_expr->operand, &unr_expr->operand))
       {
-        if(unr_expr->operand->kind == AstNodeKind_VarOccur)
-          expr->type = new_pointer_type(unr_expr->operand->type);
-        else
-          success = compile_error(&expr->src_loc, "`&` operator can only be applied to variable occurrences");
-      }
-      else if(unr_expr->op == AstOpKind_Neg)
-      {
-        if(type_unif(unr_expr->operand->type, basic_type_int)
-           || type_unif(unr_expr->operand->type, basic_type_float))
+        if(unr_expr->op == AstOpKind_AddressOf)
         {
-          expr->type = unr_expr->operand->type;
-          if(types_are_equal(unr_expr->operand->type, basic_type_float))
-            unr_expr->op = AstOpKind_NegFloat;
+          if(unr_expr->operand->kind == AstNodeKind_VarOccur)
+            expr->type = new_pointer_type(unr_expr->operand->type);
+          else
+            success = compile_error(&expr->src_loc, "`&` operator can only be applied to variable occurrences");
+        }
+        else if(unr_expr->op == AstOpKind_Neg)
+        {
+          if(type_unif(unr_expr->operand->type, basic_type_int)
+             || type_unif(unr_expr->operand->type, basic_type_float))
+          {
+            expr->type = unr_expr->operand->type;
+            if(types_are_equal(unr_expr->operand->type, basic_type_float))
+              unr_expr->op = AstOpKind_NegFloat;
+          }
+          else
+            success = compile_error(&expr->src_loc,
+                                    "int or float operands are expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
+        }
+        else if(is_logic_op(unr_expr->op))
+        {
+          if(type_unif(unr_expr->operand->type, basic_type_bool))
+            expr->type = unr_expr->operand->type;
+          else
+            success = compile_error(&expr->src_loc,
+                                    "bool operand is expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
+        }
+        else if(unr_expr->op == AstOpKind_PtrDeref)
+        {
+          Type* operand_type = unr_expr->operand->type;
+          expr->type = operand_type->ptr.pointee;
         }
         else
-          success = compile_error(&expr->src_loc,
-                                  "int or float operands are expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
+          fail("not implemented");
       }
-      else if(is_logic_op(unr_expr->op))
-      {
-        if(type_unif(unr_expr->operand->type, basic_type_bool))
-          expr->type = unr_expr->operand->type;
-        else
-          success = compile_error(&expr->src_loc,
-                                  "bool operand is expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
-      }
-      else if(unr_expr->op == AstOpKind_PtrDeref)
-      {
-        Type* operand_type = unr_expr->operand->type;
-        expr->type = operand_type->ptr.pointee;
-      }
-      else
-        fail("not implemented");
     }
   }
   else if(expr->kind == AstNodeKind_Id)
@@ -624,6 +660,7 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
               *out_expr = (AstNode*)float_to_int;
             }
             else if(types_are_equal(cast->expr->type, basic_type_bool)
+                    || types_are_equal(cast->expr->type, basic_type_char)
                     || cast->expr->type->kind == TypeKind_Pointer)
             {
               cast->expr->type = cast->type;
@@ -633,12 +670,19 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
               success = compile_error(&expr->src_loc, "Conversion to int not possible");
           }
           else if(cast->type->kind == TypeKind_Pointer
-                  && (cast->expr->type->kind == TypeKind_Pointer
-                      || types_are_equal(cast->expr->type, basic_type_int)))
+                  && types_are_equal(cast->expr->type, basic_type_int))
           {
             cast->expr->type = cast->type;
             *out_expr = cast->expr;
-          } 
+          }
+          else if(types_are_equal(cast->type, basic_type_bool)
+                  && (types_are_equal(cast->expr->type, basic_type_int)
+                      || types_are_equal(cast->expr->type, basic_type_char)
+                      || cast->expr->type->kind == TypeKind_Pointer))
+          {
+            cast->expr->type = cast->type;
+            *out_expr = cast->expr;
+          }
           else
             success = compile_error(&expr->src_loc, "Invalid cast");
         }

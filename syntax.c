@@ -128,12 +128,11 @@ new_unr_expr(SourceLocation* src_loc)
   return node;
 }
 
-local AstLiteral*
-new_int_literal(SourceLocation* src_loc)
+AstLiteral*
+new_literal(SourceLocation* src_loc)
 {
   AstLiteral* node = mem_push_struct(arena, AstLiteral);
   node->kind = AstNodeKind_Literal;
-  node->lit_kind = AstLiteralKind_Int;
   node->src_loc = *src_loc;
   return node;
 }
@@ -844,7 +843,7 @@ do_accessor(TokenStream* input, AstNode** node)
           input->token.kind == TokenKind_True ||
           input->token.kind == TokenKind_False)
   {
-    AstLiteral* literal = new_int_literal(&input->src_loc);
+    AstLiteral* literal = new_literal(&input->src_loc);
     *node = (AstNode*)literal;
 
     if(input->token.kind == TokenKind_IntNum)

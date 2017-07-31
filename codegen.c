@@ -84,10 +84,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
     {
       AstUnrExpr* unr_expr = (AstUnrExpr*)bin_expr->left_operand;
       if(unr_expr->op == AstOpKind_PtrDeref)
-      {
-        assert(unr_expr->operand->kind == AstNodeKind_VarOccur);
         gen_load_rvalue(code, unr_expr->operand);
-      }
       else
         assert(false);
     }
@@ -185,27 +182,33 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
 local void
 gen_unr_expr(List* code, AstUnrExpr* unr_expr)
 {
-  gen_load_rvalue(code, unr_expr->operand);
-  if(unr_expr->op == AstOpKind_Neg)
-    emit_instr(code, Opcode_NEG);
-  else if(unr_expr->op == AstOpKind_NegFloat)
-    emit_instr(code, Opcode_NEGF);
-  else if(unr_expr->op == AstOpKind_LogicNot)
-  {
-    emit_instr_int(code, Opcode_PUSH, 0);
-    emit_instr( code, Opcode_CMPEQ);
-  }
-  else if(unr_expr->op == AstOpKind_IntToFloat)
-    emit_instr(code, Opcode_INT_TO_FLOAT);
-  else if(unr_expr->op == AstOpKind_FloatToInt)
-    emit_instr(code, Opcode_FLOAT_TO_INT);
-  else if(unr_expr->op == AstOpKind_AddressOf)
+  if(unr_expr->op == AstOpKind_AddressOf)
   {
     assert(unr_expr->operand->kind == AstNodeKind_VarOccur);
     gen_load_lvalue(code, (AstVarOccur*)unr_expr->operand);
   }
   else
-    assert(false);
+  {
+    gen_load_rvalue(code, unr_expr->operand);
+
+    if(unr_expr->op == AstOpKind_Neg)
+      emit_instr(code, Opcode_NEG);
+    else if(unr_expr->op == AstOpKind_NegFloat)
+      emit_instr(code, Opcode_NEGF);
+    else if(unr_expr->op == AstOpKind_LogicNot)
+    {
+      emit_instr_int(code, Opcode_PUSH, 0);
+      emit_instr( code, Opcode_CMPEQ);
+    }
+    else if(unr_expr->op == AstOpKind_IntToFloat)
+      emit_instr(code, Opcode_INT_TO_FLOAT);
+    else if(unr_expr->op == AstOpKind_FloatToInt)
+      emit_instr(code, Opcode_FLOAT_TO_INT);
+    else if(unr_expr->op == AstOpKind_PtrDeref)
+      emit_instr(code, Opcode_LOAD);
+    else
+      assert(false);
+  }
 }
 
 local void
@@ -257,7 +260,9 @@ gen_load_rvalue(List* code, AstNode* ast)
   else if(ast->kind == AstNodeKind_Literal)
   {
     AstLiteral* literal = (AstLiteral*)ast;
-    if(literal->lit_kind == AstLiteralKind_Int || literal->lit_kind == AstLiteralKind_Bool)
+    if(literal->lit_kind == AstLiteralKind_Int
+       || literal->lit_kind == AstLiteralKind_Bool
+       || literal->lit_kind == AstLiteralKind_Char)
       emit_instr_int(code, Opcode_PUSH, literal->int_val);
     else if(literal->lit_kind == AstLiteralKind_Float)
       emit_instr_float(code, Opcode_PUSHF, literal->float_val);

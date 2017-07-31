@@ -789,6 +789,7 @@ AstVarDecl* new_var_decl(SourceLocation* src_loc);
 AstVarOccur* new_var_occur(SourceLocation* src_loc);
 AstCall* new_call(SourceLocation* src_loc);
 AstUnrExpr* new_unr_expr(SourceLocation* src_loc);
+AstLiteral* new_literal(SourceLocation* src_loc);
 Type* new_typevar();
 Type* new_proc_type(Type* args, Type* ret);
 Type* new_pointer_type(Type* pointee);

@@ -36,7 +36,7 @@ get_type_printstr(Type* type)
       result = "void";
   }
   else if(type->kind == TypeKind_Pointer)
-    result = "pointer";
+    result = "pointer type";
   return result;
 }
 
@@ -590,7 +590,11 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
         else if(unr_expr->op == AstOpKind_PtrDeref)
         {
           Type* operand_type = unr_expr->operand->type;
-          expr->type = operand_type->ptr.pointee;
+          if(operand_type->kind == TypeKind_Pointer)
+            expr->type = operand_type->ptr.pointee;
+          else
+            success = compile_error(&expr->src_loc,
+                                    "pointer type expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
         }
         else
           fail("not implemented");

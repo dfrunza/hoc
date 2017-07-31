@@ -423,8 +423,12 @@ gen_statement(List* code, AstNode* ast)
   }
   else if(ast->kind == AstNodeKind_Call)
   {
-    gen_call(code, (AstCall*)ast);
-    emit_instr(code, Opcode_POP);
+    AstCall* call = (AstCall*)ast;
+    gen_call(code, call);
+
+    AstProc* proc = (AstProc*)call->proc_sym->ast;
+    if(proc->ret_size > 0)
+      emit_instr(code, Opcode_POP);
   }
   else if(ast->kind == AstNodeKind_VarDecl)
   {

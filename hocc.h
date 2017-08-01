@@ -73,6 +73,7 @@ typedef enum TokenKind
   TokenKind_Include,
   TokenKind_Enum,
   TokenKind_Cast,
+  TokenKind_New,
   TokenKind_True,
   TokenKind_False,
 
@@ -194,6 +195,7 @@ typedef enum
   AstNodeKind_IncludeStmt,
   AstNodeKind_Module,
   AstNodeKind_Cast,
+  AstNodeKind_New,
   AstNodeKind_Call,
   AstNodeKind_Array,
   AstNodeKind_Pointer,
@@ -487,8 +489,23 @@ typedef struct
   AstNode;
 
   /* syntactic */
+  AstNode* type_expr;
+
+  /* runtime */
+  int storage_size;
+}
+AstNew;
+
+typedef struct
+{
+  AstNode;
+
+  /* syntactic */
   AstNode* expr;
   AstNode* index;
+
+  /* semantic */
+  int size;
 }
 AstArray;
 
@@ -570,11 +587,11 @@ typedef struct Type
   TypeKind kind;
   Type* repr_type; /* representative member of the set of equivalent types */
   AstNode* ast;
+  int size; // in VM-words
 
   union {
     struct {
       BasicTypeKind kind;
-      int size; // in VM-words
     }
     basic;
 
@@ -596,7 +613,7 @@ typedef struct Type
     product;
 
     struct {
-      int dim;
+      int size;
       Type* elem;
     }
     array;
@@ -661,6 +678,7 @@ typedef enum
   Opcode_STORE,
   Opcode_STORE8,
   Opcode_ALLOC,
+  Opcode_NEW,
 
   Opcode_ADD,
   Opcode_SUB,

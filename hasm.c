@@ -247,6 +247,8 @@ build_bincode(SourceProgram* source, BinCode** out_code)
         instr.opcode = Opcode_LEAVE;
       else if(cstr_match(mnemonic, "alloc"))
         instr.opcode = Opcode_ALLOC;
+      else if(cstr_match(mnemonic, "new"))
+        instr.opcode = Opcode_NEW;
       else if(cstr_match(mnemonic, "float_to_int"))
         instr.opcode = Opcode_FLOAT_TO_INT;
       else if(cstr_match(mnemonic, "int_to_float"))
@@ -307,6 +309,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
             } break;
 
           case Opcode_ALLOC:
+          case Opcode_NEW:
             {
               if(cstr_to_int(components[1], &instr.param.int_val))
                 instr.param_type = ParamType_Int32;

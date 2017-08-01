@@ -86,7 +86,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
       if(unr_expr->op == AstOpKind_PtrDeref)
         gen_load_rvalue(code, unr_expr->operand);
       else
-        assert(false);
+        assert(0);
     }
 
     emit_instr(code, Opcode_STORE);
@@ -131,7 +131,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         else if(bin_expr->op == AstOpKind_Greater)
           emit_instr(code, Opcode_CMPGRT);
         else
-          assert(false);
+          assert(0);
       } break;
 
       case AstOpKind_LogicAnd:
@@ -145,7 +145,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         else if(bin_expr->op == AstOpKind_LogicOr)
           emit_instr_str(code, Opcode_JUMPNZ, bin_expr->label_end);
         else
-          assert(false);
+          assert(0);
 
         emit_instr(code, Opcode_POP);
         gen_load_rvalue(code, bin_expr->right_operand);
@@ -162,7 +162,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         else if(bin_expr->op == AstOpKind_GreaterEquals)
           emit_instr(code, Opcode_CMPGRT);
         else
-          assert(false);
+          assert(0);
         emit_instr(code, Opcode_DUP);
 
         emit_instr_str(code, Opcode_JUMPNZ, bin_expr->label_end);
@@ -174,7 +174,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
       } break;
 
       default:
-        assert(false);
+        assert(0);
     }
   }
 }
@@ -207,7 +207,7 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
     else if(unr_expr->op == AstOpKind_PtrDeref)
       emit_instr(code, Opcode_LOAD);
     else
-      assert(false);
+      assert(0);
   }
 }
 
@@ -267,14 +267,16 @@ gen_load_rvalue(List* code, AstNode* ast)
     else if(literal->lit_kind == AstLiteralKind_Float)
       emit_instr_float(code, Opcode_PUSHF, literal->float_val);
     else
-      assert(false);
+      assert(0);
   }
   else if(ast->kind == AstNodeKind_BinExpr)
     gen_bin_expr(code, (AstBinExpr*)ast);
   else if(ast->kind == AstNodeKind_UnrExpr)
     gen_unr_expr(code, (AstUnrExpr*)ast);
+  else if(ast->kind == AstNodeKind_New)
+    emit_instr_int(code, Opcode_NEW, ((AstNew*)ast)->storage_size);
   else
-    assert(false);
+    assert(0);
 }
 
 local void
@@ -304,7 +306,7 @@ gen_break_stmt(List* code, AstBreakStmt* break_stmt)
   else if(loop->kind == AstNodeKind_ForStmt)
     label_break = ((AstForStmt*)loop)->label_break;
   else
-    assert(false);
+    assert(0);
 
   int depth = break_stmt->nesting_depth;
   while(depth--)
@@ -447,7 +449,7 @@ gen_statement(List* code, AstNode* ast)
   else if(ast->kind == AstNodeKind_EmptyStmt)
     gen_empty_stmt(code);
   else
-    assert(false);
+    assert(0);
 }
 
 void
@@ -489,7 +491,7 @@ get_regname_str(RegName reg)
   else if(reg == RegName_IP)
     regname = reg_ip;
   else
-    assert(false);
+    assert(0);
   return regname;
 }
 
@@ -510,7 +512,7 @@ print_code(VmProgram* vm_program)
         else if(instr->param_type == ParamType_Int32)
           print_instruction(vm_program, "push %d", instr->param.int_val);
         else
-          assert(false);
+          assert(0);
       } break;
 
       case Opcode_PUSHF:
@@ -518,7 +520,7 @@ print_code(VmProgram* vm_program)
         if(instr->param_type == ParamType_Float32)
           print_instruction(vm_program, "pushf %f", instr->param.float_val);
         else
-          assert(false);
+          assert(0);
       } break;
 
       case Opcode_POP:
@@ -530,7 +532,7 @@ print_code(VmProgram* vm_program)
         else if(instr->param_type == ParamType_Int32)
           print_instruction(vm_program, "pop %d", instr->param.int_val);
         else
-          assert(false);
+          assert(0);
       } break;
 
       case Opcode_DUP:
@@ -635,6 +637,12 @@ print_code(VmProgram* vm_program)
         print_instruction(vm_program, "alloc %d", instr->param.int_val);
       } break;
 
+      case Opcode_NEW:
+      {
+        assert(instr->param_type == ParamType_Int32);
+        print_instruction(vm_program, "new %d", instr->param.int_val);
+      } break;
+
       case Opcode_CALL:
       {
         assert(instr->param_type == ParamType_String);
@@ -704,7 +712,7 @@ print_code(VmProgram* vm_program)
         else if(instr->opcode == Opcode_CMPGRT)
           print_instruction(vm_program, "cmpgrt");
         else
-          assert(false);
+          assert(0);
       } break;
 
       case Opcode_AND:
@@ -750,7 +758,7 @@ print_code(VmProgram* vm_program)
       } break;
 
       default:
-        assert(false);
+        assert(0);
     }
   }
 }

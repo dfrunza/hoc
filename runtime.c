@@ -19,6 +19,7 @@ make_unique_label(String* label)
   arena->free = (uint8*)label->end + 1;
 }
 
+#if 0
 local int
 get_type_size(Type* type)
 {
@@ -31,6 +32,16 @@ get_type_size(Type* type)
     fail("not implemented");
   return size;
 }
+#else
+local int
+compute_type_size(Type* type)
+{
+  type->size = 1;
+  if(type->kind == TypeKind_Array)
+    type->size *= compute_type_size(type->array.elem);
+  return type->size;
+}
+#endif
 
 local int
 compute_data_loc(int sp, List* areas)
@@ -127,7 +138,7 @@ do_block(AstBlock* block)
       list_item = list_item->next)
   {
     AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
-    var_decl->data.size = get_type_size(var_decl->type);
+    var_decl->data.size = compute_type_size(var_decl->type);
     block->locals_size += var_decl->data.size;
     list_append(arena, &post_fp_data, &var_decl->data);
   }
@@ -252,10 +263,10 @@ do_statement(AstNode* ast)
     AstCast* cast = (AstCast*)ast;
     do_statement(cast->expr);
   }
-  else if(ast->kind == AstNodeKind_VarOccur ||
-          ast->kind == AstNodeKind_BreakStmt ||
-          ast->kind == AstNodeKind_EmptyStmt ||
-          ast->kind == AstNodeKind_Literal)
+  else if(ast->kind == AstNodeKind_VarOccur
+          || ast->kind == AstNodeKind_BreakStmt
+          || ast->kind == AstNodeKind_EmptyStmt
+          || ast->kind == AstNodeKind_Literal)
     ; /* no-op */
   else if(ast->kind == AstNodeKind_VarDecl)
   {
@@ -263,8 +274,13 @@ do_statement(AstNode* ast)
     if(var_decl->assign_expr)
       do_statement((AstNode*)var_decl->assign_expr);
   }
+  else if(ast->kind == AstNodeKind_New)
+  {
+    AstNew* new_ast = (AstNew*)ast;
+    new_ast->storage_size = compute_type_size(new_ast->type);
+  }
   else
-    assert(false);
+    assert(0);
 }
 
 local void
@@ -295,7 +311,7 @@ do_proc(AstProc* proc)
   list_init(&post_fp_data);
 
   AstVarDecl* ret_var = (AstVarDecl*)proc->ret_var;
-  ret_var->data.size = get_type_size(ret_var->type);
+  ret_var->data.size = compute_type_size(ret_var->type);
   proc->ret_size = ret_var->data.size;
   if(proc->ret_size > 0)
     list_append(arena, &pre_fp_data, &ret_var->data);
@@ -311,7 +327,7 @@ do_proc(AstProc* proc)
       list_item = list_item->next)
   {
     AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
-    var_decl->data.size = get_type_size(var_decl->type);
+    var_decl->data.size = compute_type_size(var_decl->type);
     proc->args_size += var_decl->data.size;
     list_append(arena, &pre_fp_data, &var_decl->data);
   }
@@ -327,7 +343,7 @@ do_proc(AstProc* proc)
       list_item = list_item->next)
   {
     AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
-    var_decl->data.size = get_type_size(var_decl->type);
+    var_decl->data.size = compute_type_size(var_decl->type);
     proc->locals_size += var_decl->data.size;
     list_append(arena, &post_fp_data, &var_decl->data);
   }

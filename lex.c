@@ -21,6 +21,7 @@ local Token keyword_list[] =
   {TokenKind_Union, "union"},
   {TokenKind_Enum, "enum"},
   {TokenKind_Cast, "cast"},
+  {TokenKind_New, "new"},
   {TokenKind__Null, 0}, /* terminator */
 };
 

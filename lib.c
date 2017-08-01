@@ -9,11 +9,10 @@ assert_f(char* message, char* file, int line)
 {
   if(DEBUG_enabled)
   {
-    fprintf(stderr, "%s(%d) : ", file, line, message);
-    if(message)
-      fprintf(stderr, "%s\n", file, line, message);
-    else
-      fprintf(stderr, "assert\n", file, line);
+    fprintf(stderr, "%s(%d) : ", file, line);
+    if(!message || message[0] == '\0')
+      message = "0";
+    fprintf(stderr, "assert(%s)\n", message);
 
     fflush(stderr);
     *(int*)0 = 0;
@@ -25,15 +24,13 @@ fail_f(char* file, int line, char* message, ...)
 {
   fprintf(stderr, "%s(%d) : ", file, line);
 
-  if(message)
-  {
-    va_list args;
-    va_start(args, message);
-    vfprintf(stderr, message, args);
-    va_end(args);
-  }
-  else
-    fprintf(stderr, "fail");
+  if(!message || message[0] == '\0')
+    message = "fail";
+
+  va_list args;
+  va_start(args, message);
+  vfprintf(stderr, message, args);
+  va_end(args);
 
   fprintf(stderr, "\n");
   fflush(stderr);
@@ -45,15 +42,13 @@ error_f(char* file, int line, char* message, ...)
 {
   fprintf(stderr, "%s(%d) : ", file, line);
 
-  if(message)
-  {
-    va_list args;
-    va_start(args, message);
-    vfprintf(stderr, message, args);
-    va_end(args);
-  }
-  else
-    fprintf(stderr, "error");
+  if(!message || message[0] == '\0')
+    message = "error";
+
+  va_list args;
+  va_start(args, message);
+  vfprintf(stderr, message, args);
+  va_end(args);
 
   fprintf(stderr, "\n");
   fflush(stderr);

@@ -66,13 +66,6 @@ typedef struct
 }
 List;
 
-#if 0
-#define use(STRUCT, FIELD)\
-  auto FIELD = &(STRUCT)->FIELD
-#define reuse(STRUCT, FIELD, VAR)\
-  auto VAR = &(STRUCT)->FIELD
-#endif
-
 #define assert(EXPR)\
   if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__)
 #define fail(MESSAGE, ...)\

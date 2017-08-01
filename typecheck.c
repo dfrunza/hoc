@@ -24,7 +24,7 @@ new_basic_type(BasicTypeKind kind, int size)
   Type* type = mem_push_struct(arena, Type);
   type->kind = TypeKind_Basic;
   type->basic.kind = kind;
-  type->basic.size = size;
+  type->size = size;
   return type;
 }
 
@@ -58,11 +58,11 @@ new_product_type(Type* left, Type* right)
 }
 
 Type*
-new_array_type(int dim, Type* elem)
+new_array_type(int size, Type* elem)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = TypeKind_Array;
-  type->array.dim = dim;
+  type->array.size = size;
   type->array.elem = elem;
   return type;
 }
@@ -125,7 +125,7 @@ types_are_equal(Type* type_a, Type* type_b)
       are_equal = types_are_equal(type_a->product.left, type_b->product.right);
     else if(type_a->kind == TypeKind_Array)
       are_equal = types_are_equal(type_a->array.elem, type_b->array.elem)
-        && type_a->array.dim == type_b->array.dim;
+        && type_a->array.size == type_b->array.size;
     else
       assert(false);
   }
@@ -193,7 +193,7 @@ type_unif(Type* type_a, Type* type_b)
       else if(repr_type_a->kind == TypeKind_Pointer)
         success = type_unif(repr_type_a->ptr.pointee, repr_type_b->ptr.pointee);
       else if(repr_type_a->kind == TypeKind_Array)
-        success = (repr_type_a->array.dim == repr_type_b->array.dim)
+        success = (repr_type_a->array.size == repr_type_b->array.size)
           && type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
       else
         assert(false);

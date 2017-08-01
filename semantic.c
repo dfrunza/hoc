@@ -746,7 +746,13 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
   {
     AstNew* new_ast = (AstNew*)expr;
     if(success = do_type_expr(new_ast->type_expr))
-      new_ast->type = new_pointer_type(new_ast->type_expr->type);
+    {
+      Type* expr_type = new_ast->type_expr->type;
+      if(expr_type->kind == TypeKind_Array)
+        new_ast->type = new_pointer_type(expr_type->array.elem);
+      else
+        new_ast->type = new_pointer_type(new_ast->type_expr->type);
+    }
   }
   else
     fail("not implemented : %s", get_ast_kind_printstr(expr->kind));

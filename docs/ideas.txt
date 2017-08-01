@@ -290,5 +290,13 @@ var [10]( [10]int* proc(int) )* p_func; // p_func is an array of proc pointers; 
 var ([] ([]int* proc(int))* )* p_func; // p_func is a pointer to an array of proc pointers
 -------------------------------
 
+proc void foo(MyLocalType* e)
+{
+  struct MyLocalType {
+    ...
+  };
 
+  MyLocalType a;
+  foo(&a);
+}
 

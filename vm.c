@@ -55,6 +55,13 @@ check_instr_bounds(BinCode* code, int address)
   return address >= 0 && address < code->instr_count;
 }
 
+void
+clear_memory(uint8* memory, int base, int word_count)
+{
+  for(int i = 0; i < word_count; i++)
+    ((int32*)memory)[base + i] = 0xcdcdcdcd;
+}
+
 local ExecResult
 execute_instr(HocMachine* machine, Instruction* instr)
 {
@@ -69,8 +76,13 @@ execute_instr(HocMachine* machine, Instruction* instr)
       int32 top_sp = machine->sp + instr->param.int_val;
       if(check_sp_bounds(machine, top_sp))
       {
-        for(int i = machine->sp; i < top_sp; i++)
-          ((int32*)memory)[i] = 0xcdcdcdcd;
+#if 0
+        for(int i = 0; i < instr->param.int_val; i++)
+          ((int32*)memory)[machine->sp + i] = 0xcdcdcdcd;
+#else
+        clear_memory(memory, machine->sp, instr->param.int_val);
+#endif
+
         machine->sp = top_sp;
         machine->ip++;
       } 
@@ -85,8 +97,12 @@ execute_instr(HocMachine* machine, Instruction* instr)
       int32 top_sp = machine->sp+1;
       if((top_hp < machine->hp) && check_hp_bounds(machine, top_hp) && check_sp_bounds(machine, top_sp))
       {
-        for(int i = top_hp; i < machine->hp; i++)
-          ((int32*)memory)[i] = 0xcdcdcdcd;
+#if 0
+        for(int i = 0; i < instr->param.int_val; i++)
+          ((int32*)memory)[top_hp + i] = 0xcdcdcdcd;
+#else
+        clear_memory(memory, top_hp, instr->param.int_val);
+#endif
 
         *(int32*)&memory[machine->sp*VMWORD] = top_hp;
 

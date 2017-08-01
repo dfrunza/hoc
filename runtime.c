@@ -38,7 +38,7 @@ compute_type_size(Type* type)
 {
   type->size = 1;
   if(type->kind == TypeKind_Array)
-    type->size *= compute_type_size(type->array.elem);
+    type->size = type->array.size * compute_type_size(type->array.elem);
   return type->size;
 }
 #endif
@@ -277,7 +277,7 @@ do_statement(AstNode* ast)
   else if(ast->kind == AstNodeKind_New)
   {
     AstNew* new_ast = (AstNew*)ast;
-    new_ast->storage_size = compute_type_size(new_ast->type);
+    new_ast->storage_size = compute_type_size(new_ast->type_expr->type);
   }
   else
     assert(0);

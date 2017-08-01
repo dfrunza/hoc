@@ -827,7 +827,7 @@ do_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
 }
 
 local bool32
-do_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
+do_type_expr_pointer(TokenStream* input, AstNode* expr, AstNode** node)
 {
   *node = expr;
   bool32 success = true;
@@ -838,29 +838,13 @@ do_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
     *node = (AstNode*)ptr;
     ptr->expr = expr;
 
-    success = get_next_token(input) && do_rest_of_type_expr(input, *node, node);
-  }
-  else if(input->token.kind == TokenKind_OpenBracket)
-  {
-#if 0
-    AstArray* array = new_array(&input->src_loc);
-    *node = (AstNode*)array;
-    array->expr = expr;
-
-    if(success = get_next_token(input) && do_expression(input, &array->index))
-    {
-      if(input->token.kind == TokenKind_CloseBracket)
-        success = get_next_token(input) && do_rest_of_type_expr(input, *node, node);
-      else
-        success = compile_error(&input->src_loc,  "expected `]`, actual `%s`", get_token_printstr(&input->token));
-    }
-#endif
+    success = get_next_token(input) && do_type_expr_pointer(input, *node, node);
   }
   return true;
 }
 
 local bool32
-do_type_expr(TokenStream* input, AstNode** node)
+do_type_expr_id(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -869,8 +853,42 @@ do_type_expr(TokenStream* input, AstNode** node)
   {
     AstId* id = new_id(&input->src_loc, input->token.lexeme);
     *node = (AstNode*)id;
-    success = get_next_token(input) && do_rest_of_type_expr(input, *node, node);
+    success = get_next_token(input) && do_type_expr_pointer(input, *node, node);
   }
+  return success;
+}
+
+local bool32
+do_type_expr(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool32 success = true;
+
+  if(input->token.kind == TokenKind_OpenBracket)
+  {
+    AstArray* array = new_array(&input->src_loc);
+    *node = (AstNode*)array;
+
+    if(success = get_next_token(input) && do_expression(input, &array->index))
+    {
+      if(input->token.kind == TokenKind_CloseBracket)
+      {
+        if(success = get_next_token(input) && do_type_expr(input, &array->expr))
+        {
+          if(!array->expr)
+          {
+            putback_token(input);
+            success = compile_error(&input->src_loc, "incomplete type expression, at `%s`", get_token_printstr(&input->token));
+          }
+        }
+      }
+      else
+        success = compile_error(&input->src_loc,  "expected `]`, actual `%s`", get_token_printstr(&input->token));
+    }
+  }
+  else
+    success = do_type_expr_id(input, node);
+
   return success;
 }
 

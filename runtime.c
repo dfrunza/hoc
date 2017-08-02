@@ -19,29 +19,16 @@ make_unique_label(String* label)
   arena->free = (uint8*)label->end + 1;
 }
 
-#if 0
-local int
-get_type_size(Type* type)
-{
-  int size = 0;
-  if(type->kind == TypeKind_Basic)
-    size = type->basic.size;
-  else if(type->kind == TypeKind_Pointer)
-    size = 1;
-  else
-    fail("not implemented");
-  return size;
-}
-#else
 local int
 compute_type_size(Type* type)
 {
   type->size = 1;
   if(type->kind == TypeKind_Array)
     type->size = type->array.size * compute_type_size(type->array.elem);
+  else if(type->kind == TypeKind_Product)
+    type->size = compute_type_size(type->product.left) + compute_type_size(type->product.right);
   return type->size;
 }
-#endif
 
 local int
 compute_data_loc(int sp, List* areas)

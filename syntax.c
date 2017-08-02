@@ -1095,11 +1095,11 @@ do_unary_expr(TokenStream* input, AstNode** node)
     {
       if(input->token.kind == TokenKind_OpenParens)
       {
-        if(success = get_next_token(input) && do_type_expr(input, &cast->type_to))
+        if(success = get_next_token(input) && do_type_expr(input, &cast->type_expr))
         {
           if(input->token.kind == TokenKind_CloseParens)
           {
-            if(cast->type_to)
+            if(cast->type_expr)
               success = get_next_token(input) && do_unary_expr(input, &cast->expr);
             else
             {
@@ -1138,43 +1138,38 @@ do_var_decl(TokenStream* input, AstNode** node)
   bool32 success = true;
 
   AstNode* type = 0;
-  if(input->token.kind == TokenKind_Id)
+  if((success = do_type_expr(input, &type)) && type)
   {
-    if((success = do_type_expr(input, &type)) && type)
+    if(input->token.kind == TokenKind_Id)
     {
-      if(input->token.kind == TokenKind_Id)
+      AstVarDecl* var_decl = new_var_decl(&input->src_loc);
+      *node = (AstNode*)var_decl;
+
+      var_decl->type_expr = type;
+      var_decl->id = new_id(&input->src_loc, input->token.lexeme);
+
+      if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
+          && (success = get_next_token(input)))
       {
-        AstVarDecl* var_decl = new_var_decl(&input->src_loc);
-        *node = (AstNode*)var_decl;
-
-        var_decl->type_expr = type;
-        var_decl->id = new_id(&input->src_loc, input->token.lexeme);
-
-        if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
-           && (success = get_next_token(input)))
+        if(success = do_initializer(input, &var_decl->init_expr))
         {
-          if(success = do_initializer(input, &var_decl->init_expr))
+          if(!var_decl->init_expr)
           {
-            if(!var_decl->init_expr)
+            if(success = do_expression(input, &var_decl->init_expr))
             {
-              if(success = do_expression(input, &var_decl->init_expr))
+              if(!var_decl->init_expr)
               {
-                if(!var_decl->init_expr)
-                {
-                  putback_token(input);
-                  success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
-                }
+                putback_token(input);
+                success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
               }
             }
           }
         }
       }
-      else
-        success = compile_error(&input->src_loc, "identifier expected, actual `%s`", get_token_printstr(&input->token));
     }
+    else
+      success = compile_error(&input->src_loc, "identifier expected, actual `%s`", get_token_printstr(&input->token));
   }
-  else
-    success = compile_error(&input->src_loc, "identifier expected, actual `%s`", get_token_printstr(&input->token));
   return success;
 }
 
@@ -1984,7 +1979,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     else if(node->kind == AstNodeKind_Cast)
     {
       AstCast* cast = (AstCast*)node;
-      DEBUG_print_ast_node(str, indent_level, cast->type_to, "type_to");
+      DEBUG_print_ast_node(str, indent_level, cast->type_expr, "type_expr");
       DEBUG_print_ast_node(str, indent_level, cast->expr, "expr");
     }
     else if(node->kind == AstNodeKind_Array)

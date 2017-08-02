@@ -479,7 +479,7 @@ typedef struct
   AstNode;
 
   /* syntactic */
-  AstNode* type_to;
+  AstNode* type_expr;
   AstNode* expr;
 }
 AstCast;
@@ -559,6 +559,7 @@ typedef enum
   TypeKind_Proc,
   TypeKind_Product,
   TypeKind_Pointer,
+  TypeKind_Cast,
   TypeKind_Array,
 }
 TypeKind;
@@ -622,6 +623,12 @@ typedef struct Type
       int id;
     }
     typevar;
+
+    struct {
+      Type* from;
+      Type* to;
+    }
+    cast;
   };
 }
 Type;
@@ -812,7 +819,8 @@ Type* new_typevar();
 Type* new_proc_type(Type* args, Type* ret);
 Type* new_pointer_type(Type* pointee);
 Type* new_product_type(Type* left, Type* right);
-Type* new_array_type(int dim, Type* elem_type);
+Type* new_array_type(int size, Type* elem_type);
+Type* new_cast_type(Type* from_type, Type* to_type);
 Type* make_type_of_node_list(List* node_list);
 Type* get_type_repr(Type* type);
 bool32 type_unif(Type* type_a, Type* type_b);

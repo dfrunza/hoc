@@ -17,6 +17,7 @@ local int tempvar_id = 0;
 
 local bool32 do_block(AstProc*, AstNode*, AstNode*, AstBlock*);
 local bool32 do_expression(AstBlock*, AstNode*, AstNode**);
+local bool32 do_type_expr(AstNode* expr);
 
 local char*
 get_type_printstr(Type* type)
@@ -36,7 +37,9 @@ get_type_printstr(Type* type)
       result = "void";
   }
   else if(type->kind == TypeKind_Pointer)
-    result = "pointer type";
+    result = "pointer to..";
+  else if(type->kind == TypeKind_Array)
+    result = "array of..";
   return result;
 }
 
@@ -119,38 +122,26 @@ register_id(AstId* id, SymbolKind kind)
 }
 
 local bool32
-register_type_occur(AstNode* type_expr)
+register_type_occur(AstId* type_id)
 {
   bool32 success = true;
 
-  if(type_expr->kind == AstNodeKind_Pointer)
+  Symbol* decl_sym = lookup_symbol(type_id->name, SymbolKind_TypeDecl);
+  if(decl_sym)
   {
-    //FIXME: Should this be handled somewhere else?
-    AstPointer* ptr_ast = (AstPointer*)type_expr;
-    register_type_occur(ptr_ast->expr);
-    ptr_ast->type = new_pointer_type(ptr_ast->expr->type);
-  }
-  else if(type_expr->kind == AstNodeKind_Id)
-  {
-    AstId* type_id = (AstId*)type_expr;
-    Symbol* decl_sym = lookup_symbol(type_id->name, SymbolKind_TypeDecl);
-    if(decl_sym)
-    {
-      assert(decl_sym->type);
-      Type* type = decl_sym->type;
-      Symbol* occur_sym = register_id(type_id, SymbolKind_TypeOccur);
-      occur_sym->type = type;
-      type_id->type = type;
-    }
-    else
-      success = compile_error(&type_id->src_loc, "unknown type `%s`", type_id->name);
+    assert(decl_sym->type);
+    Type* type = decl_sym->type;
+    Symbol* occur_sym = register_id(type_id, SymbolKind_TypeOccur);
+    occur_sym->type = type;
+    type_id->type = type;
   }
   else
-    assert(0);
+    success = compile_error(&type_id->src_loc, "unknown type `%s`", type_id->name);
 
   return success;
 }
 
+//TODO: Move code into `do_var_occur()` and leave here only the id registration parts
 local bool32
 register_var_occur(AstVarOccur* var_occur)
 {
@@ -197,7 +188,8 @@ register_var_decl(AstVarDecl* var_decl)
   bool32 success = true;
 
   AstNode* type_expr = var_decl->type_expr;
-  if(register_type_occur(type_expr))
+  //if(register_type_occur(type_expr))
+  if(success = do_type_expr(type_expr))
   {
     AstId* var_id = var_decl->id;
     var_id->type = type_expr->type;
@@ -438,7 +430,7 @@ do_type_expr(AstNode* expr)
   if(expr->kind == AstNodeKind_Id)
   {
     AstId* type_id = (AstId*)expr;
-    if(success = register_type_occur((AstNode*)type_id))
+    if(success = register_type_occur(type_id))
       expr->type = type_id->type;
   }
   else if(expr->kind == AstNodeKind_Array)
@@ -490,7 +482,7 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
     {
       Type* left_type = bin_expr->left_operand->type;
       Type* right_type = bin_expr->right_operand->type;
-      expr->type = left_type;
+      bin_expr->type = left_type;
 
       if(type_unif(left_type, right_type))
       {
@@ -561,7 +553,8 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
           }
         }
         else if(types_are_equal(left_type, basic_type_bool)
-                || left_type->kind == TypeKind_Pointer)
+                || left_type->kind == TypeKind_Pointer
+                || left_type->kind == TypeKind_Array)
           ;/*noop*/
         else
           success = compile_error(&expr->src_loc, "cannot convert int to `%s`", get_type_printstr(left_type));
@@ -610,7 +603,13 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
         if(unr_expr->op == AstOpKind_AddressOf)
         {
           if(unr_expr->operand->kind == AstNodeKind_VarOccur)
-            expr->type = new_pointer_type(unr_expr->operand->type);
+          {
+            Type* operand_type = unr_expr->operand->type;
+            if(operand_type->kind == TypeKind_Array)
+              unr_expr->type = new_pointer_type(operand_type->array.elem); // ptr to element of array
+            else
+              unr_expr->type = new_pointer_type(operand_type);
+          }
           else
             success = compile_error(&expr->src_loc, "`&` operator can only be applied to variable occurrences");
         }
@@ -630,7 +629,7 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
         else if(is_logic_op(unr_expr->op))
         {
           if(type_unif(unr_expr->operand->type, basic_type_bool))
-            expr->type = unr_expr->operand->type;
+            unr_expr->type = unr_expr->operand->type;
           else
             success = compile_error(&expr->src_loc,
                                     "bool operand is expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
@@ -639,7 +638,12 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
         {
           Type* operand_type = unr_expr->operand->type;
           if(operand_type->kind == TypeKind_Pointer)
-            expr->type = operand_type->ptr.pointee;
+            unr_expr->type = operand_type->ptr.pointee;
+          else if(operand_type->kind == TypeKind_Array)
+          {
+            unr_expr->type = operand_type->array.elem;
+            unr_expr->operand->type = new_pointer_type(operand_type->array.elem);
+          }
           else
             success = compile_error(&expr->src_loc,
                                     "pointer type expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
@@ -692,18 +696,21 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
   else if(expr->kind == AstNodeKind_Cast)
   {
     AstCast* cast = (AstCast*)expr;
-    if(success = register_type_occur(cast->type_to))
+    if(success = do_type_expr(cast->type_expr))
     {
-      cast->type = cast->type_to->type;
+#if 1
       if(success = do_expression(encl_block, cast->expr, &cast->expr))
       {
-        if(types_are_equal(cast->type, cast->expr->type))
+        Type* from_type = cast->expr->type;
+        Type* to_type = cast->type_expr->type;
+
+        if(types_are_equal(from_type, to_type))
           *out_expr = cast->expr; /* cast is redundant; remove it */
         else
         {
-          if(types_are_equal(cast->type, basic_type_int))
+          if(types_are_equal(to_type, basic_type_int))
           {
-            if(types_are_equal(cast->expr->type, basic_type_float))
+            if(types_are_equal(from_type, basic_type_float))
             {
               AstUnrExpr* float_to_int = new_unr_expr(&cast->src_loc);
               float_to_int->op = AstOpKind_FloatToInt;
@@ -711,34 +718,54 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
               float_to_int->operand = cast->expr;
               *out_expr = (AstNode*)float_to_int;
             }
-            else if(types_are_equal(cast->expr->type, basic_type_bool)
-                    || types_are_equal(cast->expr->type, basic_type_char)
-                    || cast->expr->type->kind == TypeKind_Pointer)
+            else if(types_are_equal(from_type, basic_type_bool)
+                    || types_are_equal(from_type, basic_type_char)
+                    || to_type->kind == TypeKind_Pointer)
             {
-              cast->expr->type = cast->type;
+              cast->expr->type = to_type;
               *out_expr = cast->expr;
             }
             else
-              success = compile_error(&expr->src_loc, "Conversion to int not possible");
+              success = compile_error(&expr->src_loc, "conversion to int not possible");
           }
-          else if(cast->type->kind == TypeKind_Pointer
-                  && types_are_equal(cast->expr->type, basic_type_int))
+          else if(to_type->kind == TypeKind_Pointer
+                  && (types_are_equal(from_type, basic_type_int)
+                      || from_type->kind == TypeKind_Pointer))
           {
-            cast->expr->type = cast->type;
+            cast->expr->type = to_type;
             *out_expr = cast->expr;
           }
-          else if(types_are_equal(cast->type, basic_type_bool)
-                  && (types_are_equal(cast->expr->type, basic_type_int)
-                      || types_are_equal(cast->expr->type, basic_type_char)
-                      || cast->expr->type->kind == TypeKind_Pointer))
+          else if(types_are_equal(to_type, basic_type_bool)
+                  && (types_are_equal(from_type, basic_type_int)
+                      || types_are_equal(from_type, basic_type_char)
+                      || from_type->kind == TypeKind_Pointer))
           {
-            cast->expr->type = cast->type;
+            cast->expr->type = to_type;
             *out_expr = cast->expr;
           }
           else
-            success = compile_error(&expr->src_loc, "invalid cast");
+            success = compile_error(&expr->src_loc, "invalid cast : `%s` to `%s`",
+                                    get_type_printstr(from_type), get_type_printstr(to_type));
         }
       }
+#else
+      if(success = do_expression(encl_block, cast->expr, &cast->expr))
+      {
+        Type* from_type = cast->expr->type;
+        Type* to_type = cast->type_expr->type;
+
+        if(types_are_equal(from_type, to_type))
+          *out_expr = cast->expr; /* cast is redundant; remove it */
+        else
+        {
+          if(type_unif(from_type, to_type))
+            cast->type = to_type;
+          else
+            success = compile_error(&expr->src_loc, "invalid cast : `%s` -> `%s`",
+                                    get_type_printstr(from_type), get_type_printstr(to_type));
+        }
+      }
+#endif
     }
     //FIXME: Check the type conversions
   }

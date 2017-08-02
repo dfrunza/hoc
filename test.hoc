@@ -9,13 +9,10 @@ include "hlib\\minmax.hoc";
 
 proc int main()
 {
-  /*return cast(int)sqrt(16.0);*/
-  var int* i = new([10]int);
-  *i = 999;
-  i = i+1;
-  *i = 888;
-
-  return (*i) + (*(i-1));
+  var [4]int a;
+  *(&a) = 1;
+  *(&a + 1) = 2;
+  return *a;
 }
 
 

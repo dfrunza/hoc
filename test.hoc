@@ -9,9 +9,9 @@ include "hlib\\minmax.hoc";
 
 proc int main()
 {
-  var [4]int a;
-  *(&a) = 1;
-  *(&a + 1) = 2;
+  var [2]int a;
+  *a = 111;
+  *(a+1) = 222;
   return *a;
 }
 

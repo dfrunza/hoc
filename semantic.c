@@ -553,9 +553,22 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
           }
         }
         else if(types_are_equal(left_type, basic_type_bool)
-                || left_type->kind == TypeKind_Pointer
-                || left_type->kind == TypeKind_Array)
+                || left_type->kind == TypeKind_Pointer)
           ;/*noop*/
+#if 1
+        else if(left_type->kind == TypeKind_Array)
+        {
+          if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub)
+          {
+            AstUnrExpr* address_of = new_unr_expr(&bin_expr->src_loc);
+            address_of->op = AstOpKind_AddressOf;
+            address_of->type = new_pointer_type(left_type->array.elem);
+            address_of->operand = bin_expr->left_operand;
+            bin_expr->left_operand = (AstNode*)address_of;
+            bin_expr->type = address_of->type;
+          }
+        }
+#endif
         else
           success = compile_error(&expr->src_loc, "cannot convert int to `%s`", get_type_printstr(left_type));
       }
@@ -641,8 +654,13 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
             unr_expr->type = operand_type->ptr.pointee;
           else if(operand_type->kind == TypeKind_Array)
           {
+            AstUnrExpr* address_of = new_unr_expr(&unr_expr->src_loc);
+            address_of->op = AstOpKind_AddressOf;
+            address_of->type = new_pointer_type(operand_type->array.elem);
+
+            address_of->operand = unr_expr->operand;
+            unr_expr->operand = (AstNode*)address_of;
             unr_expr->type = operand_type->array.elem;
-            unr_expr->operand->type = new_pointer_type(operand_type->array.elem);
           }
           else
             success = compile_error(&expr->src_loc,

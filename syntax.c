@@ -55,7 +55,7 @@ clone_ast_node(AstNode* node)
   else if(node->kind == AstNodeKind_Pointer)
   {
     clone = (AstNode*)mem_push_struct(arena, AstPointer);
-    ((AstPointer*)clone)->expr = clone_ast_node(((AstPointer*)node)->expr);
+    *(AstPointer*)clone = *(AstPointer*)node;
   }
   else
     fail("not implemented");

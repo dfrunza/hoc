@@ -11,7 +11,7 @@ assert_f(char* message, char* file, int line)
   {
     fprintf(stderr, "%s(%d) : ", file, line);
     if(!message || message[0] == '\0')
-      message = "0";
+      message = "";
     fprintf(stderr, "assert(%s)\n", message);
 
     fflush(stderr);

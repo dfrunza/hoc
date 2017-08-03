@@ -1,9 +1,5 @@
 #include "hocc.h"
 
-// User-defined PE resource:
-//   nameId  typeId  fileName
-#define OUT_RC "CODE  VM  \"%s\""
-
 typedef struct
 {
   char* name;
@@ -16,8 +12,7 @@ typedef struct
   char strings[4*80 + 4*10];
   FileName hasm;
   FileName bincode;
-  FileName rc;
-  FileName res;
+  FileName exe;
 }
 OutFileNames;
 
@@ -198,7 +193,7 @@ make_file_names(OutFileNames* out_files, char* stem)
   assert(stem_len > 0);
   bool32 success = true;
 
-  if(success = (stem_len > 0 && stem_len < 80))
+  if(success = (stem_len > 0 && stem_len < 81))
   {
     char* str = out_files->strings;
 
@@ -212,73 +207,23 @@ make_file_names(OutFileNames* out_files, char* stem)
     out_files->bincode.len = cstr_len(out_files->bincode.name);
     str = out_files->bincode.name + out_files->bincode.len + 1;
 
-    sprintf(str, "%s.rc", stem);
-    out_files->rc.name = str;
-    out_files->rc.len = cstr_len(out_files->rc.name);
-    str = out_files->rc.name + out_files->rc.len + 1;
-
-    sprintf(str, "%s.res", stem);
-    out_files->res.name = str;
-    out_files->res.len = cstr_len(out_files->res.name);
+    sprintf(str, "%s.exe", stem);
+    out_files->exe.name = str;
+    out_files->exe.len = cstr_len(out_files->exe.name);
+    //str = out_files->exe.name + out_files->exe.len + 1;
   }
   else
-    error("Length of file name out of range : '%s'", stem);
+    error("length of file name must be between 1..80 : '%s'", stem);
   return success;
 }
 
 bool32
-write_res_file(OutFileNames* out_files)
-{
-  char buf[200];
-  sprintf(buf, OUT_RC, out_files->bincode.name);
-  int text_len = cstr_len(buf);
-  int bytes_written = file_write_bytes(out_files->rc.name, (uint8*)buf, text_len);
-  bool32 success = (bytes_written == text_len);
-  if(success)
-  {
-    STARTUPINFO start_info = {0};
-    start_info.dwFlags = STARTF_USESTDHANDLES;
-    start_info.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-    start_info.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-    start_info.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-
-    PROCESS_INFORMATION proc_info = {0};
-    sprintf(buf, "rc.exe /nologo /fo%s %s", out_files->res.name, out_files->rc.name);
-    DWORD exit_code = 0;
-    if(success = CreateProcess(0, buf, 0, 0, true, 0, 0, 0, &start_info, &proc_info))
-    {
-      WaitForSingleObject(proc_info.hProcess, INFINITE);
-      GetExitCodeProcess(proc_info.hProcess, &exit_code);
-      success = (exit_code == 0);
-
-      CloseHandle(proc_info.hProcess);
-      CloseHandle(proc_info.hThread);
-    }
-    else
-      error("Process could not be launched : %s", buf);
-  }
-  else
-    error("RC file '%s' incompletely written", out_files->rc.name);
-  return success;
-}
-
-bool32
-write_ir_file(OutFileNames* out_files, VmProgram* vm_program)
+write_hasm_file(OutFileNames* out_files, VmProgram* vm_program)
 {
   int bytes_written = file_write_bytes(out_files->hasm.name, (uint8*)vm_program->text.head, vm_program->text_len);
   bool32 success = (bytes_written == vm_program->text_len);
   if(!success)
-    error("IR file '%s' incompletely written", out_files->hasm.name);
-  return success;
-}
-
-bool32
-write_bincode_file(OutFileNames* out_files, BinCode* hasm_code)
-{
-  size_t bytes_written = file_write_bytes(out_files->bincode.name, hasm_code->code_start, hasm_code->code_size);
-  bool32 success = (bytes_written == hasm_code->code_size);
-  if(!success)
-    error("bincode file '%s' incompletely written", out_files->bincode.name);
+    error("HASM file '%s' incompletely written", out_files->hasm.name);
   return success;
 }
 
@@ -317,36 +262,46 @@ main(int argc, char* argv[])
         cstr_copy(file_stem, file_path);
         file_stem = path_make_stem(file_stem);
 
-        success = make_file_names(&out_files, file_stem) &&
-          write_ir_file(&out_files, vm_program);
-
-        if(success)
+        if(success = make_file_names(&out_files, file_stem))
         {
           BinCode* bincode = 0;
           char* hasm_text = str_cap(&vm_program->text);
 
+          if(DEBUG_enabled)
+            write_hasm_file(&out_files, vm_program);
+
           if(success = convert_hasm_to_bincode(hasm_text, &bincode))
           {
-            if(success = write_bincode_file(&out_files, bincode))
+            uint8* vm_bytes = 0;
+            int vm_size = 0;
+            if(vm_size = file_read_bytes(arena, &vm_bytes, "vm.exe"))
             {
-              if(!write_res_file(&out_files))
-                error("Could not write resource file: `%s`", out_files.res.name);
+              FILE* exe_file = fopen(out_files.exe.name, "wb");
+              if(exe_file)
+              {
+                if((int)fwrite(vm_bytes, 1, vm_size, exe_file) == vm_size
+                  && (int)fwrite(bincode->code, 1, bincode->code_size, exe_file) == bincode->code_size)
+                  ; /*OK*/
+                else
+                  success = error("could not write to file `%s`", out_files.exe.name);
+                fclose(exe_file);
+              }
+              else
+                success = error("could not write to file `%s`", out_files.exe.name);
             }
             else
-              error("Could not write bincode file: `%s`", out_files.bincode.name);
+              success = error("could not read file `vm.exe`");
           }
         }
-        else
-          error("Could not write hasm file `%s`", out_files.hasm.name);
       }
       else
-        error("Program could not be translated");
+        success = error("program could not be translated");
     }
     else
-      error("Could not read file `%s`", file_path);
+      success = error("could not read file `%s`", file_path);
   }
   else
-    error("Missing argument: input source file");
+    success = error("missing argument : input source file");
 
 #if 0
   getc(stdin);

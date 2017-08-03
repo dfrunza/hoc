@@ -146,11 +146,11 @@ local bool32
 build_bincode(SourceProgram* source, BinCode** out_code)
 {
   BinCode* code = mem_push_struct(arena, BinCode);
-  cstr_copy(code->groove, BINCODE_GROOVE);
-  code->code_start = (uint8*)code;
+  cstr_copy(code->sig, BINCODE_SIGNATURE);
+  code->code = (uint8*)code;
   code->instr_count = source->line_count;
   code->instr_array = mem_push_count_nz(arena, Instruction, code->instr_count);
-  code->code_size = (int)((uint8*)arena->free - code->code_start);
+  code->code_size = (int)((uint8*)arena->free - code->code);
   *out_code = code;
 
   for(int instr_address = 0; instr_address < code->instr_count; instr_address++)

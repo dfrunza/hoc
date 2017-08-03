@@ -1,7 +1,7 @@
 #include "hocc.h"
 
 #define VMWORD (sizeof(int32))
-#define MEMORY_SIZE 1024
+#define VM_MEMORY_SIZE 1024
 
 typedef struct
 {
@@ -694,19 +694,19 @@ run_program(HocMachine* machine)
     switch(exec_result)
     {
       case ExecResult_InvalidMemoryAccess:
-        error("Access to invalid memory location");
+        error("access to invalid memory location");
         break;
       case ExecResult_InvalidInstructionAddress:
-        error("Invalid instruction address");
+        error("invalid instruction address");
         break;
       case ExecResult_IllegalInstruction:
-        error("Illegal instruction");
+        error("illegal instruction");
         break;
       case ExecResult_InvalidOperandSize:
-        error("Invalid operand size");
+        error("invalid operand size");
         break;
       case ExecResult_DivByZero:
-        error("Attemp to divide by zero");
+        error("attemp to divide by zero");
         break;
 
       default:
@@ -718,27 +718,49 @@ run_program(HocMachine* machine)
 }
 
 local bool32
-load_bincode(BinCode* code)
+load_bincode(char* exe_file_name, BinCode* code)
 {
-  HRSRC res = FindResource(0, "CODE", "VM");
-  if(res)
+  uint8* exe_bytes = 0;
+  int exe_size = 0;
+  bool32 success = true;
+
+  //TODO: Memory-map the file; we don't have to read the entire EXE image.
+  file_read_bytes(arena, &exe_bytes, exe_file_name);
+
+  IMAGE_DOS_HEADER* dos_header = (IMAGE_DOS_HEADER*)exe_bytes;
+  if(cstr_match((char*)&dos_header->e_magic, "MZ\x90"))
   {
-    HGLOBAL res_data = LoadResource(0, res);
-    BinCode* res_code = (BinCode*)LockResource(res_data);
-    if(cstr_match(res_code->groove, BINCODE_GROOVE))
+    IMAGE_NT_HEADERS* nt_header = (IMAGE_NT_HEADERS*)(exe_bytes + dos_header->e_lfanew);
+    if(cstr_match((char*)&nt_header->Signature, "PE"))
+    {
+      int nr_sections = nt_header->FileHeader.NumberOfSections;
+      IMAGE_SECTION_HEADER* section_header = (IMAGE_SECTION_HEADER*)((uint8*)nt_header + sizeof(IMAGE_NT_HEADERS));
+      exe_size = nt_header->OptionalHeader.SizeOfHeaders;
+      for(int i = 0; i < nr_sections; i++)
+      {
+        exe_size += section_header->SizeOfRawData;
+        section_header++;
+      }
+    }
+  }
+
+  if(exe_size > 0)
+  {
+    BinCode* image_code = (BinCode*)(exe_bytes + exe_size);
+
+    if(cstr_match(image_code->sig, BINCODE_SIGNATURE))
     {
       // Fix the pointers
-      *code = *res_code;
-      code->code_start = (uint8*)res_code;
-      code->instr_array = (Instruction*)(code->code_start + sizeof(BinCode));
-      return true;
+      *code = *image_code;
+      code->code = (uint8*)image_code;
+      code->instr_array = (Instruction*)(code->code + sizeof(BinCode));
     }
     else
-      error("Resource does not appear to be valid HVM code");
+      success = error("bincode signature mismatch");
   }
   else
-    error("HVM code not found");
-  return false;
+    success = error("could not read the EXE file size of `%s`", exe_file_name);
+  return success;
 }
 
 int
@@ -746,13 +768,16 @@ main(int argc, char* argv[])
 {
   int ret = -1;
 
+  arena = arena_new(2*MEGABYTE);
+
   HocMachine machine = {0};
   BinCode code = {0};
-  if(load_bincode(&code))
+  assert(argv[0] && argv[0] != '\0');
+
+  if(load_bincode(argv[0], &code))
   {
-    arena = arena_new(MEMORY_SIZE + 1);
-    machine.memory = mem_push_count(arena, uint8, MEMORY_SIZE);
-    machine.memory_size = MEMORY_SIZE;
+    machine.memory = mem_push_count(arena, uint8, VM_MEMORY_SIZE);
+    machine.memory_size = VM_MEMORY_SIZE;
     machine.code = &code;
 
     machine.sp++; // 0-th cell reserved

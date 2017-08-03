@@ -5,7 +5,7 @@
 #define DEBUG_ARENA_SIZE (ARENA_SIZE/3)
 #define SYM_ARENA_SIZE (ARENA_SIZE/10)
 #define MAX_SCOPE_NESTING_DEPTH 100
-#define BINCODE_GROOVE "BIN"
+#define BINCODE_SIGNATURE "HC"
 
 typedef struct AstNode AstNode;
 typedef struct AstBlock AstBlock;
@@ -773,9 +773,9 @@ Instruction;
 
 typedef struct
 {
-  char groove[4];
+  char sig[4];
   int instr_count;
-  uint8* code_start;
+  uint8* code;
   uint code_size;
   Instruction* instr_array;
 }

@@ -135,7 +135,8 @@ char* path_find_leaf(char* file_path);
 char* path_make_stem(char* file_path);
 
 char* path_make_dir(char* file_path);
-uint file_write_bytes(char* file_path, uint8* text, size_t count);
+int file_write_bytes(char* file_path, uint8* bytes, int count);
+int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path);
 char* file_read_text(MemoryArena* arena, char* file_path);
 int stdin_read(char buf[], int buf_size);
 

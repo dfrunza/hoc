@@ -16,24 +16,24 @@ set C_flags=-Od -W4 -nologo -MTd -Zo -Zi -Gm- -GR- -EHa- -FC -D_CRT_SECURE_NO_WA
                   -wd4201 -wd4127 -wd4100 -wd4706 -wd4211 -wd4306
 set L_flags=-incremental:no -opt:ref -subsystem:console
 
-set PROG=test
-
 ..\ctime.exe ^
 cl %C_flags% ..\hocc.c ..\lib.c ..\lex.c ..\syntax.c ..\semantic.c ..\typecheck.c ^
   ..\runtime.c ..\codegen.c ..\hasm.c /link %L_flags%
-
-rem NOTE: The full path to the .hoc source is needed for Vim QuickFix to work properly.
 if %errorlevel% neq 0 goto :end
-hocc.exe %cd%\..\%PROG%.hoc > out_debug.txt
 
-if %errorlevel% neq 0 goto :hocc_error
 ..\ctime.exe ^
-cl %C_flags% /Fe:%PROG%.exe ..\vm.c ..\lib.c %PROG%.res /link %L_flags%
+cl %C_flags% ..\vm.c ..\lib.c /link %L_flags%
+if %errorlevel% neq 0 goto :end
+
+rem NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
+echo Compiling HoC Code...
+hocc %cd%\..\test.hoc > out_debug.txt
+if %errorlevel% neq 0 goto :hocc_error
 
 goto :end
 
 :hocc_error
-echo hocc.exe error
+echo hocc.exe Err0R
 goto :end
 
 :end

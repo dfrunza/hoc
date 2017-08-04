@@ -547,7 +547,7 @@ typedef struct
   /* syntactic */
   List member_list;
 }
-AstIniter;
+AstInitializer;
 
 typedef enum
 {

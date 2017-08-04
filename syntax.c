@@ -257,10 +257,10 @@ new_struct(SourceLocation* src_loc)
   return node;
 }
 
-local AstIniter*
+local AstInitializer*
 new_initializer(SourceLocation* src_loc)
 {
-  AstIniter* node = mem_push_struct(arena, AstIniter);
+  AstInitializer* node = mem_push_struct(arena, AstInitializer);
   node->kind = AstNodeKind_Initializer;
   list_init(&node->member_list);
   node->src_loc = *src_loc;
@@ -495,7 +495,7 @@ do_initializer(TokenStream* input, AstNode** node)
 
   if(input->token.kind == TokenKind_OpenBrace)
   {
-    AstIniter* initer = new_initializer(&input->src_loc);
+    AstInitializer* initer = new_initializer(&input->src_loc);
     *node = (AstNode*)initer;
 
     if(success = get_next_token(input) && do_initializer_member_list(input, &initer->member_list))
@@ -2025,7 +2025,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     }
     else if(node->kind == AstNodeKind_Initializer)
     {
-      AstIniter* initer = (AstIniter*)node;
+      AstInitializer* initer = (AstInitializer*)node;
       DEBUG_print_ast_node_list(str, indent_level, &initer->member_list, "member_list");
     }
     else if(node->kind == AstNodeKind_GotoStmt)

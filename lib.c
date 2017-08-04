@@ -525,8 +525,7 @@ file_read_text(MemoryArena* arena, char* file_path)
 {
   char* text = 0;
   file_read_bytes(arena, &(uint8*)text, file_path);
-  char* null = mem_push_count(arena, char, 1); // NULL terminator
-  *null = '\0';
+  *mem_push_count(arena, char, 1) = '\0'; // NULL terminator
   return text;
 }
 

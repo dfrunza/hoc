@@ -19,28 +19,44 @@ local bool32 do_block(AstProc*, AstNode*, AstNode*, AstBlock*);
 local bool32 do_expression(AstBlock*, AstNode*, AstNode**);
 local bool32 do_type_expr(AstNode* expr);
 
-local char*
-get_type_printstr(Type* type)
+local void
+make_type_printstr(String* str, Type* type)
 {
-  char* result = "???";
   if(type->kind == TypeKind_Basic)
   {
     if(type->basic.kind == BasicTypeKind_Bool)
-      result = "bool";
+      str_append(str, "bool");
     else if(type->basic.kind == BasicTypeKind_Int)
-      result = "int";
+      str_append(str, "int");
     else if(type->basic.kind == BasicTypeKind_Float)
-      result = "float";
+      str_append(str, "float");
     else if(type->basic.kind == BasicTypeKind_Char)
-      result = "char";
+      str_append(str, "char");
     else if(type->basic.kind == BasicTypeKind_Void)
-      result = "void";
+      str_append(str, "void");
   }
   else if(type->kind == TypeKind_Pointer)
-    result = "pointer to..";
+  {
+    make_type_printstr(str, type->ptr.pointee);
+    str_append(str, "*");
+  }
   else if(type->kind == TypeKind_Array)
-    result = "array of..";
-  return result;
+  {
+    str_append(str, "[]");
+    make_type_printstr(str, type->array.elem);
+  }
+  else
+    str_append(str, "apples and oranges");
+}
+
+local char*
+get_type_printstr(Type* type)
+{
+  String str = {0};
+  str_init(&str, arena);
+
+  make_type_printstr(&str, type);
+  return str_cap(&str);
 }
 
 local bool32
@@ -716,7 +732,6 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
     AstCast* cast = (AstCast*)expr;
     if(success = do_type_expr(cast->type_expr))
     {
-#if 1
       if(success = do_expression(encl_block, cast->expr, &cast->expr))
       {
         Type* from_type = cast->expr->type;
@@ -766,26 +781,7 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
                                     get_type_printstr(from_type), get_type_printstr(to_type));
         }
       }
-#else
-      if(success = do_expression(encl_block, cast->expr, &cast->expr))
-      {
-        Type* from_type = cast->expr->type;
-        Type* to_type = cast->type_expr->type;
-
-        if(types_are_equal(from_type, to_type))
-          *out_expr = cast->expr; /* cast is redundant; remove it */
-        else
-        {
-          if(type_unif(from_type, to_type))
-            cast->type = to_type;
-          else
-            success = compile_error(&expr->src_loc, "invalid cast : `%s` -> `%s`",
-                                    get_type_printstr(from_type), get_type_printstr(to_type));
-        }
-      }
-#endif
     }
-    //FIXME: Check the type conversions
   }
   else if(expr->kind == AstNodeKind_New)
   {

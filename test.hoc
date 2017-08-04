@@ -1,7 +1,7 @@
 /*
+include "hlib\\gcd.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\fibo.hoc";
-include "hlib\\gcd.hoc";
 include "hlib\\power.hoc";
 include "hlib\\abs.hoc";
 include "hlib\\minmax.hoc";
@@ -9,10 +9,9 @@ include "hlib\\minmax.hoc";
 
 proc int main()
 {
-  var [2]int a;
-  *a = 111;
-  *(a+1) = 222;
-  return *a;
+  var [2]int array;
+  var int r = array[0];
+  return r;
 }
 
 

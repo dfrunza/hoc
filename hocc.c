@@ -71,31 +71,31 @@ DEBUG_print_sizeof_ast_structs()
   assert(AstNodeKind__Null == 0);
   AstNode node;
   mem_zero_struct(&node, AstNode);
-#if 0
-  make_struct_info(AstNodeKind_BinExpr, node.bin_expr);
-  make_struct_info(AstNodeKind_UnrExpr, node.unr_expr);
-  make_struct_info(AstNodeKind_Literal, node.literal);
-  make_struct_info(AstNodeKind_VarDecl, node.var_decl);
+#if 1
+  make_struct_info(AstNodeKind_BinExpr, AstBinExpr);
+  make_struct_info(AstNodeKind_UnrExpr, AstUnrExpr);
+  make_struct_info(AstNodeKind_Literal, AstLiteral);
+  make_struct_info(AstNodeKind_VarDecl, AstVarDecl);
   make_struct_info(AstNodeKind_VarOccur, AstVarOccur);
-  make_struct_info(AstNodeKind_Block, node.block);
-  make_struct_info(AstNodeKind_Proc, node.block);
-  make_struct_info(AstNodeKind_Id, node.id);
-  make_struct_info(AstNodeKind_WhileStmt, node.while_stmt);
-  make_struct_info(AstNodeKind_ForStmt, node.for_stmt);
-  make_struct_info(AstNodeKind_IfStmt, node.if_stmt);
-  make_struct_info(AstNodeKind_ReturnStmt, node.ret_stmt);
-  make_struct_info(AstNodeKind_GotoStmt, node.goto_stmt);
-  make_struct_info(AstNodeKind_Label, node.label);
-  make_struct_info(AstNodeKind_IncludeStmt, node.incl_stmt);
-  make_struct_info(AstNodeKind_Module, node.module);
-  make_struct_info(AstNodeKind_Cast, node.cast);
-  make_struct_info(AstNodeKind_Call, node.call);
-  make_struct_info(AstNodeKind_Array, node.array);
-  make_struct_info(AstNodeKind_Pointer, node.ptr);
-  make_struct_info(AstNodeKind_Struct, node.struct_decl);
-  make_struct_info(AstNodeKind_Union, node.union_decl);
-  make_struct_info(AstNodeKind_Enum, node.enum_decl);
-  make_struct_info(AstNodeKind_Initializer, node.initer);
+  make_struct_info(AstNodeKind_Block, AstBlock);
+  make_struct_info(AstNodeKind_Proc, AstProc);
+  make_struct_info(AstNodeKind_Id, AstId);
+  make_struct_info(AstNodeKind_WhileStmt, AstWhileStmt);
+  make_struct_info(AstNodeKind_ForStmt, AstForStmt);
+  make_struct_info(AstNodeKind_IfStmt, AstIfStmt);
+  make_struct_info(AstNodeKind_ReturnStmt, AstReturnStmt);
+  make_struct_info(AstNodeKind_GotoStmt, AstGotoStmt);
+  make_struct_info(AstNodeKind_Label, AstLabel);
+  make_struct_info(AstNodeKind_IncludeStmt, AstIncludeStmt);
+  make_struct_info(AstNodeKind_Module, AstModule);
+  make_struct_info(AstNodeKind_Cast, AstCast);
+  make_struct_info(AstNodeKind_Call, AstCall);
+  make_struct_info(AstNodeKind_Array, AstArray);
+  make_struct_info(AstNodeKind_Pointer, AstPointer);
+  make_struct_info(AstNodeKind_Struct, AstStruct);
+  make_struct_info(AstNodeKind_Union, AstUnion);
+  make_struct_info(AstNodeKind_Enum, AstEnum);
+  make_struct_info(AstNodeKind_Initializer, AstInitializer);
 #endif
 
 #undef make_struct_info
@@ -210,7 +210,6 @@ make_file_names(OutFileNames* out_files, char* stem)
     sprintf(str, "%s.exe", stem);
     out_files->exe.name = str;
     out_files->exe.len = cstr_len(out_files->exe.name);
-    //str = out_files->exe.name + out_files->exe.len + 1;
   }
   else
     error("length of file name must be between 1..80 : '%s'", stem);

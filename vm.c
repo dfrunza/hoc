@@ -34,7 +34,7 @@ local MemoryArena* arena;
 local bool32
 check_sp_bounds(HocMachine* machine, int sp)
 {
-  return sp >= 0 && sp*(int)VMWORD < machine->hp;
+  return sp >= 0 && sp < machine->hp;
 }
 
 local bool32

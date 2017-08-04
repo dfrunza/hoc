@@ -7,11 +7,17 @@ include "hlib\\abs.hoc";
 include "hlib\\minmax.hoc";
 */
 
+proc int* make_new_array()
+{
+  return new([10]int);
+}
+
 proc int main()
 {
-  var [2]int array;
-  var int r = array[0];
-  return r;
+  var int* array = make_new_array();
+  *array = 123;
+/*  var int r = array[0];*/
+  return *array;
 }
 
 

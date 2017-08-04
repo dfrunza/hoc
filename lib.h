@@ -114,6 +114,7 @@ int cstr_len(char* str);
 char* cstr_copy(char* dest_str, char* src_str);
 void cstr_copy_substr(char* dest_str, char* begin_char, char* end_char);
 
+String* str_new(MemoryArena* arena);
 void str_init(String* str, MemoryArena* arena);
 
 /* The 0-terminator is not counted. */

@@ -347,7 +347,6 @@ str_init(String* str, MemoryArena* arena)
 {
   str->arena = arena;
   str->head = mem_push_struct(arena, char);
-  *str->head = '\0';
   str->end = str->head;
 }
 
@@ -363,6 +362,14 @@ void
 str_stdout(String* str)
 {
   fputs(str->head, stdout);
+}
+
+String*
+str_new(MemoryArena* arena)
+{
+  String* str = mem_push_struct(arena, String);
+  str_init(str, arena);
+  return str;
 }
 
 void

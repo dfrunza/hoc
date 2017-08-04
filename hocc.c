@@ -144,10 +144,9 @@ translate(char* file_path, char* hoc_text)
     {/*>>>*/
       DEBUG_print_arena_usage("Syntactic");
 
-      String str = {0};
-      str_init(&str, DEBUG_arena);
-      DEBUG_print_ast_node(&str, 0, (AstNode*)module, 0);
-      str_dump_to_file(&str, "out_syntax.txt");
+      String* str = str_new(DEBUG_arena);
+      DEBUG_print_ast_node(str, 0, (AstNode*)module, 0);
+      str_dump_to_file(str, "out_syntax.txt");
       arena_free(DEBUG_arena);
     }/*<<<*/
 
@@ -160,10 +159,9 @@ translate(char* file_path, char* hoc_text)
       {/*>>>*/
         DEBUG_print_arena_usage("Semantic");
 
-        String str = {0};
-        str_init(&str, DEBUG_arena);
-        DEBUG_print_ast_node(&str, 0, (AstNode*)module, 0);
-        str_dump_to_file(&str, "out_semantic.txt");
+        String* str = str_new(DEBUG_arena);
+        DEBUG_print_ast_node(str, 0, (AstNode*)module, 0);
+        str_dump_to_file(str, "out_semantic.txt");
         arena_free(DEBUG_arena);
       }/*<<<*/
 

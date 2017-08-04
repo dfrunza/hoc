@@ -77,16 +77,6 @@ new_pointer_type(Type* pointee)
 }
 
 Type*
-new_cast_type(Type* from_type, Type* to_type)
-{
-  Type* type = mem_push_struct(arena, Type);
-  type->kind = TypeKind_Cast;
-  type->cast.from = from_type;
-  type->cast.to = to_type;
-  return type;
-}
-
-Type*
 make_type_of_node_list(List* node_list)
 {
   Type* type = basic_type_void;
@@ -131,9 +121,6 @@ types_are_equal(Type* type_a, Type* type_b)
         && types_are_equal(type_a->proc.ret, type_b->proc.ret);
     else if(type_a->kind == TypeKind_Pointer)
       are_equal = types_are_equal(type_a->ptr.pointee, type_b->ptr.pointee);
-    else if(type_a->kind == TypeKind_Cast)
-      are_equal = types_are_equal(type_a->cast.from, type_b->cast.from)
-        && types_are_equal(type_a->cast.to, type_b->cast.to);
     else if(type_a->kind == TypeKind_Product)
       are_equal = types_are_equal(type_a->product.left, type_b->product.right);
     else if(type_a->kind == TypeKind_Array)
@@ -205,9 +192,6 @@ type_unif(Type* type_a, Type* type_b)
           && type_unif(repr_type_a->product.right, repr_type_b->product.right);
       else if(repr_type_a->kind == TypeKind_Pointer)
         success = type_unif(repr_type_a->ptr.pointee, repr_type_b->ptr.pointee);
-      else if(repr_type_a->kind == TypeKind_Cast)
-        success = type_unif(repr_type_a->cast.from, repr_type_b->cast.from)
-          && type_unif(repr_type_a->cast.to, repr_type_b->cast.to);
       else if(repr_type_a->kind == TypeKind_Array)
         success = (repr_type_a->array.size == repr_type_b->array.size)
           && type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
@@ -278,11 +262,6 @@ type_subst(List* subst_list, Type* type)
     }
     else if(subst->kind == TypeKind_Pointer)
       subst->ptr.pointee = type_subst(subst_list, subst->ptr.pointee);
-    else if(subst->kind == TypeKind_Cast)
-    {
-      subst->cast.from = type_subst(subst_list, subst->cast.from);
-      subst->cast.to = type_subst(subst_list, subst->cast.to);
-    }
     else if(subst->kind == TypeKind_Array)
       subst->array.elem = type_subst(subst_list, subst->array.elem);
     else

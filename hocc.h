@@ -559,7 +559,6 @@ typedef enum
   TypeKind_Proc,
   TypeKind_Product,
   TypeKind_Pointer,
-  TypeKind_Cast,
   TypeKind_Array,
 }
 TypeKind;
@@ -623,12 +622,6 @@ typedef struct Type
       int id;
     }
     typevar;
-
-    struct {
-      Type* from;
-      Type* to;
-    }
-    cast;
   };
 }
 Type;

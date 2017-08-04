@@ -45,18 +45,29 @@ make_type_printstr(String* str, Type* type)
     str_append(str, "[]");
     make_type_printstr(str, type->array.elem);
   }
+  else if(type->kind == TypeKind_Product)
+  {
+    make_type_printstr(str, type->product.left);
+    str_append(str, ", ");
+    make_type_printstr(str, type->product.right);
+  }
+  else if(type->kind == TypeKind_Proc)
+  {
+    make_type_printstr(str, type->proc.ret);
+    str_append(str, " (");
+    make_type_printstr(str, type->proc.args);
+    str_append(str, ")");
+  }
   else
-    str_append(str, "apples and oranges");
+    fail("not implemented");
 }
 
 local char*
 get_type_printstr(Type* type)
 {
-  String str = {0};
-  str_init(&str, arena);
-
-  make_type_printstr(&str, type);
-  return str_cap(&str);
+  String* str = str_new(arena);
+  make_type_printstr(str, type);
+  return str_cap(str);
 }
 
 local bool32
@@ -84,10 +95,9 @@ is_relation_op(AstOpKind op)
 local AstId*
 make_tempvar_id(SourceLocation* src_loc, char* label)
 {
-  String str = {0};
-  str_init(&str, arena);
-  str_printf(&str, "$%s%d", label, tempvar_id++);
-  return new_id(src_loc, str.head);
+  String* str = str_new(arena);
+  str_printf(str, "$%s%d", label, tempvar_id++);
+  return new_id(src_loc, str->head);
 }
 
 Symbol*
@@ -190,7 +200,7 @@ register_new_id(AstId* id, SymbolKind symkind)
   Symbol* sym = lookup_symbol(id->name, symkind);
   if(sym && (sym->block_id == symtab->block_id))
   {
-    success = compile_error(&id->src_loc, "identifier `%s` of same kind has already been declared...", id->name);
+    success = compile_error(&id->src_loc, "identifier `%s` of same kind already declared...", id->name);
     compile_error(&id->src_loc, "...see previous declaration of `%s`", id->name);
   }
   else
@@ -252,7 +262,7 @@ register_proc_decl(AstProc* proc)
       }
       else
       {
-        success = compile_error(&proc->src_loc, "inconsistent proc signature...");
+        success = compile_error(&proc->src_loc, "inconsistent proc type...");
         compile_error(&registered_proc->src_loc, "...see decl");
       }
     }
@@ -431,7 +441,9 @@ do_call(AstBlock* block, AstCall* call)
     AstProc* proc = (AstProc*)call->proc_sym->ast;
     if(!type_unif(proc->type, call_type))
     {
-      success = compile_error(&call->src_loc, "`%s(..)` call does not match proc signature", call->id->name);
+      success = compile_error(&call->src_loc,
+          "call `%s %s(%s)` does not match proc type...",
+          get_type_printstr(call_type->proc.ret), call->id->name, get_type_printstr(call_type->proc.args));
       compile_error(&proc->src_loc, "...see proc decl");
     }
   }
@@ -597,7 +609,7 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
       }
       else
         success = compile_error(&expr->src_loc,
-              "expression operands must be of same type, got `%s` and `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+              "incompatible types in expression, `%s` and `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
     }
   }
   else if(expr->kind == AstNodeKind_UnrExpr)

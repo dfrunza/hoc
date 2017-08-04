@@ -1422,13 +1422,12 @@ do_include_stmt(TokenStream* input, AstNode** node)
       AstIncludeStmt* incl_stmt = new_include_stmt(&input->src_loc);
       *node = (AstNode*)incl_stmt;
 
-      String str = {0};
-      str_init(&str, arena);
-      str_append(&str, input->src_loc.file_path);
-      path_make_dir(str.head);
-      str_tidyup(&str);
-      str_append(&str, input->token.str);
-      incl_stmt->file_path = str_cap(&str);
+      String* str = str_new(arena);
+      str_append(str, input->src_loc.file_path);
+      path_make_dir(str->head);
+      str_tidyup(str);
+      str_append(str, input->token.str);
+      incl_stmt->file_path = str_cap(str);
 
       if(!(success = get_next_token(input))) return success;
       char* hoc_text = file_read_text(arena, incl_stmt->file_path);

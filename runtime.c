@@ -141,20 +141,18 @@ do_while_stmt(AstWhileStmt* while_stmt)
 
   {
     /* labels */
-    String label_id = {0};
-    str_init(&label_id, arena);
-    make_unique_label(&label_id);
+    String* label_id = str_new(arena);
+    make_unique_label(label_id);
 
-    String label = {0};
-    str_init(&label, arena);
-    str_append(&label, label_id.head);
-    str_append(&label, ".while-expr");
-    while_stmt->label_eval = str_cap(&label);
+    String* label = str_new(arena);
+    str_append(label, label_id->head);
+    str_append(label, ".while-expr");
+    while_stmt->label_eval = str_cap(label);
 
-    str_init(&label, arena);
-    str_append(&label, label_id.head);
-    str_append(&label, ".while-break");
-    while_stmt->label_break = str_cap(&label);
+    label = str_new(arena);
+    str_append(label, label_id->head);
+    str_append(label, ".while-break");
+    while_stmt->label_break = str_cap(label);
   }
 
   if(while_stmt->body->kind == AstNodeKind_Block)
@@ -170,20 +168,18 @@ do_if_stmt(AstIfStmt* if_stmt)
 
   {
     /* labels */
-    String label_id = {0};
-    str_init(&label_id, arena);
-    make_unique_label(&label_id);
+    String* label_id = str_new(arena);
+    make_unique_label(label_id);
 
-    String label = {0};
-    str_init(&label, arena);
-    str_append(&label, label_id.head);
-    str_append(&label, ".if-else");
-    if_stmt->label_else = str_cap(&label);
+    String* label = str_new(arena);
+    str_append(label, label_id->head);
+    str_append(label, ".if-else");
+    if_stmt->label_else = str_cap(label);
 
-    str_init(&label, arena);
-    str_append(&label, label_id.head);
-    str_append(&label, ".if-end");
-    if_stmt->label_end = str_cap(&label);
+    str_init(label, arena);
+    str_append(label, label_id->head);
+    str_append(label, ".if-end");
+    if_stmt->label_end = str_cap(label);
   }
 
   if(if_stmt->body->kind == AstNodeKind_Block)
@@ -206,15 +202,13 @@ do_if_stmt(AstIfStmt* if_stmt)
 local void
 do_bin_expr(AstBinExpr* bin_expr)
 {
-  String label_id = {0};
-  str_init(&label_id, arena);
-  make_unique_label(&label_id);
+  String* label_id = str_new(arena);
+  make_unique_label(label_id);
 
-  String label = {0};
-  str_init(&label, arena);
-  str_append(&label, label_id.head);
-  str_append(&label, ".logic-end");
-  bin_expr->label_end = str_cap(&label);
+  String* label = str_new(arena);
+  str_append(label, label_id->head);
+  str_append(label, ".logic-end");
+  bin_expr->label_end = str_cap(label);
 
   do_statement(bin_expr->left_operand);
   do_statement(bin_expr->right_operand);
@@ -286,11 +280,10 @@ do_proc(AstProc* proc)
 {
   proc->label = proc->id->name;
 
-  String label = {0};
-  str_init(&label, arena);
-  str_append(&label, proc->id->name);
-  str_append(&label, ".proc-end");
-  proc->label_end = str_cap(&label);
+  String* label = str_new(arena);
+  str_append(label, proc->id->name);
+  str_append(label, ".proc-end");
+  proc->label_end = str_cap(label);
 
   List pre_fp_data = {0};
   list_init(&pre_fp_data);

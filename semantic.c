@@ -580,10 +580,10 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
               assert(0);
           }
         }
-        else if(types_are_equal(left_type, basic_type_bool)
-                || left_type->kind == TypeKind_Pointer)
-          ;/*noop*/
-#if 1
+        else if(types_are_equal(left_type, basic_type_bool))
+        {
+          bin_expr->left_operand->type = basic_type_bool;
+        }
         else if(left_type->kind == TypeKind_Array)
         {
           if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub)
@@ -596,7 +596,6 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
             bin_expr->type = address_of->type;
           }
         }
-#endif
         else
           success = compile_error(&expr->src_loc, "cannot convert int to `%s`", get_type_printstr(left_type));
       }
@@ -607,6 +606,30 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
         else
           success = compile_error(&expr->src_loc, "cannot convert char to `%s`", get_type_printstr(left_type));
       }
+#if 0
+      else if(left_type->kind == TypeKind_Pointer)
+      {
+        if((right_type->kind == TypeKind_Pointer && types_are_equal(right_type->ptr.pointee, basic_type_void))
+           || right_type->kind == TypeKind_Array)
+          bin_expr->right_operand->type = bin_expr->left_operand->type;
+        else if(types_are_equal(right_type, basic_type_int))
+        {
+          if(bin_expr->right_operand->kind == AstNodeKind_Literal)
+          {
+            AstLiteral* lit = (AstLiteral*)bin_expr;
+            assert(lit->lit_kind == AstLiteralKind_Int);
+            if(lit->int_val != 0)
+              success = compile_error(&expr->src_loc,
+                  "no implicit conversion from `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+          }
+        }
+      }
+      else if(left_type->kind == TypeKind_Array)
+      {
+        if(right_type->kind == TypeKind_Pointer || right_type->kind == TypeKind_Array)
+          bin_expr->right_operand->type = bin_expr->left_operand->type;
+      }
+#endif
       else
         success = compile_error(&expr->src_loc,
               "incompatible types in expression, `%s` and `%s`", get_type_printstr(left_type), get_type_printstr(right_type));

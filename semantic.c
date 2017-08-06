@@ -15,7 +15,6 @@ SymbolTable* symtab = 0;
 local int last_block_id = 0;
 local int tempvar_id = 0;
 
-//local bool32 do_block(AstModule*, AstProc*, AstNode*, AstBlock*);
 local bool32 do_stmt_block(AstBlock*, AstProc*, AstNode*, AstBlock*);
 local bool32 do_expression(AstBlock*, AstBlock*, AstNode*, AstNode**);
 local bool32 do_type_expr(AstNode* expr);
@@ -118,17 +117,6 @@ lookup_symbol(char* name, SymbolKind kind)
   }
   return result;
 }
-
-#if 0
-local Symbol*
-find_last_symbol_in_block(AstNode* block)
-{
-  Symbol* symbol = symtab->curr_symbol;
-  while(symbol && (symbol->block_id > block->block.block_id))
-    symbol = symbol->prev_symbol;
-  return symbol;
-}
-#endif
 
 local Symbol*
 register_id(AstId* id, SymbolKind kind)
@@ -761,13 +749,14 @@ do_expression(AstBlock* module_block,
       AstBlock* decl_block = var_decl->decl_block;
 
       var_occur->decl_block_offset = block->nesting_depth - decl_block->nesting_depth;
+      if(var_occur->decl_block_offset > 0 && decl_block == module_block)
+        var_occur->decl_block_offset = -1; // global
+
       var_occur->occur_block = block;
       var_occur->data = &var_decl->data;
 
       if(var_occur->decl_block_offset > 0)
         list_append(arena, &block->nonlocal_occurs, var_occur);
-      else if(var_occur->decl_block_offset < 0)
-        assert(0);
 
       *out_expr = (AstNode*)var_occur;
     }
@@ -968,7 +957,7 @@ do_statement(AstBlock* module_block,
   if(stmt->kind == AstNodeKind_VarDecl)
     success = do_var_decl(module_block, block, (AstVarDecl*)stmt);
   else if(stmt->kind == AstNodeKind_BinExpr || stmt->kind == AstNodeKind_Call)
-   success = do_expression(module_block, block, stmt, &stmt);
+    success = do_expression(module_block, block, stmt, &stmt);
   else if(stmt->kind == AstNodeKind_UnrExpr)
   {
     AstUnrExpr* unr_expr = (AstUnrExpr*)stmt;
@@ -1200,66 +1189,6 @@ do_module_block(AstProc* proc,
   return success;
 }
 
-#if 0
-local bool32
-do_block(AstBlock* module_block,
-         AstProc* proc,
-         AstNode* loop,
-         //AstNode* owner,
-         AstBlock* block)
-{
-  bool32 success = true;
-
-  //block->block.owner = owner;
-
-  if(owner && (owner->kind == AstNodeKind_Module))
-  {
-    for(ListItem* list_item = block->node_list.first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      AstNode* stmt = (AstNode*)list_item->elem;
-      if(stmt->kind == AstNodeKind_VarDecl)
-        success = do_var_decl(module_block, block, (AstVarDecl*)stmt);
-      else if(stmt->kind == AstNodeKind_Proc)
-        success = do_proc_decl(module_block, (AstProc*)stmt);
-      else if(stmt->kind == AstNodeKind_Label
-              || stmt->kind == AstNodeKind_Call
-              || stmt->kind == AstNodeKind_Id
-              || stmt->kind == AstNodeKind_Literal
-              || stmt->kind == AstNodeKind_BinExpr
-              || stmt->kind == AstNodeKind_UnrExpr)
-        success = compile_error(&stmt->src_loc, "unexpected statement %s", get_ast_kind_printstr(stmt->kind));
-
-      else if(stmt->kind == AstNodeKind_Struct
-              || stmt->kind == AstNodeKind_Union
-              || stmt->kind == AstNodeKind_Enum)
-      {
-        fail("Not implemented");
-      }
-      else
-        assert(0);
-    }
-  }
-  else if((owner && (owner->kind == AstNodeKind_Proc
-                     || owner->kind == AstNodeKind_WhileStmt
-                     || owner->kind == AstNodeKind_ForStmt
-                     || owner->kind == AstNodeKind_IfStmt))
-          || !owner)
-  {
-    for(ListItem* list_item = block->node_list.first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      success = do_statement(module_block, proc, block, loop, (AstNode*)list_item->elem);
-    }
-  }
-  else
-    assert(0);
-  return success;
-}
-#endif
-
 local bool32
 do_module(AstModule* module)
 {
@@ -1308,7 +1237,6 @@ do_module(AstModule* module)
         if(type_unif(main_call->type, basic_type_int))
         {
           list_append(arena, &module_block->node_list, main_call);
-          //module->main_call = main_call;
         }
         else
         {

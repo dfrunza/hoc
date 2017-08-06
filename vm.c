@@ -504,8 +504,8 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(check_sp_bounds(machine, top_sp))
       {
         *(int32*)&memory[machine->sp*VMWORD] = machine->ip+1;
-        *(int32*)&memory[(machine->sp+1)*VMWORD] = machine->fp;
         *(int32*)&memory[(machine->sp+2)*VMWORD] = machine->sp;
+        *(int32*)&memory[(machine->sp+1)*VMWORD] = machine->fp;
 
         int32 jump_address = instr->param.int_val;
         machine->ip = jump_address;
@@ -522,8 +522,8 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(check_sp_bounds(machine, arg_sp))
       {
         machine->ip = *(int32*)&memory[arg_sp*VMWORD];
-        machine->fp = *(int32*)&memory[(arg_sp+1)*VMWORD];
         machine->sp = *(int32*)&memory[(arg_sp+2)*VMWORD];
+        machine->fp = *(int32*)&memory[(arg_sp+1)*VMWORD];
       }
       else
         return ExecResult_InvalidMemoryAccess;

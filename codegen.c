@@ -218,20 +218,6 @@ gen_call(List* code, AstCall* call)
   emit_instr_int(code, Opcode_ALLOC, proc->ret_size);
 
   AstBlock* block = proc->body;
-  for(ListItem* list_item = block->access_links.first;
-      list_item;
-      list_item = list_item->next)
-  {
-    AccessLink* link = (AccessLink*)list_item->elem;
-    emit_instr_reg(code, Opcode_PUSH, RegName_FP);
-    assert(link->actv_rec_offset > 0);
-    int offset = link->actv_rec_offset - 1;
-    while(offset--)
-    {
-      emit_instr(code, Opcode_DECR); // TODO: explain why
-      emit_instr(code, Opcode_LOAD);
-    }
-  }
 
   for(ListItem* list_item = call->args.first;
       list_item;
@@ -251,17 +237,22 @@ gen_load_lvalue(List* code, AstVarOccur* var_occur)
   DataArea* data = var_occur->data;
   AccessLink* link = var_occur->link;
 
-  emit_instr_reg(code, Opcode_PUSH, RegName_FP);
-  if(link) 
+  if(var_occur->decl_block_offset >= 0)
   {
-    // this is a non-local
-    assert(link->data.loc < 0); // relative to FP
-    emit_instr_int(code, Opcode_PUSH, link->data.loc);
+    emit_instr_reg(code, Opcode_PUSH, RegName_FP);
+    if(link) 
+    {
+      // this is a non-local
+      assert(link->data.loc < 0); // relative to FP
+      emit_instr_int(code, Opcode_PUSH, link->data.loc);
+      emit_instr(code, Opcode_ADD);
+      emit_instr(code, Opcode_LOAD); // access link is on the stack now
+    }
+    emit_instr_int(code, Opcode_PUSH, data->loc);
     emit_instr(code, Opcode_ADD);
-    emit_instr(code, Opcode_LOAD); // access link is on the stack now
   }
-  emit_instr_int(code, Opcode_PUSH, data->loc);
-  emit_instr(code, Opcode_ADD);
+  else
+    emit_instr_int(code, Opcode_PUSH, data->loc);
 }
 
 local void
@@ -472,28 +463,14 @@ gen_statement(List* code, AstNode* ast)
 void
 codegen(List* code, AstModule* module)
 {
-#if 0
-  gen_statement(code, (AstNode*)module->main_call);
-  emit_instr(code, Opcode_HALT);
-
-  AstBlock* module_block = (AstBlock*)module->body;
+  AstBlock* module_block = module->body;
+  emit_instr_int(code, Opcode_ALLOC, module_block->locals_size);
   for(ListItem* list_item = module_block->node_list.first;
       list_item;
       list_item = list_item->next)
   {
-    AstNode* ast = (AstNode*)list_item->elem;
-    if(ast->kind == AstNodeKind_Proc)
-    {
-      AstProc* proc = (AstProc*)ast;
-      //FIXME: Remove proc decls from the AST
-      if(!proc->is_decl)
-        gen_proc(code, proc);
-    }
-    else
-      fail("not implemented");
+    gen_statement(code, (AstNode*)list_item->elem);
   }
-#else
-  gen_block(code, module->body);
   emit_instr(code, Opcode_HALT);
 
   for(ListItem* list_item = module->proc_defs.first;
@@ -503,7 +480,6 @@ codegen(List* code, AstModule* module)
     AstProc* proc = (AstProc*)list_item->elem;
     gen_proc(code, proc);
   }
-#endif
 }
 
 local char*

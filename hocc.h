@@ -248,7 +248,6 @@ typedef struct AstBlock
 
   List node_list;
 
-  //AstNode* owner;
   int block_id;
   int nesting_depth;
   AstBlock* encl_block;

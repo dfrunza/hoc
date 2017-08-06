@@ -22,11 +22,28 @@ make_unique_label(String* label)
 local int
 compute_type_size(Type* type)
 {
-  type->size = 1;
   if(type->kind == TypeKind_Array)
     type->size = type->array.size * compute_type_size(type->array.elem);
   else if(type->kind == TypeKind_Product)
     type->size = compute_type_size(type->product.left) + compute_type_size(type->product.right);
+  else if(type->kind == TypeKind_Basic)
+  {
+    if(type->basic.kind == BasicTypeKind_Int
+       || type->basic.kind == BasicTypeKind_Float
+       || type->basic.kind == BasicTypeKind_Char
+       || type->basic.kind == BasicTypeKind_Bool)
+    {
+      type->size = 1;
+    }
+    else if(type->basic.kind == BasicTypeKind_Void)
+      type->size = 0;
+    else
+      assert(0);
+  }
+  else if(type->kind == TypeKind_Pointer)
+    type->size = 1;
+  else
+    assert(0);
   return type->size;
 }
 
@@ -313,35 +330,6 @@ do_proc(AstProc* proc)
 
   AstBlock* block = (AstBlock*)proc->body;
 
-  /* access links */
-  for(ListItem* list_item = block->nonlocal_occurs.first;
-      list_item;
-      list_item = list_item->next)
-  {
-    AstVarOccur* var_occur = (AstVarOccur*)list_item->elem;
-
-    AccessLink* link = 0;
-    for(ListItem* list_item = block->access_links.first;
-        list_item;
-        list_item = list_item->next)
-    {
-      link = (AccessLink*)list_item->elem;
-      if(link->actv_rec_offset == var_occur->decl_block_offset)
-        break;
-      link = 0;
-    }
-    if(!link)
-    {
-      link = mem_push_struct(arena, AccessLink);
-      link->actv_rec_offset = var_occur->decl_block_offset;
-      link->data.size = 1;
-      list_append(arena, &block->access_links, link);
-      list_append(arena, &pre_fp_data, &link->data);
-      block->links_size += link->data.size;
-    }
-    var_occur->link = link;
-  }
-
   DataArea* ctrl_links = mem_push_struct(arena, DataArea);
   ctrl_links->size = 3; // fp,sp,ip
   list_append(arena, &pre_fp_data, ctrl_links);
@@ -365,23 +353,6 @@ void
 build_runtime(AstModule* module)
 {
   AstBlock* module_block = (AstBlock*)module->body;
-#if 0
-  for(ListItem* list_item = module_block->node_list.first;
-      list_item;
-      list_item = list_item->next)
-  {
-    AstNode* ast = (AstNode*)list_item->elem;
-    if(ast->kind == AstNodeKind_Proc)
-    {
-      AstProc* proc = (AstProc*)ast;
-      //FIXME: Remove proc decls from the AST
-      if(!proc->is_decl)
-        do_proc(proc);
-    }
-    else
-      fail("not implemented");
-  }
-#else
   for(ListItem* list_item = module->proc_defs.first;
       list_item;
       list_item = list_item->next)
@@ -390,9 +361,28 @@ build_runtime(AstModule* module)
     assert(proc->kind == AstNodeKind_Proc);
     do_proc(proc);
   }
-#endif
 
-  do_block(module_block);
-  //do_statement((AstNode*)module->main_call);
+  List pre_fp_data = {0};
+  list_init(&pre_fp_data);
+  List post_fp_data = {0};
+  list_init(&post_fp_data);
+
+  DataArea* base_offset = mem_push_struct(arena, DataArea);
+  base_offset->size = 1; // VM stack ptr starts at offset 1
+  list_append(arena, &post_fp_data, base_offset);
+
+  /* local decls */
+  for(ListItem* list_item = module_block->decl_vars.first;
+      list_item;
+      list_item = list_item->next)
+  {
+    AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
+    var_decl->data.size = compute_type_size(var_decl->type);
+    module_block->locals_size += var_decl->data.size;
+    list_append(arena, &post_fp_data, &var_decl->data);
+  }
+
+  compute_activation_record_locations(&pre_fp_data, &post_fp_data);
+  do_block_stmts(&module_block->node_list);
 }
 

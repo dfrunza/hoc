@@ -590,11 +590,8 @@ list_remove_item(List* list, ListItem* item)
   if(item == list->last)
     list->last = item->prev;
 
-  if(DEBUG_enabled)/*>>>*/
-  {
-    item->next = 0;
-    item->prev = 0;
-  }/*<<<*/
+  /* NOTE(to myself): Don't nullify the item->next and item->prev pointers;
+   * they may be needed in an iteration loop */
 }
 
 void
@@ -608,9 +605,6 @@ list_append_item(List* list, ListItem* item)
   }
   else
     list->first = list->last = item;
-
-  if(DEBUG_enabled)/*>>>*/
-    item->next = 0;/*<<<*/
 }
 
 void
@@ -650,11 +644,5 @@ list_replace_item_at(List* list_a, List* list_b, ListItem* at_b_item)
   }
   else
     list_b->last = list_a->last;
-
-  if(DEBUG_enabled)/*>>>*/
-  {
-    at_b_item->next = 0;
-    at_b_item->prev = 0;
-  }/*<<<*/
 }
 

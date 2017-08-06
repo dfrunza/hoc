@@ -9,17 +9,22 @@ include "hlib\\minmax.hoc";
 
 /*
 var int* g = 0;
-var [4]char str;
 */
+var int a = 123;
+var char* str = "xxx";
 
-proc int main()
+proc void abc()
 {
-  var char* str = "abc";
   *str = 'a';
   *(str+1) = 'b';
   *(str+2) = 'c';
   *(str+3) = '\0';
-  return *str;
+}
+
+proc int main()
+{
+  abc();
+  return 333;
 }
 
 

@@ -6,6 +6,7 @@
 #define SYM_ARENA_SIZE (ARENA_SIZE/10)
 #define MAX_SCOPE_NESTING_DEPTH 100
 #define BINCODE_SIGNATURE "HC"
+#define VMWORD (sizeof(int32))
 
 typedef struct AstNode AstNode;
 typedef struct AstBlock AstBlock;
@@ -251,7 +252,7 @@ typedef struct AstBlock
   int block_id;
   int nesting_depth;
   AstBlock* encl_block;
-  List decl_vars;
+  List local_decls;
   List nonlocal_occurs;
 
   List access_links;
@@ -342,7 +343,6 @@ typedef struct
   char* label_end;
   int ret_size;
   int args_size;
-  int locals_size;
 }
 AstProc;
 
@@ -736,19 +736,27 @@ Instruction;
 typedef struct
 {
   char sig[4];
-  int instr_count;
-  uint8* code;
-  uint code_size;
-  Instruction* instr_array;
+
+  int data_offset;
+  int data_size;
+
+  int code_offset;
+  int code_size;
 }
 BinCode;
 
 typedef struct
 {
+  bool32 success;
+
   String text;
   int text_len;
   List instr_list;
-  bool32 success;
+  Instruction* instructions;
+  int instr_count;
+
+  int32* data;
+  int data_size;
 }
 VmProgram;
 
@@ -789,8 +797,8 @@ Type* get_type_repr(Type* type);
 bool32 type_unif(Type* type_a, Type* type_b);
 bool32 types_are_equal(Type* type_a, Type* type_b);
 void build_runtime(AstModule* ast);
-void codegen(List* code, AstModule* module);
+void codegen(List* code, int32** data, int32* data_size, AstModule* module);
 void print_code(VmProgram* vm_program);
-bool32 convert_hasm_to_bincode(char* hasm_text, BinCode** code);
+bool32 convert_hasm_to_instructions(char* hasm_text, VmProgram* code);
 
 

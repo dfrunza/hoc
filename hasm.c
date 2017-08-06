@@ -143,17 +143,12 @@ process_source_lines(SourceProgram* source)
 }
 
 local bool32
-build_bincode(SourceProgram* source, BinCode** out_code)
+build_instructions(SourceProgram* source, VmProgram* vm_program)
 {
-  BinCode* code = mem_push_struct(arena, BinCode);
-  cstr_copy(code->sig, BINCODE_SIGNATURE);
-  code->code = (uint8*)code;
-  code->instr_count = source->line_count;
-  code->instr_array = mem_push_count_nz(arena, Instruction, code->instr_count);
-  code->code_size = (int)((uint8*)arena->free - code->code);
-  *out_code = code;
+  vm_program->instr_count = source->line_count;
+  vm_program->instructions = mem_push_count_nz(arena, Instruction, vm_program->instr_count);
 
-  for(int instr_address = 0; instr_address < code->instr_count; instr_address++)
+  for(int instr_address = 0; instr_address < vm_program->instr_count; instr_address++)
   {
     Instruction instr = {0};
     InstructionLine* instr_line = &source->lines[instr_address];
@@ -351,7 +346,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
         }
       }
 
-      code->instr_array[instr_address] = instr;
+      vm_program->instructions[instr_address] = instr;
     }
     else
     {
@@ -364,15 +359,15 @@ build_bincode(SourceProgram* source, BinCode** out_code)
   {
     Label* label = &source->labels[labelIndex];
     int target_instr_address = label->instr_address+1;
-    for(; target_instr_address < code->instr_count; target_instr_address++)
+    for(; target_instr_address < vm_program->instr_count; target_instr_address++)
     {
-      Instruction* instr = &code->instr_array[target_instr_address];
+      Instruction* instr = &vm_program->instructions[target_instr_address];
       if(instr->opcode != Opcode_LABEL)
         break;
     }
-    if(target_instr_address < code->instr_count)
+    if(target_instr_address < vm_program->instr_count)
     {
-      Instruction* label_instr = &code->instr_array[label->instr_address];
+      Instruction* label_instr = &vm_program->instructions[label->instr_address];
       label_instr->param_type = ParamType_Int32;
       label_instr->param.int_val = target_instr_address;
       label->instr_address = target_instr_address;
@@ -384,9 +379,9 @@ build_bincode(SourceProgram* source, BinCode** out_code)
     }
   }
 
-  for(int instr_address = 0; instr_address < code->instr_count; instr_address++)
+  for(int instr_address = 0; instr_address < vm_program->instr_count; instr_address++)
   {
-    Instruction* instr = &code->instr_array[instr_address];
+    Instruction* instr = &vm_program->instructions[instr_address];
     if(instr->opcode == Opcode_GOTO ||
        instr->opcode == Opcode_JUMPNZ ||
        instr->opcode == Opcode_JUMPZ ||
@@ -411,7 +406,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
 }
 
 bool32
-convert_hasm_to_bincode(char* text, BinCode** code)
+convert_hasm_to_instructions(char* text, VmProgram* vm_program)
 {
   bool32 success = true;
 
@@ -419,6 +414,6 @@ convert_hasm_to_bincode(char* text, BinCode** code)
   source.text = text;
   process_source_lines(&source);
 
-  success = build_bincode(&source, code);
+  success = build_instructions(&source, vm_program);
   return success;
 }

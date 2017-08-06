@@ -385,7 +385,7 @@ do_var_decl(AstBlock* module_block, AstBlock* block, AstVarDecl* var_decl)
   if(success = register_var_decl(var_decl))
   {
     var_decl->decl_block = block;
-    list_append(arena, &block->decl_vars, var_decl);
+    list_append(arena, &block->local_decls, var_decl);
 
     if(var_decl->init_expr)
     {
@@ -590,14 +590,16 @@ do_expression(AstBlock* module_block,
         else if(left_type->kind == TypeKind_Pointer)
           ;/*no-op*/
         else
-          success = compile_error(&expr->src_loc, "cannot convert int to `%s`", get_type_printstr(left_type));
+          success = compile_error(&expr->src_loc,
+              "cannot convert `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
       }
       else if(types_are_equal(right_type, basic_type_char))
       {
         if(types_are_equal(left_type, basic_type_int))
           bin_expr->right_operand->type = basic_type_int;
         else
-          success = compile_error(&expr->src_loc, "cannot convert char to `%s`", get_type_printstr(left_type));
+          success = compile_error(&expr->src_loc,
+              "cannot convert `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
       }
       else if(left_type->kind == TypeKind_Pointer)
       {
@@ -774,33 +776,36 @@ do_expression(AstBlock* module_block,
       expr->type = basic_type_char;
     else if(lit->lit_kind == AstLiteralKind_String)
     {
+#if 1
       AstString* str = new_string(&lit->src_loc, lit->str);
       str->len = cstr_len(str->str);
       str->type = new_array_type(str->len+1/*NULL*/, basic_type_char);
+#else
+      int len = cstr_len(lit->str);
+      lit->type = new_array_type(len+1/*NULL*/, basic_type_char);
+#endif
 
       AstVarDecl* var_decl = new_var_decl(&expr->src_loc);
       var_decl->id = 0;
-      var_decl->type = str->type;
-      var_decl->init_expr = (AstNode*)str;
+      var_decl->type = str->type;//lit->type;
+      var_decl->init_expr = (AstNode*)str;//(AstNode*)lit;
 
       var_decl->type_expr = 0;
       var_decl->assign_expr = 0;
       var_decl->decl_block = module_block;
-      list_append(arena, &module_block->decl_vars, var_decl);
+      list_append(arena, &module_block->local_decls, var_decl);
 
       AstVarOccur* var_occur = new_var_occur(&expr->src_loc);
       var_occur->id = 0;
       var_occur->var_decl = var_decl;
       var_occur->type = var_decl->type;
 
-      var_occur->decl_block_offset = block->nesting_depth - module_block->nesting_depth;
+      var_occur->decl_block_offset = -1; // global
       var_occur->occur_block = block;
       var_occur->data = &var_decl->data;
 
       if(var_occur->decl_block_offset > 0)
         list_append(arena, &block->nonlocal_occurs, var_occur);
-      else if(var_occur->decl_block_offset < 0)
-        assert(0);
 
       *out_expr = (AstNode*)var_occur;
     }
@@ -1241,7 +1246,7 @@ do_module(AstModule* module)
         else
         {
           AstProc* proc = (AstProc*)main_call->proc_sym->ast;
-          success = compile_error(&proc->src_loc, "main() must return int");
+          success = compile_error(&proc->src_loc, "main() must return a `int`");
         }
       }
     }

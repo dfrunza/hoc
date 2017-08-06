@@ -1,16 +1,20 @@
 #include "hocc.h"
 
-#define VMWORD (sizeof(int32))
-#define VM_MEMORY_SIZE 1024
+#define VM_MEMORY_SIZE 256
 
 typedef struct
 {
-  BinCode* code;
+  Instruction* instructions;
+  int instr_count;
+
+  int32* data;
+  int data_size;
+
   int32 fp;
   int32 sp;
   int32 hp;
   int32 ip;
-  int32 memory_size;
+  int memory_size;
   uint8* memory;
 }
 HocMachine;
@@ -50,9 +54,9 @@ check_hp_bounds(HocMachine* machine, int hp)
 }
 
 local bool32
-check_instr_bounds(BinCode* code, int address)
+check_instr_bounds(HocMachine* machine, int address)
 {
-  return address >= 0 && address < code->instr_count;
+  return address >= 0 && address < machine->instr_count;
 }
 
 void
@@ -662,16 +666,14 @@ execute_instr(HocMachine* machine, Instruction* instr)
 local ExecResult
 run_program(HocMachine* machine)
 {
-  BinCode* code = machine->code;
-
   Instruction* instr;
   ExecResult exec_result = ExecResult_OK;
   do
   {
     int ip = machine->ip;
-    if(check_instr_bounds(code, ip))
+    if(check_instr_bounds(machine, ip))
     {
-      instr = &code->instr_array[ip];
+      instr = &machine->instructions[ip];
       exec_result = execute_instr(machine, instr);
     }
     else
@@ -718,13 +720,12 @@ run_program(HocMachine* machine)
 }
 
 local bool32
-load_bincode(char* exe_file_name, BinCode* code)
+load_bin_image(char* exe_file_name, HocMachine* machine)
 {
   uint8* exe_bytes = 0;
   int exe_size = 0;
   bool32 success = true;
 
-  //TODO: Memory-map the file; we don't have to read the entire EXE image.
   file_read_bytes(arena, &exe_bytes, exe_file_name);
 
   IMAGE_DOS_HEADER* dos_header = (IMAGE_DOS_HEADER*)exe_bytes;
@@ -746,20 +747,25 @@ load_bincode(char* exe_file_name, BinCode* code)
 
   if(exe_size > 0)
   {
-    BinCode* image_code = (BinCode*)(exe_bytes + exe_size);
+    uint8* hoc_base = exe_bytes + exe_size;
+    BinCode* bin_image = (BinCode*)(hoc_base);
 
-    if(cstr_match(image_code->sig, BINCODE_SIGNATURE))
+    if(cstr_match(bin_image->sig, BINCODE_SIGNATURE))
     {
-      // Fix the pointers
-      *code = *image_code;
-      code->code = (uint8*)image_code;
-      code->instr_array = (Instruction*)(code->code + sizeof(BinCode));
+      machine->instructions = (Instruction*)(hoc_base + bin_image->code_offset);
+      machine->instr_count = bin_image->code_size / sizeof(Instruction);
+
+      machine->data = (int32*)(hoc_base + bin_image->data_offset);
+      machine->data_size = bin_image->data_size / sizeof(int32);
+
+      for(int i = 0; i < machine->data_size; i++)
+        ((int32*)machine->memory)[i] = (int32)machine->data[i];
     }
     else
       success = error("bincode signature mismatch");
   }
   else
-    success = error("could not read the EXE file size of `%s`", exe_file_name);
+    success = error("could not read the EXE size of `%s`", exe_file_name);
   return success;
 }
 
@@ -767,21 +773,22 @@ int
 main(int argc, char* argv[])
 {
   int ret = -1;
+  assert(argv[0] && argv[0] != '\0');
 
   arena = arena_new(2*MEGABYTE);
 
   HocMachine machine = {0};
-  BinCode code = {0};
-  assert(argv[0] && argv[0] != '\0');
+  machine.memory = (uint8*)mem_push_count(arena, int32, VM_MEMORY_SIZE);
+  machine.memory_size = VM_MEMORY_SIZE;
 
-  if(load_bincode(argv[0], &code))
+  if(load_bin_image(argv[0], &machine))
   {
-    machine.memory = mem_push_count(arena, uint8, VM_MEMORY_SIZE);
-    machine.memory_size = VM_MEMORY_SIZE;
-    machine.code = &code;
+    *(int32*)&machine.memory[0] = 0; // null ptr cell
 
-    machine.sp++; // 0-th cell reserved
-    machine.hp = machine.memory_size/VMWORD;
+    machine.sp = machine.data_size; // the null ptr cell is counted in
+    machine.fp = 0;
+    machine.hp = machine.memory_size;
+
     ret = (int)run_program(&machine);
   }
   return ret;

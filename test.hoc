@@ -7,24 +7,27 @@ include "hlib\\abs.hoc";
 include "hlib\\minmax.hoc";
 */
 
-/*
-var int* g = 0;
-*/
-var int a = 123;
-var char* str = "xxx";
+var int len;
 
-proc void abc()
+proc int strlen(char* s)
 {
-  *str = 'a';
-  *(str+1) = 'b';
-  *(str+2) = 'c';
-  *(str+3) = '\0';
+  var int len = 0;
+  while(*s != '\0')
+  {
+    s = s+1;
+    len = len+1;
+  }
+  return len;
 }
 
 proc int main()
 {
-  abc();
-  return 333;
+  var char* str = "abcdef";
+  var char* str2 = "Hello World!";
+  len = strlen(str);
+  var int len2 = strlen(str2);
+  len = len + len2;
+  return len;
 }
 
 

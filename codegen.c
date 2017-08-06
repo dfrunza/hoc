@@ -357,11 +357,11 @@ gen_block(List* code, AstBlock* block)
 local void
 gen_proc(List* code, AstProc* proc)
 {
+  AstBlock* block = (AstBlock*)proc->body;
   emit_instr_str(code, Opcode_LABEL, proc->label);
-  emit_instr_int(code, Opcode_ALLOC, proc->locals_size);
+  emit_instr_int(code, Opcode_ALLOC, block->locals_size);
 
-  AstBlock* body_block = (AstBlock*)proc->body;
-  for(ListItem* list_item = body_block->node_list.first;
+  for(ListItem* list_item = block->node_list.first;
       list_item;
       list_item = list_item->next)
   {
@@ -461,17 +461,42 @@ gen_statement(List* code, AstNode* ast)
 }
 
 void
-codegen(List* code, AstModule* module)
+codegen(List* code, int32** data, int32* data_size, AstModule* module)
 {
   AstBlock* module_block = module->body;
-  emit_instr_int(code, Opcode_ALLOC, module_block->locals_size);
+
   for(ListItem* list_item = module_block->node_list.first;
       list_item;
       list_item = list_item->next)
   {
-    gen_statement(code, (AstNode*)list_item->elem);
+    AstNode* ast = (AstNode*)list_item->elem;
+    gen_statement(code, ast);
   }
   emit_instr(code, Opcode_HALT);
+
+  *data_size = module_block->locals_size + 1; // HACK ALERT!!!! +1 -> sp offset
+  *data = mem_push_count(arena, int32, *data_size);
+
+  for(ListItem* list_item = module_block->local_decls.first;
+      list_item;
+      list_item = list_item->next)
+  {
+    AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
+    assert(var_decl->kind == AstNodeKind_VarDecl);
+
+    AstNode* init_expr = var_decl->init_expr;
+    if(init_expr && init_expr->kind == AstNodeKind_String)
+    {
+      AstString* str = (AstString*)init_expr;
+      assert(str->len+1 == var_decl->data.size);
+      int32* loc = (int32*)(*data + var_decl->data.loc);
+      char* s = str->str;
+      do
+        *loc++ = *s++;
+      while(*s);
+      *loc = *s;
+    }
+  }
 
   for(ListItem* list_item = module->proc_defs.first;
       list_item;

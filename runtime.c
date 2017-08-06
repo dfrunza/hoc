@@ -95,6 +95,20 @@ do_call(AstCall* call)
 }
 
 local void
+compute_locals_data_size(AstBlock* block, List* area_list)
+{
+  for(ListItem* list_item = block->local_decls.first;
+      list_item;
+      list_item = list_item->next)
+  {
+    AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
+    var_decl->data.size = compute_type_size(var_decl->type);
+    block->locals_size += var_decl->data.size;
+    list_append(arena, area_list, &var_decl->data);
+  }
+}
+
+local void
 do_block(AstBlock* block)
 {
   List pre_fp_data = {0};
@@ -135,17 +149,7 @@ do_block(AstBlock* block)
   old_fp->size = 1;
   list_append(arena, &pre_fp_data, old_fp);
 
-  /* local decls */
-  for(ListItem* list_item = block->decl_vars.first;
-      list_item;
-      list_item = list_item->next)
-  {
-    AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
-    var_decl->data.size = compute_type_size(var_decl->type);
-    block->locals_size += var_decl->data.size;
-    list_append(arena, &post_fp_data, &var_decl->data);
-  }
-
+  compute_locals_data_size(block, &post_fp_data);
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
   do_block_stmts(&block->node_list);
 }
@@ -334,17 +338,7 @@ do_proc(AstProc* proc)
   ctrl_links->size = 3; // fp,sp,ip
   list_append(arena, &pre_fp_data, ctrl_links);
 
-  /* local decls */
-  for(ListItem* list_item = block->decl_vars.first;
-      list_item;
-      list_item = list_item->next)
-  {
-    AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
-    var_decl->data.size = compute_type_size(var_decl->type);
-    proc->locals_size += var_decl->data.size;
-    list_append(arena, &post_fp_data, &var_decl->data);
-  }
-
+  compute_locals_data_size(block, &post_fp_data);
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
   do_block_stmts(&block->node_list);
 }
@@ -371,17 +365,7 @@ build_runtime(AstModule* module)
   base_offset->size = 1; // VM stack ptr starts at offset 1
   list_append(arena, &post_fp_data, base_offset);
 
-  /* local decls */
-  for(ListItem* list_item = module_block->decl_vars.first;
-      list_item;
-      list_item = list_item->next)
-  {
-    AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
-    var_decl->data.size = compute_type_size(var_decl->type);
-    module_block->locals_size += var_decl->data.size;
-    list_append(arena, &post_fp_data, &var_decl->data);
-  }
-
+  compute_locals_data_size(module_block, &post_fp_data);
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
   do_block_stmts(&module_block->node_list);
 }

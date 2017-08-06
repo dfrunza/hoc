@@ -168,7 +168,7 @@ translate(char* file_path, char* hoc_text)
       if(DEBUG_enabled)/*>>>*/
         DEBUG_print_arena_usage("Runtime");/*<<<*/
 
-      codegen(&vm_program->instr_list, module);
+      codegen(&vm_program->instr_list, &vm_program->data, &vm_program->data_size, module);
       if(DEBUG_enabled)/*>>>*/
         DEBUG_print_arena_usage("Codegen");/*<<<*/
 
@@ -258,13 +258,15 @@ main(int argc, char* argv[])
 
         if(success = make_file_names(&out_files, file_stem))
         {
-          BinCode* bincode = 0;
+          BinCode* bin_image = mem_push_struct(arena, BinCode);
+          cstr_copy(bin_image->sig, BINCODE_SIGNATURE);
+
           char* hasm_text = str_cap(&vm_program->text);
 
           if(DEBUG_enabled)/*>>>*/
             write_hasm_file(&out_files, vm_program);/*<<<*/
 
-          if(success = convert_hasm_to_bincode(hasm_text, &bincode))
+          if(success = convert_hasm_to_instructions(hasm_text, vm_program))
           {
             uint8* vm_bytes = 0;
             int vm_size = 0;
@@ -273,9 +275,19 @@ main(int argc, char* argv[])
               FILE* exe_file = fopen(out_files.exe.name, "wb");
               if(exe_file)
               {
+                bin_image->code_offset = sizeof(BinCode);
+                bin_image->code_size = sizeof(Instruction) * vm_program->instr_count;
+
+                bin_image->data_offset = bin_image->code_offset + bin_image->code_size;
+                bin_image->data_size = sizeof(int32) * vm_program->data_size;
+
                 if((int)fwrite(vm_bytes, 1, vm_size, exe_file) == vm_size
-                  && (int)fwrite(bincode->code, 1, bincode->code_size, exe_file) == bincode->code_size)
-                  ; /*OK*/
+                  && (int)fwrite(bin_image, sizeof(BinCode), 1, exe_file) == 1
+                  && (int)fwrite(vm_program->instructions, sizeof(Instruction), vm_program->instr_count, exe_file) == vm_program->instr_count
+                  && (int)fwrite(vm_program->data, sizeof(int32), vm_program->data_size, exe_file) == vm_program->data_size)
+                {
+                  ;/*OK*/
+                }
                 else
                   success = error("could not write to file `%s`", out_files.exe.name);
                 fclose(exe_file);

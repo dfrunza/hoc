@@ -19,7 +19,7 @@ new_block(SourceLocation* src_loc)
   node->kind = AstNodeKind_Block;
   node->src_loc = *src_loc;
   list_init(&node->node_list);
-  list_init(&node->decl_vars);
+  list_init(&node->local_decls);
   return node;
 }
 
@@ -999,14 +999,12 @@ do_accessor(TokenStream* input, AstNode** node)
 
     success = get_next_token(input);
   }
-  /*
   else if(input->token.kind == TokenKind_String)
   {
     AstString* str = new_string(&input->src_loc, input->token.str);
     *node = (AstNode*)str;
     success = get_next_token(input);
   }
-  */
   else if(input->token.kind == TokenKind_Id)
   {
     AstId* id = new_id(&input->src_loc, input->token.lexeme);

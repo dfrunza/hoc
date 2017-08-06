@@ -15,8 +15,9 @@ SymbolTable* symtab = 0;
 local int last_block_id = 0;
 local int tempvar_id = 0;
 
-local bool32 do_block(AstProc*, AstNode*, AstNode*, AstBlock*);
-local bool32 do_expression(AstBlock*, AstNode*, AstNode**);
+//local bool32 do_block(AstModule*, AstProc*, AstNode*, AstBlock*);
+local bool32 do_stmt_block(AstBlock*, AstProc*, AstNode*, AstBlock*);
+local bool32 do_expression(AstBlock*, AstBlock*, AstNode*, AstNode**);
 local bool32 do_type_expr(AstNode* expr);
 
 local void
@@ -214,7 +215,6 @@ register_var_decl(AstVarDecl* var_decl)
   bool32 success = true;
 
   AstNode* type_expr = var_decl->type_expr;
-  //if(register_type_occur(type_expr))
   if(success = do_type_expr(type_expr))
   {
     AstId* var_id = var_decl->id;
@@ -383,14 +383,14 @@ do_include_stmt(List* include_list, List* module_list, ListItem* module_list_ite
       do_include_stmt(&incl_block->node_list, include_list, list_item);
     }
   }
-  list_replace_at(include_list, module_list, module_list_item);
+  list_replace_item_at(include_list, module_list, module_list_item);
 
   mem_zero_struct(include_list, List);
   list_init(include_list);
 }
 
 local bool32
-do_var_decl(AstBlock* block, AstVarDecl* var_decl)
+do_var_decl(AstBlock* module_block, AstBlock* block, AstVarDecl* var_decl)
 {
   bool32 success = true;
 
@@ -407,14 +407,14 @@ do_var_decl(AstBlock* block, AstVarDecl* var_decl)
       bin_expr->left_operand = (AstNode*)new_id(&var_decl->src_loc, var_decl->id->name);;
       bin_expr->right_operand = var_decl->init_expr;
 
-      success = do_expression(block, (AstNode*)bin_expr, &(AstNode*)bin_expr);
+      success = do_expression(module_block, block, (AstNode*)bin_expr, &(AstNode*)bin_expr);
     }
   }
   return success;
 }
 
 local bool32
-do_call_args(AstBlock* block, AstCall* call)
+do_call_args(AstBlock* module_block, AstBlock* block, AstCall* call)
 {
   bool32 success = true;
 
@@ -423,18 +423,18 @@ do_call_args(AstBlock* block, AstCall* call)
       list_item = list_item->next)
   {
     AstNode* arg = (AstNode*)list_item->elem;
-    if(success = do_expression(block, arg, &arg))
+    if(success = do_expression(module_block, block, arg, &arg))
       list_item->elem = arg;
   }
   return success;
 }
 
 local bool32
-do_call(AstBlock* block, AstCall* call)
+do_call(AstBlock* module_block, AstBlock* block, AstCall* call)
 {
   bool32 success = true;
 
-  if(success = do_call_args(block, call) && register_call(call))
+  if(success = do_call_args(module_block, block, call) && register_call(call))
   {
     assert(call->type);
     Type* call_type = new_proc_type(make_type_of_node_list(&call->args), call->type);
@@ -497,7 +497,10 @@ do_type_expr(AstNode* expr)
 }
 
 local bool32
-do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
+do_expression(AstBlock* module_block,
+              AstBlock* block,
+              AstNode* expr,
+              AstNode** out_expr)
 {
   bool32 success = true;
   *out_expr = expr;
@@ -505,8 +508,8 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
   if(expr->kind == AstNodeKind_BinExpr)
   {
     AstBinExpr* bin_expr = (AstBinExpr*)expr;
-    if(success = do_expression(encl_block, bin_expr->left_operand, &bin_expr->left_operand)
-      && do_expression(encl_block, bin_expr->right_operand, &bin_expr->right_operand))
+    if(success = do_expression(module_block, block, bin_expr->left_operand, &bin_expr->left_operand)
+      && do_expression(module_block, block, bin_expr->right_operand, &bin_expr->right_operand))
     {
       Type* left_type = bin_expr->left_operand->type;
       Type* right_type = bin_expr->right_operand->type;
@@ -596,6 +599,8 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
             bin_expr->type = address_of->type;
           }
         }
+        else if(left_type->kind == TypeKind_Pointer)
+          ;/*no-op*/
         else
           success = compile_error(&expr->src_loc, "cannot convert int to `%s`", get_type_printstr(left_type));
       }
@@ -606,12 +611,33 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
         else
           success = compile_error(&expr->src_loc, "cannot convert char to `%s`", get_type_printstr(left_type));
       }
-#if 0
       else if(left_type->kind == TypeKind_Pointer)
       {
-        if((right_type->kind == TypeKind_Pointer && types_are_equal(right_type->ptr.pointee, basic_type_void))
-           || right_type->kind == TypeKind_Array)
+        if(right_type->kind == TypeKind_Pointer
+           && (types_are_equal(right_type->ptr.pointee, basic_type_void)))
+        {
           bin_expr->right_operand->type = bin_expr->left_operand->type;
+        }
+        else if(right_type->kind == TypeKind_Array)
+        {
+          if(bin_expr->op == AstOpKind_Assign)
+          {
+            if(type_unif(left_type->ptr.pointee, right_type->array.elem))
+            {
+              AstUnrExpr* address_of = new_unr_expr(&bin_expr->src_loc);
+              address_of->op = AstOpKind_AddressOf;
+              address_of->type = new_pointer_type(right_type->array.elem);
+              address_of->operand = bin_expr->right_operand;
+              bin_expr->right_operand = (AstNode*)address_of;
+            }
+            else
+              success = compile_error(&expr->src_loc,
+                    "no implicit conversion possible, `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+          }
+          else
+            success = compile_error(&expr->src_loc,
+                "no implicit conversion possible, `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+        }
         else if(types_are_equal(right_type, basic_type_int))
         {
           if(bin_expr->right_operand->kind == AstNodeKind_Literal)
@@ -620,16 +646,18 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
             assert(lit->lit_kind == AstLiteralKind_Int);
             if(lit->int_val != 0)
               success = compile_error(&expr->src_loc,
-                  "no implicit conversion from `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                  "no implicit conversion possible, `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
           }
         }
+        else
+          success = compile_error(&expr->src_loc,
+                "no implicit conversion possible, `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
       }
       else if(left_type->kind == TypeKind_Array)
       {
         if(right_type->kind == TypeKind_Pointer || right_type->kind == TypeKind_Array)
           bin_expr->right_operand->type = bin_expr->left_operand->type;
       }
-#endif
       else
         success = compile_error(&expr->src_loc,
               "incompatible types in expression, `%s` and `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
@@ -654,7 +682,7 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
       incr_one->right_operand = (AstNode*)one;
 
       assign->right_operand = (AstNode*)incr_one;
-      if(success = do_expression(encl_block, (AstNode*)assign, &(AstNode*)assign))
+      if(success = do_expression(block, (AstNode*)assign, &(AstNode*)assign))
         *out_expr = (AstNode*)assign;
 #else
       fail("not implemented");
@@ -662,7 +690,7 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
     }
     else 
     {
-      if(success = do_expression(encl_block, unr_expr->operand, &unr_expr->operand))
+      if(success = do_expression(module_block, block, unr_expr->operand, &unr_expr->operand))
       {
         if(unr_expr->op == AstOpKind_AddressOf)
         {
@@ -732,12 +760,12 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
       AstVarDecl* var_decl = (AstVarDecl*)var_occur->var_decl;
       AstBlock* decl_block = var_decl->decl_block;
 
-      var_occur->decl_block_offset = encl_block->nesting_depth - decl_block->nesting_depth;
-      var_occur->occur_block = encl_block;
+      var_occur->decl_block_offset = block->nesting_depth - decl_block->nesting_depth;
+      var_occur->occur_block = block;
       var_occur->data = &var_decl->data;
 
       if(var_occur->decl_block_offset > 0)
-        list_append(arena, &encl_block->nonlocal_occurs, var_occur);
+        list_append(arena, &block->nonlocal_occurs, var_occur);
       else if(var_occur->decl_block_offset < 0)
         assert(0);
 
@@ -746,28 +774,58 @@ do_expression(AstBlock* encl_block, AstNode* expr, AstNode** out_expr)
   }
   else if(expr->kind == AstNodeKind_Literal)
   {
-    AstLiteral* literal = (AstLiteral*)expr;
-    if(literal->lit_kind == AstLiteralKind_Int)
+    AstLiteral* lit = (AstLiteral*)expr;
+    if(lit->lit_kind == AstLiteralKind_Int)
       expr->type = basic_type_int;
-    else if(literal->lit_kind == AstLiteralKind_Float)
+    else if(lit->lit_kind == AstLiteralKind_Float)
       expr->type = basic_type_float;
-    else if(literal->lit_kind == AstLiteralKind_Bool)
+    else if(lit->lit_kind == AstLiteralKind_Bool)
       expr->type = basic_type_bool;
-    else if(literal->lit_kind == AstLiteralKind_Char)
+    else if(lit->lit_kind == AstLiteralKind_Char)
       expr->type = basic_type_char;
-    else if(literal->lit_kind == AstLiteralKind_String)
-      expr->type = new_array_type(-1, basic_type_char);
+    else if(lit->lit_kind == AstLiteralKind_String)
+    {
+      AstString* str = new_string(&lit->src_loc, lit->str);
+      str->len = cstr_len(str->str);
+      str->type = new_array_type(str->len+1/*NULL*/, basic_type_char);
+
+      AstVarDecl* var_decl = new_var_decl(&expr->src_loc);
+      var_decl->id = 0;
+      var_decl->type = str->type;
+      var_decl->init_expr = (AstNode*)str;
+
+      var_decl->type_expr = 0;
+      var_decl->assign_expr = 0;
+      var_decl->decl_block = module_block;
+      list_append(arena, &module_block->decl_vars, var_decl);
+
+      AstVarOccur* var_occur = new_var_occur(&expr->src_loc);
+      var_occur->id = 0;
+      var_occur->var_decl = var_decl;
+      var_occur->type = var_decl->type;
+
+      var_occur->decl_block_offset = block->nesting_depth - module_block->nesting_depth;
+      var_occur->occur_block = block;
+      var_occur->data = &var_decl->data;
+
+      if(var_occur->decl_block_offset > 0)
+        list_append(arena, &block->nonlocal_occurs, var_occur);
+      else if(var_occur->decl_block_offset < 0)
+        assert(0);
+
+      *out_expr = (AstNode*)var_occur;
+    }
     else
       assert(0);
   }
   else if(expr->kind == AstNodeKind_Call)
-    success = do_call(encl_block, (AstCall*)expr);
+    success = do_call(module_block, block, (AstCall*)expr);
   else if(expr->kind == AstNodeKind_Cast)
   {
     AstCast* cast = (AstCast*)expr;
     if(success = do_type_expr(cast->type_expr))
     {
-      if(success = do_expression(encl_block, cast->expr, &cast->expr))
+      if(success = do_expression(module_block, block, cast->expr, &cast->expr))
       {
         Type* from_type = cast->expr->type;
         Type* to_type = cast->type_expr->type;
@@ -869,7 +927,7 @@ do_proc_ret_var(AstBlock* block, AstProc* proc)
 }
 
 local bool32
-do_proc_decl(AstProc* proc)
+do_proc_decl(AstBlock* module_block, AstProc* proc)
 {
   bool32 success = true;
 
@@ -877,7 +935,7 @@ do_proc_decl(AstProc* proc)
   {
     if(success = do_proc_formal_args(proc->body, &proc->args)
        && do_proc_ret_var(proc->body, proc)
-       && do_block(proc, 0, (AstNode*)proc, proc->body))
+       && do_stmt_block(module_block, proc, 0, proc->body))
     {
       scope_end();
 
@@ -899,14 +957,18 @@ do_proc_decl(AstProc* proc)
 }
 
 local bool32
-do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* stmt)
+do_statement(AstBlock* module_block,
+             AstProc* proc,
+             AstBlock* block,
+             AstNode* loop,
+             AstNode* stmt)
 {
   bool32 success = true;
 
   if(stmt->kind == AstNodeKind_VarDecl)
-    success = do_var_decl((AstBlock*)block, (AstVarDecl*)stmt);
+    success = do_var_decl(module_block, block, (AstVarDecl*)stmt);
   else if(stmt->kind == AstNodeKind_BinExpr || stmt->kind == AstNodeKind_Call)
-   success = do_expression(block, stmt, &stmt);
+   success = do_expression(module_block, block, stmt, &stmt);
   else if(stmt->kind == AstNodeKind_UnrExpr)
   {
     AstUnrExpr* unr_expr = (AstUnrExpr*)stmt;
@@ -914,14 +976,14 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
        || unr_expr->op == AstOpKind_PreDecrement
        || unr_expr->op == AstOpKind_PostIncrement
        || unr_expr->op == AstOpKind_PreIncrement)
-      success = do_expression(block, stmt, &stmt);
+      success = do_expression(module_block, block, stmt, &stmt);
     else
       success = compile_error(&stmt->src_loc, "unexpected statement %s", get_ast_kind_printstr(stmt->kind));
   }
   else if(stmt->kind == AstNodeKind_WhileStmt)
   {
     AstWhileStmt* while_stmt = (AstWhileStmt*)stmt;
-    if(success = do_expression(block, while_stmt->cond_expr, &while_stmt->cond_expr))
+    if(success = do_expression(module_block, block, while_stmt->cond_expr, &while_stmt->cond_expr))
     {
       if(type_unif(while_stmt->cond_expr->type, basic_type_bool))
       {
@@ -929,12 +991,12 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
         {
           if(success = scope_begin((AstBlock*)while_stmt->body))
           {
-            success = do_block(encl_proc, stmt, stmt, (AstBlock*)while_stmt->body);
+            success = do_stmt_block(module_block, proc, stmt, (AstBlock*)while_stmt->body);
             scope_end();
           }
         }
         else
-          success = do_statement(encl_proc, block, stmt, while_stmt->body);
+          success = do_statement(module_block, proc, block, stmt, while_stmt->body);
       }
       else
         success = compile_error(&stmt->src_loc, "boolean expression is expected");
@@ -945,12 +1007,12 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
     AstForStmt* for_stmt = (AstForStmt*)stmt;
     if(success = scope_begin(for_stmt->body))
     {
-      success = (for_stmt->decl_expr ? do_var_decl(for_stmt->body, for_stmt->decl_expr) : 1);
+      success = (for_stmt->decl_expr ? do_var_decl(module_block, for_stmt->body, for_stmt->decl_expr) : 1);
       if(success)
       {
-        success = do_block(encl_proc, stmt, stmt, for_stmt->body) // will set the block->owner field, so do it first
-          && (for_stmt->cond_expr ? do_expression(for_stmt->body, for_stmt->cond_expr, &for_stmt->cond_expr) : 1)
-          && (for_stmt->loop_expr ? do_expression(for_stmt->body, for_stmt->loop_expr, &for_stmt->loop_expr) : 1);
+        success = do_stmt_block(module_block, proc, stmt, for_stmt->body) // will set the block->owner field, so do it first
+          && (for_stmt->cond_expr ? do_expression(module_block, for_stmt->body, for_stmt->cond_expr, &for_stmt->cond_expr) : 1)
+          && (for_stmt->loop_expr ? do_expression(module_block, for_stmt->body, for_stmt->loop_expr, &for_stmt->loop_expr) : 1);
         if(success)
         {
           if(!type_unif(for_stmt->cond_expr->type, basic_type_bool))
@@ -963,7 +1025,7 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
   else if(stmt->kind == AstNodeKind_IfStmt)
   {
     AstIfStmt* if_stmt = (AstIfStmt*)stmt;
-    if(success = do_expression(block, if_stmt->cond_expr, &if_stmt->cond_expr))
+    if(success = do_expression(module_block, block, if_stmt->cond_expr, &if_stmt->cond_expr))
     {
       if(type_unif(if_stmt->cond_expr->type, basic_type_bool))
       {
@@ -971,12 +1033,12 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
         {
           if(success = scope_begin((AstBlock*)if_stmt->body))
           {
-            success = do_block(encl_proc, encl_loop, stmt, (AstBlock*)if_stmt->body);
+            success = do_stmt_block(module_block, proc, loop, (AstBlock*)if_stmt->body);
             scope_end();
           }
         }
         else
-          success = do_statement(encl_proc, block, encl_loop, if_stmt->body);
+          success = do_statement(module_block, proc, block, loop, if_stmt->body);
 
         if(if_stmt->else_body)
         {
@@ -984,12 +1046,12 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
           {
             if(success = scope_begin((AstBlock*)if_stmt->else_body))
             {
-              success = do_block(encl_proc, stmt, encl_loop, (AstBlock*)if_stmt->else_body);
+              success = do_stmt_block(module_block, proc, stmt, (AstBlock*)if_stmt->else_body);
               scope_end();
             }
           }
           else
-            success = do_statement(encl_proc, block, encl_loop, if_stmt->else_body);
+            success = do_statement(module_block, proc, block, loop, if_stmt->else_body);
         }
       }
       else
@@ -998,17 +1060,17 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
   }
   else if(stmt->kind == AstNodeKind_ReturnStmt)
   {
-    if(encl_proc)
+    if(proc)
     {
       AstReturnStmt* ret_stmt = (AstReturnStmt*)stmt;
-      ret_stmt->proc = encl_proc;
-      AstBlock* encl_proc_block = (AstBlock*)encl_proc->body;
+      ret_stmt->proc = proc;
+      AstBlock* encl_proc_block = (AstBlock*)proc->body;
       ret_stmt->nesting_depth = ((AstBlock*)block)->nesting_depth - encl_proc_block->nesting_depth;
       assert(!stmt->type);
       stmt->type = basic_type_void;
 
       AstNode* ret_expr = ret_stmt->expr;
-      AstVarDecl* ret_var = encl_proc->ret_var;
+      AstVarDecl* ret_var = proc->ret_var;
 
       if(ret_expr)
       {
@@ -1018,7 +1080,7 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
         bin_expr->left_operand = (AstNode*)new_id(&ret_expr->src_loc, ret_var->id->name);
         bin_expr->right_operand = ret_expr;
 
-        if(success = do_expression(block, (AstNode*)bin_expr, &(AstNode*)bin_expr))
+        if(success = do_expression(module_block, block, (AstNode*)bin_expr, &(AstNode*)bin_expr))
           stmt->type = bin_expr->type;
       }
       else if(!(success = type_unif(ret_var->type, stmt->type)))
@@ -1030,11 +1092,11 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
       if(success)
       {
         //FIXME: HACK ALERT!!
-        assert(type_unif(stmt->type, encl_proc->ret_var->type));
-        if(encl_proc->body->type)
-          success = type_unif(encl_proc->body->type, stmt->type);
+        assert(type_unif(stmt->type, proc->ret_var->type));
+        if(proc->body->type)
+          success = type_unif(proc->body->type, stmt->type);
         else
-          encl_proc->body->type = stmt->type;
+          proc->body->type = stmt->type;
         /////
       }
     }
@@ -1048,16 +1110,16 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
   }
   else if(stmt->kind == AstNodeKind_BreakStmt || stmt->kind == AstNodeKind_ContinueStmt)
   {
-    if(encl_loop)
+    if(loop)
     {
       AstNode* loop_body = 0;
-      if(encl_loop->kind == AstNodeKind_WhileStmt)
-        loop_body = ((AstWhileStmt*)encl_loop)->body;
-      else if(encl_loop->kind = AstNodeKind_ForStmt)
-        loop_body = (AstNode*)((AstForStmt*)encl_loop)->body;
+      if(loop->kind == AstNodeKind_WhileStmt)
+        loop_body = ((AstWhileStmt*)loop)->body;
+      else if(loop->kind = AstNodeKind_ForStmt)
+        loop_body = (AstNode*)((AstForStmt*)loop)->body;
       assert(loop_body);
 
-      AstLoopCtrl* loop_ctrl = (AstLoopCtrl*)encl_loop;
+      AstLoopCtrl* loop_ctrl = (AstLoopCtrl*)loop;
       loop_ctrl->nesting_depth = 0;
       if(loop_body->kind == AstNodeKind_Block)
         loop_ctrl->nesting_depth = ((AstBlock*)block)->nesting_depth - ((AstBlock*)loop_body)->nesting_depth;
@@ -1085,7 +1147,66 @@ do_statement(AstProc* encl_proc, AstBlock* block, AstNode* encl_loop, AstNode* s
 }
 
 local bool32
-do_block(AstProc* encl_proc, AstNode* encl_loop, AstNode* owner, AstBlock* block)
+do_stmt_block(AstBlock* module_block,
+              AstProc* proc,
+              AstNode* loop,
+              AstBlock* block)
+{
+  bool32 success = true;
+
+  for(ListItem* list_item = block->node_list.first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    success = do_statement(module_block, proc, block, loop, (AstNode*)list_item->elem);
+  }
+  return success;
+}
+
+local bool32
+do_module_block(AstProc* proc,
+                AstNode* loop,
+                AstBlock* block)
+{
+  bool32 success = true;
+
+  for(ListItem* list_item = block->node_list.first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    AstNode* stmt = (AstNode*)list_item->elem;
+    if(stmt->kind == AstNodeKind_VarDecl)
+      success = do_var_decl(block, block, (AstVarDecl*)stmt);
+    else if(stmt->kind == AstNodeKind_Proc)
+      success = do_proc_decl(block, (AstProc*)stmt);
+    else if(stmt->kind == AstNodeKind_Label
+            || stmt->kind == AstNodeKind_Call
+            || stmt->kind == AstNodeKind_Id
+            || stmt->kind == AstNodeKind_Literal
+            || stmt->kind == AstNodeKind_BinExpr
+            || stmt->kind == AstNodeKind_UnrExpr)
+    {
+      success = compile_error(&stmt->src_loc, "unexpected statement %s", get_ast_kind_printstr(stmt->kind));
+    }
+    else if(stmt->kind == AstNodeKind_Struct
+            || stmt->kind == AstNodeKind_Union
+            || stmt->kind == AstNodeKind_Enum)
+    {
+      fail("Not implemented");
+    }
+    else
+      assert(0);
+  }
+  return success;
+}
+
+#if 0
+local bool32
+do_block(AstBlock* module_block,
+         AstProc* proc,
+         AstNode* loop,
+         //AstNode* owner,
+         AstBlock* block)
 {
   bool32 success = true;
 
@@ -1099,9 +1220,9 @@ do_block(AstProc* encl_proc, AstNode* encl_loop, AstNode* owner, AstBlock* block
     {
       AstNode* stmt = (AstNode*)list_item->elem;
       if(stmt->kind == AstNodeKind_VarDecl)
-        success = do_var_decl(block, (AstVarDecl*)stmt);
+        success = do_var_decl(module_block, block, (AstVarDecl*)stmt);
       else if(stmt->kind == AstNodeKind_Proc)
-        success = do_proc_decl((AstProc*)stmt);
+        success = do_proc_decl(module_block, (AstProc*)stmt);
       else if(stmt->kind == AstNodeKind_Label
               || stmt->kind == AstNodeKind_Call
               || stmt->kind == AstNodeKind_Id
@@ -1130,13 +1251,14 @@ do_block(AstProc* encl_proc, AstNode* encl_loop, AstNode* owner, AstBlock* block
         list_item && success;
         list_item = list_item->next)
     {
-      success = do_statement(encl_proc, block, encl_loop, (AstNode*)list_item->elem);
+      success = do_statement(module_block, proc, block, loop, (AstNode*)list_item->elem);
     }
   }
   else
     assert(0);
   return success;
 }
+#endif
 
 local bool32
 do_module(AstModule* module)
@@ -1163,14 +1285,31 @@ do_module(AstModule* module)
   {
     add_builtin_types();
 
-    if(success = do_block(0, 0, (AstNode*)module, module->body))
+    if(success = do_module_block(0, 0, module_block))
     {
+      for(ListItem* list_item = module_block->node_list.first;
+          list_item;
+          list_item = list_item->next)
+      {
+        AstNode* ast = (AstNode*)list_item->elem;
+        if(ast->kind == AstNodeKind_Proc)
+        {
+          AstProc* proc = (AstProc*)ast;
+          list_remove_item(&module_block->node_list, list_item);
+          if(!proc->is_decl)
+            list_append_item(&module->proc_defs, list_item);
+        }
+      }
+
       AstCall* main_call = new_call(deflt_src_loc);
       main_call->id = new_id(deflt_src_loc, "main");
-      if(success = do_call(module_block, main_call))
+      if(success = do_call(module_block, module_block, main_call))
       {
         if(type_unif(main_call->type, basic_type_int))
-          module->main_stmt = main_call;
+        {
+          list_append(arena, &module_block->node_list, main_call);
+          //module->main_call = main_call;
+        }
         else
         {
           AstProc* proc = (AstProc*)main_call->proc_sym->ast;

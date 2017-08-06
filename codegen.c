@@ -217,6 +217,22 @@ gen_call(List* code, AstCall* call)
   AstProc* proc = (AstProc*)call->proc_sym->ast;
   emit_instr_int(code, Opcode_ALLOC, proc->ret_size);
 
+  AstBlock* block = proc->body;
+  for(ListItem* list_item = block->access_links.first;
+      list_item;
+      list_item = list_item->next)
+  {
+    AccessLink* link = (AccessLink*)list_item->elem;
+    emit_instr_reg(code, Opcode_PUSH, RegName_FP);
+    assert(link->actv_rec_offset > 0);
+    int offset = link->actv_rec_offset - 1;
+    while(offset--)
+    {
+      emit_instr(code, Opcode_DECR); // TODO: explain why
+      emit_instr(code, Opcode_LOAD);
+    }
+  }
+
   for(ListItem* list_item = call->args.first;
       list_item;
       list_item = list_item->next)
@@ -225,7 +241,8 @@ gen_call(List* code, AstCall* call)
   }
 
   emit_instr_str(code, Opcode_CALL, proc->label);
-  emit_instr_int(code, Opcode_POP, proc->args_size); // discard args
+  emit_instr_int(code, Opcode_POP, block->links_size);
+  emit_instr_int(code, Opcode_POP, proc->args_size);
 }
 
 local void
@@ -455,11 +472,12 @@ gen_statement(List* code, AstNode* ast)
 void
 codegen(List* code, AstModule* module)
 {
-  gen_statement(code, (AstNode*)module->main_stmt);
+#if 0
+  gen_statement(code, (AstNode*)module->main_call);
   emit_instr(code, Opcode_HALT);
 
-  AstBlock* body_block = (AstBlock*)module->body;
-  for(ListItem* list_item = body_block->node_list.first;
+  AstBlock* module_block = (AstBlock*)module->body;
+  for(ListItem* list_item = module_block->node_list.first;
       list_item;
       list_item = list_item->next)
   {
@@ -474,6 +492,18 @@ codegen(List* code, AstModule* module)
     else
       fail("not implemented");
   }
+#else
+  gen_block(code, module->body);
+  emit_instr(code, Opcode_HALT);
+
+  for(ListItem* list_item = module->proc_defs.first;
+      list_item;
+      list_item = list_item->next)
+  {
+    AstProc* proc = (AstProc*)list_item->elem;
+    gen_proc(code, proc);
+  }
+#endif
 }
 
 local char*

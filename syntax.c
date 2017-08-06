@@ -33,6 +33,16 @@ new_module(SourceLocation* src_loc)
   return node;
 }
 
+AstString*
+new_string(SourceLocation* src_loc, char* str)
+{
+  AstString* node = mem_push_struct(arena, AstString);
+  node->kind = AstNodeKind_String;
+  node->src_loc = *src_loc;
+  node->str = str;
+  return node;
+}
+
 AstId*
 new_id(SourceLocation* src_loc, char* name)
 {
@@ -989,6 +999,14 @@ do_accessor(TokenStream* input, AstNode** node)
 
     success = get_next_token(input);
   }
+  /*
+  else if(input->token.kind == TokenKind_String)
+  {
+    AstString* str = new_string(&input->src_loc, input->token.str);
+    *node = (AstNode*)str;
+    success = get_next_token(input);
+  }
+  */
   else if(input->token.kind == TokenKind_Id)
   {
     AstId* id = new_id(&input->src_loc, input->token.lexeme);
@@ -1960,6 +1978,10 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
         DEBUG_print_line(str, indent_level, "str: \"%s\"", literal->str);
       else
         assert(0);
+    }
+    else if(node->kind == AstNodeKind_String)
+    {
+      DEBUG_print_line(str, indent_level, "str: \"%s\"", ((AstString*)node)->str);
     }
     else if(node->kind == AstNodeKind_WhileStmt)
     {

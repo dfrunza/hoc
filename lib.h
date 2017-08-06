@@ -144,9 +144,10 @@ int stdin_read(char buf[], int buf_size);
 inline void list_init(List* list);
 List* list_new(MemoryArena* arena);
 void list_append_item(List* list, ListItem* item);
+void list_remove_item(List* list, ListItem* item);
 void list_append(MemoryArena* arena, List* list, void* elem);
 
-/* Insert list `a` into `b` and delete the item `b` from `list_b`. */
-void list_replace_at(List* list_a, List* list_b, ListItem* at_b_item);
+/* Inserts `list_a` into `list_b` and delete the item `at_b_item` from `list_b` */
+void list_replace_item_at(List* list_a, List* list_b, ListItem* at_b_item);
 
 

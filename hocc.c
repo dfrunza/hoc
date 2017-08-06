@@ -140,8 +140,8 @@ translate(char* file_path, char* hoc_text)
   if(vm_program->success = parse(&token_stream, &(AstNode*)module))
   {
     assert(module->kind == AstNodeKind_Module);
-    if(DEBUG_enabled)
-    {/*>>>*/
+    if(DEBUG_enabled)/*>>>*/
+    {
       DEBUG_print_arena_usage("Syntactic");
 
       String* str = str_new(DEBUG_arena);
@@ -154,9 +154,8 @@ translate(char* file_path, char* hoc_text)
     {
       assert(symtab->block_id == 0);
       assert(symtab->nesting_depth == 0);
-
-      if(DEBUG_enabled)
-      {/*>>>*/
+      if(DEBUG_enabled)/*>>>*/
+      {
         DEBUG_print_arena_usage("Semantic");
 
         String* str = str_new(DEBUG_arena);
@@ -165,20 +164,18 @@ translate(char* file_path, char* hoc_text)
         arena_free(DEBUG_arena);
       }/*<<<*/
 
-      if(vm_program->success = build_runtime(module))
-      {
-        if(DEBUG_enabled)
-          DEBUG_print_arena_usage("Runtime");
+      build_runtime(module);
+      if(DEBUG_enabled)/*>>>*/
+        DEBUG_print_arena_usage("Runtime");/*<<<*/
 
-        codegen(&vm_program->instr_list, module);
-        if(DEBUG_enabled)
-          DEBUG_print_arena_usage("Codegen");
+      codegen(&vm_program->instr_list, module);
+      if(DEBUG_enabled)/*>>>*/
+        DEBUG_print_arena_usage("Codegen");/*<<<*/
 
-        str_init(&vm_program->text, arena);
-        print_code(vm_program);
-        if(DEBUG_enabled)
-          DEBUG_print_arena_usage("Print code");
-      }
+      str_init(&vm_program->text, arena);
+      print_code(vm_program);
+      if(DEBUG_enabled)/*>>>*/
+        DEBUG_print_arena_usage("Print code");/*<<<*/
     }
   }
   return vm_program;
@@ -234,8 +231,8 @@ main(int argc, char* argv[])
     arena = arena_new(ARENA_SIZE);
     sym_arena = arena_push(arena, SYM_ARENA_SIZE);
 
-    if(DEBUG_enabled)
-    {/*>>>*/
+    if(DEBUG_enabled)/*>>>*/
+    {
       assert(DEBUG_ARENA_SIZE > 0);
       DEBUG_arena = arena_push(arena, DEBUG_ARENA_SIZE);
       DEBUG_print_sizeof_ast_structs();
@@ -251,8 +248,8 @@ main(int argc, char* argv[])
       VmProgram* vm_program = translate(file_path, hoc_text);
       if(success = vm_program->success)
       {
-        if(DEBUG_enabled)
-          printf("symbol count : %d\n", symtab->sym_count);
+        if(DEBUG_enabled)/*>>>*/
+          printf("symbol count : %d\n", symtab->sym_count);/*<<<*/
         
         OutFileNames out_files = {0};
         char* file_stem = mem_push_count_nz(arena, char, cstr_len(file_path));
@@ -264,8 +261,8 @@ main(int argc, char* argv[])
           BinCode* bincode = 0;
           char* hasm_text = str_cap(&vm_program->text);
 
-          if(DEBUG_enabled)
-            write_hasm_file(&out_files, vm_program);
+          if(DEBUG_enabled)/*>>>*/
+            write_hasm_file(&out_files, vm_program);/*<<<*/
 
           if(success = convert_hasm_to_bincode(hasm_text, &bincode))
           {

@@ -576,6 +576,28 @@ list_new(MemoryArena* arena)
 }
 
 void
+list_remove_item(List* list, ListItem* item)
+{
+  if(item->prev)
+  {
+    item->prev->next = item->next;
+    if(item->next)
+      item->next->prev = item->prev;
+  }
+
+  if(item == list->first)
+    list->first = item->next;
+  if(item == list->last)
+    list->last = item->prev;
+
+  if(DEBUG_enabled)/*>>>*/
+  {
+    item->next = 0;
+    item->prev = 0;
+  }/*<<<*/
+}
+
+void
 list_append_item(List* list, ListItem* item)
 {
   if(list->last)
@@ -583,9 +605,12 @@ list_append_item(List* list, ListItem* item)
     item->prev = list->last;
     list->last->next = item;
     list->last = item;
-  } else
+  }
+  else
     list->first = list->last = item;
-  item->next = 0;
+
+  if(DEBUG_enabled)/*>>>*/
+    item->next = 0;/*<<<*/
 }
 
 void
@@ -597,7 +622,7 @@ list_append(MemoryArena* arena, List* list, void* elem)
 }
 
 void
-list_replace_at(List* list_a, List* list_b, ListItem* at_b_item)
+list_replace_item_at(List* list_a, List* list_b, ListItem* at_b_item)
 {
   ListItem* prev_b_item = at_b_item->prev;
   ListItem* next_b_item = at_b_item->next;
@@ -608,7 +633,8 @@ list_replace_at(List* list_a, List* list_b, ListItem* at_b_item)
       prev_b_item->next = list_a->first;
     else
       list_b->first = list_a->first;
-  } else
+  }
+  else
   {
     if(prev_b_item)
       prev_b_item->next = next_b_item;
@@ -621,7 +647,14 @@ list_replace_at(List* list_a, List* list_b, ListItem* at_b_item)
     next_b_item->prev = list_a->last;
     if(list_a->last)
       list_a->last->next = next_b_item;
-  } else
+  }
+  else
     list_b->last = list_a->last;
+
+  if(DEBUG_enabled)/*>>>*/
+  {
+    at_b_item->next = 0;
+    at_b_item->prev = 0;
+  }/*<<<*/
 }
 

@@ -162,12 +162,6 @@ FUNCTION POINTERS
 
 var int* proc(int a, int b)* f = 0;
 var proc int* (int a, int b)* f = 0;
-var proc int* F(int a, int b)* f = 0;
-F* f;
-proc int* F(int a, int b);
-F* p_f;
-proc int* f(int a, int b);
-
 
 ---------------------------------------
 TYPES AND PROC POINTERS
@@ -185,110 +179,38 @@ proc void roar(Animal* a)
 ..............................
 WITH TYPES 1
 
-type AnimalKind: enum
+typedef enum AnimalKind
 {
   Cat,
   Dog,
   Mouse
-}
+};
 
-type Animal: struct
+typedef struct Animal
 {
   AnimalKind kind;
   int roar_strength;
-}
+};
 
-type Roar: proc int (Animal* a);
-
-/* var decls */
-Roar* p_roar; // proc ptr
-Animal* animal;
-
-p_roar = &roar;
-p_roar(animal); // call proc
-
-WITH TYPES 2
-
-type enum AnimalKind
-{
-  Cat,
-  Dog,
-  Mouse
-}
-
-type struct Animal
-{
-  AnimalKind kind;
-  int roar_strength;
-}
-
-type proc int* Roar(int a);
+typedef proc int (*Roar)(Animal* a);
 
 /* var decls */
-Roar* roar; // proc ptr
+Roar p_roar; // proc ptr
 Animal* animal;
 
 p_roar = &roar;
 p_roar(animal); // call proc
 
 ........................
-WITH TYPES 3
 
-type main proc int main()
+proc void roar(int a)
 {
-  return sqrt_floor(23);
+  // do the roar
 }
 
-var main* p_main;
-p_main();
-
-type A struct A
-{
-};
-
-type char8 char;
-type A proc int foo();
-type E enum E {a, b, c};
-
-var enum E e;
-var E e;
-var E* e1, e2;
-var []E* aye1;
-
-..........................
-WITHOUT TYPES
-
-enum AnimalKind
-{
-  Cat,
-  Dog,
-  Mouse
-}
-
-struct Animal
-{
-  AnimalKind kind;
-  int roar_strength;
-}
-
-var proc roar* p_roar; // ptr to proc `roar`
-
-var proc void roar(Animal* a)* p_roar;
-var proc void (Animal* a)* p_roar;
-
-proc void roar(struct Animal* a);
-var roar* p_roar; // ptr to proc type `roar`
+var proc roar *p_roar; // p_roar is a pointer to proc roar
 
 -----------------------------
-var int* a[]; // array of int pointers
-var int* proc(int)* p_proc; // pointer to proc
-var int* proc(int)* p_proc[10]; // array of 10 pointers to proc
-var struct {int a;} *a[10], **b;
-
-------------------------------
-var [10]( [10]int* proc(int) )* p_func; // p_func is an array of proc pointers; the proc returns an array of ints
-var ([] ([]int* proc(int))* )* p_func; // p_func is a pointer to an array of proc pointers
--------------------------------
 
 proc void foo(MyLocalType* e)
 {

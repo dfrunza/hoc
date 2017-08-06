@@ -255,7 +255,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
         instr.opcode = Opcode_INT_TO_FLOAT;
       else
       {
-        error("Invalid instruction: %s", mnemonic);
+        error("invalid instruction: %s", mnemonic);
         return false;
       }
 
@@ -275,7 +275,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
               }
               else
               {
-                error("Label must begin with a letter : %s", components[1]);
+                error("label must begin with a letter : %s", components[1]);
                 return false;
               }
             } break;
@@ -296,7 +296,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
                 else if(cstr_match(reg, "ip"))
                   instr.param.reg = RegName_IP;
                 else {
-                  error("Invalid register '%s'", components[1]);
+                  error("invalid register '%s'", components[1]);
                   return false;
                 }
               }
@@ -314,7 +314,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
               if(cstr_to_int(components[1], &instr.param.int_val))
                 instr.param_type = ParamType_Int32;
               else {
-                error("Invalid parameter '%s'", components[1]);
+                error("invalid parameter '%s'", components[1]);
                 return false;
               }
             } break;
@@ -334,19 +334,19 @@ build_bincode(SourceProgram* source, BinCode** out_code)
                   source->labels[source->labesl_count++] = label;
                 else
                 {
-                  error("Duplicate label declaration '%s'", label.string);
+                  error("duplicate label declaration '%s'", label.string);
                   return false;
                 }
               }
               else
               {
-                error("Label '%s' does not begin with a letter", components[1]);
+                error("label '%s' does not begin with a letter", components[1]);
                 return false;
               }
             } break;
 
           default:
-            error("Incorrect number of parameters to instruction '%s'", mnemonic);
+            error("incorrect number of parameters to instruction '%s'", mnemonic);
             return false;
         }
       }
@@ -355,7 +355,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
     }
     else
     {
-      error("Illegal number of instruction components");
+      error("illegal number of instruction components");
       return false;
     }
   }
@@ -379,7 +379,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
     }
     else
     {
-      error("Could not find a non-label instruction following the label %s", label->string);
+      error("could not find a non-label instruction following the label %s", label->string);
       return false;
     }
   }
@@ -401,7 +401,7 @@ build_bincode(SourceProgram* source, BinCode** out_code)
       }
       else
       {
-        error("Label '%s' not found", instr->param.str);
+        error("label '%s' not found", instr->param.str);
         return false;
       }
     }

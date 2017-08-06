@@ -203,6 +203,7 @@ typedef enum
   AstNodeKind_Union,
   AstNodeKind_Enum,
   AstNodeKind_Initializer,
+  AstNodeKind_String,
   AstNodeKind_EmptyStmt,
 
   AstNodeKind__Count,
@@ -235,10 +236,8 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   char* name;
 
-  /* semantic */
   Symbol* sym;
 }
 AstId;
@@ -247,10 +246,8 @@ typedef struct AstBlock
 {
   AstNode;
 
-  /* syntactic */
   List node_list;
 
-  /* semantic */
   //AstNode* owner;
   int block_id;
   int nesting_depth;
@@ -258,7 +255,6 @@ typedef struct AstBlock
   List decl_vars;
   List nonlocal_occurs;
 
-  /* runtime */
   List access_links;
   int links_size;
   int locals_size;
@@ -269,12 +265,10 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstOpKind op;
   AstNode* left_operand;
   AstNode* right_operand;
 
-  /* runtime */
   char* label_end; // for boolean expressions
 }
 AstBinExpr;
@@ -283,11 +277,9 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstId* id;
   List args;
 
-  /* semantic */
   Symbol* proc_sym;
 }
 AstCall;
@@ -296,12 +288,11 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   char* file_path;
   AstBlock* body;
 
-  /* runtime */
-  AstCall* main_stmt;
+  List proc_defs;
+  //AstCall* main_call;
 }
 AstModule,
 AstIncludeStmt;
@@ -310,16 +301,13 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* type_expr;
   AstId* id;
   AstNode* init_expr;
 
-  /* semantic */
   AstBlock* decl_block;
   AstBinExpr* assign_expr;
 
-  /* runtime */
   DataArea data;
 }
 AstVarDecl;
@@ -328,15 +316,12 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* id;
 
-  /* semantic */
   AstVarDecl* var_decl;
   AstBlock* occur_block;
   int decl_block_offset;
 
-  /* runtime */
   AccessLink* link;
   DataArea* data;
 }
@@ -346,17 +331,14 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* ret_type_expr;
   AstId* id;
   List args;
   AstBlock* body;
 
-  /* semantic */
   AstVarDecl* ret_var;
   bool32 is_decl;
 
-  /* runtime */
   char* label;
   char* label_end;
   int ret_size;
@@ -369,7 +351,6 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstOpKind op;
   AstNode* operand;
 }
@@ -379,7 +360,6 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstLiteralKind lit_kind;
   union {
     int32 int_val;
@@ -395,10 +375,18 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
+  int len;
+  char* str;
+  DataArea data;
+}
+AstString;
+
+typedef struct
+{
+  AstNode;
+
   AstNode* expr;
 
-  /* semantic */
   AstProc* proc;
   int nesting_depth;
   AstBinExpr* assign_expr;
@@ -409,7 +397,6 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstId* id;
 }
 AstGotoStmt,
@@ -419,12 +406,10 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* cond_expr;
   AstNode* body;
   AstNode* else_body;
 
-  /* runtime */
   char* label_else;
   char* label_end;
 }
@@ -434,11 +419,9 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* cond_expr;
   AstNode* body;
 
-  /* runtime */
   char* label_eval;
   char* label_break;
 }
@@ -448,13 +431,11 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstVarDecl* decl_expr;
   AstNode* cond_expr;
   AstNode* loop_expr;
   AstBlock* body;
 
-  /* runtime */
   char* label_eval;
   char* label_break;
 }
@@ -464,10 +445,8 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* loop;
 
-  /* semantic */
   int nesting_depth;
 }
 AstContinueStmt,
@@ -478,7 +457,6 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* type_expr;
   AstNode* expr;
 }
@@ -488,10 +466,8 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* type_expr;
 
-  /* runtime */
   int storage_size;
 }
 AstNew;
@@ -500,11 +476,9 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* expr;
   AstNode* index;
 
-  /* semantic */
   int size;
 }
 AstArray;
@@ -513,7 +487,6 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* expr;
 }
 AstPointer;
@@ -522,7 +495,6 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstId* id;
   List member_list;
 }
@@ -534,7 +506,6 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   AstNode* left_operand;
   AstNode* right_operand;
 }
@@ -544,7 +515,6 @@ typedef struct
 {
   AstNode;
 
-  /* syntactic */
   List member_list;
 }
 AstInitializer;
@@ -799,6 +769,7 @@ void DEBUG_print_arena_usage(char* tag);
 bool32 parse(TokenStream* input, AstNode** node);
 void init_types();
 bool32 semantic_analysis(AstModule* ast);
+AstString* new_string(SourceLocation* src_loc, char* str);
 AstBinExpr* new_bin_expr(SourceLocation* src_loc);
 AstCast* new_cast(SourceLocation* src_loc);
 AstId* new_id(SourceLocation* src_loc, char* name);
@@ -818,7 +789,7 @@ Type* make_type_of_node_list(List* node_list);
 Type* get_type_repr(Type* type);
 bool32 type_unif(Type* type_a, Type* type_b);
 bool32 types_are_equal(Type* type_a, Type* type_b);
-bool32 build_runtime(AstModule* ast);
+void build_runtime(AstModule* ast);
 void codegen(List* code, AstModule* module);
 void print_code(VmProgram* vm_program);
 bool32 convert_hasm_to_bincode(char* hasm_text, BinCode** code);

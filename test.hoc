@@ -7,11 +7,19 @@ include "hlib\\abs.hoc";
 include "hlib\\minmax.hoc";
 */
 
+/*
+var int* g = 0;
+var [4]char str;
+*/
+
 proc int main()
 {
-  /*var char* str = "abc";*/
-  var float* a = new(int);
-  return 0;
+  var char* str = "abc";
+  *str = 'a';
+  *(str+1) = 'b';
+  *(str+2) = 'c';
+  *(str+3) = '\0';
+  return *str;
 }
 
 

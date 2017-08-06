@@ -91,10 +91,9 @@ do_block(AstBlock* block)
       list_item = list_item->next)
   {
     AstVarOccur* var_occur = (AstVarOccur*)list_item->elem;
-    List* links_list = &block->access_links;
 
     AccessLink* link = 0;
-    for(ListItem* list_item = links_list->first;
+    for(ListItem* list_item = block->access_links.first;
         list_item;
         list_item = list_item->next)
     {
@@ -108,7 +107,7 @@ do_block(AstBlock* block)
       link = mem_push_struct(arena, AccessLink);
       link->actv_rec_offset = var_occur->decl_block_offset;
       link->data.size = 1;
-      list_append(arena, links_list, link);
+      list_append(arena, &block->access_links, link);
       list_append(arena, &pre_fp_data, &link->data);
       block->links_size += link->data.size;
     }
@@ -140,7 +139,6 @@ do_while_stmt(AstWhileStmt* while_stmt)
   do_statement(while_stmt->cond_expr);
 
   {
-    /* labels */
     String* label_id = str_new(arena);
     make_unique_label(label_id);
 
@@ -167,7 +165,6 @@ do_if_stmt(AstIfStmt* if_stmt)
   do_statement(if_stmt->cond_expr);
 
   {
-    /* labels */
     String* label_id = str_new(arena);
     make_unique_label(label_id);
 
@@ -246,8 +243,10 @@ do_statement(AstNode* ast)
   }
   else if(ast->kind == AstNodeKind_VarOccur
           || ast->kind == AstNodeKind_BreakStmt
-          || ast->kind == AstNodeKind_EmptyStmt
-          || ast->kind == AstNodeKind_Literal)
+          || ast->kind == AstNodeKind_ContinueStmt
+          || ast->kind == AstNodeKind_Literal
+          || ast->kind == AstNodeKind_String
+          || ast->kind == AstNodeKind_EmptyStmt)
     ; /* no-op */
   else if(ast->kind == AstNodeKind_VarDecl)
   {
@@ -312,13 +311,43 @@ do_proc(AstProc* proc)
     list_append(arena, &pre_fp_data, &var_decl->data);
   }
 
+  AstBlock* block = (AstBlock*)proc->body;
+
+  /* access links */
+  for(ListItem* list_item = block->nonlocal_occurs.first;
+      list_item;
+      list_item = list_item->next)
+  {
+    AstVarOccur* var_occur = (AstVarOccur*)list_item->elem;
+
+    AccessLink* link = 0;
+    for(ListItem* list_item = block->access_links.first;
+        list_item;
+        list_item = list_item->next)
+    {
+      link = (AccessLink*)list_item->elem;
+      if(link->actv_rec_offset == var_occur->decl_block_offset)
+        break;
+      link = 0;
+    }
+    if(!link)
+    {
+      link = mem_push_struct(arena, AccessLink);
+      link->actv_rec_offset = var_occur->decl_block_offset;
+      link->data.size = 1;
+      list_append(arena, &block->access_links, link);
+      list_append(arena, &pre_fp_data, &link->data);
+      block->links_size += link->data.size;
+    }
+    var_occur->link = link;
+  }
+
   DataArea* ctrl_links = mem_push_struct(arena, DataArea);
   ctrl_links->size = 3; // fp,sp,ip
   list_append(arena, &pre_fp_data, ctrl_links);
 
-  AstBlock* body_block = (AstBlock*)proc->body;
   /* local decls */
-  for(ListItem* list_item = body_block->decl_vars.first;
+  for(ListItem* list_item = block->decl_vars.first;
       list_item;
       list_item = list_item->next)
   {
@@ -329,16 +358,15 @@ do_proc(AstProc* proc)
   }
 
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
-  do_block_stmts(&body_block->node_list);
+  do_block_stmts(&block->node_list);
 }
  
-bool32
+void
 build_runtime(AstModule* module)
 {
-  bool32 success = true;
-
-  AstBlock* body_block = (AstBlock*)module->body;
-  for(ListItem* list_item = body_block->node_list.first;
+  AstBlock* module_block = (AstBlock*)module->body;
+#if 0
+  for(ListItem* list_item = module_block->node_list.first;
       list_item;
       list_item = list_item->next)
   {
@@ -353,9 +381,18 @@ build_runtime(AstModule* module)
     else
       fail("not implemented");
   }
+#else
+  for(ListItem* list_item = module->proc_defs.first;
+      list_item;
+      list_item = list_item->next)
+  {
+    AstProc* proc = (AstProc*)list_item->elem;
+    assert(proc->kind == AstNodeKind_Proc);
+    do_proc(proc);
+  }
+#endif
 
-  do_statement((AstNode*)module->main_stmt);
-
-  return success;
+  do_block(module_block);
+  //do_statement((AstNode*)module->main_call);
 }
 

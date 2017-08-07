@@ -461,7 +461,7 @@ gen_statement(List* code, AstNode* ast)
 }
 
 void
-codegen(List* code, int32** data, int32* data_size, AstModule* module)
+codegen(List* code, uint8** data, int* data_size, AstModule* module)
 {
   AstBlock* module_block = module->body;
 
@@ -474,8 +474,8 @@ codegen(List* code, int32** data, int32* data_size, AstModule* module)
   }
   emit_instr(code, Opcode_HALT);
 
-  *data_size = module_block->locals_size + 1; // HACK ALERT!!!! +1 -> sp offset
-  *data = mem_push_count(arena, int32, *data_size);
+  *data_size = module_block->locals_size + 1/*null ptr cell*/;
+  *data = mem_push_count(arena, uint8, *data_size);
 
   for(ListItem* list_item = module_block->local_decls.first;
       list_item;
@@ -768,12 +768,6 @@ print_code(VmProgram* vm_program)
       {
         assert(instr->param_type == ParamType__Null);
         print_instruction(vm_program, "print");
-      } break;
-
-      case Opcode_PRINTNL:
-      {
-        assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "printnl");
       } break;
 
       case Opcode_FLOAT_TO_INT:

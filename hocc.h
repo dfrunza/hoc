@@ -6,7 +6,6 @@
 #define SYM_ARENA_SIZE (ARENA_SIZE/10)
 #define MAX_SCOPE_NESTING_DEPTH 100
 #define BINCODE_SIGNATURE "HC"
-#define VMWORD (sizeof(int32))
 
 typedef struct AstNode AstNode;
 typedef struct AstBlock AstBlock;
@@ -684,7 +683,6 @@ typedef enum
 
   Opcode_NOOP,
   Opcode_PRINT,
-  Opcode_PRINTNL,
 
   Opcode_FLOAT_TO_INT,
   Opcode_INT_TO_FLOAT,
@@ -751,11 +749,12 @@ typedef struct
 
   String text;
   int text_len;
+
   List instr_list;
   Instruction* instructions;
   int instr_count;
 
-  int32* data;
+  uint8* data;
   int data_size;
 }
 VmProgram;
@@ -797,7 +796,7 @@ Type* get_type_repr(Type* type);
 bool32 type_unif(Type* type_a, Type* type_b);
 bool32 types_are_equal(Type* type_a, Type* type_b);
 void build_runtime(AstModule* ast);
-void codegen(List* code, int32** data, int32* data_size, AstModule* module);
+void codegen(List* code, uint8** data, int* data_size, AstModule* module);
 void print_code(VmProgram* vm_program);
 bool32 convert_hasm_to_instructions(char* hasm_text, VmProgram* code);
 

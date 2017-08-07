@@ -279,12 +279,12 @@ main(int argc, char* argv[])
                 bin_image->code_size = sizeof(Instruction) * vm_program->instr_count;
 
                 bin_image->data_offset = bin_image->code_offset + bin_image->code_size;
-                bin_image->data_size = sizeof(int32) * vm_program->data_size;
+                bin_image->data_size = sizeof(uint8) * vm_program->data_size;
 
                 if((int)fwrite(vm_bytes, 1, vm_size, exe_file) == vm_size
                   && (int)fwrite(bin_image, sizeof(BinCode), 1, exe_file) == 1
                   && (int)fwrite(vm_program->instructions, sizeof(Instruction), vm_program->instr_count, exe_file) == vm_program->instr_count
-                  && (int)fwrite(vm_program->data, sizeof(int32), vm_program->data_size, exe_file) == vm_program->data_size)
+                  && (int)fwrite(vm_program->data, sizeof(uint8), vm_program->data_size, exe_file) == vm_program->data_size)
                 {
                   ;/*OK*/
                 }

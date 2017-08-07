@@ -30,18 +30,19 @@ compute_type_size(Type* type)
   {
     if(type->basic.kind == BasicTypeKind_Int
        || type->basic.kind == BasicTypeKind_Float
-       || type->basic.kind == BasicTypeKind_Char
        || type->basic.kind == BasicTypeKind_Bool)
     {
-      type->size = 1;
+      type->size = 4;
     }
+    else if(type->basic.kind == BasicTypeKind_Char)
+      type->size = 1;
     else if(type->basic.kind == BasicTypeKind_Void)
       type->size = 0;
     else
       assert(0);
   }
   else if(type->kind == TypeKind_Pointer)
-    type->size = 1;
+    type->size = 4;
   else
     assert(0);
   return type->size;
@@ -137,7 +138,7 @@ do_block(AstBlock* block)
     {
       link = mem_push_struct(arena, AccessLink);
       link->actv_rec_offset = var_occur->decl_block_offset;
-      link->data.size = 1;
+      link->data.size = 4;
       list_append(arena, &block->access_links, link);
       list_append(arena, &pre_fp_data, &link->data);
       block->links_size += link->data.size;
@@ -146,7 +147,7 @@ do_block(AstBlock* block)
   }
 
   DataArea* old_fp = mem_push_struct(arena, DataArea);
-  old_fp->size = 1;
+  old_fp->size = 4;
   list_append(arena, &pre_fp_data, old_fp);
 
   compute_locals_data_size(block, &post_fp_data);
@@ -335,7 +336,7 @@ do_proc(AstProc* proc)
   AstBlock* block = (AstBlock*)proc->body;
 
   DataArea* ctrl_links = mem_push_struct(arena, DataArea);
-  ctrl_links->size = 3; // fp,sp,ip
+  ctrl_links->size = 3*4; // fp,sp,ip
   list_append(arena, &pre_fp_data, ctrl_links);
 
   compute_locals_data_size(block, &post_fp_data);
@@ -362,7 +363,7 @@ build_runtime(AstModule* module)
   list_init(&post_fp_data);
 
   DataArea* base_offset = mem_push_struct(arena, DataArea);
-  base_offset->size = 1; // VM stack ptr starts at offset 1
+  base_offset->size = 4; // VM stack ptr starts at offset 4
   list_append(arena, &post_fp_data, base_offset);
 
   compute_locals_data_size(module_block, &post_fp_data);

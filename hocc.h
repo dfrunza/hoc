@@ -642,11 +642,10 @@ typedef enum
   Opcode_PUSH_F32,
   Opcode_PUSH_R,
   Opcode_POP,
+  Opcode_POP_R,
   Opcode_DUP,
   Opcode_LOAD,
-  Opcode_LOAD8,
   Opcode_STORE,
-  Opcode_STORE8,
   Opcode_ALLOC,
   Opcode_NEW,
 

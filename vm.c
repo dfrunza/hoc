@@ -209,22 +209,12 @@ execute_instr(HocMachine* machine, Instruction* instr)
         return Result_InvalidMemoryAccess;
     } break;
 
-    case Opcode_POP:
+    case Opcode_POP_R:
     {
       int32 arg_sp = memory_loc(machine->sp, int32, -1);
       if(check_sp_bounds(machine, arg_sp))
       {
-        if(instr->param_type == ParamType__Null)
-        {
-          machine->sp = arg_sp;
-          machine->ip++;
-        }
-        else if(instr->param_type == ParamType_Int32)
-        {
-          machine->sp -= instr->param.int_val;
-          machine->ip++;
-        }
-        else if(instr->param_type == ParamType_Reg)
+        if(instr->param_type == ParamType_Reg)
         {
           RegName regname = instr->param.reg;
           if(regname == RegName_SP)
@@ -246,6 +236,23 @@ execute_instr(HocMachine* machine, Instruction* instr)
           }
           else
             return Result_InvalidInstructionFormat;
+        }
+        else
+          return Result_InvalidInstructionFormat;
+      }
+      else
+        return Result_InvalidMemoryAccess;
+    } break;
+
+    case Opcode_POP:
+    {
+      int32 arg_sp = memory_loc(machine->sp, int32, -1);
+      if(check_sp_bounds(machine, arg_sp))
+      {
+        if(instr->param_type == ParamType_Int32)
+        {
+          machine->sp = memory_loc(machine->sp, int8, -instr->param.int_val);
+          machine->ip++;
         }
         else
           return Result_InvalidInstructionFormat;

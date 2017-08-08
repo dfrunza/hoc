@@ -162,6 +162,8 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
 
       if(cstr_match(mnemonic, "pop"))
         instr.opcode = Opcode_POP;
+      else if(cstr_match(mnemonic, "pop_r"))
+        instr.opcode = Opcode_POP_R;
       else if(cstr_match(mnemonic, "push_i8"))
         instr.opcode = Opcode_PUSH_I8;
       else if(cstr_match(mnemonic, "push_i32"))
@@ -300,6 +302,7 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
           } break;
 
           case Opcode_PUSH_R:
+          case Opcode_POP_R:
           {
             instr.param_type = ParamType_Reg;
             char* reg = components[1];

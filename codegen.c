@@ -74,27 +74,30 @@ emit_instr_str(List* instr_list, Opcode opcode, char* str)
 local void
 gen_bin_expr(List* code, AstBinExpr* bin_expr)
 {
+  AstNode* left_operand = bin_expr->left_operand;
+  AstNode* right_operand = bin_expr->right_operand;
+
   if(bin_expr->op == AstOpKind_Assign)
   {
-    gen_load_rvalue(code, bin_expr->right_operand);
+    gen_load_rvalue(code, right_operand);
 
-    if(bin_expr->left_operand->kind == AstNodeKind_VarOccur)
-      gen_load_lvalue(code, (AstVarOccur*)bin_expr->left_operand);
-    else if(bin_expr->left_operand->kind == AstNodeKind_UnrExpr)
+    if(left_operand->kind == AstNodeKind_VarOccur)
+      gen_load_lvalue(code, (AstVarOccur*)left_operand);
+    else if(left_operand->kind == AstNodeKind_UnrExpr)
     {
-      AstUnrExpr* unr_expr = (AstUnrExpr*)bin_expr->left_operand;
+      AstUnrExpr* unr_expr = (AstUnrExpr*)left_operand;
       if(unr_expr->op == AstOpKind_PtrDeref)
         gen_load_rvalue(code, unr_expr->operand);
       else
         assert(0);
     }
 
-    emit_instr_int(code, Opcode_STORE, compute_type_width(bin_expr->right_operand->type));
+    emit_instr_int(code, Opcode_STORE, compute_type_width(right_operand->type));
   }
   else
   {
-    gen_load_rvalue(code, bin_expr->left_operand);
-    gen_load_rvalue(code, bin_expr->right_operand);
+    gen_load_rvalue(code, left_operand);
+    gen_load_rvalue(code, right_operand);
 
     switch(bin_expr->op)
     {
@@ -137,7 +140,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
       case AstOpKind_LogicAnd:
       case AstOpKind_LogicOr:
       {
-        gen_load_rvalue(code, bin_expr->left_operand);
+        gen_load_rvalue(code, left_operand);
         emit_instr(code, Opcode_DUP);
 
         if(bin_expr->op == AstOpKind_LogicAnd)
@@ -147,16 +150,16 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         else
           assert(0);
 
-        emit_instr(code, Opcode_POP);
-        gen_load_rvalue(code, bin_expr->right_operand);
+        emit_instr_int(code, Opcode_POP, compute_type_width(left_operand->type));
+        gen_load_rvalue(code, right_operand);
         emit_instr_str(code, Opcode_LABEL, bin_expr->label_end);
       } break;
 
       case AstOpKind_LessEquals:
       case AstOpKind_GreaterEquals:
       {
-        gen_load_rvalue(code, bin_expr->left_operand);
-        gen_load_rvalue(code, bin_expr->right_operand);
+        gen_load_rvalue(code, left_operand);
+        gen_load_rvalue(code, right_operand);
         if(bin_expr->op == AstOpKind_LessEquals)
           emit_instr(code, Opcode_CMPLSS);
         else if(bin_expr->op == AstOpKind_GreaterEquals)
@@ -166,9 +169,9 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         emit_instr(code, Opcode_DUP);
 
         emit_instr_str(code, Opcode_JUMPNZ, bin_expr->label_end);
-        emit_instr(code, Opcode_POP);
-        gen_load_rvalue(code, bin_expr->left_operand);
-        gen_load_rvalue(code, bin_expr->right_operand);
+        emit_instr_int(code, Opcode_POP, compute_type_width(left_operand->type));
+        gen_load_rvalue(code, left_operand);
+        gen_load_rvalue(code, right_operand);
         emit_instr(code, Opcode_CMPEQ);
         emit_instr_str(code, Opcode_LABEL, bin_expr->label_end);
       } break;
@@ -262,7 +265,8 @@ gen_load_rvalue(List* code, AstNode* ast)
   {
     AstVarOccur* var_occur = (AstVarOccur*)ast;
     gen_load_lvalue(code, var_occur);
-    emit_instr_int(code, Opcode_LOAD, var_occur->data->size);
+    emit_instr_int(code, Opcode_LOAD, compute_type_width(var_occur->type));
+    //emit_instr_int(code, Opcode_LOAD, var_occur->data->size);
   }
   else if(ast->kind == AstNodeKind_Call)
     gen_call(code, (AstCall*)ast);
@@ -293,9 +297,10 @@ gen_return_stmt(List* code, AstReturnStmt* ret_stmt)
 {
   if(ret_stmt->assign_expr)
   {
-    assert(ret_stmt->assign_expr->kind == AstNodeKind_BinExpr);
-    gen_bin_expr(code, (AstBinExpr*)ret_stmt->assign_expr);
-    emit_instr(code, Opcode_POP);
+    AstBinExpr* assign_expr = (AstBinExpr*)ret_stmt->assign_expr;
+    assert(assign_expr->kind == AstNodeKind_BinExpr);
+    gen_bin_expr(code, assign_expr);
+    emit_instr_int(code, Opcode_POP, compute_type_width(assign_expr->type));
   }
 
   AstProc* proc = (AstProc*)ret_stmt->proc;
@@ -430,7 +435,7 @@ gen_statement(List* code, AstNode* ast)
   if(ast->kind == AstNodeKind_BinExpr)
   {
     gen_bin_expr(code, (AstBinExpr*)ast);
-    emit_instr(code, Opcode_POP);
+    emit_instr_int(code, Opcode_POP, compute_type_width(ast->type));
   }
   else if(ast->kind == AstNodeKind_Call)
   {
@@ -439,7 +444,10 @@ gen_statement(List* code, AstNode* ast)
 
     AstProc* proc = (AstProc*)call->proc_sym->ast;
     if(proc->ret_size > 0)
-      emit_instr(code, Opcode_POP);
+    {
+      assert(compute_type_width(call->type) == proc->ret_size);
+      emit_instr_int(code, Opcode_POP, proc->ret_size);
+    }
   }
   else if(ast->kind == AstNodeKind_VarDecl)
   {
@@ -569,13 +577,17 @@ print_code(VmProgram* vm_program)
           assert(0);
       } break;
 
-      case Opcode_POP:
+      case Opcode_POP_R:
       {
         if(instr->param_type == ParamType_Reg)
-          print_instruction(vm_program, "pop %s", get_regname_str(instr->param.reg));
-        else if(instr->param_type == ParamType__Null)
-          print_instruction(vm_program, "pop");
-        else if(instr->param_type == ParamType_Int32)
+          print_instruction(vm_program, "pop_r %s", get_regname_str(instr->param.reg));
+        else
+          assert(0);
+      }
+
+      case Opcode_POP:
+      {
+        if(instr->param_type == ParamType_Int32)
           print_instruction(vm_program, "pop %d", instr->param.int_val);
         else
           assert(0);

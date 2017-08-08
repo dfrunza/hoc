@@ -585,9 +585,11 @@ list_remove_item(List* list, ListItem* item)
       item->next->prev = item->prev;
   }
 
-  if(item == list->first)
+  if(item == list->first && item == list->last)
+    list->first = list->last = 0;
+  else if(item == list->first)
     list->first = item->next;
-  if(item == list->last)
+  else if(item == list->last)
     list->last = item->prev;
 
   /* NOTE(to myself): Don't nullify the item->next and item->prev pointers;
@@ -600,11 +602,15 @@ list_append_item(List* list, ListItem* item)
   if(list->last)
   {
     item->prev = list->last;
+    item->next = 0;
     list->last->next = item;
     list->last = item;
   }
   else
+  {
     list->first = list->last = item;
+    item->next = item->prev = 0;
+  }
 }
 
 void

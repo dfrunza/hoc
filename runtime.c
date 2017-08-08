@@ -363,7 +363,7 @@ build_runtime(AstModule* module)
   list_init(&post_fp_data);
 
   DataArea* base_offset = mem_push_struct(arena, DataArea);
-  base_offset->size = 4; // VM stack ptr starts at offset 4
+  base_offset->size = 1; // null ptr
   list_append(arena, &post_fp_data, base_offset);
 
   compute_locals_data_size(module_block, &post_fp_data);

@@ -1,13 +1,12 @@
 /*
 include "hlib\\gcd.hoc";
+include "hlib\\abs.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\power.hoc";
-include "hlib\\abs.hoc";
 include "hlib\\minmax.hoc";
 */
 
-/*
 proc int strlen(char* s)
 {
   var int len = 0;
@@ -18,11 +17,14 @@ proc int strlen(char* s)
   }
   return len;
 }
-*/
 
 proc int main()
 {
-  return 121;
+  var char* str = "abc";
+  *str = 'x';
+  *(str+1) = 'y';
+  *(str+2) = '\0';
+  return strlen(str);
 }
 
 

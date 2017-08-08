@@ -1231,7 +1231,7 @@ do_module(AstModule* module)
           AstProc* proc = (AstProc*)ast;
           list_remove_item(&module_block->node_list, list_item);
           if(!proc->is_decl)
-            list_append_item(&module->proc_defs, list_item);
+            list_append(arena, &module->proc_defs, list_item->elem);
         }
       }
 

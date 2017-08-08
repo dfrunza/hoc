@@ -489,12 +489,12 @@ codegen(List* code, uint8** data, int* data_size, AstModule* module)
     {
       AstString* str = (AstString*)init_expr;
       assert(str->len+1 == var_decl->data.size);
-      int32* loc = (int32*)(*data + var_decl->data.loc);
+      char* loc = (char*)(*data + var_decl->data.loc);
       char* s = str->str;
       do
         *loc++ = *s++;
       while(*s);
-      *loc = *s;
+      *loc = '\0';
     }
   }
 

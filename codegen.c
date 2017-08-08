@@ -89,7 +89,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         assert(0);
     }
 
-    emit_instr(code, Opcode_STORE);
+    emit_instr_int(code, Opcode_STORE, compute_type_width(bin_expr->right_operand->type));
   }
   else
   {
@@ -197,7 +197,7 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
       emit_instr(code, Opcode_NEGF);
     else if(unr_expr->op == AstOpKind_LogicNot)
     {
-      emit_instr_int(code, Opcode_PUSH, 0);
+      emit_instr_int(code, Opcode_PUSH_I32, 0);
       emit_instr( code, Opcode_CMPEQ);
     }
     else if(unr_expr->op == AstOpKind_IntToFloat)
@@ -205,7 +205,7 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
     else if(unr_expr->op == AstOpKind_FloatToInt)
       emit_instr(code, Opcode_FLOAT_TO_INT);
     else if(unr_expr->op == AstOpKind_PtrDeref)
-      emit_instr(code, Opcode_LOAD);
+      emit_instr_int(code, Opcode_LOAD, 4);
     else
       assert(0);
   }
@@ -239,20 +239,20 @@ gen_load_lvalue(List* code, AstVarOccur* var_occur)
 
   if(var_occur->decl_block_offset >= 0)
   {
-    emit_instr_reg(code, Opcode_PUSH, RegName_FP);
+    emit_instr_reg(code, Opcode_PUSH_R, RegName_FP);
     if(link) 
     {
       // this is a non-local
       assert(link->data.loc < 0); // relative to FP
-      emit_instr_int(code, Opcode_PUSH, link->data.loc);
+      emit_instr_int(code, Opcode_PUSH_I32, link->data.loc);
       emit_instr(code, Opcode_ADD);
-      emit_instr(code, Opcode_LOAD); // access link is on the stack now
+      emit_instr_int(code, Opcode_LOAD, 4); // access link is on the stack now
     }
-    emit_instr_int(code, Opcode_PUSH, data->loc);
+    emit_instr_int(code, Opcode_PUSH_I32, data->loc);
     emit_instr(code, Opcode_ADD);
   }
   else
-    emit_instr_int(code, Opcode_PUSH, data->loc);
+    emit_instr_int(code, Opcode_PUSH_I32, data->loc);
 }
 
 local void
@@ -260,20 +260,21 @@ gen_load_rvalue(List* code, AstNode* ast)
 {
   if(ast->kind == AstNodeKind_VarOccur)
   {
-    gen_load_lvalue(code, (AstVarOccur*)ast);
-    emit_instr(code, Opcode_LOAD);
+    AstVarOccur* var_occur = (AstVarOccur*)ast;
+    gen_load_lvalue(code, var_occur);
+    emit_instr_int(code, Opcode_LOAD, var_occur->data->size);
   }
   else if(ast->kind == AstNodeKind_Call)
     gen_call(code, (AstCall*)ast);
   else if(ast->kind == AstNodeKind_Literal)
   {
     AstLiteral* literal = (AstLiteral*)ast;
-    if(literal->lit_kind == AstLiteralKind_Int
-       || literal->lit_kind == AstLiteralKind_Bool
-       || literal->lit_kind == AstLiteralKind_Char)
-      emit_instr_int(code, Opcode_PUSH, literal->int_val);
+    if(literal->lit_kind == AstLiteralKind_Int || literal->lit_kind == AstLiteralKind_Bool)
+      emit_instr_int(code, Opcode_PUSH_I32, literal->int_val);
+    else if(literal->lit_kind == AstLiteralKind_Char)
+      emit_instr_int(code, Opcode_PUSH_I8, literal->char_val);
     else if(literal->lit_kind == AstLiteralKind_Float)
-      emit_instr_float(code, Opcode_PUSHF, literal->float_val);
+      emit_instr_float(code, Opcode_PUSH_F32, literal->float_val);
     else
       assert(0);
   }
@@ -330,13 +331,13 @@ gen_block(List* code, AstBlock* block)
       list_item = list_item->next)
   {
     AccessLink* link = (AccessLink*)list_item->elem;
-    emit_instr_reg(code, Opcode_PUSH, RegName_FP);
+    emit_instr_reg(code, Opcode_PUSH_R, RegName_FP);
     assert(link->actv_rec_offset > 0);
     int offset = link->actv_rec_offset - 1;
     while(offset--)
     {
       emit_instr(code, Opcode_DECR); // TODO: explain why
-      emit_instr(code, Opcode_LOAD);
+      emit_instr_int(code, Opcode_LOAD, 4);
     }
   }
 
@@ -536,20 +537,34 @@ print_code(VmProgram* vm_program)
     Instruction* instr = (Instruction*)list_item->elem;
     switch(instr->opcode)
     {
-      case Opcode_PUSH:
+      case Opcode_PUSH_I8:
       {
-        if(instr->param_type == ParamType_Reg)
-          print_instruction(vm_program, "push %s", get_regname_str(instr->param.reg));
-        else if(instr->param_type == ParamType_Int32)
-          print_instruction(vm_program, "push %d", instr->param.int_val);
+        if(instr->param_type == ParamType_Int32)
+          print_instruction(vm_program, "push_i8 %d", instr->param.int_val);
         else
           assert(0);
       } break;
 
-      case Opcode_PUSHF:
+      case Opcode_PUSH_I32:
+      {
+        if(instr->param_type == ParamType_Int32)
+          print_instruction(vm_program, "push_i32 %d", instr->param.int_val);
+        else
+          assert(0);
+      } break;
+
+      case Opcode_PUSH_R:
+      {
+        if(instr->param_type == ParamType_Reg)
+          print_instruction(vm_program, "push_r %s", get_regname_str(instr->param.reg));
+        else
+          assert(0);
+      } break;
+
+      case Opcode_PUSH_F32:
       {
         if(instr->param_type == ParamType_Float32)
-          print_instruction(vm_program, "pushf %f", instr->param.float_val);
+          print_instruction(vm_program, "push_f32 %f", instr->param.float_val);
         else
           assert(0);
       } break;
@@ -640,14 +655,14 @@ print_code(VmProgram* vm_program)
 
       case Opcode_LOAD:
       {
-        assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "load");
+        assert(instr->param_type == ParamType_Int32);
+        print_instruction(vm_program, "load %d", instr->param.int_val);
       } break;
 
       case Opcode_STORE:
       {
-        assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "store");
+        assert(instr->param_type == ParamType_Int32);
+        print_instruction(vm_program, "store %d", instr->param.int_val);
       } break;
 
       case Opcode_LABEL:

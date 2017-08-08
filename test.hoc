@@ -7,6 +7,7 @@ include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
 */
 
+/*
 proc int strlen(char* s)
 {
   var int len = 0;
@@ -17,14 +18,13 @@ proc int strlen(char* s)
   }
   return len;
 }
+*/
 
 proc int main()
 {
-  var char* str = "abc";
+  var [1]char str;
   *str = 'x';
-  *(str+1) = 'y';
-  *(str+2) = '\0';
-  return strlen(str);
+  return 0;
 }
 
 

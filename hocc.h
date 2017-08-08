@@ -637,8 +637,10 @@ SymbolTable;
 typedef enum
 {
   Opcode__Null,
-  Opcode_PUSH,
-  Opcode_PUSHF,
+  Opcode_PUSH_I8,
+  Opcode_PUSH_I32,
+  Opcode_PUSH_F32,
+  Opcode_PUSH_R,
   Opcode_POP,
   Opcode_DUP,
   Opcode_LOAD,
@@ -795,6 +797,7 @@ Type* make_type_of_node_list(List* node_list);
 Type* get_type_repr(Type* type);
 bool32 type_unif(Type* type_a, Type* type_b);
 bool32 types_are_equal(Type* type_a, Type* type_b);
+int compute_type_width(Type* type);
 void build_runtime(AstModule* ast);
 void codegen(List* code, uint8** data, int* data_size, AstModule* module);
 void print_code(VmProgram* vm_program);

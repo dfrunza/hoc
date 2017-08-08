@@ -132,6 +132,35 @@ types_are_equal(Type* type_a, Type* type_b)
   return are_equal;
 }
 
+int
+compute_type_width(Type* type)
+{
+  if(type->kind == TypeKind_Array)
+    type->size = type->array.size * compute_type_width(type->array.elem);
+  else if(type->kind == TypeKind_Product)
+    type->size = compute_type_width(type->product.left) + compute_type_width(type->product.right);
+  else if(type->kind == TypeKind_Basic)
+  {
+    if(type->basic.kind == BasicTypeKind_Int
+       || type->basic.kind == BasicTypeKind_Float
+       || type->basic.kind == BasicTypeKind_Bool)
+    {
+      type->size = 4;
+    }
+    else if(type->basic.kind == BasicTypeKind_Char)
+      type->size = 1;
+    else if(type->basic.kind == BasicTypeKind_Void)
+      type->size = 0;
+    else
+      assert(0);
+  }
+  else if(type->kind == TypeKind_Pointer)
+    type->size = 4;
+  else
+    assert(0);
+  return type->size;
+}
+
 local Type*
 copy_type(Type* type)
 {

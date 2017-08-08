@@ -162,18 +162,18 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
 
       if(cstr_match(mnemonic, "pop"))
         instr.opcode = Opcode_POP;
-      else if(cstr_match(mnemonic, "push"))
-        instr.opcode = Opcode_PUSH;
-      else if(cstr_match(mnemonic, "pushf"))
-        instr.opcode = Opcode_PUSHF;
+      else if(cstr_match(mnemonic, "push_i8"))
+        instr.opcode = Opcode_PUSH_I8;
+      else if(cstr_match(mnemonic, "push_i32"))
+        instr.opcode = Opcode_PUSH_I32;
+      else if(cstr_match(mnemonic, "push_f32"))
+        instr.opcode = Opcode_PUSH_F32;
+      else if(cstr_match(mnemonic, "push_r"))
+        instr.opcode = Opcode_PUSH_R;
       else if(cstr_match(mnemonic, "store"))
         instr.opcode = Opcode_STORE;
-      else if(cstr_match(mnemonic, "store8"))
-        instr.opcode = Opcode_STORE8;
       else if(cstr_match(mnemonic, "load"))
         instr.opcode = Opcode_LOAD;
-      else if(cstr_match(mnemonic, "load8"))
-        instr.opcode = Opcode_LOAD8;
       else if(cstr_match(mnemonic, "add"))
         instr.opcode = Opcode_ADD;
       else if(cstr_match(mnemonic, "sub"))
@@ -260,83 +260,100 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
           case Opcode_JUMPNZ:
           case Opcode_JUMPZ:
           case Opcode_CALL:
+          {
+            if(is_valid_label(components[1]))
             {
-              if(is_valid_label(components[1]))
-              {
-                instr.param_type = ParamType_String;
-                instr.param.str = components[1];
-              }
-              else
-              {
-                error("label must begin with a letter : %s", components[1]);
-                return false;
-              }
-            } break;
+              instr.param_type = ParamType_String;
+              instr.param.str = components[1];
+            }
+            else
+            {
+              error("label must begin with a letter : %s", components[1]);
+              return false;
+            }
+          } break;
 
           case Opcode_POP:
-          case Opcode_PUSH:
+          case Opcode_PUSH_I8:
+          case Opcode_PUSH_I32:
+          case Opcode_STORE:
+          case Opcode_LOAD:
+          {
+            if(cstr_to_int(components[1], &instr.param.int_val))
+              instr.param_type = ParamType_Int32;
+            else
             {
-              if(cstr_to_int(components[1], &instr.param.int_val))
-                instr.param_type = ParamType_Int32;
-              else {
-                instr.param_type = ParamType_Reg;
-                char* reg = components[1];
+              error("not an integer number `%s`", components[1]);
+              return false;
+            }
+          } break;
 
-                if(cstr_match(reg, "sp"))
-                  instr.param.reg = RegName_SP;
-                else if(cstr_match(reg, "fp"))
-                  instr.param.reg = RegName_FP;
-                else if(cstr_match(reg, "ip"))
-                  instr.param.reg = RegName_IP;
-                else {
-                  error("invalid register '%s'", components[1]);
-                  return false;
-                }
-              }
-            } break;
-
-          case Opcode_PUSHF:
+          case Opcode_PUSH_F32:
+          {
+            if(cstr_to_float(components[1], &instr.param.float_val))
+              instr.param_type = ParamType_Float32;
+            else
             {
-              if(cstr_to_float(components[1], &instr.param.float_val))
-                instr.param_type = ParamType_Float32;
-            } break;
+              error("not a float number `%s`", components[1]);
+              return false;
+            }
+          } break;
+
+          case Opcode_PUSH_R:
+          {
+            instr.param_type = ParamType_Reg;
+            char* reg = components[1];
+
+            if(cstr_match(reg, "sp"))
+              instr.param.reg = RegName_SP;
+            else if(cstr_match(reg, "fp"))
+              instr.param.reg = RegName_FP;
+            else if(cstr_match(reg, "ip"))
+              instr.param.reg = RegName_IP;
+            else
+            {
+              error("invalid register '%s'", components[1]);
+              return false;
+            }
+          } break;
 
           case Opcode_ALLOC:
           case Opcode_NEW:
+          {
+            if(cstr_to_int(components[1], &instr.param.int_val))
+              instr.param_type = ParamType_Int32;
+            else
             {
-              if(cstr_to_int(components[1], &instr.param.int_val))
-                instr.param_type = ParamType_Int32;
-              else {
-                error("invalid parameter '%s'", components[1]);
-                return false;
-              }
-            } break;
+              error("not an integer number '%s'", components[1]);
+              return false;
+            }
+          } break;
 
           case Opcode_LABEL:
+          {
+            if(is_valid_label(components[1]))
             {
-              if(is_valid_label(components[1]))
-              {
-                instr.param_type = ParamType_String;
-                instr.param.str = components[1];
+              instr.param_type = ParamType_String;
+              instr.param.str = components[1];
 
-                Label label = {0};
-                label.string = components[1];
-                label.instr_address = instr_address;
+              Label label = {0};
+              label.string = components[1];
+              label.instr_address = instr_address;
 
-                if(!find_label(source, label.string))
-                  source->labels[source->labesl_count++] = label;
-                else
-                {
-                  error("duplicate label declaration '%s'", label.string);
-                  return false;
-                }
-              }
+              if(!find_label(source, label.string))
+                source->labels[source->labesl_count++] = label;
               else
               {
-                error("label '%s' does not begin with a letter", components[1]);
+                error("duplicate label declaration '%s'", label.string);
                 return false;
               }
-            } break;
+            }
+            else
+            {
+              error("label '%s' does not begin with a letter", components[1]);
+              return false;
+            }
+          } break;
 
           default:
             error("incorrect number of parameters to instruction '%s'", mnemonic);
@@ -406,12 +423,9 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
 bool32
 convert_hasm_to_instructions(char* text, VmProgram* vm_program)
 {
-  bool32 success = true;
-
   SourceProgram source = {0};
   source.text = text;
   process_source_lines(&source);
 
-  success = build_instructions(&source, vm_program);
-  return success;
+  return build_instructions(&source, vm_program);
 }

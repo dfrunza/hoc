@@ -18,19 +18,27 @@ proc int strlen(char* s)
   }
   return len;
 }
-*/
 
 proc void printstr(char* str)
 {
-  putc(*str);
+  while(*str != '\0')
+  {
+    putc(*str);
+    str = str + 1;
+  }
 }
+*/
 
 proc int main()
 {
-  var char* str = "a";
-  var char c = *str;
-  putc(c);
-  return 12345;
+  var char c = '\0';
+  var int i = 0;
+  while(i < 3)
+  {
+    i = i+1;
+    c = cast(char)i;
+  }
+  return 0;
 }
 
 

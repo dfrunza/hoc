@@ -208,7 +208,11 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
     else if(unr_expr->op == AstOpKind_FloatToInt)
       emit_instr(code, Opcode_FLOAT_TO_INT);
     else if(unr_expr->op == AstOpKind_PtrDeref)
-      emit_instr_int(code, Opcode_LOAD, 4);
+    {
+      Type* type = unr_expr->operand->type;
+      assert(type->kind == TypeKind_Pointer);
+      emit_instr_int(code, Opcode_LOAD, compute_type_width(type->ptr.pointee));
+    }
     else
       assert(0);
   }

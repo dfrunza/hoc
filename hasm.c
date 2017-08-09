@@ -202,8 +202,8 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
         instr.opcode = Opcode_DECR;
       else if(cstr_match(mnemonic, "halt"))
         instr.opcode = Opcode_HALT;
-      else if(cstr_match(mnemonic, "print"))
-        instr.opcode = Opcode_PRINT;
+      else if(cstr_match(mnemonic, "putc"))
+        instr.opcode = Opcode_PUTC;
       else if(cstr_match(mnemonic, "dup"))
         instr.opcode = Opcode_DUP;
       else if(cstr_match(mnemonic, "goto"))

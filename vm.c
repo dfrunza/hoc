@@ -462,6 +462,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
               int32 value = memory_at(location, int32, 0);
               memory_at(arg_sp, int32, 0) = value;
 
+              //machine->sp = arg_sp;
               machine->ip++;
             }
             else
@@ -471,7 +472,25 @@ execute_instr(HocMachine* machine, Instruction* instr)
             return Result_InvalidMemoryAccess;
         }
         else if(instr->param.int_val == 1)
-          fail("not implemented");
+        {
+          int32 arg_sp = location_at(machine->sp, int32, -1);
+          if(check_sp_bounds(machine, arg_sp))
+          {
+            int32 location = memory_at(arg_sp, int32, 0);
+            if(check_memory_bounds(machine, location))
+            {
+              int8 value = memory_at(location, int8, 0);
+              memory_at(arg_sp, int8, 0) = value;
+
+              machine->sp = arg_sp;
+              machine->ip++;
+            }
+            else
+              return Result_InvalidMemoryAccess;
+          }
+          else
+            return Result_InvalidMemoryAccess;
+        }
         else
           return Result_InvalidInstructionFormat;
       }
@@ -678,13 +697,13 @@ execute_instr(HocMachine* machine, Instruction* instr)
         return Result_InvalidMemoryAccess;
     } break;
 
-    case Opcode_PRINT:
+    case Opcode_PUTC:
     {
-      int32 arg_sp = location_at(machine->sp, int32, -1);
+      int32 arg_sp = location_at(machine->sp, int8, -1);
       if(check_sp_bounds(machine, arg_sp))
       {
-        int32 arg = memory_at(arg_sp, int32, 0);
-        printf("%d", arg);
+        int8 arg = memory_at(arg_sp, int8, 0);
+        putc(arg, stdout);
 
         machine->sp = arg_sp;
         machine->ip++;

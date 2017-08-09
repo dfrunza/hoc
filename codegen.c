@@ -266,7 +266,6 @@ gen_load_rvalue(List* code, AstNode* ast)
     AstVarOccur* var_occur = (AstVarOccur*)ast;
     gen_load_lvalue(code, var_occur);
     emit_instr_int(code, Opcode_LOAD, compute_type_width(var_occur->type));
-    //emit_instr_int(code, Opcode_LOAD, var_occur->data->size);
   }
   else if(ast->kind == AstNodeKind_Call)
     gen_call(code, (AstCall*)ast);
@@ -463,6 +462,12 @@ gen_statement(List* code, AstNode* ast)
     gen_if_stmt(code, (AstIfStmt*)ast);
   else if(ast->kind == AstNodeKind_WhileStmt)
     gen_while_stmt(code, (AstWhileStmt*)ast);
+  else if(ast->kind == AstNodeKind_Putc)
+  {
+    AstPutc* putc_ast = (AstPutc*)ast;
+    gen_load_rvalue(code, putc_ast->expr);
+    emit_instr(code, Opcode_PUTC);
+  }
   else if(ast->kind == AstNodeKind_EmptyStmt)
     gen_empty_stmt(code);
   else
@@ -783,10 +788,10 @@ print_code(VmProgram* vm_program)
         print_instruction(vm_program, "not");
       } break;
 
-      case Opcode_PRINT:
+      case Opcode_PUTC:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "print");
+        print_instruction(vm_program, "putc");
       } break;
 
       case Opcode_FLOAT_TO_INT:

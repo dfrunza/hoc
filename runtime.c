@@ -252,6 +252,11 @@ do_statement(AstNode* ast)
     AstNew* new_ast = (AstNew*)ast;
     new_ast->storage_size = compute_type_width(new_ast->type_expr->type);
   }
+  else if(ast->kind == AstNodeKind_Putc)
+  {
+    AstPutc* putc_ast = (AstPutc*)ast;
+    do_statement(putc_ast->expr);
+  }
   else
     assert(0);
 }

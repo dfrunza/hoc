@@ -74,6 +74,7 @@ typedef enum TokenKind
   TokenKind_Enum,
   TokenKind_Cast,
   TokenKind_New,
+  TokenKind_Putc,
   TokenKind_True,
   TokenKind_False,
 
@@ -204,6 +205,7 @@ typedef enum
   AstNodeKind_Enum,
   AstNodeKind_Initializer,
   AstNodeKind_String,
+  AstNodeKind_Putc,
   AstNodeKind_EmptyStmt,
 
   AstNodeKind__Count,
@@ -291,7 +293,6 @@ typedef struct
   AstBlock* body;
 
   List proc_defs;
-  //AstCall* main_call;
 }
 AstModule,
 AstIncludeStmt;
@@ -469,6 +470,14 @@ typedef struct
   int storage_size;
 }
 AstNew;
+
+typedef struct
+{
+  AstNode;
+
+  AstNode* expr;
+}
+AstPutc;
 
 typedef struct
 {
@@ -682,7 +691,7 @@ typedef enum
   Opcode_HALT,
 
   Opcode_NOOP,
-  Opcode_PRINT,
+  Opcode_PUTC,
 
   Opcode_FLOAT_TO_INT,
   Opcode_INT_TO_FLOAT,

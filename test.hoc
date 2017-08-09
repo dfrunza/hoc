@@ -20,12 +20,16 @@ proc int strlen(char* s)
 }
 */
 
-var char* str = "abc";
+proc void printstr(char* str)
+{
+  putc(*str);
+}
 
 proc int main()
 {
-  *str = 'x';
-  *(str+1) = 'y';
+  var char* str = "a";
+  var char c = *str;
+  putc(c);
   return 12345;
 }
 

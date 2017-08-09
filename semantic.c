@@ -1080,7 +1080,7 @@ do_statement(AstBlock* module_block,
       else if(!(success = type_unif(ret_var->type, stmt->type)))
       {
         success = compile_error(&stmt->src_loc,
-                                "return type : expected `%s`, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(stmt->type));
+              "return type : expected `%s`, actual `%s`", get_type_printstr(ret_var->type), get_type_printstr(stmt->type));
       }
 
       if(success)
@@ -1130,10 +1130,29 @@ do_statement(AstBlock* module_block,
     fail("not implemented : %s\n", get_ast_kind_printstr(stmt->kind));
   }
   else if(stmt->kind == AstNodeKind_EmptyStmt)
-  { /* nothing to do */ }
+  {
+    ;/*ok*/
+  }
   else if(stmt->kind == AstNodeKind_New)
   {
     fail("");
+  }
+  else if(stmt->kind == AstNodeKind_Putc)
+  {
+    AstPutc* putc_ast = (AstPutc*)stmt;
+    if(putc_ast->expr)
+    {
+      if(success = do_expression(module_block, block, putc_ast->expr, &putc_ast->expr))
+      {
+        if(types_are_equal(putc_ast->expr->type, basic_type_char))
+          putc_ast->type = putc_ast->expr->type;
+        else
+          success = compile_error(&stmt->src_loc,
+                                  "putc : `char` type required, actual `%s`", get_type_printstr(putc_ast->expr->type));
+      }
+    }
+    else
+      success = compile_error(&stmt->src_loc, "putc : argument expression required");
   }
   else
     assert(0);

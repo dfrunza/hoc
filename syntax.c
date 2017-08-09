@@ -295,6 +295,15 @@ new_new_operator(SourceLocation* src_loc)
   return node;
 }
 
+AstPutc*
+new_putc_intrinsic(SourceLocation* src_loc)
+{
+  AstPutc* node = mem_push_struct(arena, AstPutc);
+  node->kind = AstNodeKind_Putc;
+  node->src_loc = *src_loc;
+  return node;
+}
+
 local AstEmptyStmt*
 new_empty_stmt(SourceLocation* src_loc)
 {
@@ -938,6 +947,41 @@ do_new_operator(TokenStream* input, AstNode** node)
 }
 
 local bool32
+do_putc_intrinsic(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool32 success = false;
+
+  if(input->token.kind == TokenKind_Putc && (success = get_next_token(input)))
+  {
+    if(input->token.kind == TokenKind_OpenParens)
+    {
+      AstPutc* putc_ast = new_putc_intrinsic(&input->src_loc);
+      *node = (AstNode*)putc_ast;
+
+      if(success = get_next_token(input) && do_expression(input, &putc_ast->expr))
+      {
+        if(input->token.kind == TokenKind_CloseParens)
+        {
+          if(putc_ast->expr)
+            success = get_next_token(input);
+          else
+          {
+            putback_token(input);
+            success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
+          }
+        }
+        else
+          success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+      }
+    }
+    else
+      success = compile_error(&input->src_loc, "expected `(`, actual `%s`", get_token_printstr(&input->token));
+  }
+  return success;
+}
+
+local bool32
 do_accessor(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1013,6 +1057,8 @@ do_accessor(TokenStream* input, AstNode** node)
   }
   else if(input->token.kind == TokenKind_New)
     success = do_new_operator(input, node);
+  else if(input->token.kind == TokenKind_Putc)
+    success = do_putc_intrinsic(input, node);
 
   return success;
 }
@@ -2061,6 +2107,11 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     {
       AstNew* new_ast = (AstNew*)node;
       DEBUG_print_ast_node(str, indent_level, (AstNode*)new_ast->type_expr, "type_expr");
+    }
+    else if(node->kind == AstNodeKind_Putc)
+    {
+      AstPutc* putc_ast = (AstPutc*)node;
+      DEBUG_print_ast_node(str, indent_level, (AstNode*)putc_ast->expr, "expr");
     }
     else
       assert(0);

@@ -22,6 +22,7 @@ local Token keyword_list[] =
   {TokenKind_Enum, "enum"},
   {TokenKind_Cast, "cast"},
   {TokenKind_New, "new"},
+  {TokenKind_Putc, "putc"},
   {TokenKind__Null, 0}, /* terminator */
 };
 
@@ -279,6 +280,10 @@ get_token_printstr(Token* token)
     result = "enum";
   else if(token->kind == TokenKind_Cast)
     result = "cast";
+  else if(token->kind == TokenKind_New)
+    result = "new";
+  else if(token->kind == TokenKind_Putc)
+    result = "putc";
   else if(token->kind == TokenKind_True)
     result = "true";
   else if(token->kind == TokenKind_False)

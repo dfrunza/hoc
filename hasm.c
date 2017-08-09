@@ -160,9 +160,7 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
     {
       char* mnemonic = components[0];
 
-      if(cstr_match(mnemonic, "pop"))
-        instr.opcode = Opcode_POP;
-      else if(cstr_match(mnemonic, "pop_r"))
+      if(cstr_match(mnemonic, "pop_r"))
         instr.opcode = Opcode_POP_R;
       else if(cstr_match(mnemonic, "push_i8"))
         instr.opcode = Opcode_PUSH_I8;
@@ -176,6 +174,8 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
         instr.opcode = Opcode_STORE;
       else if(cstr_match(mnemonic, "load"))
         instr.opcode = Opcode_LOAD;
+      else if(cstr_match(mnemonic, "grow"))
+        instr.opcode = Opcode_GROW;
       else if(cstr_match(mnemonic, "add"))
         instr.opcode = Opcode_ADD;
       else if(cstr_match(mnemonic, "sub"))
@@ -240,8 +240,6 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
         instr.opcode = Opcode_ENTER;
       else if(cstr_match(mnemonic, "leave"))
         instr.opcode = Opcode_LEAVE;
-      else if(cstr_match(mnemonic, "alloc"))
-        instr.opcode = Opcode_ALLOC;
       else if(cstr_match(mnemonic, "new"))
         instr.opcode = Opcode_NEW;
       else if(cstr_match(mnemonic, "float_to_int"))
@@ -275,11 +273,11 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
             }
           } break;
 
-          case Opcode_POP:
           case Opcode_PUSH_I8:
           case Opcode_PUSH_I32:
           case Opcode_STORE:
           case Opcode_LOAD:
+          case Opcode_GROW:
           {
             if(cstr_to_int(components[1], &instr.param.int_val))
               instr.param_type = ParamType_Int32;
@@ -320,7 +318,6 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
             }
           } break;
 
-          case Opcode_ALLOC:
           case Opcode_NEW:
           {
             if(cstr_to_int(components[1], &instr.param.int_val))

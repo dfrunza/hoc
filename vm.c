@@ -65,10 +65,19 @@ check_instr_bounds(HocMachine* machine, int address)
 }
 
 local void
-clear_memory(HocMachine* machine, int base, int count)
+clear_memory(HocMachine* machine, int base, int size)
 {
-  for(int i = 0; i < count; i++)
-    machine->memory[base + i] = 0xcd;
+  if(size != 0)
+  {
+    int new_base = location_at(base, int8, size);
+    int increment = size > 0 ? 1 : -1;
+    while(base != new_base)
+    {
+      machine->memory[base] = 0xcd;
+      base += increment;
+    }
+    machine->memory[base] = 0xcd;
+  }
 }
 
 local int32
@@ -84,11 +93,11 @@ execute_instr(HocMachine* machine, Instruction* instr)
 
   switch(opcode)
   {
-    case Opcode_ALLOC:
+    case Opcode_GROW:
     {
       if(instr->param_type == ParamType_Int32)
       {
-        int32 top_sp = location_at(machine->sp, int32, instr->param.int_val);
+        int32 top_sp = location_at(machine->sp, int8, instr->param.int_val);
         if(check_sp_bounds(machine, top_sp))
         {
           clear_memory(machine, machine->sp, instr->param.int_val);
@@ -236,23 +245,6 @@ execute_instr(HocMachine* machine, Instruction* instr)
           }
           else
             return Result_InvalidInstructionFormat;
-        }
-        else
-          return Result_InvalidInstructionFormat;
-      }
-      else
-        return Result_InvalidMemoryAccess;
-    } break;
-
-    case Opcode_POP:
-    {
-      int32 arg_sp = location_at(machine->sp, int32, -1);
-      if(check_sp_bounds(machine, arg_sp))
-      {
-        if(instr->param_type == ParamType_Int32)
-        {
-          machine->sp = location_at(machine->sp, int8, -instr->param.int_val);
-          machine->ip++;
         }
         else
           return Result_InvalidInstructionFormat;

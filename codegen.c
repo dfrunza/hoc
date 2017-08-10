@@ -2,6 +2,10 @@
 
 extern MemoryArena* arena;
 
+extern Type* basic_type_int;
+extern Type* basic_type_float;
+extern Type* basic_type_char;
+
 local void gen_load_rvalue(List*, AstNode*);
 local void gen_load_lvalue(List*, AstVarOccur*);
 local void gen_statement(List*, AstNode*);
@@ -77,6 +81,9 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
   AstNode* left_operand = bin_expr->left_operand;
   AstNode* right_operand = bin_expr->right_operand;
 
+  //not holding for pointer arithmetic
+  //assert(types_are_equal(left_operand->type, right_operand->type));
+
   if(bin_expr->op == AstOpKind_Assign)
   {
     gen_load_rvalue(code, right_operand);
@@ -102,23 +109,49 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
     switch(bin_expr->op)
     {
       case AstOpKind_Add:
-        emit_instr(code, Opcode_ADD); break;
+      {
+        if(types_are_equal(left_operand->type, basic_type_int)
+           || left_operand->type->kind == TypeKind_Pointer)
+          emit_instr(code, Opcode_ADD_INT);
+        else if(types_are_equal(left_operand->type, basic_type_float))
+          emit_instr(code, Opcode_ADD_FLOAT);
+        else
+          assert(0);
+      } break;
       case AstOpKind_Sub:
-        emit_instr(code, Opcode_SUB); break;
+      {
+        if(types_are_equal(left_operand->type, basic_type_int))
+          emit_instr(code, Opcode_SUB_INT);
+        else if(types_are_equal(left_operand->type, basic_type_float))
+          emit_instr(code, Opcode_SUB_FLOAT);
+        else
+          assert(0);
+      } break;
       case AstOpKind_Mul:
-        emit_instr(code, Opcode_MUL); break;
+      {
+        if(types_are_equal(left_operand->type, basic_type_int))
+          emit_instr(code, Opcode_MUL_INT);
+        else if(types_are_equal(left_operand->type, basic_type_float))
+          emit_instr(code, Opcode_MUL_FLOAT);
+        else
+          assert(0);
+      } break;
       case AstOpKind_Div:
-        emit_instr(code, Opcode_DIV); break;
+      {
+        if(types_are_equal(left_operand->type, basic_type_int))
+          emit_instr(code, Opcode_DIV_INT);
+        else if(types_are_equal(left_operand->type, basic_type_float))
+          emit_instr(code, Opcode_DIV_FLOAT);
+        else
+          assert(0);
+      } break;
       case AstOpKind_Mod:
-        emit_instr(code, Opcode_MOD); break;
-      case AstOpKind_AddFloat:
-        emit_instr(code, Opcode_ADDF); break;
-      case AstOpKind_SubFloat:
-        emit_instr(code, Opcode_SUBF); break;
-      case AstOpKind_MulFloat:
-        emit_instr(code, Opcode_MULF); break;
-      case AstOpKind_DivFloat:
-        emit_instr(code, Opcode_DIVF); break;
+      {
+        if(types_are_equal(left_operand->type, basic_type_int))
+          emit_instr(code, Opcode_MOD_INT);
+        else
+          assert(0);
+      } break;
 
       case AstOpKind_Equals:
       case AstOpKind_NotEquals:
@@ -126,13 +159,41 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
       case AstOpKind_Greater:
       {
         if(bin_expr->op == AstOpKind_Equals)
-          emit_instr(code, Opcode_CMPEQ);
+        {
+          if(types_are_equal(left_operand->type, basic_type_char))
+            emit_instr(code, Opcode_CMPEQ_CHAR);
+          else if(types_are_equal(left_operand->type, basic_type_int))
+            emit_instr(code, Opcode_CMPEQ_INT);
+          else
+            assert(0);
+        }
         else if(bin_expr->op == AstOpKind_NotEquals)
-          emit_instr(code, Opcode_CMPNEQ);
+        {
+          if(types_are_equal(left_operand->type, basic_type_char))
+            emit_instr(code, Opcode_CMPNEQ_CHAR);
+          else if(types_are_equal(left_operand->type, basic_type_int))
+            emit_instr(code, Opcode_CMPNEQ_INT);
+          else
+            assert(0);
+        }
         else if(bin_expr->op == AstOpKind_Less)
-          emit_instr(code, Opcode_CMPLSS);
+        {
+          if(types_are_equal(left_operand->type, basic_type_char))
+            emit_instr(code, Opcode_CMPLSS_CHAR);
+          else if(types_are_equal(left_operand->type, basic_type_int))
+            emit_instr(code, Opcode_CMPLSS_INT);
+          else
+            assert(0);
+        }
         else if(bin_expr->op == AstOpKind_Greater)
-          emit_instr(code, Opcode_CMPGRT);
+        {
+          if(types_are_equal(left_operand->type, basic_type_char))
+            emit_instr(code, Opcode_CMPGRT_CHAR);
+          else if(types_are_equal(left_operand->type, basic_type_int))
+            emit_instr(code, Opcode_CMPGRT_INT);
+          else
+            assert(0);
+        }
         else
           assert(0);
       } break;
@@ -161,9 +222,23 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         gen_load_rvalue(code, left_operand);
         gen_load_rvalue(code, right_operand);
         if(bin_expr->op == AstOpKind_LessEquals)
-          emit_instr(code, Opcode_CMPLSS);
+        {
+          if(types_are_equal(left_operand->type, basic_type_char))
+            emit_instr(code, Opcode_CMPLSS_CHAR);
+          else if(types_are_equal(left_operand->type, basic_type_int))
+            emit_instr(code, Opcode_CMPLSS_INT);
+          else
+            assert(0);
+        }
         else if(bin_expr->op == AstOpKind_GreaterEquals)
-          emit_instr(code, Opcode_CMPGRT);
+        {
+          if(types_are_equal(left_operand->type, basic_type_char))
+            emit_instr(code, Opcode_CMPGRT_CHAR);
+          else if(types_are_equal(left_operand->type, basic_type_int))
+            emit_instr(code, Opcode_CMPGRT_INT);
+          else
+            assert(0);
+        }
         else
           assert(0);
         emit_instr(code, Opcode_DUP);
@@ -172,7 +247,14 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         emit_instr_int(code, Opcode_GROW, -compute_type_width(left_operand->type));
         gen_load_rvalue(code, left_operand);
         gen_load_rvalue(code, right_operand);
-        emit_instr(code, Opcode_CMPEQ);
+
+        if(types_are_equal(left_operand->type, basic_type_char))
+          emit_instr(code, Opcode_CMPEQ_CHAR);
+        else if(types_are_equal(left_operand->type, basic_type_int))
+          emit_instr(code, Opcode_CMPEQ_INT);
+        else
+          assert(0);
+
         emit_instr_str(code, Opcode_LABEL, bin_expr->label_end);
       } break;
 
@@ -195,13 +277,18 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
     gen_load_rvalue(code, unr_expr->operand);
 
     if(unr_expr->op == AstOpKind_Neg)
-      emit_instr(code, Opcode_NEG);
-    else if(unr_expr->op == AstOpKind_NegFloat)
-      emit_instr(code, Opcode_NEGF);
+    {
+      if(types_are_equal(unr_expr->type, basic_type_int))
+         emit_instr(code, Opcode_NEG_INT);
+      else if(types_are_equal(unr_expr->type, basic_type_float))
+         emit_instr(code, Opcode_NEG_FLOAT);
+      else
+        assert(0);
+    }
     else if(unr_expr->op == AstOpKind_LogicNot)
     {
-      emit_instr_int(code, Opcode_PUSH_I32, 0);
-      emit_instr( code, Opcode_CMPEQ);
+      emit_instr_int(code, Opcode_PUSH_INT, 0);
+      emit_instr( code, Opcode_CMPEQ_INT);
     }
     else if(unr_expr->op == AstOpKind_IntToFloat)
       emit_instr(code, Opcode_INT_TO_FLOAT);
@@ -246,20 +333,20 @@ gen_load_lvalue(List* code, AstVarOccur* var_occur)
 
   if(var_occur->decl_block_offset >= 0)
   {
-    emit_instr_reg(code, Opcode_PUSH_R, RegName_FP);
+    emit_instr_reg(code, Opcode_PUSH_REG, RegName_FP);
     if(link) 
     {
       // this is a non-local
       assert(link->data.loc < 0); // relative to FP
-      emit_instr_int(code, Opcode_PUSH_I32, link->data.loc);
-      emit_instr(code, Opcode_ADD);
+      emit_instr_int(code, Opcode_PUSH_INT, link->data.loc);
+      emit_instr(code, Opcode_ADD_INT);
       emit_instr_int(code, Opcode_LOAD, 4); // access link is on the stack now
     }
-    emit_instr_int(code, Opcode_PUSH_I32, data->loc);
-    emit_instr(code, Opcode_ADD);
+    emit_instr_int(code, Opcode_PUSH_INT, data->loc);
+    emit_instr(code, Opcode_ADD_INT);
   }
   else
-    emit_instr_int(code, Opcode_PUSH_I32, data->loc);
+    emit_instr_int(code, Opcode_PUSH_INT, data->loc);
 }
 
 local void
@@ -277,11 +364,11 @@ gen_load_rvalue(List* code, AstNode* ast)
   {
     AstLiteral* literal = (AstLiteral*)ast;
     if(literal->lit_kind == AstLiteralKind_Int || literal->lit_kind == AstLiteralKind_Bool)
-      emit_instr_int(code, Opcode_PUSH_I32, literal->int_val);
+      emit_instr_int(code, Opcode_PUSH_INT, literal->int_val);
     else if(literal->lit_kind == AstLiteralKind_Char)
-      emit_instr_int(code, Opcode_PUSH_I8, literal->char_val);
+      emit_instr_int(code, Opcode_PUSH_CHAR, literal->char_val);
     else if(literal->lit_kind == AstLiteralKind_Float)
-      emit_instr_float(code, Opcode_PUSH_F32, literal->float_val);
+      emit_instr_float(code, Opcode_PUSH_FLOAT, literal->float_val);
     else
       assert(0);
   }
@@ -339,12 +426,12 @@ gen_block(List* code, AstBlock* block)
       list_item = list_item->next)
   {
     AccessLink* link = (AccessLink*)list_item->elem;
-    emit_instr_reg(code, Opcode_PUSH_R, RegName_FP);
+    emit_instr_reg(code, Opcode_PUSH_REG, RegName_FP);
     assert(link->actv_rec_offset > 0);
     int offset = link->actv_rec_offset - 1;
     while(offset--)
     {
-      emit_instr(code, Opcode_DECR); // TODO: explain why
+      emit_instr(code, Opcode_DECR_INT); // TODO: explain why
       emit_instr_int(code, Opcode_LOAD, 4);
     }
   }
@@ -554,42 +641,42 @@ print_code(VmProgram* vm_program)
     Instruction* instr = (Instruction*)list_item->elem;
     switch(instr->opcode)
     {
-      case Opcode_PUSH_I8:
+      case Opcode_PUSH_CHAR:
       {
         if(instr->param_type == ParamType_Int32)
-          print_instruction(vm_program, "push_i8 %d", instr->param.int_val);
+          print_instruction(vm_program, "push_char %d", instr->param.int_val);
         else
           assert(0);
       } break;
 
-      case Opcode_PUSH_I32:
+      case Opcode_PUSH_INT:
       {
         if(instr->param_type == ParamType_Int32)
-          print_instruction(vm_program, "push_i32 %d", instr->param.int_val);
+          print_instruction(vm_program, "push_int %d", instr->param.int_val);
         else
           assert(0);
       } break;
 
-      case Opcode_PUSH_R:
+      case Opcode_PUSH_REG:
       {
         if(instr->param_type == ParamType_Reg)
-          print_instruction(vm_program, "push_r %s", get_regname_str(instr->param.reg));
+          print_instruction(vm_program, "push_reg %s", get_regname_str(instr->param.reg));
         else
           assert(0);
       } break;
 
-      case Opcode_PUSH_F32:
+      case Opcode_PUSH_FLOAT:
       {
         if(instr->param_type == ParamType_Float32)
-          print_instruction(vm_program, "push_f32 %f", instr->param.float_val);
+          print_instruction(vm_program, "push_float %f", instr->param.float_val);
         else
           assert(0);
       } break;
 
-      case Opcode_POP_R:
+      case Opcode_POP_REG:
       {
         if(instr->param_type == ParamType_Reg)
-          print_instruction(vm_program, "pop_r %s", get_regname_str(instr->param.reg));
+          print_instruction(vm_program, "pop_reg %s", get_regname_str(instr->param.reg));
         else
           assert(0);
       }
@@ -600,70 +687,70 @@ print_code(VmProgram* vm_program)
         print_instruction(vm_program, "dup");
       } break;
 
-      case Opcode_ADD:
+      case Opcode_ADD_INT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "add");
+        print_instruction(vm_program, "add_int");
       } break;
 
-      case Opcode_SUB:
+      case Opcode_SUB_INT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "sub");
+        print_instruction(vm_program, "sub_int");
       } break;
 
-      case Opcode_MUL:
+      case Opcode_MUL_INT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "mul");
+        print_instruction(vm_program, "mul_int");
       } break;
 
-      case Opcode_DIV:
+      case Opcode_DIV_INT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "div");
+        print_instruction(vm_program, "div_int");
       } break;
 
-      case Opcode_ADDF:
+      case Opcode_ADD_FLOAT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "addf");
+        print_instruction(vm_program, "add_float");
       } break;
 
-      case Opcode_SUBF:
+      case Opcode_SUB_FLOAT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "subf");
+        print_instruction(vm_program, "sub_float");
       } break;
 
-      case Opcode_MULF:
+      case Opcode_MUL_FLOAT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "mulf");
+        print_instruction(vm_program, "mul_float");
       } break;
 
-      case Opcode_DIVF:
+      case Opcode_DIV_FLOAT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "divf");
+        print_instruction(vm_program, "div_float");
       } break;
 
-      case Opcode_NEGF:
+      case Opcode_NEG_FLOAT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "negf");
+        print_instruction(vm_program, "neg_float");
       } break;
 
-      case Opcode_MOD:
+      case Opcode_MOD_INT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "mod");
+        print_instruction(vm_program, "mod_int");
       } break;
 
-      case Opcode_NEG:
+      case Opcode_NEG_INT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "neg");
+        print_instruction(vm_program, "neg_int");
       } break;
 
       case Opcode_LOAD:
@@ -732,7 +819,7 @@ print_code(VmProgram* vm_program)
         print_instruction(vm_program, "jumpnz %s", instr->param.str);
       } break;
 
-      case Opcode_DECR:
+      case Opcode_DECR_INT:
       {
         assert(instr->param_type == ParamType__Null);
         print_instruction(vm_program, "decr");
@@ -756,20 +843,32 @@ print_code(VmProgram* vm_program)
         print_instruction(vm_program, "noop");
       } break;
 
-      case Opcode_CMPEQ:
-      case Opcode_CMPNEQ:
-      case Opcode_CMPLSS:
-      case Opcode_CMPGRT:
+      case Opcode_CMPEQ_CHAR:
+      case Opcode_CMPNEQ_CHAR:
+      case Opcode_CMPLSS_CHAR:
+      case Opcode_CMPGRT_CHAR:
+      case Opcode_CMPEQ_INT:
+      case Opcode_CMPNEQ_INT:
+      case Opcode_CMPLSS_INT:
+      case Opcode_CMPGRT_INT:
       {
         assert(instr->param_type == ParamType__Null);
-        if(instr->opcode == Opcode_CMPEQ)
-          print_instruction(vm_program, "cmpeq");
-        else if(instr->opcode == Opcode_CMPNEQ)
-          print_instruction(vm_program, "cmpneq");
-        else if(instr->opcode == Opcode_CMPLSS)
-          print_instruction(vm_program, "cmplss");
-        else if(instr->opcode == Opcode_CMPGRT)
-          print_instruction(vm_program, "cmpgrt");
+        if(instr->opcode == Opcode_CMPEQ_CHAR)
+          print_instruction(vm_program, "cmpeq_char");
+        else if(instr->opcode == Opcode_CMPNEQ_CHAR)
+          print_instruction(vm_program, "cmpneq_char");
+        else if(instr->opcode == Opcode_CMPLSS_CHAR)
+          print_instruction(vm_program, "cmplss_char");
+        else if(instr->opcode == Opcode_CMPGRT_CHAR)
+          print_instruction(vm_program, "cmpgrt_char");
+        else if(instr->opcode == Opcode_CMPEQ_INT)
+          print_instruction(vm_program, "cmpeq_int");
+        else if(instr->opcode == Opcode_CMPNEQ_INT)
+          print_instruction(vm_program, "cmpneq_int");
+        else if(instr->opcode == Opcode_CMPLSS_INT)
+          print_instruction(vm_program, "cmplss_int");
+        else if(instr->opcode == Opcode_CMPGRT_INT)
+          print_instruction(vm_program, "cmpgrt_int");
         else
           assert(0);
       } break;

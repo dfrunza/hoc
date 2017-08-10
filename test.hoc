@@ -18,6 +18,7 @@ proc int strlen(char* s)
   }
   return len;
 }
+*/
 
 proc void printstr(char* str)
 {
@@ -27,17 +28,11 @@ proc void printstr(char* str)
     str = str + 1;
   }
 }
-*/
 
 proc int main()
 {
-  var char c = '\0';
-  var int i = 0;
-  while(i < 3)
-  {
-    i = i+1;
-    c = cast(char)i;
-  }
+  var char* str = "Hello World!";
+  printstr(str);
   return 0;
 }
 

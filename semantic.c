@@ -505,71 +505,41 @@ do_expression(AstBlock* module_block,
 
       if(type_unif(left_type, right_type))
       {
-        if(types_are_equal(left_type, basic_type_float))
+        if(is_arithmetic_op(bin_expr->op) || is_relation_op(bin_expr->op))
         {
-          if(is_arithmetic_op(bin_expr->op))
+          if(types_are_equal(bin_expr->type, basic_type_int)
+              || types_are_equal(bin_expr->type, basic_type_float)
+              || types_are_equal(bin_expr->type, basic_type_char)
+              || bin_expr->type->kind == TypeKind_Pointer)
           {
-            if(bin_expr->op == AstOpKind_Add)
-              bin_expr->op = AstOpKind_AddFloat;
-            else if(bin_expr->op == AstOpKind_Sub)
-              bin_expr->op = AstOpKind_SubFloat;
-            else if(bin_expr->op == AstOpKind_Div)
-              bin_expr->op = AstOpKind_DivFloat;
-            else if(bin_expr->op == AstOpKind_Mul)
-              bin_expr->op = AstOpKind_MulFloat;
-            else if(bin_expr->op == AstOpKind_Mod)
-              success = compile_error(&expr->src_loc, "modulo operator cannot be applied to float operands");
-            else
-              assert(0);
-          }
-        }
+            if(is_relation_op(bin_expr->op))
+              expr->type = basic_type_bool;
 
-        if(success)
-        {
-          if(is_arithmetic_op(bin_expr->op) || is_relation_op(bin_expr->op))
-          {
-            if(types_are_equal(left_type, basic_type_int)
-               || types_are_equal(left_type, basic_type_float)
-               || types_are_equal(left_type, basic_type_char)
-               || left_type->kind == TypeKind_Pointer)
-            {
-              if(is_relation_op(bin_expr->op))
-                expr->type = basic_type_bool;
-            }
-            else
-              success = compile_error(&expr->src_loc,
-                                      "int, float or char operands are expected, actual `%s`", get_type_printstr(left_type));
+            if(bin_expr->op == AstOpKind_Mod && types_are_equal(bin_expr->type, basic_type_float))
+              success = compile_error(&expr->src_loc, "modulo operator cannot be applied to float operands");
           }
-          else if(is_logic_op(bin_expr->op) && !types_are_equal(left_type, basic_type_bool))
+          else
             success = compile_error(&expr->src_loc,
-                                    "bool operands are expected, actual `%s`", get_type_printstr(left_type));
+                                    "int, float or char operands are expected, actual `%s`", get_type_printstr(bin_expr->type));
         }
+        else if(is_logic_op(bin_expr->op) && !types_are_equal(bin_expr->type, basic_type_bool))
+          success = compile_error(&expr->src_loc,
+                                  "bool operands are expected, actual `%s`", get_type_printstr(bin_expr->type));
       }
       else if(types_are_equal(right_type, basic_type_int))
       {
         if(types_are_equal(left_type, basic_type_float))
         {
-          AstUnrExpr* int_to_float = new_unr_expr(&bin_expr->right_operand->src_loc);
-          int_to_float->op = AstOpKind_IntToFloat;
-          int_to_float->type = basic_type_float;
-          int_to_float->operand = bin_expr->right_operand;
-          bin_expr->right_operand = (AstNode*)int_to_float;
-
-          if(is_arithmetic_op(bin_expr->op))
+          if(bin_expr->op != AstOpKind_Mod)
           {
-            if(bin_expr->op == AstOpKind_Add)
-              bin_expr->op = AstOpKind_AddFloat;
-            else if(bin_expr->op == AstOpKind_Sub)
-              bin_expr->op = AstOpKind_SubFloat;
-            else if(bin_expr->op == AstOpKind_Div)
-              bin_expr->op = AstOpKind_DivFloat;
-            else if(bin_expr->op == AstOpKind_Mul)
-              bin_expr->op = AstOpKind_MulFloat;
-            else if(bin_expr->op == AstOpKind_Mod)
-              success = compile_error(&expr->src_loc, "modulo operator cannot be applied to float operands");
-            else
-              assert(0);
+            AstUnrExpr* int_to_float = new_unr_expr(&bin_expr->right_operand->src_loc);
+            int_to_float->op = AstOpKind_IntToFloat;
+            int_to_float->type = basic_type_float;
+            int_to_float->operand = bin_expr->right_operand;
+            bin_expr->right_operand = (AstNode*)int_to_float;
           }
+          else
+            success = compile_error(&expr->src_loc, "modulo operator cannot be applied to float operands");
         }
         else if(types_are_equal(left_type, basic_type_bool))
         {
@@ -701,8 +671,10 @@ do_expression(AstBlock* module_block,
              || type_unif(unr_expr->operand->type, basic_type_float))
           {
             expr->type = unr_expr->operand->type;
+#if 0
             if(types_are_equal(unr_expr->operand->type, basic_type_float))
               unr_expr->op = AstOpKind_NegFloat;
+#endif
           }
           else
             success = compile_error(&expr->src_loc,

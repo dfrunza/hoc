@@ -160,46 +160,50 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
     {
       char* mnemonic = components[0];
 
-      if(cstr_match(mnemonic, "pop_r"))
-        instr.opcode = Opcode_POP_R;
-      else if(cstr_match(mnemonic, "push_i8"))
-        instr.opcode = Opcode_PUSH_I8;
-      else if(cstr_match(mnemonic, "push_i32"))
-        instr.opcode = Opcode_PUSH_I32;
-      else if(cstr_match(mnemonic, "push_f32"))
-        instr.opcode = Opcode_PUSH_F32;
-      else if(cstr_match(mnemonic, "push_r"))
-        instr.opcode = Opcode_PUSH_R;
+      if(cstr_match(mnemonic, "pop_reg"))
+        instr.opcode = Opcode_POP_REG;
+      else if(cstr_match(mnemonic, "push_char"))
+        instr.opcode = Opcode_PUSH_CHAR;
+      else if(cstr_match(mnemonic, "push_int"))
+        instr.opcode = Opcode_PUSH_INT;
+      else if(cstr_match(mnemonic, "push_float"))
+        instr.opcode = Opcode_PUSH_FLOAT;
+      else if(cstr_match(mnemonic, "push_reg"))
+        instr.opcode = Opcode_PUSH_REG;
       else if(cstr_match(mnemonic, "store"))
         instr.opcode = Opcode_STORE;
       else if(cstr_match(mnemonic, "load"))
         instr.opcode = Opcode_LOAD;
       else if(cstr_match(mnemonic, "grow"))
         instr.opcode = Opcode_GROW;
-      else if(cstr_match(mnemonic, "add"))
-        instr.opcode = Opcode_ADD;
-      else if(cstr_match(mnemonic, "sub"))
-        instr.opcode = Opcode_SUB;
-      else if(cstr_match(mnemonic, "mul"))
-        instr.opcode = Opcode_MUL;
-      else if(cstr_match(mnemonic, "div"))
-        instr.opcode = Opcode_DIV;
-      else if(cstr_match(mnemonic, "mod"))
-        instr.opcode = Opcode_MOD;
-      else if(cstr_match(mnemonic, "addf"))
-        instr.opcode = Opcode_ADDF;
-      else if(cstr_match(mnemonic, "subf"))
-        instr.opcode = Opcode_SUBF;
-      else if(cstr_match(mnemonic, "mulf"))
-        instr.opcode = Opcode_MULF;
-      else if(cstr_match(mnemonic, "divf"))
-        instr.opcode = Opcode_DIVF;
-      else if(cstr_match(mnemonic, "negf"))
-        instr.opcode = Opcode_NEGF;
-      else if(cstr_match(mnemonic, "incr"))
-        instr.opcode = Opcode_INCR;
-      else if(cstr_match(mnemonic, "decr"))
-        instr.opcode = Opcode_DECR;
+      else if(cstr_match(mnemonic, "new"))
+        instr.opcode = Opcode_NEW;
+
+      else if(cstr_match(mnemonic, "add_int"))
+        instr.opcode = Opcode_ADD_INT;
+      else if(cstr_match(mnemonic, "sub_int"))
+        instr.opcode = Opcode_SUB_INT;
+      else if(cstr_match(mnemonic, "mul_int"))
+        instr.opcode = Opcode_MUL_INT;
+      else if(cstr_match(mnemonic, "div_int"))
+        instr.opcode = Opcode_DIV_INT;
+      else if(cstr_match(mnemonic, "mod_int"))
+        instr.opcode = Opcode_MOD_INT;
+      else if(cstr_match(mnemonic, "add_float"))
+        instr.opcode = Opcode_ADD_FLOAT;
+      else if(cstr_match(mnemonic, "sub_float"))
+        instr.opcode = Opcode_SUB_FLOAT;
+      else if(cstr_match(mnemonic, "mul_float"))
+        instr.opcode = Opcode_MUL_FLOAT;
+      else if(cstr_match(mnemonic, "div_float"))
+        instr.opcode = Opcode_DIV_FLOAT;
+      else if(cstr_match(mnemonic, "neg_float"))
+        instr.opcode = Opcode_NEG_FLOAT;
+      else if(cstr_match(mnemonic, "incr_int"))
+        instr.opcode = Opcode_INCR_INT;
+      else if(cstr_match(mnemonic, "decr_int"))
+        instr.opcode = Opcode_DECR_INT;
+
       else if(cstr_match(mnemonic, "halt"))
         instr.opcode = Opcode_HALT;
       else if(cstr_match(mnemonic, "putc"))
@@ -212,22 +216,34 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
         instr.opcode = Opcode_JUMPNZ;
       else if(cstr_match(mnemonic, "jumpz"))
         instr.opcode = Opcode_JUMPZ;
-      else if(cstr_match(mnemonic, "cmpeq"))
-        instr.opcode = Opcode_CMPEQ;
-      else if(cstr_match(mnemonic, "cmpneq"))
-        instr.opcode = Opcode_CMPNEQ;
-      else if(cstr_match(mnemonic, "cmplss"))
-        instr.opcode = Opcode_CMPLSS;
-      else if(cstr_match(mnemonic, "cmpgrt"))
-        instr.opcode = Opcode_CMPGRT;
+
+      else if(cstr_match(mnemonic, "cmpeq_char"))
+        instr.opcode = Opcode_CMPEQ_CHAR;
+      else if(cstr_match(mnemonic, "cmpneq_char"))
+        instr.opcode = Opcode_CMPNEQ_CHAR;
+      else if(cstr_match(mnemonic, "cmplss_char"))
+        instr.opcode = Opcode_CMPLSS_CHAR;
+      else if(cstr_match(mnemonic, "cmpgrt_char"))
+        instr.opcode = Opcode_CMPGRT_CHAR;
+      else if(cstr_match(mnemonic, "cmpeq_int"))
+        instr.opcode = Opcode_CMPEQ_INT;
+      else if(cstr_match(mnemonic, "cmpneq_int"))
+        instr.opcode = Opcode_CMPNEQ_INT;
+      else if(cstr_match(mnemonic, "cmplss_int"))
+        instr.opcode = Opcode_CMPLSS_INT;
+      else if(cstr_match(mnemonic, "cmpgrt_int"))
+        instr.opcode = Opcode_CMPGRT_INT;
+
       else if(cstr_match(mnemonic, "and"))
         instr.opcode = Opcode_AND;
       else if(cstr_match(mnemonic, "or"))
         instr.opcode = Opcode_OR;
       else if(cstr_match(mnemonic, "not"))
         instr.opcode = Opcode_NOT;
-      else if(cstr_match(mnemonic, "neg"))
-        instr.opcode = Opcode_NEG;
+      else if(cstr_match(mnemonic, "neg_int"))
+        instr.opcode = Opcode_NEG_INT;
+      else if(cstr_match(mnemonic, "neg_float"))
+        instr.opcode = Opcode_NEG_FLOAT;
       else if(cstr_match(mnemonic, "label"))
         instr.opcode = Opcode_LABEL;
       else if(cstr_match(mnemonic, "noop"))
@@ -240,8 +256,7 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
         instr.opcode = Opcode_ENTER;
       else if(cstr_match(mnemonic, "leave"))
         instr.opcode = Opcode_LEAVE;
-      else if(cstr_match(mnemonic, "new"))
-        instr.opcode = Opcode_NEW;
+
       else if(cstr_match(mnemonic, "float_to_int"))
         instr.opcode = Opcode_FLOAT_TO_INT;
       else if(cstr_match(mnemonic, "int_to_float"))
@@ -273,8 +288,8 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
             }
           } break;
 
-          case Opcode_PUSH_I8:
-          case Opcode_PUSH_I32:
+          case Opcode_PUSH_CHAR:
+          case Opcode_PUSH_INT:
           case Opcode_STORE:
           case Opcode_LOAD:
           case Opcode_GROW:
@@ -288,7 +303,7 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
             }
           } break;
 
-          case Opcode_PUSH_F32:
+          case Opcode_PUSH_FLOAT:
           {
             if(cstr_to_float(components[1], &instr.param.float_val))
               instr.param_type = ParamType_Float32;
@@ -299,8 +314,8 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
             }
           } break;
 
-          case Opcode_PUSH_R:
-          case Opcode_POP_R:
+          case Opcode_PUSH_REG:
+          case Opcode_POP_REG:
           {
             instr.param_type = ParamType_Reg;
             char* reg = components[1];

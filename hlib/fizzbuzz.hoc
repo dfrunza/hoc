@@ -1,26 +1,28 @@
 /*
    For all integers from 1 to 'n' print:
-     -3 if it's divisible by 3
-     -5 if it's divisible by 5
-     -15 if it's divisible by 15
+     fizz if it's divisible by 3
+     buzz if it's divisible by 5
+     fizzbuzz if it's divisible by 15
      else print the integer itself
 */
-proc int fizzbuzz(var int n)
+proc void fizzbuzz(int n)
 {
   if(n > 0)
   {
-    while(n > 0)
+    var int i = 1;
+    while(i <= n)
     {
-      if((n % 15) == 0)
-        /*print (-15)\n*/;
-      else if((n % 3) == 0)
-        /*print (-3)\n*/;
-      else if((n % 5) == 0)
-        /*print (-5)\n*/;
+      if((i % 15) == 0)
+        print_str(&"fizz");
+      else if((i % 3) == 0)
+        print_str(&"buzz");
+      else if((i % 5) == 0)
+        print_str(&"fizzbuzz");
       else
-        /*print n \n*/;
+        print_int(i);
 
-      n = n-1;
+      print_str(&"\n");
+      i = i + 1;
     }
   }
 }

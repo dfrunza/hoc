@@ -103,13 +103,15 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
   }
   else
   {
-    gen_load_rvalue(code, left_operand);
-    gen_load_rvalue(code, right_operand);
+    //gen_load_rvalue(code, left_operand);
+    //gen_load_rvalue(code, right_operand);
 
     switch(bin_expr->op)
     {
       case AstOpKind_Add:
       {
+        gen_load_rvalue(code, left_operand);
+        gen_load_rvalue(code, right_operand);
         if(types_are_equal(left_operand->type, basic_type_int)
            || left_operand->type->kind == TypeKind_Pointer)
           emit_instr(code, Opcode_ADD_INT);
@@ -118,8 +120,11 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         else
           assert(0);
       } break;
+      
       case AstOpKind_Sub:
       {
+        gen_load_rvalue(code, left_operand);
+        gen_load_rvalue(code, right_operand);
         if(types_are_equal(left_operand->type, basic_type_int))
           emit_instr(code, Opcode_SUB_INT);
         else if(types_are_equal(left_operand->type, basic_type_float))
@@ -127,8 +132,11 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         else
           assert(0);
       } break;
+      
       case AstOpKind_Mul:
       {
+        gen_load_rvalue(code, left_operand);
+        gen_load_rvalue(code, right_operand);
         if(types_are_equal(left_operand->type, basic_type_int))
           emit_instr(code, Opcode_MUL_INT);
         else if(types_are_equal(left_operand->type, basic_type_float))
@@ -136,8 +144,11 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         else
           assert(0);
       } break;
+
       case AstOpKind_Div:
       {
+        gen_load_rvalue(code, left_operand);
+        gen_load_rvalue(code, right_operand);
         if(types_are_equal(left_operand->type, basic_type_int))
           emit_instr(code, Opcode_DIV_INT);
         else if(types_are_equal(left_operand->type, basic_type_float))
@@ -145,8 +156,11 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         else
           assert(0);
       } break;
+
       case AstOpKind_Mod:
       {
+        gen_load_rvalue(code, left_operand);
+        gen_load_rvalue(code, right_operand);
         if(types_are_equal(left_operand->type, basic_type_int))
           emit_instr(code, Opcode_MOD_INT);
         else
@@ -158,6 +172,8 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
       case AstOpKind_Less:
       case AstOpKind_Greater:
       {
+        gen_load_rvalue(code, left_operand);
+        gen_load_rvalue(code, right_operand);
         if(bin_expr->op == AstOpKind_Equals)
         {
           if(types_are_equal(left_operand->type, basic_type_char))
@@ -210,9 +226,18 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
           emit_instr_str(code, Opcode_JUMPNZ, bin_expr->label_end);
         else
           assert(0);
-
         emit_instr_int(code, Opcode_GROW, -compute_type_width(left_operand->type));
+
         gen_load_rvalue(code, right_operand);
+        emit_instr(code, Opcode_DUP);
+
+        if(bin_expr->op == AstOpKind_LogicAnd)
+          emit_instr_str(code, Opcode_JUMPZ, bin_expr->label_end);
+        else if(bin_expr->op == AstOpKind_LogicOr)
+          emit_instr_str(code, Opcode_JUMPNZ, bin_expr->label_end);
+        else
+          assert(0);
+
         emit_instr_str(code, Opcode_LABEL, bin_expr->label_end);
       } break;
 
@@ -245,9 +270,9 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
 
         emit_instr_str(code, Opcode_JUMPNZ, bin_expr->label_end);
         emit_instr_int(code, Opcode_GROW, -compute_type_width(left_operand->type));
+
         gen_load_rvalue(code, left_operand);
         gen_load_rvalue(code, right_operand);
-
         if(types_are_equal(left_operand->type, basic_type_char))
           emit_instr(code, Opcode_CMPEQ_CHAR);
         else if(types_are_equal(left_operand->type, basic_type_int))
@@ -450,6 +475,7 @@ gen_block(List* code, AstBlock* block)
   }
 
   emit_instr(code, Opcode_LEAVE);
+  emit_instr_int(code, Opcode_GROW, -block->links_size);
 }
 
 local void

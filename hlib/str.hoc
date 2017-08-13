@@ -20,9 +20,8 @@ proc void print_str(char* str)
 
 proc void digit_to_char(char* buf, int pos, int digit)
 {
-  /*
   if((digit >= 0) && (digit <= 9))
-  {*/
+  {
     if(digit == 0)
       *(buf + pos) = '0';
     else if(digit == 1)
@@ -43,8 +42,7 @@ proc void digit_to_char(char* buf, int pos, int digit)
       *(buf + pos) = '8';
     else if(digit == 9)
       *(buf + pos) = '9';
-    /*
-  }*/
+  }
 }
 
 proc char* int_to_str(char* buf, int buf_len, int i)

@@ -70,7 +70,7 @@ get_type_printstr(Type* type)
   return str_cap(str);
 }
 
-local bool32
+bool32
 is_arithmetic_op(AstOpKind op)
 {
   return op == AstOpKind_Add || op == AstOpKind_Sub
@@ -78,13 +78,13 @@ is_arithmetic_op(AstOpKind op)
     || op == AstOpKind_Mod;
 }
 
-local bool32
+bool32
 is_logic_op(AstOpKind op)
 {
   return op == AstOpKind_LogicOr || op == AstOpKind_LogicAnd || op == AstOpKind_LogicNot;
 }
 
-local bool32
+bool32
 is_relation_op(AstOpKind op)
 {
   return op == AstOpKind_Equals || op == AstOpKind_NotEquals

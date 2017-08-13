@@ -5,9 +5,11 @@ proc int abs(int a)
   return a;
 }
 
+/*
 proc float fabs(float a)
 {
   if(a < 0.0)
     a = -1.0*a;
   return a;
 }
+*/

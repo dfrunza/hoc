@@ -313,7 +313,8 @@ gen_call(List* code, AstCall* call)
 
   AstBlock* block = proc->body;
 
-  for(ListItem* list_item = call->args.first;
+  List* args_list = &call->args.list;
+  for(ListItem* list_item = args_list->first;
       list_item;
       list_item = list_item->next)
   {
@@ -431,7 +432,8 @@ gen_block(List* code, AstBlock* block)
     int offset = link->actv_rec_offset - 1;
     while(offset--)
     {
-      emit_instr(code, Opcode_DECR_INT); // TODO: explain why
+      emit_instr_int(code, Opcode_PUSH_INT, -4);
+      emit_instr(code, Opcode_ADD_INT); // Get the FP of the previous activ. record
       emit_instr_int(code, Opcode_LOAD, 4);
     }
   }
@@ -822,7 +824,7 @@ print_code(VmProgram* vm_program)
       case Opcode_DECR_INT:
       {
         assert(instr->param_type == ParamType__Null);
-        print_instruction(vm_program, "decr");
+        print_instruction(vm_program, "decr_int");
       } break;
 
       case Opcode_ENTER:

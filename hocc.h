@@ -199,6 +199,7 @@ typedef enum
   AstNodeKind_Initializer,
   AstNodeKind_String,
   AstNodeKind_Putc,
+  AstNodeKind_NodeList,
   AstNodeKind_EmptyStmt,
 
   AstNodeKind__Count,
@@ -271,8 +272,17 @@ typedef struct
 {
   AstNode;
 
+  List list;
+  int count;
+}
+AstNodeList;
+
+typedef struct
+{
+  AstNode;
+
   AstId* id;
-  List args;
+  AstNodeList args;
 
   Symbol* proc_sym;
 }
@@ -326,7 +336,7 @@ typedef struct
 
   AstNode* ret_type_expr;
   AstId* id;
-  List args;
+  AstNodeList args;
   AstBlock* body;
 
   AstVarDecl* ret_var;
@@ -778,6 +788,7 @@ char* get_token_printstr(Token* token);
 char* get_ast_kind_printstr(AstNodeKind kind);
 void DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag);
 void DEBUG_print_arena_usage(char* tag);
+//void node_list_append(AstNodeList* node_list, AstNode* node);
 bool32 parse(TokenStream* input, AstNode** node);
 void init_types();
 bool32 semantic_analysis(AstModule* ast);
@@ -797,8 +808,9 @@ Type* new_pointer_type(Type* pointee);
 Type* new_product_type(Type* left, Type* right);
 Type* new_array_type(int size, Type* elem_type);
 Type* new_cast_type(Type* from_type, Type* to_type);
-Type* make_type_of_node_list(List* node_list);
+//Type* make_type_of_node_list(List* node_list);
 Type* get_type_repr(Type* type);
+bool32 type_check(AstNode* left_node, AstNode* right_node);
 bool32 type_unif(Type* type_a, Type* type_b);
 bool32 types_are_equal(Type* type_a, Type* type_b);
 int compute_type_width(Type* type);

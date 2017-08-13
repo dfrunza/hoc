@@ -76,25 +76,6 @@ new_pointer_type(Type* pointee)
   return type;
 }
 
-Type*
-make_type_of_node_list(List* node_list)
-{
-  Type* type = basic_type_void;
-  ListItem* first_item = node_list->first;
-  if(first_item)
-  {
-    type = ((AstNode*)first_item->elem)->type;
-    for(ListItem* list_item = first_item->next;
-        list_item;
-        list_item = list_item->next)
-    {
-      AstNode* node = (AstNode*)list_item->elem;
-      type = new_product_type(type, node->type);
-    }
-  }
-  return type;
-}
-
 void
 init_types()
 {
@@ -189,7 +170,6 @@ set_union(Type* type_a, Type* type_b)
   else
     type_b->repr_type = type_a;
 }
-
 bool32
 type_unif(Type* type_a, Type* type_b)
 {

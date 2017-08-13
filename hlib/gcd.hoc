@@ -1,5 +1,3 @@
-include "abs.hoc";
-
 proc int gcd_(int a, int b);
 
 proc int gcd_(int a, int b)

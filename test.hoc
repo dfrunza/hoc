@@ -1,38 +1,21 @@
-/*
-include "hlib\\gcd.hoc";
 include "hlib\\abs.hoc";
+/*
 include "hlib\\sqrt.hoc";
-include "hlib\\fibo.hoc";
 include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
+include "hlib\\gcd.hoc";
 */
+include "hlib\\str.hoc";
+include "hlib\\fibo.hoc";
 
-/*
-proc int strlen(char* s)
+proc void foo(char* str)
 {
-  var int len = 0;
-  while(*s != '\0')
-  {
-    s = s+1;
-    len = len+1;
-  }
-  return len;
-}
-*/
-
-proc void printstr(char* str)
-{
-  while(*str != '\0')
-  {
-    putc(*str);
-    str = str + 1;
-  }
+  print_str(str);
 }
 
 proc int main()
 {
-  var char* str = "Hello World!";
-  printstr(str);
+  fibo(40);
   return 0;
 }
 

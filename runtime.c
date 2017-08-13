@@ -58,7 +58,8 @@ compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
 local void
 do_call(AstCall* call)
 {
-  for(ListItem* list_item = call->args.first;
+  List* args_list = &call->args.list;
+  for(ListItem* list_item = args_list->first;
       list_item;
       list_item = list_item->next)
   {
@@ -299,7 +300,8 @@ do_proc(AstProc* proc)
   }
 
   /* formals */
-  for(ListItem* list_item = proc->args.first;
+  List* args_list = &proc->args.list;
+  for(ListItem* list_item = args_list->first;
       list_item;
       list_item = list_item->next)
   {

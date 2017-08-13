@@ -5,17 +5,19 @@ proc void fibo(int n)
 {
   if(n > 0)
   {
-    var int f1 = 0;
-    var int f2 = 1;
-    var int fn = f1 + f2;
+    var int f_1 = 0;
+    var int f_2 = 1;
+    var int f_n = f_1 + f_2;
 
     while(n > 0)
     {
-      /*print fn \n;*/
-      fn = f2 + f1;
-      f1 = f2;
-      f2 = fn;
-      n = n-1;
+      print_int(f_n);
+      print_str(&"\n");
+
+      f_n = f_2 + f_1;
+      f_1 = f_2;
+      f_2 = f_n;
+      n = n - 1;
     }
   }
 }

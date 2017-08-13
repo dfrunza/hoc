@@ -12,6 +12,13 @@ local bool32 do_unary_expr(TokenStream*, AstNode**);
 local bool32 do_module(TokenStream*, List*);
 local bool32 do_struct_member_list(TokenStream*, List*);
 
+local void
+node_list_append(AstNodeList* node_list, AstNode* node)
+{
+  list_append(arena, &node_list->list, node);
+  node_list->count++;
+}
+
 AstBlock*
 new_block(SourceLocation* src_loc)
 {
@@ -91,12 +98,22 @@ new_pointer(SourceLocation* src_loc)
   return node;
 }
 
+local AstNodeList*
+new_node_list(SourceLocation* src_loc)
+{
+  AstNodeList* node = mem_push_struct(arena, AstNodeList);
+  node->kind = AstNodeKind_NodeList;
+  list_init(&node->list);
+  return node;
+}
+
 AstCall*
 new_call(SourceLocation* src_loc)
 {
   AstCall* node = mem_push_struct(arena, AstCall);
   node->kind = AstNodeKind_Call;
-  list_init(&node->args);
+  node->args.kind = AstNodeKind_NodeList;
+  list_init(&node->args.list);
   node->src_loc = *src_loc;
   return node;
 }
@@ -115,7 +132,8 @@ new_proc(SourceLocation* src_loc)
 {
   AstProc* node = mem_push_struct(arena, AstProc);
   node->kind = AstNodeKind_Proc;
-  list_init(&node->args);
+  node->args.kind = AstNodeKind_NodeList;
+  list_init(&node->args.list);
   node->src_loc = *src_loc;
   return node;
 }
@@ -435,6 +453,8 @@ get_ast_kind_printstr(AstNodeKind kind)
     result = "Enum";
   else if(kind == AstNodeKind_Initializer)
     result = "Initializer";
+  else if(kind == AstNodeKind_NodeList)
+    result = "NodeList";
   else if(kind == AstNodeKind_EmptyStmt)
     result = "EmptyStmt";
 
@@ -529,7 +549,7 @@ do_initializer(TokenStream* input, AstNode** node)
 }
 
 local bool32
-do_actual_arg_list(TokenStream* input, List* arg_list)
+do_actual_arg_list(TokenStream* input, AstNodeList* arg_list)
 {
   bool32 success = true;
 
@@ -540,7 +560,7 @@ do_actual_arg_list(TokenStream* input, List* arg_list)
     success = do_expression(input, &arg);
     if(success && arg)
     {
-      list_append(arena, arg_list, arg);
+      node_list_append(arg_list, arg);
       if(input->token.kind == TokenKind_Comma)
       {
         if((success = get_next_token(input)) && input->token.kind == TokenKind_CloseParens)
@@ -1086,7 +1106,7 @@ do_formal_arg(TokenStream* input, AstNode** node)
 }
 
 local bool32
-do_formal_arg_list(TokenStream* input, List* arg_list)
+do_formal_arg_list(TokenStream* input, AstNodeList* arg_list)
 {
   bool32 success = true;
 
@@ -1096,7 +1116,7 @@ do_formal_arg_list(TokenStream* input, List* arg_list)
     arg = 0;
     if((success = do_formal_arg(input, &arg)) && arg)
     {
-      list_append(arena, arg_list, arg);
+      node_list_append(arg_list, arg);
       if(input->token.kind == TokenKind_Comma)
         success = get_next_token(input);
       else if(input->token.kind != TokenKind_CloseParens)
@@ -1951,7 +1971,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       AstProc* proc = (AstProc*)node;
       DEBUG_print_ast_node(str, indent_level, proc->ret_type_expr, "ret_type");
       DEBUG_print_ast_node(str, indent_level, (AstNode*)proc->id, "id");
-      DEBUG_print_ast_node_list(str, indent_level, &proc->args, "args");
+      DEBUG_print_ast_node(str, indent_level, (AstNode*)&proc->args, "args");
       DEBUG_print_ast_node(str, indent_level, (AstNode*)proc->body, "body");
     }
     else if(node->kind == AstNodeKind_VarDecl)
@@ -2062,7 +2082,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     {
       AstCall* call = (AstCall*)node;
       DEBUG_print_ast_node(str, indent_level, (AstNode*)call->id, "id");
-      DEBUG_print_ast_node_list(str, indent_level, &call->args, "args");
+      DEBUG_print_ast_node(str, indent_level, (AstNode*)&call->args, "args");
     }
     else if(node->kind == AstNodeKind_BreakStmt
             || node->kind == AstNodeKind_ContinueStmt
@@ -2112,6 +2132,11 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     {
       AstPutc* putc_ast = (AstPutc*)node;
       DEBUG_print_ast_node(str, indent_level, (AstNode*)putc_ast->expr, "expr");
+    }
+    else if(node->kind == AstNodeKind_NodeList)
+    {
+      AstNodeList* node_list = (AstNodeList*)node;
+      DEBUG_print_ast_node_list(str, indent_level, &node_list->list, "list");
     }
     else
       assert(0);

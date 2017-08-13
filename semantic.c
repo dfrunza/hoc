@@ -306,7 +306,7 @@ add_builtin_types()
 local bool32
 scope_begin(AstBlock* block)
 {
-  symtab->block_id =++last_block_id; 
+  symtab->block_id = ++last_block_id; 
   block->block_id = symtab->block_id;
   block->encl_block = symtab->curr_block;
 
@@ -406,14 +406,31 @@ do_call_args(AstBlock* module_block, AstBlock* block, AstCall* call)
 {
   bool32 success = true;
 
-  for(ListItem* list_item = call->args.first;
-      list_item && success;
-      list_item = list_item->next)
+  Type* args_type = basic_type_void;
+  List* arg_list = &call->args.list;
+  ListItem* first_item = arg_list->first;
+  if(first_item)
   {
-    AstNode* arg = (AstNode*)list_item->elem;
+    AstNode* arg = (AstNode*)first_item->elem;
     if(success = do_expression(module_block, block, arg, &arg))
-      list_item->elem = arg;
+    {
+      first_item->elem = arg;
+      args_type = arg->type;
+
+      for(ListItem* list_item = first_item->next;
+          list_item && success;
+          list_item = list_item->next)
+      {
+        arg = (AstNode*)list_item->elem;
+        if(success = do_expression(module_block, block, arg, &arg))
+        {
+          list_item->elem = arg;
+          args_type = new_product_type(args_type, arg->type);
+        }
+      }
+    }
   }
+  call->args.type = args_type;
   return success;
 }
 
@@ -425,9 +442,15 @@ do_call(AstBlock* module_block, AstBlock* block, AstCall* call)
   if(success = do_call_args(module_block, block, call) && register_call(call))
   {
     assert(call->type);
-    Type* call_type = new_proc_type(make_type_of_node_list(&call->args), call->type);
     AstProc* proc = (AstProc*)call->proc_sym->ast;
-    if(!type_unif(proc->type, call_type))
+    Type* proc_type = proc->type;
+    assert(proc_type->kind == TypeKind_Proc);
+    Type* call_type = new_proc_type(call->args.type, proc_type->proc.ret);
+    if(type_unif(proc_type, call_type))
+    {
+      call->type = proc_type->proc.ret;
+    }
+    else
     {
       success = compile_error(&call->src_loc,
           "call `%s %s(%s)` does not match proc type...",
@@ -860,21 +883,38 @@ do_expression(AstBlock* module_block,
 }
 
 local bool32
-do_proc_formal_args(AstBlock* block, List* args)
+do_proc_formal_args(AstBlock* block, AstProc* proc)
 {
   bool32 success = true;
 
-  for(ListItem* list_item = args->first;
-      list_item && success;
-      list_item = list_item->next)
+  Type* args_type = basic_type_void;
+  List* args_list = &proc->args.list;
+  ListItem* first_item = args_list->first;
+  if(first_item)
   {
-    AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
-    assert(var_decl->kind == AstNodeKind_VarDecl);
-    assert(var_decl->id);
-    assert(!var_decl->init_expr);
+    AstVarDecl* var_decl = (AstVarDecl*)first_item->elem;
     if(success = register_var_decl(var_decl))
+    {
       var_decl->decl_block = block;
+      args_type = var_decl->type;
+
+      for(ListItem* list_item = first_item->next;
+          list_item && success;
+          list_item = list_item->next)
+      {
+        var_decl = (AstVarDecl*)list_item->elem;
+        assert(var_decl->kind == AstNodeKind_VarDecl);
+        assert(var_decl->id);
+        assert(!var_decl->init_expr);
+        if(success = register_var_decl(var_decl))
+        {
+          var_decl->decl_block = block;
+          args_type = new_product_type(args_type, var_decl->type);
+        }
+      }
+    }
   }
+  proc->args.type = args_type;
   return success;
 }
 
@@ -899,13 +939,13 @@ do_proc_decl(AstBlock* module_block, AstProc* proc)
 
   if(success = scope_begin((AstBlock*)proc->body))
   {
-    if(success = do_proc_formal_args(proc->body, &proc->args)
+    if(success = do_proc_formal_args(proc->body, proc)
        && do_proc_ret_var(proc->body, proc)
        && do_stmt_block(module_block, proc, 0, proc->body))
     {
       scope_end();
 
-      proc->type = new_proc_type(make_type_of_node_list(&proc->args), proc->ret_var->type);
+      proc->type = new_proc_type(proc->args.type, proc->ret_var->type);
       //FIXME: HACK ALERT!
       if((proc->ret_var->type != basic_type_void) && !proc->body->type && !proc->is_decl)
         success = compile_error(&proc->src_loc, "proc must return a `%s`", get_type_printstr(proc->ret_var->type));
@@ -976,9 +1016,10 @@ do_statement(AstBlock* module_block,
       success = (for_stmt->decl_expr ? do_var_decl(module_block, for_stmt->body, for_stmt->decl_expr) : 1);
       if(success)
       {
-        success = do_stmt_block(module_block, proc, stmt, for_stmt->body) // will set the block->owner field, so do it first
+        success = do_stmt_block(module_block, proc, stmt, for_stmt->body)
           && (for_stmt->cond_expr ? do_expression(module_block, for_stmt->body, for_stmt->cond_expr, &for_stmt->cond_expr) : 1)
           && (for_stmt->loop_expr ? do_expression(module_block, for_stmt->body, for_stmt->loop_expr, &for_stmt->loop_expr) : 1);
+
         if(success)
         {
           if(!type_unif(for_stmt->cond_expr->type, basic_type_bool))
@@ -1006,18 +1047,21 @@ do_statement(AstBlock* module_block,
         else
           success = do_statement(module_block, proc, block, loop, if_stmt->body);
 
-        if(if_stmt->else_body)
+        if(success)
         {
-          if(if_stmt->else_body->kind == AstNodeKind_Block)
+          if(if_stmt->else_body)
           {
-            if(success = scope_begin((AstBlock*)if_stmt->else_body))
+            if(if_stmt->else_body->kind == AstNodeKind_Block)
             {
-              success = do_stmt_block(module_block, proc, stmt, (AstBlock*)if_stmt->else_body);
-              scope_end();
+              if(success = scope_begin((AstBlock*)if_stmt->else_body))
+              {
+                success = do_stmt_block(module_block, proc, stmt, (AstBlock*)if_stmt->else_body);
+                scope_end();
+              }
             }
+            else
+              success = do_statement(module_block, proc, block, loop, if_stmt->else_body);
           }
-          else
-            success = do_statement(module_block, proc, block, loop, if_stmt->else_body);
         }
       }
       else
@@ -1085,10 +1129,11 @@ do_statement(AstBlock* module_block,
         loop_body = (AstNode*)((AstForStmt*)loop)->body;
       assert(loop_body);
 
-      AstLoopCtrl* loop_ctrl = (AstLoopCtrl*)loop;
+      AstLoopCtrl* loop_ctrl = (AstLoopCtrl*)stmt;
+      loop_ctrl->loop = loop;
       loop_ctrl->nesting_depth = 0;
       if(loop_body->kind == AstNodeKind_Block)
-        loop_ctrl->nesting_depth = ((AstBlock*)block)->nesting_depth - ((AstBlock*)loop_body)->nesting_depth;
+        loop_ctrl->nesting_depth = block->nesting_depth - ((AstBlock*)loop_body)->nesting_depth;
       else
         assert(loop_body == stmt);
     }

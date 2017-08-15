@@ -74,6 +74,16 @@ clone_ast_node(AstNode* node)
     clone = (AstNode*)mem_push_struct(arena, AstPointer);
     *(AstPointer*)clone = *(AstPointer*)node;
   }
+  else if(node->kind == AstNodeKind_VarDecl)
+  {
+    clone = (AstNode*)mem_push_struct(arena, AstVarDecl);
+    *(AstVarDecl*)clone = *(AstVarDecl*)node;
+  }
+  else if(node->kind == AstNodeKind_VarOccur)
+  {
+    clone = (AstNode*)mem_push_struct(arena, AstVarOccur);
+    *(AstVarOccur*)clone = *(AstVarOccur*)node;
+  }
   else
     fail("not implemented");
   return clone;

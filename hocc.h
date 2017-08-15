@@ -345,7 +345,6 @@ typedef struct
   AstId* id;
   AstNodeList args;
 
-  //Symbol* proc_sym;
   AstProc* proc;
 }
 AstCall;
@@ -812,7 +811,6 @@ Type* new_pointer_type(Type* pointee);
 Type* new_product_type(Type* left, Type* right);
 Type* new_array_type(int size, Type* elem_type);
 Type* new_cast_type(Type* from_type, Type* to_type);
-//Type* make_type_of_node_list(List* node_list);
 Type* get_type_repr(Type* type);
 bool32 type_check(AstNode* left_node, AstNode* right_node);
 bool32 type_unif(Type* type_a, Type* type_b);

@@ -276,9 +276,6 @@ register_call(AstCall* call)
 
     Symbol* call_sym = register_id(id, SymbolKind_Call);
     call_sym->ast = (AstNode*)call;
-    //call->proc_sym = proc_sym;
-    //Type* proc_type = proc_sym->ast->type;
-    //call->type = proc_type->proc.ret;
   }
   else
     success = compile_error(&call->src_loc, "unknown proc `%s`", id->name);
@@ -434,6 +431,55 @@ do_call_args(AstBlock* module_block, AstBlock* block, AstCall* call)
 }
 
 local bool32
+type_convert_call_arg(AstVarDecl* formal_arg,
+                      AstVarOccur* actual_arg, AstNode** node_out,
+                      Type* type_from, Type* type_to)
+{
+  bool32 success = true;
+  *node_out = (AstNode*)actual_arg;
+
+  if(types_are_equal(type_from, type_to))
+    return success;
+
+  if(type_from->kind == TypeKind_Array && type_to->kind == TypeKind_Pointer)
+  {
+    if(type_unif(type_from->array.elem, type_to->pointer.pointee))
+    {
+      AstUnrExpr* address_of = new_unr_expr(&actual_arg->src_loc);
+      address_of->op = AstOpKind_AddressOf;
+      address_of->type = new_pointer_type(type_from->array.elem);
+      address_of->operand = (AstNode*)actual_arg;
+      *node_out = (AstNode*)address_of;
+    }
+    else
+    {
+      success = compile_error(&actual_arg->src_loc,
+          "array element `%s` and pointee `%s` types are different",
+          get_type_printstr(type_from->array.elem), get_type_printstr(type_to->pointer.pointee));
+    }
+  }
+  else if(type_from->kind == TypeKind_Pointer && type_to->kind == TypeKind_Array)
+  {
+    AstVarDecl* var_decl = (AstVarDecl*)clone_ast_node((AstNode*)formal_arg);
+    var_decl->type = new_array_type(type_to->array.size, type_from->pointer.pointee);
+
+    AstVarOccur* var_occur = (AstVarOccur*)clone_ast_node((AstNode*)actual_arg);
+    var_occur->var_decl = var_decl;
+    var_occur->type = var_decl->type;
+    var_occur->data = &var_decl->data;
+    *node_out = (AstNode*)var_occur;
+#if 0
+    AstVarOccur* var_occur = new_var_occur(&actual_arg->src_loc);
+    mem_zero_struct(var_occur, AstVarOccur);
+    var_occur->var_decl = var_decl;
+    var_occur->type = var_decl->type;
+    *node_out = (AstNode*)var_occur;
+#endif
+  }
+  return success;
+}
+
+local bool32
 do_call(AstBlock* module_block, AstBlock* block, AstCall* call)
 {
   bool32 success = true;
@@ -466,31 +512,16 @@ do_call(AstBlock* module_block, AstBlock* block, AstCall* call)
           }
           else
           {
-            if(actual_arg->type->kind == TypeKind_Array
-               && formal_arg->type->kind == TypeKind_Pointer)
+            if(type_convert_call_arg((AstVarDecl*)formal_arg, (AstVarOccur*)actual_arg, &actual_arg, actual_arg->type, formal_arg->type))
             {
-              if(type_unif(actual_arg->type->array.elem, formal_arg->type->pointer.pointee))
-              {
-                AstUnrExpr* address_of = new_unr_expr(&actual_arg->src_loc);
-                address_of->op = AstOpKind_AddressOf;
-                address_of->type = new_pointer_type(actual_arg->type->array.elem);
-                address_of->operand = actual_arg;
-                actual_arg_li->elem = (AstNode*)address_of;
-
-                call->args.type = new_product_type(call->args.type, address_of->type);
-              }
-              else
-              {
-                success = compile_error(&actual_arg->src_loc,
-                                        "array element `%s` and pointee `%s` types are different",
-                                        get_type_printstr(actual_arg->type->array.elem), get_type_printstr(formal_arg->type->pointer.pointee));
-              }
+              call->args.type = new_product_type(call->args.type, actual_arg->type);
+              actual_arg_li->elem = (AstNode*)actual_arg;
             }
             else
             {
               success = compile_error(&actual_arg->src_loc,
-                                      "no implicit converstion of `%s` to `%s`",
-                                      get_type_printstr(actual_arg->type), get_type_printstr(formal_arg->type));
+                  "no implicit conversion from `%s` to `%s`",
+                  get_type_printstr(actual_arg->type), get_type_printstr(formal_arg->type));
             }
           }
 
@@ -655,7 +686,7 @@ do_expression(AstBlock* module_block,
           ;/*no-op*/
         else
           success = compile_error(&expr->src_loc,
-              "no implicit conversion of `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
+              "no implicit conversion from `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
       }
       else if(types_are_equal(right_type, basic_type_char))
       {
@@ -663,7 +694,7 @@ do_expression(AstBlock* module_block,
           bin_expr->right_operand->type = basic_type_int;
         else
           success = compile_error(&expr->src_loc,
-              "no implicit conversion of `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
+              "no implicit conversion from `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
       }
       else if(left_type->kind == TypeKind_Pointer)
       {
@@ -686,11 +717,11 @@ do_expression(AstBlock* module_block,
             }
             else
               success = compile_error(&expr->src_loc,
-                    "no implicit conversion of `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                    "no implicit conversion from `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
           }
           else
             success = compile_error(&expr->src_loc,
-                "no implicit conversion of `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                "no implicit conversion from `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
         }
         else if(types_are_equal(right_type, basic_type_int))
         {
@@ -700,12 +731,12 @@ do_expression(AstBlock* module_block,
             assert(lit->lit_kind == AstLiteralKind_Int);
             if(lit->int_val != 0)
               success = compile_error(&expr->src_loc,
-                  "no implicit conversion of `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                  "no implicit conversion from `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
           }
         }
         else
           success = compile_error(&expr->src_loc,
-                "no implicit conversion of `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                "no implicit conversion from `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
       }
       else if(left_type->kind == TypeKind_Array)
       {
@@ -852,17 +883,14 @@ do_expression(AstBlock* module_block,
 #endif
 
       AstVarDecl* var_decl = new_var_decl(&expr->src_loc);
-      var_decl->id = 0;
-      var_decl->type = str->type;//lit->type;
-      var_decl->init_expr = (AstNode*)str;//(AstNode*)lit;
-
-      var_decl->type_expr = 0;
-      var_decl->assign_expr = 0;
+      mem_zero_struct(var_decl, AstVarDecl);
+      var_decl->type = str->type;
+      var_decl->init_expr = (AstNode*)str;
       var_decl->decl_block = module_block;
       list_append(arena, &module_block->local_decls, var_decl);
 
       AstVarOccur* var_occur = new_var_occur(&expr->src_loc);
-      var_occur->id = 0;
+      mem_zero_struct(var_occur, AstVarOccur);
       var_occur->var_decl = var_decl;
       var_occur->type = var_decl->type;
 

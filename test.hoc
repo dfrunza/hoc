@@ -1,23 +1,22 @@
 include "hlib\\str.hoc";
 include "hlib\\fibo.hoc";
-/*
 include "hlib\\fizzbuzz.hoc";
+/*
 include "hlib\\abs.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
 include "hlib\\gcd.hoc";
+*/
 
 proc void foo(char* str)
 {
-  print_str(str);
 }
 
-*/
 
 proc int main()
 {
-  fibo(44);
+  fizzbuzz(200);
   return 0;
 }
 

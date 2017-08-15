@@ -351,8 +351,8 @@ get_ast_op_printstr(AstOpKind op)
     result = "Neg";
   else if(op == AstOpKind_Assign)
     result = "Assign";
-  else if(op == AstOpKind_PtrDeref)
-    result = "PtrDeref";
+  else if(op == AstOpKind_PointerDeref)
+    result = "PointerDeref";
   else if(op == AstOpKind_AddressOf)
     result = "AddressOf";
   else if(op == AstOpKind_MemberAccess)
@@ -1146,7 +1146,7 @@ do_unary_expr(TokenStream* input, AstNode** node)
     if(input->token.kind == TokenKind_Exclam)
       unr_expr->op = AstOpKind_LogicNot;
     else if(input->token.kind == TokenKind_Star)
-      unr_expr->op = AstOpKind_PtrDeref;
+      unr_expr->op = AstOpKind_PointerDeref;
     else if(input->token.kind == TokenKind_Ampersand)
       unr_expr->op = AstOpKind_AddressOf;
     else if(input->token.kind == TokenKind_Minus)

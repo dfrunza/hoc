@@ -93,7 +93,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
     else if(left_operand->kind == AstNodeKind_UnrExpr)
     {
       AstUnrExpr* unr_expr = (AstUnrExpr*)left_operand;
-      if(unr_expr->op == AstOpKind_PtrDeref)
+      if(unr_expr->op == AstOpKind_PointerDeref)
         gen_load_rvalue(code, unr_expr->operand);
       else
         assert(0);
@@ -319,11 +319,11 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
       emit_instr(code, Opcode_INT_TO_FLOAT);
     else if(unr_expr->op == AstOpKind_FloatToInt)
       emit_instr(code, Opcode_FLOAT_TO_INT);
-    else if(unr_expr->op == AstOpKind_PtrDeref)
+    else if(unr_expr->op == AstOpKind_PointerDeref)
     {
       Type* type = unr_expr->operand->type;
       assert(type->kind == TypeKind_Pointer);
-      emit_instr_int(code, Opcode_LOAD, compute_type_width(type->ptr.pointee));
+      emit_instr_int(code, Opcode_LOAD, compute_type_width(type->pointer.pointee));
     }
     else
       assert(0);
@@ -333,7 +333,7 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
 local void
 gen_call(List* code, AstCall* call)
 {
-  AstProc* proc = (AstProc*)call->proc_sym->ast;
+  AstProc* proc = call->proc;
   emit_instr_int(code, Opcode_GROW, proc->ret_size);
 
   AstBlock* block = proc->body;
@@ -560,7 +560,7 @@ gen_statement(List* code, AstNode* ast)
     AstCall* call = (AstCall*)ast;
     gen_call(code, call);
 
-    AstProc* proc = (AstProc*)call->proc_sym->ast;
+    AstProc* proc = call->proc;
     if(proc->ret_size > 0)
     {
       assert(compute_type_width(call->type) == proc->ret_size);

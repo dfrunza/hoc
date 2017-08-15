@@ -37,7 +37,7 @@ make_type_printstr(String* str, Type* type)
   }
   else if(type->kind == TypeKind_Pointer)
   {
-    make_type_printstr(str, type->ptr.pointee);
+    make_type_printstr(str, type->pointer.pointee);
     str_append(str, "*");
   }
   else if(type->kind == TypeKind_Array)
@@ -271,11 +271,14 @@ register_call(AstCall* call)
   Symbol* proc_sym = lookup_symbol(id->name, SymbolKind_Proc);
   if(proc_sym)
   {
+    assert(proc_sym->ast->kind == AstNodeKind_Proc);
+    call->proc = (AstProc*)proc_sym->ast;
+
     Symbol* call_sym = register_id(id, SymbolKind_Call);
     call_sym->ast = (AstNode*)call;
-    call->proc_sym = proc_sym;
-    Type* proc_type = proc_sym->ast->type;
-    call->type = proc_type->proc.ret;
+    //call->proc_sym = proc_sym;
+    //Type* proc_type = proc_sym->ast->type;
+    //call->type = proc_type->proc.ret;
   }
   else
     success = compile_error(&call->src_loc, "unknown proc `%s`", id->name);
@@ -406,7 +409,6 @@ do_call_args(AstBlock* module_block, AstBlock* block, AstCall* call)
 {
   bool32 success = true;
 
-  Type* args_type = basic_type_void;
   List* arg_list = &call->args.list;
   ListItem* first_item = arg_list->first;
   if(first_item)
@@ -415,7 +417,6 @@ do_call_args(AstBlock* module_block, AstBlock* block, AstCall* call)
     if(success = do_expression(module_block, block, arg, &arg))
     {
       first_item->elem = arg;
-      args_type = arg->type;
 
       for(ListItem* list_item = first_item->next;
           list_item && success;
@@ -425,12 +426,10 @@ do_call_args(AstBlock* module_block, AstBlock* block, AstCall* call)
         if(success = do_expression(module_block, block, arg, &arg))
         {
           list_item->elem = arg;
-          args_type = new_product_type(args_type, arg->type);
         }
       }
     }
   }
-  call->args.type = args_type;
   return success;
 }
 
@@ -441,10 +440,81 @@ do_call(AstBlock* module_block, AstBlock* block, AstCall* call)
 
   if(success = do_call_args(module_block, block, call) && register_call(call))
   {
-    assert(call->type);
-    AstProc* proc = (AstProc*)call->proc_sym->ast;
+    AstProc* proc = call->proc;
     Type* proc_type = proc->type;
     assert(proc_type->kind == TypeKind_Proc);
+
+    if(call->args.count == proc->args.count)
+    {
+      if(call->args.count >= 1)
+      {
+        ListItem* actual_arg_li = call->args.list.first;
+        ListItem* formal_arg_li = proc->args.list.first;
+        AstNode* actual_arg = (AstNode*)actual_arg_li->elem;
+        AstNode* formal_arg = (AstNode*)formal_arg_li->elem;
+
+        call->args.type = actual_arg->type;
+
+        while(success && actual_arg_li && formal_arg_li)
+        {
+          actual_arg = (AstNode*)actual_arg_li->elem;
+          formal_arg = (AstNode*)formal_arg_li->elem;
+
+          if(type_unif(actual_arg->type, formal_arg->type))
+          {
+            call->args.type = new_product_type(call->args.type, actual_arg->type);
+          }
+          else
+          {
+            if(actual_arg->type->kind == TypeKind_Array
+               && formal_arg->type->kind == TypeKind_Pointer)
+            {
+              if(type_unif(actual_arg->type->array.elem, formal_arg->type->pointer.pointee))
+              {
+                AstUnrExpr* address_of = new_unr_expr(&actual_arg->src_loc);
+                address_of->op = AstOpKind_AddressOf;
+                address_of->type = new_pointer_type(actual_arg->type->array.elem);
+                address_of->operand = actual_arg;
+                actual_arg_li->elem = (AstNode*)address_of;
+
+                call->args.type = new_product_type(call->args.type, address_of->type);
+              }
+              else
+              {
+                success = compile_error(&actual_arg->src_loc,
+                                        "array element `%s` and pointee `%s` types are different",
+                                        get_type_printstr(actual_arg->type->array.elem), get_type_printstr(formal_arg->type->pointer.pointee));
+              }
+            }
+            else
+            {
+              success = compile_error(&actual_arg->src_loc,
+                                      "no implicit converstion of `%s` to `%s`",
+                                      get_type_printstr(actual_arg->type), get_type_printstr(formal_arg->type));
+            }
+          }
+
+          actual_arg_li = actual_arg_li->next;
+          formal_arg_li = formal_arg_li->next;
+        }
+      }
+      else if(call->args.count == 0)
+      {
+        call->args.type = basic_type_void;
+      }
+      else
+        assert(0);
+    }
+    else
+    {
+      success = compile_error(&call->src_loc,
+          "incorrect number of arguments in call `%s %s(%s)`",
+          get_type_printstr(proc_type->proc.ret), call->id->name, get_type_printstr(call->args.type));
+    }
+
+    if(success)
+      call->type = proc_type->proc.ret;
+#if 0
     Type* call_type = new_proc_type(call->args.type, proc_type->proc.ret);
     if(type_unif(proc_type, call_type))
     {
@@ -457,6 +527,7 @@ do_call(AstBlock* module_block, AstBlock* block, AstCall* call)
           get_type_printstr(call_type->proc.ret), call->id->name, get_type_printstr(call_type->proc.args));
       compile_error(&proc->src_loc, "...see proc decl");
     }
+#endif
   }
   return success;
 }
@@ -584,7 +655,7 @@ do_expression(AstBlock* module_block,
           ;/*no-op*/
         else
           success = compile_error(&expr->src_loc,
-              "cannot convert `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
+              "no implicit conversion of `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
       }
       else if(types_are_equal(right_type, basic_type_char))
       {
@@ -592,12 +663,12 @@ do_expression(AstBlock* module_block,
           bin_expr->right_operand->type = basic_type_int;
         else
           success = compile_error(&expr->src_loc,
-              "cannot convert `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
+              "no implicit conversion of `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
       }
       else if(left_type->kind == TypeKind_Pointer)
       {
         if(right_type->kind == TypeKind_Pointer
-           && (types_are_equal(right_type->ptr.pointee, basic_type_void)))
+           && (types_are_equal(right_type->pointer.pointee, basic_type_void)))
         {
           bin_expr->right_operand->type = bin_expr->left_operand->type;
         }
@@ -605,7 +676,7 @@ do_expression(AstBlock* module_block,
         {
           if(bin_expr->op == AstOpKind_Assign)
           {
-            if(type_unif(left_type->ptr.pointee, right_type->array.elem))
+            if(type_unif(left_type->pointer.pointee, right_type->array.elem))
             {
               AstUnrExpr* address_of = new_unr_expr(&bin_expr->src_loc);
               address_of->op = AstOpKind_AddressOf;
@@ -615,11 +686,11 @@ do_expression(AstBlock* module_block,
             }
             else
               success = compile_error(&expr->src_loc,
-                    "no implicit conversion possible, `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                    "no implicit conversion of `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
           }
           else
             success = compile_error(&expr->src_loc,
-                "no implicit conversion possible, `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                "no implicit conversion of `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
         }
         else if(types_are_equal(right_type, basic_type_int))
         {
@@ -629,12 +700,12 @@ do_expression(AstBlock* module_block,
             assert(lit->lit_kind == AstLiteralKind_Int);
             if(lit->int_val != 0)
               success = compile_error(&expr->src_loc,
-                  "no implicit conversion possible, `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                  "no implicit conversion of `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
           }
         }
         else
           success = compile_error(&expr->src_loc,
-                "no implicit conversion possible, `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                "no implicit conversion of `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
       }
       else if(left_type->kind == TypeKind_Array)
       {
@@ -711,11 +782,11 @@ do_expression(AstBlock* module_block,
             success = compile_error(&expr->src_loc,
                                     "bool operand is expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
         }
-        else if(unr_expr->op == AstOpKind_PtrDeref)
+        else if(unr_expr->op == AstOpKind_PointerDeref)
         {
           Type* operand_type = unr_expr->operand->type;
           if(operand_type->kind == TypeKind_Pointer)
-            unr_expr->type = operand_type->ptr.pointee;
+            unr_expr->type = operand_type->pointer.pointee;
           else if(operand_type->kind == TypeKind_Array)
           {
             AstUnrExpr* address_of = new_unr_expr(&unr_expr->src_loc);
@@ -1281,8 +1352,7 @@ do_module(AstModule* module)
         }
         else
         {
-          AstProc* proc = (AstProc*)main_call->proc_sym->ast;
-          success = compile_error(&proc->src_loc, "main() must return a `int`");
+          success = compile_error(&main_call->proc->src_loc, "main() must return a `int`");
         }
       }
     }

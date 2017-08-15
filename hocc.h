@@ -138,7 +138,7 @@ typedef enum
   AstOpKind_Neg,
 
   AstOpKind_Assign,
-  AstOpKind_PtrDeref,
+  AstOpKind_PointerDeref,
   AstOpKind_AddressOf,
   AstOpKind_MemberAccess,
   AstOpKind_PtrMemberAccess,
@@ -281,17 +281,6 @@ typedef struct
 {
   AstNode;
 
-  AstId* id;
-  AstNodeList args;
-
-  Symbol* proc_sym;
-}
-AstCall;
-
-typedef struct
-{
-  AstNode;
-
   char* file_path;
   AstBlock* body;
 
@@ -348,6 +337,18 @@ typedef struct
   int args_size;
 }
 AstProc;
+
+typedef struct
+{
+  AstNode;
+
+  AstId* id;
+  AstNodeList args;
+
+  //Symbol* proc_sym;
+  AstProc* proc;
+}
+AstCall;
 
 typedef struct
 {
@@ -578,7 +579,7 @@ typedef struct Type
     struct {
       Type* pointee;
     }
-    ptr;
+    pointer;
 
     struct {
       Type* args;

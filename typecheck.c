@@ -72,7 +72,7 @@ new_pointer_type(Type* pointee)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = TypeKind_Pointer;
-  type->ptr.pointee = pointee;
+  type->pointer.pointee = pointee;
   return type;
 }
 
@@ -101,7 +101,7 @@ types_are_equal(Type* type_a, Type* type_b)
       are_equal = types_are_equal(type_a->proc.args, type_b->proc.args)
         && types_are_equal(type_a->proc.ret, type_b->proc.ret);
     else if(type_a->kind == TypeKind_Pointer)
-      are_equal = types_are_equal(type_a->ptr.pointee, type_b->ptr.pointee);
+      are_equal = types_are_equal(type_a->pointer.pointee, type_b->pointer.pointee);
     else if(type_a->kind == TypeKind_Product)
       are_equal = types_are_equal(type_a->product.left, type_b->product.right);
     else if(type_a->kind == TypeKind_Array)
@@ -170,6 +170,7 @@ set_union(Type* type_a, Type* type_b)
   else
     type_b->repr_type = type_a;
 }
+
 bool32
 type_unif(Type* type_a, Type* type_b)
 {
@@ -200,7 +201,7 @@ type_unif(Type* type_a, Type* type_b)
         success = type_unif(repr_type_a->product.left, repr_type_b->product.left)
           && type_unif(repr_type_a->product.right, repr_type_b->product.right);
       else if(repr_type_a->kind == TypeKind_Pointer)
-        success = type_unif(repr_type_a->ptr.pointee, repr_type_b->ptr.pointee);
+        success = type_unif(repr_type_a->pointer.pointee, repr_type_b->pointer.pointee);
       else if(repr_type_a->kind == TypeKind_Array)
         success = (repr_type_a->array.size == repr_type_b->array.size)
           && type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
@@ -270,7 +271,7 @@ type_subst(List* subst_list, Type* type)
       subst->product.right = type_subst(subst_list, subst->product.right);
     }
     else if(subst->kind == TypeKind_Pointer)
-      subst->ptr.pointee = type_subst(subst_list, subst->ptr.pointee);
+      subst->pointer.pointee = type_subst(subst_list, subst->pointer.pointee);
     else if(subst->kind == TypeKind_Array)
       subst->array.elem = type_subst(subst_list, subst->array.elem);
     else

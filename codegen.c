@@ -7,7 +7,7 @@ extern Type* basic_type_float;
 extern Type* basic_type_char;
 
 local void gen_load_rvalue(List*, AstNode*);
-local void gen_load_lvalue(List*, AstVarOccur*);
+local void gen_load_lvalue(List*, AstNode*);
 local void gen_statement(List*, AstNode*);
 
 local void
@@ -89,7 +89,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
     gen_load_rvalue(code, right_operand);
 
     if(left_operand->kind == AstNodeKind_VarOccur)
-      gen_load_lvalue(code, (AstVarOccur*)left_operand);
+      gen_load_lvalue(code, left_operand);
     else if(left_operand->kind == AstNodeKind_UnrExpr)
     {
       AstUnrExpr* unr_expr = (AstUnrExpr*)left_operand;
@@ -291,8 +291,9 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
 {
   if(unr_expr->op == AstOpKind_AddressOf)
   {
-    assert(unr_expr->operand->kind == AstNodeKind_VarOccur);
-    gen_load_lvalue(code, (AstVarOccur*)unr_expr->operand);
+    //assert(unr_expr->operand->kind == AstNodeKind_VarOccur);
+    //gen_load_lvalue(code, (AstVarOccur*)unr_expr->operand);
+    gen_load_lvalue(code, unr_expr->operand);
   }
   else
   {
@@ -349,27 +350,37 @@ gen_call(List* code, AstCall* call)
 }
 
 local void
-gen_load_lvalue(List* code, AstVarOccur* var_occur)
+gen_load_lvalue(List* code, AstNode* ast)
 {
-  DataArea* data = var_occur->data;
-  AccessLink* link = var_occur->link;
-
-  if(var_occur->decl_block_offset >= 0)
+  if(ast->kind == AstNodeKind_VarOccur)
   {
-    emit_instr_reg(code, Opcode_PUSH_REG, RegName_FP);
-    if(link) 
+    AstVarOccur* var_occur = (AstVarOccur*)ast;
+    DataArea* data = var_occur->data;
+    AccessLink* link = var_occur->link;
+
+    if(var_occur->decl_block_offset >= 0)
     {
-      // this is a non-local
-      assert(link->data.loc < 0); // relative to FP
-      emit_instr_int(code, Opcode_PUSH_INT, link->data.loc);
+      emit_instr_reg(code, Opcode_PUSH_REG, RegName_FP);
+      if(link) 
+      {
+        // this is a non-local
+        assert(link->data.loc < 0); // relative to FP
+        emit_instr_int(code, Opcode_PUSH_INT, link->data.loc);
+        emit_instr(code, Opcode_ADD_INT);
+        emit_instr_int(code, Opcode_LOAD, 4); // access link is on the stack now
+      }
+      emit_instr_int(code, Opcode_PUSH_INT, data->loc);
       emit_instr(code, Opcode_ADD_INT);
-      emit_instr_int(code, Opcode_LOAD, 4); // access link is on the stack now
     }
-    emit_instr_int(code, Opcode_PUSH_INT, data->loc);
-    emit_instr(code, Opcode_ADD_INT);
+    else
+      emit_instr_int(code, Opcode_PUSH_INT, data->loc);
+  }
+  else if(ast->kind == AstNodeKind_Pointer)
+  {
+    fail(0);
   }
   else
-    emit_instr_int(code, Opcode_PUSH_INT, data->loc);
+    assert(0);
 }
 
 local void
@@ -378,7 +389,7 @@ gen_load_rvalue(List* code, AstNode* ast)
   if(ast->kind == AstNodeKind_VarOccur)
   {
     AstVarOccur* var_occur = (AstVarOccur*)ast;
-    gen_load_lvalue(code, var_occur);
+    gen_load_lvalue(code, (AstNode*)var_occur);
     emit_instr_int(code, Opcode_LOAD, compute_type_width(var_occur->type));
   }
   else if(ast->kind == AstNodeKind_Call)

@@ -1,3 +1,7 @@
+TODO
+----
+- Reserve decl_block_offset=0 for module-leve (global) block.
+
 DYM
 NEWK
 Suggestions to improve C:
@@ -222,3 +226,29 @@ proc void foo(MyLocalType* e)
   foo(&a);
 }
 
+
+---------------------------------
+
+struct Shape
+{
+  V2 pos;
+}
+
+struct Circle
+{
+  Shape;
+  float radius;
+}
+
+struct Rectangle
+{
+  Shape;
+  int width, height;
+}
+
+T clone(T* t) : T = (Circle, Rectangle)
+{
+  T* result = new(T);
+  *result = *t;
+  return result;
+}

@@ -81,7 +81,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
   AstNode* left_operand = bin_expr->left_operand;
   AstNode* right_operand = bin_expr->right_operand;
 
-  //not holding for pointer arithmetic
+  // assertion not holding for pointer arithmetic
   //assert(types_are_equal(left_operand->type, right_operand->type));
 
   if(bin_expr->op == AstOpKind_Assign)
@@ -103,9 +103,6 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
   }
   else
   {
-    //gen_load_rvalue(code, left_operand);
-    //gen_load_rvalue(code, right_operand);
-
     switch(bin_expr->op)
     {
       case AstOpKind_Add:

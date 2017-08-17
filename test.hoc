@@ -13,9 +13,9 @@ proc void foo([4]char buf)
 {
   *(buf+0) = 'a';
   *(buf+1) = 'b';
-  *(buf+2) = '\0';
+  *(buf+2) = 'c';
+  *(buf+3) = 'd';
 }
-
 
 proc int main()
 {
@@ -23,12 +23,12 @@ proc int main()
   var [4]char str;
   *(str+0) = 'A';
   *(str+1) = 'B';
-  *(str+2) = '\0';
+  *(str+2) = 'C';
+  *(str+3) = 'D';
   */
   var char* str = "ABCD";
   foo(str);
 
   return 0;
 }
-
 

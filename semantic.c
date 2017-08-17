@@ -460,22 +460,29 @@ type_convert_call_arg(AstVarDecl* formal_arg,
   }
   else if(type_from->kind == TypeKind_Pointer && type_to->kind == TypeKind_Array)
   {
+#if 0
+    AstUnrExpr* address_of = new_unr_expr(&actual_arg->src_loc);
+    address_of->op = AstOpKind_AddressOf;
+    address_of->type = new_array_type(type_to->array.size, type_from->pointer.pointee);
+    address_of->operand = (AstNode*)actual_arg;
+    *node_out = (AstNode*)address_of;
+#else
+    /*
     AstVarDecl* var_decl = (AstVarDecl*)clone_ast_node((AstNode*)formal_arg);
     var_decl->type = new_array_type(type_to->array.size, type_from->pointer.pointee);
-
-    AstVarOccur* var_occur = (AstVarOccur*)clone_ast_node((AstNode*)actual_arg);
-    var_occur->var_decl = var_decl;
-    var_occur->type = var_decl->type;
-    var_occur->data = &var_decl->data;
-    *node_out = (AstNode*)var_occur;
-#if 0
-    AstVarOccur* var_occur = new_var_occur(&actual_arg->src_loc);
-    mem_zero_struct(var_occur, AstVarOccur);
-    var_occur->var_decl = var_decl;
-    var_occur->type = var_decl->type;
-    *node_out = (AstNode*)var_occur;
+    */
+    if(actual_arg->kind == AstNodeKind_VarOccur)
+    {
+      AstVarOccur* var_occur = (AstVarOccur*)clone_ast_node((AstNode*)actual_arg);
+      var_occur->type = new_array_type(type_to->array.size, type_from->pointer.pointee);
+      *node_out = (AstNode*)var_occur;
+    }
+    else
+      fail("not idea what to do here");
 #endif
   }
+  else
+    fail("no idea what to do here");
   return success;
 }
 
@@ -883,14 +890,12 @@ do_expression(AstBlock* module_block,
 #endif
 
       AstVarDecl* var_decl = new_var_decl(&expr->src_loc);
-      mem_zero_struct(var_decl, AstVarDecl);
       var_decl->type = str->type;
       var_decl->init_expr = (AstNode*)str;
       var_decl->decl_block = module_block;
       list_append(arena, &module_block->local_decls, var_decl);
 
       AstVarOccur* var_occur = new_var_occur(&expr->src_loc);
-      mem_zero_struct(var_occur, AstVarOccur);
       var_occur->var_decl = var_decl;
       var_occur->type = var_decl->type;
 

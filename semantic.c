@@ -447,7 +447,6 @@ type_convert_call_arg(AstVarDecl* formal_arg,
     {
       AstUnrExpr* address_of = new_unr_expr(&actual_arg->src_loc);
       address_of->op = AstOpKind_AddressOf;
-      //address_of->type = new_pointer_type(type_from->array.elem);
       address_of->type = new_pointer_type(type_from); // pointer(array)
       address_of->operand = (AstNode*)actual_arg;
       *node_out = (AstNode*)address_of;
@@ -461,27 +460,18 @@ type_convert_call_arg(AstVarDecl* formal_arg,
   }
   else if(type_from->kind == TypeKind_Pointer && type_to->kind == TypeKind_Array)
   {
-#if 1
     AstUnrExpr* deref_ptr = new_unr_expr(&actual_arg->src_loc);
     deref_ptr->op = AstOpKind_PointerDeref;
     deref_ptr->type = new_array_type(type_to->array.size, type_from->pointer.pointee);
     deref_ptr->operand = (AstNode*)actual_arg;
     *node_out = (AstNode*)deref_ptr;
-#else
-    AstVarDecl* var_decl = (AstVarDecl*)clone_ast_node((AstNode*)formal_arg);
-    var_decl->type = new_array_type(type_to->array.size, type_from->pointer.pointee);
-    if(actual_arg->kind == AstNodeKind_VarOccur)
-    {
-      AstVarOccur* var_occur = (AstVarOccur*)clone_ast_node((AstNode*)actual_arg);
-      var_occur->type = new_array_type(type_to->array.size, type_from->pointer.pointee);
-      *node_out = (AstNode*)var_occur;
-    }
-    else
-      fail("not idea what to do here");
-#endif
+  }
+  else if(type_from->kind == TypeKind_Array && type_to->kind == TypeKind_Array)
+  {
+    actual_arg->type = formal_arg->type;
   }
   else
-    fail("no idea what to do here");
+    fail("you have found a bug!");
   return success;
 }
 
@@ -551,20 +541,6 @@ do_call(AstBlock* module_block, AstBlock* block, AstCall* call)
 
     if(success)
       call->type = proc_type->proc.ret;
-#if 0
-    Type* call_type = new_proc_type(call->args.type, proc_type->proc.ret);
-    if(type_unif(proc_type, call_type))
-    {
-      call->type = proc_type->proc.ret;
-    }
-    else
-    {
-      success = compile_error(&call->src_loc,
-          "call `%s %s(%s)` does not match proc type...",
-          get_type_printstr(call_type->proc.ret), call->id->name, get_type_printstr(call_type->proc.args));
-      compile_error(&proc->src_loc, "...see proc decl");
-    }
-#endif
   }
   return success;
 }
@@ -682,7 +658,6 @@ do_expression(AstBlock* module_block,
           {
             AstUnrExpr* address_of = new_unr_expr(&bin_expr->src_loc);
             address_of->op = AstOpKind_AddressOf;
-            //address_of->type = new_pointer_type(left_type->array.elem);
             address_of->type = new_pointer_type(left_type); // pointer(array)
             address_of->operand = bin_expr->left_operand;
             bin_expr->left_operand = (AstNode*)address_of;
@@ -718,7 +693,6 @@ do_expression(AstBlock* module_block,
             {
               AstUnrExpr* address_of = new_unr_expr(&bin_expr->src_loc);
               address_of->op = AstOpKind_AddressOf;
-              //address_of->type = new_pointer_type(right_type->array.elem);
               address_of->type = new_pointer_type(right_type); // pointer(array)
               address_of->operand = bin_expr->right_operand;
               bin_expr->right_operand = (AstNode*)address_of;
@@ -791,7 +765,6 @@ do_expression(AstBlock* module_block,
           {
             Type* operand_type = unr_expr->operand->type;
             if(operand_type->kind == TypeKind_Array)
-              //unr_expr->type = new_pointer_type(operand_type->array.elem); // ptr to element of array
               unr_expr->type = new_pointer_type(operand_type); // pointer(array)
             else
               unr_expr->type = new_pointer_type(operand_type);
@@ -825,25 +798,36 @@ do_expression(AstBlock* module_block,
         else if(unr_expr->op == AstOpKind_PointerDeref)
         {
           Type* operand_type = unr_expr->operand->type;
-          if(operand_type->kind == TypeKind_Pointer)
+          switch(operand_type->kind)
           {
-            operand_type = operand_type->pointer.pointee;
-            unr_expr->type = operand_type;
-          }
+            case TypeKind_Pointer:
+            case TypeKind_Array:
+            {
+              if(operand_type->kind == TypeKind_Pointer)
+              {
+                operand_type = operand_type->pointer.pointee;
+                unr_expr->type = operand_type;
+              }
 
-          if(operand_type->kind == TypeKind_Array)
-          {
-            AstUnrExpr* address_of = new_unr_expr(&unr_expr->src_loc);
-            address_of->op = AstOpKind_AddressOf;
-            address_of->type = new_pointer_type(operand_type->array.elem);
+              if(operand_type->kind == TypeKind_Array)
+              {
+                AstUnrExpr* address_of = new_unr_expr(&unr_expr->src_loc);
+                address_of->op = AstOpKind_AddressOf;
+                address_of->type = new_pointer_type(operand_type->array.elem);
 
-            address_of->operand = unr_expr->operand;
-            unr_expr->operand = (AstNode*)address_of;
-            unr_expr->type = operand_type->array.elem;
+                address_of->operand = unr_expr->operand;
+                unr_expr->operand = (AstNode*)address_of;
+                unr_expr->type = operand_type->array.elem;
+              }
+            } break;
+
+            default:
+            {
+              success = compile_error(&expr->src_loc,
+                                      "pointer or array type expected, actual `%s`",
+                                      get_type_printstr(unr_expr->operand->type));
+            }
           }
-          else
-            success = compile_error(&expr->src_loc,
-                "pointer or array type expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
         }
         else
           fail("not implemented");
@@ -982,7 +966,6 @@ do_expression(AstBlock* module_block,
     {
       Type* expr_type = new_ast->type_expr->type;
       if(expr_type->kind == TypeKind_Array)
-        //new_ast->type = new_pointer_type(expr_type->array.elem);
         new_ast->type = new_pointer_type(expr_type); // pointer(array)
       else
         new_ast->type = new_pointer_type(new_ast->type_expr->type);

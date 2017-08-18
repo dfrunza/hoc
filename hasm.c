@@ -15,7 +15,7 @@ typedef struct
 
   int max_lines;
   int line_count;
-  InstructionLine lines[1024];
+  InstructionLine lines[4024];
 
   int max_labels;
   int labesl_count;

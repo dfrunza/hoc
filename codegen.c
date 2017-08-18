@@ -291,9 +291,11 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
 {
   if(unr_expr->op == AstOpKind_AddressOf)
   {
-    //assert(unr_expr->operand->kind == AstNodeKind_VarOccur);
-    //gen_load_lvalue(code, (AstVarOccur*)unr_expr->operand);
-    gen_load_lvalue(code, unr_expr->operand);
+    AstNode* operand = unr_expr->operand;
+    if(operand->kind == AstNodeKind_VarOccur)
+      gen_load_lvalue(code, operand);
+    else
+      gen_load_rvalue(code, operand);
   }
   else
   {
@@ -319,9 +321,8 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
       emit_instr(code, Opcode_FLOAT_TO_INT);
     else if(unr_expr->op == AstOpKind_PointerDeref)
     {
-      Type* type = unr_expr->operand->type;
-      assert(type->kind == TypeKind_Pointer);
-      emit_instr_int(code, Opcode_LOAD, compute_type_width(type->pointer.pointee));
+      assert(unr_expr->operand->type->kind == TypeKind_Pointer);
+      emit_instr_int(code, Opcode_LOAD, compute_type_width(unr_expr->type));
     }
     else
       assert(0);
@@ -374,10 +375,6 @@ gen_load_lvalue(List* code, AstNode* ast)
     }
     else
       emit_instr_int(code, Opcode_PUSH_INT, data->loc);
-  }
-  else if(ast->kind == AstNodeKind_Pointer)
-  {
-    fail(0);
   }
   else
     assert(0);

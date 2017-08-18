@@ -1,7 +1,7 @@
-/*
 include "hlib\\str.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\fizzbuzz.hoc";
+/*
 include "hlib\\abs.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\power.hoc";
@@ -14,7 +14,8 @@ proc void foo([4]char buf)
   *(buf+0) = 'a';
   *(buf+1) = 'b';
   *(buf+2) = 'c';
-  *(buf+3) = 'd';
+  *(buf+3) = '\0';
+  print_str(buf);
 }
 
 proc int main()
@@ -24,11 +25,12 @@ proc int main()
   *(str+0) = 'A';
   *(str+1) = 'B';
   *(str+2) = 'C';
-  *(str+3) = 'D';
+  *(str+3) = '\0';
   */
-  var char* str = "ABCD";
-  foo(str);
-
+  print_str("Hi there!\n");
+  fibo(40);
+  fizzbuzz(200);
+  print_str("Bollocks!\n");
   return 0;
 }
 

@@ -41,7 +41,7 @@ ExecResult;
 local MemoryArena* arena;
 
 local bool32
-check_sp_bounds(HocMachine* machine, int sp)
+check_stack_bounds(HocMachine* machine, int sp)
 {
   return sp > 0 && sp < machine->hp;
 }
@@ -53,7 +53,7 @@ check_memory_bounds(HocMachine* machine, int location)
 }
 
 local bool32
-check_hp_bounds(HocMachine* machine, int hp)
+check_heap_bounds(HocMachine* machine, int hp)
 {
   return hp > machine->sp && hp < machine->memory_size;
 }
@@ -98,7 +98,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(instr->param_type == ParamType_Int32)
       {
         int32 top_sp = location_at(machine->sp, int8, instr->param.int_val);
-        if(check_sp_bounds(machine, top_sp))
+        if(check_stack_bounds(machine, top_sp))
         {
           clear_memory(machine, machine->sp, instr->param.int_val);
 
@@ -118,7 +118,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
       {
         int32 top_hp = location_at(machine->hp, int8, -instr->param.int_val);
         int32 top_sp = location_at(machine->sp, int32, 1);
-        if((top_hp < machine->hp) && check_hp_bounds(machine, top_hp) && check_sp_bounds(machine, top_sp))
+        if((top_hp < machine->hp) && check_heap_bounds(machine, top_hp) && check_stack_bounds(machine, top_sp))
         {
           clear_memory(machine, top_hp, instr->param.int_val);
 
@@ -138,7 +138,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_PUSH_CHAR:
     {
       int32 top_sp = location_at(machine->sp, int8, 1);
-      if(check_sp_bounds(machine, top_sp))
+      if(check_stack_bounds(machine, top_sp))
       {
         if(instr->param_type == ParamType_Int32)
         {
@@ -160,7 +160,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_PUSH_INT:
     {
       int32 top_sp = location_at(machine->sp, int32, 1);
-      if(check_sp_bounds(machine, top_sp))
+      if(check_stack_bounds(machine, top_sp))
       {
         if(instr->param_type == ParamType_Int32)
           memory_at(machine->sp, int32, 0) = instr->param.int_val;
@@ -177,7 +177,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_PUSH_FLOAT:
     {
       int32 top_sp = location_at(machine->sp, float32, 1);
-      if(check_sp_bounds(machine, top_sp))
+      if(check_stack_bounds(machine, top_sp))
       {
         if(instr->param_type == ParamType_Float32)
           memory_at(machine->sp, float32, 0) = instr->param.float_val;
@@ -194,7 +194,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_PUSH_REG:
     {
       int32 top_sp = location_at(machine->sp, int32, 1);
-      if(check_sp_bounds(machine, top_sp))
+      if(check_stack_bounds(machine, top_sp))
       {
         if(instr->param_type == ParamType_Reg)
         {
@@ -221,7 +221,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_POP_REG:
     {
       int32 arg_sp = location_at(machine->sp, int32, -1);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         if(instr->param_type == ParamType_Reg)
         {
@@ -264,7 +264,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_DIV_FLOAT:
     {
       int32 arg_sp = location_at(machine->sp, int32, -2);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         switch(opcode)
         {
@@ -349,7 +349,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_OR:
     {
       int32 arg_sp = location_at(machine->sp, int32, -2);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         int32 arg1 = memory_at(arg_sp, int32, 0);
         int32 arg2 = memory_at(arg_sp, int32, 1);
@@ -373,7 +373,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_NOT:
     {
       int32 arg_sp = location_at(machine->sp, int32, -1);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         int32 arg = memory_at(arg_sp, int32, 0);
         memory_at(arg_sp, int32, 0) = (bool32)!arg;
@@ -387,7 +387,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_INT_TO_FLOAT:
     {
       int32 arg_sp = location_at(machine->sp, int32, -1);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         if(opcode == Opcode_FLOAT_TO_INT)
         {
@@ -409,7 +409,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_NEG_FLOAT:
     {
       int32 arg_sp = location_at(machine->sp, int32, -1);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         if(opcode == Opcode_NEG_INT)
         {
@@ -434,7 +434,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_DECR_INT:
     {
       int32 arg_sp = location_at(machine->sp, int32, -1);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         int32 arg = memory_at(arg_sp, int32, 0);
         int32 result = arg;
@@ -451,48 +451,25 @@ execute_instr(HocMachine* machine, Instruction* instr)
     {
       if(instr->param_type == ParamType_Int32)
       {
-        if(instr->param.int_val == 4)
+        int32 arg_sp = location_at(machine->sp, int32, -1);
+        if(check_stack_bounds(machine, arg_sp))
         {
-          int32 arg_sp = location_at(machine->sp, int32, -1);
-          if(check_sp_bounds(machine, arg_sp))
+          int32 location = memory_at(arg_sp, int32, 0);
+          if(check_memory_bounds(machine, location))
           {
-            int32 location = memory_at(arg_sp, int32, 0);
-            if(check_memory_bounds(machine, location))
+            for(int i = 0; i < instr->param.int_val; i++)
             {
-              int32 value = memory_at(location, int32, 0);
-              memory_at(arg_sp, int32, 0) = value;
-
-              //machine->sp = arg_sp;
-              machine->ip++;
+              int8 value = memory_at(location, int8, i);
+              memory_at(arg_sp, int8, i) = value;
+              arg_sp++;
             }
-            else
-              return Result_InvalidMemoryAccess;
+
+            machine->sp = arg_sp;
+            machine->ip++;
           }
           else
             return Result_InvalidMemoryAccess;
         }
-        else if(instr->param.int_val == 1)
-        {
-          int32 arg_sp = location_at(machine->sp, int32, -1);
-          if(check_sp_bounds(machine, arg_sp))
-          {
-            int32 location = memory_at(arg_sp, int32, 0);
-            if(check_memory_bounds(machine, location))
-            {
-              int8 value = memory_at(location, int8, 0);
-              memory_at(arg_sp, int8, 0) = value;
-
-              machine->sp = location_at(machine->sp, int8, -3);
-              machine->ip++;
-            }
-            else
-              return Result_InvalidMemoryAccess;
-          }
-          else
-            return Result_InvalidMemoryAccess;
-        }
-        else
-          return Result_InvalidInstructionFormat;
       }
       else
         return Result_InvalidInstructionFormat;
@@ -502,46 +479,25 @@ execute_instr(HocMachine* machine, Instruction* instr)
     {
       if(instr->param_type == ParamType_Int32)
       {
-        if(instr->param.int_val == 4)
+        int32 arg_sp = location_at(machine->sp, int32, -1);
+        if(check_stack_bounds(machine, arg_sp))
         {
-          if(check_sp_bounds(machine, location_at(machine->sp, int32, -2)))
+          int32 dest_loc = memory_at(arg_sp, int32, 0);
+          int32 src_loc = location_at(arg_sp, int8, -instr->param.int_val);
+          if(check_memory_bounds(machine, dest_loc) && check_memory_bounds(machine, src_loc))
           {
-            int32 location = memory_at(machine->sp, int32, -1);
-            if(check_memory_bounds(machine, location))
+            for(int i = 0; i < instr->param.int_val; i++)
             {
-              int32 value = memory_at(machine->sp, int32, -2);
-              memory_at(location, int32, 0) = value;
-
-              machine->sp = location_at(machine->sp, int32, -1);
-              machine->ip++;
+              int8 value = memory_at(src_loc, int8, i);
+              memory_at(dest_loc, int8, i) = value;
             }
-            else
-              return Result_InvalidMemoryAccess;
+
+            machine->sp = arg_sp;
+            machine->ip++;
           }
           else
             return Result_InvalidMemoryAccess;
         }
-        else if(instr->param.int_val == 1)
-        {
-          if(check_sp_bounds(machine, location_at(machine->sp, int8, -5)))
-          {
-            int32 location = memory_at(machine->sp, int32, -1);
-            if(check_memory_bounds(machine, location))
-            {
-              int8 value = memory_at(machine->sp, int8, -5);
-              memory_at(location, int8, 0) = value;
-
-              machine->sp = location_at(machine->sp, int32, -1);
-              machine->ip++;
-            }
-            else
-              return Result_InvalidMemoryAccess;
-          }
-          else
-            return Result_InvalidMemoryAccess;
-        }
-        else
-          return Result_InvalidInstructionFormat;
       }
       else
         return Result_InvalidInstructionFormat;
@@ -549,10 +505,10 @@ execute_instr(HocMachine* machine, Instruction* instr)
 
     case Opcode_DUP:
     {
-      if(check_sp_bounds(machine, location_at(machine->sp, int32, -1)))
+      if(check_stack_bounds(machine, location_at(machine->sp, int32, -1)))
       {
         int32 value = memory_at(machine->sp, int32, -1);
-        if(check_sp_bounds(machine, machine->sp))
+        if(check_stack_bounds(machine, machine->sp))
         {
           memory_at(machine->sp, int32, 0) = value;
           machine->sp = location_at(machine->sp, int32, 1);
@@ -578,7 +534,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(instr->param_type == ParamType_Int32)
       {
         int32 top_sp = location_at(machine->sp, int32, 3);
-        if(check_sp_bounds(machine, top_sp))
+        if(check_stack_bounds(machine, top_sp))
         {
           memory_at(machine->sp, int32, 0) = machine->ip + 1;
           memory_at(machine->sp, int32, 1) = machine->sp;
@@ -599,7 +555,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_RETURN:
     {
       int32 arg_sp = location_at(machine->fp, int32, -3);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         machine->ip = memory_at(arg_sp, int32, 0);
         machine->sp = memory_at(arg_sp, int32, 1);
@@ -612,7 +568,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_ENTER:
     {
       int32 top_sp = location_at(machine->sp, int32, 1);
-      if(check_sp_bounds(machine, top_sp))
+      if(check_stack_bounds(machine, top_sp))
       {
         memory_at(machine->sp, int32, 0) = machine->fp;
         machine->fp = top_sp;
@@ -626,7 +582,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_LEAVE:
     {
       int32 arg_sp = location_at(machine->fp, int32, -1);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         machine->fp = memory_at(arg_sp, int32, 0);
         machine->sp = arg_sp;
@@ -642,7 +598,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(instr->param_type == ParamType_Int32)
       {
         int32 arg_sp = location_at(machine->sp, int32, -1);
-        if(check_sp_bounds(machine, arg_sp))
+        if(check_stack_bounds(machine, arg_sp))
         {
           int32 jump_address = instr->param.int_val;
           int32 check = memory_at(arg_sp, int32, 0);
@@ -663,7 +619,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_CMPNEQ_CHAR:
     {
       int32 arg_sp = location_at(machine->sp, int8, -2);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         int8 arg1 = memory_at(arg_sp, int8, 0);
         int8 arg2 = memory_at(arg_sp, int8, 1);
@@ -682,7 +638,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_CMPNEQ_INT:
     {
       int32 arg_sp = location_at(machine->sp, int32, -2);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         int32 arg1 = memory_at(arg_sp, int32, 0);
         int32 arg2 = memory_at(arg_sp, int32, 1);
@@ -701,7 +657,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_CMPGRT_CHAR:
     {
       int32 arg_sp = location_at(machine->sp, int8, -2);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         int8 arg1 = memory_at(arg_sp, int8, 0);
         int8 arg2 = memory_at(arg_sp, int8, 1);
@@ -720,7 +676,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_CMPGRT_INT:
     {
       int32 arg_sp = location_at(machine->sp, int32, -2);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         int32 arg1 = memory_at(arg_sp, int32, 0);
         int32 arg2 = memory_at(arg_sp, int32, 1);
@@ -738,7 +694,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
     case Opcode_PUTC:
     {
       int32 arg_sp = location_at(machine->sp, int8, -1);
-      if(check_sp_bounds(machine, arg_sp))
+      if(check_stack_bounds(machine, arg_sp))
       {
         int8 arg = memory_at(arg_sp, int8, 0);
         putc(arg, stdout);

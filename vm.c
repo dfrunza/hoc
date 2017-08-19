@@ -461,10 +461,9 @@ execute_instr(HocMachine* machine, Instruction* instr)
             {
               int8 value = memory_at(location, int8, i);
               memory_at(arg_sp, int8, i) = value;
-              arg_sp++;
             }
 
-            machine->sp = arg_sp;
+            machine->sp = arg_sp + instr->param.int_val;
             machine->ip++;
           }
           else

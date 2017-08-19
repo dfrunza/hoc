@@ -1,5 +1,5 @@
-/*
 include "hlib\\str.hoc";
+/*
 include "hlib\\fibo.hoc";
 include "hlib\\fizzbuzz.hoc";
 include "hlib\\abs.hoc";
@@ -9,19 +9,26 @@ include "hlib\\minmax.hoc";
 include "hlib\\gcd.hoc";
 */
 
-proc void foo([2]char buf)
+proc void foo([3]char buf)
 {
   *(buf+0) = 'a';
   *(buf+1) = 'b';
+  print_str(buf);
 }
 
 proc int main()
 {
-  var char* str = "AB";
+  var char* str = new([4]char);
+  *(str+0) = 'A';
+  *(str+1) = 'B';
+  *(str+2) = '\0';
+  print_str(str);
   foo(str);
+  print_str(str);
   /*
   print_str("Hi there!\n");
   fibo(40);
+  print_str("-----------\n");
   fizzbuzz(200);
   */
   return 0;

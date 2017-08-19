@@ -76,7 +76,6 @@ clear_memory(HocMachine* machine, int base, int size)
       machine->memory[base] = 0xcd;
       base += increment;
     }
-    machine->memory[base] = 0xcd;
   }
 }
 

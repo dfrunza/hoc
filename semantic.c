@@ -966,7 +966,7 @@ do_expression(AstBlock* module_block,
     {
       Type* expr_type = new_ast->type_expr->type;
       if(expr_type->kind == TypeKind_Array)
-        new_ast->type = new_pointer_type(expr_type); // pointer(array)
+        new_ast->type = new_pointer_type(expr_type->array.elem);
       else
         new_ast->type = new_pointer_type(new_ast->type_expr->type);
     }

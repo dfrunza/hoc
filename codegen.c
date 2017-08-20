@@ -99,7 +99,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
         assert(0);
     }
 
-    emit_instr_int(code, Opcode_STORE, compute_type_width(right_operand->type));
+    emit_instr_int(code, Opcode_STORE, compute_type_width(left_operand->type));
   }
   else
   {
@@ -408,7 +408,11 @@ gen_load_rvalue(List* code, AstNode* ast)
   else if(ast->kind == AstNodeKind_UnrExpr)
     gen_unr_expr(code, (AstUnrExpr*)ast);
   else if(ast->kind == AstNodeKind_New)
-    emit_instr_int(code, Opcode_NEW, ((AstNew*)ast)->storage_size);
+  {
+    AstNew* new_ast = (AstNew*)ast;
+    gen_load_rvalue(code, (AstNode*)new_ast->size_expr);
+    emit_instr(code, Opcode_NEW);
+  }
   else
     assert(0);
 }
@@ -818,8 +822,8 @@ print_code(VmProgram* vm_program)
 
       case Opcode_NEW:
       {
-        assert(instr->param_type == ParamType_Int32);
-        print_instruction(vm_program, "new %d", instr->param.int_val);
+        assert(instr->param_type == ParamType__Null);
+        print_instruction(vm_program, "new");
       } break;
 
       case Opcode_CALL:

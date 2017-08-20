@@ -9,22 +9,53 @@ include "hlib\\minmax.hoc";
 include "hlib\\gcd.hoc";
 */
 
-proc void foo([3]char buf)
+/*
+proc void print_numbers(int* numbers, int len)
 {
-  *(buf+0) = 'a';
-  *(buf+1) = 'b';
-  print_str(buf);
+  var int i = 0;
+  while(i < len)
+  {
+    print_int(i);
+    print_str("=");
+    print_int(*(numbers+i));
+    print_str("\n");
+
+    i = i+1;
+  }
+}
+
+proc int* make_numbers(int how_many)
+{
+  var int i = 0;
+  var int constant = 17;
+  var int* numbers = new(int, how_many);
+
+  while(i < how_many)
+  {
+    *(numbers+i) = constant*i;
+
+    i = i+1;
+  }
+  return numbers;
+}
+*/
+
+proc [4]char make_array()
+{
+  return "ABC";
 }
 
 proc int main()
 {
-  var char* str = new([4]char);
-  *(str+0) = 'A';
-  *(str+1) = 'B';
-  *(str+2) = '\0';
-  print_str(str);
-  foo(str);
-  print_str(str);
+  var [4]char a = make_array();
+  print_str(a);
+
+  /*
+  var int count = 10;
+  var int* numbers = make_numbers(count);
+  print_numbers(numbers, count);
+  */
+
   /*
   print_str("Hi there!\n");
   fibo(40);

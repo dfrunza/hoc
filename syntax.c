@@ -114,6 +114,7 @@ new_node_list(SourceLocation* src_loc)
   AstNodeList* node = mem_push_struct(arena, AstNodeList);
   node->kind = AstNodeKind_NodeList;
   list_init(&node->list);
+  node->src_loc = *src_loc;
   return node;
 }
 
@@ -122,9 +123,11 @@ new_call(SourceLocation* src_loc)
 {
   AstCall* node = mem_push_struct(arena, AstCall);
   node->kind = AstNodeKind_Call;
+  node->src_loc = *src_loc;
+
   node->args.kind = AstNodeKind_NodeList;
   list_init(&node->args.list);
-  node->src_loc = *src_loc;
+  node->args.src_loc = *src_loc;
   return node;
 }
 
@@ -142,9 +145,11 @@ new_proc(SourceLocation* src_loc)
 {
   AstProc* node = mem_push_struct(arena, AstProc);
   node->kind = AstNodeKind_Proc;
+  node->src_loc = *src_loc;
+
   node->args.kind = AstNodeKind_NodeList;
   list_init(&node->args.list);
-  node->src_loc = *src_loc;
+  node->args.src_loc = *src_loc;
   return node;
 }
 
@@ -173,6 +178,15 @@ new_literal(SourceLocation* src_loc)
   node->kind = AstNodeKind_Literal;
   node->src_loc = *src_loc;
   return node;
+}
+
+AstLiteral*
+new_int_literal(SourceLocation* src_loc, int val)
+{
+  AstLiteral* lit = new_literal(src_loc);
+  lit->lit_kind = AstLiteralKind_Int;
+  lit->int_val = val;
+  return lit;
 }
 
 AstVarDecl*
@@ -467,6 +481,8 @@ get_ast_kind_printstr(AstNodeKind kind)
     result = "NodeList";
   else if(kind == AstNodeKind_EmptyStmt)
     result = "EmptyStmt";
+  else if(kind == AstNodeKind_Putc)
+    result = "Putc";
 
   return result;
 }
@@ -956,6 +972,29 @@ do_new_operator(TokenStream* input, AstNode** node)
 
       if(success = get_next_token(input) && do_type_expr(input, &new_ast->type_expr))
       {
+#if 1
+        if(input->token.kind == TokenKind_Comma)
+        {
+          if(success = get_next_token(input) && do_expression(input, &new_ast->count_expr))
+          {
+            if(input->token.kind == TokenKind_CloseParens)
+            {
+              if(new_ast->count_expr)
+                success = get_next_token(input);
+              else
+              {
+                putback_token(input);
+                success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
+              }
+            }
+            else
+              success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+          }
+        }
+        else
+          success = compile_error(&input->src_loc,
+                                  "expected `,`, actual `%s`", get_token_printstr(&input->token));
+#else
         if(input->token.kind == TokenKind_CloseParens)
         {
           if(new_ast->type_expr)
@@ -968,6 +1007,7 @@ do_new_operator(TokenStream* input, AstNode** node)
         }
         else
           success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+#endif
       }
     }
     else
@@ -1920,7 +1960,7 @@ DEBUG_print_line(String* str, int indent_level, char* message, ...)
 {
   for(int i = 0; i < indent_level; i++)
   {
-    str_append(str, " ");
+    str_append(str, "  ");
   }
 
   va_list varargs;
@@ -1961,7 +2001,12 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       DEBUG_print_line(str, indent_level, tag);
       ++indent_level;
     }
-    DEBUG_print_line(str, indent_level, get_ast_kind_printstr(node->kind));
+#if 0
+    DEBUG_print_line(str, indent_level, "%s src_line=\"%s:%d\"",
+                     get_ast_kind_printstr(node->kind), node->src_loc.file_path, node->src_loc.line_nr);
+#else
+    DEBUG_print_line(str, indent_level, "%s", get_ast_kind_printstr(node->kind));
+#endif
     ++indent_level;
 
     if(node->kind == AstNodeKind_Module)
@@ -1969,6 +2014,7 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
       AstModule* module = (AstModule*)node;
       DEBUG_print_line(str, indent_level, "file_path: \"%s\"", module->file_path);
       DEBUG_print_ast_node(str, indent_level, (AstNode*)module->body, "body");
+      DEBUG_print_ast_node_list(str, indent_level, &module->proc_defs, "proc_defs");
     }
     else if(node->kind == AstNodeKind_IncludeStmt)
     {

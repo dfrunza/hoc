@@ -55,7 +55,7 @@ check_memory_bounds(HocMachine* machine, int location)
 local bool32
 check_heap_bounds(HocMachine* machine, int hp)
 {
-  return hp > machine->sp && hp < machine->memory_size;
+  return (hp > machine->sp) && (hp < machine->hp) && hp < machine->memory_size;
 }
 
 local bool32
@@ -67,16 +67,15 @@ check_instr_bounds(HocMachine* machine, int address)
 local void
 clear_memory(HocMachine* machine, int base, int size)
 {
-  if(size != 0)
+  int new_base = location_at(base, int8, size);
+  if(new_base < base)
   {
-    int new_base = location_at(base, int8, size);
-    int increment = size > 0 ? 1 : -1;
-    while(base != new_base)
-    {
-      machine->memory[base] = 0xcd;
-      base += increment;
-    }
+    int t = new_base;
+    new_base = base;
+    base = t;
   }
+  for(int i = base; i < new_base; i++)
+    machine->memory[i] = 0xcd;
 }
 
 local int32
@@ -113,25 +112,30 @@ execute_instr(HocMachine* machine, Instruction* instr)
 
     case Opcode_NEW:
     {
-      if(instr->param_type == ParamType_Int32)
+      int32 arg_sp = location_at(machine->sp, int32, -1);
+      if(check_stack_bounds(machine, arg_sp))
       {
-        int32 top_hp = location_at(machine->hp, int8, -instr->param.int_val);
-        int32 top_sp = location_at(machine->sp, int32, 1);
-        if((top_hp < machine->hp) && check_heap_bounds(machine, top_hp) && check_stack_bounds(machine, top_sp))
+        int32 size = memory_at(arg_sp, int32, 0);
+        if(size > 0)
         {
-          clear_memory(machine, top_hp, instr->param.int_val);
+          int32 top_hp = location_at(machine->hp, int8, -size);
+          if(check_heap_bounds(machine, top_hp))
+          {
+            clear_memory(machine, top_hp, size);
 
-          memory_at(machine->sp, int32, 0) = top_hp;
-
-          machine->hp = top_hp;
-          machine->sp = top_sp;
-          machine->ip++;
+            memory_at(arg_sp, int32, 0) = top_hp;
+            machine->hp = top_hp;
+          }
+          else
+            return Result_InvalidMemoryAccess;
         }
         else
-          return Result_InvalidMemoryAccess;
+          memory_at(arg_sp, int32, 0) = 0; // null ptr
+
+        machine->ip++;
       }
       else
-        return Result_InvalidInstructionFormat;
+        return Result_InvalidMemoryAccess;
     } break;
 
     case Opcode_PUSH_CHAR:

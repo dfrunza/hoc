@@ -469,8 +469,9 @@ typedef struct
   AstNode;
 
   AstNode* type_expr;
+  AstNode* count_expr;
 
-  int storage_size;
+  AstBinExpr* size_expr;
 }
 AstNew;
 
@@ -567,7 +568,7 @@ typedef struct Type
   TypeKind kind;
   Type* repr_type; /* representative member of the set of equivalent types */
   AstNode* ast;
-  int size; // in VM-words
+  int size;
 
   union {
     struct {
@@ -791,7 +792,6 @@ void DEBUG_print_arena_usage(char* tag);
 bool32 is_arithmetic_op(AstOpKind op);
 bool32 is_logic_op(AstOpKind op);
 bool32 is_relation_op(AstOpKind op);
-//void node_list_append(AstNodeList* node_list, AstNode* node);
 bool32 parse(TokenStream* input, AstNode** node);
 void init_types();
 bool32 semantic_analysis(AstModule* ast);
@@ -805,6 +805,7 @@ AstVarOccur* new_var_occur(SourceLocation* src_loc);
 AstCall* new_call(SourceLocation* src_loc);
 AstUnrExpr* new_unr_expr(SourceLocation* src_loc);
 AstLiteral* new_literal(SourceLocation* src_loc);
+AstLiteral* new_int_literal(SourceLocation* src_loc, int val);
 Type* new_typevar();
 Type* new_proc_type(Type* args, Type* ret);
 Type* new_pointer_type(Type* pointee);
@@ -812,7 +813,6 @@ Type* new_product_type(Type* left, Type* right);
 Type* new_array_type(int size, Type* elem_type);
 Type* new_cast_type(Type* from_type, Type* to_type);
 Type* get_type_repr(Type* type);
-bool32 type_check(AstNode* left_node, AstNode* right_node);
 bool32 type_unif(Type* type_a, Type* type_b);
 bool32 types_are_equal(Type* type_a, Type* type_b);
 int compute_type_width(Type* type);

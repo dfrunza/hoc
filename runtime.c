@@ -235,29 +235,25 @@ do_statement(AstNode* ast)
     AstCast* cast = (AstCast*)ast;
     do_statement(cast->expr);
   }
-  else if(ast->kind == AstNodeKind_VarOccur
-          || ast->kind == AstNodeKind_BreakStmt
-          || ast->kind == AstNodeKind_ContinueStmt
-          || ast->kind == AstNodeKind_Literal
-          || ast->kind == AstNodeKind_String
-          || ast->kind == AstNodeKind_EmptyStmt)
-    ; /* no-op */
   else if(ast->kind == AstNodeKind_VarDecl)
   {
     AstVarDecl* var_decl = (AstVarDecl*)ast;
     if(var_decl->assign_expr)
       do_statement((AstNode*)var_decl->assign_expr);
   }
-  else if(ast->kind == AstNodeKind_New)
-  {
-    AstNew* new_ast = (AstNew*)ast;
-    new_ast->storage_size = compute_type_width(new_ast->type_expr->type);
-  }
   else if(ast->kind == AstNodeKind_Putc)
   {
     AstPutc* putc_ast = (AstPutc*)ast;
     do_statement(putc_ast->expr);
   }
+  else if(ast->kind == AstNodeKind_VarOccur
+          || ast->kind == AstNodeKind_BreakStmt
+          || ast->kind == AstNodeKind_ContinueStmt
+          || ast->kind == AstNodeKind_Literal
+          || ast->kind == AstNodeKind_String
+          || ast->kind == AstNodeKind_New
+          || ast->kind == AstNodeKind_EmptyStmt)
+    ;/*OK*/
   else
     assert(0);
 }

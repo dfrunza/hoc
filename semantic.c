@@ -70,6 +70,25 @@ get_type_printstr(Type* type)
   return str_cap(str);
 }
 
+Type*
+make_type_of_node_list(AstNodeList* node_list)
+{
+  Type* type = basic_type_void;
+  ListItem* first_item = node_list->list.first;
+  if(first_item)
+  {
+    type = ((AstNode*)first_item->elem)->type;
+    for(ListItem* list_item = first_item->next;
+        list_item;
+        list_item = list_item->next)
+    {
+      AstNode* node = (AstNode*)list_item->elem;
+      type = new_product_type(type, node->type);
+    }
+  }
+  return type;
+}
+
 bool32
 is_arithmetic_op(AstOpKind op)
 {
@@ -534,9 +553,11 @@ do_call(AstBlock* module_block, AstBlock* block, AstCall* call)
     }
     else
     {
+      Type* call_args_type = make_type_of_node_list(&call->args);
       success = compile_error(&call->src_loc,
-          "incorrect number of arguments in call `%s %s(%s)`",
-          get_type_printstr(proc_type->proc.ret), call->id->name, get_type_printstr(call->args.type));
+          "%s %s(%s) : incorrect number of arguments...",
+          get_type_printstr(proc_type->proc.ret), call->id->name, get_type_printstr(call_args_type));
+      compile_error(&proc->src_loc, "...see proc decl");
     }
 
     if(success)
@@ -652,23 +673,65 @@ do_expression(AstBlock* module_block,
         {
           bin_expr->left_operand->type = basic_type_bool;
         }
-        else if(left_type->kind == TypeKind_Array)
+        else if(left_type->kind == TypeKind_Array || left_type->kind == TypeKind_Pointer)
         {
-          if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub)
+          if(left_type->kind == TypeKind_Array)
           {
-            AstUnrExpr* address_of = new_unr_expr(&bin_expr->src_loc);
-            address_of->op = AstOpKind_AddressOf;
-            address_of->type = new_pointer_type(left_type); // pointer(array)
-            address_of->operand = bin_expr->left_operand;
-            bin_expr->left_operand = (AstNode*)address_of;
-            bin_expr->type = address_of->type;
+            if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub)
+            {
+              AstUnrExpr* address_of = new_unr_expr(&bin_expr->left_operand->src_loc);
+              address_of->op = AstOpKind_AddressOf;
+              address_of->type = new_pointer_type(left_type); // pointer(array)
+              address_of->operand = bin_expr->left_operand;
+              bin_expr->left_operand = (AstNode*)address_of;
+              bin_expr->type = address_of->type;
+            }
+            else
+              success = compile_error(&expr->src_loc, "only addition and subtraction are allowed in pointer arithmentic");
+          }
+          else if(left_type->kind == TypeKind_Pointer)
+          {
+            if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub)
+              ;/*OK*/
+            else if(bin_expr->op == AstOpKind_Assign)
+            {
+              AstLiteral* null_ptr = (AstLiteral*)bin_expr->right_operand;
+              assert(null_ptr->kind == AstNodeKind_Literal && null_ptr->lit_kind == AstLiteralKind_Int);
+              if(null_ptr->int_val == 0)
+                ;/*OK*/
+              else
+                success = compile_error(&bin_expr->right_operand->src_loc, "%d is not a valid pointer constant");
+            }
+          }
+
+          if(success && (bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub))
+          {
+            Type* elem_type = 0;
+            if(left_type->kind == TypeKind_Array)
+              elem_type = left_type->array.elem;
+            else if(left_type->kind == TypeKind_Pointer)
+              elem_type = left_type->pointer.pointee;
+            else
+              assert(0);
+
+            AstLiteral* type_width = new_literal(&bin_expr->right_operand->src_loc);
+            type_width->lit_kind = AstLiteralKind_Int;
+            type_width->int_val = compute_type_width(elem_type);
+            type_width->type = basic_type_int;
+
+            AstBinExpr* mul_op = new_bin_expr(&bin_expr->right_operand->src_loc);
+            mul_op->op = AstOpKind_Mul;
+            mul_op->left_operand = (AstNode*)bin_expr->right_operand;
+            mul_op->right_operand = (AstNode*)type_width;
+            mul_op->type = basic_type_int;
+
+            bin_expr->right_operand = (AstNode*)mul_op;
           }
         }
-        else if(left_type->kind == TypeKind_Pointer)
-          ;/*no-op*/
         else
           success = compile_error(&expr->src_loc,
-              "no implicit conversion from `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
+                                  "no implicit conversion from `%s` to `%s`",
+                                  get_type_printstr(right_type), get_type_printstr(left_type));
       }
       else if(types_are_equal(right_type, basic_type_char))
       {
@@ -676,14 +739,30 @@ do_expression(AstBlock* module_block,
           bin_expr->right_operand->type = basic_type_int;
         else
           success = compile_error(&expr->src_loc,
-              "no implicit conversion from `%s` to `%s`", get_type_printstr(right_type), get_type_printstr(left_type));
+                                  "no implicit conversion from `%s` to `%s`",
+                                  get_type_printstr(right_type), get_type_printstr(left_type));
       }
       else if(left_type->kind == TypeKind_Pointer)
       {
-        if(right_type->kind == TypeKind_Pointer
-           && (types_are_equal(right_type->pointer.pointee, basic_type_void)))
+        if(right_type->kind == TypeKind_Pointer)
         {
-          bin_expr->right_operand->type = bin_expr->left_operand->type;
+          Type* pointee_type = right_type->pointer.pointee;
+          if(types_are_equal(pointee_type, basic_type_void))
+            bin_expr->right_operand->type = bin_expr->left_operand->type;
+          else if(pointee_type->kind == TypeKind_Array)
+          {
+            pointee_type = pointee_type->array.elem;
+            if(type_unif(left_type->pointer.pointee, pointee_type))
+              ;/*OK*/
+            else
+              success = compile_error(&expr->src_loc,
+                                      "no implicit conversion from `%s` to `%s`",
+                                      get_type_printstr(right_type->pointer.pointee), get_type_printstr(left_type));
+          }
+          else
+            success = compile_error(&expr->src_loc,
+                                    "no implicit conversion from `%s` to `%s`",
+                                    get_type_printstr(right_type), get_type_printstr(left_type));
         }
         else if(right_type->kind == TypeKind_Array)
         {
@@ -699,11 +778,13 @@ do_expression(AstBlock* module_block,
             }
             else
               success = compile_error(&expr->src_loc,
-                    "no implicit conversion from `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                                      "no implicit conversion from `%s` to `%s`",
+                                      get_type_printstr(right_type), get_type_printstr(left_type));
           }
           else
             success = compile_error(&expr->src_loc,
-                "no implicit conversion from `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                                    "no implicit conversion from `%s` to `%s`",
+                                    get_type_printstr(right_type), get_type_printstr(left_type));
         }
         else if(types_are_equal(right_type, basic_type_int))
         {
@@ -713,12 +794,14 @@ do_expression(AstBlock* module_block,
             assert(lit->lit_kind == AstLiteralKind_Int);
             if(lit->int_val != 0)
               success = compile_error(&expr->src_loc,
-                  "no implicit conversion from `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                                      "no implicit conversion from `%s` to `%s`",
+                                      get_type_printstr(right_type), get_type_printstr(left_type));
           }
         }
         else
           success = compile_error(&expr->src_loc,
-                "no implicit conversion from `%s` to `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                                  "no implicit conversion from `%s` to `%s`",
+                                  get_type_printstr(right_type), get_type_printstr(left_type));
       }
       else if(left_type->kind == TypeKind_Array)
       {
@@ -727,7 +810,8 @@ do_expression(AstBlock* module_block,
       }
       else
         success = compile_error(&expr->src_loc,
-              "incompatible types in expression, `%s` and `%s`", get_type_printstr(left_type), get_type_printstr(right_type));
+                                "incompatible types in expression, `%s` and `%s`",
+                                get_type_printstr(left_type), get_type_printstr(right_type));
     }
   }
   else if(expr->kind == AstNodeKind_UnrExpr)
@@ -935,11 +1019,16 @@ do_expression(AstBlock* module_block,
               *out_expr = cast->expr;
             }
             else
-              success = compile_error(&expr->src_loc, "conversion to int not possible");
+              success = compile_error(&expr->src_loc, "conversion to `int` not possible");
           }
           else if(to_type->kind == TypeKind_Pointer
                   && (types_are_equal(from_type, basic_type_int)
                       || from_type->kind == TypeKind_Pointer))
+          {
+            cast->expr->type = to_type;
+            *out_expr = cast->expr;
+          }
+          else if(to_type->kind == TypeKind_Array && from_type->kind == TypeKind_Pointer)
           {
             cast->expr->type = to_type;
             *out_expr = cast->expr;
@@ -964,11 +1053,26 @@ do_expression(AstBlock* module_block,
     AstNew* new_ast = (AstNew*)expr;
     if(success = do_type_expr(new_ast->type_expr))
     {
-      Type* expr_type = new_ast->type_expr->type;
-      if(expr_type->kind == TypeKind_Array)
-        new_ast->type = new_pointer_type(expr_type->array.elem);
+      Type* type_expr = new_ast->type_expr->type;
+
+      if(!types_are_equal(type_expr, basic_type_void))
+      {
+        if(type_expr->kind == TypeKind_Array)
+          new_ast->type = new_pointer_type(type_expr->array.elem);
+        else
+          new_ast->type = new_pointer_type(new_ast->type_expr->type);
+
+        AstBinExpr* size_expr = new_bin_expr(&new_ast->src_loc);
+        new_ast->size_expr = size_expr;
+
+        size_expr->op = AstOpKind_Mul;
+        size_expr->left_operand = (AstNode*)new_int_literal(&new_ast->src_loc, compute_type_width(type_expr));
+        size_expr->right_operand = new_ast->count_expr;
+
+        success = do_expression(module_block, block, (AstNode*)new_ast->size_expr, (AstNode**)&new_ast->size_expr);
+      }
       else
-        new_ast->type = new_pointer_type(new_ast->type_expr->type);
+        success = compile_error(&new_ast->type_expr->src_loc, "new() : `%s` type not allowed", get_type_printstr(type_expr));
     }
   }
   else
@@ -1246,7 +1350,7 @@ do_statement(AstBlock* module_block,
   }
   else if(stmt->kind == AstNodeKind_New)
   {
-    fail("");
+    success = compile_error(&stmt->src_loc, "new() used as a statement");
   }
   else if(stmt->kind == AstNodeKind_Putc)
   {

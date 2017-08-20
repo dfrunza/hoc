@@ -146,6 +146,7 @@ typedef enum
   AstOpKind_PostDecrement,
   AstOpKind_PreIncrement,
   AstOpKind_PostIncrement,
+  AstOpKind_ArrayIndex,
   
   AstOpKind_Equals,
   AstOpKind_NotEquals,
@@ -487,8 +488,8 @@ typedef struct
 {
   AstNode;
 
-  AstNode* expr;
-  AstNode* index;
+  AstNode* type_expr;
+  AstNode* size_expr;
 
   int size;
 }
@@ -498,7 +499,7 @@ typedef struct
 {
   AstNode;
 
-  AstNode* expr;
+  AstNode* type_expr;
 }
 AstPointer;
 

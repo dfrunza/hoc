@@ -650,8 +650,9 @@ do_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
     assert(left_node->kind == AstNodeKind_Id);
     AstCall* call = new_call(&input->src_loc);
     *node = (AstNode*)call;
+
     if(left_node->kind != AstNodeKind_Id)
-      fail("the proc call can be applied to plain identifiers only");
+      fail("call can be applied to plain identifiers only");
     call->id = (AstId*)left_node;
 
     if(success = get_next_token(input) && do_actual_arg_list(input, &call->args))
@@ -664,18 +665,34 @@ do_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
   }
   else if(input->token.kind == TokenKind_OpenBracket)
   {
-    // array
-    AstArray* array = new_array(&input->src_loc);
-    *node = (AstNode*)array;
-    array->expr = left_node;
+#if 1
+    AstBinExpr* index = new_bin_expr(&input->src_loc);
+    *node = (AstNode*)index;
 
-    if(success = get_next_token(input) && do_expression(input, &array->index))
+    index->op = AstOpKind_ArrayIndex;
+    index->left_operand = left_node;
+
+    if(success = get_next_token(input) && do_expression(input, &index->right_operand))
     {
       if(input->token.kind == TokenKind_CloseBracket)
         success = get_next_token(input) && do_rest_of_id(input, *node, node);
       else
         success = compile_error(&input->src_loc, "expected `]`, actual `%s`", get_token_printstr(&input->token));
     }
+#else
+    // array
+    AstArray* array = new_array(&input->src_loc);
+    *node = (AstNode*)array;
+    array->type_expr = left_node;
+
+    if(success = get_next_token(input) && do_expression(input, &array->index_expr))
+    {
+      if(input->token.kind == TokenKind_CloseBracket)
+        success = get_next_token(input) && do_rest_of_id(input, *node, node);
+      else
+        success = compile_error(&input->src_loc, "expected `]`, actual `%s`", get_token_printstr(&input->token));
+    }
+#endif
   }
 
   return success;
@@ -901,7 +918,7 @@ do_type_expr_pointer(TokenStream* input, AstNode* expr, AstNode** node)
   {
     AstPointer* ptr = new_pointer(&input->src_loc);
     *node = (AstNode*)ptr;
-    ptr->expr = expr;
+    ptr->type_expr = expr;
 
     success = get_next_token(input) && do_type_expr_pointer(input, *node, node);
   }
@@ -934,18 +951,23 @@ do_type_expr(TokenStream* input, AstNode** node)
     AstArray* array = new_array(&input->src_loc);
     *node = (AstNode*)array;
 
-    if(success = get_next_token(input) && do_expression(input, &array->index))
+    if(success = get_next_token(input) && do_expression(input, &array->size_expr))
     {
       if(input->token.kind == TokenKind_CloseBracket)
       {
-        if(success = get_next_token(input) && do_type_expr(input, &array->expr))
+        if(array->size_expr)
         {
-          if(!array->expr)
+          if(success = get_next_token(input) && do_type_expr(input, &array->type_expr))
           {
-            putback_token(input);
-            success = compile_error(&input->src_loc, "incomplete type expression, at `%s`", get_token_printstr(&input->token));
+            if(!array->type_expr)
+            {
+              putback_token(input);
+              success = compile_error(&input->src_loc, "incomplete type expression, at `%s`", get_token_printstr(&input->token));
+            }
           }
         }
+        else
+          success = compile_error(&input->src_loc, "expression required in `[..]`");
       }
       else
         success = compile_error(&input->src_loc,  "expected `]`, actual `%s`", get_token_printstr(&input->token));
@@ -2126,13 +2148,13 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     else if(node->kind == AstNodeKind_Array)
     {
       AstArray* array = (AstArray*)node;
-      DEBUG_print_ast_node(str, indent_level, array->expr, "expr");
-      DEBUG_print_ast_node(str, indent_level, array->index, "index");
+      DEBUG_print_ast_node(str, indent_level, array->type_expr, "type_expr");
+      DEBUG_print_ast_node(str, indent_level, array->size_expr, "size_expr");
     }
     else if(node->kind == AstNodeKind_Pointer)
     {
       AstPointer* ptr = (AstPointer*)node;
-      DEBUG_print_ast_node(str, indent_level, ptr->expr, "expr");
+      DEBUG_print_ast_node(str, indent_level, ptr->type_expr, "type_expr");
     }
     else if(node->kind == AstNodeKind_Call)
     {

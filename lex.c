@@ -102,7 +102,7 @@ escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
     {
       c = *(++estr->end);
       if(!is_valid_escape_char(c))
-        success = compile_error_f(file, line, &input->src_loc, "Invalid escape char `%c`", c);
+        success = compile_error_f(file, line, &input->src_loc, "invalid escape char `%c`", c);
     }
     estr->len++;
     c = *(++estr->end);
@@ -111,7 +111,7 @@ escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
   {
     if(*estr->end != estr->quote)
       success = compile_error_f(file, line, &input->src_loc, 
-                                "Malformed string literal, missing the closing `%c`", estr->quote);
+                                "malformed string literal, missing the closing `%c`", estr->quote);
   }
   assert((estr->end - estr->begin) >= 1);
   return success;
@@ -499,7 +499,7 @@ loop:
       char* lexeme = install_escaped_str(&estr);
 
       if(estr.len != 1)
-        success = compile_error(&input->src_loc, "Invalid char literal '%s'", lexeme);
+        success = compile_error(&input->src_loc, "invalid char literal '%s'", lexeme);
       else
       {
         token->char_val = *lexeme;

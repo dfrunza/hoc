@@ -37,12 +37,22 @@ make_type_printstr(String* str, Type* type)
   }
   else if(type->kind == TypeKind_Pointer)
   {
-    make_type_printstr(str, type->pointer.pointee);
+    Type* pointee = type->pointer.pointee;
+    if(pointee->kind == TypeKind_Array)
+    {
+      str_append(str, "(");
+      make_type_printstr(str, pointee);
+      str_append(str, ")");
+    }
+    else
+    {
+      make_type_printstr(str, type->pointer.pointee);
+    }
     str_append(str, "*");
   }
   else if(type->kind == TypeKind_Array)
   {
-    str_append(str, "[]");
+    str_printf(str, "[%d]", type->array.size);
     make_type_printstr(str, type->array.elem);
   }
   else if(type->kind == TypeKind_Product)
@@ -580,31 +590,29 @@ do_type_expr(AstNode* expr)
   else if(expr->kind == AstNodeKind_Array)
   {
     AstArray* array = (AstArray*)expr;
-    if(success = do_type_expr(array->expr))
+    if(success = do_type_expr(array->type_expr))
     {
-      array->size = -1;
-      if(array->index)
+      array->size = 0;
+      if(array->size_expr->kind == AstNodeKind_Literal)
       {
-        if(array->index->kind == AstNodeKind_Literal)
+        AstLiteral* size = (AstLiteral*)array->size_expr;
+        if(size->lit_kind == AstLiteralKind_Int)
         {
-          AstLiteral* size = (AstLiteral*)array->index;
-          if(size->lit_kind == AstLiteralKind_Int)
-            array->size = size->int_val;
-          else
-            success = compile_error(&expr->src_loc, "int literal expected");
+          array->size = size->int_val;
+          array->type = new_array_type(array->size, array->type_expr->type);
         }
         else
-          success = compile_error(&expr->src_loc, "int literal expected");
+          success = compile_error(&expr->src_loc, "integer constant expected");
       }
-
-      array->type = new_array_type(array->size, array->expr->type);
+      else
+        success = compile_error(&expr->src_loc, "integer constant expected");
     }
   }
   else if(expr->kind == AstNodeKind_Pointer)
   {
     AstPointer* pointer = (AstPointer*)expr;
-    if(success = do_type_expr(pointer->expr))
-      expr->type = new_pointer_type(pointer->expr->type);
+    if(success = do_type_expr(pointer->type_expr))
+      expr->type = new_pointer_type(pointer->type_expr->type);
   }
   else
     assert(0);
@@ -677,7 +685,8 @@ do_expression(AstBlock* module_block,
         {
           if(left_type->kind == TypeKind_Array)
           {
-            if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub)
+            if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub
+               || bin_expr->op == AstOpKind_ArrayIndex)
             {
               AstUnrExpr* address_of = new_unr_expr(&bin_expr->left_operand->src_loc);
               address_of->op = AstOpKind_AddressOf;
@@ -686,12 +695,21 @@ do_expression(AstBlock* module_block,
               bin_expr->left_operand = (AstNode*)address_of;
               bin_expr->type = address_of->type;
             }
+#if 0
+            else if(bin_expr->op == AstOpKind_ArrayIndex)
+            {
+              AstBinExpr* offset_op = new_bin_expr(&bin_expr->right_operand->src_loc);
+              offset_op->op = AstOpKind_Add;
+              offset_op->left_operand = ... // pointer(array);
+            }
+#endif
             else
-              success = compile_error(&expr->src_loc, "only addition and subtraction are allowed in pointer arithmentic");
+              success = compile_error(&expr->src_loc, "only addition and subtraction are allowed in pointer arithmetic");
           }
           else if(left_type->kind == TypeKind_Pointer)
           {
-            if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub)
+            if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub
+               || bin_expr->op == AstOpKind_ArrayIndex)
               ;/*OK*/
             else if(bin_expr->op == AstOpKind_Assign)
             {
@@ -700,11 +718,13 @@ do_expression(AstBlock* module_block,
               if(null_ptr->int_val == 0)
                 ;/*OK*/
               else
-                success = compile_error(&bin_expr->right_operand->src_loc, "%d is not a valid pointer constant");
+                success = compile_error(&bin_expr->right_operand->src_loc, "%d is not a valid pointer constant", null_ptr->int_val);
             }
           }
 
-          if(success && (bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub))
+          if(success &&
+             (bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub
+              || bin_expr->op == AstOpKind_ArrayIndex))
           {
             Type* elem_type = 0;
             if(left_type->kind == TypeKind_Array)
@@ -726,6 +746,17 @@ do_expression(AstBlock* module_block,
             mul_op->type = basic_type_int;
 
             bin_expr->right_operand = (AstNode*)mul_op;
+
+            if(bin_expr->op == AstOpKind_ArrayIndex)
+            {
+              bin_expr->op = AstOpKind_Add;
+
+              AstUnrExpr* deref_ptr = new_unr_expr(&bin_expr->src_loc);
+              deref_ptr->op = AstOpKind_PointerDeref;
+              deref_ptr->type = elem_type;
+              deref_ptr->operand = (AstNode*)bin_expr;
+              *out_expr = (AstNode*)deref_ptr;
+            }
           }
         }
         else
@@ -869,7 +900,7 @@ do_expression(AstBlock* module_block,
           }
           else
             success = compile_error(&expr->src_loc,
-                                    "int or float operands are expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
+                                    "integer or float operands are expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
         }
         else if(is_logic_op(unr_expr->op))
         {

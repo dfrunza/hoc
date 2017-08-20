@@ -1,6 +1,6 @@
 #include "hocc.h"
 
-#define VM_MEMORY_SIZE 1024
+#define VM_MEMORY_SIZE 2048
 
 #define memory_at(LOC, TYPE, OFFSET)\
   *((TYPE*)&machine->memory[(LOC)] + (OFFSET))

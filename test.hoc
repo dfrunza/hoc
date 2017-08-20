@@ -1,7 +1,7 @@
 include "hlib\\str.hoc";
-/*
 include "hlib\\fibo.hoc";
 include "hlib\\fizzbuzz.hoc";
+/*
 include "hlib\\abs.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\power.hoc";
@@ -9,7 +9,9 @@ include "hlib\\minmax.hoc";
 include "hlib\\gcd.hoc";
 */
 
-/*
+var int* numbers;
+var char* some_message = "Hello World!!\n";
+
 proc void print_numbers(int* numbers, int len)
 {
   var int i = 0;
@@ -17,7 +19,7 @@ proc void print_numbers(int* numbers, int len)
   {
     print_int(i);
     print_str("=");
-    print_int(*(numbers+i));
+    print_int(numbers[i]);
     print_str("\n");
 
     i = i+1;
@@ -32,36 +34,23 @@ proc int* make_numbers(int how_many)
 
   while(i < how_many)
   {
-    *(numbers+i) = constant*i;
+    numbers[i] = constant * i;
 
     i = i+1;
   }
   return numbers;
 }
-*/
-
-proc [4]char make_array()
-{
-  return "ABC";
-}
 
 proc int main()
 {
-  var [4]char a = make_array();
-  print_str(a);
-
-  /*
-  var int count = 10;
-  var int* numbers = make_numbers(count);
+  var int count = 20;
+  numbers = make_numbers(count);
   print_numbers(numbers, count);
-  */
 
-  /*
   print_str("Hi there!\n");
   fibo(40);
   print_str("-----------\n");
-  fizzbuzz(200);
-  */
+  fizzbuzz(50);
   return 0;
 }
 

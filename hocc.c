@@ -69,9 +69,8 @@ DEBUG_print_sizeof_ast_structs()
 
   local StructInfo struct_info[AstNodeKind__Count] = {0};
   assert(AstNodeKind__Null == 0);
-  AstNode node;
-  mem_zero_struct(&node, AstNode);
 #if 1
+  make_struct_info(AstNodeKind_EmptyStmt, AstNode);
   make_struct_info(AstNodeKind_BinExpr, AstBinExpr);
   make_struct_info(AstNodeKind_UnrExpr, AstUnrExpr);
   make_struct_info(AstNodeKind_Literal, AstLiteral);
@@ -116,7 +115,6 @@ DEBUG_print_sizeof_ast_structs()
   }
 #endif
 
-  printf("AstNode.size = %d bytes\n", sizeof(AstNode));
   for(int i = AstNodeKind__Count-1; i >= 0; i--)
   {
     StructInfo* info = &struct_info[i];
@@ -241,7 +239,8 @@ main(int argc, char* argv[])
     char* file_path = argv[1];
 
     char* hoc_text = file_read_text(arena, file_path);
-    DEBUG_print_arena_usage("Read HoC text");
+    if(DEBUG_enabled)/*>>>*/
+      DEBUG_print_arena_usage("Read HoC text");/*<<<*/
 
     if(success = to_bool(hoc_text))
     {

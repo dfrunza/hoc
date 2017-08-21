@@ -177,6 +177,8 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
             emit_instr(code, Opcode_CMPEQ_CHAR);
           else if(types_are_equal(left_operand->type, basic_type_int))
             emit_instr(code, Opcode_CMPEQ_INT);
+          else if(types_are_equal(left_operand->type, basic_type_float))
+            emit_instr(code, Opcode_CMPEQ_FLOAT);
           else
             assert(0);
         }
@@ -186,6 +188,8 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
             emit_instr(code, Opcode_CMPNEQ_CHAR);
           else if(types_are_equal(left_operand->type, basic_type_int))
             emit_instr(code, Opcode_CMPNEQ_INT);
+          else if(types_are_equal(left_operand->type, basic_type_float))
+            emit_instr(code, Opcode_CMPNEQ_FLOAT);
           else
             assert(0);
         }
@@ -195,6 +199,8 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
             emit_instr(code, Opcode_CMPLSS_CHAR);
           else if(types_are_equal(left_operand->type, basic_type_int))
             emit_instr(code, Opcode_CMPLSS_INT);
+          else if(types_are_equal(left_operand->type, basic_type_float))
+            emit_instr(code, Opcode_CMPLSS_FLOAT);
           else
             assert(0);
         }
@@ -204,6 +210,8 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
             emit_instr(code, Opcode_CMPGRT_CHAR);
           else if(types_are_equal(left_operand->type, basic_type_int))
             emit_instr(code, Opcode_CMPGRT_INT);
+          else if(types_are_equal(left_operand->type, basic_type_float))
+            emit_instr(code, Opcode_CMPGRT_FLOAT);
           else
             assert(0);
         }
@@ -249,6 +257,8 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
             emit_instr(code, Opcode_CMPLSS_CHAR);
           else if(types_are_equal(left_operand->type, basic_type_int))
             emit_instr(code, Opcode_CMPLSS_INT);
+          else if(types_are_equal(left_operand->type, basic_type_float))
+            emit_instr(code, Opcode_CMPLSS_FLOAT);
           else
             assert(0);
         }
@@ -258,6 +268,8 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
             emit_instr(code, Opcode_CMPGRT_CHAR);
           else if(types_are_equal(left_operand->type, basic_type_int))
             emit_instr(code, Opcode_CMPGRT_INT);
+          else if(types_are_equal(left_operand->type, basic_type_float))
+            emit_instr(code, Opcode_CMPGRT_FLOAT);
           else
             assert(0);
         }
@@ -274,6 +286,8 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
           emit_instr(code, Opcode_CMPEQ_CHAR);
         else if(types_are_equal(left_operand->type, basic_type_int))
           emit_instr(code, Opcode_CMPEQ_INT);
+        else if(types_are_equal(left_operand->type, basic_type_float))
+          emit_instr(code, Opcode_CMPEQ_FLOAT);
         else
           assert(0);
 
@@ -892,6 +906,10 @@ print_code(VmProgram* vm_program)
       case Opcode_CMPNEQ_INT:
       case Opcode_CMPLSS_INT:
       case Opcode_CMPGRT_INT:
+      case Opcode_CMPEQ_FLOAT:
+      case Opcode_CMPNEQ_FLOAT:
+      case Opcode_CMPLSS_FLOAT:
+      case Opcode_CMPGRT_FLOAT:
       {
         assert(instr->param_type == ParamType__Null);
         if(instr->opcode == Opcode_CMPEQ_CHAR)
@@ -910,6 +928,14 @@ print_code(VmProgram* vm_program)
           print_instruction(vm_program, "cmplss_int");
         else if(instr->opcode == Opcode_CMPGRT_INT)
           print_instruction(vm_program, "cmpgrt_int");
+        else if(instr->opcode == Opcode_CMPEQ_FLOAT)
+          print_instruction(vm_program, "cmpeq_float");
+        else if(instr->opcode == Opcode_CMPNEQ_FLOAT)
+          print_instruction(vm_program, "cmpneq_float");
+        else if(instr->opcode == Opcode_CMPLSS_FLOAT)
+          print_instruction(vm_program, "cmplss_float");
+        else if(instr->opcode == Opcode_CMPGRT_FLOAT)
+          print_instruction(vm_program, "cmpgrt_float");
         else
           assert(0);
       } break;

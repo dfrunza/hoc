@@ -1,15 +1,16 @@
+include "hlib\\abs.hoc";
 include "hlib\\str.hoc";
-include "hlib\\sort.hoc";
 /*
+include "hlib\\sort.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\fizzbuzz.hoc";
-include "hlib\\abs.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\power.hoc";
 include "hlib\\minmax.hoc";
 include "hlib\\gcd.hoc";
 */
 
+/*
 proc void print_numbers(int* numbers, int len)
 {
   var int i = 0;
@@ -40,9 +41,16 @@ proc int* make_numbers(int how_many)
   }
   return numbers;
 }
+*/
 
 proc int main()
 {
+  var float x = -441.234;
+  var float abs_x = fabs(x);
+  var int i_x = cast(int)abs_x;
+  print_int(i_x);
+
+  /*
   var int count = 20;
   var int* numbers = make_numbers(count);
   print_str("== SHUFFLED ==\n");
@@ -50,6 +58,7 @@ proc int main()
   print_str("== SORTED ==\n");
   quick_sort(numbers, count);
   print_numbers(numbers, count);
+  */
 
   /*
   fibo(40);

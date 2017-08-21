@@ -655,6 +655,25 @@ execute_instr(HocMachine* machine, Instruction* instr)
         return Result_InvalidMemoryAccess;
     } break;
 
+    case Opcode_CMPEQ_FLOAT:
+    case Opcode_CMPNEQ_FLOAT:
+    {
+      int32 arg_sp = location_at(machine->sp, int32, -2);
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        float32 arg1 = memory_at(arg_sp, float32, 0);
+        float32 arg2 = memory_at(arg_sp, float32, 1);
+        int32 result = (arg1 == arg2);
+        if(opcode == Opcode_CMPNEQ_FLOAT)
+          result = !result;
+        memory_at(arg_sp, int32, 0) = result;
+        machine->sp = location_at(machine->sp, int32, -1);
+        machine->ip++;
+      }
+      else
+        return Result_InvalidMemoryAccess;
+    } break;
+
     case Opcode_CMPLSS_CHAR:
     case Opcode_CMPGRT_CHAR:
     {
@@ -684,6 +703,25 @@ execute_instr(HocMachine* machine, Instruction* instr)
         int32 arg2 = memory_at(arg_sp, int32, 1);
         int32 result = (arg1 < arg2);
         if(opcode == Opcode_CMPGRT_INT)
+          result = (arg1 > arg2);
+        memory_at(arg_sp, int32, 0) = result;
+        machine->sp = location_at(machine->sp, int32, -1);
+        machine->ip++;
+      }
+      else
+        return Result_InvalidMemoryAccess;
+    } break;
+
+    case Opcode_CMPLSS_FLOAT:
+    case Opcode_CMPGRT_FLOAT:
+    {
+      int32 arg_sp = location_at(machine->sp, int32, -2);
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        float32 arg1 = memory_at(arg_sp, float32, 0);
+        float32 arg2 = memory_at(arg_sp, float32, 1);
+        int32 result = (arg1 < arg2);
+        if(opcode == Opcode_CMPGRT_FLOAT)
           result = (arg1 > arg2);
         memory_at(arg_sp, int32, 0) = result;
         machine->sp = location_at(machine->sp, int32, -1);

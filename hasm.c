@@ -225,6 +225,7 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
         instr.opcode = Opcode_CMPLSS_CHAR;
       else if(cstr_match(mnemonic, "cmpgrt_char"))
         instr.opcode = Opcode_CMPGRT_CHAR;
+
       else if(cstr_match(mnemonic, "cmpeq_int"))
         instr.opcode = Opcode_CMPEQ_INT;
       else if(cstr_match(mnemonic, "cmpneq_int"))
@@ -232,7 +233,16 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
       else if(cstr_match(mnemonic, "cmplss_int"))
         instr.opcode = Opcode_CMPLSS_INT;
       else if(cstr_match(mnemonic, "cmpgrt_int"))
-        instr.opcode = Opcode_CMPGRT_INT;
+        instr.opcode = Opcode_CMPGRT_FLOAT;
+
+      else if(cstr_match(mnemonic, "cmpeq_float"))
+        instr.opcode = Opcode_CMPEQ_FLOAT;
+      else if(cstr_match(mnemonic, "cmpneq_float"))
+        instr.opcode = Opcode_CMPNEQ_FLOAT;
+      else if(cstr_match(mnemonic, "cmplss_float"))
+        instr.opcode = Opcode_CMPLSS_FLOAT;
+      else if(cstr_match(mnemonic, "cmpgrt_float"))
+        instr.opcode = Opcode_CMPGRT_FLOAT;
 
       else if(cstr_match(mnemonic, "and"))
         instr.opcode = Opcode_AND;

@@ -301,7 +301,7 @@ register_call(AstCall* call)
   if(proc_sym)
   {
     assert(proc_sym->ast->kind == AstNodeKind_Proc);
-    call->proc = (AstProc*)proc_sym->ast;
+    call->proc_sym = proc_sym;
 
     Symbol* call_sym = register_id(id, SymbolKind_Call);
     call_sym->ast = (AstNode*)call;
@@ -511,7 +511,9 @@ do_call(AstBlock* module_block, AstBlock* block, AstCall* call)
 
   if(success = do_call_args(module_block, block, call) && register_call(call))
   {
-    AstProc* proc = call->proc;
+    AstProc* proc = (AstProc*)call->proc_sym->ast;
+    assert(proc->kind == AstNodeKind_Proc);
+
     Type* proc_type = proc->type;
     assert(proc_type->kind == TypeKind_Proc);
 
@@ -695,14 +697,6 @@ do_expression(AstBlock* module_block,
               bin_expr->left_operand = (AstNode*)address_of;
               bin_expr->type = address_of->type;
             }
-#if 0
-            else if(bin_expr->op == AstOpKind_ArrayIndex)
-            {
-              AstBinExpr* offset_op = new_bin_expr(&bin_expr->right_operand->src_loc);
-              offset_op->op = AstOpKind_Add;
-              offset_op->left_operand = ... // pointer(array);
-            }
-#endif
             else
               success = compile_error(&expr->src_loc, "only addition and subtraction are allowed in pointer arithmetic");
           }
@@ -893,10 +887,6 @@ do_expression(AstBlock* module_block,
              || type_unif(unr_expr->operand->type, basic_type_float))
           {
             expr->type = unr_expr->operand->type;
-#if 0
-            if(types_are_equal(unr_expr->operand->type, basic_type_float))
-              unr_expr->op = AstOpKind_NegFloat;
-#endif
           }
           else
             success = compile_error(&expr->src_loc,
@@ -1362,7 +1352,10 @@ do_statement(AstBlock* module_block,
       loop_ctrl->loop = loop;
       loop_ctrl->nesting_depth = 0;
       if(loop_body->kind == AstNodeKind_Block)
-        loop_ctrl->nesting_depth = block->nesting_depth - ((AstBlock*)loop_body)->nesting_depth;
+      {
+        AstBlock* loop_encl_block = ((AstBlock*)loop_body)->encl_block;
+        loop_ctrl->nesting_depth = block->nesting_depth - loop_encl_block->nesting_depth;
+      }
       else
         assert(loop_body == stmt);
     }
@@ -1510,7 +1503,9 @@ do_module(AstModule* module)
         }
         else
         {
-          success = compile_error(&main_call->proc->src_loc, "main() must return a `int`");
+          AstProc* main_proc = (AstProc*)main_call->proc_sym->ast;
+          assert(main_proc->kind == AstNodeKind_Proc);
+          success = compile_error(&main_proc->src_loc, "main() must return a `int`");
         }
       }
     }

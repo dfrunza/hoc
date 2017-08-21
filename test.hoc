@@ -1,7 +1,8 @@
 include "hlib\\str.hoc";
+include "hlib\\sort.hoc";
+/*
 include "hlib\\fibo.hoc";
 include "hlib\\fizzbuzz.hoc";
-/*
 include "hlib\\abs.hoc";
 include "hlib\\sqrt.hoc";
 include "hlib\\power.hoc";
@@ -9,16 +10,11 @@ include "hlib\\minmax.hoc";
 include "hlib\\gcd.hoc";
 */
 
-var int* numbers;
-var char* some_message = "Hello World!!\n";
-
 proc void print_numbers(int* numbers, int len)
 {
   var int i = 0;
   while(i < len)
   {
-    print_int(i);
-    print_str("=");
     print_int(numbers[i]);
     print_str("\n");
 
@@ -29,12 +25,16 @@ proc void print_numbers(int* numbers, int len)
 proc int* make_numbers(int how_many)
 {
   var int i = 0;
-  var int constant = 17;
+  var int c1 = 17;
+  var int c2 = 31;
   var int* numbers = new(int, how_many);
 
   while(i < how_many)
   {
-    numbers[i] = constant * i;
+    if((i % 2) == 0)
+      numbers[i] = c1 * i;
+    else
+      numbers[i] = c2 * i;
 
     i = i+1;
   }
@@ -44,13 +44,18 @@ proc int* make_numbers(int how_many)
 proc int main()
 {
   var int count = 20;
-  numbers = make_numbers(count);
+  var int* numbers = make_numbers(count);
+  print_str("== SHUFFLED ==\n");
+  print_numbers(numbers, count);
+  print_str("== SORTED ==\n");
+  quick_sort(numbers, count);
   print_numbers(numbers, count);
 
-  print_str("Hi there!\n");
+  /*
   fibo(40);
   print_str("-----------\n");
   fizzbuzz(50);
+  */
   return 0;
 }
 

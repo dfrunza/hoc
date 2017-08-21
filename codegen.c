@@ -332,7 +332,9 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
 local void
 gen_call(List* code, AstCall* call)
 {
-  AstProc* proc = call->proc;
+  AstProc* proc = (AstProc*)call->proc_sym->ast;
+  assert(proc->kind == AstNodeKind_Proc);
+
   emit_instr_int(code, Opcode_GROW, proc->ret_size);
 
   AstBlock* block = proc->body;
@@ -448,7 +450,7 @@ gen_break_stmt(List* code, AstBreakStmt* break_stmt)
     assert(0);
 
   int depth = break_stmt->nesting_depth;
-  while(depth--)
+  while(depth-- > 0)
     emit_instr(code, Opcode_LEAVE);
   emit_instr_str(code, Opcode_GOTO, label_break);
 }
@@ -569,7 +571,9 @@ gen_statement(List* code, AstNode* ast)
     AstCall* call = (AstCall*)ast;
     gen_call(code, call);
 
-    AstProc* proc = call->proc;
+    AstProc* proc = (AstProc*)call->proc_sym->ast;
+    assert(proc->kind == AstNodeKind_Proc);
+
     if(proc->ret_size > 0)
     {
       assert(compute_type_width(call->type) == proc->ret_size);

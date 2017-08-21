@@ -346,7 +346,7 @@ typedef struct
   AstId* id;
   AstNodeList args;
 
-  AstProc* proc;
+  Symbol* proc_sym;
 }
 AstCall;
 

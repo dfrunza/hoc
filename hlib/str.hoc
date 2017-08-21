@@ -50,6 +50,13 @@ proc char* int_to_str(char* buf, int buf_len, int i)
   var int buf_i = buf_len - 1;
   buf[buf_i] = '\0';
 
+  var bool is_negative = false;
+  if(i < 0)
+  {
+    i = abs(i);
+    is_negative = true;
+  }
+
   buf_i = buf_i - 1;
   var int remainder = i % 10;
   digit_to_char(buf, buf_i, remainder);
@@ -60,6 +67,12 @@ proc char* int_to_str(char* buf, int buf_len, int i)
     i = (i - remainder) / 10;
     remainder = i % 10;
     digit_to_char(buf, buf_i, remainder);
+  }
+
+  if(is_negative)
+  {
+    buf_i = buf_i - 1;
+    buf[buf_i] = '-';
   }
 
   return (buf + buf_i);

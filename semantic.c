@@ -37,23 +37,15 @@ make_type_printstr(String* str, Type* type)
   }
   else if(type->kind == TypeKind_Pointer)
   {
-    Type* pointee = type->pointer.pointee;
-    if(pointee->kind == TypeKind_Array)
-    {
-      str_append(str, "(");
-      make_type_printstr(str, pointee);
-      str_append(str, ")");
-    }
-    else
-    {
-      make_type_printstr(str, type->pointer.pointee);
-    }
+    make_type_printstr(str, type->pointer.pointee);
     str_append(str, "*");
   }
   else if(type->kind == TypeKind_Array)
   {
+    str_append(str, "(");
     str_printf(str, "[%d]", type->array.size);
     make_type_printstr(str, type->array.elem);
+    str_append(str, ")");
   }
   else if(type->kind == TypeKind_Product)
   {
@@ -483,7 +475,7 @@ type_convert_call_arg(AstVarDecl* formal_arg,
     else
     {
       success = compile_error(&actual_arg->src_loc,
-          "array element `%s` and pointee `%s` types are different",
+          "array element `%s` and pointer type `%s` are different",
           get_type_printstr(type_from->array.elem), get_type_printstr(type_to->pointer.pointee));
     }
   }
@@ -870,16 +862,28 @@ do_expression(AstBlock* module_block,
       {
         if(unr_expr->op == AstOpKind_AddressOf)
         {
+          Type* operand_type = unr_expr->operand->type;
           if(unr_expr->operand->kind == AstNodeKind_VarOccur)
           {
-            Type* operand_type = unr_expr->operand->type;
             if(operand_type->kind == TypeKind_Array)
               unr_expr->type = new_pointer_type(operand_type); // pointer(array)
             else
               unr_expr->type = new_pointer_type(operand_type);
           }
+          else if(unr_expr->operand->kind == AstNodeKind_UnrExpr)
+          {
+            // &data[0]
+            AstUnrExpr* operand = (AstUnrExpr*)unr_expr->operand;
+            if(operand->op == AstOpKind_PointerDeref)
+            {
+              assert(operand->operand->type->kind == TypeKind_Pointer);
+              *out_expr = operand->operand; // address_of(ptr_deref(x)) = x
+            }
+            else
+              success = compile_error(&unr_expr->src_loc, "invalid application of `&` operator");
+          }
           else
-            success = compile_error(&expr->src_loc, "`&` operator can only be applied to variable occurrences");
+            success = compile_error(&unr_expr->src_loc, "invalid application of `&` operator");
         }
         else if(unr_expr->op == AstOpKind_Neg)
         {

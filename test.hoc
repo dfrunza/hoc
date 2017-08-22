@@ -45,11 +45,14 @@ proc int* make_numbers(int how_many)
 
 proc int main()
 {
-  var float* data = new(float, 3);
-  data[0] = 123.321;
-  data[1] = -555.555;
-  data[2] = 222.699;
-  print_int(cast(int)data[1]);
+  var int i = 111;
+  var int j = 222;
+  var [2]int* data;
+  data[0] = &i;
+  data[1] = &j;
+  var int** pp_data = &data[0];
+  *pp_data = data[1];
+  print_int(**pp_data);
 
   /*
   var int count = 20;

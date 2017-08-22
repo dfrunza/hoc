@@ -80,8 +80,8 @@ proc char* int_to_str(char* buf, int buf_len, int i)
 
 proc void print_int(int n)
 {
-  var [10]char str_buff;
-  print_str(int_to_str(str_buff, 10, n));
+  var [20]char str_buff;
+  print_str(int_to_str(str_buff, 20, n));
 }
 
 

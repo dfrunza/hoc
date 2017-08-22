@@ -1,12 +1,10 @@
-include "hlib\\abs.hoc";
+include "hlib\\math.hoc";
 include "hlib\\str.hoc";
 /*
 include "hlib\\sort.hoc";
 include "hlib\\fibo.hoc";
 include "hlib\\fizzbuzz.hoc";
-include "hlib\\sqrt.hoc";
 include "hlib\\power.hoc";
-include "hlib\\minmax.hoc";
 include "hlib\\gcd.hoc";
 */
 
@@ -45,6 +43,7 @@ proc int* make_numbers(int how_many)
 
 proc int main()
 {
+  /*
   var int i = 111;
   var int j = 222;
   var [2]int* data;
@@ -53,6 +52,9 @@ proc int main()
   var int** pp_data = &data[0];
   *pp_data = data[1];
   print_int(**pp_data);
+  */
+  var int y = int_log2(31.00001);
+  print_int(y);
 
   /*
   var int count = 20;

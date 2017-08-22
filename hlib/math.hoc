@@ -1,0 +1,93 @@
+proc int max(int a, int b)
+{
+  var int result = a;
+  if(a < b)
+    result = b;
+  return result;
+}
+
+proc int min(int a, int b)
+{
+  var int result = a;
+  if(a > b)
+    result = b;
+  return result;
+}
+
+proc float fmax(float a, float b)
+{
+  var float result = a;
+  if(a < b)
+    result = b;
+  return result;
+}
+
+proc float fmin(float a, float b)
+{
+  var float result = a;
+  if(a > b)
+    result = b;
+  return result;
+}
+
+proc int abs(int a)
+{
+  if(a < 0)
+    a = -a;
+  return a;
+}
+
+proc float fabs(float a)
+{
+  if(a < 0.0)
+    a = -1.0*a;
+  return a;
+}
+
+proc float sqrt_iter(float x, float g)
+{
+  var float r = x/g;
+
+  if(r != g)
+  {
+    r = (r+g)/2.0;
+    if(fabs(r-g) == 1.0)
+      r = fmin(r, g);
+  }
+  return r;
+}
+
+/*
+   Computes the largest number 'r' such that 'r*r <= x'
+ */
+proc float sqrt(float x)
+{
+  var float g = x;
+  var float r = 1.0;
+
+  while((g > 0.0) && (g != r))
+  {
+    g = r;
+    r = sqrt_iter(x, g);
+  }
+  return g;
+}
+
+/*
+   Integer log 2 of n : the smallest integer x such that
+      pow(2, x) <= n
+*/
+proc int int_log2(float n)
+{
+  var int x = 0;
+  var int int_n = cast(int)n;
+  var int two_to_pow_x = 1;
+  while(two_to_pow_x <= int_n)
+  {
+    two_to_pow_x = two_to_pow_x * 2;
+    x = x + 1;
+  }
+  x = x - 1;
+  return x;
+}
+

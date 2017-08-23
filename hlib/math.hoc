@@ -44,6 +44,26 @@ proc float fabs(float a)
   return a;
 }
 
+proc float ipow(float a, int p)
+{
+  var bool inv = (p < 0);
+  p = abs(p);
+
+  var float result = 1.0;
+  if(p != 0)
+  {
+    while(p > 0)
+    {
+      result = result*a;
+      p = p - 1;
+    }
+    if(inv)
+      result = 1.0/result;
+  }
+  return result;
+}
+
+
 proc float sqrt_iter(float x, float g)
 {
   var float r = x/g;

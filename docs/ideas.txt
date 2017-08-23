@@ -1,9 +1,17 @@
 TODO
 ----
 - Reserve decl_block_offset=0 for module-leve (global) block.
+- &data[10] : make a temporary tmp = data[10], then take the address of it &tmp
+- Explore the use of temporaries
+- r = *((float*)&n)
+  The reinterpretation will succeed only if n is an l-value (has an address)
+- Think of '+', '-', etc operators as procedure definitions. Then when '+' appears
+  in an expression, it is considered as a procedure application. The '+' is overloaded,
+  as in {<int> + <int>, <float> + <float>}
 
 DYM
 NEWK
+
 Suggestions to improve C:
 
 - The '.' operator should dereference pointers.

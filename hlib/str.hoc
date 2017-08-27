@@ -103,6 +103,13 @@ float_to_str(char* buf, int buf_len, float f)
   var int digit_count = fp_bin_to_dec(f, significand, &exponent);
 
   var int pos = 0;
+
+  if(f < 0.0)
+  {
+    buf[pos] = '-';
+    pos = pos + 1;
+  }
+
   buf[pos] = '0';
   pos = pos + 1;
   buf[pos] = '.';

@@ -138,11 +138,12 @@ floor_log_b(int b, float n)
 proc int
 fp_bin_to_dec(float v, int* significand, int* exponent)
 {
-  var int x = floor_log_b(10, v) + 1;
+  var float v_abs = fabs(v);
+  var int x = floor_log_b(10, v_abs) + 1;
   *exponent = x;
 
   var float B_power_x = ipow(10.0, -x);
-  var float v_prime = v * B_power_x;
+  var float v_prime = v_abs * B_power_x;
 
   var int k = 0;
   var float R = v_prime;

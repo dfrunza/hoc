@@ -16,7 +16,7 @@ typedef struct
 }
 OutFileNames;
 
-local bool32 DEBUG_enabled = true;
+local bool32 DEBUG_enabled = false;
 MemoryArena* arena = 0;
 MemoryArena* DEBUG_arena = 0;
 MemoryArena* sym_arena = 0;

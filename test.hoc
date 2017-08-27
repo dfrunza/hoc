@@ -1,14 +1,10 @@
 include "hlib\\math.hoc";
 include "hlib\\str.hoc";
 include "hlib\\sort.hoc";
-/*
 include "hlib\\fibo.hoc";
 include "hlib\\fizzbuzz.hoc";
 include "hlib\\gcd.hoc";
-*/
 
-/*
-*/
 proc void
 print_numbers(int* numbers, int len)
 {
@@ -45,7 +41,7 @@ make_numbers(int how_many)
 proc int
 main()
 {
-  var float f1 = 12.45;
+  var float f1 = -12.1;
   var float f2 = 0.058;
   var float result = f1 + f2;
   print_float(f1);
@@ -53,7 +49,6 @@ main()
   print_float(f2);
   print_str(" = ");
   print_float(result);
-
   print_str("\n---------\n");
 
   /*
@@ -65,12 +60,11 @@ main()
   quick_sort(numbers, nr_count);
   print_str("\n--- SORTED ---\n");
   print_numbers(numbers, nr_count);
-  */
 
-  /*
-  print_str("\n--- FIBO ---\n");
+  print_str("\n--- FIBONACCI ---\n");
   fibo(40);
-  print_str("--- FIZZBUZZ ---\n");
+
+  print_str("\n--- FIZZBUZZ ---\n");
   fizzbuzz(50);
   */
   return 0;

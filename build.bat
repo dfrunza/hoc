@@ -30,7 +30,7 @@ echo Compiling HoC Code...
 hocc %cd%\..\test.hoc > out_debug.txt
 if %errorlevel% neq 0 goto :hocc_error
 
-cl %C_flags% ..\fp3.c /link %L_flags%
+rem cl %C_flags% ..\fp3.c /link %L_flags%
 
 goto :end
 

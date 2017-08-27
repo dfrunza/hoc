@@ -28,6 +28,3 @@ _ReSharper*/
 .vs/
 #Nuget packages folder
 packages/
-
-hocc.exe
-vm.exe

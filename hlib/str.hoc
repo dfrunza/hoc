@@ -1,4 +1,5 @@
-proc int strlen(char* str)
+proc int
+strlen(char* str)
 {
   var int len = 0;
   while(*str != '\0')
@@ -9,7 +10,8 @@ proc int strlen(char* str)
   return len;
 }
 
-proc void print_str(char* str)
+proc void
+print_str(char* str)
 {
   while(*str != '\0')
   {
@@ -18,7 +20,19 @@ proc void print_str(char* str)
   }
 }
 
-proc void digit_to_char(char* buf, int pos, int digit)
+proc void
+init_intbuf(int* buf, int len, int val)
+{
+  var int i = 0;
+  while(i < len)
+  {
+    buf[i] = val;
+    i = i + 1;
+  }
+}
+
+proc void
+digit_to_char(char* buf, int pos, int digit)
 {
   if((digit >= 0) && (digit <= 9))
   {
@@ -45,7 +59,8 @@ proc void digit_to_char(char* buf, int pos, int digit)
   }
 }
 
-proc char* int_to_str(char* buf, int buf_len, int i)
+proc char*
+int_to_str(char* buf, int buf_len, int i)
 {
   var int buf_i = buf_len - 1;
   buf[buf_i] = '\0';
@@ -78,10 +93,57 @@ proc char* int_to_str(char* buf, int buf_len, int i)
   return (buf + buf_i);
 }
 
-proc void print_int(int n)
+proc void
+float_to_str(char* buf, int buf_len, float f)
 {
-  var [20]char str_buff;
-  print_str(int_to_str(str_buff, 20, n));
+  var [9]int significand; /* 0-th cell is not used */
+  init_intbuf(significand, 9, 0);
+  var int exponent = 0;
+
+  var int digit_count = fp_bin_to_dec(f, significand, &exponent);
+
+  var int pos = 0;
+  buf[pos] = '0';
+  pos = pos + 1;
+  buf[pos] = '.';
+  pos = pos + 1;
+
+  var int i = 1;
+  while(i <= digit_count)
+  {
+    digit_to_char(buf, pos, significand[i]);
+    i = i + 1;
+    pos = pos + 1;
+  }
+
+  buf[pos] = 'E';
+  pos = pos + 1;
+
+  var [20]char exponent_buf;
+  var char* exponent_str = "";
+  exponent_str = int_to_str(exponent_buf, 20, exponent);
+  while(*exponent_str != '\0')
+  {
+    buf[pos] = *exponent_str;
+    exponent_str = exponent_str + 1;
+    pos = pos + 1;
+  }
+
+  buf[pos] = '\0';
 }
 
+proc void
+print_int(int i)
+{
+  var [20]char buf;
+  print_str(int_to_str(buf, 20, i));
+}
+
+proc void
+print_float(float f)
+{
+  var [20]char buf;
+  float_to_str(buf, 20, f);
+  print_str(buf);
+}
 

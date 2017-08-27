@@ -519,9 +519,12 @@ file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path)
   {
     fseek(file, 0, SEEK_END);
     byte_count = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    *bytes = mem_push_count_nz(arena, uint8, byte_count);
-    fread(*bytes, byte_count, 1, file);
+    if(byte_count > 0)
+    {
+      fseek(file, 0, SEEK_SET);
+      *bytes = mem_push_count_nz(arena, uint8, byte_count);
+      fread(*bytes, byte_count, 1, file);
+    }
     fclose(file);
   }
   return byte_count;

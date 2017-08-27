@@ -15,11 +15,11 @@ typedef struct
 
   int max_lines;
   int line_count;
-  InstructionLine lines[4096];
+  InstructionLine lines[8192];
 
   int max_labels;
   int labesl_count;
-  Label labels[512]; //FIXME: Unchecked bounds
+  Label labels[1024]; //FIXME: Unchecked bounds
 }
 SourceProgram;
 

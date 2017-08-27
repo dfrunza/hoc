@@ -1,15 +1,16 @@
 include "hlib\\math.hoc";
 include "hlib\\str.hoc";
-/*
 include "hlib\\sort.hoc";
+/*
 include "hlib\\fibo.hoc";
 include "hlib\\fizzbuzz.hoc";
-include "hlib\\power.hoc";
 include "hlib\\gcd.hoc";
 */
 
 /*
-proc void print_numbers(int* numbers, int len)
+*/
+proc void
+print_numbers(int* numbers, int len)
 {
   var int i = 0;
   while(i < len)
@@ -21,7 +22,8 @@ proc void print_numbers(int* numbers, int len)
   }
 }
 
-proc int* make_numbers(int how_many)
+proc int*
+make_numbers(int how_many)
 {
   var int i = 0;
   var int c1 = 17;
@@ -39,27 +41,36 @@ proc int* make_numbers(int how_many)
   }
   return numbers;
 }
-*/
 
-proc void print_fract(float f)
+proc int
+main()
 {
-  var int k = 0;
-  var float R = f;
-  var float M = ipow(2.0, -1) / 2;
-}
+  var float f1 = 12.45;
+  var float f2 = 0.058;
+  var float result = f1 + f2;
+  print_float(f1);
+  print_str(" + ");
+  print_float(f2);
+  print_str(" = ");
+  print_float(result);
 
-proc int main()
-{
-  var float x = ipow(2.0, -4);
-  print_int(cast(int)x);
+  print_str("\n---------\n");
+
   /*
-  var int y = int_log2(31);
-  print_int(y);
+  var int nr_count = 30;
+  var int* numbers = make_numbers(nr_count);
+  print_str("\n--- SHUFFLED ---\n");
+  print_numbers(numbers, nr_count);
+
+  quick_sort(numbers, nr_count);
+  print_str("\n--- SORTED ---\n");
+  print_numbers(numbers, nr_count);
   */
 
   /*
+  print_str("\n--- FIBO ---\n");
   fibo(40);
-  print_str("-----------\n");
+  print_str("--- FIZZBUZZ ---\n");
   fizzbuzz(50);
   */
   return 0;

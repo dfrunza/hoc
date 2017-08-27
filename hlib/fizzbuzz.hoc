@@ -5,7 +5,8 @@
      fizzbuzz if it's divisible by 15
      else print the integer itself
 */
-proc void fizzbuzz(int n)
+proc void
+fizzbuzz(int n)
 {
   if(n > 0)
   {

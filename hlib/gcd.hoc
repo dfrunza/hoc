@@ -1,6 +1,7 @@
 proc int gcd_(int a, int b);
 
-proc int gcd_(int a, int b)
+proc int
+gcd_(int a, int b)
 {
   var int result = a;
   if(b != 0)
@@ -18,7 +19,8 @@ proc int gcd_(int a, int b)
 /*
    Greatest Common Divisor
  */
-proc int gcd(int a, int b)
+proc int
+gcd(int a, int b)
 {
   return gcd_(abs(a), abs(b));
 }
@@ -26,7 +28,8 @@ proc int gcd(int a, int b)
 /*
    Least Common Multiple
  */
-proc int lcm(int a, int b)
+proc int
+lcm(int a, int b)
 {
   return abs(a*b)/gcd(a, b);
 }

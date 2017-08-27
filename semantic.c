@@ -491,8 +491,26 @@ type_convert_call_arg(AstVarDecl* formal_arg,
   {
     actual_arg->type = formal_arg->type;
   }
+  else if(types_are_equal(type_from, basic_type_int) && types_are_equal(type_to, basic_type_float))
+  {
+    AstUnrExpr* int_to_float = new_unr_expr(&actual_arg->src_loc);
+    int_to_float->op = AstOpKind_IntToFloat;
+    int_to_float->type = basic_type_float;
+    int_to_float->operand = (AstNode*)actual_arg;
+    *node_out = (AstNode*)int_to_float;
+  }
+  else if(types_are_equal(type_from, basic_type_float) && types_are_equal(type_to, basic_type_int))
+  {
+    AstUnrExpr* float_to_int = new_unr_expr(&actual_arg->src_loc);
+    float_to_int->op = AstOpKind_FloatToInt;
+    float_to_int->type = basic_type_int;
+    float_to_int->operand = (AstNode*)actual_arg;
+    *node_out = (AstNode*)float_to_int;
+  }
   else
-    fail("you have found a bug!");
+    success = compile_error(&actual_arg->src_loc,
+                            "don't know how to convert `%s` to `%s`",
+                            get_type_printstr(type_from), get_type_printstr(type_to));
   return success;
 }
 
@@ -1044,7 +1062,22 @@ do_expression(AstBlock* module_block,
               *out_expr = cast->expr;
             }
             else
-              success = compile_error(&expr->src_loc, "conversion to `int` not possible");
+              success = compile_error(&expr->src_loc, "invalid cast : `%s` to `%s`",
+                                      get_type_printstr(from_type), get_type_printstr(to_type));
+          }
+          else if(types_are_equal(to_type, basic_type_float))
+          {
+            if(types_are_equal(from_type, basic_type_int))
+            {
+              AstUnrExpr* int_to_float = new_unr_expr(&cast->src_loc);
+              int_to_float->op = AstOpKind_IntToFloat;
+              int_to_float->type = basic_type_float;
+              int_to_float->operand = cast->expr;
+              *out_expr = (AstNode*)int_to_float;
+            }
+            else
+              success = compile_error(&expr->src_loc, "invalid cast : `%s` to `%s`",
+                                      get_type_printstr(from_type), get_type_printstr(to_type));
           }
           else if(to_type->kind == TypeKind_Pointer
                   && (types_are_equal(from_type, basic_type_int)

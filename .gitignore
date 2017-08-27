@@ -29,7 +29,5 @@ _ReSharper*/
 #Nuget packages folder
 packages/
 
-*.ir
-*.irc
-*.rc
-*.res
+hocc.exe
+vm.exe

@@ -1,9 +1,9 @@
-include "hlib\\math.hoc";
-include "hlib\\str.hoc";
-include "hlib\\sort.hoc";
-include "hlib\\fibo.hoc";
-include "hlib\\fizzbuzz.hoc";
-include "hlib\\gcd.hoc";
+include "math.hoc";
+include "str.hoc";
+include "sort.hoc";
+include "fibo.hoc";
+include "fizzbuzz.hoc";
+include "gcd.hoc";
 
 proc void
 print_numbers(int* numbers, int len)

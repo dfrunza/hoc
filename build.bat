@@ -26,8 +26,9 @@ cl %C_flags% ..\vm.c ..\lib.c /link %L_flags%
 if %errorlevel% neq 0 goto :end
 
 rem NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
+set hoc_src=%cd%\..\hoc
 echo Compiling HoC Code...
-hocc %cd%\..\test.hoc > out_debug.txt
+hocc %hoc_src%\test.hoc > out_debug.txt
 if %errorlevel% neq 0 goto :hocc_error
 
 rem cl %C_flags% ..\fp3.c /link %L_flags%

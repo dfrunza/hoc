@@ -1,5 +1,4 @@
-# hoc
-HoC Compiler
+# HoC language and compiler
 
-Student project guided by *Compilers: Principles, Techniques and Tools, by Aho et al.*
+A project to write a compiler from scratch for a C-like toy language.
 

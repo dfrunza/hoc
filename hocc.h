@@ -1,11 +1,97 @@
-#pragma once
-#include "lib.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <windows.h>
 
 #define ARENA_SIZE (3*MEGABYTE)
 #define DEBUG_ARENA_SIZE (ARENA_SIZE/3)
 #define SYM_ARENA_SIZE (ARENA_SIZE/10)
 #define MAX_SCOPE_NESTING_DEPTH 100
 #define BINCODE_SIGNATURE "HC"
+
+typedef unsigned char uchar;
+typedef unsigned short ushort;
+typedef unsigned int uint;
+typedef int bool32;
+
+typedef char int8;
+typedef short int16;
+typedef int int32;
+typedef unsigned char uint8;
+typedef unsigned short uint16;
+typedef unsigned int uint32;
+typedef long long int64;
+typedef unsigned long long uint64;
+typedef float float32;
+typedef double float64;
+
+#define KILOBYTE (1024ll)
+#define MEGABYTE (1024*KILOBYTE)
+#define false 0
+#define true  1
+#define inline __inline
+#define internal static
+
+typedef struct MemoryArena
+{
+  uint8* alloc;
+  uint8* free;
+  uint8* cap;
+  struct MemoryArena* host;
+  int sub_arena_count;
+}
+MemoryArena;
+
+typedef struct
+{
+  size_t total_avail;
+  double in_use;
+}
+ArenaUsage;
+
+typedef struct
+{
+  char* head;
+  char* end;
+  MemoryArena* arena;
+}
+String;
+
+typedef struct ListItem
+{
+  void* elem;
+  struct ListItem* next;
+  struct ListItem* prev;
+}
+ListItem;
+
+typedef struct
+{
+  ListItem* first;
+  ListItem* last;
+}
+List;
+
+#define assert(EXPR)\
+  if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__)
+#define fail(MESSAGE, ...)\
+  fail_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__)
+#define sizeof_array(ARRAY)\
+  (sizeof(ARRAY)/sizeof(ARRAY[0]))
+#define to_bool(EXPR)\
+  ((EXPR) ? true : false)
+#define error(MESSAGE, ...)\
+  error_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__)
+#define compile_error(SRC, MESSAGE, ...)\
+  compile_error_f(__FILE__, __LINE__, (SRC), (MESSAGE), __VA_ARGS__)
+
+#define mem_push_struct(ARENA, TYPE)\
+  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), 1, true))
+#define mem_push_count(ARENA, TYPE, COUNT)\
+  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, true))
+#define mem_push_count_nz(ARENA, TYPE, COUNT)\
+  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, false))
+#define mem_zero_struct(VAR, TYPE)\
+  (mem_zero_f(VAR, sizeof(TYPE)))
 
 typedef struct AstNode AstNode;
 typedef struct AstBlock AstBlock;
@@ -781,49 +867,20 @@ typedef struct
 }
 VmProgram;
 
-#define compile_error(SRC, MESSAGE, ...)\
-  compile_error_f(__FILE__, __LINE__, (SRC), (MESSAGE), __VA_ARGS__)
+bool32 DEBUG_enabled = true;
+bool32 DEBUG_zero_arena = false;
+bool32 DEBUG_check_arena_bounds = true;
+MemoryArena* DEBUG_arena = 0;
 
-bool32 compile_error_f(char* file, int line, SourceLocation* src_loc, char* message, ...);
-bool32 get_next_token(TokenStream* input);
-void putback_token(TokenStream* input);
-void init_token_stream(TokenStream* token_stream, char* text, char* file_path);
-void print_char(char buf[3], char raw_char);
-bool32 is_literal_token(TokenKind kind);
-char* get_token_printstr(Token* token);
-char* get_ast_kind_printstr(AstNodeKind kind);
-void DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag);
-void DEBUG_print_arena_usage(char* tag);
-bool32 is_arithmetic_op(AstOpKind op);
-bool32 is_logic_op(AstOpKind op);
-bool32 is_relation_op(AstOpKind op);
-bool32 parse(TokenStream* input, AstNode** node);
-void init_types();
-bool32 semantic_analysis(AstModule* ast);
-AstString* new_string(SourceLocation* src_loc, char* str);
-AstBinExpr* new_bin_expr(SourceLocation* src_loc);
-AstCast* new_cast(SourceLocation* src_loc);
-AstId* new_id(SourceLocation* src_loc, char* name);
-AstNode* clone_ast_node(AstNode* node);
-AstVarDecl* new_var_decl(SourceLocation* src_loc);
-AstVarOccur* new_var_occur(SourceLocation* src_loc);
-AstCall* new_call(SourceLocation* src_loc);
-AstUnrExpr* new_unr_expr(SourceLocation* src_loc);
-AstLiteral* new_literal(SourceLocation* src_loc);
-AstLiteral* new_int_literal(SourceLocation* src_loc, int val);
-Type* new_typevar();
-Type* new_proc_type(Type* args, Type* ret);
-Type* new_pointer_type(Type* pointee);
-Type* new_product_type(Type* left, Type* right);
-Type* new_array_type(int size, Type* elem_type);
-Type* new_cast_type(Type* from_type, Type* to_type);
-Type* get_type_repr(Type* type);
-bool32 type_unif(Type* type_a, Type* type_b);
-bool32 types_are_equal(Type* type_a, Type* type_b);
-int compute_type_width(Type* type);
-void build_runtime(AstModule* ast);
-void codegen(List* code, uint8** data, int* data_size, AstModule* module);
-void print_code(VmProgram* vm_program);
-bool32 convert_hasm_to_instructions(char* hasm_text, VmProgram* code);
+MemoryArena* arena = 0;
+MemoryArena* sym_arena = 0;
 
+SourceLocation* deflt_src_loc;
+SymbolTable* symtab = 0;
+
+Type* basic_type_bool;
+Type* basic_type_int;
+Type* basic_type_char;
+Type* basic_type_float;
+Type* basic_type_void;
 

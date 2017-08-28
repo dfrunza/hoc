@@ -1,8 +1,4 @@
-#include "hocc.h"
-
-extern MemoryArena* arena;
-
-local Token keyword_list[] = 
+Token keyword_list[] = 
 {
   {TokenKind_Var, "var"},
   {TokenKind_If, "if"},
@@ -26,7 +22,7 @@ local Token keyword_list[] =
   {TokenKind__Null, 0}, /* terminator */
 };
 
-local Token*
+Token*
 lookup_keyword(Token* list, char* lexeme)
 {
   Token* result = 0;
@@ -57,7 +53,7 @@ is_literal_token(TokenKind kind)
   return (kind >= TokenKind_IntNum) && (kind <= TokenKind_Char);
 }
 
-local char*
+char*
 install_lexeme(char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
@@ -70,7 +66,7 @@ install_lexeme(char* begin_char, char* end_char)
   return lexeme;
 }
 
-local bool32
+bool32
 is_valid_escape_char(char c)
 {
   return c == 't' || c == 'n' || c == 'r' || c == '0' ||
@@ -86,7 +82,7 @@ typedef struct
 }
 EscapedStr;
 
-local bool32
+bool32
 escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
 {
   bool32 success = true;
@@ -117,7 +113,7 @@ escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
   return success;
 }
 
-local char*
+char*
 install_escaped_str(EscapedStr* estr)
 {
   assert(estr->begin <= estr->end);

@@ -1,7 +1,3 @@
-#include "hocc.h"
-
-extern MemoryArena* arena;
-
 typedef struct
 {
   char* string;
@@ -23,7 +19,7 @@ typedef struct
 }
 SourceProgram;
 
-local int
+int
 instr_to_components(char* str, char* components[], int max_component_count)
 {
   int component_count = 0;
@@ -62,7 +58,7 @@ instr_to_components(char* str, char* components[], int max_component_count)
 }
 
 #if 0
-local int
+int
 find_instr_address_at_line(SourceProgram* source, int lineNr)
 {
   int result = -1;
@@ -80,7 +76,7 @@ find_instr_address_at_line(SourceProgram* source, int lineNr)
 }
 #endif
 
-local Label*
+Label*
 find_label(SourceProgram* source, char* label_string)
 {
   Label* result = 0;
@@ -96,7 +92,7 @@ find_label(SourceProgram* source, char* label_string)
   return result;
 }
 
-local bool32
+bool32
 is_valid_label(char *label)
 {
   char start_char = *label;
@@ -142,7 +138,7 @@ process_source_lines(SourceProgram* source)
   }
 }
 
-local bool32
+bool32
 build_instructions(SourceProgram* source, VmProgram* vm_program)
 {
   vm_program->instr_count = source->line_count;

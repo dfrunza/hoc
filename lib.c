@@ -1,9 +1,3 @@
-#include "hocc.h"
-
-local bool32 DEBUG_zero_arena = false;
-local bool32 DEBUG_check_arena_bounds = true;
-local bool32 DEBUG_enabled = true;
-
 void
 assert_f(char* message, char* file, int line)
 {
@@ -438,14 +432,6 @@ str_free(String* str)
   arena->free = (uint8*)str->head;
 }
 
-bool32
-str_dump_to_file(String* str, char* file_path)
-{
-  int char_count = str_len(str);
-  int bytes_written = file_write_bytes(file_path, (uint8*)str->head, str_len(str));
-  return (char_count == bytes_written);
-}
-
 char*
 str_cap(String* str)
 {
@@ -537,6 +523,14 @@ file_read_text(MemoryArena* arena, char* file_path)
   file_read_bytes(arena, &(uint8*)text, file_path);
   *mem_push_count(arena, char, 1) = '\0'; // NULL terminator
   return text;
+}
+
+bool32
+str_dump_to_file(String* str, char* file_path)
+{
+  int char_count = str_len(str);
+  int bytes_written = file_write_bytes(file_path, (uint8*)str->head, str_len(str));
+  return (char_count == bytes_written);
 }
 
 int
@@ -655,3 +649,23 @@ list_replace_item_at(List* list_a, List* list_b, ListItem* at_b_item)
     list_b->last = list_a->last;
 }
 
+bool32
+compile_error_f(char* file, int line, SourceLocation* src_loc, char* message, ...)
+{
+  char* filename_buf = mem_push_count_nz(arena, char, cstr_len(file));
+  cstr_copy(filename_buf, file);
+
+  if(src_loc->line_nr >= 0)
+    fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
+            path_make_stem(filename_buf), line);
+  else
+    fprintf(stderr, "%s(%d) : ", file, line);
+
+  va_list args;
+  va_start(args, message);
+  vfprintf(stderr, message, args);
+  va_end(args);
+
+  fprintf(stderr, "\n");
+  return false;
+}

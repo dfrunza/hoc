@@ -1,15 +1,9 @@
-#include "hocc.h"
+int last_label_id;
 
-extern MemoryArena* arena;
+void rt_statement(AstNode* ast);
+void rt_block_stmts(List* stmt_list);
 
-extern Type* basic_type_void;
-
-local int last_label_id;
-
-local void do_statement(AstNode* ast);
-local void do_block_stmts(List* stmt_list);
-
-local void
+void
 make_unique_label(String* label)
 {
   sprintf(label->head, "L%d", last_label_id++);
@@ -19,7 +13,7 @@ make_unique_label(String* label)
   arena->free = (uint8*)label->end + 1;
 }
 
-local int
+int
 compute_data_loc(int sp, List* areas)
 {
   for(ListItem* list_item = areas->first;
@@ -34,7 +28,7 @@ compute_data_loc(int sp, List* areas)
   return sp;
 }
 
-local void
+void
 fixup_data_loc(int fp, List* areas)
 {
   for(ListItem* list_item = areas->first;
@@ -46,7 +40,7 @@ fixup_data_loc(int fp, List* areas)
   }
 }
 
-local void
+void
 compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
 {
   int fp = compute_data_loc(0, pre_fp_data);
@@ -55,19 +49,19 @@ compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
   fixup_data_loc(fp, post_fp_data);
 }
 
-local void
-do_call(AstCall* call)
+void
+rt_call(AstCall* call)
 {
   List* args_list = &call->args.list;
   for(ListItem* list_item = args_list->first;
       list_item;
       list_item = list_item->next)
   {
-    do_statement((AstNode*)list_item->elem);
+    rt_statement((AstNode*)list_item->elem);
   }
 }
 
-local void
+void
 compute_locals_data_size(AstBlock* block, List* area_list)
 {
   for(ListItem* list_item = block->local_decls.first;
@@ -81,8 +75,8 @@ compute_locals_data_size(AstBlock* block, List* area_list)
   }
 }
 
-local void
-do_block(AstBlock* block)
+void
+rt_block(AstBlock* block)
 {
   List pre_fp_data = {0};
   list_init(&pre_fp_data);
@@ -124,13 +118,13 @@ do_block(AstBlock* block)
 
   compute_locals_data_size(block, &post_fp_data);
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
-  do_block_stmts(&block->node_list);
+  rt_block_stmts(&block->node_list);
 }
 
-local void
-do_while_stmt(AstWhileStmt* while_stmt)
+void
+rt_while_stmt(AstWhileStmt* while_stmt)
 {
-  do_statement(while_stmt->cond_expr);
+  rt_statement(while_stmt->cond_expr);
 
   {
     String* label_id = str_new(arena);
@@ -148,15 +142,15 @@ do_while_stmt(AstWhileStmt* while_stmt)
   }
 
   if(while_stmt->body->kind == AstNodeKind_Block)
-    do_block((AstBlock*)while_stmt->body);
+    rt_block((AstBlock*)while_stmt->body);
   else
-    do_statement(while_stmt->body);
+    rt_statement(while_stmt->body);
 }
 
-local void
-do_if_stmt(AstIfStmt* if_stmt)
+void
+rt_if_stmt(AstIfStmt* if_stmt)
 {
-  do_statement(if_stmt->cond_expr);
+  rt_statement(if_stmt->cond_expr);
 
   {
     String* label_id = str_new(arena);
@@ -174,24 +168,24 @@ do_if_stmt(AstIfStmt* if_stmt)
   }
 
   if(if_stmt->body->kind == AstNodeKind_Block)
-    do_block((AstBlock*)if_stmt->body);
+    rt_block((AstBlock*)if_stmt->body);
   else
-    do_statement(if_stmt->body);
+    rt_statement(if_stmt->body);
 
   if(if_stmt->else_body)
   {
     AstNode* else_node = if_stmt->else_body;
     if(else_node->kind == AstNodeKind_Block)
-      do_block((AstBlock*)else_node);
+      rt_block((AstBlock*)else_node);
     else if(else_node->kind == AstNodeKind_IfStmt)
-      do_if_stmt((AstIfStmt*)else_node);
+      rt_if_stmt((AstIfStmt*)else_node);
     else
-      do_statement(else_node);
+      rt_statement(else_node);
   }
 }
 
-local void
-do_bin_expr(AstBinExpr* bin_expr)
+void
+rt_bin_expr(AstBinExpr* bin_expr)
 {
   String* label_id = str_new(arena);
   make_unique_label(label_id);
@@ -201,50 +195,50 @@ do_bin_expr(AstBinExpr* bin_expr)
   str_append(label, ".logic-end");
   bin_expr->label_end = str_cap(label);
 
-  do_statement(bin_expr->left_operand);
-  do_statement(bin_expr->right_operand);
+  rt_statement(bin_expr->left_operand);
+  rt_statement(bin_expr->right_operand);
 }
 
-local void
-do_unr_expr(AstUnrExpr* unr_expr)
+void
+rt_unr_expr(AstUnrExpr* unr_expr)
 {
-  do_statement(unr_expr->operand);
+  rt_statement(unr_expr->operand);
 }
 
-local void
-do_statement(AstNode* ast)
+void
+rt_statement(AstNode* ast)
 {
   if(ast->kind == AstNodeKind_BinExpr)
-    do_bin_expr((AstBinExpr*)ast);
+    rt_bin_expr((AstBinExpr*)ast);
   else if(ast->kind == AstNodeKind_UnrExpr)
-    do_unr_expr((AstUnrExpr*)ast);
+    rt_unr_expr((AstUnrExpr*)ast);
   else if(ast->kind == AstNodeKind_Call)
-    do_call((AstCall*)ast);
+    rt_call((AstCall*)ast);
   else if(ast->kind == AstNodeKind_IfStmt)
-    do_if_stmt((AstIfStmt*)ast);
+    rt_if_stmt((AstIfStmt*)ast);
   else if(ast->kind == AstNodeKind_WhileStmt)
-    do_while_stmt((AstWhileStmt*)ast);
+    rt_while_stmt((AstWhileStmt*)ast);
   else if(ast->kind == AstNodeKind_ReturnStmt)
   {
     AstReturnStmt* ret_stmt = (AstReturnStmt*)ast;
     if(ret_stmt->assign_expr)
-      do_statement((AstNode*)ret_stmt->assign_expr);
+      rt_statement((AstNode*)ret_stmt->assign_expr);
   }
   else if(ast->kind == AstNodeKind_Cast)
   {
     AstCast* cast = (AstCast*)ast;
-    do_statement(cast->expr);
+    rt_statement(cast->expr);
   }
   else if(ast->kind == AstNodeKind_VarDecl)
   {
     AstVarDecl* var_decl = (AstVarDecl*)ast;
     if(var_decl->assign_expr)
-      do_statement((AstNode*)var_decl->assign_expr);
+      rt_statement((AstNode*)var_decl->assign_expr);
   }
   else if(ast->kind == AstNodeKind_Putc)
   {
     AstPutc* putc_ast = (AstPutc*)ast;
-    do_statement(putc_ast->expr);
+    rt_statement(putc_ast->expr);
   }
   else if(ast->kind == AstNodeKind_VarOccur
           || ast->kind == AstNodeKind_BreakStmt
@@ -258,19 +252,19 @@ do_statement(AstNode* ast)
     assert(0);
 }
 
-local void
-do_block_stmts(List* stmt_list)
+void
+rt_block_stmts(List* stmt_list)
 {
   for(ListItem* list_item = stmt_list->first;
       list_item;
       list_item = list_item->next)
   {
-    do_statement((AstNode*)list_item->elem);
+    rt_statement((AstNode*)list_item->elem);
   }
 }
 
-local void
-do_proc(AstProc* proc)
+void
+rt_proc(AstProc* proc)
 {
   proc->label = proc->id->name;
 
@@ -315,7 +309,7 @@ do_proc(AstProc* proc)
 
   compute_locals_data_size(block, &post_fp_data);
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
-  do_block_stmts(&block->node_list);
+  rt_block_stmts(&block->node_list);
 }
  
 void
@@ -328,7 +322,7 @@ build_runtime(AstModule* module)
   {
     AstProc* proc = (AstProc*)list_item->elem;
     assert(proc->kind == AstNodeKind_Proc);
-    do_proc(proc);
+    rt_proc(proc);
   }
 
   List pre_fp_data = {0};
@@ -342,6 +336,6 @@ build_runtime(AstModule* module)
 
   compute_locals_data_size(module_block, &post_fp_data);
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
-  do_block_stmts(&module_block->node_list);
+  rt_block_stmts(&module_block->node_list);
 }
 

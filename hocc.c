@@ -1,4 +1,12 @@
 #include "hocc.h"
+#include "lib.c"
+#include "lex.c"
+#include "syntax.c"
+#include "typecheck.c"
+#include "semantic.c"
+#include "runtime.c"
+#include "codegen.c"
+#include "hasm.c"
 
 typedef struct
 {
@@ -16,12 +24,6 @@ typedef struct
 }
 OutFileNames;
 
-local bool32 DEBUG_enabled = false;
-MemoryArena* arena = 0;
-MemoryArena* DEBUG_arena = 0;
-MemoryArena* sym_arena = 0;
-extern SymbolTable* symtab;
-
 void
 DEBUG_print_arena_usage(char* tag)
 {
@@ -30,27 +32,6 @@ DEBUG_print_arena_usage(char* tag)
   printf("-----  %s  -----\n", tag);
   printf("in_use(arena) : %.2f%%\n", usage.in_use*100);
   printf("in_use(sym_arena) : %.2f%%\n", sym_usage.in_use*100);
-}
-
-bool32
-compile_error_f(char* file, int line, SourceLocation* src_loc, char* message, ...)
-{
-  char* filename_buf = mem_push_count_nz(arena, char, cstr_len(file));
-  cstr_copy(filename_buf, file);
-
-  if(src_loc->line_nr >= 0)
-    fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
-            path_make_stem(filename_buf), line);
-  else
-    fprintf(stderr, "%s(%d) : ", file, line);
-
-  va_list args;
-  va_start(args, message);
-  vfprintf(stderr, message, args);
-  va_end(args);
-
-  fprintf(stderr, "\n");
-  return false;
 }
 
 void
@@ -67,7 +48,7 @@ DEBUG_print_sizeof_ast_structs()
   struct_info[KIND].kind = KIND; \
   struct_info[KIND].size = sizeof(STRUCT); \
 
-  local StructInfo struct_info[AstNodeKind__Count] = {0};
+  StructInfo struct_info[AstNodeKind__Count] = {0};
   assert(AstNodeKind__Null == 0);
 #if 1
   make_struct_info(AstNodeKind_EmptyStmt, AstNode);

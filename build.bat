@@ -17,12 +17,11 @@ set C_flags=-Od -W4 -nologo -MTd -Zo -Zi -Gm- -GR- -EHa- -FC -D_CRT_SECURE_NO_WA
 set L_flags=-incremental:no -opt:ref -subsystem:console
 
 ..\ctime.exe ^
-cl %C_flags% ..\hocc.c ..\lib.c ..\lex.c ..\syntax.c ..\semantic.c ..\typecheck.c ^
-  ..\runtime.c ..\codegen.c ..\hasm.c /link %L_flags%
+cl %C_flags% ..\hocc.c /link %L_flags%
 if %errorlevel% neq 0 goto :end
 
 ..\ctime.exe ^
-cl %C_flags% ..\vm.c ..\lib.c /link %L_flags%
+cl %C_flags% ..\vm.c /link %L_flags%
 if %errorlevel% neq 0 goto :end
 
 rem NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.

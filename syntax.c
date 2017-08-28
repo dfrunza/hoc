@@ -1,18 +1,13 @@
-#include "hocc.h"
+bool32 parse_initializer(TokenStream*, AstNode**);
+bool32 parse_expression(TokenStream*, AstNode**);
+bool32 parse_statement(TokenStream*, AstNode**);
+bool32 parse_accessor(TokenStream*, AstNode**);
+bool32 parse_unary_expr(TokenStream*, AstNode**);
+bool32 parse_module(TokenStream*, List*);
+bool32 parse_struct_member_list(TokenStream*, List*);
+void DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag);
 
-extern MemoryArena* arena;
-
-SourceLocation* deflt_src_loc;
-
-local bool32 do_initializer(TokenStream*, AstNode**);
-local bool32 do_expression(TokenStream*, AstNode**);
-local bool32 do_statement(TokenStream*, AstNode**);
-local bool32 do_accessor(TokenStream*, AstNode**);
-local bool32 do_unary_expr(TokenStream*, AstNode**);
-local bool32 do_module(TokenStream*, List*);
-local bool32 do_struct_member_list(TokenStream*, List*);
-
-local void
+void
 node_list_append(AstNodeList* node_list, AstNode* node)
 {
   list_append(arena, &node_list->list, node);
@@ -30,7 +25,7 @@ new_block(SourceLocation* src_loc)
   return node;
 }
 
-local AstModule*
+AstModule*
 new_module(SourceLocation* src_loc)
 {
   AstModule* node = mem_push_struct(arena, AstModule);
@@ -89,7 +84,7 @@ clone_ast_node(AstNode* node)
   return clone;
 }
 
-local AstEnum*
+AstEnum*
 new_enum(SourceLocation* src_loc)
 {
   AstEnum* node = mem_push_struct(arena, AstEnum);
@@ -99,7 +94,7 @@ new_enum(SourceLocation* src_loc)
   return node;
 }
 
-local AstPointer*
+AstPointer*
 new_pointer(SourceLocation* src_loc)
 {
   AstPointer* node = mem_push_struct(arena, AstPointer);
@@ -108,7 +103,7 @@ new_pointer(SourceLocation* src_loc)
   return node;
 }
 
-local AstNodeList*
+AstNodeList*
 new_node_list(SourceLocation* src_loc)
 {
   AstNodeList* node = mem_push_struct(arena, AstNodeList);
@@ -131,7 +126,7 @@ new_call(SourceLocation* src_loc)
   return node;
 }
 
-local AstArray*
+AstArray*
 new_array(SourceLocation* src_loc)
 {
   AstArray* node = mem_push_struct(arena, AstArray);
@@ -140,7 +135,7 @@ new_array(SourceLocation* src_loc)
   return node;
 }
 
-local AstProc*
+AstProc*
 new_proc(SourceLocation* src_loc)
 {
   AstProc* node = mem_push_struct(arena, AstProc);
@@ -207,7 +202,7 @@ new_var_occur(SourceLocation* src_loc)
   return node;
 }
 
-local AstWhileStmt*
+AstWhileStmt*
 new_while_stmt(SourceLocation* src_loc)
 {
   AstWhileStmt* node = mem_push_struct(arena, AstWhileStmt);
@@ -216,7 +211,7 @@ new_while_stmt(SourceLocation* src_loc)
   return node;
 }
 
-local AstForStmt*
+AstForStmt*
 new_for_stmt(SourceLocation* src_loc)
 {
   AstForStmt* node = mem_push_struct(arena, AstForStmt);
@@ -225,7 +220,7 @@ new_for_stmt(SourceLocation* src_loc)
   return node;
 }
 
-local AstIfStmt*
+AstIfStmt*
 new_if_stmt(SourceLocation* src_loc)
 {
   AstIfStmt* node = mem_push_struct(arena, AstIfStmt);
@@ -234,7 +229,7 @@ new_if_stmt(SourceLocation* src_loc)
   return node;
 }
 
-local AstReturnStmt*
+AstReturnStmt*
 new_return_stmt(SourceLocation* src_loc)
 {
   AstReturnStmt* node = mem_push_struct(arena, AstReturnStmt);
@@ -243,7 +238,7 @@ new_return_stmt(SourceLocation* src_loc)
   return node;
 }
 
-local AstGotoStmt*
+AstGotoStmt*
 new_goto_stmt(SourceLocation* src_loc)
 {
   AstGotoStmt* node = mem_push_struct(arena, AstGotoStmt);
@@ -252,7 +247,7 @@ new_goto_stmt(SourceLocation* src_loc)
   return node;
 }
 
-local AstLabel*
+AstLabel*
 new_label(SourceLocation* src_loc)
 {
   AstLabel* node = mem_push_struct(arena, AstLabel);
@@ -261,7 +256,7 @@ new_label(SourceLocation* src_loc)
   return node;
 }
 
-local AstContinueStmt*
+AstContinueStmt*
 new_continue_stmt(SourceLocation* src_loc)
 {
   AstContinueStmt* node = mem_push_struct(arena, AstContinueStmt);
@@ -270,7 +265,7 @@ new_continue_stmt(SourceLocation* src_loc)
   return node;
 }
 
-local AstBreakStmt*
+AstBreakStmt*
 new_break_stmt(SourceLocation* src_loc)
 {
   AstBreakStmt* node = mem_push_struct(arena, AstBreakStmt);
@@ -279,7 +274,7 @@ new_break_stmt(SourceLocation* src_loc)
   return node;
 }
 
-local AstIncludeStmt*
+AstIncludeStmt*
 new_include_stmt(SourceLocation* src_loc)
 {
   AstIncludeStmt* node = mem_push_struct(arena, AstIncludeStmt);
@@ -289,7 +284,7 @@ new_include_stmt(SourceLocation* src_loc)
   return node;
 }
 
-local AstUnion*
+AstUnion*
 new_union(SourceLocation* src_loc)
 {
   AstUnion* node = mem_push_struct(arena, AstUnion);
@@ -299,7 +294,7 @@ new_union(SourceLocation* src_loc)
   return node;
 }
 
-local AstStruct*
+AstStruct*
 new_struct(SourceLocation* src_loc)
 {
   AstStruct* node = mem_push_struct(arena, AstStruct);
@@ -309,7 +304,7 @@ new_struct(SourceLocation* src_loc)
   return node;
 }
 
-local AstInitializer*
+AstInitializer*
 new_initializer(SourceLocation* src_loc)
 {
   AstInitializer* node = mem_push_struct(arena, AstInitializer);
@@ -346,7 +341,7 @@ new_putc_intrinsic(SourceLocation* src_loc)
   return node;
 }
 
-local AstEmptyStmt*
+AstEmptyStmt*
 new_empty_stmt(SourceLocation* src_loc)
 {
   AstEmptyStmt* node = mem_push_struct(arena, AstEmptyStmt);
@@ -487,7 +482,7 @@ get_ast_kind_printstr(AstNodeKind kind)
   return result;
 }
 
-local char*
+char*
 get_literal_printstr(AstLiteralKind kind)
 {
   char* result = "???";
@@ -507,8 +502,8 @@ get_literal_printstr(AstLiteralKind kind)
   return result;
 }
 
-local bool32
-do_semicolon(TokenStream* input)
+bool32
+parse_semicolon(TokenStream* input)
 {
   bool32 success = true;
   if(input->token.kind == TokenKind_Semicolon)
@@ -518,8 +513,8 @@ do_semicolon(TokenStream* input)
   return success;
 }
 
-local bool32
-do_initializer_member_list(TokenStream* input, List* member_list)
+bool32
+parse_initializer_member_list(TokenStream* input, List* member_list)
 {
   bool32 success = true;
 
@@ -529,7 +524,7 @@ do_initializer_member_list(TokenStream* input, List* member_list)
     member = 0;
     if(input->token.kind == TokenKind_OpenBrace)
     {
-      if(success = do_initializer(input, &member))
+      if(success = parse_initializer(input, &member))
       {
         if(input->token.kind == TokenKind_Comma)
           success = get_next_token(input);
@@ -538,7 +533,7 @@ do_initializer_member_list(TokenStream* input, List* member_list)
     if(success)
     {
       if(!member)
-        success = do_expression(input, &member);
+        success = parse_expression(input, &member);
 
       if(success && member)
       {
@@ -552,8 +547,8 @@ do_initializer_member_list(TokenStream* input, List* member_list)
   return success;
 }
 
-local bool32
-do_initializer(TokenStream* input, AstNode** node)
+bool32
+parse_initializer(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -563,7 +558,7 @@ do_initializer(TokenStream* input, AstNode** node)
     AstInitializer* initer = new_initializer(&input->src_loc);
     *node = (AstNode*)initer;
 
-    if(success = get_next_token(input) && do_initializer_member_list(input, &initer->member_list))
+    if(success = get_next_token(input) && parse_initializer_member_list(input, &initer->member_list))
     {
       if(input->token.kind == TokenKind_CloseBrace)
         success = get_next_token(input);
@@ -574,8 +569,8 @@ do_initializer(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_actual_arg_list(TokenStream* input, AstNodeList* arg_list)
+bool32
+parse_actual_arg_list(TokenStream* input, AstNodeList* arg_list)
 {
   bool32 success = true;
 
@@ -583,7 +578,7 @@ do_actual_arg_list(TokenStream* input, AstNodeList* arg_list)
   do
   {
     arg = 0;
-    success = do_expression(input, &arg);
+    success = parse_expression(input, &arg);
     if(success && arg)
     {
       node_list_append(arg_list, arg);
@@ -598,8 +593,8 @@ do_actual_arg_list(TokenStream* input, AstNodeList* arg_list)
   return success;
 }
 
-local bool32
-do_statement_list(TokenStream* input, List* stmt_list)
+bool32
+parse_statement_list(TokenStream* input, List* stmt_list)
 {
   bool32 success = true;
 
@@ -609,15 +604,15 @@ do_statement_list(TokenStream* input, List* stmt_list)
     while(input->token.kind == TokenKind_Semicolon && (success = get_next_token(input)))
       ;
 
-    if((success = do_statement(input, &stmt)) && stmt)
+    if((success = parse_statement(input, &stmt)) && stmt)
       list_append(arena, stmt_list, stmt);
   }
   while(success && stmt);
   return success;
 }
 
-local bool32
-do_block(TokenStream* input, AstNode** node)
+bool32
+parse_block(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -627,7 +622,7 @@ do_block(TokenStream* input, AstNode** node)
     AstBlock* block = new_block(&input->src_loc);
     *node = (AstNode*)block;
 
-    if(success = get_next_token(input) && do_statement_list(input, &block->node_list))
+    if(success = get_next_token(input) && parse_statement_list(input, &block->node_list))
     {
       if(input->token.kind == TokenKind_CloseBrace)
         success = get_next_token(input);
@@ -638,8 +633,8 @@ do_block(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
+bool32
+parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
@@ -655,7 +650,7 @@ do_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
       fail("call can be applied to plain identifiers only");
     call->id = (AstId*)left_node;
 
-    if(success = get_next_token(input) && do_actual_arg_list(input, &call->args))
+    if(success = get_next_token(input) && parse_actual_arg_list(input, &call->args))
     {
       if(input->token.kind == TokenKind_CloseParens)
         success = get_next_token(input);
@@ -672,10 +667,10 @@ do_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
     index->op = AstOpKind_ArrayIndex;
     index->left_operand = left_node;
 
-    if(success = get_next_token(input) && do_expression(input, &index->right_operand))
+    if(success = get_next_token(input) && parse_expression(input, &index->right_operand))
     {
       if(input->token.kind == TokenKind_CloseBracket)
-        success = get_next_token(input) && do_rest_of_id(input, *node, node);
+        success = get_next_token(input) && parse_rest_of_id(input, *node, node);
       else
         success = compile_error(&input->src_loc, "expected `]`, actual `%s`", get_token_printstr(&input->token));
     }
@@ -685,10 +680,10 @@ do_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
     *node = (AstNode*)array;
     array->type_expr = left_node;
 
-    if(success = get_next_token(input) && do_expression(input, &array->index_expr))
+    if(success = get_next_token(input) && parse_expression(input, &array->index_expr))
     {
       if(input->token.kind == TokenKind_CloseBracket)
-        success = get_next_token(input) && do_rest_of_id(input, *node, node);
+        success = get_next_token(input) && parse_rest_of_id(input, *node, node);
       else
         success = compile_error(&input->src_loc, "expected `]`, actual `%s`", get_token_printstr(&input->token));
     }
@@ -698,8 +693,8 @@ do_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
   return success;
 }
 
-local bool32
-do_rest_of_accessor(TokenStream* input, AstNode* left_node, AstNode** node)
+bool32
+parse_rest_of_accessor(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
@@ -716,10 +711,10 @@ do_rest_of_accessor(TokenStream* input, AstNode* left_node, AstNode** node)
     else if(input->token.kind == TokenKind_ArrowRight)
       bin_expr->op = AstOpKind_PtrMemberAccess;
 
-    if(success = get_next_token(input) && do_accessor(input, &bin_expr->right_operand))
+    if(success = get_next_token(input) && parse_accessor(input, &bin_expr->right_operand))
     {
       if(bin_expr->right_operand)
-        success = do_rest_of_accessor(input, *node, node);
+        success = parse_rest_of_accessor(input, *node, node);
       else
       {
         putback_token(input);
@@ -747,18 +742,18 @@ do_rest_of_accessor(TokenStream* input, AstNode* left_node, AstNode** node)
   return success;
 }
 
-local bool32
-do_factor(TokenStream* input, AstNode** node)
+bool32
+parse_factor(TokenStream* input, AstNode** node)
 {
   bool32 success = true;
 
-  if((success = do_unary_expr(input, node)) && *node)
-    success = do_rest_of_accessor(input, *node, node);
+  if((success = parse_unary_expr(input, node)) && *node)
+    success = parse_rest_of_accessor(input, *node, node);
   return success;
 }
 
-local bool32
-do_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
+bool32
+parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
@@ -780,10 +775,10 @@ do_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
     else
       assert(0);
 
-    if(success = get_next_token(input) && do_factor(input, &bin_expr->right_operand))
+    if(success = get_next_token(input) && parse_factor(input, &bin_expr->right_operand))
     {
       if(bin_expr->right_operand)
-        success = do_rest_of_factor(input, *node, node);
+        success = parse_rest_of_factor(input, *node, node);
       else
       {
         putback_token(input);
@@ -795,18 +790,18 @@ do_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
   return success;
 }
 
-local bool32
-do_term(TokenStream* input, AstNode** node)
+bool32
+parse_term(TokenStream* input, AstNode** node)
 {
   bool32 success = true;
 
-  if((success = do_factor(input, node)) && *node)
-    success = do_rest_of_factor(input, *node, node);
+  if((success = parse_factor(input, node)) && *node)
+    success = parse_rest_of_factor(input, *node, node);
   return success;
 }
 
-local bool32
-do_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
+bool32
+parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
@@ -837,10 +832,10 @@ do_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     else
       assert(0);
 
-    if(success = get_next_token(input) && do_term(input, &bin_expr->right_operand))
+    if(success = get_next_token(input) && parse_term(input, &bin_expr->right_operand))
     {
       if(bin_expr->right_operand)
-        success = do_rest_of_term(input, *node, node);
+        success = parse_rest_of_term(input, *node, node);
       else
       {
         putback_token(input);
@@ -852,18 +847,18 @@ do_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
   return success;
 }
 
-local bool32
-do_assignment(TokenStream* input, AstNode** node)
+bool32
+parse_assignment(TokenStream* input, AstNode** node)
 {
   bool32 success = true;
 
-  if((success = do_term(input, node)) && *node)
-    success = do_rest_of_term(input, *node, node);
+  if((success = parse_term(input, node)) && *node)
+    success = parse_rest_of_term(input, *node, node);
   return success;
 }
 
-local bool32
-do_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
+bool32
+parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool32 success = true;
@@ -895,7 +890,7 @@ do_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
     else if(input->token.kind == TokenKind_AngleRightEquals)
       bin_expr->op = AstOpKind_GreaterEquals;
 
-    if(success = get_next_token(input) && do_expression(input, &bin_expr->right_operand))
+    if(success = get_next_token(input) && parse_expression(input, &bin_expr->right_operand))
     {
       if(!bin_expr->right_operand)
       {
@@ -908,8 +903,8 @@ do_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
   return success;
 }
 
-local bool32
-do_type_expr_pointer(TokenStream* input, AstNode* expr, AstNode** node)
+bool32
+parse_type_expr_pointer(TokenStream* input, AstNode* expr, AstNode** node)
 {
   *node = expr;
   bool32 success = true;
@@ -920,13 +915,13 @@ do_type_expr_pointer(TokenStream* input, AstNode* expr, AstNode** node)
     *node = (AstNode*)ptr;
     ptr->type_expr = expr;
 
-    success = get_next_token(input) && do_type_expr_pointer(input, *node, node);
+    success = get_next_token(input) && parse_type_expr_pointer(input, *node, node);
   }
   return true;
 }
 
-local bool32
-do_type_expr_id(TokenStream* input, AstNode** node)
+bool32
+parse_type_expr_id(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -935,13 +930,13 @@ do_type_expr_id(TokenStream* input, AstNode** node)
   {
     AstId* id = new_id(&input->src_loc, input->token.lexeme);
     *node = (AstNode*)id;
-    success = get_next_token(input) && do_type_expr_pointer(input, *node, node);
+    success = get_next_token(input) && parse_type_expr_pointer(input, *node, node);
   }
   return success;
 }
 
-local bool32
-do_type_expr(TokenStream* input, AstNode** node)
+bool32
+parse_type_expr(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -951,13 +946,13 @@ do_type_expr(TokenStream* input, AstNode** node)
     AstArray* array = new_array(&input->src_loc);
     *node = (AstNode*)array;
 
-    if(success = get_next_token(input) && do_expression(input, &array->size_expr))
+    if(success = get_next_token(input) && parse_expression(input, &array->size_expr))
     {
       if(input->token.kind == TokenKind_CloseBracket)
       {
         if(array->size_expr)
         {
-          if(success = get_next_token(input) && do_type_expr(input, &array->type_expr))
+          if(success = get_next_token(input) && parse_type_expr(input, &array->type_expr))
           {
             if(!array->type_expr)
             {
@@ -974,13 +969,13 @@ do_type_expr(TokenStream* input, AstNode** node)
     }
   }
   else
-    success = do_type_expr_id(input, node);
+    success = parse_type_expr_id(input, node);
 
   return success;
 }
 
-local bool32
-do_new_operator(TokenStream* input, AstNode** node)
+bool32
+parse_new_operator(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = false;
@@ -992,12 +987,12 @@ do_new_operator(TokenStream* input, AstNode** node)
       AstNew* new_ast = new_new_operator(&input->src_loc);
       *node = (AstNode*)new_ast;
 
-      if(success = get_next_token(input) && do_type_expr(input, &new_ast->type_expr))
+      if(success = get_next_token(input) && parse_type_expr(input, &new_ast->type_expr))
       {
 #if 1
         if(input->token.kind == TokenKind_Comma)
         {
-          if(success = get_next_token(input) && do_expression(input, &new_ast->count_expr))
+          if(success = get_next_token(input) && parse_expression(input, &new_ast->count_expr))
           {
             if(input->token.kind == TokenKind_CloseParens)
             {
@@ -1038,8 +1033,8 @@ do_new_operator(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_putc_intrinsic(TokenStream* input, AstNode** node)
+bool32
+parse_putc_intrinsic(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = false;
@@ -1051,7 +1046,7 @@ do_putc_intrinsic(TokenStream* input, AstNode** node)
       AstPutc* putc_ast = new_putc_intrinsic(&input->src_loc);
       *node = (AstNode*)putc_ast;
 
-      if(success = get_next_token(input) && do_expression(input, &putc_ast->expr))
+      if(success = get_next_token(input) && parse_expression(input, &putc_ast->expr))
       {
         if(input->token.kind == TokenKind_CloseParens)
         {
@@ -1073,15 +1068,15 @@ do_putc_intrinsic(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_accessor(TokenStream* input, AstNode** node)
+bool32
+parse_accessor(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
   if(input->token.kind == TokenKind_OpenParens)
   {
-    if(success = get_next_token(input) && do_expression(input, node))
+    if(success = get_next_token(input) && parse_expression(input, node))
     {
       if(*node)
       {
@@ -1145,24 +1140,24 @@ do_accessor(TokenStream* input, AstNode** node)
   {
     AstId* id = new_id(&input->src_loc, input->token.lexeme);
     *node = (AstNode*)id;
-    success = get_next_token(input) && do_rest_of_id(input, *node, node);
+    success = get_next_token(input) && parse_rest_of_id(input, *node, node);
   }
   else if(input->token.kind == TokenKind_New)
-    success = do_new_operator(input, node);
+    success = parse_new_operator(input, node);
   else if(input->token.kind == TokenKind_Putc)
-    success = do_putc_intrinsic(input, node);
+    success = parse_putc_intrinsic(input, node);
 
   return success;
 }
 
-local bool32
-do_formal_arg(TokenStream* input, AstNode** node)
+bool32
+parse_formal_arg(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
   AstNode* type = 0;
-  if((success = do_type_expr(input, &type)) && type)
+  if((success = parse_type_expr(input, &type)) && type)
   {
     AstVarDecl* var_decl = new_var_decl(&input->src_loc);
     *node = (AstNode*)var_decl;
@@ -1177,8 +1172,8 @@ do_formal_arg(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_formal_arg_list(TokenStream* input, AstNodeList* arg_list)
+bool32
+parse_formal_arg_list(TokenStream* input, AstNodeList* arg_list)
 {
   bool32 success = true;
 
@@ -1186,7 +1181,7 @@ do_formal_arg_list(TokenStream* input, AstNodeList* arg_list)
   do
   {
     arg = 0;
-    if((success = do_formal_arg(input, &arg)) && arg)
+    if((success = parse_formal_arg(input, &arg)) && arg)
     {
       node_list_append(arg_list, arg);
       if(input->token.kind == TokenKind_Comma)
@@ -1199,8 +1194,8 @@ do_formal_arg_list(TokenStream* input, AstNodeList* arg_list)
   return success;
 }
 
-local bool32
-do_unary_expr(TokenStream* input, AstNode** node)
+bool32
+parse_unary_expr(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1230,7 +1225,7 @@ do_unary_expr(TokenStream* input, AstNode** node)
     else
       assert(0);
 
-    if(success = get_next_token(input) && do_factor(input, &unr_expr->operand))
+    if(success = get_next_token(input) && parse_factor(input, &unr_expr->operand))
     {
       if(!unr_expr->operand)
       {
@@ -1249,12 +1244,12 @@ do_unary_expr(TokenStream* input, AstNode** node)
     {
       if(input->token.kind == TokenKind_OpenParens)
       {
-        if(success = get_next_token(input) && do_type_expr(input, &cast->type_expr))
+        if(success = get_next_token(input) && parse_type_expr(input, &cast->type_expr))
         {
           if(input->token.kind == TokenKind_CloseParens)
           {
             if(cast->type_expr)
-              success = get_next_token(input) && do_unary_expr(input, &cast->expr);
+              success = get_next_token(input) && parse_unary_expr(input, &cast->expr);
             else
             {
               putback_token(input);
@@ -1270,29 +1265,29 @@ do_unary_expr(TokenStream* input, AstNode** node)
     }
   }
   else
-    success = do_accessor(input, node);
+    success = parse_accessor(input, node);
 
   return success;
 }
 
-local bool32
-do_expression(TokenStream* input, AstNode** node)
+bool32
+parse_expression(TokenStream* input, AstNode** node)
 {
   bool32 success = true;
 
-  if((success = do_assignment(input, node)) && *node)
-    success = do_rest_of_assignment(input, *node, node);
+  if((success = parse_assignment(input, node)) && *node)
+    success = parse_rest_of_assignment(input, *node, node);
   return success;
 }
 
-local bool32
-do_var_decl(TokenStream* input, AstNode** node)
+bool32
+parse_var_decl(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
   AstNode* type = 0;
-  if((success = do_type_expr(input, &type)) && type)
+  if((success = parse_type_expr(input, &type)) && type)
   {
     if(input->token.kind == TokenKind_Id)
     {
@@ -1305,11 +1300,11 @@ do_var_decl(TokenStream* input, AstNode** node)
       if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
           && (success = get_next_token(input)))
       {
-        if(success = do_initializer(input, &var_decl->init_expr))
+        if(success = parse_initializer(input, &var_decl->init_expr))
         {
           if(!var_decl->init_expr)
           {
-            if(success = do_expression(input, &var_decl->init_expr))
+            if(success = parse_expression(input, &var_decl->init_expr))
             {
               if(!var_decl->init_expr)
               {
@@ -1327,8 +1322,8 @@ do_var_decl(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_for_stmt(TokenStream* input, AstNode** node)
+bool32
+parse_for_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1342,20 +1337,20 @@ do_for_stmt(TokenStream* input, AstNode** node)
 
     if(input->token.kind == TokenKind_OpenParens)
     {
-      success = get_next_token(input) && do_var_decl(input, &(AstNode*)for_stmt->decl_expr)
-        && do_semicolon(input)
-        && do_expression(input, &for_stmt->cond_expr)
-        && do_semicolon(input)
-        && do_expression(input, &for_stmt->loop_expr);
+      success = get_next_token(input) && parse_var_decl(input, &(AstNode*)for_stmt->decl_expr)
+        && parse_semicolon(input)
+        && parse_expression(input, &for_stmt->cond_expr)
+        && parse_semicolon(input)
+        && parse_expression(input, &for_stmt->loop_expr);
       if(!success) return success;
 
       if(input->token.kind == TokenKind_CloseParens)
       {
-        if(success = get_next_token(input) && do_block(input, &(AstNode*)for_stmt->body))
+        if(success = get_next_token(input) && parse_block(input, &(AstNode*)for_stmt->body))
         {
           if(!for_stmt->body)
           {
-            if(success = do_statement(input, &(AstNode*)for_stmt->body))
+            if(success = parse_statement(input, &(AstNode*)for_stmt->body))
             {
               if(for_stmt->body)
               {
@@ -1381,8 +1376,8 @@ do_for_stmt(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_while_stmt(TokenStream* input, AstNode** node)
+bool32
+parse_while_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1396,7 +1391,7 @@ do_while_stmt(TokenStream* input, AstNode** node)
 
     if(input->token.kind == TokenKind_OpenParens)
     {
-      success = get_next_token(input) && do_expression(input, &while_stmt->cond_expr);
+      success = get_next_token(input) && parse_expression(input, &while_stmt->cond_expr);
       if(!success) return success;
 
       if(while_stmt->cond_expr)
@@ -1405,11 +1400,11 @@ do_while_stmt(TokenStream* input, AstNode** node)
         {
           if(!(success = get_next_token(input))) return success;
 
-          if(!(success = do_block(input, &while_stmt->body))) return success;
+          if(!(success = parse_block(input, &while_stmt->body))) return success;
 
           if(!while_stmt->body)
           {
-            if((success = do_statement(input, &while_stmt->body)) && !while_stmt->body)
+            if((success = parse_statement(input, &while_stmt->body)) && !while_stmt->body)
             {
               putback_token(input);
               success = compile_error(&input->src_loc, "statement required, at `%s`", get_token_printstr(&input->token));
@@ -1431,19 +1426,19 @@ do_while_stmt(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_else_stmt(TokenStream* input, AstNode** node)
+bool32
+parse_else_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
   if(input->token.kind == TokenKind_Else)
   {
-    if(success = get_next_token(input) && do_block(input, node))
+    if(success = get_next_token(input) && parse_block(input, node))
     {
       if(!*node)
       {
-        if((success = do_statement(input, node)) && !*node)
+        if((success = parse_statement(input, node)) && !*node)
         {
           putback_token(input);
           success = compile_error(&input->src_loc, "statement required, at `%s`", get_token_printstr(&input->token));
@@ -1454,8 +1449,8 @@ do_else_stmt(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_if_stmt(TokenStream* input, AstNode** node)
+bool32
+parse_if_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1468,23 +1463,23 @@ do_if_stmt(TokenStream* input, AstNode** node)
     if(!(success = get_next_token(input))) return success;
     if(input->token.kind == TokenKind_OpenParens)
     {
-      success = get_next_token(input) && do_expression(input, &if_stmt->cond_expr);
+      success = get_next_token(input) && parse_expression(input, &if_stmt->cond_expr);
       if(!success) return success;
 
       if(input->token.kind == TokenKind_CloseParens)
       {
         if(if_stmt->cond_expr)
         {
-          success = get_next_token(input) && do_block(input, &if_stmt->body);
+          success = get_next_token(input) && parse_block(input, &if_stmt->body);
           if(!success) return success;
 
           if(!if_stmt->body)
-            success = do_statement(input, &if_stmt->body);
+            success = parse_statement(input, &if_stmt->body);
 
           if(success)
           {
             if(if_stmt->body)
-              success = do_else_stmt(input, &if_stmt->else_body);
+              success = parse_else_stmt(input, &if_stmt->else_body);
             else
             {
               putback_token(input);
@@ -1507,8 +1502,8 @@ do_if_stmt(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_proc_decl(TokenStream* input, AstNode** node)
+bool32
+parse_proc_decl(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1518,7 +1513,7 @@ do_proc_decl(TokenStream* input, AstNode** node)
     AstProc* proc = new_proc(&input->src_loc);
     *node = (AstNode*)proc;
 
-    if(success = get_next_token(input) && do_type_expr(input, &proc->ret_type_expr))
+    if(success = get_next_token(input) && parse_type_expr(input, &proc->ret_type_expr))
     {
       if(proc->ret_type_expr)
       {
@@ -1532,13 +1527,13 @@ do_proc_decl(TokenStream* input, AstNode** node)
           {
             if(!(success = get_next_token(input))) return success;
 
-            if(success = do_formal_arg_list(input, &proc->args))
+            if(success = parse_formal_arg_list(input, &proc->args))
             {
               if(input->token.kind == TokenKind_CloseParens)
               {
-                if(success = get_next_token(input) && do_block(input, &(AstNode*)proc->body))
+                if(success = get_next_token(input) && parse_block(input, &(AstNode*)proc->body))
                 {
-                  if(!proc->body && (proc->is_decl = success = do_semicolon(input)))
+                  if(!proc->body && (proc->is_decl = success = parse_semicolon(input)))
                     proc->body = new_block(&(*node)->src_loc);
                 }
               }
@@ -1562,8 +1557,8 @@ do_proc_decl(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_include_stmt(TokenStream* input, AstNode** node)
+bool32
+parse_include_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1593,7 +1588,7 @@ do_include_stmt(TokenStream* input, AstNode** node)
         if(success = get_next_token(inc_input))
         {
           AstBlock* block = (AstBlock*)incl_stmt->body;
-          success = do_module(inc_input, &block->node_list);
+          success = parse_module(inc_input, &block->node_list);
         }
       }
       else
@@ -1605,8 +1600,8 @@ do_include_stmt(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_enum_decl(TokenStream* input, AstNode** node)
+bool32
+parse_enum_decl(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1656,8 +1651,8 @@ do_enum_decl(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_union_decl(TokenStream* input, AstNode** node)
+bool32
+parse_union_decl(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1674,13 +1669,13 @@ do_union_decl(TokenStream* input, AstNode** node)
     }
 
     if(success)
-      success = do_struct_member_list(input, &union_decl->member_list);
+      success = parse_struct_member_list(input, &union_decl->member_list);
   }
   return success;
 }
 
-local bool32
-do_struct_decl(TokenStream* input, AstNode** node)
+bool32
+parse_struct_decl(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1697,13 +1692,13 @@ do_struct_decl(TokenStream* input, AstNode** node)
     }
 
     if(success)
-      success = do_struct_member_list(input, &struct_decl->member_list);
+      success = parse_struct_member_list(input, &struct_decl->member_list);
   }
   return success;
 }
 
-local bool32
-do_struct_member_list(TokenStream* input, List* member_list)
+bool32
+parse_struct_member_list(TokenStream* input, List* member_list)
 {
   bool32 success = true;
 
@@ -1716,14 +1711,14 @@ do_struct_member_list(TokenStream* input, List* member_list)
       member = 0;
       AstNode* type = 0;
 
-      if(success = do_type_expr(input, &type))
+      if(success = parse_type_expr(input, &type))
       {
         if(!type)
         {
           if(input->token.kind == TokenKind_Union)
-            success = do_union_decl(input, &type);
+            success = parse_union_decl(input, &type);
           else if(input->token.kind == TokenKind_Struct)
-            success = do_struct_decl(input, &type);
+            success = parse_struct_decl(input, &type);
         }
 
         if(success && type)
@@ -1748,7 +1743,7 @@ do_struct_member_list(TokenStream* input, List* member_list)
           if(success)
           {
             list_append(arena, member_list, member);
-            success = do_semicolon(input);
+            success = parse_semicolon(input);
           }
         }
       }
@@ -1768,52 +1763,52 @@ do_struct_member_list(TokenStream* input, List* member_list)
   return success;
 }
 
-local bool32
-do_var_stmt(TokenStream* input, AstNode** node)
+bool32
+parse_var_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = false;
 
   if(input->token.kind == TokenKind_Var)
-    success = get_next_token(input) && do_var_decl(input, node);
+    success = get_next_token(input) && parse_var_decl(input, node);
   return success;
 }
 
-local bool32
-do_module_element(TokenStream* input, AstNode** node)
+bool32
+parse_module_element(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
   if(input->token.kind == TokenKind_Var)
-    success = do_var_stmt(input, node) && do_semicolon(input);
+    success = parse_var_stmt(input, node) && parse_semicolon(input);
   else if(input->token.kind == TokenKind_Include)
-    success = do_include_stmt(input, node) && do_semicolon(input);
+    success = parse_include_stmt(input, node) && parse_semicolon(input);
   else if(input->token.kind == TokenKind_Proc)
-    success = do_proc_decl(input, node);
+    success = parse_proc_decl(input, node);
   else if(input->token.kind == TokenKind_Struct)
-    success = do_struct_decl(input, node);
+    success = parse_struct_decl(input, node);
   else if(input->token.kind == TokenKind_Union)
-    success = do_union_decl(input, node);
+    success = parse_union_decl(input, node);
   else if(input->token.kind == TokenKind_Enum)
-    success = do_enum_decl(input, node);
+    success = parse_enum_decl(input, node);
   else
   {
-    if((success = do_expression(input, node)) && *node)
-      success = do_semicolon(input);
+    if((success = parse_expression(input, node)) && *node)
+      success = parse_semicolon(input);
   }
   return success;
 }
 
-local bool32
-do_module(TokenStream* input, List* node_list)
+bool32
+parse_module(TokenStream* input, List* node_list)
 {
   bool32 success = true;
 
   AstNode* node = 0;
   do
   {
-    if((success = do_module_element(input, &node)) && node)
+    if((success = parse_module_element(input, &node)) && node)
       list_append(arena, node_list, node);
   }
   while(success && node);
@@ -1826,8 +1821,8 @@ do_module(TokenStream* input, List* node_list)
   return success;
 }
 
-local bool32
-do_return_stmt(TokenStream* input, AstNode** node)
+bool32
+parse_return_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1836,14 +1831,14 @@ do_return_stmt(TokenStream* input, AstNode** node)
   {
     AstReturnStmt* ret_stmt = new_return_stmt(&input->src_loc);
     *node = (AstNode*)ret_stmt;
-    success = get_next_token(input) && do_expression(input, &ret_stmt->expr);
+    success = get_next_token(input) && parse_expression(input, &ret_stmt->expr);
   }
 
   return success;
 }
 
-local bool32
-do_label(TokenStream* input, AstNode* id, AstNode** node)
+bool32
+parse_label(TokenStream* input, AstNode* id, AstNode** node)
 {
   *node = id;
   bool32 success = true;
@@ -1862,8 +1857,8 @@ do_label(TokenStream* input, AstNode* id, AstNode** node)
   return success;
 }
 
-local bool32
-do_goto_stmt(TokenStream* input, AstNode** node)
+bool32
+parse_goto_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1885,8 +1880,8 @@ do_goto_stmt(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_continue_stmt(TokenStream* input, AstNode** node)
+bool32
+parse_continue_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1899,8 +1894,8 @@ do_continue_stmt(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_break_stmt(TokenStream* input, AstNode** node)
+bool32
+parse_break_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
@@ -1913,47 +1908,47 @@ do_break_stmt(TokenStream* input, AstNode** node)
   return success;
 }
 
-local bool32
-do_statement(TokenStream* input, AstNode** node)
+bool32
+parse_statement(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool32 success = true;
 
   if(input->token.kind == TokenKind_Var)
-    success = do_var_stmt(input, node) && do_semicolon(input);
+    success = parse_var_stmt(input, node) && parse_semicolon(input);
   else if(input->token.kind == TokenKind_If)
-    success = do_if_stmt(input, node);
+    success = parse_if_stmt(input, node);
   else if(input->token.kind == TokenKind_Else)
     success = compile_error(&input->src_loc, "unmatched `else`");
   else if(input->token.kind == TokenKind_While)
-    success = do_while_stmt(input, node);
+    success = parse_while_stmt(input, node);
   else if(input->token.kind == TokenKind_For)
-    success = do_for_stmt(input, node);
+    success = parse_for_stmt(input, node);
   else if(input->token.kind == TokenKind_Return)
-    success = do_return_stmt(input, node) && do_semicolon(input);
+    success = parse_return_stmt(input, node) && parse_semicolon(input);
   else if(input->token.kind == TokenKind_Break)
-    success = do_break_stmt(input, node) && do_semicolon(input);
+    success = parse_break_stmt(input, node) && parse_semicolon(input);
   else if(input->token.kind == TokenKind_Continue)
-    success = do_continue_stmt(input, node) && do_semicolon(input);
+    success = parse_continue_stmt(input, node) && parse_semicolon(input);
   else if(input->token.kind == TokenKind_Goto)
-    success = do_goto_stmt(input, node) && do_semicolon(input);
+    success = parse_goto_stmt(input, node) && parse_semicolon(input);
   else if(input->token.kind == TokenKind_Semicolon)
   {
     *node = new_empty_stmt(&input->src_loc);
     success = get_next_token(input);
   }
   else if(input->token.kind == TokenKind_OpenBrace)
-    success = do_block(input, node);
+    success = parse_block(input, node);
   else
   {
-    if(success = do_expression(input, node))
+    if(success = parse_expression(input, node))
     {
       if(*node)
       {
         if(input->token.kind == TokenKind_Colon)
-          success = do_label(input, *node, node);
+          success = parse_label(input, *node, node);
         else
-          success = do_semicolon(input);
+          success = parse_semicolon(input);
       }
     }
   }
@@ -1973,11 +1968,11 @@ parse(TokenStream* input, AstNode** node)
   deflt_src_loc->file_path = module->file_path;
 
   AstBlock* block = (AstBlock*)module->body;
-  success = do_module(input, &block->node_list);
+  success = parse_module(input, &block->node_list);
   return success;
 }
 
-local void
+void
 DEBUG_print_line(String* str, int indent_level, char* message, ...)
 {
   for(int i = 0; i < indent_level; i++)
@@ -1993,7 +1988,7 @@ DEBUG_print_line(String* str, int indent_level, char* message, ...)
   str_append(str, "\n");
 }
 
-local void
+void
 DEBUG_print_ast_node_list(String* str, int indent_level, List* node_list, char* tag)
 {
   if(node_list->first)

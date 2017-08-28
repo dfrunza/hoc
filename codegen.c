@@ -1,16 +1,8 @@
-#include "hocc.h"
+void gen_load_rvalue(List*, AstNode*);
+void gen_load_lvalue(List*, AstNode*);
+void gen_statement(List*, AstNode*);
 
-extern MemoryArena* arena;
-
-extern Type* basic_type_int;
-extern Type* basic_type_float;
-extern Type* basic_type_char;
-
-local void gen_load_rvalue(List*, AstNode*);
-local void gen_load_lvalue(List*, AstNode*);
-local void gen_statement(List*, AstNode*);
-
-local void
+void
 print_instruction(VmProgram* vm_program, char* code, ...)
 {
   static char strbuf[128] = {0};
@@ -25,7 +17,7 @@ print_instruction(VmProgram* vm_program, char* code, ...)
   vm_program->text_len++;
 }
 
-local void
+void
 emit_instr_reg(List* instr_list, Opcode opcode, RegName reg)
 {
   Instruction* instr = mem_push_struct(arena, Instruction);
@@ -35,7 +27,7 @@ emit_instr_reg(List* instr_list, Opcode opcode, RegName reg)
   list_append(arena, instr_list, instr);
 }
 
-local void
+void
 emit_instr_int(List* instr_list, Opcode opcode, int32 int_val)
 {
   Instruction* instr = mem_push_struct(arena, Instruction);
@@ -45,7 +37,7 @@ emit_instr_int(List* instr_list, Opcode opcode, int32 int_val)
   list_append(arena, instr_list, instr);
 }
 
-local void
+void
 emit_instr_float(List* instr_list, Opcode opcode, float32 float_val)
 {
   Instruction* instr = mem_push_struct(arena, Instruction);
@@ -55,7 +47,7 @@ emit_instr_float(List* instr_list, Opcode opcode, float32 float_val)
   list_append(arena, instr_list, instr);
 }
 
-local void
+void
 emit_instr(List* instr_list, Opcode opcode)
 {
   Instruction* instr = mem_push_struct(arena, Instruction);
@@ -64,7 +56,7 @@ emit_instr(List* instr_list, Opcode opcode)
   list_append(arena, instr_list, instr);
 }
 
-local void
+void
 emit_instr_str(List* instr_list, Opcode opcode, char* str)
 {
   assert(str);
@@ -75,7 +67,7 @@ emit_instr_str(List* instr_list, Opcode opcode, char* str)
   list_append(arena, instr_list, instr);
 }
 
-local void
+void
 gen_bin_expr(List* code, AstBinExpr* bin_expr)
 {
   AstNode* left_operand = bin_expr->left_operand;
@@ -300,7 +292,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
   }
 }
 
-local void
+void
 gen_unr_expr(List* code, AstUnrExpr* unr_expr)
 {
   if(unr_expr->op == AstOpKind_AddressOf)
@@ -343,7 +335,7 @@ gen_unr_expr(List* code, AstUnrExpr* unr_expr)
   }
 }
 
-local void
+void
 gen_call(List* code, AstCall* call)
 {
   AstProc* proc = (AstProc*)call->proc_sym->ast;
@@ -366,7 +358,7 @@ gen_call(List* code, AstCall* call)
   emit_instr_int(code, Opcode_GROW, -proc->args_size);
 }
 
-local void
+void
 gen_load_lvalue(List* code, AstNode* ast)
 {
   if(ast->kind == AstNodeKind_VarOccur)
@@ -396,7 +388,7 @@ gen_load_lvalue(List* code, AstNode* ast)
     assert(0);
 }
 
-local void
+void
 gen_load_rvalue(List* code, AstNode* ast)
 {
   if(ast->kind == AstNodeKind_VarOccur)
@@ -433,7 +425,7 @@ gen_load_rvalue(List* code, AstNode* ast)
     assert(0);
 }
 
-local void
+void
 gen_return_stmt(List* code, AstReturnStmt* ret_stmt)
 {
   if(ret_stmt->assign_expr)
@@ -451,7 +443,7 @@ gen_return_stmt(List* code, AstReturnStmt* ret_stmt)
   emit_instr_str(code, Opcode_GOTO, proc->label_end);
 }
 
-local void
+void
 gen_break_stmt(List* code, AstBreakStmt* break_stmt)
 {
   char* label_break = 0;
@@ -469,7 +461,7 @@ gen_break_stmt(List* code, AstBreakStmt* break_stmt)
   emit_instr_str(code, Opcode_GOTO, label_break);
 }
 
-local void
+void
 gen_block(List* code, AstBlock* block)
 {
   for(ListItem* list_item = block->access_links.first;
@@ -503,7 +495,7 @@ gen_block(List* code, AstBlock* block)
   emit_instr_int(code, Opcode_GROW, -block->links_size);
 }
 
-local void
+void
 gen_proc(List* code, AstProc* proc)
 {
   AstBlock* block = (AstBlock*)proc->body;
@@ -521,7 +513,7 @@ gen_proc(List* code, AstProc* proc)
   emit_instr(code, Opcode_RETURN);
 }
 
-local void
+void
 gen_if_stmt(List* code, AstIfStmt* if_stmt)
 {
   gen_load_rvalue(code, if_stmt->cond_expr);
@@ -551,7 +543,7 @@ gen_if_stmt(List* code, AstIfStmt* if_stmt)
   emit_instr_str(code, Opcode_LABEL, if_stmt->label_end);
 }
 
-local void
+void
 gen_while_stmt(List* code, AstWhileStmt* while_stmt)
 {
   emit_instr_str(code, Opcode_LABEL, while_stmt->label_eval);
@@ -566,13 +558,13 @@ gen_while_stmt(List* code, AstWhileStmt* while_stmt)
   emit_instr_str(code, Opcode_LABEL, while_stmt->label_break);
 }
 
-local void
+void
 gen_empty_stmt(List* code)
 {
   emit_instr(code, Opcode_NOOP);
 }
 
-local void
+void
 gen_statement(List* code, AstNode* ast)
 {
   if(ast->kind == AstNodeKind_BinExpr)
@@ -667,7 +659,7 @@ codegen(List* code, uint8** data, int* data_size, AstModule* module)
   }
 }
 
-local char*
+char*
 get_regname_str(RegName reg)
 {
   static char* reg_fp = "fp";

@@ -1,4 +1,5 @@
 #include "hocc.h"
+#include "lib.c"
 
 #define VM_MEMORY_SIZE 2048
 
@@ -38,33 +39,33 @@ typedef enum
 }
 ExecResult;
 
-local MemoryArena* arena;
+MemoryArena* arena;
 
-local bool32
+bool32
 check_stack_bounds(HocMachine* machine, int sp)
 {
   return sp > 0 && sp < machine->hp;
 }
 
-local bool32
+bool32
 check_memory_bounds(HocMachine* machine, int location)
 {
   return location > 0 && location <= machine->memory_size;
 }
 
-local bool32
+bool32
 check_heap_bounds(HocMachine* machine, int hp)
 {
   return (hp > machine->sp) && (hp < machine->hp) && hp < machine->memory_size;
 }
 
-local bool32
+bool32
 check_instr_bounds(HocMachine* machine, int address)
 {
   return address >= 0 && address < machine->instr_count;
 }
 
-local void
+void
 clear_memory(HocMachine* machine, int base, int size)
 {
   int new_base = location_at(base, int8, size);
@@ -78,13 +79,13 @@ clear_memory(HocMachine* machine, int base, int size)
     machine->memory[i] = 0xcd;
 }
 
-local int32
+int32
 offset_register(int32 reg, int32 offset)
 {
   return reg + offset*sizeof(int32);
 }
 
-local ExecResult
+ExecResult
 execute_instr(HocMachine* machine, Instruction* instr)
 {
   Opcode opcode = instr->opcode;
@@ -772,7 +773,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
   return Result_OK;
 }
 
-local ExecResult
+ExecResult
 run_program(HocMachine* machine)
 {
   Instruction* instr;
@@ -825,7 +826,7 @@ run_program(HocMachine* machine)
   return exec_result;
 }
 
-local bool32
+bool32
 load_bin_image(char* exe_file_name, HocMachine* machine)
 {
   uint8* exe_bytes = 0;

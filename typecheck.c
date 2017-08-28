@@ -1,5 +1,3 @@
-#include "hocc.h"
-
 typedef struct
 {
   Type* key;
@@ -7,18 +5,10 @@ typedef struct
 }
 TypePair;
 
-extern MemoryArena* arena;
+List subst_list;
+int typevar_id = 1;
 
-local List subst_list;
-local int typevar_id = 1;
-
-Type* basic_type_bool;
-Type* basic_type_int;
-Type* basic_type_char;
-Type* basic_type_float;
-Type* basic_type_void;
-
-local Type*
+Type*
 new_basic_type(BasicTypeKind kind, int size)
 {
   Type* type = mem_push_struct(arena, Type);
@@ -142,7 +132,7 @@ compute_type_width(Type* type)
   return type->size;
 }
 
-local Type*
+Type*
 copy_type(Type* type)
 {
   Type* copy = mem_push_struct(arena, Type);
@@ -162,7 +152,7 @@ get_type_repr(Type* type)
   return result;
 }
 
-local void
+void
 set_union(Type* type_a, Type* type_b)
 {
   if(type_a->kind == TypeKind_TypeVar)
@@ -213,7 +203,7 @@ type_unif(Type* type_a, Type* type_b)
   return success;
 }
 
-local TypePair*
+TypePair*
 new_type_pair(Type* key, Type* value)
 {
   TypePair* pair = mem_push_struct(arena, TypePair);
@@ -222,7 +212,7 @@ new_type_pair(Type* key, Type* value)
   return pair;
 }
 
-local TypePair*
+TypePair*
 find_pair(List* subst_list, Type* type)
 {
   TypePair* result = 0;
@@ -240,7 +230,7 @@ find_pair(List* subst_list, Type* type)
   return result;
 }
 
-local Type*
+Type*
 type_subst(List* subst_list, Type* type)
 {
   type = get_type_repr(type);

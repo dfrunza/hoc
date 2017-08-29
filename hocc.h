@@ -306,6 +306,12 @@ typedef enum
 }
 AstLiteralKind;
 
+typedef struct
+{
+  AstNode* ast;
+}
+AstNodeRef;
+
 typedef struct AstNode
 {
   AstNodeKind kind;
@@ -383,6 +389,7 @@ typedef struct
   AstNode* type_expr;
   AstId* id;
   AstNode* init_expr;
+  //AstNodeRef init_expr;
 
   AstBlock* decl_block;
   AstBinExpr* assign_expr;

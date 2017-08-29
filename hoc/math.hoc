@@ -50,6 +50,42 @@ fabs(float a)
   return a;
 }
 
+proc int gcd_recurs(int a, int b);
+
+proc int
+gcd_recurs(int a, int b)
+{
+  var int result = a;
+  if(b != 0)
+  {
+    result = b;
+    var int r = a % b;
+    if(r == 0)
+      result = b;
+    else
+      result = gcd_recurs(b, r);
+  }
+  return result;
+}
+
+/*
+   Greatest Common Divisor
+ */
+proc int
+gcd(int a, int b)
+{
+  return gcd_recurs(abs(a), abs(b));
+}
+
+/*
+   Least Common Multiple
+ */
+proc int
+lcm(int a, int b)
+{
+  return abs(a*b)/gcd(a, b);
+}
+
 proc float
 ipow(float a, int p)
 {

@@ -123,7 +123,7 @@ float_to_str(char* buf, int buf_len, float f)
     pos = pos + 1;
   }
 
-  buf[pos] = 'E';
+  buf[pos] = 'e';
   pos = pos + 1;
 
   var [20]char exponent_buf;

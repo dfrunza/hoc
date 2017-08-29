@@ -354,8 +354,8 @@ typedef struct
   AstNode;
 
   AstOpKind op;
-  AstNode* left_operand;
-  AstNode* right_operand;
+  AstNodeRef left_operand;
+  AstNodeRef right_operand;
 
   char* label_end; // for boolean expressions
 }
@@ -386,10 +386,10 @@ typedef struct
 {
   AstNode;
 
-  AstNode* type_expr;
+  AstNodeRef type_expr;
   AstId* id;
-  AstNode* init_expr;
-  //AstNodeRef init_expr;
+  //AstNode* init_expr;
+  AstNodeRef init_expr;
 
   AstBlock* decl_block;
   AstBinExpr* assign_expr;
@@ -417,10 +417,10 @@ typedef struct
 {
   AstNode;
 
-  AstNode* ret_type_expr;
+  AstNodeRef ret_type_expr;
   AstId* id;
   AstNodeList args;
-  AstBlock* body;
+  AstNodeRef body;
 
   AstVarDecl* ret_var;
   bool32 is_decl;
@@ -448,7 +448,7 @@ typedef struct
   AstNode;
 
   AstOpKind op;
-  AstNode* operand;
+  AstNodeRef operand;
 }
 AstUnrExpr;
 
@@ -481,7 +481,7 @@ typedef struct
 {
   AstNode;
 
-  AstNode* expr;
+  AstNodeRef expr;
 
   AstProc* proc;
   int nesting_depth;
@@ -502,9 +502,9 @@ typedef struct
 {
   AstNode;
 
-  AstNode* cond_expr;
-  AstNode* body;
-  AstNode* else_body;
+  AstNodeRef cond_expr;
+  AstNodeRef body;
+  AstNodeRef else_body;
 
   char* label_else;
   char* label_end;
@@ -515,8 +515,8 @@ typedef struct
 {
   AstNode;
 
-  AstNode* cond_expr;
-  AstNode* body;
+  AstNodeRef cond_expr;
+  AstNodeRef body;
 
   char* label_eval;
   char* label_break;
@@ -527,10 +527,10 @@ typedef struct
 {
   AstNode;
 
-  AstVarDecl* decl_expr;
-  AstNode* cond_expr;
-  AstNode* loop_expr;
-  AstBlock* body;
+  AstNodeRef decl_expr;
+  AstNodeRef cond_expr;
+  AstNodeRef loop_expr;
+  AstNodeRef body;
 
   char* label_eval;
   char* label_break;
@@ -553,8 +553,8 @@ typedef struct
 {
   AstNode;
 
-  AstNode* type_expr;
-  AstNode* expr;
+  AstNodeRef type_expr;
+  AstNodeRef expr;
 }
 AstCast;
 
@@ -562,8 +562,8 @@ typedef struct
 {
   AstNode;
 
-  AstNode* type_expr;
-  AstNode* count_expr;
+  AstNodeRef type_expr;
+  AstNodeRef count_expr;
 
   AstBinExpr* size_expr;
 }
@@ -573,7 +573,7 @@ typedef struct
 {
   AstNode;
 
-  AstNode* expr;
+  AstNodeRef expr;
 }
 AstPutc;
 
@@ -581,8 +581,8 @@ typedef struct
 {
   AstNode;
 
-  AstNode* type_expr;
-  AstNode* size_expr;
+  AstNodeRef type_expr;
+  AstNodeRef size_expr;
 
   int size;
 }
@@ -592,7 +592,7 @@ typedef struct
 {
   AstNode;
 
-  AstNode* type_expr;
+  AstNodeRef type_expr;
 }
 AstPointer;
 

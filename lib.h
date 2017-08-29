@@ -112,6 +112,7 @@ bool32 cstr_start_with(char* str, char* prefix);
 bool32 cstr_match(char* str_a, char* str_b);
 int cstr_len(char* str);
 char* cstr_copy(char* dest_str, char* src_str);
+void cstr_append(char* dest_str, char* src_str);
 void cstr_copy_substr(char* dest_str, char* begin_char, char* end_char);
 
 String* str_new(MemoryArena* arena);

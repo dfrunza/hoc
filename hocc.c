@@ -180,8 +180,12 @@ translate(char* file_path, char* hoc_text)
 }
 
 bool32
-make_file_names(OutFileNames* out_files, char* stem)
+make_out_file_names(OutFileNames* out_files, char* src_file_path)
 {
+  char* stem = mem_push_count_nz(arena, char, cstr_len(src_file_path));
+  cstr_copy(stem, src_file_path);
+  stem = path_make_stem(stem);
+
   int stem_len = cstr_len(stem);
   assert(stem_len > 0);
   bool32 success = true;
@@ -207,6 +211,16 @@ make_file_names(OutFileNames* out_files, char* stem)
   else
     error("length of file name must be between 1..80 : '%s'", stem);
   return success;
+}
+
+char*
+make_vm_exe_path(char* hocc_exe_path)
+{
+  char* vm_exe_path = mem_push_count_nz(arena, char, cstr_len(hocc_exe_path) + cstr_len("vm.exe"));
+  cstr_copy(vm_exe_path, hocc_exe_path);
+  path_make_dir(vm_exe_path);
+  cstr_append(vm_exe_path, "vm.exe");
+  return vm_exe_path;
 }
 
 bool32
@@ -236,26 +250,22 @@ main(int argc, char* argv[])
       DEBUG_print_sizeof_ast_structs();
     }/*<<<*/
 
-    char* file_path = argv[1];
+    char* src_file_path = argv[1];
 
-    char* hoc_text = file_read_text(arena, file_path);
+    char* hoc_text = file_read_text(arena, src_file_path);
     if(DEBUG_enabled)/*>>>*/
       DEBUG_print_arena_usage("Read HoC text");/*<<<*/
 
     if(success = to_bool(hoc_text))
     {
-      VmProgram* vm_program = translate(file_path, hoc_text);
+      VmProgram* vm_program = translate(src_file_path, hoc_text);
       if(success = vm_program->success)
       {
         if(DEBUG_enabled)/*>>>*/
           printf("symbol count : %d\n", symtab->sym_count);/*<<<*/
         
         OutFileNames out_files = {0};
-        char* file_stem = mem_push_count_nz(arena, char, cstr_len(file_path));
-        cstr_copy(file_stem, file_path);
-        file_stem = path_make_stem(file_stem);
-
-        if(success = make_file_names(&out_files, file_stem))
+        if(success = make_out_file_names(&out_files, src_file_path))
         {
           BinCode* bin_image = mem_push_struct(arena, BinCode);
           cstr_copy(bin_image->sig, BINCODE_SIGNATURE);
@@ -267,9 +277,12 @@ main(int argc, char* argv[])
 
           if(success = convert_hasm_to_instructions(hasm_text, vm_program))
           {
+            char* hocc_exe_path = argv[0];
+            char* vm_exe_path = make_vm_exe_path(hocc_exe_path);
+
             uint8* vm_bytes = 0;
             int vm_size = 0;
-            if(vm_size = file_read_bytes(arena, &vm_bytes, "vm.exe"))
+            if(vm_size = file_read_bytes(arena, &vm_bytes, vm_exe_path))
             {
               FILE* exe_file = fopen(out_files.exe.name, "wb");
               if(exe_file)
@@ -295,7 +308,7 @@ main(int argc, char* argv[])
                 success = error("could not write to file `%s`", out_files.exe.name);
             }
             else
-              success = error("could not read file `vm.exe`");
+              success = error("could not read file `%s`", vm_exe_path);
           }
         }
       }
@@ -303,7 +316,7 @@ main(int argc, char* argv[])
         success = error("program could not be translated");
     }
     else
-      success = error("could not read file `%s`", file_path);
+      success = error("could not read source file `%s`", src_file_path);
   }
   else
     success = error("missing argument : input source file");

@@ -331,6 +331,18 @@ cstr_copy(char* dest_str, char* src_str)
 }
 
 void
+cstr_append(char* dest_str, char* src_str)
+{
+  while(*dest_str)
+    dest_str++;
+
+  do
+    *dest_str++ = *src_str++;
+  while(*src_str);
+  *dest_str = '\0';
+}
+
+void
 cstr_copy_substr(char* dest_str, char* begin_char, char* end_char)
 {
   char* src_str = begin_char;

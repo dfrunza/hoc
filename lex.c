@@ -276,6 +276,8 @@ get_token_printstr(Token* token)
     result = "enum";
   else if(token->kind == TokenKind_Cast)
     result = "cast";
+  else if(token->kind == TokenKind_Goto)
+    result = "goto";
   else if(token->kind == TokenKind_New)
     result = "new";
   else if(token->kind == TokenKind_Putc)

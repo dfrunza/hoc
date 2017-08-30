@@ -606,6 +606,10 @@ gen_statement(List* code, AstNode* ast)
     gen_load_rvalue(code, putc_ast->expr);
     emit_instr(code, Opcode_PUTC);
   }
+  else if(ast->kind == AstNodeKind_Block)
+  {
+    gen_block(code, (AstBlock*)ast);
+  }
   else if(ast->kind == AstNodeKind_EmptyStmt)
     gen_empty_stmt(code);
   else

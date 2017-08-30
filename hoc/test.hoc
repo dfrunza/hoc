@@ -42,8 +42,8 @@ make_numbers(int how_many)
 proc int
 main()
 {
-  var float f1 = -12.1;
-  var float f2 = 0.00123;
+  var float f1 = -12.0;
+  var float f2 = 0.058;
   var float result = f1 + f2;
   print_float(f1);
   print_str(" + ");

@@ -110,12 +110,33 @@ float_to_str(char* buf, int buf_len, float f)
     pos = pos + 1;
   }
 
-  buf[pos] = '0';
-  pos = pos + 1;
-  buf[pos] = '.';
-  pos = pos + 1;
-
   var int i = 1;
+  if(exponent <= 0)
+  {
+    buf[pos] = '0';
+    pos = pos + 1;
+    buf[pos] = '.';
+    pos = pos + 1;
+  }
+  else
+  {
+    while((i <= digit_count) && (exponent > 0))
+    {
+      digit_to_char(buf, pos, significand[i]);
+      i = i + 1;
+      pos = pos + 1;
+      exponent = exponent - 1;
+    }
+
+    buf[pos] = '.';
+    pos = pos + 1;
+    if(i > digit_count)
+    {
+      buf[pos] = '0';
+      pos = pos + 1;
+    }
+  }
+
   while(i <= digit_count)
   {
     digit_to_char(buf, pos, significand[i]);
@@ -123,17 +144,20 @@ float_to_str(char* buf, int buf_len, float f)
     pos = pos + 1;
   }
 
-  buf[pos] = 'e';
-  pos = pos + 1;
-
-  var [20]char exponent_buf;
-  var char* exponent_str = "";
-  exponent_str = int_to_str(exponent_buf, 20, exponent);
-  while(*exponent_str != '\0')
+  if(exponent != 0)
   {
-    buf[pos] = *exponent_str;
-    exponent_str = exponent_str + 1;
+    buf[pos] = 'e';
     pos = pos + 1;
+
+    var [20]char exponent_buf;
+    var char* exponent_str = "";
+    exponent_str = int_to_str(exponent_buf, 20, exponent);
+    while(*exponent_str != '\0')
+    {
+      buf[pos] = *exponent_str;
+      exponent_str = exponent_str + 1;
+      pos = pos + 1;
+    }
   }
 
   buf[pos] = '\0';

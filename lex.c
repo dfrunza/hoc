@@ -274,6 +274,8 @@ get_token_printstr(Token* token)
     result = "break";
   else if(token->kind == TokenKind_Continue)
     result = "continue";
+  else if(token->kind == TokenKind_Goto)
+    result = "goto";
   else if(token->kind == TokenKind_Include)
     result = "include";
   else if(token->kind == TokenKind_Enum)

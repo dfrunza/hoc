@@ -246,6 +246,10 @@ do_statement(AstNode* ast)
     AstPutc* putc_ast = (AstPutc*)ast;
     do_statement(putc_ast->expr);
   }
+  else if(ast->kind == AstNodeKind_Block)
+  {
+    do_block((AstBlock*)ast);
+  }
   else if(ast->kind == AstNodeKind_VarOccur
           || ast->kind == AstNodeKind_BreakStmt
           || ast->kind == AstNodeKind_ContinueStmt

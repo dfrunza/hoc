@@ -509,7 +509,7 @@ type_convert_call_arg(AstVarDecl* formal_arg,
   }
   else
     success = compile_error(&actual_arg->src_loc,
-                            "don't know how to convert `%s` to `%s`",
+                            "no implicit conversion from `%s` to `%s`",
                             get_type_printstr(type_from), get_type_printstr(type_to));
   return success;
 }
@@ -553,12 +553,6 @@ do_call(AstBlock* module_block, AstBlock* block, AstCall* call)
             {
               call->args.type = new_product_type(call->args.type, actual_arg->type);
               actual_arg_li->elem = (AstNode*)actual_arg;
-            }
-            else
-            {
-              success = compile_error(&actual_arg->src_loc,
-                  "no implicit conversion from `%s` to `%s`",
-                  get_type_printstr(actual_arg->type), get_type_printstr(formal_arg->type));
             }
           }
 
@@ -717,12 +711,18 @@ do_expression(AstBlock* module_block,
               ;/*OK*/
             else if(bin_expr->op == AstOpKind_Assign)
             {
-              AstLiteral* null_ptr = (AstLiteral*)bin_expr->right_operand;
-              assert(null_ptr->kind == AstNodeKind_Literal && null_ptr->lit_kind == AstLiteralKind_Int);
-              if(null_ptr->int_val == 0)
-                ;/*OK*/
+              if(bin_expr->right_operand->kind == AstNodeKind_Literal)
+              {
+                AstLiteral* lit = (AstLiteral*)bin_expr->right_operand;
+                assert(lit->lit_kind == AstLiteralKind_Int);
+                if(lit->int_val != 0)
+                  success = compile_error(&bin_expr->right_operand->src_loc,
+                                          "%d is not a valid pointer constant", lit->int_val);
+              }
               else
-                success = compile_error(&bin_expr->right_operand->src_loc, "%d is not a valid pointer constant", null_ptr->int_val);
+                success = compile_error(&expr->src_loc,
+                                        "no implicit conversion from `%s` to `%s`",
+                                        get_type_printstr(right_type), get_type_printstr(left_type));
             }
           }
 
@@ -828,10 +828,13 @@ do_expression(AstBlock* module_block,
             AstLiteral* lit = (AstLiteral*)bin_expr;
             assert(lit->lit_kind == AstLiteralKind_Int);
             if(lit->int_val != 0)
-              success = compile_error(&expr->src_loc,
-                                      "no implicit conversion from `%s` to `%s`",
-                                      get_type_printstr(right_type), get_type_printstr(left_type));
+              success = compile_error(&bin_expr->right_operand->src_loc,
+                                      "%d is not a valid pointer constant", lit->int_val);
           }
+          else
+            success = compile_error(&expr->src_loc,
+                                    "no implicit conversion from `%s` to `%s`",
+                                    get_type_printstr(right_type), get_type_printstr(left_type));
         }
         else
           success = compile_error(&expr->src_loc,
@@ -845,8 +848,26 @@ do_expression(AstBlock* module_block,
       }
       else
         success = compile_error(&expr->src_loc,
-                                "incompatible types in expression, `%s` and `%s`",
-                                get_type_printstr(left_type), get_type_printstr(right_type));
+                                "no implicit conversion from `%s` to `%s`",
+                                get_type_printstr(right_type), get_type_printstr(left_type));
+
+      if(success && bin_expr->op == AstOpKind_Assign)
+      {
+        // Check that the left operand is an l-value
+        AstNode* left_operand = bin_expr->left_operand;
+        if(left_operand->kind == AstNodeKind_VarOccur)
+          ;/*OK*/
+        else if(left_operand->kind == AstNodeKind_UnrExpr)
+        {
+          AstUnrExpr* unr_expr = (AstUnrExpr*)left_operand;
+          if(unr_expr->op == AstOpKind_PointerDeref)
+            ;/*OK*/
+          else
+            success = compile_error(&left_operand->src_loc, "left side of assignment is not an l-value");
+        }
+        else
+          success = compile_error(&left_operand->src_loc, "left side of assignment is not an l-value");
+      }
     }
   }
   else if(expr->kind == AstNodeKind_UnrExpr)
@@ -1056,7 +1077,7 @@ do_expression(AstBlock* module_block,
             }
             else if(types_are_equal(from_type, basic_type_bool)
                     || types_are_equal(from_type, basic_type_char)
-                    || to_type->kind == TypeKind_Pointer)
+                    || from_type->kind == TypeKind_Pointer)
             {
               cast->expr->type = to_type;
               *out_expr = cast->expr;
@@ -1399,12 +1420,6 @@ do_statement(AstBlock* module_block,
     else
       success = compile_error(&stmt->src_loc, "unexpected `%s` at this location", get_ast_kind_printstr(stmt->kind));
   }
-  else if(stmt->kind == AstNodeKind_GotoStmt
-          || stmt->kind == AstNodeKind_Label
-          || stmt->kind == AstNodeKind_Cast)
-  {
-    fail("not implemented : %s\n", get_ast_kind_printstr(stmt->kind));
-  }
   else if(stmt->kind == AstNodeKind_EmptyStmt)
   {
     ;/*ok*/
@@ -1429,6 +1444,20 @@ do_statement(AstBlock* module_block,
     }
     else
       success = compile_error(&stmt->src_loc, "putc : argument expression required");
+  }
+  else if(stmt->kind == AstNodeKind_Block)
+  {
+    // anonymours block
+    if(success = scope_begin((AstBlock*)stmt))
+    {
+      success = do_stmt_block(module_block, proc, 0, (AstBlock*)stmt);
+      scope_end();
+    }
+  }
+  else if(stmt->kind == AstNodeKind_GotoStmt
+          || stmt->kind == AstNodeKind_Label)
+  {
+    fail("not implemented : %s\n", get_ast_kind_printstr(stmt->kind));
   }
   else
     assert(0);

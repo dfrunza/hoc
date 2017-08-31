@@ -3,7 +3,7 @@ int tempvar_id = 0;
 
 bool32 sem_stmt_block(AstBlock*, AstProc*, AstNode*, AstBlock*);
 bool32 sem_expression(AstBlock*, AstBlock*, AstNode*, AstNode**);
-bool32 sem_type_expr(AstNode* expr);
+bool32 sem_type_expr(AstNodeRef* expr);
 
 void
 make_type_printstr(String* str, Type* type)
@@ -209,14 +209,14 @@ register_var_decl(AstVarDecl* var_decl)
 {
   bool32 success = true;
 
-  AstNode* type_expr = var_decl->type_expr;
+  AstNodeRef* type_expr = &var_decl->type_expr;
   if(success = sem_type_expr(type_expr))
   {
     AstId* var_id = var_decl->id;
-    var_id->type = type_expr->type;
+    var_id->type = type_expr->ast->type;
     if(success = register_new_id(var_id, SymbolKind_VarDecl))
     {
-      var_decl->type = type_expr->type;
+      var_decl->type = type_expr->ast->type;
       var_id->sym->ast = (AstNode*)var_decl;
     }
   }
@@ -394,12 +394,12 @@ sem_var_decl(AstBlock* module_block, AstBlock* block, AstVarDecl* var_decl)
     var_decl->decl_block = block;
     list_append(arena, &block->local_decls, var_decl);
 
-    if(var_decl->init_expr)
+    if(var_decl->init_expr.ast)
     {
       AstBinExpr* bin_expr = new_bin_expr(&var_decl->src_loc); 
       var_decl->assign_expr = bin_expr;
       bin_expr->op = AstOpKind_Assign;
-      bin_expr->left_operand = (AstNode*)new_id(&var_decl->src_loc, var_decl->id->name);;
+      bin_expr->left_operand.ast = (AstNode*)new_id(&var_decl->src_loc, var_decl->id->name);;
       bin_expr->right_operand = var_decl->init_expr;
 
       success = sem_expression(module_block, block, (AstNode*)bin_expr, &(AstNode*)bin_expr);
@@ -455,7 +455,7 @@ type_convert_call_arg(AstVarDecl* formal_arg,
       AstUnrExpr* address_of = new_unr_expr(&actual_arg->src_loc);
       address_of->op = AstOpKind_AddressOf;
       address_of->type = new_pointer_type(type_from); // pointer(array)
-      address_of->operand = (AstNode*)actual_arg;
+      address_of->operand.ast = (AstNode*)actual_arg;
       *node_out = (AstNode*)address_of;
     }
     else
@@ -470,7 +470,7 @@ type_convert_call_arg(AstVarDecl* formal_arg,
     AstUnrExpr* deref_ptr = new_unr_expr(&actual_arg->src_loc);
     deref_ptr->op = AstOpKind_PointerDeref;
     deref_ptr->type = new_array_type(type_to->array.size, type_from->pointer.pointee);
-    deref_ptr->operand = (AstNode*)actual_arg;
+    deref_ptr->operand.ast = (AstNode*)actual_arg;
     *node_out = (AstNode*)deref_ptr;
   }
   else if(type_from->kind == TypeKind_Array && type_to->kind == TypeKind_Array)
@@ -482,7 +482,7 @@ type_convert_call_arg(AstVarDecl* formal_arg,
     AstUnrExpr* int_to_float = new_unr_expr(&actual_arg->src_loc);
     int_to_float->op = AstOpKind_IntToFloat;
     int_to_float->type = basic_type_float;
-    int_to_float->operand = (AstNode*)actual_arg;
+    int_to_float->operand.ast = (AstNode*)actual_arg;
     *node_out = (AstNode*)int_to_float;
   }
   else if(types_are_equal(type_from, basic_type_float) && types_are_equal(type_to, basic_type_int))
@@ -490,7 +490,7 @@ type_convert_call_arg(AstVarDecl* formal_arg,
     AstUnrExpr* float_to_int = new_unr_expr(&actual_arg->src_loc);
     float_to_int->op = AstOpKind_FloatToInt;
     float_to_int->type = basic_type_int;
-    float_to_int->operand = (AstNode*)actual_arg;
+    float_to_int->operand.ast = (AstNode*)actual_arg;
     *node_out = (AstNode*)float_to_int;
   }
   else
@@ -569,42 +569,42 @@ sem_call(AstBlock* module_block, AstBlock* block, AstCall* call)
 }
 
 bool32
-sem_type_expr(AstNode* expr)
+sem_type_expr(AstNodeRef* expr)
 {
   bool32 success = false;
 
-  if(expr->kind == AstNodeKind_Id)
+  if(expr->ast->kind == AstNodeKind_Id)
   {
     AstId* type_id = (AstId*)expr;
     if(success = register_type_occur(type_id))
-      expr->type = type_id->type;
+      expr->ast->type = type_id->type;
   }
-  else if(expr->kind == AstNodeKind_Array)
+  else if(expr->ast->kind == AstNodeKind_Array)
   {
     AstArray* array = (AstArray*)expr;
-    if(success = sem_type_expr(array->type_expr))
+    if(success = sem_type_expr(&array->type_expr))
     {
       array->size = 0;
-      if(array->size_expr->kind == AstNodeKind_Literal)
+      if(array->size_expr.ast->kind == AstNodeKind_Literal)
       {
-        AstLiteral* size = (AstLiteral*)array->size_expr;
+        AstLiteral* size = (AstLiteral*)array->size_expr.ast;
         if(size->lit_kind == AstLiteralKind_Int)
         {
           array->size = size->int_val;
-          array->type = new_array_type(array->size, array->type_expr->type);
+          array->type = new_array_type(array->size, array->type_expr.ast->type);
         }
         else
-          success = compile_error(&expr->src_loc, "integer constant expected");
+          success = compile_error(&expr->ast->src_loc, "integer constant expected");
       }
       else
-        success = compile_error(&expr->src_loc, "integer constant expected");
+        success = compile_error(&expr->ast->src_loc, "integer constant expected");
     }
   }
-  else if(expr->kind == AstNodeKind_Pointer)
+  else if(expr->ast->kind == AstNodeKind_Pointer)
   {
     AstPointer* pointer = (AstPointer*)expr;
-    if(success = sem_type_expr(pointer->type_expr))
-      expr->type = new_pointer_type(pointer->type_expr->type);
+    if(success = sem_type_expr(&pointer->type_expr))
+      expr->ast->type = new_pointer_type(pointer->type_expr.ast->type);
   }
   else
     assert(0);

@@ -317,6 +317,14 @@ typedef struct AstNode
   AstNodeKind kind;
   Type* type;
   SourceLocation src_loc;
+
+  /*
+  union {
+    AstBlock* block;
+    AstBinExpr* bin_expr;
+    ...
+  }
+  */
 }
 AstNode,
 AstEmptyStmt;
@@ -388,7 +396,6 @@ typedef struct
 
   AstNodeRef type_expr;
   AstId* id;
-  //AstNode* init_expr;
   AstNodeRef init_expr;
 
   AstBlock* decl_block;

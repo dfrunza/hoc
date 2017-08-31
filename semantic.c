@@ -1139,6 +1139,10 @@ sem_expression(AstBlock* module_block,
         success = compile_error(&new_ast->type_expr->src_loc, "new() : `%s` type not allowed", get_type_printstr(type_expr));
     }
   }
+  else if(expr->kind == AstNodeKind_Putc)
+  {
+    success = compile_error(&expr->src_loc, "putc() used in expression");
+  }
   else
     fail("not implemented : %s", get_ast_kind_printstr(expr->kind));
   return success;
@@ -1424,11 +1428,11 @@ sem_statement(AstBlock* module_block,
           putc_ast->type = putc_ast->expr->type;
         else
           success = compile_error(&stmt->src_loc,
-                                  "putc : `char` type required, actual `%s`", get_type_printstr(putc_ast->expr->type));
+                                  "putc : expected argument of type `char`, actual `%s`", get_type_printstr(putc_ast->expr->type));
       }
     }
     else
-      success = compile_error(&stmt->src_loc, "putc : argument expression required");
+      success = compile_error(&stmt->src_loc, "putc : argument required");
   }
   else if(stmt->kind == AstNodeKind_Block)
   {
@@ -1438,11 +1442,6 @@ sem_statement(AstBlock* module_block,
       success = do_stmt_block(module_block, proc, 0, (AstBlock*)stmt);
       scope_end();
     }
-  }
-  else if(stmt->kind == AstNodeKind_GotoStmt
-          || stmt->kind == AstNodeKind_Label)
-  {
-    fail("not implemented : %s\n", get_ast_kind_printstr(stmt->kind));
   }
   else
     assert(0);

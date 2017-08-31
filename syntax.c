@@ -676,7 +676,15 @@ do_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
     if(success = get_next_token(input) && do_expression(input, &index->right_operand))
     {
       if(input->token.kind == TokenKind_CloseBracket)
-        success = get_next_token(input) && do_rest_of_id(input, *node, node);
+      {
+        if(index->right_operand)
+          success = get_next_token(input) && do_rest_of_id(input, *node, node);
+        else
+        {
+          putback_token(input);
+          success = compile_error(&input->src_loc, "[] : expression required between the brackets");
+        }
+      }
       else
         success = compile_error(&input->src_loc, "expected `]`, actual `%s`", get_token_printstr(&input->token));
     }
@@ -722,9 +730,21 @@ do_rest_of_accessor(TokenStream* input, AstNode* left_node, AstNode** node)
     unr_expr->operand = left_node;
 
     if(input->token.kind == TokenKind_MinusMinus)
+    {
+#if 0
       unr_expr->op = AstOpKind_PostDecrement;
+#else
+      success = compile_error(&input->src_loc, "`--` not supported");
+#endif
+    }
     else if(input->token.kind == TokenKind_PlusPlus)
+    {
+#if 0
       unr_expr->op = AstOpKind_PostIncrement;
+#else
+      success = compile_error(&input->src_loc, "`++` not supported");
+#endif
+    }
     else
       assert(0);
 
@@ -954,7 +974,7 @@ do_type_expr(TokenStream* input, AstNode** node)
           }
         }
         else
-          success = compile_error(&input->src_loc, "expression required in `[..]`");
+          success = compile_error(&input->src_loc, "[] : expression required between brackets");
       }
       else
         success = compile_error(&input->src_loc,  "expected `]`, actual `%s`", get_token_printstr(&input->token));
@@ -1213,13 +1233,25 @@ do_unary_expr(TokenStream* input, AstNode** node)
     else if(input->token.kind == TokenKind_Minus)
       unr_expr->op = AstOpKind_Neg;
     else if(input->token.kind == TokenKind_MinusMinus)
+    {
+#if 0
       unr_expr->op = AstOpKind_PreDecrement;
+#else
+      success = compile_error(&input->src_loc, "`--` not supported");
+#endif
+    }
     else if(input->token.kind == TokenKind_PlusPlus)
+    {
+#if 0
       unr_expr->op = AstOpKind_PreIncrement;
+#else
+      success = compile_error(&input->src_loc, "`++` not supported");
+#endif
+    }
     else
       assert(0);
 
-    if(success = get_next_token(input) && do_factor(input, &unr_expr->operand))
+    if(success && (success = get_next_token(input)) && do_factor(input, &unr_expr->operand))
     {
       if(!unr_expr->operand)
       {
@@ -1780,12 +1812,14 @@ do_module_element(TokenStream* input, AstNode** node)
     success = do_include_stmt(input, node) && do_semicolon(input);
   else if(input->token.kind == TokenKind_Proc)
     success = do_proc_decl(input, node);
+#if 0
   else if(input->token.kind == TokenKind_Struct)
     success = do_struct_decl(input, node);
   else if(input->token.kind == TokenKind_Union)
     success = do_union_decl(input, node);
   else if(input->token.kind == TokenKind_Enum)
     success = do_enum_decl(input, node);
+#endif
   else
   {
     if((success = do_expression(input, node)) && *node)
@@ -1916,8 +1950,10 @@ do_statement(TokenStream* input, AstNode** node)
     success = compile_error(&input->src_loc, "unmatched `else`");
   else if(input->token.kind == TokenKind_While)
     success = do_while_stmt(input, node);
+#if 0
   else if(input->token.kind == TokenKind_For)
     success = do_for_stmt(input, node);
+#endif
   else if(input->token.kind == TokenKind_Return)
     success = do_return_stmt(input, node) && do_semicolon(input);
   else if(input->token.kind == TokenKind_Break)

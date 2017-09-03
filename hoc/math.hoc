@@ -68,13 +68,28 @@ gcd_recurs(int a, int b)
   return result;
 }
 
+proc int
+gcd_iter(int a, int b)
+{
+  while(a != b)
+  {
+    if(a > b)
+      a = a - b;
+    else
+      b = b - a;
+  }
+  return a;
+}
+
 /*
    Greatest Common Divisor
  */
 proc int
 gcd(int a, int b)
 {
-  return gcd_recurs(abs(a), abs(b));
+  /*
+  return gcd_recurs(abs(a), abs(b)); */
+  return gcd_iter(abs(a), abs(b));
 }
 
 /*

@@ -31,7 +31,7 @@ fail_f(char* file, int line, char* message, ...)
   *(int*)0 = 0;
 }
 
-bool32
+boole
 error_f(char* file, int line, char* message, ...)
 {
   fprintf(stderr, "%s(%d) : ", file, line);
@@ -49,13 +49,13 @@ error_f(char* file, int line, char* message, ...)
   return false;
 }
 
-bool32
+boole
 char_is_letter(char ch)
 {
   return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z');
 }
 
-bool32
+boole
 char_is_numeric(char c)
 {
   return '0' <= c && c <= '9';
@@ -69,7 +69,7 @@ char_is_numeric(char c)
 void
 mem_check_bounds_f(MemoryArena* arena, int elem_size, void* ptr)
 {
-  assert(arena->alloc <= (uint8*)ptr);
+  assert(arena->base <= (uint8*)ptr);
   assert((arena->free + elem_size) < arena->cap);
 }
 
@@ -88,63 +88,81 @@ mem_zero_range(void* start, void* one_past_end)
 }
 
 void
-arena_free(MemoryArena* arena)
+free_arena(MemoryArena* arena)
 {
-  arena->free = arena->alloc;
+  arena->base = (uint8*)arena + sizeof(MemoryArena);
+  arena->free = arena->base;
+  assert(arena->free < arena->cap);
+
+  if(DEBUG_zero_arena)
+  {
+    mem_zero_range(arena->free, arena->cap);
+  }
 }
 
 void
-arena_reset(MemoryArena* arena)
+pop_arena(MemoryArena** arena)
 {
-  arena->alloc = (uint8*)arena + sizeof(MemoryArena);
-  arena->free = arena->alloc;
-  assert(arena->free < arena->cap);
-}
+  *arena = (*arena)->prev_arena;
 
-MemoryArena*
-arena_pop(MemoryArena* arena)
-{
-  MemoryArena* host = arena->host;
-  assert(host->free == arena->cap);
-  assert(host->alloc == host->free);
+  MemoryArena* curr_arena = *arena;
   if(DEBUG_zero_arena)
-    mem_zero_range((uint8*)arena, arena->cap);
-  host->free = (uint8*)arena;
-
-  if(--host->sub_arena_count > 0)
-    host->alloc = host->free;
-  else
-    host->alloc = (uint8*)host + sizeof(MemoryArena);
-  return host;
+  {
+    mem_zero_range(curr_arena->free, curr_arena->cap);
+  }
 }
 
 MemoryArena*
-arena_push(MemoryArena* arena, size_t size)
+push_arena(MemoryArena** arena, size_t size)
 {
   assert(size > 0);
 
-  MemoryArena sub_arena = {0};
-  sub_arena.alloc = arena->free + sizeof(MemoryArena);
-  sub_arena.free = sub_arena.alloc;
+  MemoryArena* prev_arena = *arena;
 
-  MemoryArena* sub_arena_p = (MemoryArena*)arena->free;
-  arena->free = arena->free + size + sizeof(MemoryArena);
-  if(DEBUG_check_arena_bounds)
-    arena_check_bounds(arena);
-  arena->alloc = arena->free;
-  arena->sub_arena_count++;
-
-  sub_arena.cap = arena->free;
-  sub_arena.host = arena;
-  *sub_arena_p = sub_arena;
-
+  MemoryArena* sub_arena = (MemoryArena*)prev_arena->free;
+  sub_arena->base =(uint8*)sub_arena + sizeof(MemoryArena);
+  sub_arena->free = sub_arena->base;
+  sub_arena->cap = sub_arena->base + size;
+  assert(sub_arena->cap <= prev_arena->cap);
   if(DEBUG_zero_arena)
-    mem_zero_range(sub_arena.alloc, sub_arena.cap);
-  return sub_arena_p;
+  {
+    mem_zero_range(sub_arena->base, sub_arena->cap);
+  }
+
+  MemoryArena* new_arena = (MemoryArena*)sub_arena->cap;
+  new_arena->base = (uint8*)new_arena + sizeof(MemoryArena);
+  new_arena->free = new_arena->base;
+  new_arena->cap = prev_arena->cap;
+  assert(new_arena->free < new_arena->cap);
+
+  new_arena->prev_arena = prev_arena;
+  *arena = new_arena;
+
+  return sub_arena;
+}
+
+void
+begin_temp_memory(MemoryArena** arena)
+{
+  MemoryArena* prev_arena = *arena;
+
+  MemoryArena* new_arena = (MemoryArena*)prev_arena->free;
+  new_arena->free = (uint8*)new_arena + sizeof(MemoryArena);
+  new_arena->cap = prev_arena->cap;
+  assert(new_arena->free < new_arena->cap);
+
+  new_arena->prev_arena = prev_arena;
+  *arena = new_arena;
+}
+
+void
+end_temp_memory(MemoryArena** arena)
+{
+  pop_arena(arena);
 }
 
 void*
-mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool32 zero_mem)
+mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, boole zero_mem)
 {
   assert(count > 0);
 
@@ -159,12 +177,12 @@ mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool32 zer
 }
 
 MemoryArena*
-arena_new(int size)
+new_arena(int size)
 {
   void* raw_mem = VirtualAlloc(0, size + sizeof(MemoryArena), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
   MemoryArena* arena = (MemoryArena*)raw_mem;
-  arena->alloc = (uint8*)arena + sizeof(MemoryArena);
-  arena->free = arena->alloc;
+  arena->base = (uint8*)arena + sizeof(MemoryArena);
+  arena->free = arena->base;
   arena->cap = arena->free + size;
   return arena;
 }
@@ -176,17 +194,17 @@ arena_usage(MemoryArena* arena)
 #if 0
   uint8* base = (uint8*)arena + sizeof(MemoryArena);
 #else
-  uint8* base = arena->alloc;
+  uint8* base = arena->base;
 #endif
   usage.total_avail = arena->cap - base;
   usage.in_use = (arena->free - base) / (double)usage.total_avail;
   return usage;
 }
 
-bool32
+boole
 cstr_to_int(char* str, int* integer)
 {
-  bool32 negative = false;
+  boole negative = false;
 
   if(*str == '-')
   {
@@ -219,11 +237,11 @@ cstr_to_int(char* str, int* integer)
   return true;
 }
 
-bool32
+boole
 cstr_to_float(char* str, float* result)
 {
 #if 0
-  bool32 negative = false;
+  boole negative = false;
 
   if(*str == '-')
   {
@@ -278,7 +296,7 @@ cstr_to_float(char* str, float* result)
   return true;
 }
 
-bool32
+boole
 cstr_start_with(char* str, char* prefix)
 {
   while(*str == *prefix)
@@ -288,11 +306,11 @@ cstr_start_with(char* str, char* prefix)
     if(*prefix == '\0')
       break;
   }
-  bool32 result = (*prefix == '\0');
+  boole result = (*prefix == '\0');
   return result;
 }
 
-bool32
+boole
 cstr_match(char* str_a, char* str_b)
 {
   while(*str_a == *str_b)
@@ -302,7 +320,7 @@ cstr_match(char* str_a, char* str_b)
     if(*str_a == '\0')
       break;
   }
-  bool32 result = (*str_a == *str_b);
+  boole result = (*str_a == *str_b);
   return result;
 }
 
@@ -537,7 +555,7 @@ file_read_text(MemoryArena* arena, char* file_path)
   return text;
 }
 
-bool32
+boole
 str_dump_to_file(String* str, char* file_path)
 {
   int char_count = str_len(str);
@@ -571,21 +589,22 @@ stdin_read(char buf[], int buf_size)
 }
 
 void
-list_init(List* list)
+init_list(List* list)
 {
   mem_zero_struct(list, List);
 }
 
 List*
-list_new(MemoryArena* arena)
+new_list(MemoryArena* arena, ListKind kind)
 {
   List* list = mem_push_struct(arena, List);
-  list_init(list);
+  list->kind = kind;
+  init_list(list);
   return list;
 }
 
 void
-list_remove_item(List* list, ListItem* item)
+remove_list_item(List* list, ListItem* item)
 {
   if(item->prev)
   {
@@ -606,7 +625,7 @@ list_remove_item(List* list, ListItem* item)
 }
 
 void
-list_append_item(List* list, ListItem* item)
+append_list_item(List* list, ListItem* item)
 {
   if(list->last)
   {
@@ -623,15 +642,15 @@ list_append_item(List* list, ListItem* item)
 }
 
 void
-list_append(MemoryArena* arena, List* list, void* elem)
+append_list_elem(MemoryArena* arena, List* list, void* elem)
 {
   ListItem* item = mem_push_struct(arena, ListItem);
   item->elem = elem;
-  list_append_item(list, item);
+  append_list_item(list, item);
 }
 
 void
-list_replace_item_at(List* list_a, List* list_b, ListItem* at_b_item)
+replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
 {
   ListItem* prev_b_item = at_b_item->prev;
   ListItem* next_b_item = at_b_item->next;
@@ -661,7 +680,7 @@ list_replace_item_at(List* list_a, List* list_b, ListItem* at_b_item)
     list_b->last = list_a->last;
 }
 
-bool32
+boole
 compile_error_f(char* file, int line, SourceLocation* src_loc, char* message, ...)
 {
   char* filename_buf = mem_push_count_nz(arena, char, cstr_len(file));

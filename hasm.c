@@ -92,7 +92,7 @@ find_label(SourceProgram* source, char* label_string)
   return result;
 }
 
-bool32
+boole
 is_valid_label(char *label)
 {
   char start_char = *label;
@@ -138,7 +138,7 @@ process_source_lines(SourceProgram* source)
   }
 }
 
-bool32
+boole
 build_instructions(SourceProgram* source, VmProgram* vm_program)
 {
   vm_program->instr_count = source->line_count;
@@ -441,7 +441,7 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
   return true;
 }
 
-bool32
+boole
 convert_hasm_to_instructions(char* text, VmProgram* vm_program)
 {
   SourceProgram source = {0};

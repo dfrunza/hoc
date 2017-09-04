@@ -2,11 +2,13 @@
 #include "lib.c"
 #include "lex.c"
 #include "syntax.c"
+/*
 #include "typecheck.c"
 #include "semantic.c"
 #include "runtime.c"
 #include "codegen.c"
 #include "hasm.c"
+*/
 
 typedef struct
 {
@@ -35,11 +37,11 @@ DEBUG_print_arena_usage(char* tag)
 }
 
 void
-DEBUG_print_sizeof_ast_structs()
+DEBUG_print_sizeof_cst_structs()
 {
   typedef struct 
   {
-    AstNodeKind kind;
+    CstNodeKind kind;
     int size;
   }
   StructInfo;
@@ -48,34 +50,33 @@ DEBUG_print_sizeof_ast_structs()
   struct_info[KIND].kind = KIND; \
   struct_info[KIND].size = sizeof(STRUCT); \
 
-  StructInfo struct_info[AstNodeKind__Count] = {0};
-  assert(AstNodeKind__Null == 0);
+  StructInfo struct_info[CstNodeKind__Count] = {0};
+  assert(CstNodeKind__None == 0);
 #if 1
-  make_struct_info(AstNodeKind_EmptyStmt, AstNode);
-  make_struct_info(AstNodeKind_BinExpr, AstBinExpr);
-  make_struct_info(AstNodeKind_UnrExpr, AstUnrExpr);
-  make_struct_info(AstNodeKind_Literal, AstLiteral);
-  make_struct_info(AstNodeKind_VarDecl, AstVarDecl);
-  make_struct_info(AstNodeKind_VarOccur, AstVarOccur);
-  make_struct_info(AstNodeKind_Block, AstBlock);
-  make_struct_info(AstNodeKind_Proc, AstProc);
-  make_struct_info(AstNodeKind_Id, AstId);
-  make_struct_info(AstNodeKind_WhileStmt, AstWhileStmt);
-  make_struct_info(AstNodeKind_ForStmt, AstForStmt);
-  make_struct_info(AstNodeKind_IfStmt, AstIfStmt);
-  make_struct_info(AstNodeKind_ReturnStmt, AstReturnStmt);
-  make_struct_info(AstNodeKind_GotoStmt, AstGotoStmt);
-  make_struct_info(AstNodeKind_Label, AstLabel);
-  make_struct_info(AstNodeKind_IncludeStmt, AstIncludeStmt);
-  make_struct_info(AstNodeKind_Module, AstModule);
-  make_struct_info(AstNodeKind_Cast, AstCast);
-  make_struct_info(AstNodeKind_Call, AstCall);
-  make_struct_info(AstNodeKind_Array, AstArray);
-  make_struct_info(AstNodeKind_Pointer, AstPointer);
-  make_struct_info(AstNodeKind_Struct, AstStruct);
-  make_struct_info(AstNodeKind_Union, AstUnion);
-  make_struct_info(AstNodeKind_Enum, AstEnum);
-  make_struct_info(AstNodeKind_Initializer, AstInitializer);
+  //make_struct_info(CstNodeKind__None, CstNode);
+  make_struct_info(CstNodeKind_CstBinExpr, CstBinExpr);
+  make_struct_info(CstNodeKind_CstUnaryExpr, CstUnaryExpr);
+  make_struct_info(CstNodeKind_CstLiteral, CstLiteral);
+  make_struct_info(CstNodeKind_CstVarDecl, CstVarDecl);
+  make_struct_info(CstNodeKind_CstBlock, CstBlock);
+  make_struct_info(CstNodeKind_CstProc, CstProc);
+  make_struct_info(CstNodeKind_CstId, CstId);
+  make_struct_info(CstNodeKind_CstWhileStmt, CstWhileStmt);
+  make_struct_info(CstNodeKind_CstForStmt, CstForStmt);
+  make_struct_info(CstNodeKind_CstIfStmt, CstIfStmt);
+  make_struct_info(CstNodeKind_CstReturnStmt, CstReturnStmt);
+  make_struct_info(CstNodeKind_CstGotoStmt, CstGotoStmt);
+  make_struct_info(CstNodeKind_CstLabel, CstLabel);
+  make_struct_info(CstNodeKind_CstInclude, CstInclude);
+  make_struct_info(CstNodeKind_CstModule, CstModule);
+  make_struct_info(CstNodeKind_CstCast, CstCast);
+  make_struct_info(CstNodeKind_CstCall, CstCall);
+  make_struct_info(CstNodeKind_CstArray, CstArray);
+  make_struct_info(CstNodeKind_CstPointer, CstPointer);
+  make_struct_info(CstNodeKind_CstStruct, CstStruct);
+  make_struct_info(CstNodeKind_CstUnion, CstUnion);
+  make_struct_info(CstNodeKind_CstEnum, CstEnum);
+  make_struct_info(CstNodeKind_CstInitList, CstInitList);
 #endif
 
 #undef make_struct_info
@@ -83,7 +84,7 @@ DEBUG_print_sizeof_ast_structs()
 
 #if 1
   // insertion-sort the array
-  for(int i = 1; i < AstNodeKind__Count; i++)
+  for(int i = 1; i < CstNodeKind__Count; i++)
   {
     for(int j = i;
         struct_info[j].size < struct_info[j-1].size;
@@ -96,11 +97,13 @@ DEBUG_print_sizeof_ast_structs()
   }
 #endif
 
-  for(int i = AstNodeKind__Count-1; i >= 0; i--)
+  for(int i = CstNodeKind__Count-1; i >= 0; i--)
   {
     StructInfo* info = &struct_info[i];
     if(info->size > 0)
-      printf("%s.size = %d bytes\n", get_ast_kind_printstr(info->kind), info->size);
+    {
+      printf("%s.size = %d bytes\n", get_cst_kind_printstr(info->kind), info->size);
+    }
   }
 }
 
@@ -108,27 +111,36 @@ VmProgram*
 translate(char* file_path, char* hoc_text)
 {
   VmProgram* vm_program = mem_push_struct(arena, VmProgram);
-  list_init(&vm_program->instr_list);
+  init_list(&vm_program->instr_list);
   vm_program->success = false;
 
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
   get_next_token(&token_stream);
 
-  AstModule* module = 0;
-  if(vm_program->success = parse(&token_stream, &(AstNode*)module))
+  CstNode* module = 0;
+  if(vm_program->success = parse(&token_stream, &module))
   {
-    assert(module->kind == AstNodeKind_Module);
+    assert(module->kind == CstNodeKind_CstModule);
     if(DEBUG_enabled)/*>>>*/
     {
       DEBUG_print_arena_usage("Syntactic");
 
+#if 0
       String* str = str_new(DEBUG_arena);
-      DEBUG_print_ast_node(str, 0, (AstNode*)module, 0);
+      DEBUG_print_cst_node(str, 0, module, 0);
       str_dump_to_file(str, "out_syntax.txt");
-      arena_free(DEBUG_arena);
+      free_arena(DEBUG_arena);
+#else
+      begin_temp_memory(&arena);
+      String* str = str_new(arena);
+      DEBUG_print_cst_node(str, 0, module, 0);
+      str_dump_to_file(str, "debug_syntax.txt");
+      end_temp_memory(&arena);
+#endif
     }/*<<<*/
 
+#if 0
     if(vm_program->success = semantic_analysis(module))
     {
       assert(symtab->block_id == 0);
@@ -138,9 +150,9 @@ translate(char* file_path, char* hoc_text)
         DEBUG_print_arena_usage("Semantic");
 
         String* str = str_new(DEBUG_arena);
-        DEBUG_print_ast_node(str, 0, (AstNode*)module, 0);
+        DEBUG_print_cst_node(str, 0, (CstNode*)module, 0);
         str_dump_to_file(str, "out_semantic.txt");
-        arena_free(DEBUG_arena);
+        free_arena(DEBUG_arena);
       }/*<<<*/
 
       build_runtime(module);
@@ -156,11 +168,12 @@ translate(char* file_path, char* hoc_text)
       if(DEBUG_enabled)/*>>>*/
         DEBUG_print_arena_usage("Print code");/*<<<*/
     }
+#endif
   }
   return vm_program;
 }
 
-bool32
+boole
 make_out_file_names(OutFileNames* out_files, char* src_file_path)
 {
   char* stem = mem_push_count_nz(arena, char, cstr_len(src_file_path));
@@ -169,7 +182,7 @@ make_out_file_names(OutFileNames* out_files, char* src_file_path)
 
   int stem_len = cstr_len(stem);
   assert(stem_len > 0);
-  bool32 success = true;
+  boole success = true;
 
   if(success = (stem_len > 0 && stem_len < 81))
   {
@@ -204,11 +217,11 @@ make_vm_exe_path(char* hocc_exe_path)
   return vm_exe_path;
 }
 
-bool32
+boole
 write_hasm_file(OutFileNames* out_files, VmProgram* vm_program)
 {
   int bytes_written = file_write_bytes(out_files->hasm.name, (uint8*)vm_program->text.head, vm_program->text_len);
-  bool32 success = (bytes_written == vm_program->text_len);
+  boole success = (bytes_written == vm_program->text_len);
   if(!success)
     error("HASM file '%s' incompletely written", out_files->hasm.name);
   return success;
@@ -217,18 +230,18 @@ write_hasm_file(OutFileNames* out_files, VmProgram* vm_program)
 int
 main(int argc, char* argv[])
 {
-  bool32 success = true;
+  boole success = true;
 
   if(success = (argc >= 2))
   {
-    arena = arena_new(ARENA_SIZE);
-    sym_arena = arena_push(arena, SYM_ARENA_SIZE);
+    arena = new_arena(ARENA_SIZE);
+    sym_arena = push_arena(&arena, SYM_ARENA_SIZE);
 
     if(DEBUG_enabled)/*>>>*/
     {
-      assert(DEBUG_ARENA_SIZE > 0);
-      DEBUG_arena = arena_push(arena, DEBUG_ARENA_SIZE);
-      DEBUG_print_sizeof_ast_structs();
+      begin_temp_memory(&arena);
+      DEBUG_print_sizeof_cst_structs();
+      end_temp_memory(&arena);
     }/*<<<*/
 
     char* src_file_path = argv[1];
@@ -242,12 +255,15 @@ main(int argc, char* argv[])
       VmProgram* vm_program = translate(src_file_path, hoc_text);
       if(success = vm_program->success)
       {
+#if 0
         if(DEBUG_enabled)/*>>>*/
           printf("symbol count : %d\n", symtab->sym_count);/*<<<*/
+#endif
         
         OutFileNames out_files = {0};
         if(success = make_out_file_names(&out_files, src_file_path))
         {
+#if 0
           BinCode* bin_image = mem_push_struct(arena, BinCode);
           cstr_copy(bin_image->sig, BINCODE_SIGNATURE);
 
@@ -291,6 +307,7 @@ main(int argc, char* argv[])
             else
               success = error("could not read file `%s`", vm_exe_path);
           }
+#endif
         }
       }
       else

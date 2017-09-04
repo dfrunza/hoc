@@ -52,7 +52,7 @@ compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
 void
 rt_call(AstCall* call)
 {
-  List* args_list = &call->args.list;
+  List* args_list = &call->args->list;
   for(ListItem* list_item = args_list->first;
       list_item;
       list_item = list_item->next)
@@ -141,7 +141,7 @@ rt_while_stmt(AstWhileStmt* while_stmt)
     while_stmt->label_break = str_cap(label);
   }
 
-  if(while_stmt->body->kind == AstNodeKind_Block)
+  if(while_stmt->body->kind == AstNodeKind_AstBlock)
     rt_block((AstBlock*)while_stmt->body);
   else
     rt_statement(while_stmt->body);
@@ -167,7 +167,7 @@ rt_if_stmt(AstIfStmt* if_stmt)
     if_stmt->label_end = str_cap(label);
   }
 
-  if(if_stmt->body->kind == AstNodeKind_Block)
+  if(if_stmt->body->kind == AstNodeKind_AstBlock)
     rt_block((AstBlock*)if_stmt->body);
   else
     rt_statement(if_stmt->body);
@@ -175,9 +175,9 @@ rt_if_stmt(AstIfStmt* if_stmt)
   if(if_stmt->else_body)
   {
     AstNode* else_node = if_stmt->else_body;
-    if(else_node->kind == AstNodeKind_Block)
+    if(else_node->kind == AstNodeKind_AstBlock)
       rt_block((AstBlock*)else_node);
-    else if(else_node->kind == AstNodeKind_IfStmt)
+    else if(else_node->kind == AstNodeKind_AstIfStmt)
       rt_if_stmt((AstIfStmt*)else_node);
     else
       rt_statement(else_node);
@@ -200,7 +200,7 @@ rt_bin_expr(AstBinExpr* bin_expr)
 }
 
 void
-rt_unr_expr(AstUnrExpr* unr_expr)
+rt_unr_expr(AstUnaryExpr* unr_expr)
 {
   rt_statement(unr_expr->operand);
 }
@@ -208,50 +208,50 @@ rt_unr_expr(AstUnrExpr* unr_expr)
 void
 rt_statement(AstNode* ast)
 {
-  if(ast->kind == AstNodeKind_BinExpr)
+  if(ast->kind == AstNodeKind_AstBinExpr)
     rt_bin_expr((AstBinExpr*)ast);
-  else if(ast->kind == AstNodeKind_UnrExpr)
-    rt_unr_expr((AstUnrExpr*)ast);
-  else if(ast->kind == AstNodeKind_Call)
+  else if(ast->kind == AstNodeKind_AstUnaryExpr)
+    rt_unr_expr((AstUnaryExpr*)ast);
+  else if(ast->kind == AstNodeKind_AstCall)
     rt_call((AstCall*)ast);
-  else if(ast->kind == AstNodeKind_IfStmt)
+  else if(ast->kind == AstNodeKind_AstIfStmt)
     rt_if_stmt((AstIfStmt*)ast);
-  else if(ast->kind == AstNodeKind_WhileStmt)
+  else if(ast->kind == AstNodeKind_AstWhileStmt)
     rt_while_stmt((AstWhileStmt*)ast);
-  else if(ast->kind == AstNodeKind_ReturnStmt)
+  else if(ast->kind == AstNodeKind_AstReturnStmt)
   {
     AstReturnStmt* ret_stmt = (AstReturnStmt*)ast;
     if(ret_stmt->assign_expr)
       rt_statement((AstNode*)ret_stmt->assign_expr);
   }
-  else if(ast->kind == AstNodeKind_Cast)
+  else if(ast->kind == AstNodeKind_AstCast)
   {
     AstCast* cast = (AstCast*)ast;
     rt_statement(cast->expr);
   }
-  else if(ast->kind == AstNodeKind_VarDecl)
+  else if(ast->kind == AstNodeKind_AstVarDecl)
   {
     AstVarDecl* var_decl = (AstVarDecl*)ast;
     if(var_decl->assign_expr)
       rt_statement((AstNode*)var_decl->assign_expr);
   }
-  else if(ast->kind == AstNodeKind_Putc)
+  else if(ast->kind == AstNodeKind_AstPutc)
   {
     AstPutc* putc_ast = (AstPutc*)ast;
     rt_statement(putc_ast->expr);
   }
-  else if(ast->kind == AstNodeKind_Block)
+  else if(ast->kind == AstNodeKind_AstBlock)
   {
-    do_block((AstBlock*)ast);
+    rt_block((AstBlock*)ast);
   }
-  else if(ast->kind == AstNodeKind_VarOccur
-          || ast->kind == AstNodeKind_BreakStmt
-          || ast->kind == AstNodeKind_ContinueStmt
-          || ast->kind == AstNodeKind_Literal
-          || ast->kind == AstNodeKind_String
-          || ast->kind == AstNodeKind_New
-          || ast->kind == AstNodeKind_EmptyStmt)
-    ;/*OK*/
+  else if(ast->kind == AstNodeKind_AstVarOccur
+          || ast->kind == AstNodeKind_AstBreakStmt
+          || ast->kind == AstNodeKind_AstContinueStmt
+          || ast->kind == AstNodeKind_AstLiteral
+          || ast->kind == AstNodeKind_AstString
+          || ast->kind == AstNodeKind_AstNew
+          || ast->kind == AstNodeKind_AstEmptyStmt)
+    ;//OK
   else
     assert(0);
 }
@@ -294,7 +294,7 @@ rt_proc(AstProc* proc)
   }
 
   /* formals */
-  List* args_list = &proc->args.list;
+  List* args_list = &proc->args->list;
   for(ListItem* list_item = args_list->first;
       list_item;
       list_item = list_item->next)
@@ -325,7 +325,7 @@ build_runtime(AstModule* module)
       list_item = list_item->next)
   {
     AstProc* proc = (AstProc*)list_item->elem;
-    assert(proc->kind == AstNodeKind_Proc);
+    assert(proc->kind == AstNodeKind_AstProc);
     rt_proc(proc);
   }
 

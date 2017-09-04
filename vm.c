@@ -41,25 +41,25 @@ ExecResult;
 
 MemoryArena* arena;
 
-bool32
+boole
 check_stack_bounds(HocMachine* machine, int sp)
 {
   return sp > 0 && sp < machine->hp;
 }
 
-bool32
+boole
 check_memory_bounds(HocMachine* machine, int location)
 {
   return location > 0 && location <= machine->memory_size;
 }
 
-bool32
+boole
 check_heap_bounds(HocMachine* machine, int hp)
 {
   return (hp > machine->sp) && (hp < machine->hp) && hp < machine->memory_size;
 }
 
-bool32
+boole
 check_instr_bounds(HocMachine* machine, int address)
 {
   return address >= 0 && address < machine->instr_count;
@@ -358,7 +358,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
         int32 arg1 = memory_at(arg_sp, int32, 0);
         int32 arg2 = memory_at(arg_sp, int32, 1);
 
-        bool32 result = 0;
+        boole result = 0;
         if(opcode == Opcode_AND)
           result = arg1 && arg2;
         else if(opcode == Opcode_OR)
@@ -380,7 +380,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(check_stack_bounds(machine, arg_sp))
       {
         int32 arg = memory_at(arg_sp, int32, 0);
-        memory_at(arg_sp, int32, 0) = (bool32)!arg;
+        memory_at(arg_sp, int32, 0) = (boole)!arg;
         machine->ip++;
       }
       else
@@ -826,12 +826,12 @@ run_program(HocMachine* machine)
   return exec_result;
 }
 
-bool32
+boole
 load_bin_image(char* exe_file_name, HocMachine* machine)
 {
   uint8* exe_bytes = 0;
   int exe_size = 0;
-  bool32 success = true;
+  boole success = true;
 
   file_read_bytes(arena, &exe_bytes, exe_file_name);
 
@@ -882,7 +882,7 @@ main(int argc, char* argv[])
   int ret = -1;
   assert(argv[0] && argv[0] != '\0');
 
-  arena = arena_new(2*MEGABYTE);
+  arena = new_arena(2*MEGABYTE);
 
   HocMachine machine = {0};
   machine.memory = (uint8*)mem_push_count(arena, uint8, VM_MEMORY_SIZE);

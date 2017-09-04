@@ -19,7 +19,7 @@ Token keyword_list[] =
   {TokenKind_Cast, "cast"},
   {TokenKind_New, "new"},
   {TokenKind_Putc, "putc"},
-  {TokenKind__Null, 0}, /* terminator */
+  {TokenKind__None, 0}, /* terminator */
 };
 
 Token*
@@ -41,13 +41,13 @@ lookup_keyword(Token* list, char* lexeme)
   return result;
 }
 
-bool32
+boole
 is_keyword_token(TokenKind kind)
 {
   return (kind >= TokenKind_If) && (kind <= TokenKind_False);
 }
 
-bool32
+boole
 is_literal_token(TokenKind kind)
 {
   return (kind >= TokenKind_IntNum) && (kind <= TokenKind_Char);
@@ -66,7 +66,7 @@ install_lexeme(char* begin_char, char* end_char)
   return lexeme;
 }
 
-bool32
+boole
 is_valid_escape_char(char c)
 {
   return c == 't' || c == 'n' || c == 'r' || c == '0' ||
@@ -82,10 +82,10 @@ typedef struct
 }
 EscapedStr;
 
-bool32
+boole
 escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
 {
-  bool32 success = true;
+  boole success = true;
   estr->len = 0;
   estr->end = input->cursor;
   estr->begin = input->cursor;
@@ -182,7 +182,7 @@ get_token_printstr(Token* token)
   static char char_print_buf[3] = {0};
   char* result = "???";
 
-  if(token->kind == TokenKind__Null)
+  if(token->kind == TokenKind__None)
     result = "(null)";
   else if(token->kind == TokenKind_Dot)
     result = ".";
@@ -247,7 +247,7 @@ get_token_printstr(Token* token)
   else if(token->kind == TokenKind_PipePipe)
     result = "||";
   else if(token->kind == TokenKind_EndOfInput)
-    result = "end-of-file";
+    result = "end-of-input";
   else if(token->kind == TokenKind_Var)
     result = "var";
   else if(token->kind == TokenKind_If)
@@ -327,10 +327,10 @@ get_prev_token(TokenStream* input)
   return token;
 }
 
-bool32
+boole
 get_next_token(TokenStream* input)
 {
-  bool32 success = true;
+  boole success = true;
   *input->prev_state = *input;
   mem_zero_struct(&input->token, Token);
   SourceLocation* src_loc = &input->src_loc;
@@ -371,7 +371,7 @@ loop:
   else if(char_is_numeric(c))
   {
     char digit_buf[32] = {0};
-    bool32 is_float = false;
+    boole is_float = false;
     int i = 0;
     for(; i < sizeof_array(digit_buf)-1 && (char_is_numeric(c) || c == '.'); i++)
     {

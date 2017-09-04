@@ -80,11 +80,11 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
   {
     gen_load_rvalue(code, right_operand);
 
-    if(left_operand->kind == AstNodeKind_VarOccur)
+    if(left_operand->kind == AstNodeKind_AstVarOccur)
       gen_load_lvalue(code, left_operand);
-    else if(left_operand->kind == AstNodeKind_UnrExpr)
+    else if(left_operand->kind == AstNodeKind_AstUnaryExpr)
     {
-      AstUnrExpr* unr_expr = (AstUnrExpr*)left_operand;
+      AstUnaryExpr* unr_expr = (AstUnaryExpr*)left_operand;
       if(unr_expr->op == AstOpKind_PointerDeref)
         gen_load_rvalue(code, unr_expr->operand);
       else
@@ -293,12 +293,12 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
 }
 
 void
-gen_unr_expr(List* code, AstUnrExpr* unr_expr)
+gen_unr_expr(List* code, AstUnaryExpr* unr_expr)
 {
   if(unr_expr->op == AstOpKind_AddressOf)
   {
     AstNode* operand = unr_expr->operand;
-    if(operand->kind == AstNodeKind_VarOccur)
+    if(operand->kind == AstNodeKind_AstVarOccur)
       gen_load_lvalue(code, operand);
     else
       gen_load_rvalue(code, operand);
@@ -339,13 +339,13 @@ void
 gen_call(List* code, AstCall* call)
 {
   AstProc* proc = (AstProc*)call->proc_sym->ast;
-  assert(proc->kind == AstNodeKind_Proc);
+  assert(proc->kind == AstNodeKind_AstProc);
 
   emit_instr_int(code, Opcode_GROW, proc->ret_size);
 
-  AstBlock* block = proc->body;
+  AstBlock* block = (AstBlock*)proc->body;
 
-  List* args_list = &call->args.list;
+  List* args_list = &call->args->list;
   for(ListItem* list_item = args_list->first;
       list_item;
       list_item = list_item->next)
@@ -361,7 +361,7 @@ gen_call(List* code, AstCall* call)
 void
 gen_load_lvalue(List* code, AstNode* ast)
 {
-  if(ast->kind == AstNodeKind_VarOccur)
+  if(ast->kind == AstNodeKind_AstVarOccur)
   {
     AstVarOccur* var_occur = (AstVarOccur*)ast;
     DataArea* data = var_occur->data;
@@ -391,15 +391,15 @@ gen_load_lvalue(List* code, AstNode* ast)
 void
 gen_load_rvalue(List* code, AstNode* ast)
 {
-  if(ast->kind == AstNodeKind_VarOccur)
+  if(ast->kind == AstNodeKind_AstVarOccur)
   {
     AstVarOccur* var_occur = (AstVarOccur*)ast;
     gen_load_lvalue(code, (AstNode*)var_occur);
     emit_instr_int(code, Opcode_LOAD, compute_type_width(var_occur->type));
   }
-  else if(ast->kind == AstNodeKind_Call)
+  else if(ast->kind == AstNodeKind_AstCall)
     gen_call(code, (AstCall*)ast);
-  else if(ast->kind == AstNodeKind_Literal)
+  else if(ast->kind == AstNodeKind_AstLiteral)
   {
     AstLiteral* literal = (AstLiteral*)ast;
     if(literal->lit_kind == AstLiteralKind_Int || literal->lit_kind == AstLiteralKind_Bool)
@@ -411,11 +411,11 @@ gen_load_rvalue(List* code, AstNode* ast)
     else
       assert(0);
   }
-  else if(ast->kind == AstNodeKind_BinExpr)
+  else if(ast->kind == AstNodeKind_AstBinExpr)
     gen_bin_expr(code, (AstBinExpr*)ast);
-  else if(ast->kind == AstNodeKind_UnrExpr)
-    gen_unr_expr(code, (AstUnrExpr*)ast);
-  else if(ast->kind == AstNodeKind_New)
+  else if(ast->kind == AstNodeKind_AstUnaryExpr)
+    gen_unr_expr(code, (AstUnaryExpr*)ast);
+  else if(ast->kind == AstNodeKind_AstNew)
   {
     AstNew* new_ast = (AstNew*)ast;
     gen_load_rvalue(code, (AstNode*)new_ast->size_expr);
@@ -431,7 +431,7 @@ gen_return_stmt(List* code, AstReturnStmt* ret_stmt)
   if(ret_stmt->assign_expr)
   {
     AstBinExpr* assign_expr = (AstBinExpr*)ret_stmt->assign_expr;
-    assert(assign_expr->kind == AstNodeKind_BinExpr);
+    assert(assign_expr->kind == AstNodeKind_AstBinExpr);
     gen_bin_expr(code, assign_expr);
     emit_instr_int(code, Opcode_GROW, -compute_type_width(assign_expr->type));
   }
@@ -448,9 +448,9 @@ gen_break_stmt(List* code, AstBreakStmt* break_stmt)
 {
   char* label_break = 0;
   AstNode* loop = break_stmt->loop;
-  if(loop->kind == AstNodeKind_WhileStmt)
+  if(loop->kind == AstNodeKind_AstWhileStmt)
     label_break = ((AstWhileStmt*)loop)->label_break;
-  else if(loop->kind == AstNodeKind_ForStmt)
+  else if(loop->kind == AstNodeKind_AstForStmt)
     label_break = ((AstForStmt*)loop)->label_break;
   else
     assert(0);
@@ -523,7 +523,7 @@ gen_if_stmt(List* code, AstIfStmt* if_stmt)
   else
     emit_instr_str(code, Opcode_JUMPZ, if_stmt->label_end);
 
-  if(if_stmt->body->kind == AstNodeKind_Block)
+  if(if_stmt->body->kind == AstNodeKind_AstBlock)
     gen_block(code, (AstBlock*)if_stmt->body);
   else
     gen_statement(code, if_stmt->body);
@@ -534,7 +534,7 @@ gen_if_stmt(List* code, AstIfStmt* if_stmt)
   {
     emit_instr_str(code, Opcode_LABEL, if_stmt->label_else);
     AstNode* else_body = if_stmt->else_body;
-    if(else_body->kind == AstNodeKind_Block)
+    if(else_body->kind == AstNodeKind_AstBlock)
       gen_block(code, (AstBlock*)else_body);
     else
       gen_statement(code, else_body);
@@ -549,7 +549,7 @@ gen_while_stmt(List* code, AstWhileStmt* while_stmt)
   emit_instr_str(code, Opcode_LABEL, while_stmt->label_eval);
   gen_load_rvalue(code, while_stmt->cond_expr);
   emit_instr_str(code, Opcode_JUMPZ, while_stmt->label_break);
-  if(while_stmt->body->kind == AstNodeKind_Block)
+  if(while_stmt->body->kind == AstNodeKind_AstBlock)
     gen_block(code, (AstBlock*)while_stmt->body);
   else
     gen_statement(code, while_stmt->body);
@@ -567,18 +567,18 @@ gen_empty_stmt(List* code)
 void
 gen_statement(List* code, AstNode* ast)
 {
-  if(ast->kind == AstNodeKind_BinExpr)
+  if(ast->kind == AstNodeKind_AstBinExpr)
   {
     gen_bin_expr(code, (AstBinExpr*)ast);
     emit_instr_int(code, Opcode_GROW, -compute_type_width(ast->type));
   }
-  else if(ast->kind == AstNodeKind_Call)
+  else if(ast->kind == AstNodeKind_AstCall)
   {
     AstCall* call = (AstCall*)ast;
     gen_call(code, call);
 
     AstProc* proc = (AstProc*)call->proc_sym->ast;
-    assert(proc->kind == AstNodeKind_Proc);
+    assert(proc->kind == AstNodeKind_AstProc);
 
     if(proc->ret_size > 0)
     {
@@ -586,31 +586,31 @@ gen_statement(List* code, AstNode* ast)
       emit_instr_int(code, Opcode_GROW, -proc->ret_size);
     }
   }
-  else if(ast->kind == AstNodeKind_VarDecl)
+  else if(ast->kind == AstNodeKind_AstVarDecl)
   {
     AstVarDecl* var_decl = (AstVarDecl*)ast;
     if(var_decl->assign_expr)
       gen_statement(code, (AstNode*)var_decl->assign_expr);
   }
-  else if(ast->kind == AstNodeKind_ReturnStmt)
+  else if(ast->kind == AstNodeKind_AstReturnStmt)
     gen_return_stmt(code, (AstReturnStmt*)ast);
-  else if(ast->kind == AstNodeKind_BreakStmt)
+  else if(ast->kind == AstNodeKind_AstBreakStmt)
     gen_break_stmt(code, (AstBreakStmt*)ast);
-  else if(ast->kind == AstNodeKind_IfStmt)
+  else if(ast->kind == AstNodeKind_AstIfStmt)
     gen_if_stmt(code, (AstIfStmt*)ast);
-  else if(ast->kind == AstNodeKind_WhileStmt)
+  else if(ast->kind == AstNodeKind_AstWhileStmt)
     gen_while_stmt(code, (AstWhileStmt*)ast);
-  else if(ast->kind == AstNodeKind_Putc)
+  else if(ast->kind == AstNodeKind_AstPutc)
   {
     AstPutc* putc_ast = (AstPutc*)ast;
     gen_load_rvalue(code, putc_ast->expr);
     emit_instr(code, Opcode_PUTC);
   }
-  else if(ast->kind == AstNodeKind_Block)
+  else if(ast->kind == AstNodeKind_AstBlock)
   {
     gen_block(code, (AstBlock*)ast);
   }
-  else if(ast->kind == AstNodeKind_EmptyStmt)
+  else if(ast->kind == AstNodeKind_AstEmptyStmt)
     gen_empty_stmt(code);
   else
     assert(0);
@@ -638,10 +638,10 @@ codegen(List* code, uint8** data, int* data_size, AstModule* module)
       list_item = list_item->next)
   {
     AstVarDecl* var_decl = (AstVarDecl*)list_item->elem;
-    assert(var_decl->kind == AstNodeKind_VarDecl);
+    assert(var_decl->kind == AstNodeKind_AstVarDecl);
 
     AstNode* init_expr = var_decl->init_expr;
-    if(init_expr && init_expr->kind == AstNodeKind_String)
+    if(init_expr && init_expr->kind == AstNodeKind_AstString)
     {
       AstString* str = (AstString*)init_expr;
       assert(str->len+1 == var_decl->data.size);

@@ -78,10 +78,10 @@ init_types()
   list_init(&subst_list);
 }
 
-bool32
+boole
 types_are_equal(Type* type_a, Type* type_b)
 {
-  bool32 are_equal = false;
+  boole are_equal = false;
 
   if((type_a->kind != TypeKind_TypeVar) && (type_b->kind == type_a->kind))
   {
@@ -161,10 +161,10 @@ set_union(Type* type_a, Type* type_b)
     type_b->repr_type = type_a;
 }
 
-bool32
+boole
 type_unif(Type* type_a, Type* type_b)
 {
-  bool32 success = false;
+  boole success = false;
   Type* repr_type_a = get_type_repr(type_a);
   Type* repr_type_b = get_type_repr(type_b);
 

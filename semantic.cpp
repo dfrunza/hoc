@@ -17,6 +17,14 @@ new_ast_node(SourceLoc* src_loc, AstKind kind)
 }
 
 AstNode*
+new_ast_module(SourceLoc* src_loc)
+{
+  AstNode* node = new_ast_node(src_loc, AstKind_module);
+  node->module.procs = new_list(arena, ListKind_ast_node);
+  return node;
+}
+
+AstNode*
 new_ast_block(SourceLoc* src_loc)
 {
   AstNode* node = new_ast_node(src_loc, AstKind_block);
@@ -61,12 +69,14 @@ new_scope()
 char*
 get_ast_kind_printstr(AstKind kind)
 {
-  char* result = "???";
+  char* result = 0;
 
   if(kind == AstKind__None)
     result = stringify(AstKind__None);
   else if(kind == AstKind_module)
     result = stringify(AstKind_module);
+  else if(kind == AstKind_block)
+    result = stringify(AstKind_block);
   else if(kind == AstKind_stmt)
     result = stringify(AstKind_stmt);
   else if(kind == AstKind_var_decl)
@@ -95,6 +105,8 @@ get_ast_kind_printstr(AstKind kind)
     result = stringify(AstKind_continue_stmt);
   else if(kind == AstKind_break_stmt)
     result = stringify(AstKind_break_stmt);
+  else
+    result = "???";
 
   return result;
 }
@@ -1612,7 +1624,7 @@ build_ast_module(CstNode* cst_module, AstNode** ast_module)
 {
   bool success = true;
 
-  *ast_module = new_ast_node(cst_module->src_loc, AstKind_module);
+  *ast_module = new_ast_module(cst_module->src_loc);
   AST(*ast_module, module)->body = new_ast_block(CST(cst_module, module)->body->src_loc);
 
   Scope** scope = &AST(AST(*ast_module, module)->body, block)->scope;
@@ -1763,4 +1775,70 @@ build_ast(CstNode* cst_node, AstNode** ast_node)
   return success;
 }
 
+void
+DEBUG_print_scope(String* str, int indent_level, Scope* scope, char* tag)
+{
+  if(scope)
+  {
+    ++indent_level;
+    if(tag)
+    {
+      DEBUG_print_line(str, indent_level, tag);
+      ++indent_level;
+    }
+
+    DEBUG_print_line(str, indent_level, "scope_id: %d", scope->scope_id);
+    DEBUG_print_line(str, indent_level, "nesting_depth: %d", scope->nesting_depth);
+    DEBUG_print_scope(str, indent_level, scope->encl_scope, "encl_scope");
+    DEBUG_print_xst_node_list(str, indent_level, scope->local_decls, "local_decls");
+    DEBUG_print_xst_node_list(str, indent_level, scope->nonlocal_occurs, "nonlocal_occurs");
+  }
+}
+
+void
+DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
+{
+  if(node)
+  {
+    if(tag)
+    {
+      DEBUG_print_line(str, indent_level, tag);
+      ++indent_level;
+    }
+#if 1
+    DEBUG_print_line(str, indent_level, "%s src_line=\"%s:%d\"",
+                     get_ast_kind_printstr(node->kind), node->src_loc->file_path, node->src_loc->line_nr);
+#else
+    DEBUG_print_line(str, indent_level, "%s", get_cst_kind_printstr(node->kind));
+#endif
+    ++indent_level;
+
+    if(node->kind == AstKind_module)
+    {
+      auto* module = AST(node, module);
+      DEBUG_print_ast_node(str, indent_level, module->body, "body");
+      DEBUG_print_xst_node_list(str, indent_level, module->procs, "procs");
+    }
+    else if(node->kind == AstKind_block)
+    {
+      auto* block = AST(node, block);
+      DEBUG_print_xst_node_list(str, indent_level, block->stmts, "stmts");
+      DEBUG_print_scope(str, indent_level, block->scope, "scope");
+    }
+    else if(node->kind == AstKind_stmt)
+    {
+      auto* stmt = AST(node, stmt);
+      DEBUG_print_ast_node(str, indent_level, stmt->stmt, "stmt");
+    }
+    else if(node->kind == AstKind_var_decl)
+    {
+      auto* var_decl = AST(node, var_decl);
+      DEBUG_print_line(str, indent_level, "var_name: %s", var_decl->var_name);
+      //infinite recursion
+      //DEBUG_print_scope(str, indent_level, var_decl->decl_scope, "decl_scope");
+    }
+    else
+      assert(0);
+  }
+}
 

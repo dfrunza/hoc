@@ -158,7 +158,7 @@ translate(char* file_path, char* hoc_text)
       assert(symbol_table->scope_id == 0);
       assert(symbol_table->nesting_depth == 0);
 
-#if 0
+#if 1
       if(DEBUG_enabled)/*>>>*/
       {
         DEBUG_print_arena_usage("Semantic");
@@ -347,3 +347,50 @@ main(int argc, char* argv[])
 #endif
   return success ? 0 : -1;
 }
+
+void
+DEBUG_print_line(String* str, int indent_level, char* message, ...)
+{
+  for(int i = 0; i < indent_level; i++)
+  {
+    str_append(str, "  ");
+  }
+
+  va_list varargs;
+  va_start(varargs, message);
+  str_printf_va(str, message, varargs);
+  va_end(varargs);
+
+  str_append(str, "\n");
+}
+
+void
+DEBUG_print_xst_node_list(String* str, int indent_level, List* node_list, char* tag)
+{
+  if(node_list->first)
+  {
+    if(tag)
+    {
+      DEBUG_print_line(str, indent_level, tag);
+      ++indent_level;
+    }
+    for(ListItem* list_item = node_list->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      if(list_item->kind == ListKind_cst_node)
+      {
+        CstNode* node = CST_ITEM(list_item);
+        DEBUG_print_cst_node(str, indent_level, node, 0);
+      }
+      else if(list_item->kind == ListKind_ast_node)
+      {
+        AstNode* node = AST_ITEM(list_item);
+        DEBUG_print_ast_node(str, indent_level, node, 0);
+      }
+      else
+        assert(0);
+    }
+  }
+}
+

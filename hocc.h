@@ -56,23 +56,31 @@ String;
 
 #define assert(EXPR)\
   if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__)
+
 #define fail(MESSAGE, ...)\
   fail_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__)
+
 #define sizeof_array(ARRAY)\
   (sizeof(ARRAY)/sizeof(ARRAY[0]))
+
 #define to_bool(EXPR)\
   ((EXPR) ? true : false)
+
 #define error(MESSAGE, ...)\
   error_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__)
+
 #define compile_error(SRC, MESSAGE, ...)\
   compile_error_f(__FILE__, __LINE__, (SRC), (MESSAGE), __VA_ARGS__)
 
 #define mem_push_struct(ARENA, TYPE)\
   ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), 1, true))
+
 #define mem_push_count(ARENA, TYPE, COUNT)\
   ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, true))
+
 #define mem_push_count_nz(ARENA, TYPE, COUNT)\
   ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, false))
+
 #define mem_zero_struct(VAR, TYPE)\
   (mem_zero_f(VAR, sizeof(TYPE)))
 
@@ -80,9 +88,6 @@ String;
 
 #define OBJ(VAR, KIND, NAME)\
   (((VAR)->kind == KIND##_##NAME) ? &(VAR)->NAME : 0)
-
-#define ITEM(VAR, NAME)\
-  (((VAR)->kind == ListKind##_##NAME) ? (VAR)->NAME : 0)
 
 typedef struct List List;
 
@@ -946,4 +951,7 @@ typedef struct List
   ListItem* last;
 }
 List;
+
+void DEBUG_print_line(String* str, int indent_level, char* message, ...);
+void DEBUG_print_xst_node_list(String* str, int indent_level, List* node_list, char* tag);
 

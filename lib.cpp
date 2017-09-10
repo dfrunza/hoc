@@ -63,6 +63,7 @@ char_is_numeric(char c)
 
 #define struct_check_bounds(ARENA, TYPE, STRUCT)\
   mem_check_bounds_f(ARENA, sizeof(TYPE), STRUCT)
+
 #define arena_check_bounds(ARENA)\
   mem_check_bounds_f((ARENA), 0, (ARENA)->free)
 
@@ -592,16 +593,14 @@ stdin_read(char buf[], int buf_size)
   return (int)bytes_read;
 }
 
-#define get_list_elem(LIST_ITEM, TYPE, FIELD)\
-  (((LIST_ITEM)->kind == ListKind_##TYPE) ? (LIST_ITEM)->FIELD : 0);
+#define ITEM(VAR, NAME)\
+  (((VAR)->kind == ListKind##_##NAME) ? (VAR)->NAME : 0)
 
-#if 0
-void
-init_list(List* list)
-{
-  mem_zero_struct(list, List);
-}
-#endif
+#define CST_ITEM(VAR)\
+  (((VAR)->kind == ListKind_cst_node) ? (VAR)->cst_node : 0)
+
+#define AST_ITEM(VAR)\
+  (((VAR)->kind == ListKind_ast_node) ? (VAR)->ast_node : 0)
 
 List*
 new_list(MemoryArena* arena, ListKind kind)
@@ -709,3 +708,4 @@ compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
   fprintf(stderr, "\n");
   return false;
 }
+

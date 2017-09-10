@@ -89,8 +89,8 @@ get_ast_kind_printstr(AstKind kind)
     result = stringify(AstKind_while_stmt);
   else if(kind == AstKind_do_while_stmt)
     result = stringify(AstKind_do_while_stmt);
-  else if(kind == AstKind_ret_stmt)
-    result = stringify(AstKind_ret_stmt);
+  else if(kind == AstKind_return_stmt)
+    result = stringify(AstKind_return_stmt);
   else if(kind == AstKind_continue_stmt)
     result = stringify(AstKind_continue_stmt);
   else if(kind == AstKind_break_stmt)
@@ -453,8 +453,7 @@ process_includes(List* include_list, List* module_list, ListItem* module_list_it
     if(stmt->kind == CstKind_include)
     {
       auto* include = CST(stmt, include);
-      auto* cst_incl_block = CST(include->body, block);
-      process_includes(cst_incl_block->stmts, include_list, list_item);
+      process_includes(CST(include->body, block)->nodes, include_list, list_item);
     }
   }
   replace_list_item_at(include_list, module_list, module_list_item);
@@ -1623,7 +1622,7 @@ build_ast_module(CstNode* cst_module, AstNode** ast_module_ref)
     add_builtin_types();
     symbol_table->module_scope = *scope_ref;
 
-    for(ListItem* list_item = CST(CST(cst_module, module)->body, block)->stmts->first;
+    for(ListItem* list_item = CST(CST(cst_module, module)->body, block)->nodes->first;
         list_item && success;
         list_item = list_item->next)
     {
@@ -1700,10 +1699,9 @@ build_ast(CstNode* cst_node, AstNode** ast_node)
   bool success = true;
 
   auto* cst_module = CST(cst_node, module);
-  auto* cst_module_block = CST(cst_module->body, block);
 
   // process the includes
-  for(ListItem* list_item = cst_module_block->stmts->first;
+  for(ListItem* list_item = CST(cst_module->body, block)->nodes->first;
       list_item;
       list_item = list_item->next)
   {
@@ -1713,8 +1711,7 @@ build_ast(CstNode* cst_node, AstNode** ast_node)
     if(stmt->kind == CstKind_include)
     {
       auto* include = CST(stmt, include);
-      auto* cst_incl_block = CST(include->body, block);
-      process_includes(cst_incl_block->stmts, cst_module_block->stmts, list_item);
+      process_includes(CST(include->body, block)->nodes, CST(cst_module->body, block)->nodes, list_item);
     }
   }
 

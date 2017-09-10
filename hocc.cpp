@@ -83,7 +83,7 @@ DEBUG_print_sizeof_cst_structs()
   make_struct_info(while_stmt);
   make_struct_info(for_stmt);
   make_struct_info(if_stmt);
-  make_struct_info(ret_stmt);
+  make_struct_info(return_stmt);
   make_struct_info(goto_stmt);
   make_struct_info(label);
   make_struct_info(include);

@@ -269,7 +269,7 @@ typedef enum
   CstKind_do_while_stmt,
   CstKind_for_stmt,
   CstKind_if_stmt,
-  CstKind_ret_stmt,
+  CstKind_return_stmt,
   CstKind_break_stmt,
   CstKind_continue_stmt,
   CstKind_goto_stmt,
@@ -307,7 +307,7 @@ typedef struct CstNode
 
     struct
     {
-      List* stmts;
+      List* nodes;
     }
     block;
 
@@ -384,7 +384,7 @@ typedef struct CstNode
     {
       CstNode* expr;
     }
-    ret_stmt;
+    return_stmt;
 
     struct
     {
@@ -519,7 +519,7 @@ typedef enum
   AstKind_if_stmt,
   AstKind_while_stmt,
   AstKind_do_while_stmt,
-  AstKind_ret_stmt,
+  AstKind_return_stmt,
   AstKind_continue_stmt,
   AstKind_break_stmt,
 }
@@ -614,7 +614,7 @@ typedef struct AstNode
       AstNode* proc;
       int nesting_depth;
     }
-    ret_stmt;
+    return_stmt;
 
     struct
     {

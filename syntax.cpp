@@ -6,8 +6,8 @@ bool parse_un_expr(TokenStream*, CstNode**);
 bool parse_struct_member_list(TokenStream*, List*);
 void DEBUG_print_cst_node(String* str, int indent_level, CstNode* node, char* tag);
 
-#define CST(VAR, NAME)\
-  (((VAR)->kind == CstKind##_##NAME) ? &(VAR)->NAME : 0)
+#define CST(VAR, KIND)\
+  (((VAR)->kind == CstKind##_##KIND) ? &(VAR)->KIND : 0)
 
 #define CST_ITEM(VAR)\
   (((VAR)->kind == ListKind_cst_node) ? (VAR)->cst_node : 0)
@@ -35,7 +35,7 @@ CstNode*
 new_cst_block(SourceLoc* src_loc)
 {
   CstNode* node = new_cst_node(src_loc, CstKind_block);
-  node->block.stmts = new_list(arena, ListKind_cst_node);
+  node->block.nodes = new_list(arena, ListKind_cst_node);
   return node;
 }
 
@@ -226,8 +226,8 @@ get_cst_kind_printstr(CstKind kind)
     result = stringify(CstKind_for_stmt);
   else if(kind == CstKind_if_stmt)
     result = stringify(CstKind_if_stmt);
-  else if(kind == CstKind_ret_stmt)
-    result = stringify(CstKind_ret_stmt);
+  else if(kind == CstKind_return_stmt)
+    result = stringify(CstKind_return_stmt);
   else if(kind == CstKind_break_stmt)
     result = stringify(CstKind_break_stmt);
   else if(kind == CstKind_continue_stmt)
@@ -408,7 +408,7 @@ parse_block(TokenStream* input, CstNode** node)
   {
     auto* block = CST(*node = new_cst_block(&input->src_loc), block);
 
-    if(success = get_next_token(input) && parse_statement_list(input, block->stmts))
+    if(success = get_next_token(input) && parse_statement_list(input, block->nodes))
     {
       if(input->token.kind == TokenKind_CloseBrace)
         success = get_next_token(input);
@@ -1151,7 +1151,7 @@ parse_for_stmt(TokenStream* input, CstNode** node)
               {
                 CstNode* single_stmt = for_stmt->body;
                 auto* block = CST(for_stmt->body = new_cst_block(&input->src_loc), block);
-                append_list_elem(arena, block->stmts, single_stmt, ListKind_cst_node);
+                append_list_elem(arena, block->nodes, single_stmt, ListKind_cst_node);
               }
               else
               {
@@ -1400,8 +1400,7 @@ parse_include_stmt(TokenStream* input, CstNode** node)
 
         if(success = get_next_token(incl_input))
         {
-          auto* block = CST(include->body, block);
-          success = parse_statement_list(incl_input, block->stmts);
+          success = parse_statement_list(incl_input, CST(include->body, block)->nodes);
         }
       }
       else
@@ -1600,8 +1599,8 @@ parse_return_stmt(TokenStream* input, CstNode** node)
 
   if(input->token.kind == TokenKind_Return)
   {
-    auto* ret_stmt = CST(*node = new_cst_node(&input->src_loc, CstKind_ret_stmt), ret_stmt);
-    success = get_next_token(input) && parse_expression(input, &ret_stmt->expr);
+    auto* return_stmt = CST(*node = new_cst_node(&input->src_loc, CstKind_return_stmt), return_stmt);
+    success = get_next_token(input) && parse_expression(input, &return_stmt->expr);
   }
 
   return success;
@@ -1772,9 +1771,8 @@ parse(TokenStream* input, CstNode** node)
   bool success = true;
 
   auto* module = CST(*node = new_cst_module(&input->src_loc, input->src_loc.file_path), module);
-  auto* block = CST(module->body, block);
 
-  if((success = parse_statement_list(input, block->stmts))
+  if((success = parse_statement_list(input, CST(module->body, block)->nodes))
      && input->token.kind != TokenKind_EndOfInput)
   {
     success = compile_error(&input->src_loc, "expected `end-of-input`, at `%s`", get_token_printstr(&input->token));
@@ -1879,7 +1877,7 @@ DEBUG_print_cst_node(String* str, int indent_level, CstNode* node, char* tag)
     else if(node->kind == CstKind_block)
     {
       auto* block = CST(node, block);
-      DEBUG_print_cst_node_list(str, indent_level, block->stmts, "stmts");
+      DEBUG_print_cst_node_list(str, indent_level, block->nodes, "nodes");
     }
     else if(node->kind == CstKind_bin_expr)
     {
@@ -1906,10 +1904,10 @@ DEBUG_print_cst_node(String* str, int indent_level, CstNode* node, char* tag)
       DEBUG_print_cst_node(str, indent_level, if_stmt->body, "body");
       DEBUG_print_cst_node(str, indent_level, if_stmt->else_body, "else_body");
     }
-    else if(node->kind == CstKind_ret_stmt)
+    else if(node->kind == CstKind_return_stmt)
     {
-      auto* ret_stmt = CST(node, ret_stmt);
-      DEBUG_print_cst_node(str, indent_level, ret_stmt->expr, "expr");
+      auto* return_stmt = CST(node, return_stmt);
+      DEBUG_print_cst_node(str, indent_level, return_stmt->expr, "expr");
     }
     else if(node->kind == CstKind_lit)
     {

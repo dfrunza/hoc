@@ -31,7 +31,7 @@ fail_f(char* file, int line, char* message, ...)
   *(int*)0 = 0;
 }
 
-boole
+bool
 error_f(char* file, int line, char* message, ...)
 {
   fprintf(stderr, "%s(%d) : ", file, line);
@@ -49,13 +49,13 @@ error_f(char* file, int line, char* message, ...)
   return false;
 }
 
-boole
+bool
 char_is_letter(char ch)
 {
   return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z');
 }
 
-boole
+bool
 char_is_numeric(char c)
 {
   return '0' <= c && c <= '9';
@@ -162,7 +162,7 @@ end_temp_memory(MemoryArena** arena)
 }
 
 void*
-mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, boole zero_mem)
+mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_mem)
 {
   assert(count > 0);
 
@@ -170,9 +170,13 @@ mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, boole zero
   arena->free = arena->free + elem_size*count;
 
   if(DEBUG_check_arena_bounds)
+  {
     arena_check_bounds(arena);
+  }
   if(zero_mem)
+  {
     mem_zero_range(element, arena->free);
+  }
   return element;
 }
 
@@ -201,10 +205,10 @@ arena_usage(MemoryArena* arena)
   return usage;
 }
 
-boole
+bool
 cstr_to_int(char* str, int* integer)
 {
-  boole negative = false;
+  bool negative = false;
 
   if(*str == '-')
   {
@@ -237,11 +241,11 @@ cstr_to_int(char* str, int* integer)
   return true;
 }
 
-boole
+bool
 cstr_to_float(char* str, float* result)
 {
 #if 0
-  boole negative = false;
+  bool negative = false;
 
   if(*str == '-')
   {
@@ -296,7 +300,7 @@ cstr_to_float(char* str, float* result)
   return true;
 }
 
-boole
+bool
 cstr_start_with(char* str, char* prefix)
 {
   while(*str == *prefix)
@@ -306,11 +310,11 @@ cstr_start_with(char* str, char* prefix)
     if(*prefix == '\0')
       break;
   }
-  boole result = (*prefix == '\0');
+  bool result = (*prefix == '\0');
   return result;
 }
 
-boole
+bool
 cstr_match(char* str_a, char* str_b)
 {
   while(*str_a == *str_b)
@@ -320,7 +324,7 @@ cstr_match(char* str_a, char* str_b)
     if(*str_a == '\0')
       break;
   }
-  boole result = (*str_a == *str_b);
+  bool result = (*str_a == *str_b);
   return result;
 }
 
@@ -550,12 +554,12 @@ char*
 file_read_text(MemoryArena* arena, char* file_path)
 {
   char* text = 0;
-  file_read_bytes(arena, &(uint8*)text, file_path);
+  file_read_bytes(arena, (uint8**)&text, file_path);
   *mem_push_count(arena, char, 1) = '\0'; // NULL terminator
   return text;
 }
 
-boole
+bool
 str_dump_to_file(String* str, char* file_path)
 {
   int char_count = str_len(str);
@@ -588,18 +592,22 @@ stdin_read(char buf[], int buf_size)
   return (int)bytes_read;
 }
 
+#define get_list_elem(LIST_ITEM, TYPE, FIELD)\
+  (((LIST_ITEM)->kind == ListKind_##TYPE) ? (LIST_ITEM)->FIELD : 0);
+
+#if 0
 void
 init_list(List* list)
 {
   mem_zero_struct(list, List);
 }
+#endif
 
 List*
 new_list(MemoryArena* arena, ListKind kind)
 {
   List* list = mem_push_struct(arena, List);
   list->kind = kind;
-  init_list(list);
   return list;
 }
 
@@ -642,10 +650,11 @@ append_list_item(List* list, ListItem* item)
 }
 
 void
-append_list_elem(MemoryArena* arena, List* list, void* elem)
+append_list_elem(MemoryArena* arena, List* list, void* elem, ListKind kind)
 {
   ListItem* item = mem_push_struct(arena, ListItem);
   item->elem = elem;
+  item->kind = kind;
   append_list_item(list, item);
 }
 
@@ -680,13 +689,13 @@ replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
     list_b->last = list_a->last;
 }
 
-boole
-compile_error_f(char* file, int line, SourceLocation* src_loc, char* message, ...)
+bool
+compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
 {
   char* filename_buf = mem_push_count_nz(arena, char, cstr_len(file));
   cstr_copy(filename_buf, file);
 
-  if(src_loc->line_nr >= 0)
+  if(src_loc && src_loc->line_nr >= 0)
     fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
             path_make_stem(filename_buf), line);
   else

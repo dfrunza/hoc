@@ -41,13 +41,13 @@ lookup_keyword(Token* list, char* lexeme)
   return result;
 }
 
-boole
+bool
 is_keyword_token(TokenKind kind)
 {
   return (kind >= TokenKind_If) && (kind <= TokenKind_False);
 }
 
-boole
+bool
 is_literal_token(TokenKind kind)
 {
   return (kind >= TokenKind_IntNum) && (kind <= TokenKind_Char);
@@ -66,7 +66,7 @@ install_lexeme(char* begin_char, char* end_char)
   return lexeme;
 }
 
-boole
+bool
 is_valid_escape_char(char c)
 {
   return c == 't' || c == 'n' || c == 'r' || c == '0' ||
@@ -82,10 +82,10 @@ typedef struct
 }
 EscapedStr;
 
-boole
+bool
 escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
 {
-  boole success = true;
+  bool success = true;
   estr->len = 0;
   estr->end = input->cursor;
   estr->begin = input->cursor;
@@ -304,7 +304,7 @@ init_token_stream(TokenStream* stream, char* text, char* file_path)
 {
   stream->text = text;
   stream->cursor = stream->text;
-  SourceLocation* src_loc = &stream->src_loc;
+  SourceLoc* src_loc = &stream->src_loc;
   src_loc->line_nr = 1;
   /* TODO: Compute the absolute path to the file, so that Vim could properly
      jump from the QuickFix window to the error line in the file. */
@@ -327,13 +327,13 @@ get_prev_token(TokenStream* input)
   return token;
 }
 
-boole
+bool
 get_next_token(TokenStream* input)
 {
-  boole success = true;
+  bool success = true;
   *input->prev_state = *input;
   mem_zero_struct(&input->token, Token);
-  SourceLocation* src_loc = &input->src_loc;
+  SourceLoc* src_loc = &input->src_loc;
   src_loc->src_line = input->cursor;
   char c;
 
@@ -371,7 +371,7 @@ loop:
   else if(char_is_numeric(c))
   {
     char digit_buf[32] = {0};
-    boole is_float = false;
+    bool is_float = false;
     int i = 0;
     for(; i < sizeof_array(digit_buf)-1 && (char_is_numeric(c) || c == '.'); i++)
     {

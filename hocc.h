@@ -1,16 +1,15 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <windows.h>
 
 #define ARENA_SIZE (3*MEGABYTE)
-#define SYM_ARENA_SIZE (ARENA_SIZE/10)
+#define SYMBOL_TABLE_ARENA_SIZE (ARENA_SIZE/10)
 #define MAX_SCOPE_NESTING_DEPTH 100
 #define BINCODE_SIGNATURE "HC"
 
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
-typedef int boole;
+//typedef int boole;
 
 typedef char int8;
 typedef short int16;
@@ -77,13 +76,23 @@ String;
 #define mem_zero_struct(VAR, TYPE)\
   (mem_zero_f(VAR, sizeof(TYPE)))
 
+#define stringify(S) #S
+
+#define OBJ(VAR, KIND, NAME)\
+  (((VAR)->kind == KIND##_##NAME) ? &(VAR)->NAME : 0)
+
+#define ITEM(VAR, NAME)\
+  (((VAR)->kind == ListKind##_##NAME) ? (VAR)->NAME : 0)
+
+typedef struct List List;
+
 typedef struct
 {
   char* file_path;
   int line_nr;
   char* src_line;
 }
-SourceLocation;
+SourceLoc;
 
 typedef enum
 {
@@ -148,8 +157,6 @@ typedef enum
   TokenKind_FloatNum,
   TokenKind_String,
   TokenKind_Char,
-
-  TokenKind__Count,
 }
 TokenKind;
 
@@ -175,7 +182,7 @@ typedef struct TokenStream
   char* text;
   char* cursor;
 
-  SourceLocation src_loc;
+  SourceLoc src_loc;
 }
 TokenStream;
 
@@ -193,362 +200,468 @@ typedef struct
 }
 AccessLink;
 
-typedef enum
-{
-  CstOpKind__None,
-
-  CstOpKind_Add,
-  CstOpKind_Sub,
-  CstOpKind_Div,
-  CstOpKind_Mul,
-  CstOpKind_Mod,
-  CstOpKind_Neg,
-
-  CstOpKind_Assign,
-  CstOpKind_PointerDeref,
-  CstOpKind_AddressOf,
-  CstOpKind_MemberAccess,
-  CstOpKind_PtrMemberAccess,
-  CstOpKind_PreDecrement,
-  CstOpKind_PostDecrement,
-  CstOpKind_PreIncrement,
-  CstOpKind_PostIncrement,
-  CstOpKind_ArrayIndex,
-
-  CstOpKind_Equals,
-  CstOpKind_NotEquals,
-  CstOpKind_Less,
-  CstOpKind_LessEquals,
-  CstOpKind_Greater,
-  CstOpKind_GreaterEquals,
-  CstOpKind_LogicAnd,
-  CstOpKind_LogicOr,
-  CstOpKind_LogicNot,
-
-  CstOpKind_BitwiseAnd,
-  CstOpKind_BitwiseOr,
-
-  CstOpKind_IntToFloat,
-  CstOpKind_FloatToInt,
-
-  CstOpKind__Count,
-}
-CstOpKind;
+typedef struct CstNode CstNode; // Concrete Syntax Tree
 
 typedef enum
 {
-  CstNodeKind__None,
-  CstNodeKind_CstBinExpr,
-  CstNodeKind_CstUnaryExpr,
-  CstNodeKind_CstLiteral,
-  CstNodeKind_CstVarDecl,
-  CstNodeKind_CstVarOccur,
-  CstNodeKind_CstBlock,
-  CstNodeKind_CstProc,
-  CstNodeKind_CstId,
-  CstNodeKind_CstStatement,
-  CstNodeKind_CstWhileStmt,
-  CstNodeKind_CstDoWhileStmt,
-  CstNodeKind_CstForStmt,
-  CstNodeKind_CstIfStmt,
-  CstNodeKind_CstReturnStmt,
-  CstNodeKind_CstBreakStmt,
-  CstNodeKind_CstContinueStmt,
-  CstNodeKind_CstGotoStmt,
-  CstNodeKind_CstLabel,
-  CstNodeKind_CstInclude,
-  CstNodeKind_CstModule,
-  CstNodeKind_CstCast,
-  CstNodeKind_CstNew,
-  CstNodeKind_CstCall,
-  CstNodeKind_CstArray,
-  CstNodeKind_CstPointer,
-  CstNodeKind_CstStruct,
-  CstNodeKind_CstUnion,
-  CstNodeKind_CstEnum,
-  CstNodeKind_CstInitList,
-  CstNodeKind_CstString,
-  CstNodeKind_CstPutc,
-  CstNodeKind_CstEmptyStmt,
+  OpKind__None,
 
-  CstNodeKind__Count,
+  OpKind_Add,
+  OpKind_Sub,
+  OpKind_Div,
+  OpKind_Mul,
+  OpKind_Mod,
+  OpKind_Neg,
+
+  OpKind_Assign,
+  OpKind_PointerDeref,
+  OpKind_AddressOf,
+  OpKind_MemberSelect,
+  OpKind_PtrMemberSelect,
+  OpKind_PreDecrement,
+  OpKind_PostDecrement,
+  OpKind_PreIncrement,
+  OpKind_PostIncrement,
+  OpKind_ArrayIndex,
+
+  OpKind_Equals,
+  OpKind_NotEquals,
+  OpKind_Less,
+  OpKind_LessEquals,
+  OpKind_Greater,
+  OpKind_GreaterEquals,
+  OpKind_LogicAnd,
+  OpKind_LogicOr,
+  OpKind_LogicNot,
+
+  OpKind_BitwiseAnd,
+  OpKind_BitwiseOr,
+
+  OpKind_IntToFloat,
+  OpKind_FloatToInt,
 }
-CstNodeKind;
+OpKind;
 
 typedef enum
 {
   CstLiteralKind__None,
-  CstLiteralKind_Int,
-  CstLiteralKind_Float,
-  CstLiteralKind_Bool,
-  CstLiteralKind_Char,
-  CstLiteralKind_String,
-  
-  CstLiteralKind__Count,
+  CstLiteralKind_int_val,
+  CstLiteralKind_float_val,
+  CstLiteralKind_bool_val,
+  CstLiteralKind_char_val,
+  CstLiteralKind_str,
 }
 CstLiteralKind;
 
-typedef struct CstNode CstNode; // Concrete Syntax Tree
-typedef struct Type Type;
-typedef struct Symbol Symbol;
-
 typedef enum
 {
-  ListKind__None,
-  ListKind_Cst,
-  ListKind__Count,
-}
-ListKind;
+  CstKind__None,
+  CstKind_bin_expr,
+  CstKind_un_expr,
+  CstKind_lit,
+  CstKind_var_decl,
+  CstKind_var_occur,
+  CstKind_block,
+  CstKind_proc,
+  CstKind_id,
+  CstKind_stmt,
+  CstKind_while_stmt,
+  CstKind_do_while_stmt,
+  CstKind_for_stmt,
+  CstKind_if_stmt,
+  CstKind_ret_stmt,
+  CstKind_break_stmt,
+  CstKind_continue_stmt,
+  CstKind_goto_stmt,
+  CstKind_label,
+  CstKind_include,
+  CstKind_module,
+  CstKind_cast,
+  CstKind_call,
+  CstKind_array,
+  CstKind_pointer,
+  CstKind_struct_decl,
+  CstKind_union_decl,
+  CstKind_enum_decl,
+  CstKind_init_list,
+  CstKind_string,
+  CstKind_hoc_new,
+  CstKind_hoc_putc,
 
-typedef struct ListItem
-{
-  ListKind kind;
-  union
-  {
-    void* elem;
-    CstNode* cst;
-  };
-  struct ListItem* next;
-  struct ListItem* prev;
+  CstKind__Count,
 }
-ListItem;
-
-typedef struct
-{
-  ListKind kind;
-  ListItem* first;
-  ListItem* last;
-}
-List;
-
-typedef struct
-{
-  char* name;
-}
-CstId;
-
-typedef struct
-{
-  CstNode* id;
-}
-CstGotoStmt,
-CstLabel;
-
-typedef struct
-{
-  List* stmts;
-}
-CstBlock;
-
-typedef struct
-{
-  CstOpKind op;
-  CstNode* left_operand;
-  CstNode* right_operand;
-}
-CstBinExpr;
-
-typedef struct
-{
-  CstOpKind op;
-  CstNode* operand;
-}
-CstUnaryExpr;
-
-typedef struct
-{
-  char* file_path;
-  CstNode* body;
-}
-CstModule,
-CstInclude;
-
-typedef struct
-{
-  CstNode* stmt;
-}
-CstStatement;
-
-typedef struct
-{
-  CstNode* type_expr;
-  CstNode* id;
-  CstNode* init_expr;
-}
-CstVarDecl;
-
-typedef struct
-{
-  CstNode* ret_type_expr;
-  CstNode* id;
-  List* args;
-  CstNode* body;
-  boole is_decl;
-}
-CstProc;
-
-typedef struct
-{
-  CstNode* id;
-  List* args;
-}
-CstCall;
-
-typedef struct
-{
-  CstLiteralKind kind;
-
-  union
-  {
-    int32 int_val;
-    float32 float_val;
-    int32 bool_val;
-    char char_val;
-    char* str;
-  };
-}
-CstLiteral;
-
-typedef struct
-{
-  CstNode* expr;
-}
-CstReturnStmt;
-
-typedef struct
-{
-  CstNode* cond_expr;
-  CstNode* body;
-  CstNode* else_body;
-}
-CstIfStmt;
-
-typedef struct
-{
-  CstNode* cond_expr;
-  CstNode* body;
-}
-CstWhileStmt,
-CstDoWhileStmt;
-
-typedef struct
-{
-  CstNode* decl_expr;
-  CstNode* cond_expr;
-  CstNode* loop_expr;
-  CstNode* body;
-}
-CstForStmt;
-
-typedef struct
-{
-  CstNode* type_expr;
-  CstNode* expr;
-}
-CstCast;
-
-typedef struct
-{
-  CstNode* type_expr;
-  CstNode* size_expr;
-}
-CstArray;
-
-typedef struct
-{
-  CstNode* type_expr;
-}
-CstPointer;
-
-typedef struct
-{
-  CstNode* id;
-  List* members;
-}
-CstStruct,
-CstUnion,
-CstEnum,
-CstRecord;
-
-typedef struct
-{
-  List* members;
-}
-CstInitList;
-
-typedef struct
-{
-  CstNode* type_expr;
-  CstNode* count_expr;
-}
-CstNew;
-
-typedef struct
-{
-  CstNode* expr;
-}
-CstPutc;
+CstKind;
 
 typedef struct CstNode
 {
-  CstNodeKind kind;
-  Type* type;
-  SourceLocation src_loc;
+  CstKind kind;
+  SourceLoc* src_loc;
 
   union
   {
-    CstId id;
-    CstBlock block;
-    CstBinExpr bin_expr;
-    CstUnaryExpr unary_expr;
-    CstModule module;
-    CstInclude include;
-    CstStatement stmt;
-    CstVarDecl var_decl;
-    CstProc proc;
-    CstCall call;
-    CstLiteral lit;
-    CstReturnStmt ret_stmt;
-    CstGotoStmt goto_stmt;
-    CstLabel label;
-    CstIfStmt if_stmt;
-    CstWhileStmt while_stmt;
-    CstForStmt for_stmt;
-    CstCast cast;
-    CstArray array;
-    CstPointer pointer;
-    CstEnum enum_decl;
-    CstStruct struct_decl;
-    CstUnion union_decl;
-    CstBinExpr member_access;
-    CstInitList init_list;
-    CstNew new;
-    CstPutc putc;
+    struct
+    {
+      char* name;
+    }
+    id;
+
+    struct
+    {
+      List* stmts;
+    }
+    block;
+
+    struct
+    {
+      OpKind op;
+      CstNode* left_operand;
+      CstNode* right_operand;
+    }
+    bin_expr;
+
+    struct
+    {
+      OpKind op;
+      CstNode* operand;
+    }
+    un_expr;
+
+    struct
+    {
+      char* file_path;
+      CstNode* body;
+    }
+    module,
+    include;
+
+    struct
+    {
+      CstNode* stmt;
+    }
+    stmt;
+
+    struct
+    {
+      CstNode* type_expr;
+      CstNode* id;
+      CstNode* init_expr;
+    }
+    var_decl;
+
+    struct
+    {
+      CstNode* ret_type_expr;
+      CstNode* id;
+      List* args;
+      CstNode* body;
+      bool is_decl;
+    }
+    proc;
+
+    struct
+    {
+      CstNode* id;
+      List* args;
+    }
+    call;
+
+    struct
+    {
+      CstLiteralKind kind;
+
+      union
+      {
+        int32 int_val;
+        float32 float_val;
+        int32 bool_val;
+        char char_val;
+        char* str;
+      };
+    }
+    lit;
+
+    struct
+    {
+      CstNode* expr;
+    }
+    ret_stmt;
+
+    struct
+    {
+      CstNode* id;
+    }
+    goto_stmt,
+    label;
+
+    struct
+    {
+      CstNode* cond_expr;
+      CstNode* body;
+      CstNode* else_body;
+    }
+    if_stmt;
+
+    struct
+    {
+      CstNode* cond_expr;
+      CstNode* body;
+    }
+    while_stmt,
+    do_while_stmt;
+
+    struct
+    {
+      CstNode* decl_expr;
+      CstNode* cond_expr;
+      CstNode* loop_expr;
+      CstNode* body;
+    }
+    for_stmt;
+
+    struct
+    {
+      CstNode* type_expr;
+      CstNode* expr;
+    }
+    cast,
+    pointer;
+
+    struct
+    {
+      CstNode* type_expr;
+      CstNode* size_expr;
+    }
+    array;
+
+    struct
+    {
+      CstNode* id;
+      List* members;
+    }
+    enum_decl,
+    struct_decl,
+    union_decl;
+
+    struct
+    {
+      List* members;
+    }
+    init_list;
+
+    struct
+    {
+      CstNode* type_expr;
+      CstNode* count_expr;
+    }
+    hoc_new;
+
+    struct
+    {
+      CstNode* expr;
+    }
+    hoc_putc;
   };
 }
 CstNode;
 
+typedef struct AstNode AstNode; // Abstract Syntax Tree
+typedef struct Type Type;
+typedef struct Symbol Symbol;
+
+#if 0
+typedef enum ScopeKind
+{
+  ScopeKind__None,
+  ScopeKind_module,
+  ScopeKind_block,
+  ScopeKind_proc,
+}
+ScopeKind;
+#endif
+
+#if 1
+typedef struct Scope
+{
+  //ScopeKind kind;
+
+  int scope_id;
+  int nesting_depth;
+  struct Scope* encl_scope;
+  List* local_decls;
+  List* nonlocal_occurs;
+}
+Scope;
+#else
+typedef struct AstBlock
+{
+  int block_id;
+  int nesting_depth;
+  struct AstBlock* encl_block;
+  List* local_decls;
+  List* nonlocal_occurs;
+}
+AstBlock;
+#endif
+
+typedef enum
+{
+  AstKind__None,
+  AstKind_block,
+  AstKind_module,
+  AstKind_stmt,
+  AstKind_var_decl,
+  AstKind_var_occur,
+  AstKind_type_decl,
+  AstKind_type_occur,
+  AstKind_proc_decl,
+  AstKind_proc_occur,
+  AstKind_op_occur,
+  AstKind_if_stmt,
+  AstKind_while_stmt,
+  AstKind_do_while_stmt,
+  AstKind_ret_stmt,
+  AstKind_continue_stmt,
+  AstKind_break_stmt,
+}
+AstKind;
+
+typedef struct AstNode
+{
+  AstKind kind;
+  Type* type;
+  SourceLoc* src_loc;
+
+  union
+  {
+    struct
+    {
+      List* stmts;
+      Scope* scope;
+    }
+    block;
+
+    struct
+    {
+      AstNode* body;
+      List* procs;
+    }
+    module;
+
+    struct
+    {
+      AstNode* stmt;
+    }
+    stmt;
+
+    struct
+    {
+      char* var_name;
+      Scope* decl_scope;
+    }
+    var_decl;
+
+    struct
+    {
+      char* var_name;
+      AstNode* var_decl;
+      Scope* occur_scope;
+      int decl_scope_offset;
+    }
+    var_occur;
+
+    struct
+    {
+      char* type_name;
+      Scope* decl_scope;
+      AstNode* type;
+    }
+    type_decl;
+
+    struct
+    {
+      char* type_name;
+      AstNode* type_decl;
+    }
+    type_occur;
+
+    struct
+    {
+      Symbol* sym;
+      AstNode* body;
+      List* formal_args;
+      AstNode* ret_var;
+    }
+    proc_decl;
+
+    struct
+    {
+      char* proc_name;
+      List* actual_args;
+      AstNode* proc;
+    }
+    proc_occur;
+
+    struct
+    {
+      OpKind op;
+      List* operands;
+    }
+    op_occur;
+
+    struct
+    {
+      AstNode* assign_stmt;
+      AstNode* proc;
+      int nesting_depth;
+    }
+    ret_stmt;
+
+    struct
+    {
+      AstNode* cond_expr;
+      AstNode* body;
+      AstNode* else_body;
+    }
+    if_stmt;
+
+    struct
+    {
+      AstNode* cond_expr;
+      AstNode* body;
+    }
+    while_stmt,
+    do_while_stmt;
+
+    struct
+    {
+      AstNode* loop;
+      int nesting_depth;
+    }
+    continue_stmt,
+    break_stmt;
+  };
+}
+AstNode;
+
 typedef enum
 {
   TypeKind__None,
-  TypeKind_TypeVar,
-  TypeKind_Unary,
-  TypeKind_Basic,
-  TypeKind_Type,
-  TypeKind_Proc,
-  TypeKind_Product,
-  TypeKind_Pointer,
-  TypeKind_Array,
-
-  TypeKind__Count,
+  TypeKind_typevar,
+  TypeKind_unary,
+  TypeKind_basic,
+  TypeKind_type,
+  TypeKind_proc,
+  TypeKind_product,
+  TypeKind_pointer,
+  TypeKind_array,
 }
 TypeKind;
 
 typedef enum
 {
   UnaryCtorKind__None,
-  UnaryCtorKind_Pointer,
-  UnaryCtorKind_Array,
+  UnaryCtorKind_pointer,
+  UnaryCtorKind_array,
 }
 UnaryCtorKind;
 
@@ -560,8 +673,6 @@ typedef enum
   BasicTypeKind_Float,
   BasicTypeKind_Char,
   BasicTypeKind_Bool,
-
-  BasicTypeKind__Count,
 }
 BasicTypeKind;
 
@@ -569,7 +680,7 @@ typedef struct Type
 {
   TypeKind kind;
   Type* repr_type; // representative member of the set of equivalent types
-  CstNode* ast;
+  AstNode* ast;
   int size;
 
   union
@@ -616,15 +727,22 @@ typedef struct Type
 }
 Type;
 
+typedef struct
+{
+  Type* key;
+  Type* value;
+}
+TypePair;
+
 typedef enum
 {
   SymbolKind__None,
-  SymbolKind_VarDecl,
-  SymbolKind_VarOccur,
-  SymbolKind_TypeDecl,
-  SymbolKind_TypeOccur,
-  SymbolKind_Proc,
-  SymbolKind_Call,
+  SymbolKind_var_decl,
+  SymbolKind_var_occur,
+  SymbolKind_type_decl,
+  SymbolKind_type_occur,
+  SymbolKind_proc_decl,
+  SymbolKind_proc_occur,
 }
 SymbolKind;
 
@@ -632,16 +750,20 @@ typedef struct Symbol
 {
   SymbolKind kind;
 
+  SourceLoc* src_loc;
   Symbol* prev_symbol;
   char* name;
-  int block_id;
+  int scope_id;
   int nesting_depth;
-  CstNode* id;
 
   union
   {
-    CstNode* ast;
-    Type* type;
+    AstNode* var_decl;
+    AstNode* var_occur;
+    AstNode* type_decl;
+    AstNode* type_occur;
+    AstNode* proc_decl;
+    AstNode* proc_occur;
   };
 }
 Symbol;
@@ -649,10 +771,11 @@ Symbol;
 typedef struct
 {
   Symbol* curr_symbol;
-  CstBlock* curr_block;
-  int block_id;
+  Scope* module_scope;
+  Scope* curr_scope;
+  int scope_id;
   int nesting_depth;
-  CstBlock* active_blocks[MAX_SCOPE_NESTING_DEPTH];
+  Scope* active_scopes[MAX_SCOPE_NESTING_DEPTH];
   int sym_count;
 }
 SymbolTable;
@@ -776,12 +899,12 @@ BinCode;
 
 typedef struct
 {
-  boole success;
+  bool success;
 
   String text;
   int text_len;
 
-  List instr_list;
+  List* instr_list;
   Instruction* instructions;
   int instr_count;
 
@@ -790,19 +913,37 @@ typedef struct
 }
 VmProgram;
 
-boole DEBUG_enabled = true;
-boole DEBUG_zero_arena = true;
-boole DEBUG_check_arena_bounds = true;
+typedef enum
+{
+  ListKind__None,
+  ListKind_cst_node,
+  ListKind_ast_node,
+  ListKind_VmInstr,
+  ListKind_TypePair,
+}
+ListKind;
 
-MemoryArena* arena = 0;
-MemoryArena* sym_arena = 0;
+typedef struct ListItem
+{
+  ListKind kind;
+  union
+  {
+    void* elem;
+    CstNode* cst_node;
+    AstNode* ast_node;
+    Instruction* instr;
+    TypePair* type_pair;
+  };
+  struct ListItem* next;
+  struct ListItem* prev;
+}
+ListItem;
 
-SourceLocation* deflt_src_loc = 0;
-SymbolTable* symtab = 0;
-
-Type* basic_type_bool;
-Type* basic_type_int;
-Type* basic_type_char;
-Type* basic_type_float;
-Type* basic_type_void;
+typedef struct List
+{
+  ListKind kind;
+  ListItem* first;
+  ListItem* last;
+}
+List;
 

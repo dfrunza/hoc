@@ -1,5 +1,12 @@
 #include "hocc.h"
-#include "lib.c"
+
+bool DEBUG_enabled = true;
+bool DEBUG_zero_arena = true;
+bool DEBUG_check_arena_bounds = true;
+
+MemoryArena* arena = 0;
+
+#include "lib.cpp"
 
 #define VM_MEMORY_SIZE 2048
 
@@ -39,27 +46,25 @@ typedef enum
 }
 ExecResult;
 
-MemoryArena* arena;
-
-boole
+bool
 check_stack_bounds(HocMachine* machine, int sp)
 {
   return sp > 0 && sp < machine->hp;
 }
 
-boole
+bool
 check_memory_bounds(HocMachine* machine, int location)
 {
   return location > 0 && location <= machine->memory_size;
 }
 
-boole
+bool
 check_heap_bounds(HocMachine* machine, int hp)
 {
   return (hp > machine->sp) && (hp < machine->hp) && hp < machine->memory_size;
 }
 
-boole
+bool
 check_instr_bounds(HocMachine* machine, int address)
 {
   return address >= 0 && address < machine->instr_count;
@@ -358,7 +363,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
         int32 arg1 = memory_at(arg_sp, int32, 0);
         int32 arg2 = memory_at(arg_sp, int32, 1);
 
-        boole result = 0;
+        bool result = 0;
         if(opcode == Opcode_AND)
           result = arg1 && arg2;
         else if(opcode == Opcode_OR)
@@ -380,7 +385,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
       if(check_stack_bounds(machine, arg_sp))
       {
         int32 arg = memory_at(arg_sp, int32, 0);
-        memory_at(arg_sp, int32, 0) = (boole)!arg;
+        memory_at(arg_sp, int32, 0) = (bool)!arg;
         machine->ip++;
       }
       else
@@ -826,12 +831,12 @@ run_program(HocMachine* machine)
   return exec_result;
 }
 
-boole
+bool
 load_bin_image(char* exe_file_name, HocMachine* machine)
 {
   uint8* exe_bytes = 0;
   int exe_size = 0;
-  boole success = true;
+  bool success = true;
 
   file_read_bytes(arena, &exe_bytes, exe_file_name);
 

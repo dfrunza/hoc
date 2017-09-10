@@ -1,18 +1,11 @@
-typedef struct
-{
-  Type* key;
-  Type* value;
-}
-TypePair;
-
-List subst_list;
+List* subst_list;
 int typevar_id = 1;
 
 Type*
 new_basic_type(BasicTypeKind kind, int size)
 {
   Type* type = mem_push_struct(arena, Type);
-  type->kind = TypeKind_Basic;
+  type->kind = TypeKind_basic;
   type->basic.kind = kind;
   type->size = size;
   return type;
@@ -22,7 +15,7 @@ Type*
 new_proc_type(Type* args, Type* ret)
 {
   Type* type = mem_push_struct(arena, Type);
-  type->kind = TypeKind_Proc;
+  type->kind = TypeKind_proc;
   type->proc.args = args;
   type->proc.ret = ret;
   return type;
@@ -32,7 +25,7 @@ Type*
 new_typevar()
 {
   Type* type = mem_push_struct(arena, Type);
-  type->kind = TypeKind_TypeVar;
+  type->kind = TypeKind_typevar;
   type->typevar.id = typevar_id++;
   return type;
 }
@@ -41,7 +34,7 @@ Type*
 new_product_type(Type* left, Type* right)
 {
   Type* type = mem_push_struct(arena, Type);
-  type->kind = TypeKind_Product;
+  type->kind = TypeKind_product;
   type->product.left = left;
   type->product.right = right;
   return type;
@@ -51,7 +44,7 @@ Type*
 new_array_type(int size, Type* elem)
 {
   Type* type = mem_push_struct(arena, Type);
-  type->kind = TypeKind_Array;
+  type->kind = TypeKind_array;
   type->array.size = size;
   type->array.elem = elem;
   return type;
@@ -61,7 +54,7 @@ Type*
 new_pointer_type(Type* pointee)
 {
   Type* type = mem_push_struct(arena, Type);
-  type->kind = TypeKind_Pointer;
+  type->kind = TypeKind_pointer;
   type->pointer.pointee = pointee;
   return type;
 }
@@ -75,26 +68,26 @@ init_types()
   basic_type_float = new_basic_type(BasicTypeKind_Float, 1);
   basic_type_void = new_basic_type(BasicTypeKind_Void, 0);
 
-  list_init(&subst_list);
+  subst_list = new_list(arena, ListKind_TypePair);
 }
 
-boole
+bool
 types_are_equal(Type* type_a, Type* type_b)
 {
-  boole are_equal = false;
+  bool are_equal = false;
 
-  if((type_a->kind != TypeKind_TypeVar) && (type_b->kind == type_a->kind))
+  if((type_a->kind != TypeKind_typevar) && (type_b->kind == type_a->kind))
   {
-    if(type_a->kind == TypeKind_Basic)
+    if(type_a->kind == TypeKind_basic)
       are_equal = (type_a->basic.kind == type_b->basic.kind);
-    else if(type_a->kind == TypeKind_Proc)
+    else if(type_a->kind == TypeKind_proc)
       are_equal = types_are_equal(type_a->proc.args, type_b->proc.args)
         && types_are_equal(type_a->proc.ret, type_b->proc.ret);
-    else if(type_a->kind == TypeKind_Pointer)
+    else if(type_a->kind == TypeKind_pointer)
       are_equal = types_are_equal(type_a->pointer.pointee, type_b->pointer.pointee);
-    else if(type_a->kind == TypeKind_Product)
+    else if(type_a->kind == TypeKind_product)
       are_equal = types_are_equal(type_a->product.left, type_b->product.right);
-    else if(type_a->kind == TypeKind_Array)
+    else if(type_a->kind == TypeKind_array)
       are_equal = types_are_equal(type_a->array.elem, type_b->array.elem)
         && type_a->array.size == type_b->array.size;
     else
@@ -106,11 +99,11 @@ types_are_equal(Type* type_a, Type* type_b)
 int
 compute_type_width(Type* type)
 {
-  if(type->kind == TypeKind_Array)
+  if(type->kind == TypeKind_array)
     type->size = type->array.size * compute_type_width(type->array.elem);
-  else if(type->kind == TypeKind_Product)
+  else if(type->kind == TypeKind_product)
     type->size = compute_type_width(type->product.left) + compute_type_width(type->product.right);
-  else if(type->kind == TypeKind_Basic)
+  else if(type->kind == TypeKind_basic)
   {
     if(type->basic.kind == BasicTypeKind_Int
        || type->basic.kind == BasicTypeKind_Float
@@ -125,7 +118,7 @@ compute_type_width(Type* type)
     else
       assert(0);
   }
-  else if(type->kind == TypeKind_Pointer)
+  else if(type->kind == TypeKind_pointer)
     type->size = 4;
   else
     assert(0);
@@ -155,20 +148,20 @@ get_type_repr(Type* type)
 void
 set_union(Type* type_a, Type* type_b)
 {
-  if(type_a->kind == TypeKind_TypeVar)
+  if(type_a->kind == TypeKind_typevar)
     type_a->repr_type = type_b;
   else
     type_b->repr_type = type_a;
 }
 
-boole
+bool
 type_unif(Type* type_a, Type* type_b)
 {
-  boole success = false;
+  bool success = false;
   Type* repr_type_a = get_type_repr(type_a);
   Type* repr_type_b = get_type_repr(type_b);
 
-  if(repr_type_a->kind == TypeKind_TypeVar || repr_type_b->kind == TypeKind_TypeVar)
+  if(repr_type_a->kind == TypeKind_typevar || repr_type_b->kind == TypeKind_typevar)
   {
     set_union(repr_type_a, repr_type_b);
     success = true;
@@ -176,25 +169,37 @@ type_unif(Type* type_a, Type* type_b)
   else if(repr_type_a->kind == repr_type_b->kind)
   {
     if(repr_type_a == repr_type_b)
+    {
       success = true;
-    else if(repr_type_a->kind == TypeKind_Basic)
+    }
+    else if(repr_type_a->kind == TypeKind_basic)
+    {
       success = (repr_type_a->basic.kind == repr_type_b->basic.kind);
+    }
     else
     {
       set_union(repr_type_a, repr_type_b);
       assert(repr_type_a->kind == repr_type_b->kind);
 
-      if(repr_type_a->kind == TypeKind_Proc)
+      if(repr_type_a->kind == TypeKind_proc)
+      {
         success = type_unif(repr_type_a->proc.args, repr_type_b->proc.args)
           && type_unif(repr_type_a->proc.ret, repr_type_b->proc.ret);
-      else if(repr_type_a->kind == TypeKind_Product)
+      }
+      else if(repr_type_a->kind == TypeKind_product)
+      {
         success = type_unif(repr_type_a->product.left, repr_type_b->product.left)
           && type_unif(repr_type_a->product.right, repr_type_b->product.right);
-      else if(repr_type_a->kind == TypeKind_Pointer)
+      }
+      else if(repr_type_a->kind == TypeKind_pointer)
+      {
         success = type_unif(repr_type_a->pointer.pointee, repr_type_b->pointer.pointee);
-      else if(repr_type_a->kind == TypeKind_Array)
+      }
+      else if(repr_type_a->kind == TypeKind_array)
+      {
         success = (repr_type_a->array.size == repr_type_b->array.size)
           && type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
+      }
       else
         assert(false);
     }
@@ -246,24 +251,30 @@ type_subst(List* subst_list, Type* type)
     subst = copy_type(type);
 
     pair = new_type_pair(type, subst);
-    list_append(arena, subst_list, pair);
+    append_list_elem(arena, subst_list, pair, ListKind_cst_node);
 
-    if(subst->kind == TypeKind_TypeVar)
+    if(subst->kind == TypeKind_typevar)
+    {
       subst->typevar.id = typevar_id++;
-    else if(subst->kind == TypeKind_Proc)
+    }
+    else if(subst->kind == TypeKind_proc)
     {
       subst->proc.args = type_subst(subst_list, subst->proc.args);
       subst->proc.ret = type_subst(subst_list, subst->proc.ret);
     }
-    else if(subst->kind == TypeKind_Product)
+    else if(subst->kind == TypeKind_product)
     {
       subst->product.left = type_subst(subst_list, subst->product.left);
       subst->product.right = type_subst(subst_list, subst->product.right);
     }
-    else if(subst->kind == TypeKind_Pointer)
+    else if(subst->kind == TypeKind_pointer)
+    {
       subst->pointer.pointee = type_subst(subst_list, subst->pointer.pointee);
-    else if(subst->kind == TypeKind_Array)
+    }
+    else if(subst->kind == TypeKind_array)
+    {
       subst->array.elem = type_subst(subst_list, subst->array.elem);
+    }
     else
       assert(false);
   }

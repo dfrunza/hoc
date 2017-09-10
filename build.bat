@@ -17,11 +17,11 @@ set C_flags=-Od -W4 -nologo -MTd -Zo -Zi -Gm- -GR- -EHa- -FC -D_CRT_SECURE_NO_WA
 set L_flags=-incremental:no -opt:ref -subsystem:console
 
 ..\ctime.exe ^
-cl %C_flags% ..\hocc.c /link %L_flags%
+cl %C_flags% ..\hocc.cpp /link %L_flags%
 if %errorlevel% neq 0 goto :end
 
 ..\ctime.exe ^
-cl %C_flags% ..\vm.c /link %L_flags%
+cl %C_flags% ..\vm.cpp /link %L_flags%
 if %errorlevel% neq 0 goto :end
 
 rem NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
@@ -30,7 +30,7 @@ echo Compiling HoC Code...
 hocc %hoc_src%\test.hoc > debug.txt
 if %errorlevel% neq 0 goto :hocc_error
 
-rem cl %C_flags% ..\fp3.c /link %L_flags%
+rem cl %C_flags% ..\fp3.cpp /link %L_flags%
 
 goto :end
 
@@ -41,6 +41,6 @@ goto :end
 :end
 popd
 
-cloc.exe hocc.h codegen.c hasm.c hocc.c lex.c lib.c runtime.c semantic.c syntax.c typecheck.c vm.c
+cloc.exe hocc.h codegen.cpp hasm.cpp hocc.cpp lex.cpp lib.cpp runtime.cpp semantic.cpp syntax.cpp typecheck.cpp vm.cpp
 
 

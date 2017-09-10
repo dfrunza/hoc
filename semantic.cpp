@@ -280,7 +280,6 @@ register_type_occur(AstNode* occur_node)
   return success;
 }
 
-//TODO: Move code into `sem_var_occur()` and leave here only the id registration parts
 bool
 register_var_occur(AstNode* occur_node)
 {
@@ -388,20 +387,20 @@ add_builtin_types()
 }
 
 bool
-scope_begin(SourceLoc* src_loc, Scope** scope_ref)
+scope_begin(SourceLoc* src_loc, Scope** scope)
 {
-  Scope* scope = *scope_ref = new_scope();
+  *scope = new_scope();
 
   symbol_table->scope_id = ++last_scope_id; 
-  scope->scope_id = symbol_table->scope_id;
-  scope->encl_scope = symbol_table->curr_scope;
+  (*scope)->scope_id = symbol_table->scope_id;
+  (*scope)->encl_scope = symbol_table->curr_scope;
 
   ++symbol_table->nesting_depth;
   if(symbol_table->nesting_depth < sizeof_array(symbol_table->active_scopes))
   {
-    scope->nesting_depth = symbol_table->nesting_depth;
-    symbol_table->active_scopes[symbol_table->nesting_depth] = scope;
-    symbol_table->curr_scope = scope;
+    (*scope)->nesting_depth = symbol_table->nesting_depth;
+    symbol_table->active_scopes[symbol_table->nesting_depth] = *scope;
+    symbol_table->curr_scope = *scope;
   }
   else
   {
@@ -463,17 +462,17 @@ process_includes(List* include_list, List* module_list, ListItem* module_list_it
 
 #if 1
 bool
-build_ast_var_decl(CstNode* cst_var_decl, AstNode** ast_var_decl_ref)
+build_ast_var_decl(CstNode* cst_var_decl, AstNode** ast_var_decl)
 {
   bool success = true;
 
-  AstNode* ast_var_decl = *ast_var_decl_ref = new_ast_node(cst_var_decl->src_loc, AstKind_var_decl);
-  AST(ast_var_decl, var_decl)->var_name = CST(CST(cst_var_decl, var_decl)->id, id)->name;
+  *ast_var_decl = new_ast_node(cst_var_decl->src_loc, AstKind_var_decl);
+  AST(*ast_var_decl, var_decl)->var_name = CST(CST(cst_var_decl, var_decl)->id, id)->name;
 
-  if(success = register_var_decl(ast_var_decl))
+  if(success = register_var_decl(*ast_var_decl))
   {
-    Scope* decl_scope = AST(ast_var_decl, var_decl)->decl_scope = symbol_table->curr_scope;
-    append_list_elem(arena, decl_scope->local_decls, ast_var_decl, ListKind_ast_node);
+    Scope* decl_scope = AST(*ast_var_decl, var_decl)->decl_scope = symbol_table->curr_scope;
+    append_list_elem(arena, decl_scope->local_decls, *ast_var_decl, ListKind_ast_node);
   }
   return success;
 }
@@ -1609,18 +1608,18 @@ make_ast_var_occur(AstNode* var_decl)
 
 #if 1
 bool
-build_ast_module(CstNode* cst_module, AstNode** ast_module_ref)
+build_ast_module(CstNode* cst_module, AstNode** ast_module)
 {
   bool success = true;
 
-  AstNode* ast_module = *ast_module_ref = new_ast_node(cst_module->src_loc, AstKind_module);
-  AST(ast_module, module)->body = new_ast_block(CST(cst_module, module)->body->src_loc);
+  *ast_module = new_ast_node(cst_module->src_loc, AstKind_module);
+  AST(*ast_module, module)->body = new_ast_block(CST(cst_module, module)->body->src_loc);
 
-  Scope** scope_ref = &AST(AST(ast_module, module)->body, block)->scope;
-  if(success = scope_begin(cst_module->src_loc, scope_ref))
+  Scope** scope = &AST(AST(*ast_module, module)->body, block)->scope;
+  if(success = scope_begin(cst_module->src_loc, scope))
   {
     add_builtin_types();
-    symbol_table->module_scope = *scope_ref;
+    symbol_table->module_scope = *scope;
 
     for(ListItem* list_item = CST(CST(cst_module, module)->body, block)->nodes->first;
         list_item && success;

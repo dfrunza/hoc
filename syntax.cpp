@@ -1778,12 +1778,6 @@ parse_node(TokenStream* input, CstNode** node)
     }
   }
 
-#if 0
-  if(success && node)
-  {
-    *node = new_cst_statement(&input->src_loc, node);
-  }
-#endif
   return success;
 }
 

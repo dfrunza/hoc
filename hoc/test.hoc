@@ -1,4 +1,4 @@
-var int a;
+var int a = 112;
 
 proc int
 main()

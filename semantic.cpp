@@ -1626,23 +1626,23 @@ build_ast_module(CstNode* cst_module, AstNode** ast_module_ref)
         list_item && success;
         list_item = list_item->next)
     {
-      CstNode* cst_stmt = CST(CST_ITEM(list_item), stmt)->stmt;
-      if(cst_stmt->kind == CstKind_var_decl)
+      CstNode* cst_node = CST_ITEM(list_item);
+      if(cst_node->kind == CstKind_var_decl)
       {
-        AstNode* ast_stmt = new_ast_stmt(CST_ITEM(list_item)->src_loc, 0);
-        if(build_ast_var_decl(cst_stmt, &AST(ast_stmt, stmt)->stmt))
+        AstNode* ast_node = 0;
+        if(build_ast_var_decl(cst_node, &ast_node))
         {
-          CstNode* cst_init_expr = CST(cst_stmt, var_decl)->init_expr;
+          CstNode* cst_init_expr = CST(cst_node, var_decl)->init_expr;
           if(cst_init_expr)
           {
             AstNode* ast_init_expr = new_ast_op_occur(cst_init_expr->src_loc, OpKind_Assign);
-            append_list_elem(arena, AST(ast_init_expr, op_occur)->operands, make_ast_var_occur(AST(ast_stmt, stmt)->stmt), ListKind_ast_node);
+            append_list_elem(arena, AST(ast_init_expr, op_occur)->operands, make_ast_var_occur(ast_node), ListKind_ast_node);
           }
         }
       }
 #if 0
       else
-        success = compile_error(cst_stmt->src_loc, "unexpected statement `%s`", get_ast_kind_printstr(cst_stmt->kind));
+        success = compile_error(cst_node->src_loc, "unexpected statement `%s`", get_ast_kind_printstr(cst_node->kind));
 #endif
     }
     scope_end();

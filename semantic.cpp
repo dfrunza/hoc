@@ -544,7 +544,7 @@ end_scope()
   if(symbol_table->nesting_depth > 0)
   {
     Scope* local_scope = symbol_table->active_scopes[symbol_table->nesting_depth];
-    assert(local_scope->scope_id > 0);
+    assert(local_scope->scope_id >= 0);
     symbol_table->local_scope = local_scope;
     symbol_table->scope_id = local_scope->scope_id;
 
@@ -1835,7 +1835,7 @@ void
 init_symbol_table()
 {
   symbol_table = mem_push_struct(arena, SymbolTable);
-  symbol_table->scope_id = -1;
+  symbol_table->scope_id = last_scope_id = -1;
 }
 
 bool

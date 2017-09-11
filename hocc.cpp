@@ -178,7 +178,7 @@ DEBUG_print_sizeof_xst_structs(NodeKind node_kind)
       else
         assert(0);
 
-      printf("%s.size = %d bytes\n", kind_str, info->size);
+      printf("%s = %d bytes\n", kind_str, info->size);
     }
   }
 }

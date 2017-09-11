@@ -125,165 +125,43 @@ new_cst_unr_expr(SourceLoc* src_loc, enum CstOperator op)
   return node;
 }
 
-char*
+const char* CstOperator_strings[] =
+{
+#define ENUM_MEMBER(NAME) #NAME
+  CstOperator_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+
+const char*
 get_cst_op_printstr(enum CstOperator op)
 {
-  char* result = 0;
-
-  if(op == CstOperator__None)
-    result = stringify(CstOperator__None);
-  else if(op == CstOperator_Add)
-    result = stringify(CstOperator_Add);
-  else if(op == CstOperator_Sub)
-    result = stringify(CstOperator_Sub);
-  else if(op == CstOperator_Div)
-    result = stringify(CstOperator_Div);
-  else if(op == CstOperator_Mul)
-    result = stringify(CstOperator_Mul);
-  else if(op == CstOperator_Mod)
-    result = stringify(CstOperator_Mod);
-  else if(op == CstOperator_Neg)
-    result = stringify(CstOperator_Neg);
-  else if(op == CstOperator_Assign)
-    result = stringify(CstOperator_Assign);
-  else if(op == CstOperator_PointerDeref)
-    result = stringify(CstOperator_PointerDeref);
-  else if(op == CstOperator_AddressOf)
-    result = stringify(CstOperator_AddressOf);
-  else if(op == CstOperator_MemberSelect)
-    result = stringify(CstOperator_MemberSelect);
-  else if(op == CstOperator_PtrMemberSelect)
-    result = stringify(CstOperator_PtrMemberSelect);
-  else if(op == CstOperator_ArrayIndex)
-    result = stringify(CstOperator_ArrayIndex);
-  else if(op == CstOperator_PreDecrement)
-    result = stringify(CstOperator_PreDecrement);
-  else if(op == CstOperator_PostDecrement)
-    result = stringify(CstOperator_PostDecrement);
-  else if(op == CstOperator_PreIncrement)
-    result = stringify(CstOperator_PreIncrement);
-  else if(op == CstOperator_PostIncrement)
-    result = stringify(CstOperator_PostIncrement);
-  else if(op == CstOperator_Equals)
-    result = stringify(CstOperator_Equals);
-  else if(op == CstOperator_NotEquals)
-    result = stringify(CstOperator_NotEquals);
-  else if(op == CstOperator_Less)
-    result = stringify(CstOperator_Less);
-  else if(op == CstOperator_LessEquals)
-    result = stringify(CstOperator_LessEquals);
-  else if(op == CstOperator_Greater)
-    result = stringify(CstOperator_Greater);
-  else if(op == CstOperator_GreaterEquals)
-    result = stringify(CstOperator_GreaterEquals);
-  else if(op == CstOperator_LogicAnd)
-    result = stringify(CstOperator_LogicAnd);
-  else if(op == CstOperator_LogicOr)
-    result = stringify(CstOperator_LogicOr);
-  else if(op == CstOperator_LogicNot)
-    result = stringify(CstOperator_LogicNot);
-  else if(op == CstOperator_BitwiseAnd)
-    result = stringify(CstOperator_BitwiseAnd);
-  else if(op == CstOperator_BitwiseOr)
-    result = stringify(CstOperator_BitwiseOr);
-  else
-    result = "???";
-
-  return result;
+  return CstOperator_strings[op];
 }
 
-char*
+const char* CstKind_strings[] =
+{
+#define ENUM_MEMBER(NAME) #NAME
+  CstKind_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+
+const char*
 get_cst_kind_printstr(enum CstKind kind)
 {
-  char* result = 0;
-
-  if(kind == CstKind__None)
-    result = stringify(CstKind__None);
-  else if(kind == CstKind_bin_expr)
-    result = stringify(CstKind_bin_expr);
-  else if(kind == CstKind_un_expr)
-    result = stringify(CstKind_un_expr);
-  else if(kind == CstKind_lit)
-    result = stringify(CstKind_lit);
-  else if(kind == CstKind_var_decl)
-    result = stringify(CstKind_var_decl);
-  else if(kind == CstKind_stmt)
-    result = stringify(CstKind_stmt);
-  else if(kind == CstKind_block)
-    result = stringify(CstKind_block);
-  else if(kind == CstKind_proc)
-    result = stringify(CstKind_proc);
-  else if(kind == CstKind_id)
-    result = stringify(CstKind_id);
-  else if(kind == CstKind_while_stmt)
-    result = stringify(CstKind_while_stmt);
-  else if(kind == CstKind_do_while_stmt)
-    result = stringify(CstKind_do_while_stmt);
-  else if(kind == CstKind_for_stmt)
-    result = stringify(CstKind_for_stmt);
-  else if(kind == CstKind_if_stmt)
-    result = stringify(CstKind_if_stmt);
-  else if(kind == CstKind_return_stmt)
-    result = stringify(CstKind_return_stmt);
-  else if(kind == CstKind_break_stmt)
-    result = stringify(CstKind_break_stmt);
-  else if(kind == CstKind_continue_stmt)
-    result = stringify(CstKind_continue_stmt);
-  else if(kind == CstKind_goto_stmt)
-    result = stringify(CstKind_goto_stmt);
-  else if(kind == CstKind_label)
-    result = stringify(CstKind_label);
-  else if(kind == CstKind_include)
-    result = stringify(CstKind_include);
-  else if(kind == CstKind_module)
-    result = stringify(CstKind_module);
-  else if(kind == CstKind_cast)
-    result = stringify(CstKind_cast);
-  else if(kind == CstKind_call)
-    result = stringify(CstKind_call);
-  else if(kind == CstKind_array)
-    result = stringify(CstKind_array);
-  else if(kind == CstKind_pointer)
-    result = stringify(CstKind_pointer);
-  else if(kind == CstKind_struct_decl)
-    result = stringify(CstKind_struct_decl);
-  else if(kind == CstKind_union_decl)
-    result = stringify(CstKind_union_decl);
-  else if(kind == CstKind_enum_decl)
-    result = stringify(CstKind_enum_decl);
-  else if(kind == CstKind_init_list)
-    result = stringify(CstKind_init_list);
-  else if(kind == CstKind_hoc_new)
-    result = stringify(CstKind_hoc_new);
-  else if(kind == CstKind_hoc_putc)
-    result = stringify(CstKind_hoc_putc);
-  else
-    result = "???";
-
-  return result;
+  return CstKind_strings[kind];
 }
 
-char*
+const char* CstLiteralKind_strings[] =
+{
+#define ENUM_MEMBER(NAME) #NAME
+  CstLiteralKind_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+
+const char*
 get_cst_literal_printstr(enum CstLiteralKind kind)
 {
-  char* result = 0;
-
-  if(kind == CstLiteralKind__None)
-    result = stringify(CstLiteralKind__None);
-  else if(kind == CstLiteralKind_int_val)
-    result = stringify(CstLiteralKind_int_val);
-  else if(kind == CstLiteralKind_float_val)
-    result = stringify(CstLiteralKind_float_val);
-  else if(kind == CstLiteralKind_bool_val)
-    result = stringify(CstLiteralKind_bool_val);
-  else if(kind == CstLiteralKind_str)
-    result = stringify(CstLiteralKind_str);
-  else if(kind == CstLiteralKind_char_val)
-    result = stringify(CstLiteralKind_char_val);
-  else
-    result = "???";
-
-  return result;
+  return CstLiteralKind_strings[kind];
 }
 
 bool
@@ -1868,7 +1746,7 @@ DEBUG_print_cst_node(String* str, int indent_level, char* tag, CstNode* node)
     else if(node->kind == CstKind_lit)
     {
       auto* lit = CST(node, lit);
-      DEBUG_print_line(str, indent_level, get_cst_literal_printstr(lit->kind));
+      DEBUG_print_line(str, indent_level, (char*)get_cst_literal_printstr(lit->kind));
       if(lit->kind == CstLiteralKind_int_val)
         DEBUG_print_line(str, indent_level, "int_val: %d", lit->int_val);
       else if(lit->kind == CstLiteralKind_float_val)

@@ -166,7 +166,7 @@ DEBUG_print_sizeof_xst_structs(NodeKind node_kind)
     NodeStructInfo* info = &struct_info[i];
     if(info->size > 0)
     {
-      char* kind_str = 0;
+      const char* kind_str = 0;
       if(node_kind == NodeKind_cst)
       {
         kind_str = get_cst_kind_printstr(info->cst_kind);

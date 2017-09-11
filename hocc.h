@@ -84,8 +84,6 @@ String;
 #define mem_zero_struct(VAR, TYPE)\
   (mem_zero_f(VAR, sizeof(TYPE)))
 
-#define stringify(S) #S
-
 #define OBJ(VAR, KIND, NAME)\
   (((VAR)->kind == KIND##_##NAME) ? &(VAR)->NAME : 0)
 
@@ -204,40 +202,43 @@ typedef struct
 }
 AccessLink;
 
+#ifndef CstOperator_MEMBER_LIST
+#define CstOperator_MEMBER_LIST()\
+  ENUM_MEMBER(CstOperator__None),\
+  ENUM_MEMBER(CstOperator_Add),\
+  ENUM_MEMBER(CstOperator_Sub),\
+  ENUM_MEMBER(CstOperator_Div),\
+  ENUM_MEMBER(CstOperator_Mul),\
+  ENUM_MEMBER(CstOperator_Mod),\
+  ENUM_MEMBER(CstOperator_Neg),\
+  ENUM_MEMBER(CstOperator_Assign),\
+  ENUM_MEMBER(CstOperator_PointerDeref),\
+  ENUM_MEMBER(CstOperator_AddressOf),\
+  ENUM_MEMBER(CstOperator_MemberSelect),\
+  ENUM_MEMBER(CstOperator_PtrMemberSelect),\
+  ENUM_MEMBER(CstOperator_PreDecrement),\
+  ENUM_MEMBER(CstOperator_PostDecrement),\
+  ENUM_MEMBER(CstOperator_PreIncrement),\
+  ENUM_MEMBER(CstOperator_PostIncrement),\
+  ENUM_MEMBER(CstOperator_ArrayIndex),\
+  ENUM_MEMBER(CstOperator_Equals),\
+  ENUM_MEMBER(CstOperator_NotEquals),\
+  ENUM_MEMBER(CstOperator_Less),\
+  ENUM_MEMBER(CstOperator_LessEquals),\
+  ENUM_MEMBER(CstOperator_Greater),\
+  ENUM_MEMBER(CstOperator_GreaterEquals),\
+  ENUM_MEMBER(CstOperator_LogicAnd),\
+  ENUM_MEMBER(CstOperator_LogicOr),\
+  ENUM_MEMBER(CstOperator_LogicNot),\
+  ENUM_MEMBER(CstOperator_BitwiseAnd),\
+  ENUM_MEMBER(CstOperator_BitwiseOr),
+#endif
+
 enum CstOperator
 {
-  CstOperator__None,
-
-  CstOperator_Add,
-  CstOperator_Sub,
-  CstOperator_Div,
-  CstOperator_Mul,
-  CstOperator_Mod,
-  CstOperator_Neg,
-
-  CstOperator_Assign,
-  CstOperator_PointerDeref,
-  CstOperator_AddressOf,
-  CstOperator_MemberSelect,
-  CstOperator_PtrMemberSelect,
-  CstOperator_PreDecrement,
-  CstOperator_PostDecrement,
-  CstOperator_PreIncrement,
-  CstOperator_PostIncrement,
-  CstOperator_ArrayIndex,
-
-  CstOperator_Equals,
-  CstOperator_NotEquals,
-  CstOperator_Less,
-  CstOperator_LessEquals,
-  CstOperator_Greater,
-  CstOperator_GreaterEquals,
-  CstOperator_LogicAnd,
-  CstOperator_LogicOr,
-  CstOperator_LogicNot,
-
-  CstOperator_BitwiseAnd,
-  CstOperator_BitwiseOr,
+#define ENUM_MEMBER(NAME) NAME
+  CstOperator_MEMBER_LIST()
+#undef ENUM_MEMBER
 };
 
 enum NodeKind
@@ -247,52 +248,65 @@ enum NodeKind
   NodeKind_cst,
 };
 
+#ifndef CstLiteralKind_MEMBER_LIST
+#define CstLiteralKind_MEMBER_LIST()\
+  ENUM_MEMBER(CstLiteralKind__None),\
+  ENUM_MEMBER(CstLiteralKind_int_val),\
+  ENUM_MEMBER(CstLiteralKind_float_val),\
+  ENUM_MEMBER(CstLiteralKind_bool_val),\
+  ENUM_MEMBER(CstLiteralKind_char_val),\
+  ENUM_MEMBER(CstLiteralKind_str),
+#endif
+
 enum CstLiteralKind
 {
-  CstLiteralKind__None,
-  CstLiteralKind_int_val,
-  CstLiteralKind_float_val,
-  CstLiteralKind_bool_val,
-  CstLiteralKind_char_val,
-  CstLiteralKind_str,
+#define ENUM_MEMBER(NAME) NAME
+  CstLiteralKind_MEMBER_LIST()
+#undef ENUM_MEBMBER
 };
+
+#ifndef CstKind_MEMBER_LIST
+#define CstKind_MEMBER_LIST()\
+  ENUM_MEMBER(CstKind__None),\
+  ENUM_MEMBER(CstKind_bin_expr),\
+  ENUM_MEMBER(CstKind_un_expr),\
+  ENUM_MEMBER(CstKind_lit),\
+  ENUM_MEMBER(CstKind_var_decl),\
+  ENUM_MEMBER(CstKind_var_occur),\
+  ENUM_MEMBER(CstKind_block),\
+  ENUM_MEMBER(CstKind_proc),\
+  ENUM_MEMBER(CstKind_id),\
+  ENUM_MEMBER(CstKind_stmt),\
+  ENUM_MEMBER(CstKind_while_stmt),\
+  ENUM_MEMBER(CstKind_do_while_stmt),\
+  ENUM_MEMBER(CstKind_for_stmt),\
+  ENUM_MEMBER(CstKind_if_stmt),\
+  ENUM_MEMBER(CstKind_return_stmt),\
+  ENUM_MEMBER(CstKind_break_stmt),\
+  ENUM_MEMBER(CstKind_continue_stmt),\
+  ENUM_MEMBER(CstKind_goto_stmt),\
+  ENUM_MEMBER(CstKind_label),\
+  ENUM_MEMBER(CstKind_include),\
+  ENUM_MEMBER(CstKind_module),\
+  ENUM_MEMBER(CstKind_cast),\
+  ENUM_MEMBER(CstKind_call),\
+  ENUM_MEMBER(CstKind_array),\
+  ENUM_MEMBER(CstKind_pointer),\
+  ENUM_MEMBER(CstKind_struct_decl),\
+  ENUM_MEMBER(CstKind_union_decl),\
+  ENUM_MEMBER(CstKind_enum_decl),\
+  ENUM_MEMBER(CstKind_init_list),\
+  ENUM_MEMBER(CstKind_string),\
+  ENUM_MEMBER(CstKind_hoc_new),\
+  ENUM_MEMBER(CstKind_hoc_putc),\
+  ENUM_MEMBER(CstKind__Count),
+#endif
 
 enum CstKind
 {
-  CstKind__None,
-  CstKind_bin_expr,
-  CstKind_un_expr,
-  CstKind_lit,
-  CstKind_var_decl,
-  CstKind_var_occur,
-  CstKind_block,
-  CstKind_proc,
-  CstKind_id,
-  CstKind_stmt,
-  CstKind_while_stmt,
-  CstKind_do_while_stmt,
-  CstKind_for_stmt,
-  CstKind_if_stmt,
-  CstKind_return_stmt,
-  CstKind_break_stmt,
-  CstKind_continue_stmt,
-  CstKind_goto_stmt,
-  CstKind_label,
-  CstKind_include,
-  CstKind_module,
-  CstKind_cast,
-  CstKind_call,
-  CstKind_array,
-  CstKind_pointer,
-  CstKind_struct_decl,
-  CstKind_union_decl,
-  CstKind_enum_decl,
-  CstKind_init_list,
-  CstKind_string,
-  CstKind_hoc_new,
-  CstKind_hoc_putc,
-
-  CstKind__Count,
+#define ENUM_MEMBER(NAME) NAME
+  CstKind_MEMBER_LIST()
+#undef ENUM_MEMBER
 };
 
 // Concrete Syntax Tree
@@ -507,27 +521,33 @@ typedef struct AstBlock
 AstBlock;
 #endif
 
+#ifndef AstKind_MEMBER_LIST
+#define AstKind_MEMBER_LIST()\
+  ENUM_MEMBER(AstKind__None),\
+  ENUM_MEMBER(AstKind_block),\
+  ENUM_MEMBER(AstKind_module),\
+  ENUM_MEMBER(AstKind_stmt),\
+  ENUM_MEMBER(AstKind_var_decl),\
+  ENUM_MEMBER(AstKind_var_occur),\
+  ENUM_MEMBER(AstKind_type_decl),\
+  ENUM_MEMBER(AstKind_type_occur),\
+  ENUM_MEMBER(AstKind_proc_decl),\
+  ENUM_MEMBER(AstKind_proc_occur),\
+  ENUM_MEMBER(AstKind_op_occur),\
+  ENUM_MEMBER(AstKind_if_stmt),\
+  ENUM_MEMBER(AstKind_while_stmt),\
+  ENUM_MEMBER(AstKind_do_while_stmt),\
+  ENUM_MEMBER(AstKind_return_stmt),\
+  ENUM_MEMBER(AstKind_continue_stmt),\
+  ENUM_MEMBER(AstKind_break_stmt),\
+  ENUM_MEMBER(AstKind__Count),
+#endif
+
 enum AstKind
 {
-  AstKind__None,
-  AstKind_block,
-  AstKind_module,
-  AstKind_stmt,
-  AstKind_var_decl,
-  AstKind_var_occur,
-  AstKind_type_decl,
-  AstKind_type_occur,
-  AstKind_proc_decl,
-  AstKind_proc_occur,
-  AstKind_op_occur,
-  AstKind_if_stmt,
-  AstKind_while_stmt,
-  AstKind_do_while_stmt,
-  AstKind_return_stmt,
-  AstKind_continue_stmt,
-  AstKind_break_stmt,
-
-  AstKind__Count
+#define ENUM_MEMBER(NAME) NAME
+  AstKind_MEMBER_LIST()
+#undef ENUM_MEMBER
 };
 
 // Abstract Syntax Tree

@@ -89,49 +89,17 @@ new_scope()
   return scope;
 }
 
-char*
+const char* AstKind_strings[] =
+{
+#define ENUM_MEMBER(NAME) #NAME
+  AstKind_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+
+const char*
 get_ast_kind_printstr(enum AstKind kind)
 {
-  char* result = 0;
-
-  if(kind == AstKind__None)
-    result = stringify(AstKind__None);
-  else if(kind == AstKind_module)
-    result = stringify(AstKind_module);
-  else if(kind == AstKind_block)
-    result = stringify(AstKind_block);
-  else if(kind == AstKind_stmt)
-    result = stringify(AstKind_stmt);
-  else if(kind == AstKind_var_decl)
-    result = stringify(AstKind_var_decl);
-  else if(kind == AstKind_var_occur)
-    result = stringify(AstKind_var_occur);
-  else if(kind == AstKind_type_decl)
-    result = stringify(AstKind_type_decl);
-  else if(kind == AstKind_type_occur)
-    result = stringify(AstKind_type_occur);
-  else if(kind == AstKind_proc_decl)
-    result = stringify(AstKind_proc_decl);
-  else if(kind == AstKind_proc_occur)
-    result = stringify(AstKind_proc_occur);
-  else if(kind == AstKind_op_occur)
-    result = stringify(AstKind_op_occur);
-  else if(kind == AstKind_if_stmt)
-    result = stringify(AstKind_if_stmt);
-  else if(kind == AstKind_while_stmt)
-    result = stringify(AstKind_while_stmt);
-  else if(kind == AstKind_do_while_stmt)
-    result = stringify(AstKind_do_while_stmt);
-  else if(kind == AstKind_return_stmt)
-    result = stringify(AstKind_return_stmt);
-  else if(kind == AstKind_continue_stmt)
-    result = stringify(AstKind_continue_stmt);
-  else if(kind == AstKind_break_stmt)
-    result = stringify(AstKind_break_stmt);
-  else
-    result = "???";
-
-  return result;
+  return AstKind_strings[kind];
 }
 
 void

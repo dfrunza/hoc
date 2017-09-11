@@ -182,9 +182,7 @@ get_token_printstr(Token* token)
   static char char_print_buf[3] = {0};
   char* result = 0;
 
-  if(token->kind == TokenKind__None)
-    result = "(null)";
-  else if(token->kind == TokenKind_Dot)
+  if(token->kind == TokenKind_Dot)
     result = ".";
   else if(token->kind == TokenKind_ArrowRight)
     result = "->";

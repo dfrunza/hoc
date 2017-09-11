@@ -9,7 +9,7 @@ bool parse_struct_member_list(TokenStream*, List*);
   (((VAR)->kind == CstKind##_##KIND) ? &(VAR)->KIND : 0)
 
 CstNode*
-new_cst_node(SourceLoc* src_loc, CstKind kind)
+new_cst_node(SourceLoc* src_loc, enum CstKind kind)
 {
   CstNode* node = mem_push_struct(arena, CstNode);
   node->kind = kind;
@@ -110,7 +110,7 @@ new_cst_initializer_list(SourceLoc* src_loc)
 }
 
 CstNode*
-new_cst_bin_expr(SourceLoc* src_loc, OpKind op)
+new_cst_bin_expr(SourceLoc* src_loc, enum CstOperator op)
 {
   CstNode* node = new_cst_node(src_loc, CstKind_bin_expr);
   node->bin_expr.op = op;
@@ -118,7 +118,7 @@ new_cst_bin_expr(SourceLoc* src_loc, OpKind op)
 }
 
 CstNode*
-new_cst_unr_expr(SourceLoc* src_loc, OpKind op)
+new_cst_unr_expr(SourceLoc* src_loc, enum CstOperator op)
 {
   CstNode* node = new_cst_node(src_loc, CstKind_un_expr);
   node->un_expr.op = op;
@@ -126,75 +126,74 @@ new_cst_unr_expr(SourceLoc* src_loc, OpKind op)
 }
 
 char*
-get_cst_op_printstr(OpKind op)
+get_cst_op_printstr(enum CstOperator op)
 {
   char* result = 0;
 
-  if(op == OpKind__None)
-    result = stringify(OpKind__None);
-  else if(op == OpKind_Add)
-    result = stringify(OpKind_Add);
-  else if(op == OpKind_Sub)
-    result = stringify(OpKind_Sub);
-  else if(op == OpKind_Div)
-    result = stringify(OpKind_Div);
-  else if(op == OpKind_Mul)
-    result = stringify(OpKind_Mul);
-  else if(op == OpKind_Mod)
-    result = stringify(OpKind_Mod);
-  else if(op == OpKind_Neg)
-    result = stringify(OpKind_Neg);
-  else if(op == OpKind_Assign)
-    result = stringify(OpKind_Assign);
-  else if(op == OpKind_PointerDeref)
-    result = stringify(OpKind_PointerDeref);
-  else if(op == OpKind_AddressOf)
-    result = stringify(OpKind_AddressOf);
-  else if(op == OpKind_MemberSelect)
-    result = stringify(OpKind_MemberSelect);
-  else if(op == OpKind_PtrMemberSelect)
-    result = stringify(OpKind_PtrMemberSelect);
-  else if(op == OpKind_ArrayIndex)
-    result = stringify(OpKind_ArrayIndex);
-  else if(op == OpKind_PreDecrement)
-    result = stringify(OpKind_PreDecrement);
-  else if(op == OpKind_PostDecrement)
-    result = stringify(OpKind_PostDecrement);
-  else if(op == OpKind_PreIncrement)
-    result = stringify(OpKind_PreIncrement);
-  else if(op == OpKind_PostIncrement)
-    result = stringify(OpKind_PostIncrement);
-  else if(op == OpKind_Equals)
-    result = stringify(OpKind_Equals);
-  else if(op == OpKind_NotEquals)
-    result = stringify(OpKind_NotEquals);
-  else if(op == OpKind_Less)
-    result = stringify(OpKind_Less);
-  else if(op == OpKind_LessEquals)
-    result = stringify(OpKind_LessEquals);
-  else if(op == OpKind_Greater)
-    result = stringify(OpKind_Greater);
-  else if(op == OpKind_GreaterEquals)
-    result = stringify(OpKind_GreaterEquals);
-  else if(op == OpKind_LogicAnd)
-    result = stringify(OpKind_LogicAnd);
-  else if(op == OpKind_LogicOr)
-    result = stringify(OpKind_LogicOr);
-  else if(op == OpKind_LogicNot)
-    result = stringify(OpKind_LogicNot);
-  else if(op == OpKind_BitwiseAnd)
-    result = stringify(OpKind_BitwiseAnd);
-  else if(op == OpKind_BitwiseOr)
-    result = stringify(OpKind_BitwiseOr);
+  if(op == CstOperator__None)
+    result = stringify(CstOperator__None);
+  else if(op == CstOperator_Add)
+    result = stringify(CstOperator_Add);
+  else if(op == CstOperator_Sub)
+    result = stringify(CstOperator_Sub);
+  else if(op == CstOperator_Div)
+    result = stringify(CstOperator_Div);
+  else if(op == CstOperator_Mul)
+    result = stringify(CstOperator_Mul);
+  else if(op == CstOperator_Mod)
+    result = stringify(CstOperator_Mod);
+  else if(op == CstOperator_Neg)
+    result = stringify(CstOperator_Neg);
+  else if(op == CstOperator_Assign)
+    result = stringify(CstOperator_Assign);
+  else if(op == CstOperator_PointerDeref)
+    result = stringify(CstOperator_PointerDeref);
+  else if(op == CstOperator_AddressOf)
+    result = stringify(CstOperator_AddressOf);
+  else if(op == CstOperator_MemberSelect)
+    result = stringify(CstOperator_MemberSelect);
+  else if(op == CstOperator_PtrMemberSelect)
+    result = stringify(CstOperator_PtrMemberSelect);
+  else if(op == CstOperator_ArrayIndex)
+    result = stringify(CstOperator_ArrayIndex);
+  else if(op == CstOperator_PreDecrement)
+    result = stringify(CstOperator_PreDecrement);
+  else if(op == CstOperator_PostDecrement)
+    result = stringify(CstOperator_PostDecrement);
+  else if(op == CstOperator_PreIncrement)
+    result = stringify(CstOperator_PreIncrement);
+  else if(op == CstOperator_PostIncrement)
+    result = stringify(CstOperator_PostIncrement);
+  else if(op == CstOperator_Equals)
+    result = stringify(CstOperator_Equals);
+  else if(op == CstOperator_NotEquals)
+    result = stringify(CstOperator_NotEquals);
+  else if(op == CstOperator_Less)
+    result = stringify(CstOperator_Less);
+  else if(op == CstOperator_LessEquals)
+    result = stringify(CstOperator_LessEquals);
+  else if(op == CstOperator_Greater)
+    result = stringify(CstOperator_Greater);
+  else if(op == CstOperator_GreaterEquals)
+    result = stringify(CstOperator_GreaterEquals);
+  else if(op == CstOperator_LogicAnd)
+    result = stringify(CstOperator_LogicAnd);
+  else if(op == CstOperator_LogicOr)
+    result = stringify(CstOperator_LogicOr);
+  else if(op == CstOperator_LogicNot)
+    result = stringify(CstOperator_LogicNot);
+  else if(op == CstOperator_BitwiseAnd)
+    result = stringify(CstOperator_BitwiseAnd);
+  else if(op == CstOperator_BitwiseOr)
+    result = stringify(CstOperator_BitwiseOr);
   else
     result = "???";
 
   return result;
 }
 
-#if 1
 char*
-get_cst_kind_printstr(CstKind kind)
+get_cst_kind_printstr(enum CstKind kind)
 {
   char* result = 0;
 
@@ -263,10 +262,9 @@ get_cst_kind_printstr(CstKind kind)
 
   return result;
 }
-#endif
 
 char*
-get_cst_literal_printstr(CstLiteralKind kind)
+get_cst_literal_printstr(enum CstLiteralKind kind)
 {
   char* result = 0;
 
@@ -449,7 +447,7 @@ parse_rest_of_id(TokenStream* input, CstNode* left_node, CstNode** node)
   else if(input->token.kind == TokenKind_OpenBracket)
   {
     // array
-    auto* index = CST(*node = new_cst_bin_expr(&input->src_loc, OpKind_ArrayIndex), bin_expr);
+    auto* index = CST(*node = new_cst_bin_expr(&input->src_loc, CstOperator_ArrayIndex), bin_expr);
 
     index->left_operand = left_node;
 
@@ -487,9 +485,9 @@ parse_rest_of_selector(TokenStream* input, CstNode* left_node, CstNode** node)
     bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Dot)
-      bin_expr->op = OpKind_MemberSelect;
+      bin_expr->op = CstOperator_MemberSelect;
     else if(input->token.kind == TokenKind_ArrowRight)
-      bin_expr->op = OpKind_PtrMemberSelect;
+      bin_expr->op = CstOperator_PtrMemberSelect;
 
     if(success = get_next_token(input) && parse_selector(input, &bin_expr->right_operand))
     {
@@ -512,7 +510,7 @@ parse_rest_of_selector(TokenStream* input, CstNode* left_node, CstNode** node)
     if(input->token.kind == TokenKind_MinusMinus)
     {
 #if 0
-      un_expr->op = OpKind_PostDecrement;
+      un_expr->op = CstOperator_PostDecrement;
 #else
       success = compile_error(&input->src_loc, "`--` not supported");
 #endif
@@ -520,7 +518,7 @@ parse_rest_of_selector(TokenStream* input, CstNode* left_node, CstNode** node)
     else if(input->token.kind == TokenKind_PlusPlus)
     {
 #if 0
-      un_expr->op = OpKind_PostIncrement;
+      un_expr->op = CstOperator_PostIncrement;
 #else
       success = compile_error(&input->src_loc, "`++` not supported");
 #endif
@@ -559,11 +557,11 @@ parse_rest_of_factor(TokenStream* input, CstNode* left_node, CstNode** node)
     bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Star)
-      bin_expr->op = OpKind_Mul;
+      bin_expr->op = CstOperator_Mul;
     else if(input->token.kind == TokenKind_FwdSlash)
-      bin_expr->op = OpKind_Div;
+      bin_expr->op = CstOperator_Div;
     else if(input->token.kind == TokenKind_Percent)
-      bin_expr->op = OpKind_Mod;
+      bin_expr->op = CstOperator_Mod;
     else
       assert(0);
 
@@ -610,17 +608,17 @@ parse_rest_of_term(TokenStream* input, CstNode* left_node, CstNode** node)
     bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Plus)
-      bin_expr->op = OpKind_Add;
+      bin_expr->op = CstOperator_Add;
     else if(input->token.kind == TokenKind_Minus)
-      bin_expr->op = OpKind_Sub;
+      bin_expr->op = CstOperator_Sub;
     else if(input->token.kind == TokenKind_Pipe)
-      bin_expr->op = OpKind_BitwiseOr;
+      bin_expr->op = CstOperator_BitwiseOr;
     else if(input->token.kind == TokenKind_PipePipe)
-      bin_expr->op = OpKind_LogicOr;
+      bin_expr->op = CstOperator_LogicOr;
     else if(input->token.kind == TokenKind_Ampersand)
-      bin_expr->op = OpKind_BitwiseAnd;
+      bin_expr->op = CstOperator_BitwiseAnd;
     else if(input->token.kind == TokenKind_AmpersandAmpersand)
-      bin_expr->op = OpKind_LogicAnd;
+      bin_expr->op = CstOperator_LogicAnd;
     else
       assert(0);
 
@@ -668,19 +666,19 @@ parse_rest_of_assignment(TokenStream* input, CstNode* left_node, CstNode** node)
     bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Equals)
-      bin_expr->op = OpKind_Assign;
+      bin_expr->op = CstOperator_Assign;
     else if(input->token.kind == TokenKind_EqualsEquals)
-      bin_expr->op = OpKind_Equals;
+      bin_expr->op = CstOperator_Equals;
     else if(input->token.kind == TokenKind_ExclamEquals)
-      bin_expr->op = OpKind_NotEquals;
+      bin_expr->op = CstOperator_NotEquals;
     else if(input->token.kind == TokenKind_AngleLeft)
-      bin_expr->op = OpKind_Less;
+      bin_expr->op = CstOperator_Less;
     else if(input->token.kind == TokenKind_AngleLeftEquals)
-      bin_expr->op = OpKind_LessEquals;
+      bin_expr->op = CstOperator_LessEquals;
     else if(input->token.kind == TokenKind_AngleRight)
-      bin_expr->op = OpKind_Greater;
+      bin_expr->op = CstOperator_Greater;
     else if(input->token.kind == TokenKind_AngleRightEquals)
-      bin_expr->op = OpKind_GreaterEquals;
+      bin_expr->op = CstOperator_GreaterEquals;
 
     if(success = get_next_token(input) && parse_expression(input, &bin_expr->right_operand))
     {
@@ -981,17 +979,17 @@ parse_un_expr(TokenStream* input, CstNode** node)
     auto* un_expr = CST(*node = new_cst_node(&input->src_loc, CstKind_un_expr), un_expr);
 
     if(input->token.kind == TokenKind_Exclam)
-      un_expr->op = OpKind_LogicNot;
+      un_expr->op = CstOperator_LogicNot;
     else if(input->token.kind == TokenKind_Star)
-      un_expr->op = OpKind_PointerDeref;
+      un_expr->op = CstOperator_PointerDeref;
     else if(input->token.kind == TokenKind_Ampersand)
-      un_expr->op = OpKind_AddressOf;
+      un_expr->op = CstOperator_AddressOf;
     else if(input->token.kind == TokenKind_Minus)
-      un_expr->op = OpKind_Neg;
+      un_expr->op = CstOperator_Neg;
     else if(input->token.kind == TokenKind_MinusMinus)
     {
 #if 0
-      un_expr->op = OpKind_PreDecrement;
+      un_expr->op = CstOperator_PreDecrement;
 #else
       success = compile_error(&input->src_loc, "`--` not supported");
 #endif
@@ -999,7 +997,7 @@ parse_un_expr(TokenStream* input, CstNode** node)
     else if(input->token.kind == TokenKind_PlusPlus)
     {
 #if 0
-      un_expr->op = OpKind_PreIncrement;
+      un_expr->op = CstOperator_PreIncrement;
 #else
       success = compile_error(&input->src_loc, "`++` not supported");
 #endif
@@ -1783,7 +1781,7 @@ parse(TokenStream* input, CstNode** node)
 }
 
 void
-DEBUG_print_cst_node(String* str, int indent_level, CstNode* node, char* tag)
+DEBUG_print_cst_node(String* str, int indent_level, char* tag, CstNode* node)
 {
   if(node)
   {
@@ -1796,7 +1794,7 @@ DEBUG_print_cst_node(String* str, int indent_level, CstNode* node, char* tag)
     DEBUG_print_line(str, indent_level, "%s src_line=\"%s:%d\"",
                      get_cst_kind_printstr(node->kind), node->src_loc->file_path, node->src_loc->line_nr);
 #else
-    DEBUG_print_line(str, indent_level, "%s", get_cst_kind_printstr(node->kind));
+    DEBUG_print_line(str, indent_level, "src_line=\"%s:%d\"", node->src_loc->file_path, node->src_loc->line_nr);
 #endif
     ++indent_level;
 
@@ -1804,37 +1802,29 @@ DEBUG_print_cst_node(String* str, int indent_level, CstNode* node, char* tag)
     {
       auto* module = CST(node, module);
       DEBUG_print_line(str, indent_level, "file_path: \"%s\"", module->file_path);
-      DEBUG_print_cst_node(str, indent_level, module->body, "body");
+      DEBUG_print_cst_node(str, indent_level, "body", module->body);
     }
     else if(node->kind == CstKind_include)
     {
       auto* include = CST(node, include);
       DEBUG_print_line(str, indent_level, "file_path: \"%s\"", include->file_path);
-      DEBUG_print_cst_node(str, indent_level, include->body, "body");
+      DEBUG_print_cst_node(str, indent_level, "body", include->body);
     }
     else if(node->kind == CstKind_proc)
     {
       auto* proc = CST(node, proc);
-      DEBUG_print_cst_node(str, indent_level, proc->ret_type_expr, "ret_type");
-      DEBUG_print_cst_node(str, indent_level, proc->id, "id");
-      DEBUG_print_xst_node_list(str, indent_level, proc->args, "args");
-      DEBUG_print_cst_node(str, indent_level, proc->body, "body");
+      DEBUG_print_cst_node(str, indent_level, "ret_type", proc->ret_type_expr);
+      DEBUG_print_cst_node(str, indent_level, "id", proc->id);
+      DEBUG_print_xst_node_list(str, indent_level, "args", proc->args);
+      DEBUG_print_cst_node(str, indent_level, "body", proc->body);
     }
     else if(node->kind == CstKind_var_decl)
     {
       auto* var_decl = CST(node, var_decl);
-      DEBUG_print_cst_node(str, indent_level, var_decl->type_expr, "type_id");
-      DEBUG_print_cst_node(str, indent_level, (CstNode*)var_decl->id, "id");
-      DEBUG_print_cst_node(str, indent_level, var_decl->init_expr, "init_expr");
+      DEBUG_print_cst_node(str, indent_level, "type_expr", var_decl->type_expr);
+      DEBUG_print_cst_node(str, indent_level, "id", var_decl->id);
+      DEBUG_print_cst_node(str, indent_level, "init_expr", var_decl->init_expr);
     }
-#if 0
-    else if(node->kind == CstKind_VarOccur)
-    {
-      CstVarOccur* var_occur = (CstVarOccur*)node;
-      DEBUG_print_cst_node(str, indent_level, var_occur->id, "id");
-      DEBUG_print_line(str, indent_level, "decl_block_offset: %d", var_occur->decl_block_offset);
-    }
-#endif
     else if(node->kind == CstKind_id)
     {
       auto* id = CST(node, id);
@@ -1843,37 +1833,37 @@ DEBUG_print_cst_node(String* str, int indent_level, CstNode* node, char* tag)
     else if(node->kind == CstKind_block)
     {
       auto* block = CST(node, block);
-      DEBUG_print_xst_node_list(str, indent_level, block->nodes, "nodes");
+      DEBUG_print_xst_node_list(str, indent_level, "nodes", block->nodes);
     }
     else if(node->kind == CstKind_bin_expr)
     {
       auto* bin_expr = CST(node, bin_expr);
       DEBUG_print_line(str, indent_level, "op: %s", get_cst_op_printstr(bin_expr->op));
-      DEBUG_print_cst_node(str, indent_level, bin_expr->left_operand, "left_operand");
-      DEBUG_print_cst_node(str, indent_level, bin_expr->right_operand, "right_operand");
+      DEBUG_print_cst_node(str, indent_level, "left_operand", bin_expr->left_operand);
+      DEBUG_print_cst_node(str, indent_level, "right_operand", bin_expr->right_operand);
     }
     else if(node->kind == CstKind_un_expr)
     {
       auto* un_expr = CST(node, un_expr);
       DEBUG_print_line(str, indent_level, "op: %s", get_cst_op_printstr(un_expr->op));
-      DEBUG_print_cst_node(str, indent_level, un_expr->operand, "operand");
+      DEBUG_print_cst_node(str, indent_level, "operand", un_expr->operand);
     }
     else if(node->kind == CstKind_stmt)
     {
       auto* stmt = CST(node, stmt);
-      DEBUG_print_cst_node(str, indent_level, stmt->stmt, "stmt");
+      DEBUG_print_cst_node(str, indent_level, "stmt", stmt->stmt);
     }
     else if(node->kind == CstKind_if_stmt)
     {
       auto* if_stmt = CST(node, if_stmt);
-      DEBUG_print_cst_node(str, indent_level, if_stmt->cond_expr, "cond_expr");
-      DEBUG_print_cst_node(str, indent_level, if_stmt->body, "body");
-      DEBUG_print_cst_node(str, indent_level, if_stmt->else_body, "else_body");
+      DEBUG_print_cst_node(str, indent_level, "cond_expr", if_stmt->cond_expr);
+      DEBUG_print_cst_node(str, indent_level, "body", if_stmt->body);
+      DEBUG_print_cst_node(str, indent_level, "else_body", if_stmt->else_body);
     }
     else if(node->kind == CstKind_return_stmt)
     {
       auto* return_stmt = CST(node, return_stmt);
-      DEBUG_print_cst_node(str, indent_level, return_stmt->expr, "expr");
+      DEBUG_print_cst_node(str, indent_level, "expr", return_stmt->expr);
     }
     else if(node->kind == CstKind_lit)
     {
@@ -1899,39 +1889,39 @@ DEBUG_print_cst_node(String* str, int indent_level, CstNode* node, char* tag)
     else if(node->kind == CstKind_while_stmt)
     {
       auto* while_stmt = CST(node, while_stmt);
-      DEBUG_print_cst_node(str, indent_level, while_stmt->cond_expr, "cond_expr");
-      DEBUG_print_cst_node(str, indent_level, while_stmt->body, "body");
+      DEBUG_print_cst_node(str, indent_level, "cond_expr", while_stmt->cond_expr);
+      DEBUG_print_cst_node(str, indent_level, "body", while_stmt->body);
     }
     else if(node->kind == CstKind_for_stmt)
     {
       auto* for_stmt = CST(node, for_stmt);
-      DEBUG_print_cst_node(str, indent_level, for_stmt->decl_expr, "decl_expr");
-      DEBUG_print_cst_node(str, indent_level, for_stmt->cond_expr, "cond_expr");
-      DEBUG_print_cst_node(str, indent_level, for_stmt->loop_expr, "loop_expr");
-      DEBUG_print_cst_node(str, indent_level, for_stmt->body, "body");
+      DEBUG_print_cst_node(str, indent_level, "decl_expr", for_stmt->decl_expr);
+      DEBUG_print_cst_node(str, indent_level, "cond_expr", for_stmt->cond_expr);
+      DEBUG_print_cst_node(str, indent_level, "loop_expr", for_stmt->loop_expr);
+      DEBUG_print_cst_node(str, indent_level, "body", for_stmt->body);
     }
     else if(node->kind == CstKind_cast)
     {
       auto* cast = CST(node, cast);
-      DEBUG_print_cst_node(str, indent_level, cast->type_expr, "type_expr");
-      DEBUG_print_cst_node(str, indent_level, cast->expr, "expr");
+      DEBUG_print_cst_node(str, indent_level, "type_expr", cast->type_expr);
+      DEBUG_print_cst_node(str, indent_level, "expr", cast->expr);
     }
     else if(node->kind == CstKind_array)
     {
       auto* array = CST(node, array);
-      DEBUG_print_cst_node(str, indent_level, array->type_expr, "type_expr");
-      DEBUG_print_cst_node(str, indent_level, array->size_expr, "size_expr");
+      DEBUG_print_cst_node(str, indent_level, "type_expr", array->type_expr);
+      DEBUG_print_cst_node(str, indent_level, "size_expr", array->size_expr);
     }
     else if(node->kind == CstKind_pointer)
     {
       auto* ptr = CST(node, pointer);
-      DEBUG_print_cst_node(str, indent_level, ptr->type_expr, "type_expr");
+      DEBUG_print_cst_node(str, indent_level, "type_expr", ptr->type_expr);
     }
     else if(node->kind == CstKind_call)
     {
       auto* call = CST(node, call);
-      DEBUG_print_cst_node(str, indent_level, call->id, "id");
-      DEBUG_print_xst_node_list(str, indent_level, call->args, "args");
+      DEBUG_print_cst_node(str, indent_level, "id", call->id);
+      DEBUG_print_xst_node_list(str, indent_level, "args", call->args);
     }
     else if(node->kind == CstKind_break_stmt
             || node->kind == CstKind_continue_stmt)
@@ -1941,46 +1931,46 @@ DEBUG_print_cst_node(String* str, int indent_level, CstNode* node, char* tag)
     else if(node->kind == CstKind_struct_decl)
     {
       auto* struct_decl = CST(node, struct_decl);
-      DEBUG_print_cst_node(str, indent_level, struct_decl->id, "id");
-      DEBUG_print_xst_node_list(str, indent_level, struct_decl->members, "members");
+      DEBUG_print_cst_node(str, indent_level, "id", struct_decl->id);
+      DEBUG_print_xst_node_list(str, indent_level, "members", struct_decl->members);
     }
     else if(node->kind == CstKind_union_decl)
     {
       auto* union_decl = CST(node, union_decl);
-      DEBUG_print_cst_node(str, indent_level, union_decl->id, "id");
-      DEBUG_print_xst_node_list(str, indent_level, union_decl->members, "members");
+      DEBUG_print_cst_node(str, indent_level, "id", union_decl->id);
+      DEBUG_print_xst_node_list(str, indent_level, "members", union_decl->members);
     }
     else if(node->kind == CstKind_enum_decl)
     {
       auto* enum_decl = CST(node, enum_decl);
-      DEBUG_print_cst_node(str, indent_level, enum_decl->id, "id");
-      DEBUG_print_xst_node_list(str, indent_level, enum_decl->members, "members");
+      DEBUG_print_cst_node(str, indent_level, "id", enum_decl->id);
+      DEBUG_print_xst_node_list(str, indent_level, "members", enum_decl->members);
     }
     else if(node->kind == CstKind_init_list)
     {
       auto* init_list = CST(node, init_list);
-      DEBUG_print_xst_node_list(str, indent_level, init_list->members, "members");
+      DEBUG_print_xst_node_list(str, indent_level, "members", init_list->members);
     }
     else if(node->kind == CstKind_goto_stmt)
     {
       auto* goto_stmt = CST(node, goto_stmt);
-      DEBUG_print_cst_node(str, indent_level, goto_stmt->id, "id");
+      DEBUG_print_cst_node(str, indent_level, "id", goto_stmt->id);
     }
     else if(node->kind == CstKind_label)
     {
       auto* label = CST(node, label);
-      DEBUG_print_cst_node(str, indent_level, label->id, "id");
+      DEBUG_print_cst_node(str, indent_level, "id", label->id);
     }
     else if(node->kind == CstKind_hoc_new)
     {
       auto* hoc_new = CST(node, hoc_new);
-      DEBUG_print_cst_node(str, indent_level, hoc_new->type_expr, "type_expr");
-      DEBUG_print_cst_node(str, indent_level, hoc_new->count_expr, "count_expr");
+      DEBUG_print_cst_node(str, indent_level, "type_expr", hoc_new->type_expr);
+      DEBUG_print_cst_node(str, indent_level, "count_expr", hoc_new->count_expr);
     }
     else if(node->kind == CstKind_hoc_putc)
     {
       auto* hoc_putc = CST(node, hoc_putc);
-      DEBUG_print_cst_node(str, indent_level, hoc_putc->expr, "expr");
+      DEBUG_print_cst_node(str, indent_level, "expr", hoc_putc->expr);
     }
     else
       assert(0);

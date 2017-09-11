@@ -8,12 +8,16 @@ MemoryArena* arena = 0;
 MemoryArena* symbol_table_arena = 0;
 
 SymbolTable* symbol_table = 0;
+int last_scope_id = 0;
+int tempvar_id = 0;
 
 Type* basic_type_bool;
 Type* basic_type_int;
 Type* basic_type_char;
 Type* basic_type_float;
 Type* basic_type_void;
+List* subst_list;
+int typevar_id = 1;
 
 #include "lib.cpp"
 #include "lex.cpp"
@@ -147,7 +151,7 @@ translate(char* file_path, char* hoc_text)
 
       begin_temp_memory(&arena);
       String* str = str_new(arena);
-      DEBUG_print_cst_node(str, 0, module_cst, 0);
+      DEBUG_print_cst_node(str, 0, "module", module_cst);
       str_dump_to_file(str, "debug_syntax.txt");
       end_temp_memory(&arena);
     }/*<<<*/
@@ -158,18 +162,16 @@ translate(char* file_path, char* hoc_text)
       assert(symbol_table->scope_id == 0);
       assert(symbol_table->nesting_depth == 0);
 
-#if 1
       if(DEBUG_enabled)/*>>>*/
       {
         DEBUG_print_arena_usage("Semantic");
 
         begin_temp_memory(&arena);
         String* str = str_new(arena);
-        DEBUG_print_ast_node(str, 0, module_ast, 0);
+        DEBUG_print_ast_node(str, 0, "module", module_ast);
         str_dump_to_file(str, "debug_semantic.txt");
         end_temp_memory(&arena);
       }/*<<<*/
-#endif
 
 #if 0
       build_runtime(module);
@@ -365,7 +367,7 @@ DEBUG_print_line(String* str, int indent_level, char* message, ...)
 }
 
 void
-DEBUG_print_xst_node_list(String* str, int indent_level, List* node_list, char* tag)
+DEBUG_print_xst_node_list(String* str, int indent_level, char* tag, List* node_list)
 {
   if(node_list->first)
   {
@@ -374,6 +376,7 @@ DEBUG_print_xst_node_list(String* str, int indent_level, List* node_list, char* 
       DEBUG_print_line(str, indent_level, tag);
       ++indent_level;
     }
+
     for(ListItem* list_item = node_list->first;
         list_item;
         list_item = list_item->next)
@@ -381,12 +384,12 @@ DEBUG_print_xst_node_list(String* str, int indent_level, List* node_list, char* 
       if(list_item->kind == ListKind_cst_node)
       {
         CstNode* node = CST_ITEM(list_item);
-        DEBUG_print_cst_node(str, indent_level, node, 0);
+        DEBUG_print_cst_node(str, indent_level, 0, node);
       }
       else if(list_item->kind == ListKind_ast_node)
       {
         AstNode* node = AST_ITEM(list_item);
-        DEBUG_print_ast_node(str, indent_level, node, 0);
+        DEBUG_print_ast_node(str, indent_level, 0, node);
       }
       else
         assert(0);

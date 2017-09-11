@@ -1,6 +1,3 @@
-int last_scope_id = 0;
-int tempvar_id = 0;
-
 #define AST(VAR, KIND)\
   (((VAR)->kind == AstKind##_##KIND) ? &(VAR)->KIND : 0)
 
@@ -8,7 +5,7 @@ int tempvar_id = 0;
   (((VAR)->kind == SymbolKind##_##KIND) ? (VAR)->KIND : 0)
 
 AstNode*
-new_ast_node(SourceLoc* src_loc, AstKind kind)
+new_ast_node(SourceLoc* src_loc, enum AstKind kind)
 {
   AstNode* node = mem_push_struct(arena, AstNode);
   node->kind = kind;
@@ -41,19 +38,45 @@ new_ast_type_decl(SourceLoc* src_loc, char* type_name)
 }
 
 AstNode*
-new_ast_stmt(SourceLoc* src_loc, AstNode* stmt)
+new_ast_var_decl(SourceLoc* src_loc, char* var_name)
 {
-  AstNode* node = new_ast_node(src_loc, AstKind_stmt);
-  node->stmt.stmt = stmt;
+  AstNode* node = new_ast_node(src_loc, AstKind_var_decl);
+  node->var_decl.var_name = var_name;
   return node;
 }
 
 AstNode*
-new_ast_op_occur(SourceLoc* src_loc, OpKind op)
+new_ast_var_occur(SourceLoc* src_loc, char* var_name)
 {
-  AstNode* node = new_ast_node(src_loc, AstKind_op_occur);
-  node->op_occur.op = op;
-  node->op_occur.operands = new_list(arena, ListKind_ast_node);
+  AstNode* node = new_ast_node(src_loc, AstKind_var_occur);
+  node->var_occur.var_name = var_name;
+  return node;
+}
+
+AstNode*
+new_ast_proc_decl(SourceLoc* src_loc, char* proc_name)
+{
+  AstNode* node = new_ast_node(src_loc, AstKind_proc_decl);
+  node->proc_decl.proc_name = proc_name;
+  node->proc_decl.formal_args = new_list(arena, ListKind_ast_node);
+  node->proc_decl.ret_var = new_ast_var_decl(src_loc, 0);
+  return node;
+}
+
+AstNode*
+new_ast_proc_occur(SourceLoc* src_loc, char* proc_name)
+{
+  AstNode* node = new_ast_node(src_loc, AstKind_proc_occur);
+  node->proc_occur.proc_name = proc_name;
+  node->proc_occur.actual_args = new_list(arena, ListKind_ast_node);
+  return node;
+}
+
+AstNode*
+new_ast_stmt(SourceLoc* src_loc, AstNode* stmt)
+{
+  AstNode* node = new_ast_node(src_loc, AstKind_stmt);
+  node->stmt.stmt = stmt;
   return node;
 }
 
@@ -67,7 +90,7 @@ new_scope()
 }
 
 char*
-get_ast_kind_printstr(AstKind kind)
+get_ast_kind_printstr(enum AstKind kind)
 {
   char* result = 0;
 
@@ -166,25 +189,25 @@ get_type_printstr(Type* type)
 
 #if 0
 bool
-is_arithmetic_op(AstOpKind op)
+is_arithmetic_op(AstCstOperator op)
 {
-  return op == AstOpKind_Add || op == AstOpKind_Sub
-    || op == AstOpKind_Mul || op == AstOpKind_Div
-    || op == AstOpKind_Mod;
+  return op == AstCstOperator_Add || op == AstCstOperator_Sub
+    || op == AstCstOperator_Mul || op == AstCstOperator_Div
+    || op == AstCstOperator_Mod;
 }
 
 bool
-is_logic_op(AstOpKind op)
+is_logic_op(AstCstOperator op)
 {
-  return op == AstOpKind_LogicOr || op == AstOpKind_LogicAnd || op == AstOpKind_LogicNot;
+  return op == AstCstOperator_LogicOr || op == AstCstOperator_LogicAnd || op == AstCstOperator_LogicNot;
 }
 
 bool
-is_relation_op(AstOpKind op)
+is_relation_op(AstCstOperator op)
 {
-  return op == AstOpKind_Equals || op == AstOpKind_NotEquals
-      || op == AstOpKind_Less || op == AstOpKind_LessEquals
-      || op == AstOpKind_Greater || op == AstOpKind_GreaterEquals;
+  return op == AstCstOperator_Equals || op == AstCstOperator_NotEquals
+      || op == AstCstOperator_Less || op == AstCstOperator_LessEquals
+      || op == AstCstOperator_Greater || op == AstCstOperator_GreaterEquals;
 }
 #endif
 
@@ -198,12 +221,27 @@ make_tempvar_id(SourceLoc* src_loc, char* label)
 }
 #endif
 
-Symbol*
-lookup_symbol(char* name, SymbolKind kind)
+enum SymbolLookup
 {
-  Symbol* result = 0;
+  SymbolLookup__None,
+  SymbolLookup_StartLocal,
+  SymbolLookup_StartGlobal,
+};
 
-  Symbol* symbol = symbol_table->curr_symbol;
+Symbol*
+lookup_symbol(char* name, SymbolKind kind, SymbolLookup start)
+{
+  Symbol* result = 0, *symbol = 0;
+
+  if(start == SymbolLookup_StartLocal)
+  {
+    symbol = symbol_table->local_scope->last_symbol;
+  }
+  else if(start == SymbolLookup_StartGlobal)
+  {
+    symbol = symbol_table->global_scope->last_symbol;
+  }
+
   while(symbol)
   {
     if(symbol->kind == kind && cstr_match(symbol->name, name))
@@ -224,10 +262,8 @@ register_name(char* name, SourceLoc* src_loc, SymbolKind kind)
   sym->name = name;
   sym->scope_id = symbol_table->scope_id;
   sym->nesting_depth = symbol_table->nesting_depth;
-  sym->prev_symbol = symbol_table->curr_symbol;
-  sym->src_loc = src_loc;
-
-  symbol_table->curr_symbol = sym;
+  sym->prev_symbol = symbol_table->local_scope->last_symbol;
+  symbol_table->local_scope->last_symbol = sym;
   symbol_table->sym_count++;
   return sym;
 }
@@ -238,11 +274,11 @@ register_var_decl(AstNode* decl_node)
   bool success = true;
 
   auto* var_decl = AST(decl_node, var_decl);
-  Symbol* decl_sym = lookup_symbol(var_decl->var_name, SymbolKind_var_decl);
+  Symbol* decl_sym = lookup_symbol(var_decl->var_name, SymbolKind_var_decl, SymbolLookup_StartLocal);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
-    success = compile_error(decl_node->src_loc, "variable `%s` already declared..", var_decl->var_name);
-    compile_error(decl_sym->src_loc, "..see previous declaration of `%s`", var_decl->var_name);
+    success = compile_error(decl_node->src_loc, "variable `%s` already declared", var_decl->var_name);
+    compile_error(SYM(decl_sym, var_decl)->src_loc, "see previous declaration of `%s`", var_decl->var_name);
   }
   else
   {
@@ -253,16 +289,35 @@ register_var_decl(AstNode* decl_node)
 }
 
 bool
+register_var_occur(AstNode* occur_node)
+{
+  bool success = true;
+
+  auto* var_occur = AST(occur_node, var_occur);
+  Symbol* decl_sym = lookup_symbol(var_occur->var_name, SymbolKind_var_decl, SymbolLookup_StartLocal);
+  if(decl_sym)
+  {
+    var_occur->var_decl = SYM(decl_sym, var_decl);
+
+    Symbol* occur_sym = register_name(var_occur->var_name, occur_node->src_loc, SymbolKind_var_occur);
+    occur_sym->var_occur = occur_node;
+  }
+  else
+    success = compile_error(occur_node->src_loc, "unknown var `%s`", var_occur->var_name);
+  return success;
+}
+
+bool
 register_type_decl(AstNode* decl_node)
 {
   bool success = true;
 
   auto* type_decl = AST(decl_node, type_decl);
-  Symbol* decl_sym = lookup_symbol(type_decl->type_name, SymbolKind_type_decl);
+  Symbol* decl_sym = lookup_symbol(type_decl->type_name, SymbolKind_type_decl, SymbolLookup_StartLocal);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
-    success = compile_error(decl_node->src_loc, "type `%s` already declared..", type_decl->type_name);
-    compile_error(decl_sym->src_loc, "..see previous declaration of `%s`", type_decl->type_name);
+    success = compile_error(decl_node->src_loc, "type `%s` already declared", type_decl->type_name);
+    compile_error(SYM(decl_sym, type_decl)->src_loc, "see previous declaration of `%s`", type_decl->type_name);
   }
   else
   {
@@ -278,7 +333,7 @@ register_type_occur(AstNode* occur_node)
   bool success = true;
 
   auto* type_occur = AST(occur_node, type_occur);
-  Symbol* decl_sym = lookup_symbol(type_occur->type_name, SymbolKind_type_decl);
+  Symbol* decl_sym = lookup_symbol(type_occur->type_name, SymbolKind_type_decl, SymbolLookup_StartLocal);
   if(decl_sym)
   {
     type_occur->type_decl = SYM(decl_sym, type_decl);
@@ -292,26 +347,47 @@ register_type_occur(AstNode* occur_node)
   return success;
 }
 
+#if 1
 bool
-register_var_occur(AstNode* occur_node)
+register_proc_decl(AstNode* decl_node)
 {
   bool success = true;
 
-  auto* var_occur = CST(occur_node, var_occur);
-  Symbol* decl_sym = lookup_symbol(var_occur->var_name, SymbolKind_var_decl);
-  if(decl_sym)
+  auto* proc_decl = AST(decl_node, proc_decl);
+  Symbol* decl_sym = lookup_symbol(proc_decl->proc_name, SymbolKind_proc_decl, SymbolLookup_StartLocal);
+  if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
-    var_occur->var_decl = SYM(decl_sym, var_decl);
-
-    Symbol* occur_sym = register_name(var_occur->var_name, occur_node->src_loc, SymbolKind_var_occur);
-    occur_sym->var_occur = occur_node;
+    success = compile_error(decl_node->src_loc, "proc `%s` already declared", proc_decl->proc_name);
+    compile_error(SYM(decl_sym, proc_decl)->src_loc, "see previous declaration of `%s`", proc_decl->proc_name);
   }
   else
-    success = compile_error(occur_node->src_loc, "unknown var `%s`", var_occur->var_name);
+  {
+    decl_sym = register_name(proc_decl->proc_name, decl_node->src_loc, SymbolKind_proc_decl);
+    decl_sym->proc_decl = decl_node;
+  }
   return success;
 }
 
-#if 0
+bool
+register_builtin_proc_occur(AstNode* occur_node)
+{
+  bool success = true;
+
+  auto* proc_occur = AST(occur_node, proc_occur);
+  Symbol* decl_sym = lookup_symbol(proc_occur->proc_name, SymbolKind_proc_decl, SymbolLookup_StartGlobal);
+  if(decl_sym)
+  {
+    proc_occur->proc_decl = SYM(decl_sym, proc_decl);
+
+    Symbol* occur_sym = register_name(proc_occur->proc_name, occur_node->src_loc, SymbolKind_proc_occur);
+    occur_sym->proc_occur = occur_node;
+  }
+  else
+    success = compile_error(occur_node->src_loc, "unknown proc `%s`", proc_occur->proc_name);
+
+  return success;
+}
+#else
 bool
 register_proc_decl(AstProc* proc)
 {
@@ -398,21 +474,57 @@ add_builtin_types()
   add_builtin_type("void", basic_type_void);
 }
 
+void
+add_builtin_proc(char* name, Type* type)
+{
+  assert(type->kind == TypeKind_proc);
+  register_proc_decl(new_ast_proc_decl(0, name));
+}
+
+void
+add_builtin_procs()
+{
+  {
+    Type* type = basic_type_int;
+    add_builtin_proc("add_int", new_proc_type(new_product_type(type, type), type));
+    add_builtin_proc("sub_int", new_proc_type(new_product_type(type, type), type));
+    add_builtin_proc("div_int", new_proc_type(new_product_type(type, type), type));
+    add_builtin_proc("mul_int", new_proc_type(new_product_type(type, type), type));
+    add_builtin_proc("neg_int", new_proc_type(type, type));
+  }
+  {
+    Type* type = basic_type_float;
+    add_builtin_proc("add_float", new_proc_type(new_product_type(type, type), type));
+    add_builtin_proc("sub_float", new_proc_type(new_product_type(type, type), type));
+    add_builtin_proc("div_float", new_proc_type(new_product_type(type, type), type));
+    add_builtin_proc("mul_float", new_proc_type(new_product_type(type, type), type));
+    add_builtin_proc("neg_float", new_proc_type(type, type));
+  }
+  {
+    add_builtin_proc("float_to_int", new_proc_type(new_product_type(basic_type_int, basic_type_float), basic_type_int));
+    add_builtin_proc("int_to_float", new_proc_type(new_product_type(basic_type_float, basic_type_int), basic_type_float));
+  }
+  {
+    Type* type = new_typevar();
+    add_builtin_proc("assign", new_proc_type(new_product_type(type, type), type));
+  }
+}
+
 bool
-scope_begin(SourceLoc* src_loc, Scope** scope)
+begin_scope(SourceLoc* src_loc, Scope** scope)
 {
   *scope = new_scope();
 
   symbol_table->scope_id = ++last_scope_id; 
   (*scope)->scope_id = symbol_table->scope_id;
-  (*scope)->encl_scope = symbol_table->curr_scope;
+  (*scope)->encl_scope = symbol_table->local_scope;
 
   ++symbol_table->nesting_depth;
   if(symbol_table->nesting_depth < sizeof_array(symbol_table->active_scopes))
   {
     (*scope)->nesting_depth = symbol_table->nesting_depth;
     symbol_table->active_scopes[symbol_table->nesting_depth] = *scope;
-    symbol_table->curr_scope = *scope;
+    symbol_table->local_scope = *scope;
   }
   else
   {
@@ -424,30 +536,30 @@ scope_begin(SourceLoc* src_loc, Scope** scope)
 }
 
 void
-scope_end()
+end_scope()
 {
-  assert(symbol_table->curr_scope == symbol_table->active_scopes[symbol_table->nesting_depth]);
+  assert(symbol_table->local_scope == symbol_table->active_scopes[symbol_table->nesting_depth]);
 
   --symbol_table->nesting_depth;
   if(symbol_table->nesting_depth > 0)
   {
-    Scope* scope = symbol_table->active_scopes[symbol_table->nesting_depth];
-    assert(scope->scope_id > 0);
-    symbol_table->curr_scope = scope;
-    symbol_table->scope_id = scope->scope_id;
+    Scope* local_scope = symbol_table->active_scopes[symbol_table->nesting_depth];
+    assert(local_scope->scope_id > 0);
+    symbol_table->local_scope = local_scope;
+    symbol_table->scope_id = local_scope->scope_id;
 
-    Symbol* symbol = symbol_table->curr_symbol;
+    Symbol* symbol = local_scope->last_symbol;
     while(symbol && (symbol->scope_id > symbol_table->scope_id))
     {
       symbol = symbol->prev_symbol;
     }
-    symbol_table->curr_symbol = symbol;
+    local_scope->last_symbol = symbol;
   }
   else
   {
     assert(symbol_table->nesting_depth == 0);
     symbol_table->scope_id = 0;
-    symbol_table->curr_scope = 0;
+    symbol_table->local_scope = 0;
   }
 }
 
@@ -478,12 +590,11 @@ build_ast_var_decl(CstNode* cst_var_decl, AstNode** ast_var_decl)
 {
   bool success = true;
 
-  *ast_var_decl = new_ast_node(cst_var_decl->src_loc, AstKind_var_decl);
-  AST(*ast_var_decl, var_decl)->var_name = CST(CST(cst_var_decl, var_decl)->id, id)->name;
+  *ast_var_decl = new_ast_var_decl(cst_var_decl->src_loc, CST(CST(cst_var_decl, var_decl)->id, id)->name);
 
   if(success = register_var_decl(*ast_var_decl))
   {
-    Scope* decl_scope = AST(*ast_var_decl, var_decl)->decl_scope = symbol_table->curr_scope;
+    Scope* decl_scope = AST(*ast_var_decl, var_decl)->decl_scope = symbol_table->local_scope;
     append_list_elem(arena, decl_scope->local_decls, *ast_var_decl, ListKind_ast_node);
   }
   return success;
@@ -504,7 +615,7 @@ sem_var_decl(AstBlock* module_block, AstBlock* block, AstVarDecl* var_decl)
       AstBinExpr* bin_expr = new_bin_expr(&var_decl->src_loc);
       var_decl->assign_expr = (AstNode*)bin_expr;
 
-      bin_expr->op = AstOpKind_Assign;
+      bin_expr->op = AstCstOperator_Assign;
       bin_expr->left_operand = (AstNode*)new_id(&var_decl->src_loc, var_decl->id->name);
       bin_expr->right_operand = var_decl->init_expr;
 
@@ -563,7 +674,7 @@ type_convert_call_arg(AstVarDecl* formal_arg,
     if(type_unif(type_from->array.elem, type_to->pointer.pointee))
     {
       AstUnaryExpr* address_of = new_unr_expr(&actual_arg->src_loc);
-      address_of->op = AstOpKind_AddressOf;
+      address_of->op = AstCstOperator_AddressOf;
       address_of->type = new_pointer_type(type_from); // pointer(array)
       address_of->operand = (AstNode*)actual_arg;
       *node_out = (AstNode*)address_of;
@@ -578,7 +689,7 @@ type_convert_call_arg(AstVarDecl* formal_arg,
   else if(type_from->kind == TypeKind_Pointer && type_to->kind == TypeKind_Array)
   {
     AstUnaryExpr* deref_ptr = new_unr_expr(&actual_arg->src_loc);
-    deref_ptr->op = AstOpKind_PointerDeref;
+    deref_ptr->op = AstCstOperator_PointerDeref;
     deref_ptr->type = new_array_type(type_to->array.size, type_from->pointer.pointee);
     deref_ptr->operand = (AstNode*)actual_arg;
     *node_out = (AstNode*)deref_ptr;
@@ -590,7 +701,7 @@ type_convert_call_arg(AstVarDecl* formal_arg,
   else if(types_are_equal(type_from, basic_type_int) && types_are_equal(type_to, basic_type_float))
   {
     AstUnaryExpr* int_to_float = new_unr_expr(&actual_arg->src_loc);
-    int_to_float->op = AstOpKind_IntToFloat;
+    int_to_float->op = AstCstOperator_IntToFloat;
     int_to_float->type = basic_type_float;
     int_to_float->operand = (AstNode*)actual_arg;
     *node_out = (AstNode*)int_to_float;
@@ -598,7 +709,7 @@ type_convert_call_arg(AstVarDecl* formal_arg,
   else if(types_are_equal(type_from, basic_type_float) && types_are_equal(type_to, basic_type_int))
   {
     AstUnaryExpr* float_to_int = new_unr_expr(&actual_arg->src_loc);
-    float_to_int->op = AstOpKind_FloatToInt;
+    float_to_int->op = AstCstOperator_FloatToInt;
     float_to_int->type = basic_type_int;
     float_to_int->operand = (AstNode*)actual_arg;
     *node_out = (AstNode*)float_to_int;
@@ -755,7 +866,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
             if(is_relation_op(bin_expr->op))
               expr->type = basic_type_bool;
 
-            if(bin_expr->op == AstOpKind_Mod && types_are_equal(bin_expr->type, basic_type_float))
+            if(bin_expr->op == AstCstOperator_Mod && types_are_equal(bin_expr->type, basic_type_float))
               success = compile_error(&expr->src_loc, "modulo operator cannot be applied to float operands");
           }
           else
@@ -774,10 +885,10 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
       {
         if(types_are_equal(left_type, basic_type_float))
         {
-          if(bin_expr->op != AstOpKind_Mod)
+          if(bin_expr->op != AstCstOperator_Mod)
           {
             AstUnaryExpr* int_to_float = new_unr_expr(&bin_expr->right_operand->src_loc);
-            int_to_float->op = AstOpKind_IntToFloat;
+            int_to_float->op = AstCstOperator_IntToFloat;
             int_to_float->type = basic_type_float;
             int_to_float->operand = bin_expr->right_operand;
             bin_expr->right_operand = (AstNode*)int_to_float;
@@ -793,11 +904,11 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
         {
           if(left_type->kind == TypeKind_Array)
           {
-            if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub
-               || bin_expr->op == AstOpKind_ArrayIndex)
+            if(bin_expr->op == AstCstOperator_Add || bin_expr->op == AstCstOperator_Sub
+               || bin_expr->op == AstCstOperator_ArrayIndex)
             {
               AstUnaryExpr* address_of = new_unr_expr(&bin_expr->left_operand->src_loc);
-              address_of->op = AstOpKind_AddressOf;
+              address_of->op = AstCstOperator_AddressOf;
               address_of->type = new_pointer_type(left_type); // pointer(array)
               address_of->operand = bin_expr->left_operand;
               bin_expr->left_operand = (AstNode*)address_of;
@@ -808,10 +919,10 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
           }
           else if(left_type->kind == TypeKind_Pointer)
           {
-            if(bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub
-               || bin_expr->op == AstOpKind_ArrayIndex)
+            if(bin_expr->op == AstCstOperator_Add || bin_expr->op == AstCstOperator_Sub
+               || bin_expr->op == AstCstOperator_ArrayIndex)
               ;/*OK*/
-            else if(bin_expr->op == AstOpKind_Assign)
+            else if(bin_expr->op == AstCstOperator_Assign)
             {
               if(bin_expr->right_operand->kind == AstKind_AstLiteral)
               {
@@ -833,8 +944,8 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
           }
 
           if(success &&
-             (bin_expr->op == AstOpKind_Add || bin_expr->op == AstOpKind_Sub
-              || bin_expr->op == AstOpKind_ArrayIndex))
+             (bin_expr->op == AstCstOperator_Add || bin_expr->op == AstCstOperator_Sub
+              || bin_expr->op == AstCstOperator_ArrayIndex))
           {
             Type* elem_type = 0;
             if(left_type->kind == TypeKind_Array)
@@ -850,19 +961,19 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
             type_width->type = basic_type_int;
 
             AstBinExpr* mul_op = new_bin_expr(&bin_expr->right_operand->src_loc);
-            mul_op->op = AstOpKind_Mul;
+            mul_op->op = AstCstOperator_Mul;
             mul_op->left_operand = bin_expr->right_operand;
             mul_op->right_operand = (AstNode*)type_width;
             mul_op->type = basic_type_int;
 
             bin_expr->right_operand = (AstNode*)mul_op;
 
-            if(bin_expr->op == AstOpKind_ArrayIndex)
+            if(bin_expr->op == AstCstOperator_ArrayIndex)
             {
-              bin_expr->op = AstOpKind_Add;
+              bin_expr->op = AstCstOperator_Add;
 
               AstUnaryExpr* deref_ptr = new_unr_expr(&bin_expr->src_loc);
-              deref_ptr->op = AstOpKind_PointerDeref;
+              deref_ptr->op = AstCstOperator_PointerDeref;
               deref_ptr->type = elem_type;
               deref_ptr->operand = (AstNode*)bin_expr;
               *out_expr = (AstNode*)deref_ptr;
@@ -907,12 +1018,12 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
         }
         else if(right_type->kind == TypeKind_Array)
         {
-          if(bin_expr->op == AstOpKind_Assign)
+          if(bin_expr->op == AstCstOperator_Assign)
           {
             if(type_unif(left_type->pointer.pointee, right_type->array.elem))
             {
               AstUnaryExpr* address_of = new_unr_expr(&bin_expr->src_loc);
-              address_of->op = AstOpKind_AddressOf;
+              address_of->op = AstCstOperator_AddressOf;
               address_of->type = new_pointer_type(right_type); // pointer(array)
               address_of->operand = bin_expr->right_operand;
               bin_expr->right_operand = (AstNode*)address_of;
@@ -960,7 +1071,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
       }
 
 #if 0
-      if(success && bin_expr->op == AstOpKind_Assign)
+      if(success && bin_expr->op == AstCstOperator_Assign)
       {
         // Check that the left operand is an l-value
         AstNode* left_operand = bin_expr->left_operand;
@@ -969,7 +1080,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
         else if(left_operand->kind == AstKind_UnrExpr)
         {
           AstUnaryExpr* unr_expr = (AstUnaryExpr*)left_operand;
-          if(unr_expr->op == AstOpKind_PointerDeref)
+          if(unr_expr->op == AstCstOperator_PointerDeref)
             ;/*OK*/
           else
             success = compile_error(&left_operand->src_loc, "left side of assignment is not an l-value");
@@ -983,15 +1094,15 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
   else if(expr->kind == AstKind_AstUnaryExpr)
   {
     AstUnaryExpr* unr_expr = (AstUnaryExpr*)expr;
-    if(unr_expr->op == AstOpKind_PostIncrement)
+    if(unr_expr->op == AstCstOperator_PostIncrement)
     {
 #if 0
       AstBinExpr* assign = new_bin_expr(&unr_expr->src_loc);
-      assign->op = AstOpKind_Assign;
+      assign->op = AstCstOperator_Assign;
       assign->left_operand = unr_expr->operand;
 
       AstBinExpr* incr_one = new_bin_expr(&unr_expr->src_loc);
-      incr_one->op = AstOpKind_Add;
+      incr_one->op = AstCstOperator_Add;
       incr_one->left_operand = unr_expr->operand;
       AstLiteral* one = new_literal(&unr_expr->src_loc);
       one->lit_kind = AstLiteralKind_Int;
@@ -1009,7 +1120,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
     {
       if(success = sem_expression(module_block, block, unr_expr->operand, &unr_expr->operand))
       {
-        if(unr_expr->op == AstOpKind_AddressOf)
+        if(unr_expr->op == AstCstOperator_AddressOf)
         {
           Type* operand_type = unr_expr->operand->type;
           if(unr_expr->operand->kind == AstKind_AstVarOccur)
@@ -1023,7 +1134,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
           {
             // &data[0]
             AstUnaryExpr* operand = (AstUnaryExpr*)unr_expr->operand;
-            if(operand->op == AstOpKind_PointerDeref)
+            if(operand->op == AstCstOperator_PointerDeref)
             {
               assert(operand->operand->type->kind == TypeKind_Pointer);
               *out_expr = operand->operand; // address_of(ptr_deref(x)) = x
@@ -1034,7 +1145,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
           else
             success = compile_error(&unr_expr->src_loc, "invalid application of `&` operator");
         }
-        else if(unr_expr->op == AstOpKind_Neg)
+        else if(unr_expr->op == AstCstOperator_Neg)
         {
           if(type_unif(unr_expr->operand->type, basic_type_int)
              || type_unif(unr_expr->operand->type, basic_type_float))
@@ -1053,7 +1164,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
             success = compile_error(&expr->src_loc,
                                     "bool operand is expected, actual `%s`", get_type_printstr(unr_expr->operand->type));
         }
-        else if(unr_expr->op == AstOpKind_PointerDeref)
+        else if(unr_expr->op == AstCstOperator_PointerDeref)
         {
           Type* operand_type = unr_expr->operand->type;
           switch(operand_type->kind)
@@ -1070,7 +1181,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
               if(operand_type->kind == TypeKind_Array)
               {
                 AstUnaryExpr* address_of = new_unr_expr(&unr_expr->src_loc);
-                address_of->op = AstOpKind_AddressOf;
+                address_of->op = AstCstOperator_AddressOf;
                 address_of->type = new_pointer_type(operand_type->array.elem);
 
                 address_of->operand = unr_expr->operand;
@@ -1180,7 +1291,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
             if(types_are_equal(from_type, basic_type_float))
             {
               AstUnaryExpr* float_to_int = new_unr_expr(&cast->src_loc);
-              float_to_int->op = AstOpKind_FloatToInt;
+              float_to_int->op = AstCstOperator_FloatToInt;
               float_to_int->type = basic_type_int;
               float_to_int->operand = cast->expr;
               *out_expr = (AstNode*)float_to_int;
@@ -1201,7 +1312,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
             if(types_are_equal(from_type, basic_type_int))
             {
               AstUnaryExpr* int_to_float = new_unr_expr(&cast->src_loc);
-              int_to_float->op = AstOpKind_IntToFloat;
+              int_to_float->op = AstCstOperator_IntToFloat;
               int_to_float->type = basic_type_float;
               int_to_float->operand = cast->expr;
               *out_expr = (AstNode*)int_to_float;
@@ -1254,7 +1365,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
         new_ast->size_expr = (AstNode*)new_bin_expr(&new_ast->src_loc);
         AstBinExpr* size_expr = (AstBinExpr*)new_ast->size_expr;
 
-        size_expr->op = AstOpKind_Mul;
+        size_expr->op = AstCstOperator_Mul;
         size_expr->left_operand = (AstNode*)new_int_literal(&new_ast->src_loc, compute_type_width(type_expr));
         size_expr->right_operand = new_ast->count_expr;
 
@@ -1377,10 +1488,10 @@ sem_statement(AstBlock* module_block,
   else if(stmt->kind == AstKind_AstUnaryExpr)
   {
     AstUnaryExpr* unr_expr = (AstUnaryExpr*)stmt;
-    if(unr_expr->op == AstOpKind_PostDecrement
-       || unr_expr->op == AstOpKind_PreDecrement
-       || unr_expr->op == AstOpKind_PostIncrement
-       || unr_expr->op == AstOpKind_PreIncrement)
+    if(unr_expr->op == AstCstOperator_PostDecrement
+       || unr_expr->op == AstCstOperator_PreDecrement
+       || unr_expr->op == AstCstOperator_PostIncrement
+       || unr_expr->op == AstCstOperator_PreIncrement)
       success = sem_expression(module_block, block, stmt, &stmt);
     else
       success = compile_error(&stmt->src_loc, "unexpected statement %s", get_ast_kind_printstr(stmt->kind));
@@ -1490,7 +1601,7 @@ sem_statement(AstBlock* module_block,
       {
         AstBinExpr* bin_expr = new_bin_expr(&stmt->src_loc);
         ret_stmt->assign_expr = bin_expr;
-        bin_expr->op = AstOpKind_Assign;
+        bin_expr->op = AstCstOperator_Assign;
         bin_expr->left_operand = (AstNode*)new_id(&ret_expr->src_loc, ret_var->id->name);
         bin_expr->right_operand = ret_expr;
 
@@ -1609,14 +1720,28 @@ sem_stmt_block(AstBlock* module_block,
 AstNode*
 make_ast_var_occur(AstNode* var_decl)
 {
-  AstNode* var_occur = new_ast_node(var_decl->src_loc, AstKind_var_occur);
-  AST(var_occur, var_occur)->var_name = AST(var_decl, var_decl)->var_name;
-  AST(var_occur, var_occur)->occur_scope = symbol_table->curr_scope;
+  AstNode* var_occur = new_ast_var_occur(var_decl->src_loc, AST(var_decl, var_decl)->var_name);
+  AST(var_occur, var_occur)->occur_scope = symbol_table->local_scope;
   AST(var_occur, var_occur)->decl_scope_offset =
     AST(var_decl, var_decl)->decl_scope->scope_id - AST(var_occur, var_occur)->occur_scope->scope_id;
   AST(var_occur, var_occur)->var_decl = var_decl;
   return var_occur;
 }
+
+#if 0
+AstNode*
+make_ast_proc_occur(SourceLoc* src_loc, char* proc_name)
+{
+  AstNode* proc_occur = 0;
+  Symbol* sym = lookup_symbol(proc_name, SymbolKind_proc_decl);
+  if(sym)
+  {
+    proc_occur = new_ast_proc_occur(src_loc, proc_name);
+    AST(proc_occur, proc_occur)->proc_decl = SYM(sym, proc_decl);
+  }
+  return proc_occur;
+}
+#endif
 
 #if 1
 bool
@@ -1628,16 +1753,16 @@ build_ast_module(CstNode* cst_module, AstNode** ast_module)
   AST(*ast_module, module)->body = new_ast_block(CST(cst_module, module)->body->src_loc);
 
   Scope** scope = &AST(AST(*ast_module, module)->body, block)->scope;
-  if(success = scope_begin(cst_module->src_loc, scope))
+  if(success = begin_scope(cst_module->src_loc, scope))
   {
-    add_builtin_types();
-    symbol_table->module_scope = *scope;
+    //symbol_table->module_scope = *scope;
 
     for(ListItem* list_item = CST(CST(cst_module, module)->body, block)->nodes->first;
         list_item && success;
         list_item = list_item->next)
     {
       CstNode* cst_node = CST_ITEM(list_item);
+      AstNode* ast_module_block = AST(*ast_module, module)->body;
       if(cst_node->kind == CstKind_var_decl)
       {
         AstNode* ast_node = 0;
@@ -1646,8 +1771,13 @@ build_ast_module(CstNode* cst_module, AstNode** ast_module)
           CstNode* cst_init_expr = CST(cst_node, var_decl)->init_expr;
           if(cst_init_expr)
           {
-            AstNode* ast_init_expr = new_ast_op_occur(cst_init_expr->src_loc, OpKind_Assign);
-            append_list_elem(arena, AST(ast_init_expr, op_occur)->operands, make_ast_var_occur(ast_node), ListKind_ast_node);
+            AstNode* ast_init_expr = new_ast_proc_occur(cst_init_expr->src_loc, "assign");
+            if(register_builtin_proc_occur(ast_init_expr))
+            {
+              append_list_elem(arena, AST(ast_init_expr, proc_occur)->actual_args, make_ast_var_occur(ast_node), ListKind_ast_node);
+              
+              append_list_elem(arena, AST(ast_module_block, block)->stmts, ast_init_expr, ListKind_ast_node);
+            }
           }
         }
       }
@@ -1656,7 +1786,8 @@ build_ast_module(CstNode* cst_module, AstNode** ast_module)
         success = compile_error(cst_node->src_loc, "unexpected statement `%s`", get_ast_kind_printstr(cst_node->kind));
 #endif
     }
-    scope_end();
+
+    end_scope();
   }
 
   return success;
@@ -1700,78 +1831,64 @@ sem_module_block(AstProc* proc,
 }
 #endif
 
+void
+init_symbol_table()
+{
+  symbol_table = mem_push_struct(arena, SymbolTable);
+  symbol_table->scope_id = -1;
+}
+
 bool
 build_ast(CstNode* cst_node, AstNode** ast_node)
 {
-  init_types();
-
-  symbol_table = mem_push_struct(arena, SymbolTable);
-
   bool success = true;
 
-  auto* cst_module = CST(cst_node, module);
+  init_types();
+  init_symbol_table();
 
-  // process the includes
-  for(ListItem* list_item = CST(cst_module->body, block)->nodes->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    assert(list_item->kind == ListKind_cst_node);
-    CstNode* stmt = list_item->cst_node;
-
-    if(stmt->kind == CstKind_include)
-    {
-      auto* include = CST(stmt, include);
-      process_includes(CST(include->body, block)->nodes, CST(cst_module->body, block)->nodes, list_item);
-    }
-  }
-
-#if 1
-  success = build_ast_module(cst_node, ast_node);
-#else
-  *ast_node = new_ast_node(cst_node->src_loc, AstKind_Module);
-  AstModule* ast_module = &(*ast_node)->module;
-  ast_module->body = new_ast_block(cst_node->src_loc);
-
-  if(success = scope_begin(ast_module->body))
+  if(success = begin_scope(0, &symbol_table->global_scope))
   {
     add_builtin_types();
+    add_builtin_procs();
 
-    if(success = sem_module_block(0, 0, module_block))
+    auto* cst_module = CST(cst_node, module);
+
+    // process the includes
+    for(ListItem* list_item = CST(cst_module->body, block)->nodes->first;
+        list_item;
+        list_item = list_item->next)
     {
-      for(ListItem* list_item = module_block->node_list.first;
-          list_item;
-          list_item = list_item->next)
-      {
-        AstNode* ast = (AstNode*)list_item->elem;
-        if(ast->kind == AstKind_AstProc)
-        {
-          AstProc* proc = (AstProc*)ast;
-          list_remove_item(&module_block->node_list, list_item);
-          if(!proc->is_decl)
-            list_append(arena, &module->proc_defs, list_item->elem);
-        }
-      }
+      assert(list_item->kind == ListKind_cst_node);
+      CstNode* stmt = list_item->cst_node;
 
-      AstCall* main_call = new_call(deflt_src_loc);
-      main_call->id = new_id(deflt_src_loc, "main");
-      if(success = sem_call(module_block, module_block, main_call))
+      if(stmt->kind == CstKind_include)
       {
-        if(type_unif(main_call->type, basic_type_int))
-        {
-          list_append(arena, &module_block->node_list, main_call);
-        }
-        else
-        {
-          AstProc* main_proc = (AstProc*)main_call->proc_sym->ast;
-          assert(main_proc->kind == AstKind_AstProc);
-          success = compile_error(&main_proc->src_loc, "main() must return a `int`");
-        }
+        auto* include = CST(stmt, include);
+        process_includes(CST(include->body, block)->nodes, CST(cst_module->body, block)->nodes, list_item);
       }
     }
-    scope_end();
-  }
+
+    success = build_ast_module(cst_node, ast_node);
+    end_scope();
+#if 0
+    AstCall* main_call = new_call(deflt_src_loc);
+    main_call->id = new_id(deflt_src_loc, "main");
+    if(success = sem_call(module_block, module_block, main_call))
+    {
+      if(type_unif(main_call->type, basic_type_int))
+      {
+        list_append(arena, &module_block->node_list, main_call);
+      }
+      else
+      {
+        AstProc* main_proc = (AstProc*)main_call->proc_sym->ast;
+        assert(main_proc->kind == AstKind_AstProc);
+        success = compile_error(&main_proc->src_loc, "main() must return a `int`");
+      }
+    }
 #endif
+  }
+
   return success;
 }
 
@@ -1790,13 +1907,13 @@ DEBUG_print_scope(String* str, int indent_level, Scope* scope, char* tag)
     DEBUG_print_line(str, indent_level, "scope_id: %d", scope->scope_id);
     DEBUG_print_line(str, indent_level, "nesting_depth: %d", scope->nesting_depth);
     DEBUG_print_scope(str, indent_level, scope->encl_scope, "encl_scope");
-    DEBUG_print_xst_node_list(str, indent_level, scope->local_decls, "local_decls");
-    DEBUG_print_xst_node_list(str, indent_level, scope->nonlocal_occurs, "nonlocal_occurs");
+    DEBUG_print_xst_node_list(str, indent_level, "local_decls", scope->local_decls);
+    DEBUG_print_xst_node_list(str, indent_level, "nonlocal_occurs", scope->nonlocal_occurs);
   }
 }
 
 void
-DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
+DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
 {
   if(node)
   {
@@ -1809,33 +1926,43 @@ DEBUG_print_ast_node(String* str, int indent_level, AstNode* node, char* tag)
     DEBUG_print_line(str, indent_level, "%s src_line=\"%s:%d\"",
                      get_ast_kind_printstr(node->kind), node->src_loc->file_path, node->src_loc->line_nr);
 #else
-    DEBUG_print_line(str, indent_level, "%s", get_cst_kind_printstr(node->kind));
+    DEBUG_print_line(str, indent_level, "src_line=\"%s:%d\"", node->src_loc->file_path, node->src_loc->line_nr);
 #endif
     ++indent_level;
 
     if(node->kind == AstKind_module)
     {
       auto* module = AST(node, module);
-      DEBUG_print_ast_node(str, indent_level, module->body, "body");
-      DEBUG_print_xst_node_list(str, indent_level, module->procs, "procs");
+      DEBUG_print_ast_node(str, indent_level, "body", module->body);
+      DEBUG_print_xst_node_list(str, indent_level, "procs", module->procs);
     }
     else if(node->kind == AstKind_block)
     {
       auto* block = AST(node, block);
-      DEBUG_print_xst_node_list(str, indent_level, block->stmts, "stmts");
+      DEBUG_print_xst_node_list(str, indent_level, "stmts", block->stmts);
       DEBUG_print_scope(str, indent_level, block->scope, "scope");
     }
     else if(node->kind == AstKind_stmt)
     {
       auto* stmt = AST(node, stmt);
-      DEBUG_print_ast_node(str, indent_level, stmt->stmt, "stmt");
+      DEBUG_print_ast_node(str, indent_level, "stmt", stmt->stmt);
     }
     else if(node->kind == AstKind_var_decl)
     {
       auto* var_decl = AST(node, var_decl);
       DEBUG_print_line(str, indent_level, "var_name: %s", var_decl->var_name);
-      //infinite recursion
-      //DEBUG_print_scope(str, indent_level, var_decl->decl_scope, "decl_scope");
+    }
+    else if(node->kind == AstKind_proc_occur)
+    {
+      auto* proc_occur = AST(node, proc_occur);
+      DEBUG_print_line(str, indent_level, "proc_name: %s", proc_occur->proc_name);
+      DEBUG_print_xst_node_list(str, indent_level, "actual_args", proc_occur->actual_args);
+    }
+    else if(node->kind == AstKind_var_occur)
+    {
+      auto* var_occur = AST(node, var_occur);
+      DEBUG_print_line(str, indent_level, "var_name: %s", var_occur->var_name);
+      DEBUG_print_line(str, indent_level, "decl_scope_offset: %d", var_occur->decl_scope_offset);
     }
     else
       assert(0);

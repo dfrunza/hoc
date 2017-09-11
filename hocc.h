@@ -99,7 +99,7 @@ typedef struct
 }
 SourceLoc;
 
-typedef enum
+enum TokenKind
 {
   TokenKind__None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
@@ -162,8 +162,7 @@ typedef enum
   TokenKind_FloatNum,
   TokenKind_String,
   TokenKind_Char,
-}
-TokenKind;
+};
 
 typedef struct
 {
@@ -207,47 +206,53 @@ AccessLink;
 
 typedef struct CstNode CstNode; // Concrete Syntax Tree
 
-typedef enum
+enum CstOperator
 {
-  OpKind__None,
+  CstOperator__None,
 
-  OpKind_Add,
-  OpKind_Sub,
-  OpKind_Div,
-  OpKind_Mul,
-  OpKind_Mod,
-  OpKind_Neg,
+  CstOperator_Add,
+  CstOperator_Sub,
+  CstOperator_Div,
+  CstOperator_Mul,
+  CstOperator_Mod,
+  CstOperator_Neg,
 
-  OpKind_Assign,
-  OpKind_PointerDeref,
-  OpKind_AddressOf,
-  OpKind_MemberSelect,
-  OpKind_PtrMemberSelect,
-  OpKind_PreDecrement,
-  OpKind_PostDecrement,
-  OpKind_PreIncrement,
-  OpKind_PostIncrement,
-  OpKind_ArrayIndex,
+  CstOperator_Assign,
+  CstOperator_PointerDeref,
+  CstOperator_AddressOf,
+  CstOperator_MemberSelect,
+  CstOperator_PtrMemberSelect,
+  CstOperator_PreDecrement,
+  CstOperator_PostDecrement,
+  CstOperator_PreIncrement,
+  CstOperator_PostIncrement,
+  CstOperator_ArrayIndex,
 
-  OpKind_Equals,
-  OpKind_NotEquals,
-  OpKind_Less,
-  OpKind_LessEquals,
-  OpKind_Greater,
-  OpKind_GreaterEquals,
-  OpKind_LogicAnd,
-  OpKind_LogicOr,
-  OpKind_LogicNot,
+  CstOperator_Equals,
+  CstOperator_NotEquals,
+  CstOperator_Less,
+  CstOperator_LessEquals,
+  CstOperator_Greater,
+  CstOperator_GreaterEquals,
+  CstOperator_LogicAnd,
+  CstOperator_LogicOr,
+  CstOperator_LogicNot,
 
-  OpKind_BitwiseAnd,
-  OpKind_BitwiseOr,
+  CstOperator_BitwiseAnd,
+  CstOperator_BitwiseOr,
+};
 
-  OpKind_IntToFloat,
-  OpKind_FloatToInt,
-}
-OpKind;
+enum BuiltinProc
+{
+  BuiltinProc__None,
+  BuiltinProc_Assign,
+  BuiltinProc_Add,
+  BuiltinProc_Sub,
+  BuiltinProc_Mul,
+  BuiltinProc_Div,
+};
 
-typedef enum
+enum CstLiteralKind
 {
   CstLiteralKind__None,
   CstLiteralKind_int_val,
@@ -255,10 +260,9 @@ typedef enum
   CstLiteralKind_bool_val,
   CstLiteralKind_char_val,
   CstLiteralKind_str,
-}
-CstLiteralKind;
+};
 
-typedef enum
+enum CstKind
 {
   CstKind__None,
   CstKind_bin_expr,
@@ -294,12 +298,11 @@ typedef enum
   CstKind_hoc_putc,
 
   CstKind__Count,
-}
-CstKind;
+};
 
 typedef struct CstNode
 {
-  CstKind kind;
+  enum CstKind kind;
   SourceLoc* src_loc;
 
   union
@@ -318,7 +321,7 @@ typedef struct CstNode
 
     struct
     {
-      OpKind op;
+      enum CstOperator op;
       CstNode* left_operand;
       CstNode* right_operand;
     }
@@ -326,7 +329,7 @@ typedef struct CstNode
 
     struct
     {
-      OpKind op;
+      enum CstOperator op;
       CstNode* operand;
     }
     un_expr;
@@ -372,7 +375,7 @@ typedef struct CstNode
 
     struct
     {
-      CstLiteralKind kind;
+      enum CstLiteralKind kind;
 
       union
       {
@@ -489,6 +492,7 @@ typedef struct Scope
 {
   //ScopeKind kind;
 
+  Symbol* last_symbol;
   int scope_id;
   int nesting_depth;
   struct Scope* encl_scope;
@@ -508,7 +512,7 @@ typedef struct AstBlock
 AstBlock;
 #endif
 
-typedef enum
+enum AstKind
 {
   AstKind__None,
   AstKind_block,
@@ -527,12 +531,11 @@ typedef enum
   AstKind_return_stmt,
   AstKind_continue_stmt,
   AstKind_break_stmt,
-}
-AstKind;
+};
 
 typedef struct AstNode
 {
-  AstKind kind;
+  enum AstKind kind;
   Type* type;
   SourceLoc* src_loc;
 
@@ -591,7 +594,7 @@ typedef struct AstNode
 
     struct
     {
-      Symbol* sym;
+      char* proc_name;
       AstNode* body;
       List* formal_args;
       AstNode* ret_var;
@@ -600,18 +603,17 @@ typedef struct AstNode
 
     struct
     {
-      char* proc_name;
-      List* actual_args;
-      AstNode* proc;
+      enum BuiltinProc proc;
     }
-    proc_occur;
+    builtin_proc_decl;
 
     struct
     {
-      OpKind op;
-      List* operands;
+      char* proc_name;
+      List* actual_args;
+      AstNode* proc_decl;
     }
-    op_occur;
+    proc_occur;
 
     struct
     {
@@ -648,7 +650,7 @@ typedef struct AstNode
 }
 AstNode;
 
-typedef enum
+enum TypeKind
 {
   TypeKind__None,
   TypeKind_typevar,
@@ -659,18 +661,16 @@ typedef enum
   TypeKind_product,
   TypeKind_pointer,
   TypeKind_array,
-}
-TypeKind;
+};
 
-typedef enum
+enum UnaryCtorKind
 {
   UnaryCtorKind__None,
   UnaryCtorKind_pointer,
   UnaryCtorKind_array,
-}
-UnaryCtorKind;
+};
 
-typedef enum
+enum BasicTypeKind
 {
   BasicTypeKind__None,
   BasicTypeKind_Void,
@@ -678,8 +678,7 @@ typedef enum
   BasicTypeKind_Float,
   BasicTypeKind_Char,
   BasicTypeKind_Bool,
-}
-BasicTypeKind;
+};
 
 typedef struct Type
 {
@@ -755,7 +754,6 @@ typedef struct Symbol
 {
   SymbolKind kind;
 
-  SourceLoc* src_loc;
   Symbol* prev_symbol;
   char* name;
   int scope_id;
@@ -775,9 +773,9 @@ Symbol;
 
 typedef struct
 {
-  Symbol* curr_symbol;
-  Scope* module_scope;
-  Scope* curr_scope;
+  Scope* global_scope;
+  //Scope* module_scope;
+  Scope* local_scope;
   int scope_id;
   int nesting_depth;
   Scope* active_scopes[MAX_SCOPE_NESTING_DEPTH];
@@ -953,5 +951,5 @@ typedef struct List
 List;
 
 void DEBUG_print_line(String* str, int indent_level, char* message, ...);
-void DEBUG_print_xst_node_list(String* str, int indent_level, List* node_list, char* tag);
+void DEBUG_print_xst_node_list(String* str, int indent_level, char* tag, List* node_list);
 

@@ -1,6 +1,3 @@
-List* subst_list;
-int typevar_id = 1;
-
 Type*
 new_basic_type(BasicTypeKind kind, int size)
 {

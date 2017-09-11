@@ -204,8 +204,6 @@ typedef struct
 }
 AccessLink;
 
-typedef struct CstNode CstNode; // Concrete Syntax Tree
-
 enum CstOperator
 {
   CstOperator__None,
@@ -242,14 +240,11 @@ enum CstOperator
   CstOperator_BitwiseOr,
 };
 
-enum BuiltinProc
+enum NodeKind
 {
-  BuiltinProc__None,
-  BuiltinProc_Assign,
-  BuiltinProc_Add,
-  BuiltinProc_Sub,
-  BuiltinProc_Mul,
-  BuiltinProc_Div,
+  NodeKind__None,
+  NodeKind_ast,
+  NodeKind_cst,
 };
 
 enum CstLiteralKind
@@ -300,6 +295,7 @@ enum CstKind
   CstKind__Count,
 };
 
+// Concrete Syntax Tree
 typedef struct CstNode
 {
   enum CstKind kind;
@@ -472,7 +468,6 @@ typedef struct CstNode
 }
 CstNode;
 
-typedef struct AstNode AstNode; // Abstract Syntax Tree
 typedef struct Type Type;
 typedef struct Symbol Symbol;
 
@@ -531,8 +526,11 @@ enum AstKind
   AstKind_return_stmt,
   AstKind_continue_stmt,
   AstKind_break_stmt,
+
+  AstKind__Count
 };
 
+// Abstract Syntax Tree
 typedef struct AstNode
 {
   enum AstKind kind;
@@ -600,12 +598,6 @@ typedef struct AstNode
       AstNode* ret_var;
     }
     proc_decl;
-
-    struct
-    {
-      enum BuiltinProc proc;
-    }
-    builtin_proc_decl;
 
     struct
     {
@@ -685,7 +677,7 @@ typedef struct Type
   TypeKind kind;
   Type* repr_type; // representative member of the set of equivalent types
   AstNode* ast;
-  int size;
+  int size; // -> width
 
   union
   {

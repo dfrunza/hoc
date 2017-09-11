@@ -180,7 +180,7 @@ char*
 get_token_printstr(Token* token)
 {
   static char char_print_buf[3] = {0};
-  char* result = "???";
+  char* result = 0;
 
   if(token->kind == TokenKind__None)
     result = "(null)";
@@ -289,12 +289,18 @@ get_token_printstr(Token* token)
   else if(token->kind == TokenKind_Id ||
           token->kind == TokenKind_IntNum ||
           token->kind == TokenKind_FloatNum)
+  {
     result = token->lexeme;
+  }
   else if(token->kind == TokenKind_String)
     result = token->str; // TODO: Substitute non-printable chars
   else if(token->kind == TokenKind_Char ||
           token->kind == TokenKind_Unknown)
+  {
     print_char(result = char_print_buf, token->char_val);
+  }
+  else
+    result = "???";
 
   return result;
 }

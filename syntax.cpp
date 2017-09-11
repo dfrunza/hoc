@@ -334,7 +334,7 @@ parse_initializer_member_list(TokenStream* input, List* member_list)
 bool
 parse_initializer_list(TokenStream* input, CstNode** node)
 {
-  node = 0;
+  *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_OpenBrace)

@@ -56,76 +56,176 @@ DEBUG_print_arena_usage(char* tag)
   printf("in_use(symbol_table_arena) : %.2f%%\n", sym_usage.in_use*100);
 }
 
-void
-DEBUG_print_sizeof_cst_structs()
+struct NodeStructInfo
 {
-  typedef struct 
+  NodeKind kind;
+
+  int size;
+
+  union
   {
-    CstKind kind;
-    int size;
+    CstKind cst_kind;
+    AstKind ast_kind;
+  };
+};
+
+#define DEBUG_make_cst_struct_info(KIND)\
+{\
+  struct CstNode node = {};\
+  node.kind = CstKind_##KIND;\
+  struct_info[CstKind_##KIND].cst_kind = CstKind_##KIND;\
+  struct_info[CstKind_##KIND].size = sizeof(node.##KIND);\
+}\
+
+#define DEBUG_make_ast_struct_info(KIND)\
+{\
+  struct AstNode node = {};\
+  node.kind = AstKind_##KIND;\
+  struct_info[AstKind_##KIND].ast_kind = AstKind_##KIND;\
+  struct_info[AstKind_##KIND].size = sizeof(node.##KIND);\
+}\
+
+void
+DEBUG_print_sizeof_xst_structs(NodeKind node_kind)
+{
+  NodeStructInfo* struct_info = {};
+  int info_count = 0;
+
+  if(node_kind == NodeKind_cst)
+  {
+    info_count = CstKind__Count;
+    struct_info = mem_push_count(arena, NodeStructInfo, info_count);
+
+    assert(CstKind__None == 0);
+    DEBUG_make_cst_struct_info(bin_expr);
+    DEBUG_make_cst_struct_info(un_expr);
+    DEBUG_make_cst_struct_info(lit);
+    DEBUG_make_cst_struct_info(var_decl);
+    DEBUG_make_cst_struct_info(block);
+    DEBUG_make_cst_struct_info(proc);
+    DEBUG_make_cst_struct_info(id);
+    DEBUG_make_cst_struct_info(while_stmt);
+    DEBUG_make_cst_struct_info(for_stmt);
+    DEBUG_make_cst_struct_info(if_stmt);
+    DEBUG_make_cst_struct_info(return_stmt);
+    DEBUG_make_cst_struct_info(goto_stmt);
+    DEBUG_make_cst_struct_info(label);
+    DEBUG_make_cst_struct_info(include);
+    DEBUG_make_cst_struct_info(module);
+    DEBUG_make_cst_struct_info(cast);
+    DEBUG_make_cst_struct_info(call);
+    DEBUG_make_cst_struct_info(array);
+    DEBUG_make_cst_struct_info(pointer);
+    DEBUG_make_cst_struct_info(struct_decl);
+    DEBUG_make_cst_struct_info(union_decl);
+    DEBUG_make_cst_struct_info(enum_decl);
+    DEBUG_make_cst_struct_info(init_list);
   }
-  StructInfo;
+  else if(node_kind == NodeKind_ast)
+  {
+    info_count = AstKind__Count;
+    struct_info = mem_push_count(arena, NodeStructInfo, info_count);
 
-#define make_struct_info(KIND)\
-  {\
-    CstNode node = {};\
-    node.kind = CstKind_##KIND;\
-    struct_info[CstKind_##KIND].kind = CstKind_##KIND;\
-    struct_info[CstKind_##KIND].size = sizeof(node.##KIND);\
-  }\
-
-  StructInfo struct_info[CstKind__Count] = {};
-  assert(CstKind__None == 0);
-#if 1
-  make_struct_info(bin_expr);
-  make_struct_info(un_expr);
-  make_struct_info(lit);
-  make_struct_info(var_decl);
-  make_struct_info(block);
-  make_struct_info(proc);
-  make_struct_info(id);
-  make_struct_info(while_stmt);
-  make_struct_info(for_stmt);
-  make_struct_info(if_stmt);
-  make_struct_info(return_stmt);
-  make_struct_info(goto_stmt);
-  make_struct_info(label);
-  make_struct_info(include);
-  make_struct_info(module);
-  make_struct_info(cast);
-  make_struct_info(call);
-  make_struct_info(array);
-  make_struct_info(pointer);
-  make_struct_info(struct_decl);
-  make_struct_info(union_decl);
-  make_struct_info(enum_decl);
-  make_struct_info(init_list);
-#endif
-
-#undef make_struct_info
-#undef make_zero_size_info
+    assert(AstKind__None == 0);
+    DEBUG_make_ast_struct_info(block);
+    DEBUG_make_ast_struct_info(module);
+    DEBUG_make_ast_struct_info(stmt);
+    DEBUG_make_ast_struct_info(var_decl);
+    DEBUG_make_ast_struct_info(var_occur);
+    DEBUG_make_ast_struct_info(type_decl);
+    DEBUG_make_ast_struct_info(type_occur);
+    DEBUG_make_ast_struct_info(proc_decl);
+    DEBUG_make_ast_struct_info(proc_occur);
+    DEBUG_make_ast_struct_info(return_stmt);
+    DEBUG_make_ast_struct_info(if_stmt);
+    DEBUG_make_ast_struct_info(while_stmt);
+    DEBUG_make_ast_struct_info(do_while_stmt);
+    DEBUG_make_ast_struct_info(continue_stmt);
+    DEBUG_make_ast_struct_info(break_stmt);
+  }
+  else
+    assert(0);
 
 #if 1
   // insertion-sort the array
-  for(int i = 1; i < CstKind__Count; i++)
+  for(int i = 1; i < info_count; i++)
   {
     for(int j = i;
         struct_info[j].size < struct_info[j-1].size;
         j--)
     {
-      StructInfo value_at_j = struct_info[j];
+      NodeStructInfo value_at_j = struct_info[j];
       struct_info[j] = struct_info[j-1];
       struct_info[j-1] = value_at_j;
     }
   }
 #endif
 
-  for(int i = CstKind__Count-1; i >= 0; i--)
+  for(int i = info_count - 1; i >= 0; i--)
   {
-    StructInfo* info = &struct_info[i];
+    NodeStructInfo* info = &struct_info[i];
     if(info->size > 0)
     {
-      printf("%s.size = %d bytes\n", get_cst_kind_printstr(info->kind), info->size);
+      char* kind_str = 0;
+      if(node_kind == NodeKind_cst)
+      {
+        kind_str = get_cst_kind_printstr(info->cst_kind);
+      }
+      else if(node_kind == NodeKind_ast)
+      {
+        kind_str = get_ast_kind_printstr(info->ast_kind);
+      }
+      else
+        assert(0);
+
+      printf("%s.size = %d bytes\n", kind_str, info->size);
+    }
+  }
+}
+
+void
+DEBUG_print_line(String* str, int indent_level, char* message, ...)
+{
+  for(int i = 0; i < indent_level; i++)
+  {
+    str_append(str, "  ");
+  }
+
+  va_list varargs;
+  va_start(varargs, message);
+  str_printf_va(str, message, varargs);
+  va_end(varargs);
+
+  str_append(str, "\n");
+}
+
+void
+DEBUG_print_xst_node_list(String* str, int indent_level, char* tag, List* node_list)
+{
+  if(node_list->first)
+  {
+    if(tag)
+    {
+      DEBUG_print_line(str, indent_level, tag);
+      ++indent_level;
+    }
+
+    for(ListItem* list_item = node_list->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      if(list_item->kind == ListKind_cst_node)
+      {
+        CstNode* node = CST_ITEM(list_item);
+        DEBUG_print_cst_node(str, indent_level, 0, node);
+      }
+      else if(list_item->kind == ListKind_ast_node)
+      {
+        AstNode* node = AST_ITEM(list_item);
+        DEBUG_print_ast_node(str, indent_level, 0, node);
+      }
+      else
+        assert(0);
     }
   }
 }
@@ -265,7 +365,10 @@ main(int argc, char* argv[])
     if(DEBUG_enabled)/*>>>*/
     {
       begin_temp_memory(&arena);
-      DEBUG_print_sizeof_cst_structs();
+      printf("----- CST struct sizes -----\n");
+      DEBUG_print_sizeof_xst_structs(NodeKind_cst);
+      printf("----- AST struct sizes -----\n");
+      DEBUG_print_sizeof_xst_structs(NodeKind_ast);
       end_temp_memory(&arena);
     }/*<<<*/
 
@@ -348,52 +451,5 @@ main(int argc, char* argv[])
   getc(stdin);
 #endif
   return success ? 0 : -1;
-}
-
-void
-DEBUG_print_line(String* str, int indent_level, char* message, ...)
-{
-  for(int i = 0; i < indent_level; i++)
-  {
-    str_append(str, "  ");
-  }
-
-  va_list varargs;
-  va_start(varargs, message);
-  str_printf_va(str, message, varargs);
-  va_end(varargs);
-
-  str_append(str, "\n");
-}
-
-void
-DEBUG_print_xst_node_list(String* str, int indent_level, char* tag, List* node_list)
-{
-  if(node_list->first)
-  {
-    if(tag)
-    {
-      DEBUG_print_line(str, indent_level, tag);
-      ++indent_level;
-    }
-
-    for(ListItem* list_item = node_list->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      if(list_item->kind == ListKind_cst_node)
-      {
-        CstNode* node = CST_ITEM(list_item);
-        DEBUG_print_cst_node(str, indent_level, 0, node);
-      }
-      else if(list_item->kind == ListKind_ast_node)
-      {
-        AstNode* node = AST_ITEM(list_item);
-        DEBUG_print_ast_node(str, indent_level, 0, node);
-      }
-      else
-        assert(0);
-    }
-  }
 }
 

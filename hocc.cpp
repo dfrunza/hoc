@@ -7,6 +7,7 @@ bool DEBUG_check_arena_bounds = true;
 MemoryArena* arena = 0;
 MemoryArena* symbol_table_arena = 0;
 
+AstNode* operator_table = 0;
 SymbolTable* symbol_table = 0;
 int last_scope_id = 0;
 int tempvar_id = 0;
@@ -58,14 +59,14 @@ DEBUG_print_arena_usage(char* tag)
 
 struct NodeStructInfo
 {
-  NodeKind kind;
+  enum NodeKind kind;
 
   int size;
 
   union
   {
-    CstKind cst_kind;
-    AstKind ast_kind;
+    enum CstKind cst_kind;
+    enum AstKind ast_kind;
   };
 };
 
@@ -86,7 +87,7 @@ struct NodeStructInfo
 }\
 
 void
-DEBUG_print_sizeof_xst_structs(NodeKind node_kind)
+DEBUG_print_sizeof_xst_structs(enum NodeKind node_kind)
 {
   NodeStructInfo* struct_info = {};
   int info_count = 0;
@@ -94,13 +95,13 @@ DEBUG_print_sizeof_xst_structs(NodeKind node_kind)
   if(node_kind == NodeKind_cst)
   {
     info_count = CstKind__Count;
-    struct_info = mem_push_count(arena, NodeStructInfo, info_count);
+    struct_info = mem_push_array(arena, NodeStructInfo, info_count);
 
     assert(CstKind__None == 0);
     DEBUG_make_cst_struct_info(bin_expr);
     DEBUG_make_cst_struct_info(un_expr);
     DEBUG_make_cst_struct_info(lit);
-    DEBUG_make_cst_struct_info(var_decl);
+    DEBUG_make_cst_struct_info(var);
     DEBUG_make_cst_struct_info(block);
     DEBUG_make_cst_struct_info(proc);
     DEBUG_make_cst_struct_info(id);
@@ -124,7 +125,7 @@ DEBUG_print_sizeof_xst_structs(NodeKind node_kind)
   else if(node_kind == NodeKind_ast)
   {
     info_count = AstKind__Count;
-    struct_info = mem_push_count(arena, NodeStructInfo, info_count);
+    struct_info = mem_push_array(arena, NodeStructInfo, info_count);
 
     assert(AstKind__None == 0);
     DEBUG_make_ast_struct_info(block);
@@ -301,7 +302,7 @@ translate(char* file_path, char* hoc_text)
 bool
 make_out_file_names(OutFileNames* out_files, char* src_file_path)
 {
-  char* stem = mem_push_count_nz(arena, char, cstr_len(src_file_path));
+  char* stem = mem_push_array_nz(arena, char, cstr_len(src_file_path));
   cstr_copy(stem, src_file_path);
   stem = path_make_stem(stem);
 
@@ -335,7 +336,7 @@ make_out_file_names(OutFileNames* out_files, char* src_file_path)
 char*
 make_vm_exe_path(char* hocc_exe_path)
 {
-  char* vm_exe_path = mem_push_count_nz(arena, char, cstr_len(hocc_exe_path) + cstr_len("vm.exe"));
+  char* vm_exe_path = mem_push_array_nz(arena, char, cstr_len(hocc_exe_path) + cstr_len("vm.exe"));
   cstr_copy(vm_exe_path, hocc_exe_path);
   path_make_dir(vm_exe_path);
   cstr_append(vm_exe_path, "vm.exe");

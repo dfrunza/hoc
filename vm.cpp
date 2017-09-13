@@ -890,7 +890,7 @@ main(int argc, char* argv[])
   arena = new_arena(2*MEGABYTE);
 
   HocMachine machine = {0};
-  machine.memory = (uint8*)mem_push_count(arena, uint8, VM_MEMORY_SIZE);
+  machine.memory = (uint8*)mem_push_array(arena, uint8, VM_MEMORY_SIZE);
   machine.memory_size = VM_MEMORY_SIZE;
 
   if(load_bin_image(argv[0], &machine))

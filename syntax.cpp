@@ -110,7 +110,7 @@ new_cst_initializer_list(SourceLoc* src_loc)
 }
 
 CstNode*
-new_cst_bin_expr(SourceLoc* src_loc, enum CstOperator op)
+new_cst_bin_expr(SourceLoc* src_loc, enum OperatorKind op)
 {
   CstNode* node = new_cst_node(src_loc, CstKind_bin_expr);
   node->bin_expr.op = op;
@@ -118,47 +118,47 @@ new_cst_bin_expr(SourceLoc* src_loc, enum CstOperator op)
 }
 
 CstNode*
-new_cst_unr_expr(SourceLoc* src_loc, enum CstOperator op)
+new_cst_unr_expr(SourceLoc* src_loc, enum OperatorKind op)
 {
   CstNode* node = new_cst_node(src_loc, CstKind_un_expr);
   node->un_expr.op = op;
   return node;
 }
 
-const char* CstOperator_strings[] =
+char* OperatorKind_strings[] =
 {
 #define ENUM_MEMBER(NAME) #NAME
-  CstOperator_MEMBER_LIST()
+  OperatorKind_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
 
-const char*
-get_cst_op_printstr(enum CstOperator op)
+char*
+get_op_kind_printstr(enum OperatorKind op)
 {
-  return CstOperator_strings[op];
+  return OperatorKind_strings[op];
 }
 
-const char* CstKind_strings[] =
+char* CstKind_strings[] =
 {
 #define ENUM_MEMBER(NAME) #NAME
   CstKind_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
 
-const char*
+char*
 get_cst_kind_printstr(enum CstKind kind)
 {
   return CstKind_strings[kind];
 }
 
-const char* CstLiteralKind_strings[] =
+char* CstLiteralKind_strings[] =
 {
 #define ENUM_MEMBER(NAME) #NAME
   CstLiteralKind_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
 
-const char*
+char*
 get_cst_literal_printstr(enum CstLiteralKind kind)
 {
   return CstLiteralKind_strings[kind];
@@ -325,7 +325,7 @@ parse_rest_of_id(TokenStream* input, CstNode* left_node, CstNode** node)
   else if(input->token.kind == TokenKind_OpenBracket)
   {
     // array
-    auto* index = CST(*node = new_cst_bin_expr(&input->src_loc, CstOperator_ArrayIndex), bin_expr);
+    auto* index = CST(*node = new_cst_bin_expr(&input->src_loc, OperatorKind_ArrayIndex), bin_expr);
 
     index->left_operand = left_node;
 
@@ -363,9 +363,9 @@ parse_rest_of_selector(TokenStream* input, CstNode* left_node, CstNode** node)
     bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Dot)
-      bin_expr->op = CstOperator_MemberSelect;
+      bin_expr->op = OperatorKind_MemberSelect;
     else if(input->token.kind == TokenKind_ArrowRight)
-      bin_expr->op = CstOperator_PtrMemberSelect;
+      bin_expr->op = OperatorKind_PtrMemberSelect;
 
     if(success = get_next_token(input) && parse_selector(input, &bin_expr->right_operand))
     {
@@ -388,7 +388,7 @@ parse_rest_of_selector(TokenStream* input, CstNode* left_node, CstNode** node)
     if(input->token.kind == TokenKind_MinusMinus)
     {
 #if 0
-      un_expr->op = CstOperator_PostDecrement;
+      un_expr->op = OperatorKin_PostDecrement;
 #else
       success = compile_error(&input->src_loc, "`--` not supported");
 #endif
@@ -396,7 +396,7 @@ parse_rest_of_selector(TokenStream* input, CstNode* left_node, CstNode** node)
     else if(input->token.kind == TokenKind_PlusPlus)
     {
 #if 0
-      un_expr->op = CstOperator_PostIncrement;
+      un_expr->op = OperatorKind_PostIncrement;
 #else
       success = compile_error(&input->src_loc, "`++` not supported");
 #endif
@@ -435,11 +435,11 @@ parse_rest_of_factor(TokenStream* input, CstNode* left_node, CstNode** node)
     bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Star)
-      bin_expr->op = CstOperator_Mul;
+      bin_expr->op = OperatorKind_Mul;
     else if(input->token.kind == TokenKind_FwdSlash)
-      bin_expr->op = CstOperator_Div;
+      bin_expr->op = OperatorKind_Div;
     else if(input->token.kind == TokenKind_Percent)
-      bin_expr->op = CstOperator_Mod;
+      bin_expr->op = OperatorKind_Mod;
     else
       assert(0);
 
@@ -486,17 +486,17 @@ parse_rest_of_term(TokenStream* input, CstNode* left_node, CstNode** node)
     bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Plus)
-      bin_expr->op = CstOperator_Add;
+      bin_expr->op = OperatorKind_Add;
     else if(input->token.kind == TokenKind_Minus)
-      bin_expr->op = CstOperator_Sub;
+      bin_expr->op = OperatorKind_Sub;
     else if(input->token.kind == TokenKind_Pipe)
-      bin_expr->op = CstOperator_BitwiseOr;
+      bin_expr->op = OperatorKind_BitwiseOr;
     else if(input->token.kind == TokenKind_PipePipe)
-      bin_expr->op = CstOperator_LogicOr;
+      bin_expr->op = OperatorKind_LogicOr;
     else if(input->token.kind == TokenKind_Ampersand)
-      bin_expr->op = CstOperator_BitwiseAnd;
+      bin_expr->op = OperatorKind_BitwiseAnd;
     else if(input->token.kind == TokenKind_AmpersandAmpersand)
-      bin_expr->op = CstOperator_LogicAnd;
+      bin_expr->op = OperatorKind_LogicAnd;
     else
       assert(0);
 
@@ -544,19 +544,19 @@ parse_rest_of_assignment(TokenStream* input, CstNode* left_node, CstNode** node)
     bin_expr->left_operand = left_node;
 
     if(input->token.kind == TokenKind_Equals)
-      bin_expr->op = CstOperator_Assign;
+      bin_expr->op = OperatorKind_Assign;
     else if(input->token.kind == TokenKind_EqualsEquals)
-      bin_expr->op = CstOperator_Equals;
+      bin_expr->op = OperatorKind_Equals;
     else if(input->token.kind == TokenKind_ExclamEquals)
-      bin_expr->op = CstOperator_NotEquals;
+      bin_expr->op = OperatorKind_NotEquals;
     else if(input->token.kind == TokenKind_AngleLeft)
-      bin_expr->op = CstOperator_Less;
+      bin_expr->op = OperatorKind_Less;
     else if(input->token.kind == TokenKind_AngleLeftEquals)
-      bin_expr->op = CstOperator_LessEquals;
+      bin_expr->op = OperatorKind_LessEquals;
     else if(input->token.kind == TokenKind_AngleRight)
-      bin_expr->op = CstOperator_Greater;
+      bin_expr->op = OperatorKind_Greater;
     else if(input->token.kind == TokenKind_AngleRightEquals)
-      bin_expr->op = CstOperator_GreaterEquals;
+      bin_expr->op = OperatorKind_GreaterEquals;
 
     if(success = get_next_token(input) && parse_expression(input, &bin_expr->right_operand))
     {
@@ -800,13 +800,13 @@ parse_formal_arg(TokenStream* input, CstNode** node)
   CstNode* type = 0;
   if((success = parse_type_expr(input, &type)) && type)
   {
-    auto* var_decl = CST(*node = new_cst_node(&input->src_loc, CstKind_var_decl), var_decl);
+    auto* var = CST(*node = new_cst_node(&input->src_loc, CstKind_var), var);
 
-    var_decl->type_expr = type;
+    var->type_expr = type;
 
     if(input->token.kind == TokenKind_Id)
     {
-      var_decl->id = new_cst_id(&input->src_loc, input->token.lexeme);
+      var->id = new_cst_id(&input->src_loc, input->token.lexeme);
       success = get_next_token(input);
     }
     else
@@ -857,17 +857,17 @@ parse_un_expr(TokenStream* input, CstNode** node)
     auto* un_expr = CST(*node = new_cst_node(&input->src_loc, CstKind_un_expr), un_expr);
 
     if(input->token.kind == TokenKind_Exclam)
-      un_expr->op = CstOperator_LogicNot;
+      un_expr->op = OperatorKind_LogicNot;
     else if(input->token.kind == TokenKind_Star)
-      un_expr->op = CstOperator_PointerDeref;
+      un_expr->op = OperatorKind_PointerDeref;
     else if(input->token.kind == TokenKind_Ampersand)
-      un_expr->op = CstOperator_AddressOf;
+      un_expr->op = OperatorKind_AddressOf;
     else if(input->token.kind == TokenKind_Minus)
-      un_expr->op = CstOperator_Neg;
+      un_expr->op = OperatorKind_Neg;
     else if(input->token.kind == TokenKind_MinusMinus)
     {
 #if 0
-      un_expr->op = CstOperator_PreDecrement;
+      un_expr->op = OperatorKind_PreDecrement;
 #else
       success = compile_error(&input->src_loc, "`--` not supported");
 #endif
@@ -875,7 +875,7 @@ parse_un_expr(TokenStream* input, CstNode** node)
     else if(input->token.kind == TokenKind_PlusPlus)
     {
 #if 0
-      un_expr->op = CstOperator_PreIncrement;
+      un_expr->op = OperatorKind_PreIncrement;
 #else
       success = compile_error(&input->src_loc, "`++` not supported");
 #endif
@@ -948,21 +948,21 @@ parse_var_decl(TokenStream* input, CstNode** node)
   {
     if(input->token.kind == TokenKind_Id)
     {
-      auto* var_decl = CST(*node = new_cst_node(&input->src_loc, CstKind_var_decl), var_decl);
+      auto* var = CST(*node = new_cst_node(&input->src_loc, CstKind_var), var);
 
-      var_decl->type_expr = type;
-      var_decl->id = new_cst_id(&input->src_loc, input->token.lexeme);
+      var->type_expr = type;
+      var->id = new_cst_id(&input->src_loc, input->token.lexeme);
 
       if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
           && (success = get_next_token(input)))
       {
-        if(success = parse_initializer_list(input, &var_decl->init_expr))
+        if(success = parse_initializer_list(input, &var->init_expr))
         {
-          if(!var_decl->init_expr)
+          if(!var->init_expr)
           {
-            if(success = parse_expression(input, &var_decl->init_expr))
+            if(success = parse_expression(input, &var->init_expr))
             {
-              if(!var_decl->init_expr)
+              if(!var->init_expr)
               {
                 putback_token(input);
                 success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
@@ -979,7 +979,7 @@ parse_var_decl(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_for_stmt(TokenStream* input, CstNode** node)
+parse_for(TokenStream* input, CstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1034,7 +1034,7 @@ parse_for_stmt(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_while_stmt(TokenStream* input, CstNode** node)
+parse_while(TokenStream* input, CstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1087,7 +1087,7 @@ parse_while_stmt(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_else_stmt(TokenStream* input, CstNode** node)
+parse_else(TokenStream* input, CstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1110,7 +1110,7 @@ parse_else_stmt(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_if_stmt(TokenStream* input, CstNode** node)
+parse_if(TokenStream* input, CstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1142,7 +1142,7 @@ parse_if_stmt(TokenStream* input, CstNode** node)
           if(success)
           {
             if(if_stmt->body)
-              success = parse_else_stmt(input, &if_stmt->else_body);
+              success = parse_else(input, &if_stmt->else_body);
             else
             {
               putback_token(input);
@@ -1402,13 +1402,13 @@ parse_struct_member_list(TokenStream* input, List* member_list)
 
         if(success && type)
         {
-          auto* var_decl = CST(member = new_cst_node(&input->src_loc, CstKind_var_decl), var_decl);
+          auto* var = CST(member = new_cst_node(&input->src_loc, CstKind_var), var);
 
-          var_decl->type_expr = type;
+          var->type_expr = type;
 
           if(input->token.kind == TokenKind_Id)
           {
-            var_decl->id = new_cst_id(&input->src_loc, input->token.lexeme);
+            var->id = new_cst_id(&input->src_loc, input->token.lexeme);
             success = get_next_token(input);
           }
           else if(type->kind == CstKind_struct_decl
@@ -1454,7 +1454,7 @@ parse_var(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_return_stmt(TokenStream* input, CstNode** node)
+parse_return(TokenStream* input, CstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1488,7 +1488,7 @@ parse_label(TokenStream* input, CstNode* id, CstNode** node)
 }
 
 bool
-parse_goto_stmt(TokenStream* input, CstNode** node)
+parse_goto(TokenStream* input, CstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1512,7 +1512,7 @@ parse_goto_stmt(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_continue_stmt(TokenStream* input, CstNode** node)
+parse_continue(TokenStream* input, CstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1526,7 +1526,7 @@ parse_continue_stmt(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_break_stmt(TokenStream* input, CstNode** node)
+parse_break(TokenStream* input, CstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1559,7 +1559,7 @@ parse_node(TokenStream* input, CstNode** node)
   }
   else if(input->token.kind == TokenKind_If)
   {
-    if(success = parse_if_stmt(input, node))
+    if(success = parse_if(input, node))
     {
       *node = new_cst_statement((*node)->src_loc, *node);
     }
@@ -1570,7 +1570,7 @@ parse_node(TokenStream* input, CstNode** node)
   }
   else if(input->token.kind == TokenKind_While)
   {
-    if(success = parse_while_stmt(input, node))
+    if(success = parse_while(input, node))
     {
       *node = new_cst_statement((*node)->src_loc, *node);
     }
@@ -1578,26 +1578,26 @@ parse_node(TokenStream* input, CstNode** node)
 #if 0
   else if(input->token.kind == TokenKind_For)
   {
-    success = parse_for_stmt(input, &node);
+    success = parse_for(input, &node);
   }
 #endif
   else if(input->token.kind == TokenKind_Return)
   {
-    if((success = parse_return_stmt(input, node)) && consume_semicolon(input))
+    if((success = parse_return(input, node)) && consume_semicolon(input))
     {
       *node = new_cst_statement((*node)->src_loc, *node);
     }
   }
   else if(input->token.kind == TokenKind_Break)
   {
-    if((success = parse_break_stmt(input, node)) && consume_semicolon(input))
+    if((success = parse_break(input, node)) && consume_semicolon(input))
     {
       *node = new_cst_statement((*node)->src_loc, *node);
     }
   }
   else if(input->token.kind == TokenKind_Continue)
   {
-    if((success = parse_continue_stmt(input, node)) && consume_semicolon(input))
+    if((success = parse_continue(input, node)) && consume_semicolon(input))
     {
       *node = new_cst_statement((*node)->src_loc, *node);
     }
@@ -1605,12 +1605,15 @@ parse_node(TokenStream* input, CstNode** node)
 #if 0
   else if(input->token.kind == TokenKind_Goto)
   {
-    success = parse_goto_stmt(input, &node) && consume_semicolon(input);
+    success = parse_goto(input, &node) && consume_semicolon(input);
   }
 #endif
   else if(input->token.kind == TokenKind_Semicolon)
   {
-    success = get_next_token(input); // skip
+    if(success = consume_semicolon(input))
+    {
+      *node = new_cst_statement(&input->src_loc, 0);
+    }
   }
   else if(input->token.kind == TokenKind_OpenBrace)
   {
@@ -1696,12 +1699,12 @@ DEBUG_print_cst_node(String* str, int indent_level, char* tag, CstNode* node)
       DEBUG_print_xst_node_list(str, indent_level, "args", proc->args);
       DEBUG_print_cst_node(str, indent_level, "body", proc->body);
     }
-    else if(node->kind == CstKind_var_decl)
+    else if(node->kind == CstKind_var)
     {
-      auto* var_decl = CST(node, var_decl);
-      DEBUG_print_cst_node(str, indent_level, "type_expr", var_decl->type_expr);
-      DEBUG_print_cst_node(str, indent_level, "id", var_decl->id);
-      DEBUG_print_cst_node(str, indent_level, "init_expr", var_decl->init_expr);
+      auto* var = CST(node, var);
+      DEBUG_print_cst_node(str, indent_level, "type_expr", var->type_expr);
+      DEBUG_print_cst_node(str, indent_level, "id", var->id);
+      DEBUG_print_cst_node(str, indent_level, "init_expr", var->init_expr);
     }
     else if(node->kind == CstKind_id)
     {
@@ -1716,14 +1719,14 @@ DEBUG_print_cst_node(String* str, int indent_level, char* tag, CstNode* node)
     else if(node->kind == CstKind_bin_expr)
     {
       auto* bin_expr = CST(node, bin_expr);
-      DEBUG_print_line(str, indent_level, "op: %s", get_cst_op_printstr(bin_expr->op));
+      DEBUG_print_line(str, indent_level, "op: %s", get_op_kind_printstr(bin_expr->op));
       DEBUG_print_cst_node(str, indent_level, "left_operand", bin_expr->left_operand);
       DEBUG_print_cst_node(str, indent_level, "right_operand", bin_expr->right_operand);
     }
     else if(node->kind == CstKind_un_expr)
     {
       auto* un_expr = CST(node, un_expr);
-      DEBUG_print_line(str, indent_level, "op: %s", get_cst_op_printstr(un_expr->op));
+      DEBUG_print_line(str, indent_level, "op: %s", get_op_kind_printstr(un_expr->op));
       DEBUG_print_cst_node(str, indent_level, "operand", un_expr->operand);
     }
     else if(node->kind == CstKind_stmt)
@@ -1746,7 +1749,7 @@ DEBUG_print_cst_node(String* str, int indent_level, char* tag, CstNode* node)
     else if(node->kind == CstKind_lit)
     {
       auto* lit = CST(node, lit);
-      DEBUG_print_line(str, indent_level, (char*)get_cst_literal_printstr(lit->kind));
+      DEBUG_print_line(str, indent_level, get_cst_literal_printstr(lit->kind));
       if(lit->kind == CstLiteralKind_int_val)
         DEBUG_print_line(str, indent_level, "int_val: %d", lit->int_val);
       else if(lit->kind == CstLiteralKind_float_val)

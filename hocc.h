@@ -75,10 +75,10 @@ String;
 #define mem_push_struct(ARENA, TYPE)\
   ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), 1, true))
 
-#define mem_push_count(ARENA, TYPE, COUNT)\
+#define mem_push_array(ARENA, TYPE, COUNT)\
   ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, true))
 
-#define mem_push_count_nz(ARENA, TYPE, COUNT)\
+#define mem_push_array_nz(ARENA, TYPE, COUNT)\
   ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, false))
 
 #define mem_zero_struct(VAR, TYPE)\
@@ -202,50 +202,44 @@ typedef struct
 }
 AccessLink;
 
-#ifndef CstOperator_MEMBER_LIST
-#define CstOperator_MEMBER_LIST()\
-  ENUM_MEMBER(CstOperator__None),\
-  ENUM_MEMBER(CstOperator_Add),\
-  ENUM_MEMBER(CstOperator_Sub),\
-  ENUM_MEMBER(CstOperator_Div),\
-  ENUM_MEMBER(CstOperator_Mul),\
-  ENUM_MEMBER(CstOperator_Mod),\
-  ENUM_MEMBER(CstOperator_Neg),\
-  ENUM_MEMBER(CstOperator_Assign),\
-  ENUM_MEMBER(CstOperator_PointerDeref),\
-  ENUM_MEMBER(CstOperator_AddressOf),\
-  ENUM_MEMBER(CstOperator_MemberSelect),\
-  ENUM_MEMBER(CstOperator_PtrMemberSelect),\
-  ENUM_MEMBER(CstOperator_PreDecrement),\
-  ENUM_MEMBER(CstOperator_PostDecrement),\
-  ENUM_MEMBER(CstOperator_PreIncrement),\
-  ENUM_MEMBER(CstOperator_PostIncrement),\
-  ENUM_MEMBER(CstOperator_ArrayIndex),\
-  ENUM_MEMBER(CstOperator_Equals),\
-  ENUM_MEMBER(CstOperator_NotEquals),\
-  ENUM_MEMBER(CstOperator_Less),\
-  ENUM_MEMBER(CstOperator_LessEquals),\
-  ENUM_MEMBER(CstOperator_Greater),\
-  ENUM_MEMBER(CstOperator_GreaterEquals),\
-  ENUM_MEMBER(CstOperator_LogicAnd),\
-  ENUM_MEMBER(CstOperator_LogicOr),\
-  ENUM_MEMBER(CstOperator_LogicNot),\
-  ENUM_MEMBER(CstOperator_BitwiseAnd),\
-  ENUM_MEMBER(CstOperator_BitwiseOr),
+#ifndef OperatorKind_MEMBER_LIST
+#define OperatorKind_MEMBER_LIST()\
+  ENUM_MEMBER(OperatorKind__None),\
+  ENUM_MEMBER(OperatorKind_Add),\
+  ENUM_MEMBER(OperatorKind_Sub),\
+  ENUM_MEMBER(OperatorKind_Mul),\
+  ENUM_MEMBER(OperatorKind_Div),\
+  ENUM_MEMBER(OperatorKind_Mod),\
+  ENUM_MEMBER(OperatorKind_Neg),\
+  ENUM_MEMBER(OperatorKind_Assign),\
+  ENUM_MEMBER(OperatorKind_PointerDeref),\
+  ENUM_MEMBER(OperatorKind_AddressOf),\
+  ENUM_MEMBER(OperatorKind_MemberSelect),\
+  ENUM_MEMBER(OperatorKind_PtrMemberSelect),\
+  ENUM_MEMBER(OperatorKind_PreDecrement),\
+  ENUM_MEMBER(OperatorKind_PostDecrement),\
+  ENUM_MEMBER(OperatorKind_PreIncrement),\
+  ENUM_MEMBER(OperatorKind_PostIncrement),\
+  ENUM_MEMBER(OperatorKind_ArrayIndex),\
+  ENUM_MEMBER(OperatorKind_Equals),\
+  ENUM_MEMBER(OperatorKind_NotEquals),\
+  ENUM_MEMBER(OperatorKind_Less),\
+  ENUM_MEMBER(OperatorKind_LessEquals),\
+  ENUM_MEMBER(OperatorKind_Greater),\
+  ENUM_MEMBER(OperatorKind_GreaterEquals),\
+  ENUM_MEMBER(OperatorKind_LogicAnd),\
+  ENUM_MEMBER(OperatorKind_LogicOr),\
+  ENUM_MEMBER(OperatorKind_LogicNot),\
+  ENUM_MEMBER(OperatorKind_BitwiseAnd),\
+  ENUM_MEMBER(OperatorKind_BitwiseOr),\
+  ENUM_MEMBER(OperatorKind__Count),
 #endif
 
-enum CstOperator
+enum OperatorKind
 {
 #define ENUM_MEMBER(NAME) NAME
-  CstOperator_MEMBER_LIST()
+  OperatorKind_MEMBER_LIST()
 #undef ENUM_MEMBER
-};
-
-enum NodeKind
-{
-  NodeKind__None,
-  NodeKind_ast,
-  NodeKind_cst,
 };
 
 #ifndef CstLiteralKind_MEMBER_LIST
@@ -262,7 +256,7 @@ enum CstLiteralKind
 {
 #define ENUM_MEMBER(NAME) NAME
   CstLiteralKind_MEMBER_LIST()
-#undef ENUM_MEBMBER
+#undef ENUM_MEMBER
 };
 
 #ifndef CstKind_MEMBER_LIST
@@ -271,8 +265,7 @@ enum CstLiteralKind
   ENUM_MEMBER(CstKind_bin_expr),\
   ENUM_MEMBER(CstKind_un_expr),\
   ENUM_MEMBER(CstKind_lit),\
-  ENUM_MEMBER(CstKind_var_decl),\
-  ENUM_MEMBER(CstKind_var_occur),\
+  ENUM_MEMBER(CstKind_var),\
   ENUM_MEMBER(CstKind_block),\
   ENUM_MEMBER(CstKind_proc),\
   ENUM_MEMBER(CstKind_id),\
@@ -331,7 +324,7 @@ typedef struct CstNode
 
     struct
     {
-      enum CstOperator op;
+      enum OperatorKind op;
       CstNode* left_operand;
       CstNode* right_operand;
     }
@@ -339,7 +332,7 @@ typedef struct CstNode
 
     struct
     {
-      enum CstOperator op;
+      enum OperatorKind op;
       CstNode* operand;
     }
     un_expr;
@@ -364,7 +357,7 @@ typedef struct CstNode
       CstNode* id;
       CstNode* init_expr;
     }
-    var_decl;
+    var;
 
     struct
     {
@@ -372,7 +365,6 @@ typedef struct CstNode
       CstNode* id;
       List* args;
       CstNode* body;
-      bool is_decl;
     }
     proc;
 
@@ -496,7 +488,52 @@ typedef enum ScopeKind
 ScopeKind;
 #endif
 
-#if 1
+#if 0
+#ifndef AstBuiltinProc_MEMBER_LIST
+#define AstBuiltinProc_MEMBER_LIST()\
+  ENUM_MEMBER(AstBuiltinProc_, _None),\
+  ENUM_MEMBER(AstBuiltinProc_, assign),\
+  ENUM_MEMBER(AstBuiltinProc_, add_int),\
+  ENUM_MEMBER(AstBuiltinProc_, sub_int),\
+  ENUM_MEMBER(AstBuiltinProc_, div_int),\
+  ENUM_MEMBER(AstBuiltinProc_, mul_int),\
+  ENUM_MEMBER(AstBuiltinProc_, neg_int),\
+  ENUM_MEMBER(AstBuiltinProc_, add_float),\
+  ENUM_MEMBER(AstBuiltinProc_, sub_float),\
+  ENUM_MEMBER(AstBuiltinProc_, div_float),\
+  ENUM_MEMBER(AstBuiltinProc_, mul_float),\
+  ENUM_MEMBER(AstBuiltinProc_, neg_float),\
+  ENUM_MEMBER(AstBuiltinProc_, float_to_int),\
+  ENUM_MEMBER(AstBuiltinProc_, int_to_float),
+#endif
+
+enum AstBuiltinProc
+{
+#define ENUM_MEMBER(PREFIX, NAME) PREFIX##NAME
+  AstBuiltinProc_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+#endif
+
+#if 0
+#ifndef AstOperatorKind_MEMBER_LIST
+#define AstOperatorKind_MEMBER_LIST()\
+  ENUM_MEMBER(AstOperatorKind_Assign),\
+  ENUM_MEMBER(AstOperatorKind_Add),\
+  ENUM_MEMBER(AstOperatorKind_Sub),\
+  ENUM_MEMBER(AstOperatorKind_Mul),\
+  ENUM_MEMBER(AstOperatorKind_Div),\
+  ENUM_MEMBER(AstOperatorKind_Neg),
+#endif
+
+enum AstOperatorKind
+{
+#define ENUM_MEMBER(NAME) NAME
+  AstOperatorKind_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+#endif
+
 typedef struct Scope
 {
   //ScopeKind kind;
@@ -509,17 +546,6 @@ typedef struct Scope
   List* nonlocal_occurs;
 }
 Scope;
-#else
-typedef struct AstBlock
-{
-  int block_id;
-  int nesting_depth;
-  struct AstBlock* encl_block;
-  List* local_decls;
-  List* nonlocal_occurs;
-}
-AstBlock;
-#endif
 
 #ifndef AstKind_MEMBER_LIST
 #define AstKind_MEMBER_LIST()\
@@ -527,13 +553,16 @@ AstBlock;
   ENUM_MEMBER(AstKind_block),\
   ENUM_MEMBER(AstKind_module),\
   ENUM_MEMBER(AstKind_stmt),\
+  ENUM_MEMBER(AstKind_binop_decl),\
+  ENUM_MEMBER(AstKind_unop_decl),\
+  ENUM_MEMBER(AstKind_binop_occur),\
+  ENUM_MEMBER(AstKind_unop_occur),\
   ENUM_MEMBER(AstKind_var_decl),\
   ENUM_MEMBER(AstKind_var_occur),\
   ENUM_MEMBER(AstKind_type_decl),\
   ENUM_MEMBER(AstKind_type_occur),\
   ENUM_MEMBER(AstKind_proc_decl),\
   ENUM_MEMBER(AstKind_proc_occur),\
-  ENUM_MEMBER(AstKind_op_occur),\
   ENUM_MEMBER(AstKind_if_stmt),\
   ENUM_MEMBER(AstKind_while_stmt),\
   ENUM_MEMBER(AstKind_do_while_stmt),\
@@ -548,6 +577,14 @@ enum AstKind
 #define ENUM_MEMBER(NAME) NAME
   AstKind_MEMBER_LIST()
 #undef ENUM_MEMBER
+};
+
+enum AstProcKind
+{
+  AstProcKind__None,
+  AstProcKind_UnOp,
+  AstProcKind_BinOp,
+  AstProcKind_User,
 };
 
 // Abstract Syntax Tree
@@ -578,6 +615,30 @@ typedef struct AstNode
       AstNode* stmt;
     }
     stmt;
+
+    struct
+    {
+      enum OperatorKind kind;
+    }
+    binop_decl,
+    unop_decl;
+
+    struct
+    {
+      //enum OperatorKind kind;
+      AstNode* left_operand;
+      AstNode* right_operand;
+      AstNode* op_decl;
+    }
+    binop_occur;
+
+    struct
+    {
+      //enum OperatorKind kind;
+      AstNode* operand;
+      AstNode* op_decl;
+    }
+    unop_occur;
 
     struct
     {
@@ -612,6 +673,10 @@ typedef struct AstNode
 
     struct
     {
+#if 0
+      AstProcKind kind;
+      enum AstBuiltinProc builtin_id;
+#endif
       char* proc_name;
       AstNode* body;
       List* formal_args;
@@ -661,6 +726,13 @@ typedef struct AstNode
   };
 }
 AstNode;
+
+enum NodeKind
+{
+  NodeKind__None,
+  NodeKind_ast,
+  NodeKind_cst,
+};
 
 enum TypeKind
 {
@@ -753,6 +825,7 @@ TypePair;
 typedef enum
 {
   SymbolKind__None,
+  SymbolKind_unresolved,
   SymbolKind_var_decl,
   SymbolKind_var_occur,
   SymbolKind_type_decl,

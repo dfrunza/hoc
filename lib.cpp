@@ -412,7 +412,7 @@ str_append(String* str, char* cstr)
   int len = cstr_len(cstr);
   if(len > 0)
   {
-    mem_push_count_nz(arena, char, len); // will implicitly check bounds
+    mem_push_array_nz(arena, char, len); // will implicitly check bounds
     cstr_copy(str->end, cstr);
     str->end = (char*)arena->free-1;
   }
@@ -543,7 +543,7 @@ file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path)
     if(byte_count > 0)
     {
       fseek(file, 0, SEEK_SET);
-      *bytes = mem_push_count_nz(arena, uint8, byte_count);
+      *bytes = mem_push_array_nz(arena, uint8, byte_count);
       fread(*bytes, byte_count, 1, file);
     }
     fclose(file);
@@ -556,7 +556,7 @@ file_read_text(MemoryArena* arena, char* file_path)
 {
   char* text = 0;
   file_read_bytes(arena, (uint8**)&text, file_path);
-  *mem_push_count(arena, char, 1) = '\0'; // NULL terminator
+  *mem_push_array(arena, char, 1) = '\0'; // NULL terminator
   return text;
 }
 
@@ -691,7 +691,7 @@ replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
 bool
 compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
 {
-  char* filename_buf = mem_push_count_nz(arena, char, cstr_len(file));
+  char* filename_buf = mem_push_array_nz(arena, char, cstr_len(file));
   cstr_copy(filename_buf, file);
 
   if(src_loc && src_loc->line_nr >= 0)
@@ -708,4 +708,68 @@ compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
   fprintf(stderr, "\n");
   return false;
 }
+
+// Experimental
+#if 0
+struct NodeKind_
+{
+  enum
+  {
+    NodeKind__None,
+    NodeKind_ast,
+    NodeKind_cst,
+  }
+  node;
+
+  union
+  {
+    enum CstKind cst;
+    enum AstKind ast;
+  };
+};
+
+typedef struct
+{
+  struct NodeKind_ kind;
+
+  union
+  {
+    AstNode ast;
+    CstNode cst;
+  };
+}
+Node;
+
+Node*
+new_node(SourceLoc* src_loc, struct NodeKind_ kind)
+{
+  if(kind.node == NodeKind_::NodeKind_ast)
+  {
+    if(kind.ast == AstKind_block)
+    {
+      Node* node = mem_push_struct(arena, Node);
+      node->kind = kind;
+
+      AstNode* ast = &node->ast;
+      ast->kind = kind.ast;
+      ast->src_loc = src_loc;
+      return node;
+    }
+    else
+      assert(0);
+  }
+  else if(kind.node == NodeKind_::NodeKind_cst)
+  {
+    if(kind.cst == CstKind_block)
+    {
+
+    }
+    else
+      assert(0);
+  }
+  else
+    assert(0);
+  return 0;
+}
+#endif
 

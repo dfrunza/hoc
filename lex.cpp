@@ -60,7 +60,7 @@ install_lexeme(char* begin_char, char* end_char)
 
   /* TODO: Search the lexeme, and if found, then return it. */
   size_t len = end_char - begin_char + 1;
-  char* lexeme = mem_push_count_nz(arena, char, len + 1); // +NULL
+  char* lexeme = mem_push_array_nz(arena, char, len + 1); // +NULL
   cstr_copy_substr(lexeme, begin_char, end_char);
   lexeme[len] = 0; // cap the string
   return lexeme;
@@ -118,7 +118,7 @@ install_escaped_str(EscapedStr* estr)
 {
   assert(estr->begin <= estr->end);
 
-  char* lexeme = mem_push_count_nz(arena, char, estr->len+1); /* +NULL */
+  char* lexeme = mem_push_array_nz(arena, char, estr->len+1); /* +NULL */
 
   if(estr->len > 0)
   {

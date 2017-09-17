@@ -1,5 +1,5 @@
-#define AST(VAR, KIND)\
-  (((VAR)->kind == AstKind##_##KIND) ? &(VAR)->KIND : 0)
+#define AST2(VAR, KIND)\
+  (((VAR)->kind == AstKind2##_##KIND) ? &(VAR)->KIND : 0)
 
 #define SYM(VAR, KIND)\
   (((VAR)->kind == SymbolKind##_##KIND) ? (VAR)->KIND : 0)
@@ -13,87 +13,87 @@ char* AstBuiltinProc_names[] =
 };
 #endif
 
-AstNode*
-new_ast_node(SourceLoc* src_loc, enum AstKind kind)
+AstNode2*
+new_ast2_node(SourceLoc* src_loc, enum AstKind2 kind)
 {
-  AstNode* node = mem_push_struct(arena, AstNode);
+  AstNode2* node = mem_push_struct(arena, AstNode2);
   node->kind = kind;
   node->src_loc = src_loc;
   return node;
 }
 
-AstNode*
-new_ast_module(SourceLoc* src_loc)
+AstNode2*
+new_ast2_module(SourceLoc* src_loc)
 {
-  AstNode* node = new_ast_node(src_loc, AstKind_module);
-  node->module.procs = new_list(arena, ListKind_ast_node);
+  AstNode2* node = new_ast2_node(src_loc, AstKind2_module);
+  node->module.procs = new_list(arena, ListKind_ast2_node);
   return node;
 }
 
-AstNode*
-new_ast_block(SourceLoc* src_loc)
+AstNode2*
+new_ast2_block(SourceLoc* src_loc)
 {
-  AstNode* node = new_ast_node(src_loc, AstKind_block);
-  node->block.stmts = new_list(arena, ListKind_ast_node);
+  AstNode2* node = new_ast2_node(src_loc, AstKind2_block);
+  node->block.stmts = new_list(arena, ListKind_ast2_node);
   return node;
 }
 
-AstNode*
-new_ast_type_decl(SourceLoc* src_loc, char* type_name)
+AstNode2*
+new_ast2_type_decl(SourceLoc* src_loc, char* type_name)
 {
-  AstNode* node = new_ast_node(src_loc, AstKind_type_decl);
+  AstNode2* node = new_ast2_node(src_loc, AstKind2_type_decl);
   node->type_decl.type_name = type_name;
   return node;
 }
 
-AstNode*
-new_ast_var_decl(SourceLoc* src_loc, char* var_name)
+AstNode2*
+new_ast2_var_decl(SourceLoc* src_loc, char* var_name)
 {
-  AstNode* node = new_ast_node(src_loc, AstKind_var_decl);
+  AstNode2* node = new_ast2_node(src_loc, AstKind2_var_decl);
   node->var_decl.var_name = var_name;
   return node;
 }
 
-AstNode*
-new_ast_var_occur(SourceLoc* src_loc, char* var_name)
+AstNode2*
+new_ast2_var_occur(SourceLoc* src_loc, char* var_name)
 {
-  AstNode* node = new_ast_node(src_loc, AstKind_var_occur);
+  AstNode2* node = new_ast2_node(src_loc, AstKind2_var_occur);
   node->var_occur.var_name = var_name;
   return node;
 }
 
-AstNode*
-new_ast_proc_decl(SourceLoc* src_loc, char* proc_name)
+AstNode2*
+new_ast2_proc_decl(SourceLoc* src_loc, char* proc_name)
 {
-  AstNode* node = new_ast_node(src_loc, AstKind_proc_decl);
+  AstNode2* node = new_ast2_node(src_loc, AstKind2_proc_decl);
   //node->proc_decl.kind = AstProcKind_User;
   node->proc_decl.proc_name = proc_name;
-  node->proc_decl.formal_args = new_list(arena, ListKind_ast_node);
-  node->proc_decl.ret_var = new_ast_var_decl(src_loc, 0);
+  node->proc_decl.formal_args = new_list(arena, ListKind_ast2_node);
+  node->proc_decl.ret_var = new_ast2_var_decl(src_loc, 0);
   return node;
 }
 
-AstNode*
-new_ast_proc_occur(SourceLoc* src_loc, char* proc_name)
+AstNode2*
+new_ast2_proc_occur(SourceLoc* src_loc, char* proc_name)
 {
-  AstNode* node = new_ast_node(src_loc, AstKind_proc_occur);
+  AstNode2* node = new_ast2_node(src_loc, AstKind2_proc_occur);
   node->proc_occur.proc_name = proc_name;
-  node->proc_occur.actual_args = new_list(arena, ListKind_ast_node);
+  node->proc_occur.actual_args = new_list(arena, ListKind_ast2_node);
   return node;
 }
 
 #if 0
-AstNode*
-new_ast_builtin_proc_occur(SourceLoc* src_loc, AstBuiltinProc proc_id)
+AstNode2*
+new_ast2_builtin_proc_occur(SourceLoc* src_loc, AstBuiltinProc proc_id)
 {
-  return new_ast_proc_occur(src_loc, AstBuiltinProc_names[proc_id]);
+  return new_ast2_proc_occur(src_loc, AstBuiltinProc_names[proc_id]);
 }
 #endif
 
-AstNode*
-new_ast_stmt(SourceLoc* src_loc, AstNode* stmt)
+AstNode2*
+new_ast2_stmt(SourceLoc* src_loc, AstNode2* stmt)
 {
-  AstNode* node = new_ast_node(src_loc, AstKind_stmt);
+  AstNode2* node = new_ast2_node(src_loc, AstKind2_stmt);
   node->stmt.stmt = stmt;
   return node;
 }
@@ -102,22 +102,22 @@ Scope*
 new_scope()
 {
   Scope* scope = mem_push_struct(arena, Scope);
-  scope->local_decls = new_list(arena, ListKind_ast_node);
-  scope->nonlocal_occurs = new_list(arena, ListKind_ast_node);
+  scope->local_decls = new_list(arena, ListKind_ast2_node);
+  scope->nonlocal_occurs = new_list(arena, ListKind_ast2_node);
   return scope;
 }
 
-const char* AstKind_strings[] =
+const char* AstKind2_strings[] =
 {
 #define ENUM_MEMBER(NAME) #NAME
-  AstKind_MEMBER_LIST()
+  AstKind2_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
 
 const char*
-get_ast_kind_printstr(enum AstKind kind)
+get_ast2_kind_printstr(enum AstKind2 kind)
 {
-  return AstKind_strings[kind];
+  return AstKind2_strings[kind];
 }
 
 void
@@ -255,11 +255,11 @@ register_name(char* name, SourceLoc* src_loc, SymbolKind kind)
 }
 
 bool
-register_var_decl(AstNode* decl_node)
+register_var_decl(AstNode2* decl_node)
 {
   bool success = true;
 
-  auto* var_decl = AST(decl_node, var_decl);
+  auto* var_decl = AST2(decl_node, var_decl);
   Symbol* decl_sym = lookup_symbol(var_decl->var_name, SymbolKind_var_decl, SymbolLookup_StartLocal);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
@@ -275,11 +275,11 @@ register_var_decl(AstNode* decl_node)
 }
 
 bool
-register_var_occur(AstNode* occur_node)
+register_var_occur(AstNode2* occur_node)
 {
   bool success = true;
 
-  auto* var_occur = AST(occur_node, var_occur);
+  auto* var_occur = AST2(occur_node, var_occur);
   Symbol* decl_sym = lookup_symbol(var_occur->var_name, SymbolKind_var_decl, SymbolLookup_StartLocal);
   if(decl_sym)
   {
@@ -294,11 +294,11 @@ register_var_occur(AstNode* occur_node)
 }
 
 bool
-register_type_decl(AstNode* decl_node)
+register_type_decl(AstNode2* decl_node)
 {
   bool success = true;
 
-  auto* type_decl = AST(decl_node, type_decl);
+  auto* type_decl = AST2(decl_node, type_decl);
   Symbol* decl_sym = lookup_symbol(type_decl->type_name, SymbolKind_type_decl, SymbolLookup_StartLocal);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
@@ -314,11 +314,11 @@ register_type_decl(AstNode* decl_node)
 }
 
 bool
-register_type_occur(AstNode* occur_node)
+register_type_occur(AstNode2* occur_node)
 {
   bool success = true;
 
-  auto* type_occur = AST(occur_node, type_occur);
+  auto* type_occur = AST2(occur_node, type_occur);
   Symbol* decl_sym = lookup_symbol(type_occur->type_name, SymbolKind_type_decl, SymbolLookup_StartLocal);
   if(decl_sym)
   {
@@ -334,11 +334,11 @@ register_type_occur(AstNode* occur_node)
 }
 
 bool
-register_proc_decl(AstNode* decl_node)
+register_proc_decl(AstNode2* decl_node)
 {
   bool success = true;
 
-  auto* proc_decl = AST(decl_node, proc_decl);
+  auto* proc_decl = AST2(decl_node, proc_decl);
   Symbol* decl_sym = lookup_symbol(proc_decl->proc_name, SymbolKind_proc_decl, SymbolLookup_StartLocal);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
@@ -355,11 +355,11 @@ register_proc_decl(AstNode* decl_node)
 
 #if 0
 bool
-register_builtin_proc_occur(AstNode* occur_node)
+register_builtin_proc_occur(AstNode2* occur_node)
 {
   bool success = true;
 
-  auto* proc_occur = AST(occur_node, proc_occur);
+  auto* proc_occur = AST2(occur_node, proc_occur);
   Symbol* decl_sym = lookup_symbol(proc_occur->proc_name, SymbolKind_proc_decl, SymbolLookup_StartGlobal);
   if(decl_sym)
   {
@@ -386,7 +386,7 @@ register_proc_decl(AstProc* proc)
   if(proc_sym)
   {
     AstProc* registered_proc = (AstProc*)proc_sym->ast;
-    assert(registered_proc && registered_proc->kind == AstKind_AstProc);
+    assert(registered_proc && registered_proc->kind == AstKind2_AstProc);
 
     if(registered_proc->is_decl && proc->is_decl)
     {
@@ -405,7 +405,7 @@ register_proc_decl(AstProc* proc)
     {
       if(type_unif(registered_proc->type, proc->type))
       {
-        proc_sym->ast = (AstNode*)proc;
+        proc_sym->ast = (AstNode2*)proc;
         id->sym = proc_sym;
       }
       else
@@ -417,7 +417,7 @@ register_proc_decl(AstProc* proc)
     /* else fall-thru */
   }
   else if(success = register_new_id(id, SymbolKind_Proc))
-    id->sym->ast = (AstNode*)proc;
+    id->sym->ast = (AstNode2*)proc;
 
   return success;
 }
@@ -433,11 +433,11 @@ register_call(AstCall* call)
   Symbol* proc_sym = lookup_symbol(id->name, SymbolKind_Proc);
   if(proc_sym)
   {
-    assert(proc_sym->ast->kind == AstKind_AstProc);
+    assert(proc_sym->ast->kind == AstKind2_AstProc);
     call->proc_sym = proc_sym;
 
     Symbol* call_sym = register_id(id, SymbolKind_Call);
-    call_sym->ast = (AstNode*)call;
+    call_sym->ast = (AstNode2*)call;
   }
   else
     success = compile_error(&call->src_loc, "unknown proc `%s`", id->name);
@@ -449,7 +449,7 @@ void
 add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == TypeKind_basic);
-  register_type_decl(new_ast_type_decl(0, name));
+  register_type_decl(new_ast2_type_decl(0, name));
 }
 
 void
@@ -473,11 +473,11 @@ void
 add_builtin_proc(enum AstBuiltinProc proc_id, enum AstProcKind kind, Type* type)
 {
   assert(type->kind == TypeKind_proc);
-  AstNode* proc_decl = new_ast_proc_decl(0, AstBuiltinProc_names[proc_id]);
+  AstNode2* proc_decl = new_ast2_proc_decl(0, AstBuiltinProc_names[proc_id]);
   if(register_proc_decl(proc_decl))
   {
-    AST(proc_decl, proc_decl)->kind = kind;
-    AST(proc_decl, proc_decl)->builtin_id = proc_id;
+    AST2(proc_decl, proc_decl)->kind = kind;
+    AST2(proc_decl, proc_decl)->builtin_id = proc_id;
   }
   else
     assert(0);
@@ -586,13 +586,13 @@ process_includes(List* include_list, List* module_list, ListItem* module_list_it
       list_item;
       list_item = list_item->next)
   {
-    assert(list_item->kind == ListKind_cst_node);
-    CstNode* stmt = list_item->cst_node;
+    assert(list_item->kind == ListKind_ast1_node);
+    AstNode1* stmt = list_item->ast1_node;
 
-    if(stmt->kind == CstKind_include)
+    if(stmt->kind == AstKind1_include)
     {
-      auto* include = CST(stmt, include);
-      process_includes(CST(include->body, block)->nodes, include_list, list_item);
+      auto* include = AST1(stmt, include);
+      process_includes(AST1(include->body, block)->nodes, include_list, list_item);
     }
   }
   replace_list_item_at(include_list, module_list, module_list_item);
@@ -601,16 +601,16 @@ process_includes(List* include_list, List* module_list, ListItem* module_list_it
 }
 
 bool
-build_ast_var_decl(CstNode* cst_var, AstNode** var_decl)
+build_ast2_var_decl(AstNode1* cst_var, AstNode2** var_decl)
 {
   bool success = true;
 
-  *var_decl = new_ast_var_decl(cst_var->src_loc, CST(CST(cst_var, var)->id, id)->name);
+  *var_decl = new_ast2_var_decl(cst_var->src_loc, AST1(AST1(cst_var, var)->id, id)->name);
 
   if(success = register_var_decl(*var_decl))
   {
-    Scope* decl_scope = AST(*var_decl, var_decl)->decl_scope = symbol_table->local_scope;
-    append_list_elem(arena, decl_scope->local_decls, *var_decl, ListKind_ast_node);
+    Scope* decl_scope = AST2(*var_decl, var_decl)->decl_scope = symbol_table->local_scope;
+    append_list_elem(arena, decl_scope->local_decls, *var_decl, ListKind_ast2_node);
   }
   return success;
 }
@@ -625,7 +625,7 @@ sem_call_args(AstBlock* module_block, AstBlock* block, AstCall* call)
   ListItem* first_item = arg_list->first;
   if(first_item)
   {
-    AstNode* arg = (AstNode*)first_item->elem;
+    AstNode2* arg = (AstNode2*)first_item->elem;
     if(success = sem_expression(module_block, block, arg, &arg))
     {
       first_item->elem = arg;
@@ -634,7 +634,7 @@ sem_call_args(AstBlock* module_block, AstBlock* block, AstCall* call)
           list_item && success;
           list_item = list_item->next)
       {
-        arg = (AstNode*)list_item->elem;
+        arg = (AstNode2*)list_item->elem;
         if(success = sem_expression(module_block, block, arg, &arg))
         {
           list_item->elem = arg;
@@ -649,11 +649,11 @@ sem_call_args(AstBlock* module_block, AstBlock* block, AstCall* call)
 #if 0
 bool
 type_convert_call_arg(AstVarDecl* formal_arg,
-                      AstVarOccur* actual_arg, AstNode** node_out,
+                      AstVarOccur* actual_arg, AstNode2** node_out,
                       Type* type_from, Type* type_to)
 {
   bool success = true;
-  *node_out = (AstNode*)actual_arg;
+  *node_out = (AstNode2*)actual_arg;
 
   if(types_are_equal(type_from, type_to))
     return success;
@@ -665,8 +665,8 @@ type_convert_call_arg(AstVarDecl* formal_arg,
       AstUnaryExpr* address_of = new_unr_expr(&actual_arg->src_loc);
       address_of->op = AstCstOperator_AddressOf;
       address_of->type = new_pointer_type(type_from); // pointer(array)
-      address_of->operand = (AstNode*)actual_arg;
-      *node_out = (AstNode*)address_of;
+      address_of->operand = (AstNode2*)actual_arg;
+      *node_out = (AstNode2*)address_of;
     }
     else
     {
@@ -680,8 +680,8 @@ type_convert_call_arg(AstVarDecl* formal_arg,
     AstUnaryExpr* deref_ptr = new_unr_expr(&actual_arg->src_loc);
     deref_ptr->op = AstCstOperator_PointerDeref;
     deref_ptr->type = new_array_type(type_to->array.size, type_from->pointer.pointee);
-    deref_ptr->operand = (AstNode*)actual_arg;
-    *node_out = (AstNode*)deref_ptr;
+    deref_ptr->operand = (AstNode2*)actual_arg;
+    *node_out = (AstNode2*)deref_ptr;
   }
   else if(type_from->kind == TypeKind_Array && type_to->kind == TypeKind_Array)
   {
@@ -692,16 +692,16 @@ type_convert_call_arg(AstVarDecl* formal_arg,
     AstUnaryExpr* int_to_float = new_unr_expr(&actual_arg->src_loc);
     int_to_float->op = AstCstOperator_IntToFloat;
     int_to_float->type = basic_type_float;
-    int_to_float->operand = (AstNode*)actual_arg;
-    *node_out = (AstNode*)int_to_float;
+    int_to_float->operand = (AstNode2*)actual_arg;
+    *node_out = (AstNode2*)int_to_float;
   }
   else if(types_are_equal(type_from, basic_type_float) && types_are_equal(type_to, basic_type_int))
   {
     AstUnaryExpr* float_to_int = new_unr_expr(&actual_arg->src_loc);
     float_to_int->op = AstCstOperator_FloatToInt;
     float_to_int->type = basic_type_int;
-    float_to_int->operand = (AstNode*)actual_arg;
-    *node_out = (AstNode*)float_to_int;
+    float_to_int->operand = (AstNode2*)actual_arg;
+    *node_out = (AstNode2*)float_to_int;
   }
   else
     success = compile_error(&actual_arg->src_loc,
@@ -720,7 +720,7 @@ sem_call(AstBlock* module_block, AstBlock* block, AstCall* call)
   if(success = sem_call_args(module_block, block, call) && register_call(call))
   {
     AstProc* proc = (AstProc*)call->proc_sym->ast;
-    assert(proc->kind == AstKind_AstProc);
+    assert(proc->kind == AstKind2_AstProc);
 
     Type* proc_type = proc->type;
     assert(proc_type->kind == TypeKind_Proc);
@@ -731,15 +731,15 @@ sem_call(AstBlock* module_block, AstBlock* block, AstCall* call)
       {
         ListItem* actual_arg_li = call->args->list.first;
         ListItem* formal_arg_li = proc->args->list.first;
-        AstNode* actual_arg = (AstNode*)actual_arg_li->elem;
-        AstNode* formal_arg = (AstNode*)formal_arg_li->elem;
+        AstNode2* actual_arg = (AstNode2*)actual_arg_li->elem;
+        AstNode2* formal_arg = (AstNode2*)formal_arg_li->elem;
 
         call->args->type = actual_arg->type;
 
         while(success && actual_arg_li && formal_arg_li)
         {
-          actual_arg = (AstNode*)actual_arg_li->elem;
-          formal_arg = (AstNode*)formal_arg_li->elem;
+          actual_arg = (AstNode2*)actual_arg_li->elem;
+          formal_arg = (AstNode2*)formal_arg_li->elem;
 
           if(type_unif(actual_arg->type, formal_arg->type))
           {
@@ -750,7 +750,7 @@ sem_call(AstBlock* module_block, AstBlock* block, AstCall* call)
             if(type_convert_call_arg((AstVarDecl*)formal_arg, (AstVarOccur*)actual_arg, &actual_arg, actual_arg->type, formal_arg->type))
             {
               call->args->type = new_product_type(call->args->type, actual_arg->type);
-              actual_arg_li->elem = (AstNode*)actual_arg;
+              actual_arg_li->elem = (AstNode2*)actual_arg;
             }
           }
 
@@ -783,23 +783,23 @@ sem_call(AstBlock* module_block, AstBlock* block, AstCall* call)
 
 #if 0
 bool
-sem_type_expr(AstNode* expr)
+sem_type_expr(AstNode2* expr)
 {
   bool success = false;
 
-  if(expr->kind == AstKind_AstId)
+  if(expr->kind == AstKind2_AstId)
   {
     AstId* type_id = (AstId*)expr;
     if(success = register_type_occur(type_id))
       expr->type = type_id->type;
   }
-  else if(expr->kind == AstKind_AstArray)
+  else if(expr->kind == AstKind2_AstArray)
   {
     AstArray* array = (AstArray*)expr;
     if(success = sem_type_expr(array->type_expr))
     {
       array->size = 0;
-      if(array->size_expr->kind == AstKind_AstLiteral)
+      if(array->size_expr->kind == AstKind2_AstLiteral)
       {
         AstLiteral* size = (AstLiteral*)array->size_expr;
         if(size->lit_kind == AstLiteralKind_Int)
@@ -814,7 +814,7 @@ sem_type_expr(AstNode* expr)
         success = compile_error(&expr->src_loc, "integer constant expected");
     }
   }
-  else if(expr->kind == AstKind_AstPointer)
+  else if(expr->kind == AstKind2_AstPointer)
   {
     AstPointer* pointer = (AstPointer*)expr;
     if(success = sem_type_expr(pointer->type_expr))
@@ -829,11 +829,11 @@ sem_type_expr(AstNode* expr)
 
 #if 0
 bool
-sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode** out_expr)
+sem_expression(AstBlock* module_block, AstBlock* block, AstNode2* expr, AstNode2** out_expr)
 {
   bool success = true;
 
-  if(expr->kind == AstKind_AstBinExpr)
+  if(expr->kind == AstKind2_AstBinExpr)
   {
     AstBinExpr* bin_expr = (AstBinExpr*)expr;
     if(success = sem_expression(module_block, block, bin_expr->left_operand, &bin_expr->left_operand)
@@ -880,7 +880,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
             int_to_float->op = AstCstOperator_IntToFloat;
             int_to_float->type = basic_type_float;
             int_to_float->operand = bin_expr->right_operand;
-            bin_expr->right_operand = (AstNode*)int_to_float;
+            bin_expr->right_operand = (AstNode2*)int_to_float;
           }
           else
             success = compile_error(&expr->src_loc, "modulo operator cannot be applied to float operands");
@@ -900,7 +900,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
               address_of->op = AstCstOperator_AddressOf;
               address_of->type = new_pointer_type(left_type); // pointer(array)
               address_of->operand = bin_expr->left_operand;
-              bin_expr->left_operand = (AstNode*)address_of;
+              bin_expr->left_operand = (AstNode2*)address_of;
               bin_expr->type = address_of->type;
             }
             else
@@ -913,7 +913,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
               ;/*OK*/
             else if(bin_expr->op == AstCstOperator_Assign)
             {
-              if(bin_expr->right_operand->kind == AstKind_AstLiteral)
+              if(bin_expr->right_operand->kind == AstKind2_AstLiteral)
               {
                 AstLiteral* lit = (AstLiteral*)bin_expr->right_operand;
                 assert(lit->lit_kind == AstLiteralKind_Int);
@@ -952,10 +952,10 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
             AstBinExpr* mul_op = new_bin_expr(&bin_expr->right_operand->src_loc);
             mul_op->op = AstCstOperator_Mul;
             mul_op->left_operand = bin_expr->right_operand;
-            mul_op->right_operand = (AstNode*)type_width;
+            mul_op->right_operand = (AstNode2*)type_width;
             mul_op->type = basic_type_int;
 
-            bin_expr->right_operand = (AstNode*)mul_op;
+            bin_expr->right_operand = (AstNode2*)mul_op;
 
             if(bin_expr->op == AstCstOperator_ArrayIndex)
             {
@@ -964,8 +964,8 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
               AstUnaryExpr* deref_ptr = new_unr_expr(&bin_expr->src_loc);
               deref_ptr->op = AstCstOperator_PointerDeref;
               deref_ptr->type = elem_type;
-              deref_ptr->operand = (AstNode*)bin_expr;
-              *out_expr = (AstNode*)deref_ptr;
+              deref_ptr->operand = (AstNode2*)bin_expr;
+              *out_expr = (AstNode2*)deref_ptr;
             }
           }
         }
@@ -1015,7 +1015,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
               address_of->op = AstCstOperator_AddressOf;
               address_of->type = new_pointer_type(right_type); // pointer(array)
               address_of->operand = bin_expr->right_operand;
-              bin_expr->right_operand = (AstNode*)address_of;
+              bin_expr->right_operand = (AstNode2*)address_of;
             }
             else
               success = compile_error(&expr->src_loc,
@@ -1029,7 +1029,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
         }
         else if(types_are_equal(right_type, basic_type_int))
         {
-          if(bin_expr->right_operand->kind == AstKind_AstLiteral)
+          if(bin_expr->right_operand->kind == AstKind2_AstLiteral)
           {
             AstLiteral* lit = (AstLiteral*)bin_expr;
             assert(lit->lit_kind == AstLiteralKind_Int);
@@ -1063,10 +1063,10 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
       if(success && bin_expr->op == AstCstOperator_Assign)
       {
         // Check that the left operand is an l-value
-        AstNode* left_operand = bin_expr->left_operand;
-        if(left_operand->kind == AstKind_VarOccur)
+        AstNode2* left_operand = bin_expr->left_operand;
+        if(left_operand->kind == AstKind2_VarOccur)
           ;/*OK*/
-        else if(left_operand->kind == AstKind_UnrExpr)
+        else if(left_operand->kind == AstKind2_UnrExpr)
         {
           AstUnaryExpr* unr_expr = (AstUnaryExpr*)left_operand;
           if(unr_expr->op == AstCstOperator_PointerDeref)
@@ -1080,7 +1080,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
 #endif
     }
   }
-  else if(expr->kind == AstKind_AstUnaryExpr)
+  else if(expr->kind == AstKind2_AstUnaryExpr)
   {
     AstUnaryExpr* unr_expr = (AstUnaryExpr*)expr;
     if(unr_expr->op == AstCstOperator_PostIncrement)
@@ -1096,11 +1096,11 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
       AstLiteral* one = new_literal(&unr_expr->src_loc);
       one->lit_kind = AstLiteralKind_Int;
       one->int_val = 1;
-      incr_one->right_operand = (AstNode*)one;
+      incr_one->right_operand = (AstNode2*)one;
 
-      assign->right_operand = (AstNode*)incr_one;
-      if(success = sem_expression(block, (AstNode*)assign, &(AstNode*)assign))
-        *out_expr = (AstNode*)assign;
+      assign->right_operand = (AstNode2*)incr_one;
+      if(success = sem_expression(block, (AstNode2*)assign, &(AstNode2*)assign))
+        *out_expr = (AstNode2*)assign;
 #else
       fail("not implemented");
 #endif
@@ -1112,14 +1112,14 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
         if(unr_expr->op == AstCstOperator_AddressOf)
         {
           Type* operand_type = unr_expr->operand->type;
-          if(unr_expr->operand->kind == AstKind_AstVarOccur)
+          if(unr_expr->operand->kind == AstKind2_AstVarOccur)
           {
             if(operand_type->kind == TypeKind_Array)
               unr_expr->type = new_pointer_type(operand_type); // pointer(array)
             else
               unr_expr->type = new_pointer_type(operand_type);
           }
-          else if(unr_expr->operand->kind == AstKind_AstUnaryExpr)
+          else if(unr_expr->operand->kind == AstKind2_AstUnaryExpr)
           {
             // &data[0]
             AstUnaryExpr* operand = (AstUnaryExpr*)unr_expr->operand;
@@ -1174,7 +1174,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
                 address_of->type = new_pointer_type(operand_type->array.elem);
 
                 address_of->operand = unr_expr->operand;
-                unr_expr->operand = (AstNode*)address_of;
+                unr_expr->operand = (AstNode2*)address_of;
                 unr_expr->type = operand_type->array.elem;
               }
             } break;
@@ -1192,7 +1192,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
       }
     }
   }
-  else if(expr->kind == AstKind_AstId)
+  else if(expr->kind == AstKind2_AstId)
   {
     AstVarOccur* var_occur = new_var_occur(&expr->src_loc);
     var_occur->id = expr;
@@ -1212,10 +1212,10 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
       if(var_occur->decl_block_offset > 0)
         list_append(arena, &block->nonlocal_occurs, var_occur);
 
-      expr = (AstNode*)var_occur;
+      expr = (AstNode2*)var_occur;
     }
   }
-  else if(expr->kind == AstKind_AstLiteral)
+  else if(expr->kind == AstKind2_AstLiteral)
   {
     AstLiteral* lit = (AstLiteral*)expr;
     if(lit->lit_kind == AstLiteralKind_Int)
@@ -1239,7 +1239,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
 
       AstVarDecl* var_decl = new_var_decl(&expr->src_loc);
       var_decl->type = str->type;
-      var_decl->init_expr = (AstNode*)str;
+      var_decl->init_expr = (AstNode2*)str;
       var_decl->decl_block = module_block;
       list_append(arena, &module_block->local_decls, var_decl);
 
@@ -1254,14 +1254,14 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
       if(var_occur->decl_block_offset > 0)
         list_append(arena, &block->nonlocal_occurs, var_occur);
 
-      *out_expr = (AstNode*)var_occur;
+      *out_expr = (AstNode2*)var_occur;
     }
     else
       assert(0);
   }
-  else if(expr->kind == AstKind_AstCall)
+  else if(expr->kind == AstKind2_AstCall)
     success = sem_call(module_block, block, (AstCall*)expr);
-  else if(expr->kind == AstKind_AstCast)
+  else if(expr->kind == AstKind2_AstCast)
   {
     AstCast* cast = (AstCast*)expr;
     if(success = sem_type_expr(cast->type_expr))
@@ -1283,7 +1283,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
               float_to_int->op = AstCstOperator_FloatToInt;
               float_to_int->type = basic_type_int;
               float_to_int->operand = cast->expr;
-              *out_expr = (AstNode*)float_to_int;
+              *out_expr = (AstNode2*)float_to_int;
             }
             else if(types_are_equal(from_type, basic_type_bool)
                     || types_are_equal(from_type, basic_type_char)
@@ -1304,7 +1304,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
               int_to_float->op = AstCstOperator_IntToFloat;
               int_to_float->type = basic_type_float;
               int_to_float->operand = cast->expr;
-              *out_expr = (AstNode*)int_to_float;
+              *out_expr = (AstNode2*)int_to_float;
             }
             else
               success = compile_error(&expr->src_loc, "invalid cast : `%s` to `%s`",
@@ -1337,7 +1337,7 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
       }
     }
   }
-  else if(expr->kind == AstKind_AstNew)
+  else if(expr->kind == AstKind2_AstNew)
   {
     AstNew* new_ast = (AstNew*)expr;
     if(success = sem_type_expr(new_ast->type_expr))
@@ -1351,11 +1351,11 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
         else
           new_ast->type = new_pointer_type(new_ast->type_expr->type);
 
-        new_ast->size_expr = (AstNode*)new_bin_expr(&new_ast->src_loc);
+        new_ast->size_expr = (AstNode2*)new_bin_expr(&new_ast->src_loc);
         AstBinExpr* size_expr = (AstBinExpr*)new_ast->size_expr;
 
         size_expr->op = AstCstOperator_Mul;
-        size_expr->left_operand = (AstNode*)new_int_literal(&new_ast->src_loc, compute_type_width(type_expr));
+        size_expr->left_operand = (AstNode2*)new_int_literal(&new_ast->src_loc, compute_type_width(type_expr));
         size_expr->right_operand = new_ast->count_expr;
 
         success = sem_expression(module_block, block, new_ast->size_expr, &new_ast->size_expr);
@@ -1364,12 +1364,12 @@ sem_expression(AstBlock* module_block, AstBlock* block, AstNode* expr, AstNode**
         success = compile_error(&new_ast->type_expr->src_loc, "new() : `%s` type not allowed", get_type_printstr(type_expr));
     }
   }
-  else if(expr->kind == AstKind_AstPutc)
+  else if(expr->kind == AstKind2_AstPutc)
   {
     success = compile_error(&expr->src_loc, "putc() used in expression");
   }
   else
-    fail("not implemented : %s", get_ast_kind_printstr(expr->kind));
+    fail("not implemented : %s", get_ast2_kind_printstr(expr->kind));
   return success;
 }
 #endif
@@ -1396,7 +1396,7 @@ sem_proc_formal_args(AstBlock* block, AstProc* proc)
           list_item = list_item->next)
       {
         var_decl = (AstVarDecl*)list_item->elem;
-        assert(var_decl->kind == AstKind_AstVarDecl);
+        assert(var_decl->kind == AstKind2_AstVarDecl);
         assert(var_decl->id);
         assert(!var_decl->init_expr);
         if(success = register_var_decl(var_decl))
@@ -1419,7 +1419,7 @@ sem_proc_ret_var(AstBlock* block, AstProc* proc)
   bool success = true;
 
   AstVarDecl* var_decl = new_var_decl(&proc->src_loc);
-  proc->ret_var = (AstNode*)var_decl;
+  proc->ret_var = (AstNode2*)var_decl;
   var_decl->id = make_tempvar_id(&proc->src_loc, "ret");
   var_decl->type_expr = proc->ret_type_expr;
   if(success = register_var_decl(var_decl))
@@ -1465,16 +1465,16 @@ bool
 sem_statement(AstBlock* module_block,
              AstProc* proc,
              AstBlock* block,
-             AstNode* loop,
-             AstNode* stmt)
+             AstNode2* loop,
+             AstNode2* stmt)
 {
   bool success = true;
 
-  if(stmt->kind == AstKind_AstVarDecl)
+  if(stmt->kind == AstKind2_AstVarDecl)
     success = sem_var_decl(module_block, block, (AstVarDecl*)stmt);
-  else if(stmt->kind == AstKind_AstBinExpr || stmt->kind == AstKind_AstCall)
+  else if(stmt->kind == AstKind2_AstBinExpr || stmt->kind == AstKind2_AstCall)
     success = sem_expression(module_block, block, stmt, &stmt);
-  else if(stmt->kind == AstKind_AstUnaryExpr)
+  else if(stmt->kind == AstKind2_AstUnaryExpr)
   {
     AstUnaryExpr* unr_expr = (AstUnaryExpr*)stmt;
     if(unr_expr->op == AstCstOperator_PostDecrement
@@ -1483,16 +1483,16 @@ sem_statement(AstBlock* module_block,
        || unr_expr->op == AstCstOperator_PreIncrement)
       success = sem_expression(module_block, block, stmt, &stmt);
     else
-      success = compile_error(&stmt->src_loc, "unexpected statement %s", get_ast_kind_printstr(stmt->kind));
+      success = compile_error(&stmt->src_loc, "unexpected statement %s", get_ast2_kind_printstr(stmt->kind));
   }
-  else if(stmt->kind == AstKind_AstWhileStmt)
+  else if(stmt->kind == AstKind2_AstWhileStmt)
   {
     AstWhileStmt* while_stmt = (AstWhileStmt*)stmt;
     if(success = sem_expression(module_block, block, while_stmt->cond_expr, &while_stmt->cond_expr))
     {
       if(type_unif(while_stmt->cond_expr->type, basic_type_bool))
       {
-        if(while_stmt->body->kind == AstKind_AstBlock)
+        if(while_stmt->body->kind == AstKind2_AstBlock)
         {
           if(success = scope_begin((AstBlock*)while_stmt->body))
           {
@@ -1507,10 +1507,10 @@ sem_statement(AstBlock* module_block,
         success = compile_error(&stmt->src_loc, "boolan expression is expected");
     }
   }
-  else if(stmt->kind == AstKind_AstForStmt)
+  else if(stmt->kind == AstKind2_AstForStmt)
   {
     AstForStmt* for_stmt = (AstForStmt*)stmt;
-    if(for_stmt->body->kind == AstKind_AstBlock)
+    if(for_stmt->body->kind == AstKind2_AstBlock)
     {
       if(success = scope_begin((AstBlock*)for_stmt->body))
       {
@@ -1533,14 +1533,14 @@ sem_statement(AstBlock* module_block,
     else
       assert(0);
   }
-  else if(stmt->kind == AstKind_AstIfStmt)
+  else if(stmt->kind == AstKind2_AstIfStmt)
   {
     AstIfStmt* if_stmt = (AstIfStmt*)stmt;
     if(success = sem_expression(module_block, block, if_stmt->cond_expr, &if_stmt->cond_expr))
     {
       if(type_unif(if_stmt->cond_expr->type, basic_type_bool))
       {
-        if(if_stmt->body->kind == AstKind_AstBlock)
+        if(if_stmt->body->kind == AstKind2_AstBlock)
         {
           if(success = scope_begin((AstBlock*)if_stmt->body))
           {
@@ -1555,7 +1555,7 @@ sem_statement(AstBlock* module_block,
         {
           if(if_stmt->else_body)
           {
-            if(if_stmt->else_body->kind == AstKind_AstBlock)
+            if(if_stmt->else_body->kind == AstKind2_AstBlock)
             {
               if(success = scope_begin((AstBlock*)if_stmt->else_body))
               {
@@ -1572,7 +1572,7 @@ sem_statement(AstBlock* module_block,
         success = compile_error(&stmt->src_loc, "boolan expression is expected");
     }
   }
-  else if(stmt->kind == AstKind_AstReturnStmt)
+  else if(stmt->kind == AstKind2_AstReturnStmt)
   {
     if(proc)
     {
@@ -1583,7 +1583,7 @@ sem_statement(AstBlock* module_block,
       assert(!stmt->type);
       stmt->type = basic_type_void;
 
-      AstNode* ret_expr = ret_stmt->expr;
+      AstNode2* ret_expr = ret_stmt->expr;
       AstVarDecl* ret_var = (AstVarDecl*)proc->ret_var;
 
       if(ret_expr)
@@ -1591,10 +1591,10 @@ sem_statement(AstBlock* module_block,
         AstBinExpr* bin_expr = new_bin_expr(&stmt->src_loc);
         ret_stmt->assign_expr = bin_expr;
         bin_expr->op = AstCstOperator_Assign;
-        bin_expr->left_operand = (AstNode*)new_id(&ret_expr->src_loc, ret_var->id->name);
+        bin_expr->left_operand = (AstNode2*)new_id(&ret_expr->src_loc, ret_var->id->name);
         bin_expr->right_operand = ret_expr;
 
-        if(success = sem_expression(module_block, block, (AstNode*)bin_expr, &(AstNode*)bin_expr))
+        if(success = sem_expression(module_block, block, (AstNode2*)bin_expr, &(AstNode2*)bin_expr))
           stmt->type = bin_expr->type;
       }
       else if(!(success = type_unif(ret_var->type, stmt->type)))
@@ -1617,26 +1617,26 @@ sem_statement(AstBlock* module_block,
     else
       success = compile_error(&stmt->src_loc, "unexpected `return` at this location");
   }
-  else if(stmt->kind == AstKind_AstId ||
-          stmt->kind == AstKind_AstLiteral)
+  else if(stmt->kind == AstKind2_AstId ||
+          stmt->kind == AstKind2_AstLiteral)
   {
-    success = compile_error(&stmt->src_loc, "unexpected statement `%s` at this location", get_ast_kind_printstr(stmt->kind));
+    success = compile_error(&stmt->src_loc, "unexpected statement `%s` at this location", get_ast2_kind_printstr(stmt->kind));
   }
-  else if(stmt->kind == AstKind_AstBreakStmt || stmt->kind == AstKind_AstContinueStmt)
+  else if(stmt->kind == AstKind2_AstBreakStmt || stmt->kind == AstKind2_AstContinueStmt)
   {
     if(loop)
     {
-      AstNode* loop_body = 0;
-      if(loop->kind == AstKind_AstWhileStmt)
+      AstNode2* loop_body = 0;
+      if(loop->kind == AstKind2_AstWhileStmt)
         loop_body = ((AstWhileStmt*)loop)->body;
-      else if(loop->kind = AstKind_AstForStmt)
-        loop_body = (AstNode*)((AstForStmt*)loop)->body;
+      else if(loop->kind = AstKind2_AstForStmt)
+        loop_body = (AstNode2*)((AstForStmt*)loop)->body;
       assert(loop_body);
 
       AstLoopCtrl* loop_ctrl = (AstLoopCtrl*)stmt;
       loop_ctrl->loop = loop;
       loop_ctrl->nesting_depth = 0;
-      if(loop_body->kind == AstKind_AstBlock)
+      if(loop_body->kind == AstKind2_AstBlock)
       {
         AstBlock* loop_encl_block = ((AstBlock*)loop_body)->encl_block;
         loop_ctrl->nesting_depth = block->nesting_depth - loop_encl_block->nesting_depth;
@@ -1645,17 +1645,17 @@ sem_statement(AstBlock* module_block,
         assert(loop_body == stmt);
     }
     else
-      success = compile_error(&stmt->src_loc, "unexpected `%s` at this location", get_ast_kind_printstr(stmt->kind));
+      success = compile_error(&stmt->src_loc, "unexpected `%s` at this location", get_ast2_kind_printstr(stmt->kind));
   }
-  else if(stmt->kind == AstKind_AstEmptyStmt)
+  else if(stmt->kind == AstKind2_AstEmptyStmt)
   {
     ;//OK
   }
-  else if(stmt->kind == AstKind_AstNew)
+  else if(stmt->kind == AstKind2_AstNew)
   {
     success = compile_error(&stmt->src_loc, "new() used as a statement");
   }
-  else if(stmt->kind == AstKind_AstPutc)
+  else if(stmt->kind == AstKind2_AstPutc)
   {
     AstPutc* putc_ast = (AstPutc*)stmt;
     if(putc_ast->expr)
@@ -1672,7 +1672,7 @@ sem_statement(AstBlock* module_block,
     else
       success = compile_error(&stmt->src_loc, "putc : argument required");
   }
-  else if(stmt->kind == AstKind_AstBlock)
+  else if(stmt->kind == AstKind2_AstBlock)
   {
     // anonymours block
     if(success = scope_begin((AstBlock*)stmt))
@@ -1691,7 +1691,7 @@ sem_statement(AstBlock* module_block,
 bool
 sem_stmt_block(AstBlock* module_block,
               AstProc* proc,
-              AstNode* loop,
+              AstNode2* loop,
               AstBlock* block)
 {
   bool success = true;
@@ -1700,33 +1700,33 @@ sem_stmt_block(AstBlock* module_block,
       list_item && success;
       list_item = list_item->next)
   {
-    success = sem_statement(module_block, proc, block, loop, (AstNode*)list_item->elem);
+    success = sem_statement(module_block, proc, block, loop, (AstNode2*)list_item->elem);
   }
   return success;
 }
 #endif
 
-AstNode*
-make_ast_var_occur(AstNode* var_decl)
+AstNode2*
+make_ast2_var_occur(AstNode2* var_decl)
 {
-  AstNode* var_occur = new_ast_var_occur(var_decl->src_loc, AST(var_decl, var_decl)->var_name);
-  AST(var_occur, var_occur)->occur_scope = symbol_table->local_scope;
-  AST(var_occur, var_occur)->decl_scope_offset =
-    AST(var_decl, var_decl)->decl_scope->scope_id - AST(var_occur, var_occur)->occur_scope->scope_id;
-  AST(var_occur, var_occur)->var_decl = var_decl;
+  AstNode2* var_occur = new_ast2_var_occur(var_decl->src_loc, AST2(var_decl, var_decl)->var_name);
+  AST2(var_occur, var_occur)->occur_scope = symbol_table->local_scope;
+  AST2(var_occur, var_occur)->decl_scope_offset =
+    AST2(var_decl, var_decl)->decl_scope->scope_id - AST2(var_occur, var_occur)->occur_scope->scope_id;
+  AST2(var_occur, var_occur)->var_decl = var_decl;
   return var_occur;
 }
 
 #if 0
-AstNode*
-make_ast_proc_occur(SourceLoc* src_loc, char* proc_name)
+AstNode2*
+make_ast2_proc_occur(SourceLoc* src_loc, char* proc_name)
 {
-  AstNode* proc_occur = 0;
+  AstNode2* proc_occur = 0;
   Symbol* sym = lookup_symbol(proc_name, SymbolKind_proc_decl);
   if(sym)
   {
-    proc_occur = new_ast_proc_occur(src_loc, proc_name);
-    AST(proc_occur, proc_occur)->proc_decl = SYM(sym, proc_decl);
+    proc_occur = new_ast2_proc_occur(src_loc, proc_name);
+    AST2(proc_occur, proc_occur)->proc_decl = SYM(sym, proc_decl);
   }
   return proc_occur;
 }
@@ -1734,54 +1734,54 @@ make_ast_proc_occur(SourceLoc* src_loc, char* proc_name)
 
 #if 1
 bool
-build_ast_module(CstNode* cst_module, AstNode** module)
+build_ast2_module(AstNode1* cst_module, AstNode2** module)
 {
   bool success = true;
 
-  *module = new_ast_module(cst_module->src_loc);
-  AstNode* body = AST(*module, module)->body = new_ast_block(CST(cst_module, module)->body->src_loc);
+  *module = new_ast2_module(cst_module->src_loc);
+  AstNode2* body = AST2(*module, module)->body = new_ast2_block(AST1(cst_module, module)->body->src_loc);
 
-  if(success = begin_scope(cst_module->src_loc, &AST(body, block)->scope))
+  if(success = begin_scope(cst_module->src_loc, &AST2(body, block)->scope))
   {
-    //symbol_table->module_scope = AST(body, block)->scope;
+    //symbol_table->module_scope = AST2(body, block)->scope;
 
-    for(ListItem* list_item = CST(CST(cst_module, module)->body, block)->nodes->first;
+    for(ListItem* list_item = AST1(AST1(cst_module, module)->body, block)->nodes->first;
         list_item && success;
         list_item = list_item->next)
     {
-      CstNode* cst_node = CST_ITEM(list_item);
-      AstNode* module_block = AST(*module, module)->body;
-      if(cst_node->kind == CstKind_var)
+      AstNode1* ast1_node = CST_ITEM(list_item);
+      AstNode2* module_block = AST2(*module, module)->body;
+      if(ast1_node->kind == AstKind1_var)
       {
-        AstNode* node = 0;
-        if(build_ast_var_decl(cst_node, &node))
+        AstNode2* node = 0;
+        if(build_ast2_var_decl(ast1_node, &node))
         {
-          CstNode* cst_init_expr = CST(cst_node, var)->init_expr;
+          AstNode1* cst_init_expr = AST1(ast1_node, var)->init_expr;
           if(cst_init_expr)
           {
-            AstNode* init_expr = new_ast_node(cst_init_expr->src_loc, AstKind_binop_occur);
-            AST(init_expr, binop_occur)->op_decl = &operator_table[OperatorKind_Assign];
-            AST(init_expr, binop_occur)->left_operand = make_ast_var_occur(node);
+            AstNode2* init_expr = new_ast2_node(cst_init_expr->src_loc, AstKind2_binop_occur);
+            AST2(init_expr, binop_occur)->op_decl = &operator_table[OperatorKind_Assign];
+            AST2(init_expr, binop_occur)->left_operand = make_ast2_var_occur(node);
             //TODO: Set the right_operand!
-            append_list_elem(arena, AST(module_block, block)->stmts, init_expr, ListKind_ast_node);
+            append_list_elem(arena, AST2(module_block, block)->stmts, init_expr, ListKind_ast2_node);
 #if 0
-            AstNode* init_expr = new_ast_builtin_proc_occur(cst_init_expr->src_loc, AstBuiltinProc_assign);
+            AstNode2* init_expr = new_ast2_builtin_proc_occur(cst_init_expr->src_loc, AstBuiltinProc_assign);
             if(success = register_builtin_proc_occur(init_expr))
             {
-              append_list_elem(arena, AST(init_expr, proc_occur)->actual_args, make_ast_var_occur(node), ListKind_ast_node);
+              append_list_elem(arena, AST2(init_expr, proc_occur)->actual_args, make_ast2_var_occur(node), ListKind_ast2_node);
               //TODO: Add the second argument!!
-              append_list_elem(arena, AST(module_block, block)->stmts, init_expr, ListKind_ast_node);
+              append_list_elem(arena, AST2(module_block, block)->stmts, init_expr, ListKind_ast2_node);
             }
 #endif
           }
         }
-        else if(cst_node->kind == CstKind_proc)
+        else if(ast1_node->kind == AstKind1_proc)
         {
 #if 1
-          auto* cst_proc = CST(cst_node, proc);
-          AstNode* proc = new_ast_proc_decl(cst_node->src_loc, CST(cst_proc->id, id)->name);
-          AstNode* body = AST(proc, proc_decl)->body;
-          if(success = begin_scope(body->src_loc, &AST(body, block)->scope))
+          auto* cst_proc = AST1(ast1_node, proc);
+          AstNode2* proc = new_ast2_proc_decl(ast1_node->src_loc, AST1(cst_proc->id, id)->name);
+          AstNode2* body = AST2(proc, proc_decl)->body;
+          if(success = begin_scope(body->src_loc, &AST2(body, block)->scope))
           {
             end_scope();
           }
@@ -1790,7 +1790,7 @@ build_ast_module(CstNode* cst_module, AstNode** module)
       }
 #if 0
       else
-        success = compile_error(cst_node->src_loc, "unexpected statement `%s`", get_ast_kind_printstr(cst_node->kind));
+        success = compile_error(ast1_node->src_loc, "unexpected statement `%s`", get_ast2_kind_printstr(ast1_node->kind));
 #endif
     }
 
@@ -1802,7 +1802,7 @@ build_ast_module(CstNode* cst_module, AstNode** module)
 #else
 bool
 sem_module_block(AstProc* proc,
-                AstNode* loop,
+                AstNode2* loop,
                 AstBlock* block)
 {
   bool success = true;
@@ -1811,23 +1811,23 @@ sem_module_block(AstProc* proc,
       list_item && success;
       list_item = list_item->next)
   {
-    AstNode* stmt = (AstNode*)list_item->elem;
-    if(stmt->kind == AstKind_AstVarDecl)
+    AstNode2* stmt = (AstNode2*)list_item->elem;
+    if(stmt->kind == AstKind2_AstVarDecl)
       success = sem_var_decl(block, block, (AstVarDecl*)stmt);
-    else if(stmt->kind == AstKind_AstProc)
+    else if(stmt->kind == AstKind2_AstProc)
       success = sem_proc_decl(block, (AstProc*)stmt);
-    else if(stmt->kind == AstKind_AstLabel
-            || stmt->kind == AstKind_AstCall
-            || stmt->kind == AstKind_AstId
-            || stmt->kind == AstKind_AstLiteral
-            || stmt->kind == AstKind_AstBinExpr
-            || stmt->kind == AstKind_AstUnaryExpr)
+    else if(stmt->kind == AstKind2_AstLabel
+            || stmt->kind == AstKind2_AstCall
+            || stmt->kind == AstKind2_AstId
+            || stmt->kind == AstKind2_AstLiteral
+            || stmt->kind == AstKind2_AstBinExpr
+            || stmt->kind == AstKind2_AstUnaryExpr)
     {
-      success = compile_error(&stmt->src_loc, "unexpected statement %s", get_ast_kind_printstr(stmt->kind));
+      success = compile_error(&stmt->src_loc, "unexpected statement %s", get_ast2_kind_printstr(stmt->kind));
     }
-    else if(stmt->kind == AstKind_AstStruct
-            || stmt->kind == AstKind_AstUnion
-            || stmt->kind == AstKind_AstEnum)
+    else if(stmt->kind == AstKind2_AstStruct
+            || stmt->kind == AstKind2_AstUnion
+            || stmt->kind == AstKind2_AstEnum)
     {
       fail("Not implemented");
     }
@@ -1848,25 +1848,25 @@ init_symbol_table()
 void
 init_operator_table()
 {
-  operator_table = mem_push_array(arena, AstNode, OperatorKind__Count);
-  AstNode* op;
+  operator_table = mem_push_array(arena, AstNode2, OperatorKind__Count);
+  AstNode2* op;
   OperatorKind kind;
 
   kind = OperatorKind_Assign;
   op = &operator_table[kind];
   op->src_loc = 0;
-  op->kind = AstKind_binop_decl;
-  AST(op, binop_decl)->kind = kind;
+  op->kind = AstKind2_binop_decl;
+  AST2(op, binop_decl)->kind = kind;
 
   kind = OperatorKind_Add;
   op = &operator_table[kind];
   op->src_loc = 0;
-  op->kind = AstKind_binop_decl;
-  AST(op, binop_decl)->kind = kind;
+  op->kind = AstKind2_binop_decl;
+  AST2(op, binop_decl)->kind = kind;
 }
 
 bool
-build_ast(CstNode* cst_node, AstNode** node)
+build_ast(AstNode1* ast1_node, AstNode2** node)
 {
   bool success = true;
 
@@ -1879,24 +1879,24 @@ build_ast(CstNode* cst_node, AstNode** node)
     add_builtin_types();
     //add_builtin_procs();
 
-    auto* cst_module = CST(cst_node, module);
+    auto* cst_module = AST1(ast1_node, module);
 
     // process the includes
-    for(ListItem* list_item = CST(cst_module->body, block)->nodes->first;
+    for(ListItem* list_item = AST1(cst_module->body, block)->nodes->first;
         list_item;
         list_item = list_item->next)
     {
-      assert(list_item->kind == ListKind_cst_node);
-      CstNode* stmt = list_item->cst_node;
+      assert(list_item->kind == ListKind_ast1_node);
+      AstNode1* stmt = list_item->ast1_node;
 
-      if(stmt->kind == CstKind_include)
+      if(stmt->kind == AstKind1_include)
       {
-        auto* include = CST(stmt, include);
-        process_includes(CST(include->body, block)->nodes, CST(cst_module->body, block)->nodes, list_item);
+        auto* include = AST1(stmt, include);
+        process_includes(AST1(include->body, block)->nodes, AST1(cst_module->body, block)->nodes, list_item);
       }
     }
 
-    success = build_ast_module(cst_node, node);
+    success = build_ast2_module(ast1_node, node);
     end_scope();
 #if 0
     AstCall* main_call = new_call(deflt_src_loc);
@@ -1910,7 +1910,7 @@ build_ast(CstNode* cst_node, AstNode** node)
       else
       {
         AstProc* main_proc = (AstProc*)main_call->proc_sym->ast;
-        assert(main_proc->kind == AstKind_AstProc);
+        assert(main_proc->kind == AstKind2_AstProc);
         success = compile_error(&main_proc->src_loc, "main() must return a `int`");
       }
     }
@@ -1935,13 +1935,13 @@ DEBUG_print_scope(String* str, int indent_level, Scope* scope, char* tag)
     DEBUG_print_line(str, indent_level, "scope_id: %d", scope->scope_id);
     DEBUG_print_line(str, indent_level, "nesting_depth: %d", scope->nesting_depth);
     DEBUG_print_scope(str, indent_level, scope->encl_scope, "encl_scope");
-    DEBUG_print_xst_node_list(str, indent_level, "local_decls", scope->local_decls);
-    DEBUG_print_xst_node_list(str, indent_level, "nonlocal_occurs", scope->nonlocal_occurs);
+    DEBUG_print_ast_node_list(str, indent_level, "local_decls", scope->local_decls);
+    DEBUG_print_ast_node_list(str, indent_level, "nonlocal_occurs", scope->nonlocal_occurs);
   }
 }
 
 void
-DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
+DEBUG_print_ast2_node(String* str, int indent_level, char* tag, AstNode2* node)
 {
   if(node)
   {
@@ -1954,11 +1954,11 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     if(node->src_loc)
     {
       DEBUG_print_line(str, indent_level, "%s src_line=\"%s:%d\"",
-          get_ast_kind_printstr(node->kind), node->src_loc->file_path, node->src_loc->line_nr);
+          get_ast2_kind_printstr(node->kind), node->src_loc->file_path, node->src_loc->line_nr);
     }
     else
     {
-      DEBUG_print_line(str, indent_level, "%s", get_ast_kind_printstr(node->kind));
+      DEBUG_print_line(str, indent_level, "%s", get_ast2_kind_printstr(node->kind));
     }
 #else
     if(node->src_loc)
@@ -1968,51 +1968,51 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
 #endif
     ++indent_level;
 
-    if(node->kind == AstKind_module)
+    if(node->kind == AstKind2_module)
     {
-      auto* module = AST(node, module);
-      DEBUG_print_ast_node(str, indent_level, "body", module->body);
-      DEBUG_print_xst_node_list(str, indent_level, "procs", module->procs);
+      auto* module = AST2(node, module);
+      DEBUG_print_ast2_node(str, indent_level, "body", module->body);
+      DEBUG_print_ast_node_list(str, indent_level, "procs", module->procs);
     }
-    else if(node->kind == AstKind_block)
+    else if(node->kind == AstKind2_block)
     {
-      auto* block = AST(node, block);
-      DEBUG_print_xst_node_list(str, indent_level, "stmts", block->stmts);
+      auto* block = AST2(node, block);
+      DEBUG_print_ast_node_list(str, indent_level, "stmts", block->stmts);
       DEBUG_print_scope(str, indent_level, block->scope, "scope");
     }
-    else if(node->kind == AstKind_stmt)
+    else if(node->kind == AstKind2_stmt)
     {
-      auto* stmt = AST(node, stmt);
-      DEBUG_print_ast_node(str, indent_level, "stmt", stmt->stmt);
+      auto* stmt = AST2(node, stmt);
+      DEBUG_print_ast2_node(str, indent_level, "stmt", stmt->stmt);
     }
-    else if(node->kind == AstKind_var_decl)
+    else if(node->kind == AstKind2_var_decl)
     {
-      auto* var_decl = AST(node, var_decl);
+      auto* var_decl = AST2(node, var_decl);
       DEBUG_print_line(str, indent_level, "var_name: %s", var_decl->var_name);
     }
-    else if(node->kind == AstKind_proc_occur)
+    else if(node->kind == AstKind2_proc_occur)
     {
-      auto* proc_occur = AST(node, proc_occur);
+      auto* proc_occur = AST2(node, proc_occur);
       DEBUG_print_line(str, indent_level, "proc_name: %s", proc_occur->proc_name);
-      DEBUG_print_xst_node_list(str, indent_level, "actual_args", proc_occur->actual_args);
+      DEBUG_print_ast_node_list(str, indent_level, "actual_args", proc_occur->actual_args);
     }
-    else if(node->kind == AstKind_var_occur)
+    else if(node->kind == AstKind2_var_occur)
     {
-      auto* var_occur = AST(node, var_occur);
+      auto* var_occur = AST2(node, var_occur);
       DEBUG_print_line(str, indent_level, "var_name: %s", var_occur->var_name);
       DEBUG_print_line(str, indent_level, "decl_scope_offset: %d", var_occur->decl_scope_offset);
     }
-    else if(node->kind == AstKind_binop_decl)
+    else if(node->kind == AstKind2_binop_decl)
     {
-      auto* binop_decl = AST(node, binop_decl);
+      auto* binop_decl = AST2(node, binop_decl);
       DEBUG_print_line(str, indent_level, "kind: %s", get_op_kind_printstr(binop_decl->kind));
     }
-    else if(node->kind == AstKind_binop_occur)
+    else if(node->kind == AstKind2_binop_occur)
     {
-      auto* binop_occur = AST(node, binop_occur);
-      DEBUG_print_ast_node(str, indent_level, "op_decl", binop_occur->op_decl);
-      DEBUG_print_ast_node(str, indent_level, "left_operand", binop_occur->left_operand);
-      DEBUG_print_ast_node(str, indent_level, "right_operand", binop_occur->right_operand);
+      auto* binop_occur = AST2(node, binop_occur);
+      DEBUG_print_ast2_node(str, indent_level, "op_decl", binop_occur->op_decl);
+      DEBUG_print_ast2_node(str, indent_level, "left_operand", binop_occur->left_operand);
+      DEBUG_print_ast2_node(str, indent_level, "right_operand", binop_occur->right_operand);
     }
     else
       assert(0);

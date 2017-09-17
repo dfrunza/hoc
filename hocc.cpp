@@ -7,7 +7,7 @@ bool DEBUG_check_arena_bounds = true;
 MemoryArena* arena = 0;
 MemoryArena* symbol_table_arena = 0;
 
-AstNode* operator_table = 0;
+AstNode2* operator_table = 0;
 SymbolTable* symbol_table = 0;
 int last_scope_id = 0;
 int tempvar_id = 0;
@@ -65,84 +65,84 @@ struct NodeStructInfo
 
   union
   {
-    enum CstKind cst_kind;
-    enum AstKind ast_kind;
+    enum AstKind1 ast1_kind;
+    enum AstKind2 ast2_kind;
   };
 };
 
-#define DEBUG_make_cst_struct_info(KIND)\
+#define DEBUG_make_ast1_struct_info(KIND)\
 {\
-  struct CstNode node = {};\
-  node.kind = CstKind_##KIND;\
-  struct_info[CstKind_##KIND].cst_kind = CstKind_##KIND;\
-  struct_info[CstKind_##KIND].size = sizeof(node.##KIND);\
+  struct AstNode1 node = {};\
+  node.kind = AstKind1_##KIND;\
+  struct_info[AstKind1_##KIND].ast1_kind = AstKind1_##KIND;\
+  struct_info[AstKind1_##KIND].size = sizeof(node.##KIND);\
 }\
 
-#define DEBUG_make_ast_struct_info(KIND)\
+#define DEBUG_make_ast2_struct_info(KIND)\
 {\
-  struct AstNode node = {};\
-  node.kind = AstKind_##KIND;\
-  struct_info[AstKind_##KIND].ast_kind = AstKind_##KIND;\
-  struct_info[AstKind_##KIND].size = sizeof(node.##KIND);\
+  struct AstNode2 node = {};\
+  node.kind = AstKind2_##KIND;\
+  struct_info[AstKind2_##KIND].ast2_kind = AstKind2_##KIND;\
+  struct_info[AstKind2_##KIND].size = sizeof(node.##KIND);\
 }\
 
 void
-DEBUG_print_sizeof_xst_structs(enum NodeKind node_kind)
+DEBUG_print_sizeof_ast_structs(enum NodeKind node_kind)
 {
   NodeStructInfo* struct_info = {};
   int info_count = 0;
 
   if(node_kind == NodeKind_cst)
   {
-    info_count = CstKind__Count;
+    info_count = AstKind1__Count;
     struct_info = mem_push_array(arena, NodeStructInfo, info_count);
 
-    assert(CstKind__None == 0);
-    DEBUG_make_cst_struct_info(bin_expr);
-    DEBUG_make_cst_struct_info(un_expr);
-    DEBUG_make_cst_struct_info(lit);
-    DEBUG_make_cst_struct_info(var);
-    DEBUG_make_cst_struct_info(block);
-    DEBUG_make_cst_struct_info(proc);
-    DEBUG_make_cst_struct_info(id);
-    DEBUG_make_cst_struct_info(while_stmt);
-    DEBUG_make_cst_struct_info(for_stmt);
-    DEBUG_make_cst_struct_info(if_stmt);
-    DEBUG_make_cst_struct_info(return_stmt);
-    DEBUG_make_cst_struct_info(goto_stmt);
-    DEBUG_make_cst_struct_info(label);
-    DEBUG_make_cst_struct_info(include);
-    DEBUG_make_cst_struct_info(module);
-    DEBUG_make_cst_struct_info(cast);
-    DEBUG_make_cst_struct_info(call);
-    DEBUG_make_cst_struct_info(array);
-    DEBUG_make_cst_struct_info(pointer);
-    DEBUG_make_cst_struct_info(struct_decl);
-    DEBUG_make_cst_struct_info(union_decl);
-    DEBUG_make_cst_struct_info(enum_decl);
-    DEBUG_make_cst_struct_info(init_list);
+    assert(AstKind1__None == 0);
+    DEBUG_make_ast1_struct_info(bin_expr);
+    DEBUG_make_ast1_struct_info(un_expr);
+    DEBUG_make_ast1_struct_info(lit);
+    DEBUG_make_ast1_struct_info(var);
+    DEBUG_make_ast1_struct_info(block);
+    DEBUG_make_ast1_struct_info(proc);
+    DEBUG_make_ast1_struct_info(id);
+    DEBUG_make_ast1_struct_info(while_stmt);
+    DEBUG_make_ast1_struct_info(for_stmt);
+    DEBUG_make_ast1_struct_info(if_stmt);
+    DEBUG_make_ast1_struct_info(return_stmt);
+    DEBUG_make_ast1_struct_info(goto_stmt);
+    DEBUG_make_ast1_struct_info(label);
+    DEBUG_make_ast1_struct_info(include);
+    DEBUG_make_ast1_struct_info(module);
+    DEBUG_make_ast1_struct_info(cast);
+    DEBUG_make_ast1_struct_info(call);
+    DEBUG_make_ast1_struct_info(array);
+    DEBUG_make_ast1_struct_info(pointer);
+    DEBUG_make_ast1_struct_info(struct_decl);
+    DEBUG_make_ast1_struct_info(union_decl);
+    DEBUG_make_ast1_struct_info(enum_decl);
+    DEBUG_make_ast1_struct_info(init_list);
   }
   else if(node_kind == NodeKind_ast)
   {
-    info_count = AstKind__Count;
+    info_count = AstKind2__Count;
     struct_info = mem_push_array(arena, NodeStructInfo, info_count);
 
-    assert(AstKind__None == 0);
-    DEBUG_make_ast_struct_info(block);
-    DEBUG_make_ast_struct_info(module);
-    DEBUG_make_ast_struct_info(stmt);
-    DEBUG_make_ast_struct_info(var_decl);
-    DEBUG_make_ast_struct_info(var_occur);
-    DEBUG_make_ast_struct_info(type_decl);
-    DEBUG_make_ast_struct_info(type_occur);
-    DEBUG_make_ast_struct_info(proc_decl);
-    DEBUG_make_ast_struct_info(proc_occur);
-    DEBUG_make_ast_struct_info(return_stmt);
-    DEBUG_make_ast_struct_info(if_stmt);
-    DEBUG_make_ast_struct_info(while_stmt);
-    DEBUG_make_ast_struct_info(do_while_stmt);
-    DEBUG_make_ast_struct_info(continue_stmt);
-    DEBUG_make_ast_struct_info(break_stmt);
+    assert(AstKind2__None == 0);
+    DEBUG_make_ast2_struct_info(block);
+    DEBUG_make_ast2_struct_info(module);
+    DEBUG_make_ast2_struct_info(stmt);
+    DEBUG_make_ast2_struct_info(var_decl);
+    DEBUG_make_ast2_struct_info(var_occur);
+    DEBUG_make_ast2_struct_info(type_decl);
+    DEBUG_make_ast2_struct_info(type_occur);
+    DEBUG_make_ast2_struct_info(proc_decl);
+    DEBUG_make_ast2_struct_info(proc_occur);
+    DEBUG_make_ast2_struct_info(return_stmt);
+    DEBUG_make_ast2_struct_info(if_stmt);
+    DEBUG_make_ast2_struct_info(while_stmt);
+    DEBUG_make_ast2_struct_info(do_while_stmt);
+    DEBUG_make_ast2_struct_info(continue_stmt);
+    DEBUG_make_ast2_struct_info(break_stmt);
   }
   else
     assert(0);
@@ -170,11 +170,11 @@ DEBUG_print_sizeof_xst_structs(enum NodeKind node_kind)
       const char* kind_str = 0;
       if(node_kind == NodeKind_cst)
       {
-        kind_str = get_cst_kind_printstr(info->cst_kind);
+        kind_str = get_ast1_kind_printstr(info->ast1_kind);
       }
       else if(node_kind == NodeKind_ast)
       {
-        kind_str = get_ast_kind_printstr(info->ast_kind);
+        kind_str = get_ast2_kind_printstr(info->ast2_kind);
       }
       else
         assert(0);
@@ -201,7 +201,7 @@ DEBUG_print_line(String* str, int indent_level, char* message, ...)
 }
 
 void
-DEBUG_print_xst_node_list(String* str, int indent_level, char* tag, List* node_list)
+DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* node_list)
 {
   if(node_list->first)
   {
@@ -215,15 +215,15 @@ DEBUG_print_xst_node_list(String* str, int indent_level, char* tag, List* node_l
         list_item;
         list_item = list_item->next)
     {
-      if(list_item->kind == ListKind_cst_node)
+      if(list_item->kind == ListKind_ast1_node)
       {
-        CstNode* node = CST_ITEM(list_item);
-        DEBUG_print_cst_node(str, indent_level, 0, node);
+        AstNode1* node = CST_ITEM(list_item);
+        DEBUG_print_ast1_node(str, indent_level, 0, node);
       }
-      else if(list_item->kind == ListKind_ast_node)
+      else if(list_item->kind == ListKind_ast2_node)
       {
-        AstNode* node = AST_ITEM(list_item);
-        DEBUG_print_ast_node(str, indent_level, 0, node);
+        AstNode2* node = AST_ITEM(list_item);
+        DEBUG_print_ast2_node(str, indent_level, 0, node);
       }
       else
         assert(0);
@@ -242,21 +242,22 @@ translate(char* file_path, char* hoc_text)
   init_token_stream(&token_stream, hoc_text, file_path);
   get_next_token(&token_stream);
 
-  CstNode* module_cst = 0;
+  AstNode1* module_cst = 0;
   if(vm_program->success = parse(&token_stream, &module_cst))
   {
-    assert(module_cst->kind == CstKind_module);
+    assert(module_cst->kind == AstKind1_module);
     if(DEBUG_enabled)/*>>>*/
     {
       DEBUG_print_arena_usage("Syntactic");
 
       begin_temp_memory(&arena);
       String* str = str_new(arena);
-      DEBUG_print_cst_node(str, 0, "module", module_cst);
+      DEBUG_print_ast1_node(str, 0, "module", module_cst);
       str_dump_to_file(str, "debug_syntax.txt");
       end_temp_memory(&arena);
     }/*<<<*/
 
+#if 0
     AstNode* module_ast = 0;
     if(vm_program->success = build_ast(module_cst, &module_ast))
     {
@@ -269,7 +270,7 @@ translate(char* file_path, char* hoc_text)
 
         begin_temp_memory(&arena);
         String* str = str_new(arena);
-        DEBUG_print_ast_node(str, 0, "module", module_ast);
+        DEBUG_print_ast2_node(str, 0, "module", module_ast);
         str_dump_to_file(str, "debug_semantic.txt");
         end_temp_memory(&arena);
       }/*<<<*/
@@ -295,6 +296,7 @@ translate(char* file_path, char* hoc_text)
       }
 #endif
     }
+#endif
   }
   return vm_program;
 }
@@ -367,9 +369,9 @@ main(int argc, char* argv[])
     {
       begin_temp_memory(&arena);
       printf("----- CST struct sizes -----\n");
-      DEBUG_print_sizeof_xst_structs(NodeKind_cst);
+      DEBUG_print_sizeof_ast_structs(NodeKind_cst);
       printf("----- AST struct sizes -----\n");
-      DEBUG_print_sizeof_xst_structs(NodeKind_ast);
+      DEBUG_print_sizeof_ast_structs(NodeKind_ast);
       end_temp_memory(&arena);
     }/*<<<*/
 

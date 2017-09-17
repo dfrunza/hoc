@@ -1,5 +1,4 @@
-var int a = 112;
-var int b = a;
+include "str.hoc";
 
 proc int
 main()

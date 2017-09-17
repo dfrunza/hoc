@@ -597,10 +597,10 @@ stdin_read(char buf[], int buf_size)
   (((VAR)->kind == ListKind##_##NAME) ? (VAR)->NAME : 0)
 
 #define CST_ITEM(VAR)\
-  (((VAR)->kind == ListKind_cst_node) ? (VAR)->cst_node : 0)
+  (((VAR)->kind == ListKind_ast1_node) ? (VAR)->ast1_node : 0)
 
 #define AST_ITEM(VAR)\
-  (((VAR)->kind == ListKind_ast_node) ? (VAR)->ast_node : 0)
+  (((VAR)->kind == ListKind_ast2_node) ? (VAR)->ast2_node : 0)
 
 List*
 new_list(MemoryArena* arena, ListKind kind)

@@ -1,17 +1,17 @@
-bool parse_initializer_list(TokenStream*, CstNode**);
-bool parse_expression(TokenStream*, CstNode**);
-bool parse_node(TokenStream*, CstNode**);
-bool parse_selector(TokenStream*, CstNode**);
-bool parse_un_expr(TokenStream*, CstNode**);
+bool parse_initializer_list(TokenStream*, AstNode1**);
+bool parse_expression(TokenStream*, AstNode1**);
+bool parse_node(TokenStream*, AstNode1**);
+bool parse_selector(TokenStream*, AstNode1**);
+bool parse_un_expr(TokenStream*, AstNode1**);
 bool parse_struct_member_list(TokenStream*, List*);
 
-#define CST(VAR, KIND)\
-  (((VAR)->kind == CstKind##_##KIND) ? &(VAR)->KIND : 0)
+#define AST1(VAR, KIND)\
+  (((VAR)->kind == AstKind1##_##KIND) ? &(VAR)->KIND : 0)
 
-CstNode*
-new_cst_node(SourceLoc* src_loc, enum CstKind kind)
+AstNode1*
+new_ast1_node(SourceLoc* src_loc, enum AstKind1 kind)
 {
-  CstNode* node = mem_push_struct(arena, CstNode);
+  AstNode1* node = mem_push_struct(arena, AstNode1);
   node->kind = kind;
 
   node->src_loc = mem_push_struct(arena, SourceLoc);
@@ -19,108 +19,108 @@ new_cst_node(SourceLoc* src_loc, enum CstKind kind)
   return node;
 }
 
-CstNode*
-new_cst_statement(SourceLoc* src_loc, CstNode* stmt)
+AstNode1*
+new_ast1_statement(SourceLoc* src_loc, AstNode1* stmt)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_stmt);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_stmt);
   node->stmt.stmt = stmt;
   return node;
 }
 
-CstNode*
-new_cst_block(SourceLoc* src_loc)
+AstNode1*
+new_ast1_block(SourceLoc* src_loc)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_block);
-  node->block.nodes = new_list(arena, ListKind_cst_node);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_block);
+  node->block.nodes = new_list(arena, ListKind_ast1_node);
   return node;
 }
 
-CstNode*
-new_cst_module(SourceLoc* src_loc, char* file_path)
+AstNode1*
+new_ast1_module(SourceLoc* src_loc, char* file_path)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_module);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_module);
   node->module.file_path = file_path;
-  node->module.body = new_cst_block(src_loc);
+  node->module.body = new_ast1_block(src_loc);
   return node;
 }
 
-CstNode*
-new_cst_include(SourceLoc* src_loc, char* file_path)
+AstNode1*
+new_ast1_include(SourceLoc* src_loc, char* file_path)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_include);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_include);
   node->module.file_path = file_path;
-  node->module.body = new_cst_block(src_loc);
+  node->module.body = new_ast1_block(src_loc);
   return node;
 }
 
-CstNode*
-new_cst_id(SourceLoc* src_loc, char* name)
+AstNode1*
+new_ast1_id(SourceLoc* src_loc, char* name)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_id);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_id);
   node->id.name = name;
   return node;
 }
 
-CstNode*
-new_cst_proc(SourceLoc* src_loc)
+AstNode1*
+new_ast1_proc(SourceLoc* src_loc)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_proc);
-  node->proc.args = new_list(arena, ListKind_cst_node);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_proc);
+  node->proc.args = new_list(arena, ListKind_ast1_node);
   return node;
 }
 
-CstNode*
-new_cst_call(SourceLoc* src_loc)
+AstNode1*
+new_ast1_call(SourceLoc* src_loc)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_call);
-  node->call.args = new_list(arena, ListKind_cst_node);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_call);
+  node->call.args = new_list(arena, ListKind_ast1_node);
   return node;
 }
 
-CstNode*
-new_cst_enum(SourceLoc* src_loc)
+AstNode1*
+new_ast1_enum(SourceLoc* src_loc)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_enum_decl);
-  node->enum_decl.members = new_list(arena, ListKind_cst_node);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_enum_decl);
+  node->enum_decl.members = new_list(arena, ListKind_ast1_node);
   return node;
 }
 
-CstNode*
-new_cst_struct(SourceLoc* src_loc)
+AstNode1*
+new_ast1_struct(SourceLoc* src_loc)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_struct_decl);
-  node->struct_decl.members = new_list(arena, ListKind_cst_node);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_struct_decl);
+  node->struct_decl.members = new_list(arena, ListKind_ast1_node);
   return node;
 }
 
-CstNode*
-new_cst_union(SourceLoc* src_loc)
+AstNode1*
+new_ast1_union(SourceLoc* src_loc)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_union_decl);
-  node->union_decl.members = new_list(arena, ListKind_cst_node);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_union_decl);
+  node->union_decl.members = new_list(arena, ListKind_ast1_node);
   return node;
 }
 
-CstNode*
-new_cst_initializer_list(SourceLoc* src_loc)
+AstNode1*
+new_ast1_initializer_list(SourceLoc* src_loc)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_init_list);
-  node->init_list.members = new_list(arena, ListKind_cst_node);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_init_list);
+  node->init_list.members = new_list(arena, ListKind_ast1_node);
   return node;
 }
 
-CstNode*
-new_cst_bin_expr(SourceLoc* src_loc, enum OperatorKind op)
+AstNode1*
+new_ast1_bin_expr(SourceLoc* src_loc, enum OperatorKind op)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_bin_expr);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_bin_expr);
   node->bin_expr.op = op;
   return node;
 }
 
-CstNode*
-new_cst_unr_expr(SourceLoc* src_loc, enum OperatorKind op)
+AstNode1*
+new_ast1_unr_expr(SourceLoc* src_loc, enum OperatorKind op)
 {
-  CstNode* node = new_cst_node(src_loc, CstKind_un_expr);
+  AstNode1* node = new_ast1_node(src_loc, AstKind1_un_expr);
   node->un_expr.op = op;
   return node;
 }
@@ -138,30 +138,30 @@ get_op_kind_printstr(enum OperatorKind op)
   return OperatorKind_strings[op];
 }
 
-char* CstKind_strings[] =
+char* AstKind1_strings[] =
 {
 #define ENUM_MEMBER(NAME) #NAME
-  CstKind_MEMBER_LIST()
+  AstKind1_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
 
 char*
-get_cst_kind_printstr(enum CstKind kind)
+get_ast1_kind_printstr(enum AstKind1 kind)
 {
-  return CstKind_strings[kind];
+  return AstKind1_strings[kind];
 }
 
-char* CstLiteralKind_strings[] =
+char* LiteralKind_strings[] =
 {
 #define ENUM_MEMBER(NAME) #NAME
-  CstLiteralKind_MEMBER_LIST()
+  LiteralKind_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
 
 char*
-get_cst_literal_printstr(enum CstLiteralKind kind)
+get_ast1_literal_printstr(enum LiteralKind kind)
 {
-  return CstLiteralKind_strings[kind];
+  return LiteralKind_strings[kind];
 }
 
 bool
@@ -180,7 +180,7 @@ parse_initializer_member_list(TokenStream* input, List* member_list)
 {
   bool success = true;
 
-  CstNode* member = 0;
+  AstNode1* member = 0;
   do
   {
     member = 0;
@@ -199,7 +199,7 @@ parse_initializer_member_list(TokenStream* input, List* member_list)
 
       if(success && member)
       {
-        append_list_elem(arena, member_list, member, ListKind_cst_node);
+        append_list_elem(arena, member_list, member, ListKind_ast1_node);
         if(input->token.kind == TokenKind_Comma)
           success = get_next_token(input);
       }
@@ -210,14 +210,14 @@ parse_initializer_member_list(TokenStream* input, List* member_list)
 }
 
 bool
-parse_initializer_list(TokenStream* input, CstNode** node)
+parse_initializer_list(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_OpenBrace)
   {
-    auto* init_list = CST(*node = new_cst_initializer_list(&input->src_loc), init_list);
+    auto* init_list = AST1(*node = new_ast1_initializer_list(&input->src_loc), init_list);
 
     if(success = get_next_token(input) && parse_initializer_member_list(input, init_list->members))
     {
@@ -235,14 +235,14 @@ parse_actual_arg_list(TokenStream* input, List* args)
 {
   bool success = true;
 
-  CstNode* arg = 0;
+  AstNode1* arg = 0;
   do
   {
     arg = 0;
     success = parse_expression(input, &arg);
     if(success && arg)
     {
-      append_list_elem(arena, args, arg, ListKind_cst_node);
+      append_list_elem(arena, args, arg, ListKind_ast1_node);
       if(input->token.kind == TokenKind_Comma)
       {
         if((success = get_next_token(input)) && input->token.kind == TokenKind_CloseParens)
@@ -259,7 +259,7 @@ parse_node_list(TokenStream* input, List* stmt_list)
 {
   bool success = true;
 
-  CstNode* stmt = 0;
+  AstNode1* stmt = 0;
   do
   {
     stmt = 0;
@@ -268,7 +268,7 @@ parse_node_list(TokenStream* input, List* stmt_list)
 
     if((success = parse_node(input, &stmt)) && stmt)
     {
-      append_list_elem(arena, stmt_list, stmt, ListKind_cst_node);
+      append_list_elem(arena, stmt_list, stmt, ListKind_ast1_node);
     }
   }
   while(success && stmt);
@@ -277,14 +277,14 @@ parse_node_list(TokenStream* input, List* stmt_list)
 }
 
 bool
-parse_block(TokenStream* input, CstNode** node)
+parse_block(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_OpenBrace)
   {
-    auto* block = CST(*node = new_cst_block(&input->src_loc), block);
+    auto* block = AST1(*node = new_ast1_block(&input->src_loc), block);
 
     if(success = get_next_token(input) && parse_node_list(input, block->nodes))
     {
@@ -298,7 +298,7 @@ parse_block(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_rest_of_id(TokenStream* input, CstNode* left_node, CstNode** node)
+parse_rest_of_id(TokenStream* input, AstNode1* left_node, AstNode1** node)
 {
   *node = left_node;
   bool success = true;
@@ -306,9 +306,9 @@ parse_rest_of_id(TokenStream* input, CstNode* left_node, CstNode** node)
   if(input->token.kind == TokenKind_OpenParens)
   {
     // procedure call
-    if(left_node->kind == CstKind_id)
+    if(left_node->kind == AstKind1_id)
     {
-      auto* call = CST(*node = new_cst_call(&input->src_loc), call);
+      auto* call = AST1(*node = new_ast1_call(&input->src_loc), call);
       call->id = left_node;
 
       if(success = get_next_token(input) && parse_actual_arg_list(input, call->args))
@@ -325,7 +325,7 @@ parse_rest_of_id(TokenStream* input, CstNode* left_node, CstNode** node)
   else if(input->token.kind == TokenKind_OpenBracket)
   {
     // array
-    auto* index = CST(*node = new_cst_bin_expr(&input->src_loc, OperatorKind_ArrayIndex), bin_expr);
+    auto* index = AST1(*node = new_ast1_bin_expr(&input->src_loc, OperatorKind_ArrayIndex), bin_expr);
 
     index->left_operand = left_node;
 
@@ -350,7 +350,7 @@ parse_rest_of_id(TokenStream* input, CstNode* left_node, CstNode** node)
 }
 
 bool
-parse_rest_of_selector(TokenStream* input, CstNode* left_node, CstNode** node)
+parse_rest_of_selector(TokenStream* input, AstNode1* left_node, AstNode1** node)
 {
   *node = left_node;
   bool success = true;
@@ -358,7 +358,7 @@ parse_rest_of_selector(TokenStream* input, CstNode* left_node, CstNode** node)
   if(input->token.kind == TokenKind_Dot ||
      input->token.kind == TokenKind_ArrowRight)
   {
-    auto* bin_expr = CST(*node = new_cst_node(&input->src_loc, CstKind_bin_expr), bin_expr);
+    auto* bin_expr = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_bin_expr), bin_expr);
 
     bin_expr->left_operand = left_node;
 
@@ -381,7 +381,7 @@ parse_rest_of_selector(TokenStream* input, CstNode* left_node, CstNode** node)
   else if(input->token.kind == TokenKind_PlusPlus ||
           input->token.kind == TokenKind_MinusMinus)
   {
-    auto* un_expr = CST(*node = new_cst_node(&input->src_loc, CstKind_un_expr), un_expr);
+    auto* un_expr = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_un_expr), un_expr);
 
     un_expr->operand = left_node;
 
@@ -411,7 +411,7 @@ parse_rest_of_selector(TokenStream* input, CstNode* left_node, CstNode** node)
 }
 
 bool
-parse_factor(TokenStream* input, CstNode** node)
+parse_factor(TokenStream* input, AstNode1** node)
 {
   bool success = true;
 
@@ -421,7 +421,7 @@ parse_factor(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_rest_of_factor(TokenStream* input, CstNode* left_node, CstNode** node)
+parse_rest_of_factor(TokenStream* input, AstNode1* left_node, AstNode1** node)
 {
   *node = left_node;
   bool success = true;
@@ -430,7 +430,7 @@ parse_rest_of_factor(TokenStream* input, CstNode* left_node, CstNode** node)
      input->token.kind == TokenKind_FwdSlash ||
      input->token.kind == TokenKind_Percent)
   {
-    auto* bin_expr = CST(*node = new_cst_node(&input->src_loc, CstKind_bin_expr), bin_expr);
+    auto* bin_expr = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_bin_expr), bin_expr);
 
     bin_expr->left_operand = left_node;
 
@@ -459,7 +459,7 @@ parse_rest_of_factor(TokenStream* input, CstNode* left_node, CstNode** node)
 }
 
 bool
-parse_term(TokenStream* input, CstNode** node)
+parse_term(TokenStream* input, AstNode1** node)
 {
   bool success = true;
 
@@ -469,7 +469,7 @@ parse_term(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_rest_of_term(TokenStream* input, CstNode* left_node, CstNode** node)
+parse_rest_of_term(TokenStream* input, AstNode1* left_node, AstNode1** node)
 {
   *node = left_node;
   bool success = true;
@@ -481,7 +481,7 @@ parse_rest_of_term(TokenStream* input, CstNode* left_node, CstNode** node)
      input->token.kind == TokenKind_Ampersand ||
      input->token.kind == TokenKind_AmpersandAmpersand)
   {
-    auto* bin_expr = CST(*node = new_cst_node(&input->src_loc, CstKind_bin_expr), bin_expr);
+    auto* bin_expr = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_bin_expr), bin_expr);
 
     bin_expr->left_operand = left_node;
 
@@ -516,7 +516,7 @@ parse_rest_of_term(TokenStream* input, CstNode* left_node, CstNode** node)
 }
 
 bool
-parse_assignment(TokenStream* input, CstNode** node)
+parse_assignment(TokenStream* input, AstNode1** node)
 {
   bool success = true;
 
@@ -526,7 +526,7 @@ parse_assignment(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_rest_of_assignment(TokenStream* input, CstNode* left_node, CstNode** node)
+parse_rest_of_assignment(TokenStream* input, AstNode1* left_node, AstNode1** node)
 {
   *node = left_node;
   bool success = true;
@@ -539,7 +539,7 @@ parse_rest_of_assignment(TokenStream* input, CstNode* left_node, CstNode** node)
      input->token.kind == TokenKind_AngleRight ||
      input->token.kind == TokenKind_AngleRightEquals)
   {
-    auto* bin_expr = CST(*node = new_cst_node(&input->src_loc, CstKind_bin_expr), bin_expr);
+    auto* bin_expr = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_bin_expr), bin_expr);
 
     bin_expr->left_operand = left_node;
 
@@ -572,14 +572,14 @@ parse_rest_of_assignment(TokenStream* input, CstNode* left_node, CstNode** node)
 }
 
 bool
-parse_type_expr_pointer(TokenStream* input, CstNode* expr, CstNode** node)
+parse_type_expr_pointer(TokenStream* input, AstNode1* expr, AstNode1** node)
 {
   *node = expr;
   bool success = true;
   
   if(input->token.kind == TokenKind_Star)
   {
-    auto* ptr = CST(*node = new_cst_node(&input->src_loc, CstKind_pointer), pointer);
+    auto* ptr = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_pointer), pointer);
 
     ptr->type_expr = expr;
 
@@ -589,14 +589,14 @@ parse_type_expr_pointer(TokenStream* input, CstNode* expr, CstNode** node)
 }
 
 bool
-parse_type_expr_id(TokenStream* input, CstNode** node)
+parse_type_expr_id(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_Id)
   {
-    *node = new_cst_id(&input->src_loc, input->token.lexeme);
+    *node = new_ast1_id(&input->src_loc, input->token.lexeme);
 
     success = get_next_token(input) && parse_type_expr_pointer(input, *node, node);
   }
@@ -604,14 +604,14 @@ parse_type_expr_id(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_type_expr(TokenStream* input, CstNode** node)
+parse_type_expr(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_OpenBracket)
   {
-    auto* array = CST(*node = new_cst_node(&input->src_loc, CstKind_array), array);
+    auto* array = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_array), array);
 
     if(success = get_next_token(input) && parse_expression(input, &array->size_expr))
     {
@@ -642,7 +642,7 @@ parse_type_expr(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_new(TokenStream* input, CstNode** node)
+parse_new(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = false;
@@ -651,7 +651,7 @@ parse_new(TokenStream* input, CstNode** node)
   {
     if(input->token.kind == TokenKind_OpenParens)
     {
-      auto* hoc_new = CST(*node = new_cst_node(&input->src_loc, CstKind_hoc_new), hoc_new);
+      auto* hoc_new = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_hoc_new), hoc_new);
 
       if(success = get_next_token(input) && parse_type_expr(input, &hoc_new->type_expr))
       {
@@ -684,7 +684,7 @@ parse_new(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_putc(TokenStream* input, CstNode** node)
+parse_putc(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = false;
@@ -693,7 +693,7 @@ parse_putc(TokenStream* input, CstNode** node)
   {
     if(input->token.kind == TokenKind_OpenParens)
     {
-      auto* hoc_putc = CST(*node = new_cst_node(&input->src_loc, CstKind_hoc_putc), hoc_putc);
+      auto* hoc_putc = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_hoc_putc), hoc_putc);
 
       if(success = get_next_token(input) && parse_expression(input, &hoc_putc->expr))
       {
@@ -718,7 +718,7 @@ parse_putc(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_selector(TokenStream* input, CstNode** node)
+parse_selector(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
@@ -745,32 +745,32 @@ parse_selector(TokenStream* input, CstNode** node)
           || input->token.kind == TokenKind_True
           || input->token.kind == TokenKind_False)
   {
-    auto* lit = CST(*node = new_cst_node(&input->src_loc, CstKind_lit), lit);
+    auto* lit = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_lit), lit);
 
     if(input->token.kind == TokenKind_IntNum)
     {
-      lit->kind = CstLiteralKind_int_val;
+      lit->kind = LiteralKind_int_val;
       lit->int_val = *input->token.int_val;
     }
     else if(input->token.kind == TokenKind_FloatNum)
     {
-      lit->kind = CstLiteralKind_float_val;
+      lit->kind = LiteralKind_float_val;
       lit->float_val = *input->token.float_val;
     }
     else if(input->token.kind == TokenKind_True ||
             input->token.kind == TokenKind_False)
     {
-      lit->kind = CstLiteralKind_bool_val;
+      lit->kind = LiteralKind_bool_val;
       lit->bool_val = (input->token.kind == TokenKind_True ? 1 : 0);
     }
     else if(input->token.kind == TokenKind_Char)
     {
-      lit->kind = CstLiteralKind_char_val;
+      lit->kind = LiteralKind_char_val;
       lit->char_val = input->token.char_val;
     }
     else if(input->token.kind == TokenKind_String)
     {
-      lit->kind = CstLiteralKind_str;
+      lit->kind = LiteralKind_str;
       lit->str = input->token.str;
     }
     else
@@ -780,7 +780,7 @@ parse_selector(TokenStream* input, CstNode** node)
   }
   else if(input->token.kind == TokenKind_Id)
   {
-    *node = new_cst_id(&input->src_loc, input->token.lexeme);
+    *node = new_ast1_id(&input->src_loc, input->token.lexeme);
     success = get_next_token(input) && parse_rest_of_id(input, *node, node);
   }
   else if(input->token.kind == TokenKind_New)
@@ -792,21 +792,21 @@ parse_selector(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_formal_arg(TokenStream* input, CstNode** node)
+parse_formal_arg(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
-  CstNode* type = 0;
+  AstNode1* type = 0;
   if((success = parse_type_expr(input, &type)) && type)
   {
-    auto* var = CST(*node = new_cst_node(&input->src_loc, CstKind_var), var);
+    auto* var = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_var), var);
 
     var->type_expr = type;
 
     if(input->token.kind == TokenKind_Id)
     {
-      var->id = new_cst_id(&input->src_loc, input->token.lexeme);
+      var->id = new_ast1_id(&input->src_loc, input->token.lexeme);
       success = get_next_token(input);
     }
     else
@@ -820,13 +820,13 @@ parse_formal_arg_list(TokenStream* input, List* arg_list)
 {
   bool success = true;
 
-  CstNode* arg = 0;
+  AstNode1* arg = 0;
   do
   {
     arg = 0;
     if((success = parse_formal_arg(input, &arg)) && arg)
     {
-      append_list_elem(arena, arg_list, arg, ListKind_cst_node);
+      append_list_elem(arena, arg_list, arg, ListKind_ast1_node);
       if(input->token.kind == TokenKind_Comma)
       {
         success = get_next_token(input);
@@ -842,7 +842,7 @@ parse_formal_arg_list(TokenStream* input, List* arg_list)
 }
 
 bool
-parse_un_expr(TokenStream* input, CstNode** node)
+parse_un_expr(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
@@ -854,7 +854,7 @@ parse_un_expr(TokenStream* input, CstNode** node)
      input->token.kind == TokenKind_MinusMinus ||
      input->token.kind == TokenKind_PlusPlus)
   {
-    auto* un_expr = CST(*node = new_cst_node(&input->src_loc, CstKind_un_expr), un_expr);
+    auto* un_expr = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_un_expr), un_expr);
 
     if(input->token.kind == TokenKind_Exclam)
       un_expr->op = OperatorKind_LogicNot;
@@ -895,7 +895,7 @@ parse_un_expr(TokenStream* input, CstNode** node)
   else if(input->token.kind == TokenKind_Cast)
   {
     // cast
-    auto* cast = CST(*node = new_cst_node(&input->src_loc, CstKind_cast), cast);
+    auto* cast = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_cast), cast);
 
     if(success = get_next_token(input))
     {
@@ -928,7 +928,7 @@ parse_un_expr(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_expression(TokenStream* input, CstNode** node)
+parse_expression(TokenStream* input, AstNode1** node)
 {
   bool success = true;
 
@@ -938,20 +938,20 @@ parse_expression(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_var_decl(TokenStream* input, CstNode** node)
+parse_var_decl(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
-  CstNode* type = 0;
+  AstNode1* type = 0;
   if((success = parse_type_expr(input, &type)) && type)
   {
     if(input->token.kind == TokenKind_Id)
     {
-      auto* var = CST(*node = new_cst_node(&input->src_loc, CstKind_var), var);
+      auto* var = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_var), var);
 
       var->type_expr = type;
-      var->id = new_cst_id(&input->src_loc, input->token.lexeme);
+      var->id = new_ast1_id(&input->src_loc, input->token.lexeme);
 
       if((success = get_next_token(input)) && input->token.kind == TokenKind_Equals
           && (success = get_next_token(input)))
@@ -979,14 +979,14 @@ parse_var_decl(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_for(TokenStream* input, CstNode** node)
+parse_for(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_For)
   {
-    auto* for_stmt = CST(*node = new_cst_node(&input->src_loc, CstKind_for_stmt), for_stmt);
+    auto* for_stmt = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_for_stmt), for_stmt);
 
     if(!(success = get_next_token(input)))
       return success;
@@ -1011,9 +1011,9 @@ parse_for(TokenStream* input, CstNode** node)
             {
               if(for_stmt->body)
               {
-                CstNode* single_stmt = for_stmt->body;
-                auto* block = CST(for_stmt->body = new_cst_block(&input->src_loc), block);
-                append_list_elem(arena, block->nodes, single_stmt, ListKind_cst_node);
+                AstNode1* single_stmt = for_stmt->body;
+                auto* block = AST1(for_stmt->body = new_ast1_block(&input->src_loc), block);
+                append_list_elem(arena, block->nodes, single_stmt, ListKind_ast1_node);
               }
               else
               {
@@ -1034,14 +1034,14 @@ parse_for(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_while(TokenStream* input, CstNode** node)
+parse_while(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_While)
   {
-    auto* while_stmt = CST(*node = new_cst_node(&input->src_loc, CstKind_while_stmt), while_stmt);
+    auto* while_stmt = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_while_stmt), while_stmt);
 
     if(!(success = get_next_token(input)))
       return success;
@@ -1087,7 +1087,7 @@ parse_while(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_else(TokenStream* input, CstNode** node)
+parse_else(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
@@ -1110,14 +1110,14 @@ parse_else(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_if(TokenStream* input, CstNode** node)
+parse_if(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_If)
   {
-    auto* if_stmt = CST(*node = new_cst_node(&input->src_loc, CstKind_if_stmt), if_stmt);
+    auto* if_stmt = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_if_stmt), if_stmt);
 
     if(!(success = get_next_token(input)))
       return success;
@@ -1166,14 +1166,14 @@ parse_if(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_proc(TokenStream* input, CstNode** node)
+parse_proc(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_Proc)
   {
-    auto* proc = CST(*node = new_cst_proc(&input->src_loc), proc);
+    auto* proc = AST1(*node = new_ast1_proc(&input->src_loc), proc);
 
     if(success = get_next_token(input) && parse_type_expr(input, &proc->ret_type_expr))
     {
@@ -1181,7 +1181,7 @@ parse_proc(TokenStream* input, CstNode** node)
       {
         if(input->token.kind == TokenKind_Id)
         {
-          proc->id = new_cst_id(&input->src_loc, input->token.lexeme);
+          proc->id = new_ast1_id(&input->src_loc, input->token.lexeme);
 
           if(!(success = get_next_token(input)))
             return success;
@@ -1199,7 +1199,7 @@ parse_proc(TokenStream* input, CstNode** node)
                 if(success = get_next_token(input) && parse_block(input, &proc->body))
                 {
                   if(!proc->body && (proc->is_decl = success = consume_semicolon(input)))
-                    proc->body = (CstNode*)new_cst_block(&(*node)->src_loc);
+                    proc->body = (AstNode1*)new_ast1_block(&(*node)->src_loc);
                 }
 #else
                 if(success = get_next_token(input) && parse_block(input, &proc->body))
@@ -1230,7 +1230,7 @@ parse_proc(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_include(TokenStream* input, CstNode** node)
+parse_include(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
@@ -1242,7 +1242,7 @@ parse_include(TokenStream* input, CstNode** node)
 
     if(input->token.kind == TokenKind_String)
     {
-      auto* include = CST(*node = new_cst_include(&input->src_loc, input->src_loc.file_path), include);
+      auto* include = AST1(*node = new_ast1_include(&input->src_loc, input->src_loc.file_path), include);
 
       String* str = str_new(arena);
       str_append(str, input->src_loc.file_path);
@@ -1262,7 +1262,7 @@ parse_include(TokenStream* input, CstNode** node)
 
         if(success = get_next_token(incl_input))
         {
-          success = parse_node_list(incl_input, CST(include->body, block)->nodes);
+          success = parse_node_list(incl_input, AST1(include->body, block)->nodes);
         }
       }
       else
@@ -1275,7 +1275,7 @@ parse_include(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_enum(TokenStream* input, CstNode** node)
+parse_enum(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
@@ -1287,9 +1287,9 @@ parse_enum(TokenStream* input, CstNode** node)
 
     if(input->token.kind == TokenKind_Id)
     {
-      auto* enum_decl = CST(*node = new_cst_enum(&input->src_loc), enum_decl);
+      auto* enum_decl = AST1(*node = new_ast1_enum(&input->src_loc), enum_decl);
 
-      enum_decl->id = new_cst_id(&input->src_loc, input->token.lexeme);
+      enum_decl->id = new_ast1_id(&input->src_loc, input->token.lexeme);
 
       if(!(success = get_next_token(input)))
         return success;
@@ -1299,14 +1299,14 @@ parse_enum(TokenStream* input, CstNode** node)
         if(!(success = get_next_token(input)))
           return success;
 
-        CstNode* member = 0;
+        AstNode1* member = 0;
         do
         {
           member = 0;
           if(input->token.kind == TokenKind_Id)
           {
-            member = new_cst_id(&input->src_loc, input->token.lexeme);
-            append_list_elem(arena, enum_decl->members, member, ListKind_cst_node);
+            member = new_ast1_id(&input->src_loc, input->token.lexeme);
+            append_list_elem(arena, enum_decl->members, member, ListKind_ast1_node);
 
             if((success = get_next_token(input)) && input->token.kind == TokenKind_Comma)
               success = get_next_token(input);
@@ -1331,18 +1331,18 @@ parse_enum(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_union(TokenStream* input, CstNode** node)
+parse_union(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_Union)
   {
-    auto* union_decl = CST(*node = new_cst_union(&input->src_loc), union_decl);
+    auto* union_decl = AST1(*node = new_ast1_union(&input->src_loc), union_decl);
 
     if((success = get_next_token(input)) && input->token.kind == TokenKind_Id)
     {
-      union_decl->id = new_cst_id(&input->src_loc, input->token.lexeme);
+      union_decl->id = new_ast1_id(&input->src_loc, input->token.lexeme);
       success = get_next_token(input);
     }
 
@@ -1353,18 +1353,18 @@ parse_union(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_struct(TokenStream* input, CstNode** node)
+parse_struct(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_Struct)
   {
-    auto* struct_decl = CST(*node = new_cst_struct(&input->src_loc), struct_decl);
+    auto* struct_decl = AST1(*node = new_ast1_struct(&input->src_loc), struct_decl);
 
     if((success = get_next_token(input)) && input->token.kind == TokenKind_Id)
     {
-      struct_decl->id = new_cst_id(&input->src_loc, input->token.lexeme);
+      struct_decl->id = new_ast1_id(&input->src_loc, input->token.lexeme);
       success = get_next_token(input);
     }
 
@@ -1384,12 +1384,12 @@ parse_struct_member_list(TokenStream* input, List* member_list)
     if(!(success = get_next_token(input)))
       return success;
 
-    CstNode* member = 0;
+    AstNode1* member = 0;
     do
     {
       member = 0;
 
-      CstNode* type = 0;
+      AstNode1* type = 0;
       if(success = parse_type_expr(input, &type))
       {
         if(!type)
@@ -1402,17 +1402,17 @@ parse_struct_member_list(TokenStream* input, List* member_list)
 
         if(success && type)
         {
-          auto* var = CST(member = new_cst_node(&input->src_loc, CstKind_var), var);
+          auto* var = AST1(member = new_ast1_node(&input->src_loc, AstKind1_var), var);
 
           var->type_expr = type;
 
           if(input->token.kind == TokenKind_Id)
           {
-            var->id = new_cst_id(&input->src_loc, input->token.lexeme);
+            var->id = new_ast1_id(&input->src_loc, input->token.lexeme);
             success = get_next_token(input);
           }
-          else if(type->kind == CstKind_struct_decl
-                  || type->kind == CstKind_union_decl)
+          else if(type->kind == AstKind1_struct_decl
+                  || type->kind == AstKind1_union_decl)
           {
             /* anonymous struct/union */
           }
@@ -1421,7 +1421,7 @@ parse_struct_member_list(TokenStream* input, List* member_list)
 
           if(success)
           {
-            append_list_elem(arena, member_list, member, ListKind_cst_node);
+            append_list_elem(arena, member_list, member, ListKind_ast1_node);
             success = consume_semicolon(input);
           }
         }
@@ -1443,7 +1443,7 @@ parse_struct_member_list(TokenStream* input, List* member_list)
 }
 
 bool
-parse_var(TokenStream* input, CstNode** node)
+parse_var(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = false;
@@ -1454,14 +1454,14 @@ parse_var(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_return(TokenStream* input, CstNode** node)
+parse_return(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_Return)
   {
-    auto* return_stmt = CST(*node = new_cst_node(&input->src_loc, CstKind_return_stmt), return_stmt);
+    auto* return_stmt = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_return_stmt), return_stmt);
     success = get_next_token(input) && parse_expression(input, &return_stmt->expr);
   }
 
@@ -1469,16 +1469,16 @@ parse_return(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_label(TokenStream* input, CstNode* id, CstNode** node)
+parse_label(TokenStream* input, AstNode1* id, AstNode1** node)
 {
   *node = id;
   bool success = true;
 
   if(input->token.kind == TokenKind_Colon && (success = get_next_token(input)))
   {
-    if(id->kind == CstKind_id)
+    if(id->kind == AstKind1_id)
     {
-      auto* label = CST(*node = new_cst_node(&input->src_loc, CstKind_label), label);
+      auto* label = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_label), label);
       label->id = id;
     }
     else
@@ -1488,21 +1488,21 @@ parse_label(TokenStream* input, CstNode* id, CstNode** node)
 }
 
 bool
-parse_goto(TokenStream* input, CstNode** node)
+parse_goto(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_Goto)
   {
-    auto* goto_stmt = CST(*node = new_cst_node(&input->src_loc, CstKind_goto_stmt), goto_stmt);
+    auto* goto_stmt = AST1(*node = new_ast1_node(&input->src_loc, AstKind1_goto_stmt), goto_stmt);
 
     if(!(success = get_next_token(input)))
       return success;
 
     if(input->token.kind == TokenKind_Id)
     {
-      goto_stmt->id = new_cst_id(&input->src_loc, input->token.lexeme);
+      goto_stmt->id = new_ast1_id(&input->src_loc, input->token.lexeme);
       success = get_next_token(input);
     }
     else
@@ -1512,35 +1512,35 @@ parse_goto(TokenStream* input, CstNode** node)
 }
 
 bool
-parse_continue(TokenStream* input, CstNode** node)
+parse_continue(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_Continue)
   {
-    *node = new_cst_node(&input->src_loc, CstKind_continue_stmt);
+    *node = new_ast1_node(&input->src_loc, AstKind1_continue_stmt);
     success = get_next_token(input);
   }
   return success;
 }
 
 bool
-parse_break(TokenStream* input, CstNode** node)
+parse_break(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
 
   if(input->token.kind == TokenKind_Break)
   {
-    *node = new_cst_node(&input->src_loc, CstKind_break_stmt);
+    *node = new_ast1_node(&input->src_loc, AstKind1_break_stmt);
     success = get_next_token(input);
   }
   return success;
 }
 
 bool
-parse_node(TokenStream* input, CstNode** node)
+parse_node(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
@@ -1561,7 +1561,7 @@ parse_node(TokenStream* input, CstNode** node)
   {
     if(success = parse_if(input, node))
     {
-      *node = new_cst_statement((*node)->src_loc, *node);
+      *node = new_ast1_statement((*node)->src_loc, *node);
     }
   }
   else if(input->token.kind == TokenKind_Else)
@@ -1572,7 +1572,7 @@ parse_node(TokenStream* input, CstNode** node)
   {
     if(success = parse_while(input, node))
     {
-      *node = new_cst_statement((*node)->src_loc, *node);
+      *node = new_ast1_statement((*node)->src_loc, *node);
     }
   }
 #if 0
@@ -1585,21 +1585,21 @@ parse_node(TokenStream* input, CstNode** node)
   {
     if((success = parse_return(input, node)) && consume_semicolon(input))
     {
-      *node = new_cst_statement((*node)->src_loc, *node);
+      *node = new_ast1_statement((*node)->src_loc, *node);
     }
   }
   else if(input->token.kind == TokenKind_Break)
   {
     if((success = parse_break(input, node)) && consume_semicolon(input))
     {
-      *node = new_cst_statement((*node)->src_loc, *node);
+      *node = new_ast1_statement((*node)->src_loc, *node);
     }
   }
   else if(input->token.kind == TokenKind_Continue)
   {
     if((success = parse_continue(input, node)) && consume_semicolon(input))
     {
-      *node = new_cst_statement((*node)->src_loc, *node);
+      *node = new_ast1_statement((*node)->src_loc, *node);
     }
   }
 #if 0
@@ -1612,14 +1612,14 @@ parse_node(TokenStream* input, CstNode** node)
   {
     if(success = consume_semicolon(input))
     {
-      *node = new_cst_statement(&input->src_loc, 0);
+      *node = new_ast1_statement(&input->src_loc, 0);
     }
   }
   else if(input->token.kind == TokenKind_OpenBrace)
   {
     if(success = parse_block(input, node))
     {
-      *node = new_cst_statement((*node)->src_loc, *node);
+      *node = new_ast1_statement((*node)->src_loc, *node);
     }
   }
   else
@@ -1636,7 +1636,7 @@ parse_node(TokenStream* input, CstNode** node)
 #else
         if(success = consume_semicolon(input))
         {
-          *node = new_cst_statement((*node)->src_loc, *node);
+          *node = new_ast1_statement((*node)->src_loc, *node);
         }
 #endif
       }
@@ -1647,13 +1647,13 @@ parse_node(TokenStream* input, CstNode** node)
 }
 
 bool
-parse(TokenStream* input, CstNode** node)
+parse(TokenStream* input, AstNode1** node)
 {
   bool success = true;
 
-  auto* module = CST(*node = new_cst_module(&input->src_loc, input->src_loc.file_path), module);
+  auto* module = AST1(*node = new_ast1_module(&input->src_loc, input->src_loc.file_path), module);
 
-  if((success = parse_node_list(input, CST(module->body, block)->nodes))
+  if((success = parse_node_list(input, AST1(module->body, block)->nodes))
      && input->token.kind != TokenKind_EndOfInput)
   {
     success = compile_error(&input->src_loc, "expected `end-of-input`, at `%s`", get_token_printstr(&input->token));
@@ -1662,7 +1662,7 @@ parse(TokenStream* input, CstNode** node)
 }
 
 void
-DEBUG_print_cst_node(String* str, int indent_level, char* tag, CstNode* node)
+DEBUG_print_ast1_node(String* str, int indent_level, char* tag, AstNode1* node)
 {
   if(node)
   {
@@ -1673,185 +1673,185 @@ DEBUG_print_cst_node(String* str, int indent_level, char* tag, CstNode* node)
     }
 #if 1
     DEBUG_print_line(str, indent_level, "%s src_line=\"%s:%d\"",
-                     get_cst_kind_printstr(node->kind), node->src_loc->file_path, node->src_loc->line_nr);
+                     get_ast1_kind_printstr(node->kind), node->src_loc->file_path, node->src_loc->line_nr);
 #else
     DEBUG_print_line(str, indent_level, "src_line=\"%s:%d\"", node->src_loc->file_path, node->src_loc->line_nr);
 #endif
     ++indent_level;
 
-    if(node->kind == CstKind_module)
+    if(node->kind == AstKind1_module)
     {
-      auto* module = CST(node, module);
+      auto* module = AST1(node, module);
       DEBUG_print_line(str, indent_level, "file_path: \"%s\"", module->file_path);
-      DEBUG_print_cst_node(str, indent_level, "body", module->body);
+      DEBUG_print_ast1_node(str, indent_level, "body", module->body);
     }
-    else if(node->kind == CstKind_include)
+    else if(node->kind == AstKind1_include)
     {
-      auto* include = CST(node, include);
+      auto* include = AST1(node, include);
       DEBUG_print_line(str, indent_level, "file_path: \"%s\"", include->file_path);
-      DEBUG_print_cst_node(str, indent_level, "body", include->body);
+      DEBUG_print_ast1_node(str, indent_level, "body", include->body);
     }
-    else if(node->kind == CstKind_proc)
+    else if(node->kind == AstKind1_proc)
     {
-      auto* proc = CST(node, proc);
-      DEBUG_print_cst_node(str, indent_level, "ret_type", proc->ret_type_expr);
-      DEBUG_print_cst_node(str, indent_level, "id", proc->id);
-      DEBUG_print_xst_node_list(str, indent_level, "args", proc->args);
-      DEBUG_print_cst_node(str, indent_level, "body", proc->body);
+      auto* proc = AST1(node, proc);
+      DEBUG_print_ast1_node(str, indent_level, "ret_type", proc->ret_type_expr);
+      DEBUG_print_ast1_node(str, indent_level, "id", proc->id);
+      DEBUG_print_ast_node_list(str, indent_level, "args", proc->args);
+      DEBUG_print_ast1_node(str, indent_level, "body", proc->body);
     }
-    else if(node->kind == CstKind_var)
+    else if(node->kind == AstKind1_var)
     {
-      auto* var = CST(node, var);
-      DEBUG_print_cst_node(str, indent_level, "type_expr", var->type_expr);
-      DEBUG_print_cst_node(str, indent_level, "id", var->id);
-      DEBUG_print_cst_node(str, indent_level, "init_expr", var->init_expr);
+      auto* var = AST1(node, var);
+      DEBUG_print_ast1_node(str, indent_level, "type_expr", var->type_expr);
+      DEBUG_print_ast1_node(str, indent_level, "id", var->id);
+      DEBUG_print_ast1_node(str, indent_level, "init_expr", var->init_expr);
     }
-    else if(node->kind == CstKind_id)
+    else if(node->kind == AstKind1_id)
     {
-      auto* id = CST(node, id);
+      auto* id = AST1(node, id);
       DEBUG_print_line(str, indent_level, "name: %s", id->name);
     }
-    else if(node->kind == CstKind_block)
+    else if(node->kind == AstKind1_block)
     {
-      auto* block = CST(node, block);
-      DEBUG_print_xst_node_list(str, indent_level, "nodes", block->nodes);
+      auto* block = AST1(node, block);
+      DEBUG_print_ast_node_list(str, indent_level, "nodes", block->nodes);
     }
-    else if(node->kind == CstKind_bin_expr)
+    else if(node->kind == AstKind1_bin_expr)
     {
-      auto* bin_expr = CST(node, bin_expr);
+      auto* bin_expr = AST1(node, bin_expr);
       DEBUG_print_line(str, indent_level, "op: %s", get_op_kind_printstr(bin_expr->op));
-      DEBUG_print_cst_node(str, indent_level, "left_operand", bin_expr->left_operand);
-      DEBUG_print_cst_node(str, indent_level, "right_operand", bin_expr->right_operand);
+      DEBUG_print_ast1_node(str, indent_level, "left_operand", bin_expr->left_operand);
+      DEBUG_print_ast1_node(str, indent_level, "right_operand", bin_expr->right_operand);
     }
-    else if(node->kind == CstKind_un_expr)
+    else if(node->kind == AstKind1_un_expr)
     {
-      auto* un_expr = CST(node, un_expr);
+      auto* un_expr = AST1(node, un_expr);
       DEBUG_print_line(str, indent_level, "op: %s", get_op_kind_printstr(un_expr->op));
-      DEBUG_print_cst_node(str, indent_level, "operand", un_expr->operand);
+      DEBUG_print_ast1_node(str, indent_level, "operand", un_expr->operand);
     }
-    else if(node->kind == CstKind_stmt)
+    else if(node->kind == AstKind1_stmt)
     {
-      auto* stmt = CST(node, stmt);
-      DEBUG_print_cst_node(str, indent_level, "stmt", stmt->stmt);
+      auto* stmt = AST1(node, stmt);
+      DEBUG_print_ast1_node(str, indent_level, "stmt", stmt->stmt);
     }
-    else if(node->kind == CstKind_if_stmt)
+    else if(node->kind == AstKind1_if_stmt)
     {
-      auto* if_stmt = CST(node, if_stmt);
-      DEBUG_print_cst_node(str, indent_level, "cond_expr", if_stmt->cond_expr);
-      DEBUG_print_cst_node(str, indent_level, "body", if_stmt->body);
-      DEBUG_print_cst_node(str, indent_level, "else_body", if_stmt->else_body);
+      auto* if_stmt = AST1(node, if_stmt);
+      DEBUG_print_ast1_node(str, indent_level, "cond_expr", if_stmt->cond_expr);
+      DEBUG_print_ast1_node(str, indent_level, "body", if_stmt->body);
+      DEBUG_print_ast1_node(str, indent_level, "else_body", if_stmt->else_body);
     }
-    else if(node->kind == CstKind_return_stmt)
+    else if(node->kind == AstKind1_return_stmt)
     {
-      auto* return_stmt = CST(node, return_stmt);
-      DEBUG_print_cst_node(str, indent_level, "expr", return_stmt->expr);
+      auto* return_stmt = AST1(node, return_stmt);
+      DEBUG_print_ast1_node(str, indent_level, "expr", return_stmt->expr);
     }
-    else if(node->kind == CstKind_lit)
+    else if(node->kind == AstKind1_lit)
     {
-      auto* lit = CST(node, lit);
-      DEBUG_print_line(str, indent_level, get_cst_literal_printstr(lit->kind));
-      if(lit->kind == CstLiteralKind_int_val)
+      auto* lit = AST1(node, lit);
+      DEBUG_print_line(str, indent_level, get_ast1_literal_printstr(lit->kind));
+      if(lit->kind == LiteralKind_int_val)
         DEBUG_print_line(str, indent_level, "int_val: %d", lit->int_val);
-      else if(lit->kind == CstLiteralKind_float_val)
+      else if(lit->kind == LiteralKind_float_val)
         DEBUG_print_line(str, indent_level, "float_val: %f", lit->float_val);
-      else if(lit->kind == CstLiteralKind_bool_val)
+      else if(lit->kind == LiteralKind_bool_val)
         DEBUG_print_line(str, indent_level, "bool_val: %d", lit->bool_val);
-      else if(lit->kind == CstLiteralKind_char_val)
+      else if(lit->kind == LiteralKind_char_val)
       {
         char buf[3] = {0};
         print_char(buf, lit->char_val);
         DEBUG_print_line(str, indent_level, "char_val: '%s'", buf);
       }
-      else if(lit->kind == CstLiteralKind_str)
+      else if(lit->kind == LiteralKind_str)
         DEBUG_print_line(str, indent_level, "str: \"%s\"", lit->str);
       else
         assert(0);
     }
-    else if(node->kind == CstKind_while_stmt)
+    else if(node->kind == AstKind1_while_stmt)
     {
-      auto* while_stmt = CST(node, while_stmt);
-      DEBUG_print_cst_node(str, indent_level, "cond_expr", while_stmt->cond_expr);
-      DEBUG_print_cst_node(str, indent_level, "body", while_stmt->body);
+      auto* while_stmt = AST1(node, while_stmt);
+      DEBUG_print_ast1_node(str, indent_level, "cond_expr", while_stmt->cond_expr);
+      DEBUG_print_ast1_node(str, indent_level, "body", while_stmt->body);
     }
-    else if(node->kind == CstKind_for_stmt)
+    else if(node->kind == AstKind1_for_stmt)
     {
-      auto* for_stmt = CST(node, for_stmt);
-      DEBUG_print_cst_node(str, indent_level, "decl_expr", for_stmt->decl_expr);
-      DEBUG_print_cst_node(str, indent_level, "cond_expr", for_stmt->cond_expr);
-      DEBUG_print_cst_node(str, indent_level, "loop_expr", for_stmt->loop_expr);
-      DEBUG_print_cst_node(str, indent_level, "body", for_stmt->body);
+      auto* for_stmt = AST1(node, for_stmt);
+      DEBUG_print_ast1_node(str, indent_level, "decl_expr", for_stmt->decl_expr);
+      DEBUG_print_ast1_node(str, indent_level, "cond_expr", for_stmt->cond_expr);
+      DEBUG_print_ast1_node(str, indent_level, "loop_expr", for_stmt->loop_expr);
+      DEBUG_print_ast1_node(str, indent_level, "body", for_stmt->body);
     }
-    else if(node->kind == CstKind_cast)
+    else if(node->kind == AstKind1_cast)
     {
-      auto* cast = CST(node, cast);
-      DEBUG_print_cst_node(str, indent_level, "type_expr", cast->type_expr);
-      DEBUG_print_cst_node(str, indent_level, "expr", cast->expr);
+      auto* cast = AST1(node, cast);
+      DEBUG_print_ast1_node(str, indent_level, "type_expr", cast->type_expr);
+      DEBUG_print_ast1_node(str, indent_level, "expr", cast->expr);
     }
-    else if(node->kind == CstKind_array)
+    else if(node->kind == AstKind1_array)
     {
-      auto* array = CST(node, array);
-      DEBUG_print_cst_node(str, indent_level, "type_expr", array->type_expr);
-      DEBUG_print_cst_node(str, indent_level, "size_expr", array->size_expr);
+      auto* array = AST1(node, array);
+      DEBUG_print_ast1_node(str, indent_level, "type_expr", array->type_expr);
+      DEBUG_print_ast1_node(str, indent_level, "size_expr", array->size_expr);
     }
-    else if(node->kind == CstKind_pointer)
+    else if(node->kind == AstKind1_pointer)
     {
-      auto* ptr = CST(node, pointer);
-      DEBUG_print_cst_node(str, indent_level, "type_expr", ptr->type_expr);
+      auto* ptr = AST1(node, pointer);
+      DEBUG_print_ast1_node(str, indent_level, "type_expr", ptr->type_expr);
     }
-    else if(node->kind == CstKind_call)
+    else if(node->kind == AstKind1_call)
     {
-      auto* call = CST(node, call);
-      DEBUG_print_cst_node(str, indent_level, "id", call->id);
-      DEBUG_print_xst_node_list(str, indent_level, "args", call->args);
+      auto* call = AST1(node, call);
+      DEBUG_print_ast1_node(str, indent_level, "id", call->id);
+      DEBUG_print_ast_node_list(str, indent_level, "args", call->args);
     }
-    else if(node->kind == CstKind_break_stmt
-            || node->kind == CstKind_continue_stmt)
+    else if(node->kind == AstKind1_break_stmt
+            || node->kind == AstKind1_continue_stmt)
     {
       /* no extra info to print */
     }
-    else if(node->kind == CstKind_struct_decl)
+    else if(node->kind == AstKind1_struct_decl)
     {
-      auto* struct_decl = CST(node, struct_decl);
-      DEBUG_print_cst_node(str, indent_level, "id", struct_decl->id);
-      DEBUG_print_xst_node_list(str, indent_level, "members", struct_decl->members);
+      auto* struct_decl = AST1(node, struct_decl);
+      DEBUG_print_ast1_node(str, indent_level, "id", struct_decl->id);
+      DEBUG_print_ast_node_list(str, indent_level, "members", struct_decl->members);
     }
-    else if(node->kind == CstKind_union_decl)
+    else if(node->kind == AstKind1_union_decl)
     {
-      auto* union_decl = CST(node, union_decl);
-      DEBUG_print_cst_node(str, indent_level, "id", union_decl->id);
-      DEBUG_print_xst_node_list(str, indent_level, "members", union_decl->members);
+      auto* union_decl = AST1(node, union_decl);
+      DEBUG_print_ast1_node(str, indent_level, "id", union_decl->id);
+      DEBUG_print_ast_node_list(str, indent_level, "members", union_decl->members);
     }
-    else if(node->kind == CstKind_enum_decl)
+    else if(node->kind == AstKind1_enum_decl)
     {
-      auto* enum_decl = CST(node, enum_decl);
-      DEBUG_print_cst_node(str, indent_level, "id", enum_decl->id);
-      DEBUG_print_xst_node_list(str, indent_level, "members", enum_decl->members);
+      auto* enum_decl = AST1(node, enum_decl);
+      DEBUG_print_ast1_node(str, indent_level, "id", enum_decl->id);
+      DEBUG_print_ast_node_list(str, indent_level, "members", enum_decl->members);
     }
-    else if(node->kind == CstKind_init_list)
+    else if(node->kind == AstKind1_init_list)
     {
-      auto* init_list = CST(node, init_list);
-      DEBUG_print_xst_node_list(str, indent_level, "members", init_list->members);
+      auto* init_list = AST1(node, init_list);
+      DEBUG_print_ast_node_list(str, indent_level, "members", init_list->members);
     }
-    else if(node->kind == CstKind_goto_stmt)
+    else if(node->kind == AstKind1_goto_stmt)
     {
-      auto* goto_stmt = CST(node, goto_stmt);
-      DEBUG_print_cst_node(str, indent_level, "id", goto_stmt->id);
+      auto* goto_stmt = AST1(node, goto_stmt);
+      DEBUG_print_ast1_node(str, indent_level, "id", goto_stmt->id);
     }
-    else if(node->kind == CstKind_label)
+    else if(node->kind == AstKind1_label)
     {
-      auto* label = CST(node, label);
-      DEBUG_print_cst_node(str, indent_level, "id", label->id);
+      auto* label = AST1(node, label);
+      DEBUG_print_ast1_node(str, indent_level, "id", label->id);
     }
-    else if(node->kind == CstKind_hoc_new)
+    else if(node->kind == AstKind1_hoc_new)
     {
-      auto* hoc_new = CST(node, hoc_new);
-      DEBUG_print_cst_node(str, indent_level, "type_expr", hoc_new->type_expr);
-      DEBUG_print_cst_node(str, indent_level, "count_expr", hoc_new->count_expr);
+      auto* hoc_new = AST1(node, hoc_new);
+      DEBUG_print_ast1_node(str, indent_level, "type_expr", hoc_new->type_expr);
+      DEBUG_print_ast1_node(str, indent_level, "count_expr", hoc_new->count_expr);
     }
-    else if(node->kind == CstKind_hoc_putc)
+    else if(node->kind == AstKind1_hoc_putc)
     {
-      auto* hoc_putc = CST(node, hoc_putc);
-      DEBUG_print_cst_node(str, indent_level, "expr", hoc_putc->expr);
+      auto* hoc_putc = AST1(node, hoc_putc);
+      DEBUG_print_ast1_node(str, indent_level, "expr", hoc_putc->expr);
     }
     else
       assert(0);

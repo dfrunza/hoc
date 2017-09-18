@@ -1153,7 +1153,7 @@ parse_include(TokenStream* input, AstNode** node)
 
         if(success = get_next_token(incl_input))
         {
-          AstNode* block = ATTR(include, body, ast_node);
+          AstNode* block = ATTR(include, body, ast_node) = new_ast_node(0, AstNode_block, &incl_input->src_loc);
           ATTR(block, nodes, list) = new_list(arena, List_ast_node);
           success = parse_node_list(incl_input, ATTR(block, nodes, list));
         }

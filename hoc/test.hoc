@@ -1,3 +1,5 @@
+include "sort.hoc";
+
 var int a = 112;
 var int b = a;
 

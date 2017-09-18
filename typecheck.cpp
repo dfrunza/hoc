@@ -65,7 +65,7 @@ init_types()
   basic_type_float = new_basic_type(BasicTypeKind_Float, 1);
   basic_type_void = new_basic_type(BasicTypeKind_Void, 0);
 
-  subst_list = new_list(arena, ListKind_TypePair);
+  subst_list = new_list(arena, List_TypePair);
 }
 
 bool
@@ -248,7 +248,7 @@ type_subst(List* subst_list, Type* type)
     subst = copy_type(type);
 
     pair = new_type_pair(type, subst);
-    append_list_elem(arena, subst_list, pair, ListKind_ast1_node);
+    append_list_elem(arena, subst_list, pair, List_TypePair);
 
     if(subst->kind == TypeKind_typevar)
     {

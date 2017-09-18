@@ -13,8 +13,9 @@ char* AstBuiltinProc_names[] =
 };
 #endif
 
+#if 0
 AstNode2*
-new_ast2_node(SourceLoc* src_loc, enum AstKind2 kind)
+new_ast2_node(SourceLoc* src_loc, AstKind2 kind)
 {
   AstNode2* node = mem_push_struct(arena, AstNode2);
   node->kind = kind;
@@ -26,7 +27,7 @@ AstNode2*
 new_ast2_module(SourceLoc* src_loc)
 {
   AstNode2* node = new_ast2_node(src_loc, AstKind2_module);
-  node->module.procs = new_list(arena, ListKind_ast2_node);
+  node->module.procs = new_list(arena, List_ast2_node);
   return node;
 }
 
@@ -34,7 +35,7 @@ AstNode2*
 new_ast2_block(SourceLoc* src_loc)
 {
   AstNode2* node = new_ast2_node(src_loc, AstKind2_block);
-  node->block.stmts = new_list(arena, ListKind_ast2_node);
+  node->block.stmts = new_list(arena, List_ast2_node);
   return node;
 }
 
@@ -68,7 +69,7 @@ new_ast2_proc_decl(SourceLoc* src_loc, char* proc_name)
   AstNode2* node = new_ast2_node(src_loc, AstKind2_proc_decl);
   //node->proc_decl.kind = AstProcKind_User;
   node->proc_decl.proc_name = proc_name;
-  node->proc_decl.formal_args = new_list(arena, ListKind_ast2_node);
+  node->proc_decl.formal_args = new_list(arena, List_ast2_node);
   node->proc_decl.ret_var = new_ast2_var_decl(src_loc, 0);
   return node;
 }
@@ -78,7 +79,7 @@ new_ast2_proc_occur(SourceLoc* src_loc, char* proc_name)
 {
   AstNode2* node = new_ast2_node(src_loc, AstKind2_proc_occur);
   node->proc_occur.proc_name = proc_name;
-  node->proc_occur.actual_args = new_list(arena, ListKind_ast2_node);
+  node->proc_occur.actual_args = new_list(arena, List_ast2_node);
   return node;
 }
 
@@ -97,13 +98,14 @@ new_ast2_stmt(SourceLoc* src_loc, AstNode2* stmt)
   node->stmt.stmt = stmt;
   return node;
 }
+#endif
 
 Scope*
 new_scope()
 {
   Scope* scope = mem_push_struct(arena, Scope);
-  scope->local_decls = new_list(arena, ListKind_ast2_node);
-  scope->nonlocal_occurs = new_list(arena, ListKind_ast2_node);
+  scope->local_decls = new_list(arena, List_ast_node);
+  scope->nonlocal_occurs = new_list(arena, List_ast_node);
   return scope;
 }
 
@@ -115,7 +117,7 @@ const char* AstKind2_strings[] =
 };
 
 const char*
-get_ast2_kind_printstr(enum AstKind2 kind)
+get_ast2_kind_printstr(AstKind2 kind)
 {
   return AstKind2_strings[kind];
 }
@@ -207,7 +209,7 @@ make_tempvar_id(SourceLoc* src_loc, char* label)
 }
 #endif
 
-enum SymbolLookup
+typedef enum SymbolLookup
 {
   SymbolLookup__None,
   SymbolLookup_StartLocal,
@@ -445,6 +447,7 @@ register_call(AstCall* call)
 }
 #endif
 
+#if 0
 void
 add_builtin_type(char* name, Type* type)
 {
@@ -461,16 +464,17 @@ add_builtin_types()
   add_builtin_type("float", basic_type_float);
   add_builtin_type("void", basic_type_void);
 }
+#endif
 
 #if 0
 const char*
-get_builtin_proc_name(enum AstBuiltinProc proc)
+get_builtin_proc_name(AstBuiltinProc proc)
 {
   return AstBuiltinProc_names[proc];
 }
 
 void
-add_builtin_proc(enum AstBuiltinProc proc_id, enum AstProcKind kind, Type* type)
+add_builtin_proc(AstBuiltinProc proc_id, AstProcKind kind, Type* type)
 {
   assert(type->kind == TypeKind_proc);
   AstNode2* proc_decl = new_ast2_proc_decl(0, AstBuiltinProc_names[proc_id]);
@@ -586,13 +590,12 @@ process_includes(List* include_list, List* module_list, ListItem* module_list_it
       list_item;
       list_item = list_item->next)
   {
-    assert(list_item->kind == ListKind_ast1_node);
-    AstNode1* stmt = list_item->ast1_node;
+    AstNode* node = ITEM(list_item, ast_node);
 
-    if(stmt->kind == AstKind1_include)
+    if(node->kind == AstNode_include)
     {
-      auto* include = AST1(stmt, include);
-      process_includes(AST1(include->body, block)->nodes, include_list, list_item);
+      AstNode* block = ATTR(node, body, ast_node);
+      process_includes(ATTR(block, nodes, list), include_list, list_item);
     }
   }
   replace_list_item_at(include_list, module_list, module_list_item);
@@ -600,6 +603,7 @@ process_includes(List* include_list, List* module_list, ListItem* module_list_it
   mem_zero_struct(include_list, List);
 }
 
+#if 0
 bool
 build_ast2_var_decl(AstNode1* cst_var, AstNode2** var_decl)
 {
@@ -610,10 +614,11 @@ build_ast2_var_decl(AstNode1* cst_var, AstNode2** var_decl)
   if(success = register_var_decl(*var_decl))
   {
     Scope* decl_scope = AST2(*var_decl, var_decl)->decl_scope = symbol_table->local_scope;
-    append_list_elem(arena, decl_scope->local_decls, *var_decl, ListKind_ast2_node);
+    append_list_elem(arena, decl_scope->local_decls, *var_decl, List_ast2_node);
   }
   return success;
 }
+#endif
 
 #if 0
 bool
@@ -1706,6 +1711,7 @@ sem_stmt_block(AstBlock* module_block,
 }
 #endif
 
+#if 0
 AstNode2*
 make_ast2_var_occur(AstNode2* var_decl)
 {
@@ -1717,7 +1723,6 @@ make_ast2_var_occur(AstNode2* var_decl)
   return var_occur;
 }
 
-#if 0
 AstNode2*
 make_ast2_proc_occur(SourceLoc* src_loc, char* proc_name)
 {
@@ -1732,45 +1737,46 @@ make_ast2_proc_occur(SourceLoc* src_loc, char* proc_name)
 }
 #endif
 
-#if 1
+#if 0
 bool
-build_ast2_module(AstNode1* cst_module, AstNode2** module)
+build_ast2_module(AstNode1* module1, AstNode2** module2)
 {
   bool success = true;
 
-  *module = new_ast2_module(cst_module->src_loc);
-  AstNode2* body = AST2(*module, module)->body = new_ast2_block(AST1(cst_module, module)->body->src_loc);
+  *module2 = new_ast2_module(module1->src_loc);
+  AstNode2* body = AST2(*module2, module)->body = new_ast2_block(AST1(module1, module)->body->src_loc);
 
-  if(success = begin_scope(cst_module->src_loc, &AST2(body, block)->scope))
+  if(success = begin_scope(module1->src_loc, &AST2(body, block)->scope))
   {
     //symbol_table->module_scope = AST2(body, block)->scope;
 
-    for(ListItem* list_item = AST1(AST1(cst_module, module)->body, block)->nodes->first;
+    for(ListItem* list_item = AST1(AST1(module1, module)->body, block)->nodes->first;
         list_item && success;
         list_item = list_item->next)
     {
-      AstNode1* ast1_node = CST_ITEM(list_item);
-      AstNode2* module_block = AST2(*module, module)->body;
+      AstNode1* ast1_node = AST1_ITEM(list_item);
+      AstNode2* module_block = AST2(*module2, module)->body;
       if(ast1_node->kind == AstKind1_var)
       {
-        AstNode2* node = 0;
-        if(build_ast2_var_decl(ast1_node, &node))
+        AstNode2* ast2_var_decl = 0;
+        if(build_ast2_var_decl(ast1_node, &ast2_var_decl))
         {
-          AstNode1* cst_init_expr = AST1(ast1_node, var)->init_expr;
-          if(cst_init_expr)
+          AstNode1* ast1_init_expr = AST1(ast1_node, var)->init_expr;
+          if(ast1_init_expr)
           {
-            AstNode2* init_expr = new_ast2_node(cst_init_expr->src_loc, AstKind2_binop_occur);
-            AST2(init_expr, binop_occur)->op_decl = &operator_table[OperatorKind_Assign];
-            AST2(init_expr, binop_occur)->left_operand = make_ast2_var_occur(node);
-            //TODO: Set the right_operand!
-            append_list_elem(arena, AST2(module_block, block)->stmts, init_expr, ListKind_ast2_node);
+            AstNode2* init_expr = new_ast2_node(ast1_init_expr->src_loc, AstKind2_binop_occur);
+            AST2(init_expr, binop_occur)->op_kind = OperatorKind_Assign;
+            AST2(init_expr, binop_occur)->left_operand = make_ast2_var_occur(ast2_var_decl);
+            //TODO: Set the 'right_operand' !
+
+            append_list_elem(arena, AST2(module_block, block)->stmts, init_expr, List_ast2_node);
 #if 0
-            AstNode2* init_expr = new_ast2_builtin_proc_occur(cst_init_expr->src_loc, AstBuiltinProc_assign);
+            AstNode2* init_expr = new_ast2_builtin_proc_occur(ast1_init_expr->src_loc, AstBuiltinProc_assign);
             if(success = register_builtin_proc_occur(init_expr))
             {
-              append_list_elem(arena, AST2(init_expr, proc_occur)->actual_args, make_ast2_var_occur(node), ListKind_ast2_node);
+              append_list_elem(arena, AST2(init_expr, proc_occur)->actual_args, make_ast2_var_occur(ast2_var_decl), List_ast2_node);
               //TODO: Add the second argument!!
-              append_list_elem(arena, AST2(module_block, block)->stmts, init_expr, ListKind_ast2_node);
+              append_list_elem(arena, AST2(module_block, block)->stmts, init_expr, List_ast2_node);
             }
 #endif
           }
@@ -1778,8 +1784,7 @@ build_ast2_module(AstNode1* cst_module, AstNode2** module)
         else if(ast1_node->kind == AstKind1_proc)
         {
 #if 1
-          auto* cst_proc = AST1(ast1_node, proc);
-          AstNode2* proc = new_ast2_proc_decl(ast1_node->src_loc, AST1(cst_proc->id, id)->name);
+          AstNode2* proc = new_ast2_proc_decl(ast1_node->src_loc, AST1(AST1(ast1_node, proc)->id, id)->name);
           AstNode2* body = AST2(proc, proc_decl)->body;
           if(success = begin_scope(body->src_loc, &AST2(body, block)->scope))
           {
@@ -1799,7 +1804,9 @@ build_ast2_module(AstNode1* cst_module, AstNode2** module)
 
   return success;
 }
-#else
+#endif
+
+#if 0
 bool
 sem_module_block(AstProc* proc,
                 AstNode2* loop,
@@ -1845,6 +1852,7 @@ init_symbol_table()
   symbol_table->scope_id = last_scope_id = -1;
 }
 
+#if 0
 void
 init_operator_table()
 {
@@ -1864,9 +1872,11 @@ init_operator_table()
   op->kind = AstKind2_binop_decl;
   AST2(op, binop_decl)->kind = kind;
 }
+#endif
 
+#if 0
 bool
-build_ast(AstNode1* ast1_node, AstNode2** node)
+build_ast2(AstNode1* module1, AstNode2** module2)
 {
   bool success = true;
 
@@ -1879,24 +1889,7 @@ build_ast(AstNode1* ast1_node, AstNode2** node)
     add_builtin_types();
     //add_builtin_procs();
 
-    auto* cst_module = AST1(ast1_node, module);
-
-    // process the includes
-    for(ListItem* list_item = AST1(cst_module->body, block)->nodes->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      assert(list_item->kind == ListKind_ast1_node);
-      AstNode1* stmt = list_item->ast1_node;
-
-      if(stmt->kind == AstKind1_include)
-      {
-        auto* include = AST1(stmt, include);
-        process_includes(AST1(include->body, block)->nodes, AST1(cst_module->body, block)->nodes, list_item);
-      }
-    }
-
-    success = build_ast2_module(ast1_node, node);
+    success = build_ast2_module(module1, module2);
     end_scope();
 #if 0
     AstCall* main_call = new_call(deflt_src_loc);
@@ -1919,7 +1912,9 @@ build_ast(AstNode1* ast1_node, AstNode2** node)
 
   return success;
 }
+#endif
 
+#if 0
 void
 DEBUG_print_scope(String* str, int indent_level, Scope* scope, char* tag)
 {
@@ -1970,9 +1965,9 @@ DEBUG_print_ast2_node(String* str, int indent_level, char* tag, AstNode2* node)
 
     if(node->kind == AstKind2_module)
     {
-      auto* module = AST2(node, module);
-      DEBUG_print_ast2_node(str, indent_level, "body", module->body);
-      DEBUG_print_ast_node_list(str, indent_level, "procs", module->procs);
+      auto* module2 = AST2(node, module);
+      DEBUG_print_ast2_node(str, indent_level, "body", module2->body);
+      DEBUG_print_ast_node_list(str, indent_level, "procs", module2->procs);
     }
     else if(node->kind == AstKind2_block)
     {
@@ -2010,7 +2005,7 @@ DEBUG_print_ast2_node(String* str, int indent_level, char* tag, AstNode2* node)
     else if(node->kind == AstKind2_binop_occur)
     {
       auto* binop_occur = AST2(node, binop_occur);
-      DEBUG_print_ast2_node(str, indent_level, "op_decl", binop_occur->op_decl);
+      DEBUG_print_line(str, indent_level, "op_kind", get_op_kind_printstr(binop_occur->op_kind));
       DEBUG_print_ast2_node(str, indent_level, "left_operand", binop_occur->left_operand);
       DEBUG_print_ast2_node(str, indent_level, "right_operand", binop_occur->right_operand);
     }
@@ -2018,4 +2013,5 @@ DEBUG_print_ast2_node(String* str, int indent_level, char* tag, AstNode2* node)
       assert(0);
   }
 }
+#endif
 

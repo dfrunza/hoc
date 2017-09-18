@@ -55,7 +55,7 @@ typedef struct
 String;
 
 #define assert(EXPR)\
-  if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__)
+  while(!(EXPR)) { assert_f(#EXPR, __FILE__, __LINE__); }
 
 #define fail(MESSAGE, ...)\
   fail_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__)
@@ -97,69 +97,69 @@ typedef struct
 }
 SourceLoc;
 
-enum TokenKind
+typedef enum TokenKind
 {
-  TokenKind__None,
+  Token__None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
-  TokenKind_Dot,
-  TokenKind_ArrowRight,
-  TokenKind_OpenBracket,
-  TokenKind_CloseBracket,
-  TokenKind_OpenParens,
-  TokenKind_CloseParens,
-  TokenKind_OpenBrace,
-  TokenKind_CloseBrace,
-  TokenKind_Semicolon,
-  TokenKind_Colon,
-  TokenKind_Comma,
-  TokenKind_Percent,
-  TokenKind_Star,
-  TokenKind_FwdSlash,
-  TokenKind_BackSlash,
-  TokenKind_Plus,
-  TokenKind_PlusPlus,
-  TokenKind_Minus,
-  TokenKind_MinusMinus,
-  TokenKind_Exclam,
-  TokenKind_ExclamEquals,
-  TokenKind_Equals,
-  TokenKind_EqualsEquals,
-  TokenKind_AngleRight,
-  TokenKind_AngleRightEquals,
-  TokenKind_AngleLeft,
-  TokenKind_AngleLeftEquals,
-  TokenKind_Ampersand,
-  TokenKind_AmpersandAmpersand,
-  TokenKind_Pipe,
-  TokenKind_PipePipe,
-  TokenKind_Unknown,
-  TokenKind_EndOfInput,
+  Token_Dot,
+  Token_ArrowRight,
+  Token_OpenBracket,
+  Token_CloseBracket,
+  Token_OpenParens,
+  Token_CloseParens,
+  Token_OpenBrace,
+  Token_CloseBrace,
+  Token_Semicolon,
+  Token_Colon,
+  Token_Comma,
+  Token_Percent,
+  Token_Star,
+  Token_FwdSlash,
+  Token_BackSlash,
+  Token_Plus,
+  Token_PlusPlus,
+  Token_Minus,
+  Token_MinusMinus,
+  Token_Exclam,
+  Token_ExclamEquals,
+  Token_Equals,
+  Token_EqualsEquals,
+  Token_AngleRight,
+  Token_AngleRightEquals,
+  Token_AngleLeft,
+  Token_AngleLeftEquals,
+  Token_Ampersand,
+  Token_AmpersandAmpersand,
+  Token_Pipe,
+  Token_PipePipe,
+  Token_Unknown,
+  Token_EndOfInput,
 
-  TokenKind_Var,
-  TokenKind_If,
-  TokenKind_Else,
-  TokenKind_While,
-  TokenKind_For,
-  TokenKind_Proc,
-  TokenKind_Struct,
-  TokenKind_Union,
-  TokenKind_Return,
-  TokenKind_Break,
-  TokenKind_Continue,
-  TokenKind_Goto,
-  TokenKind_Include,
-  TokenKind_Enum,
-  TokenKind_Cast,
-  TokenKind_New,
-  TokenKind_Putc,
-  TokenKind_True,
-  TokenKind_False,
+  Token_Var,
+  Token_If,
+  Token_Else,
+  Token_While,
+  Token_For,
+  Token_Proc,
+  Token_Struct,
+  Token_Union,
+  Token_Return,
+  Token_Break,
+  Token_Continue,
+  Token_Goto,
+  Token_Include,
+  Token_Enum,
+  Token_Cast,
+  Token_New,
+  Token_Putc,
+  Token_True,
+  Token_False,
 
-  TokenKind_Id,
-  TokenKind_IntNum,
-  TokenKind_FloatNum,
-  TokenKind_String,
-  TokenKind_Char,
+  Token_Id,
+  Token_IntNum,
+  Token_FloatNum,
+  Token_String,
+  Token_Char,
 };
 
 typedef struct
@@ -204,38 +204,38 @@ AccessLink;
 
 #ifndef OperatorKind_MEMBER_LIST
 #define OperatorKind_MEMBER_LIST()\
-  ENUM_MEMBER(OperatorKind__None),\
-  ENUM_MEMBER(OperatorKind_Add),\
-  ENUM_MEMBER(OperatorKind_Sub),\
-  ENUM_MEMBER(OperatorKind_Mul),\
-  ENUM_MEMBER(OperatorKind_Div),\
-  ENUM_MEMBER(OperatorKind_Mod),\
-  ENUM_MEMBER(OperatorKind_Neg),\
-  ENUM_MEMBER(OperatorKind_Assign),\
-  ENUM_MEMBER(OperatorKind_PointerDeref),\
-  ENUM_MEMBER(OperatorKind_AddressOf),\
-  ENUM_MEMBER(OperatorKind_MemberSelect),\
-  ENUM_MEMBER(OperatorKind_PtrMemberSelect),\
-  ENUM_MEMBER(OperatorKind_PreDecrement),\
-  ENUM_MEMBER(OperatorKind_PostDecrement),\
-  ENUM_MEMBER(OperatorKind_PreIncrement),\
-  ENUM_MEMBER(OperatorKind_PostIncrement),\
-  ENUM_MEMBER(OperatorKind_ArrayIndex),\
-  ENUM_MEMBER(OperatorKind_Equals),\
-  ENUM_MEMBER(OperatorKind_NotEquals),\
-  ENUM_MEMBER(OperatorKind_Less),\
-  ENUM_MEMBER(OperatorKind_LessEquals),\
-  ENUM_MEMBER(OperatorKind_Greater),\
-  ENUM_MEMBER(OperatorKind_GreaterEquals),\
-  ENUM_MEMBER(OperatorKind_LogicAnd),\
-  ENUM_MEMBER(OperatorKind_LogicOr),\
-  ENUM_MEMBER(OperatorKind_LogicNot),\
-  ENUM_MEMBER(OperatorKind_BitwiseAnd),\
-  ENUM_MEMBER(OperatorKind_BitwiseOr),\
-  ENUM_MEMBER(OperatorKind__Count),
+  ENUM_MEMBER(Operator__None),\
+  ENUM_MEMBER(Operator_Add),\
+  ENUM_MEMBER(Operator_Sub),\
+  ENUM_MEMBER(Operator_Mul),\
+  ENUM_MEMBER(Operator_Div),\
+  ENUM_MEMBER(Operator_Mod),\
+  ENUM_MEMBER(Operator_Neg),\
+  ENUM_MEMBER(Operator_Assign),\
+  ENUM_MEMBER(Operator_PointerDeref),\
+  ENUM_MEMBER(Operator_AddressOf),\
+  ENUM_MEMBER(Operator_MemberSelect),\
+  ENUM_MEMBER(Operator_PtrMemberSelect),\
+  ENUM_MEMBER(Operator_PreDecrement),\
+  ENUM_MEMBER(Operator_PostDecrement),\
+  ENUM_MEMBER(Operator_PreIncrement),\
+  ENUM_MEMBER(Operator_PostIncrement),\
+  ENUM_MEMBER(Operator_ArrayIndex),\
+  ENUM_MEMBER(Operator_Equals),\
+  ENUM_MEMBER(Operator_NotEquals),\
+  ENUM_MEMBER(Operator_Less),\
+  ENUM_MEMBER(Operator_LessEquals),\
+  ENUM_MEMBER(Operator_Greater),\
+  ENUM_MEMBER(Operator_GreaterEquals),\
+  ENUM_MEMBER(Operator_LogicAnd),\
+  ENUM_MEMBER(Operator_LogicOr),\
+  ENUM_MEMBER(Operator_LogicNot),\
+  ENUM_MEMBER(Operator_BitwiseAnd),\
+  ENUM_MEMBER(Operator_BitwiseOr),\
+  ENUM_MEMBER(Operator__Count),
 #endif
 
-enum OperatorKind
+typedef enum OperatorKind
 {
 #define ENUM_MEMBER(NAME) NAME
   OperatorKind_MEMBER_LIST()
@@ -244,64 +244,162 @@ enum OperatorKind
 
 #ifndef LiteralKind_MEMBER_LIST
 #define LiteralKind_MEMBER_LIST()\
-  ENUM_MEMBER(LiteralKind__None),\
-  ENUM_MEMBER(LiteralKind_int_val),\
-  ENUM_MEMBER(LiteralKind_float_val),\
-  ENUM_MEMBER(LiteralKind_bool_val),\
-  ENUM_MEMBER(LiteralKind_char_val),\
-  ENUM_MEMBER(LiteralKind_str),
+  ENUM_MEMBER(Literal__None),\
+  ENUM_MEMBER(Literal_int_val),\
+  ENUM_MEMBER(Literal_float_val),\
+  ENUM_MEMBER(Literal_bool_val),\
+  ENUM_MEMBER(Literal_char_val),\
+  ENUM_MEMBER(Literal_str),
 #endif
 
-enum LiteralKind
+typedef enum LiteralKind
 {
 #define ENUM_MEMBER(NAME) NAME
   LiteralKind_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
 
-#ifndef AstKind1_MEMBER_LIST
-#define AstKind1_MEMBER_LIST()\
-  ENUM_MEMBER(AstKind1__None),\
-  ENUM_MEMBER(AstKind1_bin_expr),\
-  ENUM_MEMBER(AstKind1_un_expr),\
-  ENUM_MEMBER(AstKind1_lit),\
-  ENUM_MEMBER(AstKind1_var),\
-  ENUM_MEMBER(AstKind1_block),\
-  ENUM_MEMBER(AstKind1_proc),\
-  ENUM_MEMBER(AstKind1_id),\
-  ENUM_MEMBER(AstKind1_stmt),\
-  ENUM_MEMBER(AstKind1_while_stmt),\
-  ENUM_MEMBER(AstKind1_do_while_stmt),\
-  ENUM_MEMBER(AstKind1_for_stmt),\
-  ENUM_MEMBER(AstKind1_if_stmt),\
-  ENUM_MEMBER(AstKind1_return_stmt),\
-  ENUM_MEMBER(AstKind1_break_stmt),\
-  ENUM_MEMBER(AstKind1_continue_stmt),\
-  ENUM_MEMBER(AstKind1_goto_stmt),\
-  ENUM_MEMBER(AstKind1_label),\
-  ENUM_MEMBER(AstKind1_include),\
-  ENUM_MEMBER(AstKind1_module),\
-  ENUM_MEMBER(AstKind1_cast),\
-  ENUM_MEMBER(AstKind1_call),\
-  ENUM_MEMBER(AstKind1_array),\
-  ENUM_MEMBER(AstKind1_pointer),\
-  ENUM_MEMBER(AstKind1_struct_decl),\
-  ENUM_MEMBER(AstKind1_union_decl),\
-  ENUM_MEMBER(AstKind1_enum_decl),\
-  ENUM_MEMBER(AstKind1_init_list),\
-  ENUM_MEMBER(AstKind1_string),\
-  ENUM_MEMBER(AstKind1_hoc_new),\
-  ENUM_MEMBER(AstKind1_hoc_putc),\
-  ENUM_MEMBER(AstKind1__Count),
-#endif
+typedef struct AstNode AstNode;
 
-enum AstKind1
+#define ATTR(NODE, NAME, KIND)\
+  (get_ast_attribute_safe((NODE), AstAttribute_##KIND, AstAttributeName_##NAME)->KIND)
+
+typedef enum AstAttributeKind
 {
-#define ENUM_MEMBER(NAME) NAME
-  AstKind1_MEMBER_LIST()
-#undef ENUM_MEMBER
+  AstAttribute__None,
+  AstAttribute_ast_node,
+  AstAttribute_int_val,
+  AstAttribute_float_val,
+  AstAttribute_char_val,
+  AstAttribute_bool_val,
+  AstAttribute_op_kind,
+  AstAttribute_str,
+  AstAttribute_list,
+  AstAttribute_lit_kind,
 };
 
+typedef enum AstAttributeName
+{
+  AstAttributeName__None,
+  AstAttributeName_operand,
+  AstAttributeName_left_operand,
+  AstAttributeName_right_operand,
+  AstAttributeName_op_kind,
+  AstAttributeName_name,
+  AstAttributeName_nodes,
+  AstAttributeName_file_path,
+  AstAttributeName_body,
+  AstAttributeName_stmt,
+  AstAttributeName_type_expr,
+  AstAttributeName_id,
+  AstAttributeName_init_expr,
+  AstAttributeName_ret_type_expr,
+  AstAttributeName_args,
+  AstAttributeName_int_val,
+  AstAttributeName_float_val,
+  AstAttributeName_bool_val,
+  AstAttributeName_char_val,
+  AstAttributeName_str,
+  AstAttributeName_expr,
+  AstAttributeName_cond_expr,
+  AstAttributeName_else_body,
+  AstAttributeName_decl_expr,
+  AstAttributeName_loop_expe,
+  AstAttributeName_size_expr,
+  AstAttributeName_members,
+  AstAttributeName_count_expr,
+  AstAttributeName_lit_kind,
+};
+
+typedef struct AstAttribute
+{
+  AstAttributeKind kind;
+  AstAttributeName name;
+
+  union
+  {
+    AstNode* ast_node;
+    bool bool_val;
+    int int_val;
+    float float_val;
+    char char_val;
+    char* str;
+    List* list;
+    OperatorKind op_kind;
+    LiteralKind lit_kind;
+  };
+}
+AstAttribute;
+
+typedef struct AstAttributeMetaInfo
+{
+  AstAttributeKind kind;
+  AstAttributeName name;
+}
+AstAttributeMetaInfo;
+
+typedef enum AstKind
+{
+  AstNode__None,
+  AstNode_id,
+  AstNode_array,
+  AstNode_bin_expr,
+  AstNode_un_expr,
+  AstNode_module,
+  AstNode_include,
+  AstNode_block,
+  AstNode_stmt,
+  AstNode_var,
+  AstNode_proc,
+  AstNode_call,
+  AstNode_lit,
+  AstNode_return_stmt,
+  AstNode_goto_stmt,
+  AstNode_label,
+  AstNode_if_stmt,
+  AstNode_while_stmt,
+  AstNode_do_while_stmt,
+  AstNode_for_stmt,
+  AstNode_break_stmt,
+  AstNode_continue_stmt,
+  AstNode_cast,
+  AstNode_pointer,
+  AstNode_enum_decl,
+  AstNode_struct_decl,
+  AstNode_union_decl,
+  AstNode_init_list,
+  AstNode_hoc_new,
+  AstNode_hoc_putc,
+};
+
+typedef struct AstKindMetaInfo
+{
+  AstKind kind;
+  int attrib_count;
+  AstAttributeMetaInfo* attribs;
+}
+AstKindMetaInfo;
+
+typedef struct AstMetaInfo
+{
+  int kind_count;
+  AstKindMetaInfo* kinds;
+}
+AstMetaInfo;
+
+typedef struct AstNode
+{
+  int gen_id;
+  AstKind kind;
+  SourceLoc* src_loc;
+
+  AstAttribute attribs[10];
+}
+AstNode;
+
+AstMetaInfo ast_meta_infos[2];
+
+#if 0
 typedef struct AstNode1
 {
   enum AstKind1 kind;
@@ -472,71 +570,13 @@ typedef struct AstNode1
   };
 }
 AstNode1;
+#endif
 
 typedef struct Type Type;
 typedef struct Symbol Symbol;
 
-#if 0
-typedef enum ScopeKind
-{
-  ScopeKind__None,
-  ScopeKind_module,
-  ScopeKind_block,
-  ScopeKind_proc,
-}
-ScopeKind;
-#endif
-
-#if 0
-#ifndef AstBuiltinProc_MEMBER_LIST
-#define AstBuiltinProc_MEMBER_LIST()\
-  ENUM_MEMBER(AstBuiltinProc_, _None),\
-  ENUM_MEMBER(AstBuiltinProc_, assign),\
-  ENUM_MEMBER(AstBuiltinProc_, add_int),\
-  ENUM_MEMBER(AstBuiltinProc_, sub_int),\
-  ENUM_MEMBER(AstBuiltinProc_, div_int),\
-  ENUM_MEMBER(AstBuiltinProc_, mul_int),\
-  ENUM_MEMBER(AstBuiltinProc_, neg_int),\
-  ENUM_MEMBER(AstBuiltinProc_, add_float),\
-  ENUM_MEMBER(AstBuiltinProc_, sub_float),\
-  ENUM_MEMBER(AstBuiltinProc_, div_float),\
-  ENUM_MEMBER(AstBuiltinProc_, mul_float),\
-  ENUM_MEMBER(AstBuiltinProc_, neg_float),\
-  ENUM_MEMBER(AstBuiltinProc_, float_to_int),\
-  ENUM_MEMBER(AstBuiltinProc_, int_to_float),
-#endif
-
-enum AstBuiltinProc
-{
-#define ENUM_MEMBER(PREFIX, NAME) PREFIX##NAME
-  AstBuiltinProc_MEMBER_LIST()
-#undef ENUM_MEMBER
-};
-#endif
-
-#if 0
-#ifndef AstOperatorKind_MEMBER_LIST
-#define AstOperatorKind_MEMBER_LIST()\
-  ENUM_MEMBER(AstOperatorKind_Assign),\
-  ENUM_MEMBER(AstOperatorKind_Add),\
-  ENUM_MEMBER(AstOperatorKind_Sub),\
-  ENUM_MEMBER(AstOperatorKind_Mul),\
-  ENUM_MEMBER(AstOperatorKind_Div),\
-  ENUM_MEMBER(AstOperatorKind_Neg),
-#endif
-
-enum AstOperatorKind
-{
-#define ENUM_MEMBER(NAME) NAME
-  AstOperatorKind_MEMBER_LIST()
-#undef ENUM_MEMBER
-};
-#endif
-
 typedef struct Scope
 {
-  //ScopeKind kind;
-
   Symbol* last_symbol;
   int scope_id;
   int nesting_depth;
@@ -578,18 +618,17 @@ enum AstKind2
 #undef ENUM_MEMBER
 };
 
-enum AstProcKind
+enum ProcKind
 {
-  AstProcKind__None,
-  AstProcKind_UnOp,
-  AstProcKind_BinOp,
-  AstProcKind_User,
+  ProcKind__None,
+  ProcKind_UnOp,
+  ProcKind_BinOp,
+  ProcKind_User,
 };
 
-// Abstract Syntax Tree
 typedef struct AstNode2
 {
-  enum AstKind2 kind;
+  AstKind2 kind;
   Type* type;
   SourceLoc* src_loc;
 
@@ -617,17 +656,16 @@ typedef struct AstNode2
 
     struct
     {
-      enum OperatorKind kind;
+      OperatorKind kind;
     }
     binop_decl,
     unop_decl;
 
     struct
     {
-      //enum OperatorKind kind;
+      OperatorKind op_kind;
       AstNode2* left_operand;
       AstNode2* right_operand;
-      AstNode2* op_decl;
     }
     binop_occur;
 
@@ -673,7 +711,7 @@ typedef struct AstNode2
     struct
     {
 #if 0
-      AstProcKind kind;
+      ProcKind kind;
       enum AstBuiltinProc builtin_id;
 #endif
       char* proc_name;
@@ -726,14 +764,14 @@ typedef struct AstNode2
 }
 AstNode2;
 
-enum NodeKind
+typedef enum NodeKind
 {
   NodeKind__None,
   NodeKind_ast,
   NodeKind_cst,
 };
 
-enum TypeKind
+typedef enum TypeKind
 {
   TypeKind__None,
   TypeKind_typevar,
@@ -746,14 +784,14 @@ enum TypeKind
   TypeKind_array,
 };
 
-enum UnaryCtorKind
+typedef enum UnaryCtorKind
 {
   UnaryCtorKind__None,
   UnaryCtorKind_pointer,
   UnaryCtorKind_array,
 };
 
-enum BasicTypeKind
+typedef enum BasicTypeKind
 {
   BasicTypeKind__None,
   BasicTypeKind_Void,
@@ -1002,11 +1040,10 @@ VmProgram;
 
 typedef enum
 {
-  ListKind__None,
-  ListKind_ast1_node,
-  ListKind_ast2_node,
-  ListKind_VmInstr,
-  ListKind_TypePair,
+  List__None,
+  List_ast_node,
+  List_VmInstr,
+  List_TypePair,
 }
 ListKind;
 
@@ -1016,8 +1053,7 @@ typedef struct ListItem
   union
   {
     void* elem;
-    AstNode1* ast1_node;
-    AstNode2* ast2_node;
+    AstNode* ast_node;
     Instruction* instr;
     TypePair* type_pair;
   };

@@ -773,32 +773,32 @@ typedef enum NodeKind
 
 typedef enum TypeKind
 {
-  TypeKind__None,
-  TypeKind_typevar,
-  TypeKind_unary,
-  TypeKind_basic,
-  TypeKind_type,
-  TypeKind_proc,
-  TypeKind_product,
-  TypeKind_pointer,
-  TypeKind_array,
+  Type__None,
+  Type_typevar,
+  Type_unary,
+  Type_basic,
+  Type_type,
+  Type_proc,
+  Type_product,
+  Type_pointer,
+  Type_array,
 };
 
-typedef enum UnaryCtorKind
+typedef enum UnaryTypeCtorKind
 {
-  UnaryCtorKind__None,
-  UnaryCtorKind_pointer,
-  UnaryCtorKind_array,
+  UnaryTypeCtor__None,
+  UnaryTypeCtor_pointer,
+  UnaryTypeCtor_array,
 };
 
 typedef enum BasicTypeKind
 {
-  BasicTypeKind__None,
-  BasicTypeKind_Void,
-  BasicTypeKind_Int,
-  BasicTypeKind_Float,
-  BasicTypeKind_Char,
-  BasicTypeKind_Bool,
+  BasicType__None,
+  BasicType_Void,
+  BasicType_Int,
+  BasicType_Float,
+  BasicType_Char,
+  BasicType_Bool,
 };
 
 typedef struct Type
@@ -861,14 +861,14 @@ TypePair;
 
 typedef enum
 {
-  SymbolKind__None,
-  SymbolKind_unresolved,
-  SymbolKind_var_decl,
-  SymbolKind_var_occur,
-  SymbolKind_type_decl,
-  SymbolKind_type_occur,
-  SymbolKind_proc_decl,
-  SymbolKind_proc_occur,
+  Symbol__None,
+  Symbol_unresolved,
+  Symbol_var_decl,
+  Symbol_var_occur,
+  Symbol_type_decl,
+  Symbol_type_occur,
+  Symbol_proc_decl,
+  Symbol_proc_occur,
 }
 SymbolKind;
 

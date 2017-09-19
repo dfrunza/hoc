@@ -181,9 +181,7 @@ parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
     // procedure call
     if(left_node->kind == AstNode_id)
     {
-      //auto* call = AST1(*node = new_ast1_call(&input->src_loc), call);
       AstNode* call = *node = new_ast_node(0, AstNode_call, &input->src_loc);
-      //call->id = left_node;
       ATTR(call, id, ast_node) = left_node;
       ATTR(call, args, list) = new_list(arena, List_ast_node);
 

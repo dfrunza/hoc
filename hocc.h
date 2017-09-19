@@ -242,6 +242,19 @@ typedef enum OperatorKind
 #undef ENUM_MEMBER
 };
 
+char* OperatorKind_strings[] =
+{
+#define ENUM_MEMBER(NAME) #NAME
+  OperatorKind_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+
+char*
+get_op_kind_printstr(OperatorKind op)
+{
+  return OperatorKind_strings[op];
+}
+
 #ifndef LiteralKind_MEMBER_LIST
 #define LiteralKind_MEMBER_LIST()\
   ENUM_MEMBER(Literal__None),\
@@ -258,6 +271,19 @@ typedef enum LiteralKind
   LiteralKind_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
+
+char* LiteralKind_strings[] =
+{
+#define ENUM_MEMBER(NAME) #NAME
+  LiteralKind_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+
+char*
+get_literal_kind_printstr(LiteralKind kind)
+{
+  return LiteralKind_strings[kind];
+}
 
 typedef struct AstNode AstNode;
 
@@ -281,6 +307,9 @@ typedef enum AstAttributeKind
 typedef enum AstAttributeName
 {
   AstAttributeName__None,
+  AstAttributeName_proc_decl,
+  AstAttributeName_type_decl,
+  AstAttributeName_var_decl,
   AstAttributeName_operand,
   AstAttributeName_left_operand,
   AstAttributeName_right_operand,
@@ -302,9 +331,9 @@ typedef enum AstAttributeName
   AstAttributeName_str,
   AstAttributeName_expr,
   AstAttributeName_cond_expr,
+  AstAttributeName_loop_expr,
   AstAttributeName_else_body,
   AstAttributeName_decl_expr,
-  AstAttributeName_loop_expe,
   AstAttributeName_size_expr,
   AstAttributeName_members,
   AstAttributeName_count_expr,
@@ -338,39 +367,59 @@ typedef struct AstAttributeMetaInfo
 }
 AstAttributeMetaInfo;
 
+#ifndef AstKind_MEMBER_LIST
+#define AstKind_MEMBER_LIST()\
+  ENUM_MEMBER(AstNode__None),\
+  ENUM_MEMBER(AstNode_id),\
+  ENUM_MEMBER(AstNode_array),\
+  ENUM_MEMBER(AstNode_bin_expr),\
+  ENUM_MEMBER(AstNode_un_expr),\
+  ENUM_MEMBER(AstNode_module),\
+  ENUM_MEMBER(AstNode_include),\
+  ENUM_MEMBER(AstNode_block),\
+  ENUM_MEMBER(AstNode_stmt),\
+  ENUM_MEMBER(AstNode_var),\
+  ENUM_MEMBER(AstNode_proc),\
+  ENUM_MEMBER(AstNode_call),\
+  ENUM_MEMBER(AstNode_lit),\
+  ENUM_MEMBER(AstNode_return_stmt),\
+  ENUM_MEMBER(AstNode_goto_stmt),\
+  ENUM_MEMBER(AstNode_label),\
+  ENUM_MEMBER(AstNode_if_stmt),\
+  ENUM_MEMBER(AstNode_while_stmt),\
+  ENUM_MEMBER(AstNode_do_while_stmt),\
+  ENUM_MEMBER(AstNode_for_stmt),\
+  ENUM_MEMBER(AstNode_break_stmt),\
+  ENUM_MEMBER(AstNode_continue_stmt),\
+  ENUM_MEMBER(AstNode_cast),\
+  ENUM_MEMBER(AstNode_pointer),\
+  ENUM_MEMBER(AstNode_enum_decl),\
+  ENUM_MEMBER(AstNode_struct_decl),\
+  ENUM_MEMBER(AstNode_union_decl),\
+  ENUM_MEMBER(AstNode_init_list),\
+  ENUM_MEMBER(AstNode_hoc_new),\
+  ENUM_MEMBER(AstNode_hoc_putc),
+#endif
+
 typedef enum AstKind
 {
-  AstNode__None,
-  AstNode_id,
-  AstNode_array,
-  AstNode_bin_expr,
-  AstNode_un_expr,
-  AstNode_module,
-  AstNode_include,
-  AstNode_block,
-  AstNode_stmt,
-  AstNode_var,
-  AstNode_proc,
-  AstNode_call,
-  AstNode_lit,
-  AstNode_return_stmt,
-  AstNode_goto_stmt,
-  AstNode_label,
-  AstNode_if_stmt,
-  AstNode_while_stmt,
-  AstNode_do_while_stmt,
-  AstNode_for_stmt,
-  AstNode_break_stmt,
-  AstNode_continue_stmt,
-  AstNode_cast,
-  AstNode_pointer,
-  AstNode_enum_decl,
-  AstNode_struct_decl,
-  AstNode_union_decl,
-  AstNode_init_list,
-  AstNode_hoc_new,
-  AstNode_hoc_putc,
+#define ENUM_MEMBER(NAME) NAME
+  AstKind_MEMBER_LIST()
+#undef ENUM_MEMBER
 };
+
+char* AstKind_strings[] =
+{
+#define ENUM_MEMBER(NAME) #NAME
+  AstKind_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+
+char*
+get_ast_kind_printstr(AstKind kind)
+{
+  return AstKind_strings[kind];
+}
 
 typedef struct AstKindMetaInfo
 {
@@ -586,6 +635,7 @@ typedef struct Scope
 }
 Scope;
 
+#if 0
 #ifndef AstKind2_MEMBER_LIST
 #define AstKind2_MEMBER_LIST()\
   ENUM_MEMBER(AstKind2__None),\
@@ -617,7 +667,9 @@ enum AstKind2
   AstKind2_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
+#endif
 
+#if 0
 enum ProcKind
 {
   ProcKind__None,
@@ -770,6 +822,7 @@ typedef enum NodeKind
   NodeKind_ast,
   NodeKind_cst,
 };
+#endif
 
 typedef enum TypeKind
 {
@@ -805,7 +858,7 @@ typedef struct Type
 {
   TypeKind kind;
   Type* repr_type; // representative member of the set of equivalent types
-  AstNode2* ast;
+  //AstNode2* ast;
   int size; // -> width
 
   union
@@ -883,12 +936,14 @@ typedef struct Symbol
 
   union
   {
-    AstNode2* var_decl;
-    AstNode2* var_occur;
-    AstNode2* type_decl;
-    AstNode2* type_occur;
-    AstNode2* proc_decl;
-    AstNode2* proc_occur;
+#if 1
+    AstNode* var_decl;
+    AstNode* var_occur;
+    AstNode* type_decl;
+    AstNode* type_occur;
+    AstNode* proc_decl;
+    AstNode* proc_occur;
+#endif
   };
 }
 Symbol;
@@ -1070,6 +1125,6 @@ typedef struct List
 }
 List;
 
-void DEBUG_print_line(String* str, int indent_level, char* message, ...);
+//void DEBUG_print_line(String* str, int indent_level, char* message, ...);
 void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* node_list);
 

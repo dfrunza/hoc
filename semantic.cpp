@@ -4,102 +4,6 @@
 #define SYM(VAR, KIND)\
   (((VAR)->kind == Symbol_##KIND) ? (VAR)->KIND : 0)
 
-#if 0
-char* AstBuiltinProc_names[] = 
-{
-#define ENUM_MEMBER(PREFIX, NAME) #NAME
-  AstBuiltinProc_MEMBER_LIST()
-#undef ENUM_MEMBER
-};
-#endif
-
-#if 0
-AstNode2*
-new_ast2_node(SourceLoc* src_loc, AstKind2 kind)
-{
-  AstNode2* node = mem_push_struct(arena, AstNode2);
-  node->kind = kind;
-  node->src_loc = src_loc;
-  return node;
-}
-
-AstNode2*
-new_ast2_module(SourceLoc* src_loc)
-{
-  AstNode2* node = new_ast2_node(src_loc, AstKind2_module);
-  node->module.procs = new_list(arena, List_ast2_node);
-  return node;
-}
-
-AstNode2*
-new_ast2_block(SourceLoc* src_loc)
-{
-  AstNode2* node = new_ast2_node(src_loc, AstKind2_block);
-  node->block.stmts = new_list(arena, List_ast2_node);
-  return node;
-}
-
-AstNode2*
-new_ast2_type_decl(SourceLoc* src_loc, char* type_name)
-{
-  AstNode2* node = new_ast2_node(src_loc, AstKind2_type_decl);
-  node->type_decl.type_name = type_name;
-  return node;
-}
-
-AstNode2*
-new_ast2_var_decl(SourceLoc* src_loc, char* var_name)
-{
-  AstNode2* node = new_ast2_node(src_loc, AstKind2_var_decl);
-  node->var_decl.var_name = var_name;
-  return node;
-}
-
-AstNode2*
-new_ast2_var_occur(SourceLoc* src_loc, char* var_name)
-{
-  AstNode2* node = new_ast2_node(src_loc, AstKind2_var_occur);
-  node->var_occur.var_name = var_name;
-  return node;
-}
-
-AstNode2*
-new_ast2_proc_decl(SourceLoc* src_loc, char* proc_name)
-{
-  AstNode2* node = new_ast2_node(src_loc, AstKind2_proc_decl);
-  //node->proc_decl.kind = AstProc_User;
-  node->proc_decl.proc_name = proc_name;
-  node->proc_decl.formal_args = new_list(arena, List_ast2_node);
-  node->proc_decl.ret_var = new_ast2_var_decl(src_loc, 0);
-  return node;
-}
-
-AstNode2*
-new_ast2_proc_occur(SourceLoc* src_loc, char* proc_name)
-{
-  AstNode2* node = new_ast2_node(src_loc, AstKind2_proc_occur);
-  node->proc_occur.proc_name = proc_name;
-  node->proc_occur.actual_args = new_list(arena, List_ast2_node);
-  return node;
-}
-
-#if 0
-AstNode2*
-new_ast2_builtin_proc_occur(SourceLoc* src_loc, AstBuiltinProc proc_id)
-{
-  return new_ast2_proc_occur(src_loc, AstBuiltinProc_names[proc_id]);
-}
-#endif
-
-AstNode2*
-new_ast2_stmt(SourceLoc* src_loc, AstNode2* stmt)
-{
-  AstNode2* node = new_ast2_node(src_loc, AstKind2_stmt);
-  node->stmt.stmt = stmt;
-  return node;
-}
-#endif
-
 Scope*
 new_scope()
 {
@@ -107,19 +11,6 @@ new_scope()
   scope->local_decls = new_list(arena, List_ast_node);
   scope->nonlocal_occurs = new_list(arena, List_ast_node);
   return scope;
-}
-
-const char* AstKind2_strings[] =
-{
-#define ENUM_MEMBER(NAME) #NAME
-  AstKind2_MEMBER_LIST()
-#undef ENUM_MEMBER
-};
-
-const char*
-get_ast2_kind_printstr(AstKind2 kind)
-{
-  return AstKind2_strings[kind];
 }
 
 void
@@ -212,20 +103,20 @@ make_tempvar_id(SourceLoc* src_loc, char* label)
 typedef enum SymbolLookup
 {
   SymbolLookup__None,
-  SymbolLookup_StartLocal,
-  SymbolLookup_StartGlobal,
+  SymbolLookup_Local,
+  SymbolLookup_Global,
 };
 
 Symbol*
-lookup_symbol(char* name, SymbolKind kind, SymbolLookup start)
+lookup_symbol(char* name, SymbolKind kind, SymbolLookup lookup)
 {
   Symbol* result = 0, *symbol = 0;
 
-  if(start == SymbolLookup_StartLocal)
+  if(lookup == SymbolLookup_Local)
   {
     symbol = symbol_table->local_scope->last_symbol;
   }
-  else if(start == SymbolLookup_StartGlobal)
+  else if(lookup == SymbolLookup_Global)
   {
     symbol = symbol_table->global_scope->last_symbol;
   }
@@ -257,99 +148,99 @@ register_name(char* name, SourceLoc* src_loc, SymbolKind kind)
 }
 
 bool
-register_var_decl(AstNode2* decl_node)
+register_var_decl(AstNode* decl_node)
 {
   bool success = true;
 
-  auto* var_decl = AST2(decl_node, var_decl);
-  Symbol* decl_sym = lookup_symbol(var_decl->var_name, Symbol_var_decl, SymbolLookup_StartLocal);
+  char* var_name = ATTR(decl_node, name, str);
+  Symbol* decl_sym = lookup_symbol(var_name, Symbol_var_decl, SymbolLookup_Local);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
-    success = compile_error(decl_node->src_loc, "variable `%s` already declared", var_decl->var_name);
-    compile_error(SYM(decl_sym, var_decl)->src_loc, "see previous declaration of `%s`", var_decl->var_name);
+    success = compile_error(decl_node->src_loc, "variable `%s` already declared", var_name);
+    compile_error(SYM(decl_sym, var_decl)->src_loc, "see previous declaration of `%s`", var_name);
   }
   else
   {
-    decl_sym = register_name(var_decl->var_name, decl_node->src_loc, Symbol_var_decl);
+    decl_sym = register_name(var_name, decl_node->src_loc, Symbol_var_decl);
     decl_sym->var_decl = decl_node;
   }
   return success;
 }
 
 bool
-register_var_occur(AstNode2* occur_node)
+register_var_occur(AstNode* occur_node)
 {
   bool success = true;
 
-  auto* var_occur = AST2(occur_node, var_occur);
-  Symbol* decl_sym = lookup_symbol(var_occur->var_name, Symbol_var_decl, SymbolLookup_StartLocal);
+  char* var_name = ATTR(occur_node, name, str);
+  Symbol* decl_sym = lookup_symbol(var_name, Symbol_var_decl, SymbolLookup_Local);
   if(decl_sym)
   {
-    var_occur->var_decl = SYM(decl_sym, var_decl);
+    ATTR(occur_node, var_decl, ast_node) = SYM(decl_sym, var_decl);
 
-    Symbol* occur_sym = register_name(var_occur->var_name, occur_node->src_loc, Symbol_var_occur);
+    Symbol* occur_sym = register_name(var_name, occur_node->src_loc, Symbol_var_occur);
     occur_sym->var_occur = occur_node;
   }
   else
-    success = compile_error(occur_node->src_loc, "unknown var `%s`", var_occur->var_name);
+    success = compile_error(occur_node->src_loc, "unknown var `%s`", var_name);
   return success;
 }
 
 bool
-register_type_decl(AstNode2* decl_node)
+register_type_decl(AstNode* decl_node)
 {
   bool success = true;
 
-  auto* type_decl = AST2(decl_node, type_decl);
-  Symbol* decl_sym = lookup_symbol(type_decl->type_name, Symbol_type_decl, SymbolLookup_StartLocal);
+  char* type_name = ATTR(decl_node, name, str);
+  Symbol* decl_sym = lookup_symbol(type_name, Symbol_type_decl, SymbolLookup_Local);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
-    success = compile_error(decl_node->src_loc, "type `%s` already declared", type_decl->type_name);
-    compile_error(SYM(decl_sym, type_decl)->src_loc, "see previous declaration of `%s`", type_decl->type_name);
+    success = compile_error(decl_node->src_loc, "type `%s` already declared", type_name);
+    compile_error(SYM(decl_sym, type_decl)->src_loc, "see previous declaration of `%s`", type_name);
   }
   else
   {
-    decl_sym = register_name(type_decl->type_name, decl_node->src_loc, Symbol_type_decl);
+    decl_sym = register_name(type_name, decl_node->src_loc, Symbol_type_decl);
     decl_sym->type_decl = decl_node;
   }
   return success;
 }
 
 bool
-register_type_occur(AstNode2* occur_node)
+register_type_occur(AstNode* occur_node)
 {
   bool success = true;
 
-  auto* type_occur = AST2(occur_node, type_occur);
-  Symbol* decl_sym = lookup_symbol(type_occur->type_name, Symbol_type_decl, SymbolLookup_StartLocal);
+  char* type_name = ATTR(occur_node, name, str);
+  Symbol* decl_sym = lookup_symbol(type_name, Symbol_type_decl, SymbolLookup_Local);
   if(decl_sym)
   {
-    type_occur->type_decl = SYM(decl_sym, type_decl);
+    ATTR(occur_node, type_decl, ast_node) = SYM(decl_sym, type_decl);
 
-    Symbol* occur_sym = register_name(type_occur->type_name, occur_node->src_loc, Symbol_type_occur);
+    Symbol* occur_sym = register_name(type_name, occur_node->src_loc, Symbol_type_occur);
     occur_sym->type_occur = occur_node;
   }
   else
-    success = compile_error(occur_node->src_loc, "unknown type `%s`", type_occur->type_name);
+    success = compile_error(occur_node->src_loc, "unknown type `%s`", type_name);
 
   return success;
 }
 
 bool
-register_proc_decl(AstNode2* decl_node)
+register_proc_decl(AstNode* decl_node)
 {
   bool success = true;
 
-  auto* proc_decl = AST2(decl_node, proc_decl);
-  Symbol* decl_sym = lookup_symbol(proc_decl->proc_name, Symbol_proc_decl, SymbolLookup_StartLocal);
+  char* proc_name = ATTR(decl_node, name, str);
+  Symbol* decl_sym = lookup_symbol(proc_name, Symbol_proc_decl, SymbolLookup_Local);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
-    success = compile_error(decl_node->src_loc, "proc `%s` already declared", proc_decl->proc_name);
-    compile_error(SYM(decl_sym, proc_decl)->src_loc, "see previous declaration of `%s`", proc_decl->proc_name);
+    success = compile_error(decl_node->src_loc, "proc `%s` already declared", proc_name);
+    compile_error(SYM(decl_sym, proc_decl)->src_loc, "see previous declaration of `%s`", proc_name);
   }
   else
   {
-    decl_sym = register_name(proc_decl->proc_name, decl_node->src_loc, Symbol_proc_decl);
+    decl_sym = register_name(proc_name, decl_node->src_loc, Symbol_proc_decl);
     decl_sym->proc_decl = decl_node;
   }
   return success;
@@ -1911,107 +1802,6 @@ build_ast2(AstNode1* module1, AstNode2** module2)
   }
 
   return success;
-}
-#endif
-
-#if 0
-void
-DEBUG_print_scope(String* str, int indent_level, Scope* scope, char* tag)
-{
-  if(scope)
-  {
-    ++indent_level;
-    if(tag)
-    {
-      DEBUG_print_line(str, indent_level, tag);
-      ++indent_level;
-    }
-
-    DEBUG_print_line(str, indent_level, "scope_id: %d", scope->scope_id);
-    DEBUG_print_line(str, indent_level, "nesting_depth: %d", scope->nesting_depth);
-    DEBUG_print_scope(str, indent_level, scope->encl_scope, "encl_scope");
-    DEBUG_print_ast_node_list(str, indent_level, "local_decls", scope->local_decls);
-    DEBUG_print_ast_node_list(str, indent_level, "nonlocal_occurs", scope->nonlocal_occurs);
-  }
-}
-
-void
-DEBUG_print_ast2_node(String* str, int indent_level, char* tag, AstNode2* node)
-{
-  if(node)
-  {
-    if(tag)
-    {
-      DEBUG_print_line(str, indent_level, tag);
-      ++indent_level;
-    }
-#if 1
-    if(node->src_loc)
-    {
-      DEBUG_print_line(str, indent_level, "%s src_line=\"%s:%d\"",
-          get_ast2_kind_printstr(node->kind), node->src_loc->file_path, node->src_loc->line_nr);
-    }
-    else
-    {
-      DEBUG_print_line(str, indent_level, "%s", get_ast2_kind_printstr(node->kind));
-    }
-#else
-    if(node->src_loc)
-    {
-      DEBUG_print_line(str, indent_level, "src_line=\"%s:%d\"", node->src_loc->file_path, node->src_loc->line_nr);
-    }
-#endif
-    ++indent_level;
-
-    if(node->kind == AstKind2_module)
-    {
-      auto* module2 = AST2(node, module);
-      DEBUG_print_ast2_node(str, indent_level, "body", module2->body);
-      DEBUG_print_ast_node_list(str, indent_level, "procs", module2->procs);
-    }
-    else if(node->kind == AstKind2_block)
-    {
-      auto* block = AST2(node, block);
-      DEBUG_print_ast_node_list(str, indent_level, "stmts", block->stmts);
-      DEBUG_print_scope(str, indent_level, block->scope, "scope");
-    }
-    else if(node->kind == AstKind2_stmt)
-    {
-      auto* stmt = AST2(node, stmt);
-      DEBUG_print_ast2_node(str, indent_level, "stmt", stmt->stmt);
-    }
-    else if(node->kind == AstKind2_var_decl)
-    {
-      auto* var_decl = AST2(node, var_decl);
-      DEBUG_print_line(str, indent_level, "var_name: %s", var_decl->var_name);
-    }
-    else if(node->kind == AstKind2_proc_occur)
-    {
-      auto* proc_occur = AST2(node, proc_occur);
-      DEBUG_print_line(str, indent_level, "proc_name: %s", proc_occur->proc_name);
-      DEBUG_print_ast_node_list(str, indent_level, "actual_args", proc_occur->actual_args);
-    }
-    else if(node->kind == AstKind2_var_occur)
-    {
-      auto* var_occur = AST2(node, var_occur);
-      DEBUG_print_line(str, indent_level, "var_name: %s", var_occur->var_name);
-      DEBUG_print_line(str, indent_level, "decl_scope_offset: %d", var_occur->decl_scope_offset);
-    }
-    else if(node->kind == AstKind2_binop_decl)
-    {
-      auto* binop_decl = AST2(node, binop_decl);
-      DEBUG_print_line(str, indent_level, "kind: %s", get_op_kind_printstr(binop_decl->kind));
-    }
-    else if(node->kind == AstKind2_binop_occur)
-    {
-      auto* binop_occur = AST2(node, binop_occur);
-      DEBUG_print_line(str, indent_level, "op_kind", get_op_kind_printstr(binop_occur->op_kind));
-      DEBUG_print_ast2_node(str, indent_level, "left_operand", binop_occur->left_operand);
-      DEBUG_print_ast2_node(str, indent_level, "right_operand", binop_occur->right_operand);
-    }
-    else
-      assert(0);
-  }
 }
 #endif
 

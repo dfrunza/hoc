@@ -152,7 +152,7 @@ register_var_decl(AstNode* decl_node)
 {
   bool success = true;
 
-  char* var_name = ATTR(decl_node, name, str);
+  char* var_name = ATTR(decl_node, str, name);
   Symbol* decl_sym = lookup_symbol(var_name, Symbol_var_decl, SymbolLookup_Local);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
@@ -172,11 +172,11 @@ register_var_occur(AstNode* occur_node)
 {
   bool success = true;
 
-  char* var_name = ATTR(occur_node, name, str);
+  char* var_name = ATTR(occur_node, str, name);
   Symbol* decl_sym = lookup_symbol(var_name, Symbol_var_decl, SymbolLookup_Local);
   if(decl_sym)
   {
-    ATTR(occur_node, var_decl, ast_node) = SYM(decl_sym, var_decl);
+    ATTR(occur_node, ast_node, var_decl) = SYM(decl_sym, var_decl);
 
     Symbol* occur_sym = register_name(var_name, occur_node->src_loc, Symbol_var_occur);
     occur_sym->var_occur = occur_node;
@@ -191,7 +191,7 @@ register_type_decl(AstNode* decl_node)
 {
   bool success = true;
 
-  char* type_name = ATTR(decl_node, name, str);
+  char* type_name = ATTR(decl_node, str, name);
   Symbol* decl_sym = lookup_symbol(type_name, Symbol_type_decl, SymbolLookup_Local);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
@@ -211,11 +211,11 @@ register_type_occur(AstNode* occur_node)
 {
   bool success = true;
 
-  char* type_name = ATTR(occur_node, name, str);
+  char* type_name = ATTR(occur_node, str, name);
   Symbol* decl_sym = lookup_symbol(type_name, Symbol_type_decl, SymbolLookup_Local);
   if(decl_sym)
   {
-    ATTR(occur_node, type_decl, ast_node) = SYM(decl_sym, type_decl);
+    ATTR(occur_node, ast_node, type_decl) = SYM(decl_sym, type_decl);
 
     Symbol* occur_sym = register_name(type_name, occur_node->src_loc, Symbol_type_occur);
     occur_sym->type_occur = occur_node;
@@ -231,7 +231,7 @@ register_proc_decl(AstNode* decl_node)
 {
   bool success = true;
 
-  char* proc_name = ATTR(decl_node, name, str);
+  char* proc_name = ATTR(decl_node, str, name);
   Symbol* decl_sym = lookup_symbol(proc_name, Symbol_proc_decl, SymbolLookup_Local);
   if(decl_sym && (decl_sym->scope_id == symbol_table->scope_id))
   {
@@ -338,12 +338,14 @@ register_call(AstCall* call)
 }
 #endif
 
-#if 0
 void
 add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == Type_basic);
+
+#if 0
   register_type_decl(new_ast2_type_decl(0, name));
+#endif
 }
 
 void
@@ -355,7 +357,6 @@ add_builtin_types()
   add_builtin_type("float", basic_type_float);
   add_builtin_type("void", basic_type_void);
 }
-#endif
 
 #if 0
 const char*
@@ -485,8 +486,8 @@ process_includes(List* include_list, List* module_list, ListItem* module_list_it
 
     if(node->kind == AstNode_include)
     {
-      AstNode* block = ATTR(node, body, ast_node);
-      process_includes(ATTR(block, nodes, list), include_list, list_item);
+      AstNode* block = ATTR(node, ast_node, body);
+      process_includes(ATTR(block, list, nodes), include_list, list_item);
     }
   }
   replace_list_item_at(include_list, module_list, module_list_item);
@@ -1628,13 +1629,19 @@ make_ast2_proc_occur(SourceLoc* src_loc, char* proc_name)
 }
 #endif
 
-#if 0
 bool
-build_ast2_module(AstNode1* module1, AstNode2** module2)
+ident_module(AstNode* module)
 {
   bool success = true;
 
-  *module2 = new_ast2_module(module1->src_loc);
+  AstNode module_copy = *module;
+  module = new_ast_node(1, AstNode_module, module_copy.src_loc);
+  ATTR(module, str, file_path) = ATTR(&module_copy, str, file_path);
+  ATTR(module, ast_node, body) = new_ast_node(1, AstNode_block, ATTR(&module_copy, ast_node, body)->src_loc);
+
+  AstNode body_copy = *ATTR(&module_copy, ast_node, body);
+
+#if 0
   AstNode2* body = AST2(*module2, module)->body = new_ast2_block(AST1(module1, module)->body->src_loc);
 
   if(success = begin_scope(module1->src_loc, &AST2(body, block)->scope))
@@ -1692,10 +1699,10 @@ build_ast2_module(AstNode1* module1, AstNode2** module2)
 
     end_scope();
   }
+#endif
 
   return success;
 }
-#endif
 
 #if 0
 bool
@@ -1743,10 +1750,10 @@ init_symbol_table()
   symbol_table->scope_id = last_scope_id = -1;
 }
 
-#if 0
 void
 init_operator_table()
 {
+#if 0
   operator_table = mem_push_array(arena, AstNode2, Operator__Count);
   AstNode2* op;
   OperatorKind kind;
@@ -1762,12 +1769,11 @@ init_operator_table()
   op->src_loc = 0;
   op->kind = AstKind2_binop_decl;
   AST2(op, binop_decl)->kind = kind;
-}
 #endif
+}
 
-#if 0
 bool
-build_ast2(AstNode1* module1, AstNode2** module2)
+ident(AstNode* module)
 {
   bool success = true;
 
@@ -1778,9 +1784,8 @@ build_ast2(AstNode1* module1, AstNode2** module2)
   if(success = begin_scope(0, &symbol_table->global_scope))
   {
     add_builtin_types();
-    //add_builtin_procs();
 
-    success = build_ast2_module(module1, module2);
+    success = ident_module(module);
     end_scope();
 #if 0
     AstCall* main_call = new_call(deflt_src_loc);
@@ -1803,5 +1808,4 @@ build_ast2(AstNode1* module1, AstNode2** module2)
 
   return success;
 }
-#endif
 

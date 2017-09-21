@@ -324,6 +324,9 @@ typedef enum AstAttributeName
   AstAttributeName_procs,
   AstAttributeName_stmts,
   AstAttributeName_scope,
+  AstAttributeName_decl_scope,
+  AstAttributeName_occur_scope,
+  AstAttributeName_decl_scope_offset,
   AstAttributeName_proc_decl,
   AstAttributeName_type_decl,
   AstAttributeName_var_decl,
@@ -397,7 +400,11 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_block),\
   ENUM_MEMBER(AstNode_stmt),\
   ENUM_MEMBER(AstNode_var),\
+  ENUM_MEMBER(AstNode_var_decl),\
+  ENUM_MEMBER(AstNode_var_occur),\
   ENUM_MEMBER(AstNode_proc),\
+  ENUM_MEMBER(AstNode_proc_decl),\
+  ENUM_MEMBER(AstNode_proc_applic),\
   ENUM_MEMBER(AstNode_call),\
   ENUM_MEMBER(AstNode_lit),\
   ENUM_MEMBER(AstNode_return_stmt),\

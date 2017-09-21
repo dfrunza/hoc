@@ -580,7 +580,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
   }
   else if(gen_id == 1)
   {
-    ast->kind_count = 2;
+    ast->kind_count = 4;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
     int kind_index = 0;
@@ -631,6 +631,58 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_scope;
       attrib->name = AstAttributeName_scope;
+    }
+
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_var_decl;
+      kind->attrib_count = 2;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_str;
+      attrib->name = AstAttributeName_name;
+      
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_scope;
+      attrib->name = AstAttributeName_decl_scope;
+    }
+
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_var_occur;
+      kind->attrib_count = 4;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_str;
+      attrib->name = AstAttributeName_name;
+      
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_var_decl;
+      
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_scope;
+      attrib->name = AstAttributeName_occur_scope;
+      
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_int_val;
+      attrib->name = AstAttributeName_decl_scope_offset;
     }
   }
   else
@@ -715,8 +767,8 @@ get_ast_attribute_safe(AstNode* node, AstAttributeKind kind, AstAttributeName na
   return result;
 }
 
-void
-make_ast_node(AstNode* node, int gen_id, AstKind kind, SourceLoc* src_loc)
+AstNode*
+make_ast_node(int gen_id, AstNode* node, AstKind kind, SourceLoc* src_loc)
 {
   assert(gen_id >= 0 && gen_id < sizeof_array(ast_meta_infos));
   node->gen_id = gen_id;
@@ -747,19 +799,22 @@ make_ast_node(AstNode* node, int gen_id, AstKind kind, SourceLoc* src_loc)
     {
       AstAttributeMetaInfo* attrib_meta = &kind_meta->attribs[attrib_index];
       AstAttribute* attrib = &node->attribs[attrib_index];
+      mem_zero_struct(attrib, AstAttribute);
       attrib->kind = attrib_meta->kind;
       attrib->name = attrib_meta->name;
     }
   }
   else
     assert(0);
+
+  return node;
 }
 
 AstNode*
 new_ast_node(int gen_id, AstKind kind, SourceLoc* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode);
-  make_ast_node(node, gen_id, kind, src_loc);
+  make_ast_node(gen_id, node, kind, src_loc);
   return node;
 }
 
@@ -1081,7 +1136,7 @@ translate(char* file_path, char* hoc_text)
     }
 #endif
 
-    if(vm_program->success = ident(module))
+    if(vm_program->success = semantic(module))
     {
       assert(symbol_table->scope_id == 0);
       assert(symbol_table->nesting_depth == 0);

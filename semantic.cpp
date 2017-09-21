@@ -512,6 +512,22 @@ build_ast2_var_decl(AstNode1* cst_var, AstNode2** var_decl)
 }
 #endif
 
+bool
+name_id_var_decl(AstNode* var)
+{
+  bool success = true;
+  AstNode var_copy = *var;
+  AstNode* var_decl = make_ast_node(1, var, AstNode_var_decl, var_copy.src_loc);
+  ATTR(var_decl, str, name) = ATTR(ATTR(&var_copy, ast_node, id), str, name);
+
+  if(success = register_var_decl(var_decl))
+  {
+    Scope* decl_scope = ATTR(var_decl, scope, decl_scope) = symbol_table->local_scope;
+    append_list_elem(arena, decl_scope->local_decls, var_decl, List_ast_node);
+  }
+  return success;
+}
+
 #if 0
 bool
 sem_call_args(AstBlock* module_block, AstBlock* block, AstCall* call)
@@ -1630,16 +1646,31 @@ make_ast2_proc_occur(SourceLoc* src_loc, char* proc_name)
 #endif
 
 bool
-ident_module(AstNode* module)
+name_id_module(AstNode* module)
 {
   bool success = true;
 
   AstNode module_copy = *module;
-  module = new_ast_node(1, AstNode_module, module_copy.src_loc);
+  make_ast_node(1, module, AstNode_module, module_copy.src_loc);
   ATTR(module, str, file_path) = ATTR(&module_copy, str, file_path);
-  ATTR(module, ast_node, body) = new_ast_node(1, AstNode_block, ATTR(&module_copy, ast_node, body)->src_loc);
 
   AstNode body_copy = *ATTR(&module_copy, ast_node, body);
+  AstNode* body = make_ast_node(1, ATTR(&module_copy, ast_node, body), AstNode_block, body_copy.src_loc);
+
+  if(success = begin_scope(module->src_loc, &ATTR(body, scope, scope)))
+  {
+    for(ListItem* list_item = ATTR(&body_copy, list, nodes)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      AstNode* node = ITEM(list_item, ast_node);
+      if(node->kind == AstNode_var)
+      {
+        name_id_var_decl(node);
+      }
+    }
+    end_scope();
+  }
 
 #if 0
   AstNode2* body = AST2(*module2, module)->body = new_ast2_block(AST1(module1, module)->body->src_loc);
@@ -1773,7 +1804,7 @@ init_operator_table()
 }
 
 bool
-ident(AstNode* module)
+semantic(AstNode* module)
 {
   bool success = true;
 
@@ -1785,7 +1816,7 @@ ident(AstNode* module)
   {
     add_builtin_types();
 
-    success = ident_module(module);
+    success = name_id_module(module);
     end_scope();
 #if 0
     AstCall* main_call = new_call(deflt_src_loc);

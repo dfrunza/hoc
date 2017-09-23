@@ -174,7 +174,7 @@ parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
   {
     // array
     AstNode* index = *node = new_ast_node(0, AstNode_bin_expr, &input->src_loc);
-    ATTR(index, op_kind, op_kind) = Operator_ArrayIndex;
+    ATTR(index, op_kind, op_kind) = OperatorKind_ArrayIndex;
     ATTR(index, ast_node, left_operand) = left_node;
 
     if(success = get_next_token(input) && parse_expression(input, &ATTR(index, ast_node, right_operand)))
@@ -212,9 +212,9 @@ parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** node)
     ATTR(bin_expr, ast_node, left_operand) = left_node;
 
     if(input->token.kind == Token_Dot)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_MemberSelect;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_MemberSelect;
     else if(input->token.kind == Token_ArrowRight)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_PtrMemberSelect;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_PtrMemberSelect;
 
     if(success = get_next_token(input) && parse_selector(input, &ATTR(bin_expr, ast_node, right_operand)))
     {
@@ -244,7 +244,7 @@ parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** node)
     else if(input->token.kind == Token_PlusPlus)
     {
 #if 0
-      un_expr->op = Operator_PostIncrement;
+      un_expr->op = OperatorKind_PostIncrement;
 #else
       success = compile_error(&input->src_loc, "`++` not supported");
 #endif
@@ -282,11 +282,11 @@ parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
     ATTR(bin_expr, ast_node, left_operand) = left_node;
 
     if(input->token.kind == Token_Star)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_Mul;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_Mul;
     else if(input->token.kind == Token_FwdSlash)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_Div;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_Div;
     else if(input->token.kind == Token_Percent)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_Mod;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_Mod;
     else
       assert(0);
 
@@ -334,17 +334,17 @@ parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     ATTR(bin_expr, ast_node, left_operand) = left_node;
 
     if(input->token.kind == Token_Plus)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_Add;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_Add;
     else if(input->token.kind == Token_Minus)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_Sub;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_Sub;
     else if(input->token.kind == Token_Pipe)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_BitwiseOr;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_BitwiseOr;
     else if(input->token.kind == Token_PipePipe)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_LogicOr;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_LogicOr;
     else if(input->token.kind == Token_Ampersand)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_BitwiseAnd;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_BitwiseAnd;
     else if(input->token.kind == Token_AmpersandAmpersand)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_LogicAnd;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_LogicAnd;
     else
       assert(0);
 
@@ -393,19 +393,19 @@ parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
     ATTR(bin_expr, ast_node, left_operand) = left_node;
 
     if(input->token.kind == Token_Equals)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_Assign;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_Assign;
     else if(input->token.kind == Token_EqualsEquals)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_Equals;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_Equals;
     else if(input->token.kind == Token_ExclamEquals)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_NotEquals;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_NotEquals;
     else if(input->token.kind == Token_AngleLeft)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_Less;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_Less;
     else if(input->token.kind == Token_AngleLeftEquals)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_LessEquals;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_LessEquals;
     else if(input->token.kind == Token_AngleRight)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_Greater;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_Greater;
     else if(input->token.kind == Token_AngleRightEquals)
-      ATTR(bin_expr, op_kind, op_kind) = Operator_GreaterEquals;
+      ATTR(bin_expr, op_kind, op_kind) = OperatorKind_GreaterEquals;
 
     if(success = get_next_token(input) && parse_expression(input, &ATTR(bin_expr, ast_node, right_operand)))
     {
@@ -713,17 +713,17 @@ parse_un_expr(TokenStream* input, AstNode** node)
     AstNode* un_expr = *node = new_ast_node(0, AstNode_un_expr, &input->src_loc);
 
     if(input->token.kind == Token_Exclam)
-      ATTR(un_expr, op_kind, op_kind) = Operator_LogicNot;
+      ATTR(un_expr, op_kind, op_kind) = OperatorKind_LogicNot;
     else if(input->token.kind == Token_Star)
-      ATTR(un_expr, op_kind, op_kind) = Operator_PointerDeref;
+      ATTR(un_expr, op_kind, op_kind) = OperatorKind_PointerDeref;
     else if(input->token.kind == Token_Ampersand)
-      ATTR(un_expr, op_kind, op_kind) = Operator_AddressOf;
+      ATTR(un_expr, op_kind, op_kind) = OperatorKind_AddressOf;
     else if(input->token.kind == Token_Minus)
-      ATTR(un_expr, op_kind, op_kind) = Operator_Neg;
+      ATTR(un_expr, op_kind, op_kind) = OperatorKind_Neg;
     else if(input->token.kind == Token_MinusMinus)
     {
 #if 0
-      un_expr->op = Operator_PreDecrement;
+      un_expr->op = OperatorKind_PreDecrement;
 #else
       success = compile_error(&input->src_loc, "`--` not supported");
 #endif
@@ -731,7 +731,7 @@ parse_un_expr(TokenStream* input, AstNode** node)
     else if(input->token.kind == Token_PlusPlus)
     {
 #if 0
-      un_expr->op = Operator_PreIncrement;
+      un_expr->op = OperatorKind_PreIncrement;
 #else
       success = compile_error(&input->src_loc, "`++` not supported");
 #endif
@@ -813,13 +813,17 @@ parse_var_decl(TokenStream* input, AstNode** node)
       if((success = get_next_token(input)) && input->token.kind == Token_Equals
           && (success = get_next_token(input)))
       {
-        if(success = parse_initializer_list(input, &ATTR(var, ast_node, init_expr)))
+        AstNode* init_expr = ATTR(var, ast_node, init_expr) = new_ast_node(0, AstNode_bin_expr, &input->src_loc);
+        ATTR(init_expr, op_kind, op_kind) = OperatorKind_Assign;
+        ATTR(init_expr, ast_node, left_operand) = id;
+
+        if(success = parse_initializer_list(input, &ATTR(init_expr, ast_node, right_operand)))
         {
-          if(!ATTR(var, ast_node, init_expr))
+          if(!ATTR(init_expr, ast_node, right_operand))
           {
-            if(success = parse_expression(input, &ATTR(var, ast_node, init_expr)))
+            if(success = parse_expression(input, &ATTR(init_expr, ast_node, right_operand)))
             {
-              if(!ATTR(var, ast_node, init_expr))
+              if(!ATTR(init_expr, ast_node, right_operand))
               {
                 putback_token(input);
                 success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));

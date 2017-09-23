@@ -204,35 +204,35 @@ AccessLink;
 
 #ifndef OperatorKind_MEMBER_LIST
 #define OperatorKind_MEMBER_LIST()\
-  ENUM_MEMBER(Operator__None),\
-  ENUM_MEMBER(Operator_Add),\
-  ENUM_MEMBER(Operator_Sub),\
-  ENUM_MEMBER(Operator_Mul),\
-  ENUM_MEMBER(Operator_Div),\
-  ENUM_MEMBER(Operator_Mod),\
-  ENUM_MEMBER(Operator_Neg),\
-  ENUM_MEMBER(Operator_Assign),\
-  ENUM_MEMBER(Operator_PointerDeref),\
-  ENUM_MEMBER(Operator_AddressOf),\
-  ENUM_MEMBER(Operator_MemberSelect),\
-  ENUM_MEMBER(Operator_PtrMemberSelect),\
-  ENUM_MEMBER(Operator_PreDecrement),\
-  ENUM_MEMBER(Operator_PostDecrement),\
-  ENUM_MEMBER(Operator_PreIncrement),\
-  ENUM_MEMBER(Operator_PostIncrement),\
-  ENUM_MEMBER(Operator_ArrayIndex),\
-  ENUM_MEMBER(Operator_Equals),\
-  ENUM_MEMBER(Operator_NotEquals),\
-  ENUM_MEMBER(Operator_Less),\
-  ENUM_MEMBER(Operator_LessEquals),\
-  ENUM_MEMBER(Operator_Greater),\
-  ENUM_MEMBER(Operator_GreaterEquals),\
-  ENUM_MEMBER(Operator_LogicAnd),\
-  ENUM_MEMBER(Operator_LogicOr),\
-  ENUM_MEMBER(Operator_LogicNot),\
-  ENUM_MEMBER(Operator_BitwiseAnd),\
-  ENUM_MEMBER(Operator_BitwiseOr),\
-  ENUM_MEMBER(Operator__Count),
+  ENUM_MEMBER(OperatorKind__None),\
+  ENUM_MEMBER(OperatorKind_Add),\
+  ENUM_MEMBER(OperatorKind_Sub),\
+  ENUM_MEMBER(OperatorKind_Mul),\
+  ENUM_MEMBER(OperatorKind_Div),\
+  ENUM_MEMBER(OperatorKind_Mod),\
+  ENUM_MEMBER(OperatorKind_Neg),\
+  ENUM_MEMBER(OperatorKind_Assign),\
+  ENUM_MEMBER(OperatorKind_PointerDeref),\
+  ENUM_MEMBER(OperatorKind_AddressOf),\
+  ENUM_MEMBER(OperatorKind_MemberSelect),\
+  ENUM_MEMBER(OperatorKind_PtrMemberSelect),\
+  ENUM_MEMBER(OperatorKind_PreDecrement),\
+  ENUM_MEMBER(OperatorKind_PostDecrement),\
+  ENUM_MEMBER(OperatorKind_PreIncrement),\
+  ENUM_MEMBER(OperatorKind_PostIncrement),\
+  ENUM_MEMBER(OperatorKind_ArrayIndex),\
+  ENUM_MEMBER(OperatorKind_Equals),\
+  ENUM_MEMBER(OperatorKind_NotEquals),\
+  ENUM_MEMBER(OperatorKind_Less),\
+  ENUM_MEMBER(OperatorKind_LessEquals),\
+  ENUM_MEMBER(OperatorKind_Greater),\
+  ENUM_MEMBER(OperatorKind_GreaterEquals),\
+  ENUM_MEMBER(OperatorKind_LogicAnd),\
+  ENUM_MEMBER(OperatorKind_LogicOr),\
+  ENUM_MEMBER(OperatorKind_LogicNot),\
+  ENUM_MEMBER(OperatorKind_BitwiseAnd),\
+  ENUM_MEMBER(OperatorKind_BitwiseOr),\
+  ENUM_MEMBER(OperatorKind__Count),
 #endif
 
 typedef enum OperatorKind
@@ -295,8 +295,6 @@ typedef struct Scope
   int scope_id;
   int nesting_depth;
   struct Scope* encl_scope;
-  List* local_decls;
-  List* nonlocal_occurs;
 }
 Scope;
 
@@ -358,6 +356,8 @@ typedef enum AstAttributeName
   AstAttributeName_members,
   AstAttributeName_count_expr,
   AstAttributeName_lit_kind,
+  AstAttributeName_local_decls,
+  AstAttributeName_non_local_occurs,
 };
 
 typedef struct AstAttribute
@@ -404,7 +404,10 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_var_occur),\
   ENUM_MEMBER(AstNode_proc),\
   ENUM_MEMBER(AstNode_proc_decl),\
-  ENUM_MEMBER(AstNode_proc_applic),\
+  ENUM_MEMBER(AstNode_proc_occur),\
+  ENUM_MEMBER(AstNode_type),\
+  ENUM_MEMBER(AstNode_type_decl),\
+  ENUM_MEMBER(AstNode_type_occur),\
   ENUM_MEMBER(AstNode_call),\
   ENUM_MEMBER(AstNode_lit),\
   ENUM_MEMBER(AstNode_return_stmt),\
@@ -722,16 +725,7 @@ typedef struct Symbol
   char* name;
   int scope_id;
   int nesting_depth;
-
-  union
-  {
-    AstNode* var_decl;
-    AstNode* var_occur;
-    AstNode* type_decl;
-    AstNode* type_occur;
-    AstNode* proc_decl;
-    AstNode* proc_occur;
-  };
+  AstNode* ast_node;
 }
 Symbol;
 
@@ -739,10 +733,10 @@ typedef struct
 {
   Scope* global_scope;
   //Scope* module_scope;
-  Scope* local_scope;
+  Scope* active_scope;
   int scope_id;
   int nesting_depth;
-  Scope* active_scopes[MAX_SCOPE_NESTING_DEPTH];
+  Scope* scopes[MAX_SCOPE_NESTING_DEPTH];
   int sym_count;
 }
 SymbolTable;

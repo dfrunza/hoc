@@ -137,6 +137,7 @@ compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
 void
 init_ast_meta_info(AstMetaInfo* ast, int gen_id)
 {
+  //astgen0
   if(gen_id == 0)
   {
     ast->kind_count = 21;
@@ -578,9 +579,10 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib->name = AstAttributeName_op_kind;
     }
   }
+  //astgen1
   else if(gen_id == 1)
   {
-    ast->kind_count = 4;
+    ast->kind_count = 6;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
     int kind_index = 0;
@@ -616,7 +618,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_block;
-      kind->attrib_count = 2;
+      kind->attrib_count = 4;
       kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
 
       int attrib_index = 0;
@@ -631,13 +633,23 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_scope;
       attrib->name = AstAttributeName_scope;
+      
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_list;
+      attrib->name = AstAttributeName_local_decls;
+      
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_list;
+      attrib->name = AstAttributeName_non_local_occurs;
     }
 
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var_decl;
-      kind->attrib_count = 2;
+      kind->attrib_count = 3;
       kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
 
       int attrib_index = 0;
@@ -652,6 +664,11 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_scope;
       attrib->name = AstAttributeName_decl_scope;
+      
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_init_expr;
     }
 
     {
@@ -684,6 +701,73 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib->kind = AstAttribute_int_val;
       attrib->name = AstAttributeName_decl_scope_offset;
     }
+
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_bin_expr;
+      kind->attrib_count = 3;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_left_operand;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_right_operand;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_op_kind;
+      attrib->name = AstAttributeName_op_kind;
+    }
+
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_lit;
+      kind->attrib_count = 6;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_lit_kind;
+      attrib->name = AstAttributeName_lit_kind;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_int_val;
+      attrib->name = AstAttributeName_int_val;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_float_val;
+      attrib->name = AstAttributeName_float_val;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_bool_val;
+      attrib->name = AstAttributeName_bool_val;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_char_val;
+      attrib->name = AstAttributeName_char_val;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_str;
+      attrib->name = AstAttributeName_str;
+}
   }
   else
     assert(0);
@@ -693,14 +777,12 @@ void
 init_ast_meta_infos()
 {
   AstMetaInfo* ast = 0;
-  int gen_id = 0;
   int generation_count = sizeof_array(ast_meta_infos);
 
-  while(gen_id < generation_count)
+  for(int gen_id = 0; gen_id < generation_count; gen_id++)
   {
     ast = &ast_meta_infos[gen_id];
     init_ast_meta_info(ast, gen_id);
-    gen_id++;
   }
 }
 
@@ -855,7 +937,7 @@ DEBUG_print_line(String* str, int indent_level, char* message, ...)
 }
 
 void
-DEBUG_print_scope(String* str, int indent_level, Scope* scope, char* tag)
+DEBUG_print_scope(String* str, int indent_level, char* tag, Scope* scope)
 {
   if(scope)
   {
@@ -868,9 +950,7 @@ DEBUG_print_scope(String* str, int indent_level, Scope* scope, char* tag)
 
     DEBUG_print_line(str, indent_level, "scope_id: %d", scope->scope_id);
     DEBUG_print_line(str, indent_level, "nesting_depth: %d", scope->nesting_depth);
-    DEBUG_print_scope(str, indent_level, scope->encl_scope, "encl_scope");
-    DEBUG_print_ast_node_list(str, indent_level, "local_decls", scope->local_decls);
-    DEBUG_print_ast_node_list(str, indent_level, "nonlocal_occurs", scope->nonlocal_occurs);
+    DEBUG_print_line(str, indent_level, "encl_scope_id: %d", scope->encl_scope->scope_id);
   }
 }
 
@@ -1062,7 +1142,26 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->gen_id == 1)
     {
-      printf("todo\n");
+      if(node->kind == AstNode_module)
+      {
+        DEBUG_print_line(str, indent_level, "file_path: \"%s\"", ATTR(node, str, file_path));
+        DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
+        DEBUG_print_ast_node_list(str, indent_level, "procs", ATTR(node, list, procs));
+      }
+      else if(node->kind == AstNode_block)
+      {
+        DEBUG_print_ast_node_list(str, indent_level, "stmts", ATTR(node, list, stmts));
+        DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
+        DEBUG_print_ast_node_list(str, indent_level, "local_decls", ATTR(node, list, local_decls));
+        DEBUG_print_ast_node_list(str, indent_level, "non_local_occurs", ATTR(node, list, non_local_occurs));
+      }
+      else if(node->kind == AstNode_var_decl)
+      {
+        DEBUG_print_line(str, indent_level, "name: \"%s\"", ATTR(node, str, name));
+        DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, decl_scope));
+      }
+      else
+        assert(0);
     }
     else
       assert(0);
@@ -1284,7 +1383,9 @@ main(int argc, char* argv[])
       {
 #if 0
         if(DEBUG_enabled)/*>>>*/
+        {
           printf("symbol count : %d\n", symbol_table->sym_count);/*<<<*/
+        }
 #endif
         
         OutFileNames out_files = {0};

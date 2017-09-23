@@ -6,5 +6,5 @@ var int b = a;
 proc int
 main()
 {
+  return 0;
 }
-

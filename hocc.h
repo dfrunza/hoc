@@ -314,6 +314,7 @@ typedef struct Scope
   int scope_id;
   int nesting_depth;
   struct Scope* encl_scope;
+  AstNode* ast_node;
 }
 Scope;
 
@@ -338,8 +339,8 @@ typedef enum AstAttributeKind
 typedef enum AstAttributeName
 {
   AstAttributeName__None,
-  AstAttributeName_procs,
-  AstAttributeName_stmts,
+  AstAttributeName_formal_args,
+  AstAttributeName_ret_var_decl,
   AstAttributeName_scope,
   AstAttributeName_decl_scope,
   AstAttributeName_occur_scope,
@@ -360,7 +361,7 @@ typedef enum AstAttributeName
   AstAttributeName_id,
   AstAttributeName_init_expr,
   AstAttributeName_ret_type_expr,
-  AstAttributeName_args,
+  AstAttributeName_actual_args,
   AstAttributeName_int_val,
   AstAttributeName_float_val,
   AstAttributeName_bool_val,
@@ -751,10 +752,6 @@ Symbol;
 
 typedef struct
 {
-#if 0
-  Scope* global_scope;
-  Scope* module_scope;
-#endif
   Scope* active_scope;
   int nesting_depth;
   Scope* scopes[MAX_SCOPE_NESTING_DEPTH];

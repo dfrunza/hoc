@@ -50,7 +50,7 @@ qs_find_pivot_index(int* data, int start_index, int end_index)
   return index;
 }
 
-proc void quick_sort_recurs(int* data, int i, int j);
+/*proc void quick_sort_recurs(int* data, int i, int j);*/
 
 proc void
 quick_sort_recurs(int* data, int i, int j)

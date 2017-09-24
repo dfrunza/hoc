@@ -2,6 +2,7 @@ include "sort.hoc";
 
 var int a = 112;
 var int b = a;
+var char* c = "abc";
 
 proc int
 main()

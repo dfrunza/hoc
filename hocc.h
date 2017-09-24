@@ -72,18 +72,6 @@ String;
 #define compile_error(SRC, MESSAGE, ...)\
   compile_error_f(__FILE__, __LINE__, (SRC), (MESSAGE), __VA_ARGS__)
 
-#define mem_push_struct(ARENA, TYPE)\
-  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), 1, true))
-
-#define mem_push_array(ARENA, TYPE, COUNT)\
-  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, true))
-
-#define mem_push_array_nz(ARENA, TYPE, COUNT)\
-  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, false))
-
-#define mem_zero_struct(VAR, TYPE)\
-  (mem_zero_f(VAR, sizeof(TYPE)))
-
 #define OBJ(VAR, KIND, NAME)\
   (((VAR)->kind == KIND##_##NAME) ? &(VAR)->NAME : 0)
 
@@ -250,7 +238,7 @@ char* OperatorKind_strings[] =
 };
 
 char*
-get_op_kind_printstr(OperatorKind op)
+get_operator_kind_printstr(OperatorKind op)
 {
   return OperatorKind_strings[op];
 }
@@ -391,6 +379,7 @@ AstAttributeMetaInfo;
 #ifndef AstKind_MEMBER_LIST
 #define AstKind_MEMBER_LIST()\
   ENUM_MEMBER(AstNode__None),\
+  ENUM_MEMBER(AstNode_string),\
   ENUM_MEMBER(AstNode_id),\
   ENUM_MEMBER(AstNode_array),\
   ENUM_MEMBER(AstNode_bin_expr),\
@@ -723,7 +712,8 @@ typedef struct Symbol
 
   Symbol* prev_symbol;
   char* name;
-  int scope_id;
+  //int scope_id;
+  Scope* scope;
   int nesting_depth;
   AstNode* ast_node;
 }
@@ -734,7 +724,6 @@ typedef struct
   Scope* global_scope;
   //Scope* module_scope;
   Scope* active_scope;
-  int scope_id;
   int nesting_depth;
   Scope* scopes[MAX_SCOPE_NESTING_DEPTH];
   int sym_count;

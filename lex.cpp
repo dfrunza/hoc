@@ -159,23 +159,6 @@ install_escaped_str(EscapedStr* estr)
   return lexeme;
 }
 
-void
-print_char(char buf[3], char raw_char)
-{
-  if(raw_char == '\0')
-    cstr_copy(buf, "\\0");
-  else if(raw_char == '\t')
-    cstr_copy(buf, "\\t");
-  else if(raw_char == '\n')
-    cstr_copy(buf, "\\n");
-  else if(raw_char == '\r')
-    cstr_copy(buf, "\\r");
-  else if(raw_char == '\'')
-    cstr_copy(buf, "\\'");
-  else
-    *buf = raw_char;
-}
-
 char*
 get_token_printstr(Token* token)
 {

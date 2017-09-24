@@ -582,11 +582,27 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
   //astgen1
   else if(gen_id == 1)
   {
-    ast->kind_count = 6;
+    ast->kind_count = 7;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
     int kind_index = 0;
     AstKindMetaInfo* kind = 0;
+
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_string;
+      kind->attrib_count = 1;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_str;
+      attrib->name = AstAttributeName_str;
+    }
 
     {
       assert(kind_index < ast->kind_count);
@@ -649,7 +665,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var_decl;
-      kind->attrib_count = 3;
+      kind->attrib_count = 2;
       kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
 
       int attrib_index = 0;
@@ -660,10 +676,12 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib->kind = AstAttribute_str;
       attrib->name = AstAttributeName_name;
       
+#if 0
       assert(attrib_index < kind->attrib_count);
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_scope;
       attrib->name = AstAttributeName_decl_scope;
+#endif
       
       assert(attrib_index < kind->attrib_count);
       attrib = &kind->attribs[attrib_index++];
@@ -850,12 +868,11 @@ get_ast_attribute_safe(AstNode* node, AstAttributeKind kind, AstAttributeName na
 }
 
 AstNode*
-make_ast_node(int gen_id, AstNode* node, AstKind kind, SourceLoc* src_loc)
+make_ast_node(int gen_id, AstNode* node, AstKind kind)
 {
   assert(gen_id >= 0 && gen_id < sizeof_array(ast_meta_infos));
   node->gen_id = gen_id;
   node->kind = kind;
-  node->src_loc = src_loc;
 
   AstMetaInfo* ast_meta = &ast_meta_infos[node->gen_id];
 
@@ -872,16 +889,16 @@ make_ast_node(int gen_id, AstNode* node, AstKind kind, SourceLoc* src_loc)
     kind_meta = 0;
   }
 
+  mem_zero_array(node->attribs, AstAttribute);
+
   if(kind_meta)
   {
-    int attrib_index = 0;
-    for(; 
+    for(int attrib_index = 0; 
        attrib_index < kind_meta->attrib_count;
        attrib_index++)
     {
       AstAttributeMetaInfo* attrib_meta = &kind_meta->attribs[attrib_index];
       AstAttribute* attrib = &node->attribs[attrib_index];
-      mem_zero_struct(attrib, AstAttribute);
       attrib->kind = attrib_meta->kind;
       attrib->name = attrib_meta->name;
     }
@@ -896,19 +913,10 @@ AstNode*
 new_ast_node(int gen_id, AstKind kind, SourceLoc* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode);
-  make_ast_node(gen_id, node, kind, src_loc);
+  node->src_loc = src_loc;
+  make_ast_node(gen_id, node, kind);
   return node;
 }
-
-#include "lex.cpp"
-#include "syntax.cpp"
-#include "typecheck.cpp"
-#include "semantic.cpp"
-/*
-#include "runtime.cpp"
-#include "codegen.cpp"
-#include "hasm.cpp"
-*/
 
 void
 DEBUG_print_arena_usage(char* tag)
@@ -1013,13 +1021,13 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
       }
       else if(node->kind == AstNode_bin_expr)
       {
-        DEBUG_print_line(str, indent_level, "op: %s", get_op_kind_printstr(ATTR(node, op_kind, op_kind)));
+        DEBUG_print_line(str, indent_level, "op: %s", get_operator_kind_printstr(ATTR(node, op_kind, op_kind)));
         DEBUG_print_ast_node(str, indent_level, "left_operand", ATTR(node, ast_node, left_operand));
         DEBUG_print_ast_node(str, indent_level, "right_operand", ATTR(node, ast_node, right_operand));
       }
       else if(node->kind == AstNode_un_expr)
       {
-        DEBUG_print_line(str, indent_level, "op: %s", get_op_kind_printstr(ATTR(node, op_kind, op_kind)));
+        DEBUG_print_line(str, indent_level, "op: %s", get_operator_kind_printstr(ATTR(node, op_kind, op_kind)));
         DEBUG_print_ast_node(str, indent_level, "operand", ATTR(node, ast_node, operand));
       }
       else if(node->kind == AstNode_lit)
@@ -1189,6 +1197,16 @@ DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* node_l
   }
 }
 
+#include "lex.cpp"
+#include "syntax.cpp"
+#include "typecheck.cpp"
+#include "semantic.cpp"
+/*
+#include "runtime.cpp"
+#include "codegen.cpp"
+#include "hasm.cpp"
+*/
+
 VmProgram*
 translate(char* file_path, char* hoc_text)
 {
@@ -1207,12 +1225,12 @@ translate(char* file_path, char* hoc_text)
   {
     if(DEBUG_enabled)/*>>>*/
     {
-      DEBUG_print_arena_usage("Syntax");
+      DEBUG_print_arena_usage("Parse");
 
       begin_temp_memory(&arena);
       String* str = str_new(arena);
       DEBUG_print_ast_node(str, 0, "module", module);
-      str_dump_to_file(str, "debug_syntax.txt");
+      str_dump_to_file(str, "debug_parse.txt");
       end_temp_memory(&arena);
     }/*<<<*/
 
@@ -1237,19 +1255,8 @@ translate(char* file_path, char* hoc_text)
 
     if(vm_program->success = semantic(module))
     {
-      assert(symbol_table->scope_id == 0);
+      assert(symbol_table->active_scope == 0);
       assert(symbol_table->nesting_depth == 0);
-
-      if(DEBUG_enabled)/*>>>*/
-      {
-        DEBUG_print_arena_usage("Semantic");
-
-        begin_temp_memory(&arena);
-        String* str = str_new(arena);
-        DEBUG_print_ast_node(str, 0, "module", module);
-        str_dump_to_file(str, "debug_semantic.txt");
-        end_temp_memory(&arena);
-      }/*<<<*/
 
 #if 0
       build_runtime(module);

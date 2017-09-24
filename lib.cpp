@@ -67,6 +67,21 @@ char_is_numeric(char c)
 #define arena_check_bounds(ARENA)\
   mem_check_bounds_f((ARENA), 0, (ARENA)->free)
 
+#define mem_push_struct(ARENA, TYPE)\
+  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), 1, true))
+
+#define mem_push_array(ARENA, TYPE, COUNT)\
+  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, true))
+
+#define mem_push_array_nz(ARENA, TYPE, COUNT)\
+  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, false))
+
+#define mem_zero_struct(VAR, TYPE)\
+  (mem_zero_f(VAR, sizeof(TYPE)))
+
+#define mem_zero_array(VAR, TYPE)\
+  (mem_zero_f(VAR, sizeof_array(VAR) * sizeof(TYPE)))
+
 void
 mem_check_bounds_f(MemoryArena* arena, int elem_size, void* ptr)
 {
@@ -591,5 +606,22 @@ stdin_read(char buf[], int buf_size)
   }
 
   return (int)bytes_read;
+}
+
+void
+print_char(char buf[3], char raw_char)
+{
+  if(raw_char == '\0')
+    cstr_copy(buf, "\\0");
+  else if(raw_char == '\t')
+    cstr_copy(buf, "\\t");
+  else if(raw_char == '\n')
+    cstr_copy(buf, "\\n");
+  else if(raw_char == '\r')
+    cstr_copy(buf, "\\r");
+  else if(raw_char == '\'')
+    cstr_copy(buf, "\\'");
+  else
+    *buf = raw_char;
 }
 

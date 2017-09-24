@@ -1,11 +1,3 @@
-#define AST2(VAR, KIND)\
-  (((VAR)->kind == AstKind2_##KIND) ? &(VAR)->KIND : 0)
-
-#if 0
-#define SYM(VAR, KIND)\
-  (((VAR)->kind == Symbol_##KIND) ? (VAR)->ast_node : 0)
-#endif
-
 void
 make_type_printstr(String* str, Type* type)
 {
@@ -423,12 +415,12 @@ begin_scope(SourceLoc* src_loc, ScopeKind kind, Scope** scope)
 {
   *scope = mem_push_struct(arena, Scope);
   (*scope)->kind = kind;
-  (*scope)->encl_scope = symbol_table->active_scope;
 
   if((symbol_table->nesting_depth + 1) < sizeof_array(symbol_table->scopes))
   {
     (*scope)->nesting_depth = ++symbol_table->nesting_depth;
     (*scope)->scope_id = ++last_scope_id;
+    (*scope)->encl_scope = symbol_table->active_scope;
     symbol_table->scopes[symbol_table->nesting_depth] = *scope;
     symbol_table->active_scope = *scope;
   }
@@ -1578,32 +1570,6 @@ sem_stmt_block(AstBlock* module_block,
 }
 #endif
 
-#if 0
-AstNode2*
-make_ast2_var_occur(AstNode2* var_decl)
-{
-  AstNode2* var_occur = new_ast2_var_occur(var_decl->src_loc, AST2(var_decl, var_decl)->var_name);
-  AST2(var_occur, var_occur)->occur_scope = symbol_table->active_scope;
-  AST2(var_occur, var_occur)->decl_scope_offset =
-    AST2(var_decl, var_decl)->decl_scope->scope_id - AST2(var_occur, var_occur)->occur_scope->scope_id;
-  AST2(var_occur, var_occur)->var_decl = var_decl;
-  return var_occur;
-}
-
-AstNode2*
-make_ast2_proc_occur(SourceLoc* src_loc, char* proc_name)
-{
-  AstNode2* proc_occur = 0;
-  Symbol* sym = lookup_symbol(proc_name, Symbol_proc_decl);
-  if(sym)
-  {
-    proc_occur = new_ast2_proc_occur(src_loc, proc_name);
-    AST2(proc_occur, proc_occur)->proc_decl = SYM(sym, proc_decl);
-  }
-  return proc_occur;
-}
-#endif
-
 bool
 name_id(AstNode* node)
 {
@@ -1678,9 +1644,6 @@ name_id(AstNode* node)
         AstNode* str = ATTR(var_decl, ast_node, init_expr) = new_ast_node(1, AstNode_string, lit_copy.src_loc);
         ATTR(str, str, str) = ATTR(&lit_copy, str, str);
 
-        AstNode* id = new_ast_node(0, AstNode_id, lit_copy.src_loc);
-        ATTR(id, str, name) = name;
-
         AstNode* var_occur = make_ast_node(1, node, AstNode_var_occur);
         ATTR(var_occur, str, name) = name;
 
@@ -1691,21 +1654,13 @@ name_id(AstNode* node)
     {
       AstNode* lit = make_ast_node(1, node, AstNode_lit);
       if(lit_kind == Literal_int_val)
-      {
         ATTR(lit, int_val, int_val) = ATTR(&lit_copy, int_val, int_val);
-      }
       else if(lit_kind == Literal_float_val)
-      {
         ATTR(lit, float_val, float_val) = ATTR(&lit_copy, float_val, float_val);
-      }
       else if(lit_kind == Literal_char_val)
-      {
         ATTR(lit, char_val, char_val) = ATTR(&lit_copy, char_val, char_val);
-      }
       else if(lit_kind == Literal_bool_val)
-      {
         ATTR(lit, bool_val, bool_val) = ATTR(&lit_copy, bool_val, bool_val);
-      }
       else
         assert(0);
     }
@@ -1713,111 +1668,6 @@ name_id(AstNode* node)
 
   return success;
 }
-
-#if 0
-bool
-name_id_module(AstNode* module)
-{
-  AstNode2* body = AST2(*module2, module)->body = new_ast2_block(AST1(module1, module)->body->src_loc);
-
-  if(success = begin_scope(module1->src_loc, &AST2(body, block)->scope))
-  {
-    //symbol_table->module_scope = AST2(body, block)->scope;
-
-    for(ListItem* list_item = AST1(AST1(module1, module)->body, block)->nodes->first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      AstNode1* ast1_node = AST1_ITEM(list_item);
-      AstNode2* module_block = AST2(*module2, module)->body;
-      if(ast1_node->kind == AstKind1_var)
-      {
-        AstNode2* ast2_var_decl = 0;
-        if(build_ast2_var_decl(ast1_node, &ast2_var_decl))
-        {
-          AstNode1* ast1_init_expr = AST1(ast1_node, var)->init_expr;
-          if(ast1_init_expr)
-          {
-            AstNode2* init_expr = new_ast2_node(ast1_init_expr->src_loc, AstKind2_binop_occur);
-            AST2(init_expr, binop_occur)->op_kind = Operator_Assign;
-            AST2(init_expr, binop_occur)->left_operand = make_ast2_var_occur(ast2_var_decl);
-            //TODO: Set the 'right_operand' !
-
-            append_list_elem(arena, AST2(module_block, block)->stmts, init_expr, List_ast2_node);
-#if 0
-            AstNode2* init_expr = new_ast2_builtin_proc_occur(ast1_init_expr->src_loc, AstBuiltinProc_assign);
-            if(success = register_builtin_proc_occur(init_expr))
-            {
-              append_list_elem(arena, AST2(init_expr, proc_occur)->actual_args, make_ast2_var_occur(ast2_var_decl), List_ast2_node);
-              //TODO: Add the second argument!!
-              append_list_elem(arena, AST2(module_block, block)->stmts, init_expr, List_ast2_node);
-            }
-#endif
-          }
-        }
-        else if(ast1_node->kind == AstKind1_proc)
-        {
-#if 1
-          AstNode2* proc = new_ast2_proc_decl(ast1_node->src_loc, AST1(AST1(ast1_node, proc)->id, id)->name);
-          AstNode2* body = AST2(proc, proc_decl)->body;
-          if(success = begin_scope(body->src_loc, &AST2(body, block)->scope))
-          {
-            end_scope();
-          }
-#endif
-        }
-      }
-#if 0
-      else
-        success = compile_error(ast1_node->src_loc, "unexpected statement `%s`", get_ast2_kind_printstr(ast1_node->kind));
-#endif
-    }
-
-    end_scope();
-  }
-
-  return success;
-}
-#endif
-
-#if 0
-bool
-sem_module_block(AstProc* proc,
-                AstNode2* loop,
-                AstBlock* block)
-{
-  bool success = true;
-
-  for(ListItem* list_item = block->node_list.first;
-      list_item && success;
-      list_item = list_item->next)
-  {
-    AstNode2* stmt = (AstNode2*)list_item->elem;
-    if(stmt->kind == AstKind2_AstVarDecl)
-      success = sem_var_decl(block, block, (AstVarDecl*)stmt);
-    else if(stmt->kind == AstKind2_AstProc)
-      success = sem_proc_decl(block, (AstProc*)stmt);
-    else if(stmt->kind == AstKind2_AstLabel
-            || stmt->kind == AstKind2_AstCall
-            || stmt->kind == AstKind2_AstId
-            || stmt->kind == AstKind2_AstLiteral
-            || stmt->kind == AstKind2_AstBinExpr
-            || stmt->kind == AstKind2_AstUnaryExpr)
-    {
-      success = compile_error(&stmt->src_loc, "unexpected statement %s", get_ast2_kind_printstr(stmt->kind));
-    }
-    else if(stmt->kind == AstKind2_AstStruct
-            || stmt->kind == AstKind2_AstUnion
-            || stmt->kind == AstKind2_AstEnum)
-    {
-      fail("Not implemented");
-    }
-    else
-      assert(0);
-  }
-  return success;
-}
-#endif
 
 void
 init_symbol_table()

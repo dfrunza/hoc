@@ -98,20 +98,37 @@ typedef enum SymbolLookup
   SymbolLookup_Global,
 };
 
+Scope*
+find_scope(ScopeKind kind)
+{
+  Scope* scope = symbol_table->active_scope;
+  while(scope)
+  {
+    if(scope->kind == kind)
+      break;
+  }
+  return scope;
+}
+
 Symbol*
 lookup_symbol(char* name, SymbolKind kind, SymbolLookup lookup)
 {
   Symbol* result = 0, *symbol = 0;
 
+  Scope* scope = 0;
   if(lookup == SymbolLookup_Active)
   {
-    symbol = symbol_table->active_scope->last_symbol;
+    scope = symbol_table->active_scope;
   }
   else if(lookup == SymbolLookup_Global)
   {
-    symbol = symbol_table->global_scope->last_symbol;
+    scope = symbol_table->scopes[0];
+    assert(scope->kind == ScopeKind_Global);
   }
+  else
+    assert(0);
 
+  symbol = scope->last_symbol;
   while(symbol)
   {
     if(symbol->kind == kind && cstr_match(symbol->name, name))
@@ -121,6 +138,7 @@ lookup_symbol(char* name, SymbolKind kind, SymbolLookup lookup)
     }
     symbol = symbol->prev_symbol;
   }
+
   return result;
 }
 
@@ -223,47 +241,6 @@ add_symbol(AstNode* node)
     assert(0);
   return success;
 }
-
-#if 0
-bool
-register_var_decl(AstNode* decl_node)
-{
-  bool success = true;
-
-  return success;
-}
-
-bool
-register_var_occur(AstNode* occur_node)
-{
-  bool success = true;
-
-  return success;
-}
-
-bool
-register_type_decl(AstNode* decl_node)
-{
-  bool success = true;
-
-  return success;
-}
-
-bool
-register_type_occur(AstNode* occur_node)
-{
-  bool success = true;
-
-  return success;
-}
-
-bool
-register_proc_decl(AstNode* decl_node)
-{
-  bool success = true;
-  return success;
-}
-#endif
 
 #if 0
 bool
@@ -442,17 +419,16 @@ add_builtin_procs()
 #endif
 
 bool
-begin_scope(SourceLoc* src_loc, Scope** scope)
+begin_scope(SourceLoc* src_loc, ScopeKind kind, Scope** scope)
 {
   *scope = mem_push_struct(arena, Scope);
-
-  (*scope)->scope_id = ++last_scope_id;
+  (*scope)->kind = kind;
   (*scope)->encl_scope = symbol_table->active_scope;
 
-  ++symbol_table->nesting_depth;
-  if(symbol_table->nesting_depth < sizeof_array(symbol_table->scopes))
+  if((symbol_table->nesting_depth + 1) < sizeof_array(symbol_table->scopes))
   {
-    (*scope)->nesting_depth = symbol_table->nesting_depth;
+    (*scope)->nesting_depth = ++symbol_table->nesting_depth;
+    (*scope)->scope_id = ++last_scope_id;
     symbol_table->scopes[symbol_table->nesting_depth] = *scope;
     symbol_table->active_scope = *scope;
   }
@@ -1638,21 +1614,13 @@ name_id(AstNode* node)
   {
     AstNode module_copy = *node;
     AstNode* module = make_ast_node(1, node, AstNode_module);
-
     ATTR(module, str, file_path) = ATTR(&module_copy, str, file_path);
-    ATTR(module, list, procs) = new_list(arena, List_ast_node);
 
-    AstNode body_copy = *ATTR(&module_copy, ast_node, body);
-    AstNode* body = ATTR(module, ast_node, body) =
-      make_ast_node(1, ATTR(&module_copy, ast_node, body), AstNode_block);
+    AstNode* body = ATTR(&module_copy, ast_node, body);
 
-    if(success = begin_scope(body->src_loc, &ATTR(body, scope, scope)))
+    if(success = begin_scope(body->src_loc, ScopeKind_Module, &ATTR(module, scope, scope)))
     {
-      ATTR(body, list, stmts) = new_list(arena, List_ast_node);
-      ATTR(body, list, local_decls) = new_list(arena, List_ast_node);
-      ATTR(body, list, non_local_occurs) = new_list(arena, List_ast_node);
-
-      for(ListItem* list_item = ATTR(&body_copy, list, nodes)->first;
+      for(ListItem* list_item = ATTR(body, list, nodes)->first;
           list_item && success;
           list_item = list_item->next)
       {
@@ -1670,12 +1638,9 @@ name_id(AstNode* node)
 
     if(success = add_symbol(var_decl))
     {
-      if(ATTR(&var_copy, ast_node, init_expr))
+      if(ATTR(var_decl, ast_node, init_expr) = ATTR(&var_copy, ast_node, init_expr))
       {
-        if(success = name_id(ATTR(&var_copy, ast_node, init_expr)))
-        {
-          ATTR(var_decl, ast_node, init_expr) = ATTR(&var_copy, ast_node, init_expr);
-        }
+        success = name_id(ATTR(var_decl, ast_node, init_expr));
       }
     }
     return success;
@@ -1700,9 +1665,11 @@ name_id(AstNode* node)
   }
   else if(node->kind == AstNode_lit)
   {
-    if(ATTR(node, lit_kind, lit_kind) == Literal_str)
+    AstNode lit_copy = *node;
+    LiteralKind lit_kind = ATTR(node, lit_kind, lit_kind);
+
+    if(lit_kind == Literal_str)
     {
-      AstNode lit_copy = *node;
       AstNode* var_decl = new_ast_node(1, AstNode_var_decl, lit_copy.src_loc);
       char* name = ATTR(var_decl, str, name) = make_tempvar_name("str");
 
@@ -1720,7 +1687,30 @@ name_id(AstNode* node)
         success = add_symbol(var_occur);
       }
     }
+    else
+    {
+      AstNode* lit = make_ast_node(1, node, AstNode_lit);
+      if(lit_kind == Literal_int_val)
+      {
+        ATTR(lit, int_val, int_val) = ATTR(&lit_copy, int_val, int_val);
+      }
+      else if(lit_kind == Literal_float_val)
+      {
+        ATTR(lit, float_val, float_val) = ATTR(&lit_copy, float_val, float_val);
+      }
+      else if(lit_kind == Literal_char_val)
+      {
+        ATTR(lit, char_val, char_val) = ATTR(&lit_copy, char_val, char_val);
+      }
+      else if(lit_kind == Literal_bool_val)
+      {
+        ATTR(lit, bool_val, bool_val) = ATTR(&lit_copy, bool_val, bool_val);
+      }
+      else
+        assert(0);
+    }
   }
+
   return success;
 }
 
@@ -1867,7 +1857,8 @@ semantic(AstNode* module)
   init_symbol_table();
   init_operator_table();
 
-  if(success = begin_scope(0, &symbol_table->global_scope))
+  Scope* global_scope = 0;
+  if(success = begin_scope(0, ScopeKind_Global, &global_scope))
   {
     add_builtin_types();
 
@@ -1879,6 +1870,7 @@ semantic(AstNode* module)
 
       begin_temp_memory(&arena);
       String* str = str_new(arena);
+      DEBUG_print_scope(str, 0, "global_scope", global_scope);
       DEBUG_print_ast_node(str, 0, "module", module);
       str_dump_to_file(str, "debug_name_id.txt");
       end_temp_memory(&arena);

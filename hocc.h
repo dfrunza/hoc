@@ -219,8 +219,7 @@ AccessLink;
   ENUM_MEMBER(OperatorKind_LogicOr),\
   ENUM_MEMBER(OperatorKind_LogicNot),\
   ENUM_MEMBER(OperatorKind_BitwiseAnd),\
-  ENUM_MEMBER(OperatorKind_BitwiseOr),\
-  ENUM_MEMBER(OperatorKind__Count),
+  ENUM_MEMBER(OperatorKind_BitwiseOr),
 #endif
 
 typedef enum OperatorKind
@@ -277,8 +276,40 @@ typedef struct Type Type;
 typedef struct AstNode AstNode;
 typedef struct Symbol Symbol;
 
+#ifndef ScopeKind_MEMBER_LIST
+#define ScopeKind_MEMBER_LIST()\
+  ENUM_MEMBER(ScopeKind__None),\
+  ENUM_MEMBER(ScopeKind_Global),\
+  ENUM_MEMBER(ScopeKind_Module),\
+  ENUM_MEMBER(ScopeKind_Proc),\
+  ENUM_MEMBER(ScopeKind_Loop),\
+  ENUM_MEMBER(ScopeKind_Block),
+#endif
+
+typedef enum ScopeKind
+{
+#define ENUM_MEMBER(NAME) NAME
+  ScopeKind_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+
+char* ScopeKind_strings[] =
+{
+#define ENUM_MEMBER(NAME) #NAME
+  ScopeKind_MEMBER_LIST()
+#undef ENUM_MEMBER
+};
+
+char*
+get_scope_kind_printstr(ScopeKind kind)
+{
+  return ScopeKind_strings[kind];
+}
+
 typedef struct Scope
 {
+  ScopeKind kind;
+
   Symbol* last_symbol;
   int scope_id;
   int nesting_depth;
@@ -712,7 +743,6 @@ typedef struct Symbol
 
   Symbol* prev_symbol;
   char* name;
-  //int scope_id;
   Scope* scope;
   int nesting_depth;
   AstNode* ast_node;
@@ -721,8 +751,10 @@ Symbol;
 
 typedef struct
 {
+#if 0
   Scope* global_scope;
-  //Scope* module_scope;
+  Scope* module_scope;
+#endif
   Scope* active_scope;
   int nesting_depth;
   Scope* scopes[MAX_SCOPE_NESTING_DEPTH];

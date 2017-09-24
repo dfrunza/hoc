@@ -2,8 +2,7 @@
 #include <windows.h>
 
 #define ARENA_SIZE (3*MEGABYTE)
-#define SYMBOL_TABLE_ARENA_SIZE (ARENA_SIZE/10)
-#define MAX_SCOPE_NESTING_DEPTH 100
+#define SYMBOL_ARENA_SIZE (ARENA_SIZE/10)
 #define BINCODE_SIGNATURE "HC"
 
 typedef unsigned char uchar;
@@ -754,8 +753,8 @@ typedef struct
 {
   Scope* active_scope;
   int nesting_depth;
-  Scope* scopes[MAX_SCOPE_NESTING_DEPTH];
   int sym_count;
+  int scope_count;
 }
 SymbolTable;
 

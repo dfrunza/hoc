@@ -99,12 +99,13 @@ find_scope(ScopeKind kind)
   {
     if(scope->kind == kind)
       break;
+    scope = scope->encl_scope;
   }
   return scope;
 }
 
 Symbol*
-lookup_symbol(char* name, SymbolKind kind, SymbolLookup lookup)
+lookup_symbol(char* name, SymbolKind symbol_kind, SymbolLookup lookup)
 {
   Symbol* result = 0, *symbol = 0;
 
@@ -113,27 +114,50 @@ lookup_symbol(char* name, SymbolKind kind, SymbolLookup lookup)
   {
     scope = symbol_table->active_scope;
   }
-  else if(lookup == SymbolLookup_Global)
-  {
-    int scope_id = 0;
-    scope = symbol_table->scopes[scope_id];
-    assert(scope->kind == ScopeKind_Global);
-    assert(scope->scope_id == scope_id);
-  }
   else if(lookup == SymbolLookup_Module)
   {
-    int scope_id = 1;
-    scope = symbol_table->scopes[scope_id];
-    assert(scope->kind == ScopeKind_Module);
-    assert(scope->scope_id == scope_id);
+    scope = find_scope(ScopeKind_Module);
+    assert(scope->encl_scope->kind == ScopeKind_Global);
+  }
+  else if(lookup == SymbolLookup_Global)
+  {
+    scope = find_scope(ScopeKind_Global);
+    assert(!scope->encl_scope);
   }
   else
     assert(0);
 
+#if 0
+  Scope* scope = 0;
+  if(lookup == SymbolLookup_Active)
+  {
+    scope = symbol_table->active_scope;
+  }
+  else if(lookup == SymbolLookup_Global)
+  {
+#if 0
+    scope = symbol_table->scopes[0];
+    assert(scope->kind == ScopeKind_Global);
+    assert(scope->scope_id == 0);
+#endif
+    scope = find_scope
+  }
+  else if(lookup == SymbolLookup_Module)
+  {
+#if 0
+    scope = symbol_table->scopes[1];
+    assert(scope->kind == ScopeKind_Module);
+    assert(scope->scope_id == 1);
+#endif
+  }
+  else
+    assert(0);
+#endif
+
   symbol = scope->last_symbol;
   while(symbol)
   {
-    if(symbol->kind == kind && cstr_match(symbol->name, name))
+    if(symbol->kind == symbol_kind && cstr_match(symbol->name, name))
     {
       result = symbol;
       break;
@@ -147,7 +171,7 @@ lookup_symbol(char* name, SymbolKind kind, SymbolLookup lookup)
 Symbol*
 register_name(char* name, SourceLoc* src_loc, SymbolKind kind)
 {
-  Symbol* sym = mem_push_struct(symbol_table_arena, Symbol);
+  Symbol* sym = mem_push_struct(symbol_arena, Symbol);
   sym->kind = kind;
   sym->name = name;
   sym->scope = symbol_table->active_scope;
@@ -253,98 +277,6 @@ add_symbol(AstNode* node)
   return success;
 }
 
-#if 0
-bool
-register_builtin_proc_occur(AstNode2* occur_node)
-{
-  bool success = true;
-
-  auto* proc_occur = AST2(occur_node, proc_occur);
-  Symbol* decl_sym = lookup_symbol(proc_occur->proc_name, Symbol_proc_decl, SymbolLookup_StartGlobal);
-  if(decl_sym)
-  {
-    proc_occur->proc_decl = SYM(decl_sym, proc_decl);
-
-    Symbol* occur_sym = register_name(proc_occur->proc_name, occur_node->src_loc, Symbol_proc_occur);
-    occur_sym->proc_occur = occur_node;
-  }
-  else
-    success = compile_error(occur_node->src_loc, "unknown proc `%s`", proc_occur->proc_name);
-
-  return success;
-}
-#endif
-
-#if 0
-bool
-register_proc_decl(AstProc* proc)
-{
-  bool success = true;
-
-  AstId* id = (AstId*)proc->id;
-  Symbol* proc_sym = lookup_symbol(id->name, Symbol_Proc);
-  if(proc_sym)
-  {
-    AstProc* registered_proc = (AstProc*)proc_sym->ast;
-    assert(registered_proc && registered_proc->kind == AstKind2_AstProc);
-
-    if(registered_proc->is_decl && proc->is_decl)
-    {
-      if(!type_unif(registered_proc->type, proc->type))
-      {
-        success = compile_error(&proc->src_loc, "inconsistent proc signature...");
-        compile_error(&registered_proc->src_loc, "...see previous decl");
-      }
-    }
-    else if(!registered_proc->is_decl && !proc->is_decl)
-    {
-      success = compile_error(&proc->src_loc, "proc redefinition...");
-      compile_error(&registered_proc->src_loc, "...see previous def");
-    }
-    else if(registered_proc->is_decl && !proc->is_decl)
-    {
-      if(type_unif(registered_proc->type, proc->type))
-      {
-        proc_sym->ast = (AstNode2*)proc;
-        id->sym = proc_sym;
-      }
-      else
-      {
-        success = compile_error(&proc->src_loc, "inconsistent proc type...");
-        compile_error(&registered_proc->src_loc, "...see decl");
-      }
-    }
-    /* else fall-thru */
-  }
-  else if(success = register_new_id(id, Symbol_Proc))
-    id->sym->ast = (AstNode2*)proc;
-
-  return success;
-}
-#endif
-
-#if 0
-bool
-register_call(AstCall* call)
-{
-  bool success = true;
-
-  AstId* id = (AstId*)call->id;
-  Symbol* proc_sym = lookup_symbol(id->name, Symbol_Proc);
-  if(proc_sym)
-  {
-    assert(proc_sym->ast->kind == AstKind2_AstProc);
-    call->proc_sym = proc_sym;
-
-    Symbol* call_sym = register_id(id, Symbol_Call);
-    call_sym->ast = (AstNode2*)call;
-  }
-  else
-    success = compile_error(&call->src_loc, "unknown proc `%s`", id->name);
-  return success;
-}
-#endif
-
 void
 add_builtin_type(char* name, Type* type)
 {
@@ -429,55 +361,25 @@ add_builtin_procs()
 }
 #endif
 
-bool
+void
 begin_scope(SourceLoc* src_loc, ScopeKind kind, AstNode* ast_node, Scope** scope)
 {
-  *scope = mem_push_struct(arena, Scope);
+  *scope = mem_push_struct(symbol_arena, Scope);
   (*scope)->kind = kind;
-
-  if((symbol_table->nesting_depth + 1) < sizeof_array(symbol_table->scopes))
-  {
-    (*scope)->nesting_depth = ++symbol_table->nesting_depth;
-    (*scope)->scope_id = ++last_scope_id;
-    (*scope)->encl_scope = symbol_table->active_scope;
-    (*scope)->ast_node = ast_node;
-    symbol_table->scopes[symbol_table->nesting_depth] = *scope;
-    symbol_table->active_scope = *scope;
-  }
-  else
-  {
-    compile_error(src_loc, "exceeded max scope nesting depth : %d", sizeof_array(symbol_table->scopes));
-    return false;
-  }
-
-  return true;
+  (*scope)->nesting_depth = ++symbol_table->nesting_depth;
+  (*scope)->scope_id = ++last_scope_id;
+  (*scope)->encl_scope = symbol_table->active_scope;
+  (*scope)->ast_node = ast_node;
+  symbol_table->active_scope = *scope;
+  symbol_table->scope_count++;
 }
 
 void
 end_scope()
 {
-  assert(symbol_table->active_scope == symbol_table->scopes[symbol_table->nesting_depth]);
-
-  if(symbol_table->nesting_depth - 1 >= 0)
-  {
-    symbol_table->scopes[symbol_table->nesting_depth] = 0;
-    --symbol_table->nesting_depth;
-
-    Scope* active_scope = symbol_table->scopes[symbol_table->nesting_depth];
-    assert(active_scope->scope_id >= 0);
-    symbol_table->active_scope = active_scope;
-
-    Symbol* symbol = active_scope->last_symbol;
-    while(symbol && (symbol->scope->scope_id > active_scope->scope_id))
-    {
-      symbol = symbol->prev_symbol;
-    }
-    active_scope->last_symbol = symbol;
-  }
-  else
-  {
-    symbol_table->active_scope = 0;
-  }
+  --symbol_table->nesting_depth;
+  Scope* active_scope = symbol_table->active_scope;
+  symbol_table->active_scope = active_scope->encl_scope;
 }
 
 void
@@ -1532,16 +1434,12 @@ name_id(AstNode* node)
 
     AstNode* body = ATTR(&module_copy, ast_node, body);
 
-    if(success = begin_scope(body->src_loc, ScopeKind_Module, module, &ATTR(module, scope, scope)))
+    begin_scope(body->src_loc, ScopeKind_Module, module, &ATTR(module, scope, scope));
+    if(success = name_id(body))
     {
-      for(ListItem* list_item = ATTR(body, list, nodes)->first;
-          list_item && success;
-          list_item = list_item->next)
-      {
-        success = name_id(ITEM(list_item, ast_node));
-      }
-      end_scope();
+      ATTR(module, ast_node, body) = body;
     }
+    end_scope();
   }
   else if(node->kind == AstNode_var)
   {
@@ -1551,11 +1449,11 @@ name_id(AstNode* node)
 
     if(success = add_symbol(var_decl))
     {
-      if(ATTR(&var_copy, ast_node, init_expr))
+      if(AstNode* init_expr = ATTR(&var_copy, ast_node, init_expr))
       {
-        if(success = name_id(ATTR(&var_copy, ast_node, init_expr)))
+        if(success = name_id(init_expr))
         {
-          ATTR(var_decl, ast_node, init_expr) = ATTR(&var_copy, ast_node, init_expr);
+          ATTR(var_decl, ast_node, init_expr) = init_expr;
         }
       }
     }
@@ -1573,11 +1471,12 @@ name_id(AstNode* node)
     AstNode bin_expr_copy = *node;
     AstNode* bin_expr = make_ast_node(1, node, AstNode_bin_expr);
 
-    if(success = name_id(ATTR(&bin_expr_copy, ast_node, left_operand))
-        && name_id(ATTR(&bin_expr_copy, ast_node, right_operand)))
+    AstNode* left_operand = ATTR(&bin_expr_copy, ast_node, left_operand);
+    AstNode* right_operand = ATTR(&bin_expr_copy, ast_node, right_operand);
+    if(success = name_id(left_operand) && name_id(right_operand))
     {
-      ATTR(bin_expr, ast_node, left_operand) = ATTR(&bin_expr_copy, ast_node, left_operand);
-      ATTR(bin_expr, ast_node, right_operand) = ATTR(&bin_expr_copy, ast_node, right_operand);
+      ATTR(bin_expr, ast_node, left_operand) = left_operand;
+      ATTR(bin_expr, ast_node, right_operand) = right_operand;
     }
   }
   else if(node->kind == AstNode_lit)
@@ -1626,30 +1525,30 @@ name_id(AstNode* node)
     {
       if(AstNode* body = ATTR(&proc_copy, ast_node, body))
       {
-        if(success = begin_scope(body->src_loc, ScopeKind_Proc, proc_decl, &ATTR(proc_decl, scope, scope)))
+        begin_scope(body->src_loc, ScopeKind_Proc, proc_decl, &ATTR(proc_decl, scope, scope));
+
+        for(ListItem* list_item = ATTR(&proc_copy, list, formal_args)->first;
+            list_item && success;
+            list_item = list_item->next)
         {
-          for(ListItem* list_item = ATTR(&proc_copy, list, formal_args)->first;
-              list_item && success;
-              list_item = list_item->next)
-          {
-            success = name_id(ITEM(list_item, ast_node));
-          }
-
-          if(success)
-          {
-            ATTR(proc_decl, list, formal_args) = ATTR(&proc_copy, list, formal_args);
-
-            AstNode* ret_var_decl = ATTR(proc_decl, ast_node, ret_var_decl) =
-              new_ast_node(1, AstNode_var_decl, ATTR(&proc_copy, ast_node, ret_type_expr)->src_loc);
-            ATTR(ret_var_decl, str, name) = make_tempvar_name("ret");
-
-            if(success = (add_symbol(ret_var_decl) && name_id(ATTR(&proc_copy, ast_node, body))))
-            {
-              ATTR(proc_decl, ast_node, body) = ATTR(&proc_copy, ast_node, body);
-            }
-          }
-          end_scope();
+          success = name_id(ITEM(list_item, ast_node));
         }
+
+        if(success)
+        {
+          ATTR(proc_decl, list, formal_args) = ATTR(&proc_copy, list, formal_args);
+
+          AstNode* ret_var_decl = ATTR(proc_decl, ast_node, ret_var_decl) =
+            new_ast_node(1, AstNode_var_decl, ATTR(&proc_copy, ast_node, ret_type_expr)->src_loc);
+          ATTR(ret_var_decl, str, name) = make_tempvar_name("ret");
+
+          AstNode* body = ATTR(&proc_copy, ast_node, body);
+          if(success = (add_symbol(ret_var_decl) && name_id(body)))
+          {
+            ATTR(proc_decl, ast_node, body) = body;
+          }
+        }
+        end_scope();
       }
     }
   }
@@ -1685,15 +1584,17 @@ name_id(AstNode* node)
         list_item && success;
         list_item = list_item->next)
     {
-      AstNode* node = ITEM(list_item, ast_node);
-      if(success = name_id(node))
-      {
-        if(node->kind == AstNode_stmt)
-        {
-          append_list_elem(arena, ATTR(block, list, nodes), node, List_ast_node);
-        }
-      }
+      success = name_id(ITEM(list_item, ast_node));
     }
+
+    if(success)
+    {
+      ATTR(block, list, nodes) = ATTR(&block_copy, list, nodes);
+    }
+  }
+  else
+  {
+    //assert(0);
   }
 
   return success;
@@ -1703,8 +1604,7 @@ void
 init_symbol_table()
 {
   symbol_table = mem_push_struct(arena, SymbolTable);
-  symbol_table->nesting_depth = -1;
-  last_scope_id = -1;
+  symbol_table->nesting_depth = last_scope_id = -1;
 }
 
 void
@@ -1739,43 +1639,39 @@ semantic(AstNode* module)
   init_operator_table();
 
   Scope* global_scope = 0;
-  if(success = begin_scope(0, ScopeKind_Global, 0, &global_scope))
+  begin_scope(0, ScopeKind_Global, 0, &global_scope);
+  add_builtin_types();
+  success = name_id(module);
+  end_scope();
+
+  if(DEBUG_enabled)/*>>>*/
   {
-    add_builtin_types();
+    DEBUG_print_arena_usage("Name ID");
 
-    success = name_id(module);
-
-    if(DEBUG_enabled)/*>>>*/
-    {
-      DEBUG_print_arena_usage("Name ID");
-
-      begin_temp_memory(&arena);
-      String* str = str_new(arena);
-      DEBUG_print_scope(str, 0, "global_scope", global_scope);
-      DEBUG_print_ast_node(str, 0, "module", module);
-      str_dump_to_file(str, "debug_name_id.txt");
-      end_temp_memory(&arena);
-    }/*<<<*/
-
-    end_scope();
+    begin_temp_memory(&arena);
+    String* str = str_new(arena);
+    DEBUG_print_scope(str, 0, "global_scope", global_scope);
+    DEBUG_print_ast_node(str, 0, "module", module);
+    str_dump_to_file(str, "debug_name_id.txt");
+    end_temp_memory(&arena);
+  }/*<<<*/
 #if 0
-    AstCall* main_call = new_call(deflt_src_loc);
-    main_call->id = new_id(deflt_src_loc, "main");
-    if(success = sem_call(module_block, module_block, main_call))
+  AstCall* main_call = new_call(deflt_src_loc);
+  main_call->id = new_id(deflt_src_loc, "main");
+  if(success = sem_call(module_block, module_block, main_call))
+  {
+    if(type_unif(main_call->type, basic_type_int))
     {
-      if(type_unif(main_call->type, basic_type_int))
-      {
-        list_append(arena, &module_block->node_list, main_call);
-      }
-      else
-      {
-        AstProc* main_proc = (AstProc*)main_call->proc_sym->ast;
-        assert(main_proc->kind == AstKind2_AstProc);
-        success = compile_error(&main_proc->src_loc, "main() must return a `int`");
-      }
+      list_append(arena, &module_block->node_list, main_call);
     }
-#endif
+    else
+    {
+      AstProc* main_proc = (AstProc*)main_call->proc_sym->ast;
+      assert(main_proc->kind == AstKind2_AstProc);
+      success = compile_error(&main_proc->src_loc, "main() must return a `int`");
+    }
   }
+#endif
 
   return success;
 }

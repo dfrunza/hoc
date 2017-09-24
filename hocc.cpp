@@ -5,7 +5,7 @@ bool DEBUG_zero_arena = true;
 bool DEBUG_check_arena_bounds = true;
 
 MemoryArena* arena = 0;
-MemoryArena* symbol_table_arena = 0;
+MemoryArena* symbol_arena = 0;
 
 #include "lib.cpp"
 
@@ -681,7 +681,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_module;
-      kind->attrib_count = 2;
+      kind->attrib_count = 3;
       kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
 
       int attrib_index = 0;
@@ -691,6 +691,11 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_str;
       attrib->name = AstAttributeName_file_path;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_body;
 
       assert(attrib_index < kind->attrib_count);
       attrib = &kind->attribs[attrib_index++];
@@ -968,7 +973,7 @@ void
 DEBUG_print_arena_usage(char* tag)
 {
   ArenaUsage usage = arena_usage(arena);
-  ArenaUsage sym_usage = arena_usage(symbol_table_arena);
+  ArenaUsage sym_usage = arena_usage(symbol_arena);
   printf("-----  %s  -----\n", tag);
   printf("in_use(arena) : %.2f%%\n", usage.in_use*100);
   printf("in_use(symbol_table_arena) : %.2f%%\n", sym_usage.in_use*100);
@@ -1308,7 +1313,7 @@ translate(char* file_path, char* hoc_text)
     if(vm_program->success = semantic(module))
     {
       assert(symbol_table->active_scope == 0);
-      assert(symbol_table->nesting_depth == 0);
+      assert(symbol_table->nesting_depth == -1);
 
 #if 0
       build_runtime(module);
@@ -1413,7 +1418,7 @@ main(int argc, char* argv[])
   if(success = (argc >= 2))
   {
     arena = new_arena(ARENA_SIZE);
-    symbol_table_arena = push_arena(&arena, SYMBOL_TABLE_ARENA_SIZE);
+    symbol_arena = push_arena(&arena, SYMBOL_ARENA_SIZE);
 
     if(DEBUG_enabled)/*>>>*/
     {

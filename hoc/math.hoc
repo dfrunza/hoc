@@ -50,7 +50,7 @@ fabs(float a)
   return a;
 }
 
-proc int gcd_recurs(int a, int b);
+/*proc int gcd_recurs(int a, int b);*/
 
 proc int
 gcd_recurs(int a, int b)

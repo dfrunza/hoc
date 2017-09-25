@@ -54,7 +54,7 @@ typedef struct
 String;
 
 #define assert(EXPR)\
-  while(!(EXPR)) { assert_f(#EXPR, __FILE__, __LINE__); }
+  do { if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__); } while(0);
 
 #define fail(MESSAGE, ...)\
   fail_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__)
@@ -310,7 +310,6 @@ typedef struct Scope
   ScopeKind kind;
 
   Symbol* last_symbol;
-  int scope_id;
   int nesting_depth;
   struct Scope* encl_scope;
   AstNode* ast_node;
@@ -338,12 +337,14 @@ typedef enum AstAttributeKind
 typedef enum AstAttributeName
 {
   AstAttributeName__None,
+  AstAttributeName_nesting_depth,
+  AstAttributeName_loop,
   AstAttributeName_formal_args,
-  AstAttributeName_ret_var_decl,
+  AstAttributeName_ret_var,
   AstAttributeName_scope,
   AstAttributeName_decl_scope,
   AstAttributeName_occur_scope,
-  AstAttributeName_decl_scope_offset,
+  AstAttributeName_decl_scope_depth,
   AstAttributeName_proc_decl,
   AstAttributeName_type_decl,
   AstAttributeName_var_decl,
@@ -366,6 +367,7 @@ typedef enum AstAttributeName
   AstAttributeName_bool_val,
   AstAttributeName_char_val,
   AstAttributeName_str,
+  AstAttributeName_ret_expr,
   AstAttributeName_expr,
   AstAttributeName_cond_expr,
   AstAttributeName_loop_expr,
@@ -445,8 +447,8 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_struct_decl),\
   ENUM_MEMBER(AstNode_union_decl),\
   ENUM_MEMBER(AstNode_init_list),\
-  ENUM_MEMBER(AstNode_hoc_new),\
-  ENUM_MEMBER(AstNode_hoc_putc),
+  ENUM_MEMBER(AstNode_new_proc),\
+  ENUM_MEMBER(AstNode_putc_proc),
 #endif
 
 typedef enum AstKind

@@ -11,7 +11,6 @@ MemoryArena* symbol_arena = 0;
 
 //AstNode2* operator_table = 0;
 SymbolTable* symbol_table = 0;
-int last_scope_id = 0;
 int tempvar_id = 0;
 
 Type* basic_type_bool;
@@ -139,7 +138,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
 {
   //gen0
   if(gen_id == 0)
-  {
+  {/*>>>*/
     ast->kind_count = 21;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
@@ -188,7 +187,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_hoc_new;
+      kind->kind = AstNode_new_proc;
       kind->attrib_count = 2;
       kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
 
@@ -208,7 +207,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_hoc_putc;
+      kind->kind = AstNode_putc_proc;
       kind->attrib_count = 1;
       kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
 
@@ -233,7 +232,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       assert(attrib_index < kind->attrib_count);
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_expr;
+      attrib->name = AstAttributeName_ret_expr;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -557,11 +556,11 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib->kind = AstAttribute_op_kind;
       attrib->name = AstAttributeName_op_kind;
     }
-  }
+  }/*<<<*/
   //gen1
   else if(gen_id == 1)
-  {
-    ast->kind_count = 10;
+  {/*>>>*/
+    ast->kind_count = 17;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
     int kind_index = 0;
@@ -570,8 +569,143 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_proc_occur;
+      kind->kind = AstNode_return_stmt;
+      kind->attrib_count = 1;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_ret_expr;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_break_stmt;
+      kind->attrib_count = 2;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_loop;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_int_val;
+      attrib->name = AstAttributeName_nesting_depth;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_continue_stmt;
+      kind->attrib_count = 2;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_loop;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_int_val;
+      attrib->name = AstAttributeName_nesting_depth;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_while_stmt;
+      kind->attrib_count = 2;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_cond_expr;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_body;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_un_expr;
+      kind->attrib_count = 2;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_operand;
+      
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_op_kind;
+      attrib->name = AstAttributeName_op_kind;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_if_stmt;
       kind->attrib_count = 3;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_cond_expr;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_body;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_else_body;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_stmt;
+      kind->attrib_count = 1;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_stmt;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_proc_occur;
+      kind->attrib_count = 4;
       kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
 
       int attrib_index = 0;
@@ -604,18 +738,8 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
 
       assert(attrib_index < kind->attrib_count);
       attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_scope;
-      attrib->name = AstAttributeName_scope;
-
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_str;
       attrib->name = AstAttributeName_name;
-
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_body;
 
       assert(attrib_index < kind->attrib_count);
       attrib = &kind->attribs[attrib_index++];
@@ -625,7 +749,17 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       assert(attrib_index < kind->attrib_count);
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_ret_var_decl;
+      attrib->name = AstAttributeName_ret_var;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_body;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_scope;
+      attrib->name = AstAttributeName_scope;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -681,7 +815,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_module;
-      kind->attrib_count = 3;
+      kind->attrib_count = 2;
       kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
 
       int attrib_index = 0;
@@ -696,11 +830,6 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_ast_node;
       attrib->name = AstAttributeName_body;
-
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_scope;
-      attrib->name = AstAttributeName_scope;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -770,7 +899,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       assert(attrib_index < kind->attrib_count);
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_int_val;
-      attrib->name = AstAttributeName_decl_scope_offset;
+      attrib->name = AstAttributeName_decl_scope_depth;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -784,6 +913,11 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
 
       assert(attrib_index < kind->attrib_count);
       attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_op_kind;
+      attrib->name = AstAttributeName_op_kind;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_ast_node;
       attrib->name = AstAttributeName_left_operand;
 
@@ -791,11 +925,6 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_ast_node;
       attrib->name = AstAttributeName_right_operand;
-
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_op_kind;
-      attrib->name = AstAttributeName_op_kind;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -837,7 +966,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib->kind = AstAttribute_str;
       attrib->name = AstAttributeName_str;
     }
-  }
+  }/*<<<*/
   else
     assert(0);
 }
@@ -1002,17 +1131,16 @@ DEBUG_print_scope(String* str, int indent_level, char* tag, Scope* scope)
   {
     if(tag)
     {
-      DEBUG_print_line(str, indent_level, tag);
+      DEBUG_print_line(str, indent_level, "%s @%lu", tag, scope);
       ++indent_level;
     }
 
     DEBUG_print_line(str, indent_level, "kind: %s", get_scope_kind_printstr(scope->kind));
-    DEBUG_print_line(str, indent_level, "scope_id: %d", scope->scope_id);
     DEBUG_print_line(str, indent_level, "nesting_depth: %d", scope->nesting_depth);
 
     if(scope->encl_scope)
     {
-      DEBUG_print_line(str, indent_level, "encl_scope_id: %d", scope->encl_scope->scope_id);
+      DEBUG_print_line(str, indent_level, "encl_scope: @%lu", scope->encl_scope);
     }
 
     if(scope->ast_node)
@@ -1050,186 +1178,297 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
 #endif
     ++indent_level;
 
+#if 0
     if(node->gen_id == 0)
+    {/*>>>*/
+#endif
+    if(node->kind == AstNode_module
+        || node->kind == AstNode_include)
     {
-      if(node->kind == AstNode_module
-         || node->kind == AstNode_include)
+      DEBUG_print_line(str, indent_level, "file_path: \"%s\"", ATTR(node, str, file_path));
+      DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
+    }
+    else if(node->kind == AstNode_proc)
+    {
+      if(node->gen_id == 0)
       {
-        DEBUG_print_line(str, indent_level, "file_path: \"%s\"", ATTR(node, str, file_path));
-        DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-      }
-      else if(node->kind == AstNode_proc)
-      {
-        DEBUG_print_ast_node(str, indent_level, "ret_type", ATTR(node, ast_node, ret_type_expr));
+        DEBUG_print_ast_node(str, indent_level, "ret_type_expr", ATTR(node, ast_node, ret_type_expr));
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node_list(str, indent_level, "formal_args", ATTR(node, list, formal_args));
         DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
       }
-      else if(node->kind == AstNode_var)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_proc_decl)
+    {
+      if(node->gen_id == 1)
+      {
+        DEBUG_print_line(str, indent_level, "name: %s", ATTR(node, str, name));
+        DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
+        DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
+        DEBUG_print_ast_node_list(str, indent_level, "formal_args", ATTR(node, list, formal_args));
+        DEBUG_print_ast_node(str, indent_level, "ret_var", ATTR(node, ast_node, ret_var));
+      }
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_var)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node(str, indent_level, "init_expr", ATTR(node, ast_node, init_expr));
       }
-      else if(node->kind == AstNode_id)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_var_decl)
+    {
+      if(node->gen_id == 1)
+      {
+        DEBUG_print_line(str, indent_level, "name: \"%s\"", ATTR(node, str, name));
+        DEBUG_print_ast_node(str, indent_level, "init_expr", ATTR(node, ast_node, init_expr));
+      }
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_id)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_line(str, indent_level, "name: %s", ATTR(node, str, name));
       }
-      else if(node->kind == AstNode_block)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_var_occur)
+    {
+      if(node->gen_id == 1)
       {
-        DEBUG_print_ast_node_list(str, indent_level, "nodes", ATTR(node, list, nodes));
+        DEBUG_print_line(str, indent_level, "name: \"%s\"", ATTR(node, str, name));
+        DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, occur_scope));
+        DEBUG_print_line(str, indent_level, "decl_scope_depth: %d", ATTR(node, int_val, decl_scope_depth));
       }
-      else if(node->kind == AstNode_bin_expr)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_block)
+    {
+      if(node->gen_id == 1)
       {
-        DEBUG_print_line(str, indent_level, "op: %s", get_operator_kind_printstr(ATTR(node, op_kind, op_kind)));
-        DEBUG_print_ast_node(str, indent_level, "left_operand", ATTR(node, ast_node, left_operand));
-        DEBUG_print_ast_node(str, indent_level, "right_operand", ATTR(node, ast_node, right_operand));
+        DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
       }
-      else if(node->kind == AstNode_un_expr)
+      DEBUG_print_ast_node_list(str, indent_level, "nodes", ATTR(node, list, nodes));
+    }
+    else if(node->kind == AstNode_bin_expr)
+    {
+      DEBUG_print_line(str, indent_level, "op: %s", get_operator_kind_printstr(ATTR(node, op_kind, op_kind)));
+      DEBUG_print_ast_node(str, indent_level, "left_operand", ATTR(node, ast_node, left_operand));
+      DEBUG_print_ast_node(str, indent_level, "right_operand", ATTR(node, ast_node, right_operand));
+    }
+    else if(node->kind == AstNode_un_expr)
+    {
+      DEBUG_print_line(str, indent_level, "op: %s", get_operator_kind_printstr(ATTR(node, op_kind, op_kind)));
+      DEBUG_print_ast_node(str, indent_level, "operand", ATTR(node, ast_node, operand));
+    }
+    else if(node->kind == AstNode_lit)
+    {
+      LiteralKind lit_kind = ATTR(node, lit_kind, lit_kind);
+      DEBUG_print_line(str, indent_level, get_literal_kind_printstr(lit_kind));
+      if(lit_kind == Literal_int_val)
       {
-        DEBUG_print_line(str, indent_level, "op: %s", get_operator_kind_printstr(ATTR(node, op_kind, op_kind)));
-        DEBUG_print_ast_node(str, indent_level, "operand", ATTR(node, ast_node, operand));
+        DEBUG_print_line(str, indent_level, "int_val: %d", ATTR(node, int_val, int_val));
       }
-      else if(node->kind == AstNode_lit)
+      else if(lit_kind == Literal_float_val)
       {
-        LiteralKind lit_kind = ATTR(node, lit_kind, lit_kind);
-        DEBUG_print_line(str, indent_level, get_literal_kind_printstr(lit_kind));
-        if(lit_kind == Literal_int_val)
-        {
-          DEBUG_print_line(str, indent_level, "int_val: %d", ATTR(node, int_val, int_val));
-        }
-        else if(lit_kind == Literal_float_val)
-        {
-          DEBUG_print_line(str, indent_level, "float_val: %f", ATTR(node, float_val, float_val));
-        }
-        else if(lit_kind == Literal_bool_val)
-        {
-          DEBUG_print_line(str, indent_level, "bool_val: %d", ATTR(node, bool_val, bool_val));
-        }
-        else if(lit_kind == Literal_char_val)
-        {
-          char buf[3] = {0};
-          print_char(buf, ATTR(node, char_val, char_val));
-          DEBUG_print_line(str, indent_level, "char_val: '%s'", buf);
-        }
-        else if(lit_kind == Literal_str)
-        {
-          DEBUG_print_line(str, indent_level, "str: \"%s\"", ATTR(node, str, str));
-        }
-        else
-          assert(0);
+        DEBUG_print_line(str, indent_level, "float_val: %f", ATTR(node, float_val, float_val));
       }
-      else if(node->kind == AstNode_stmt)
+      else if(lit_kind == Literal_bool_val)
       {
-        DEBUG_print_ast_node(str, indent_level, "stmt", ATTR(node, ast_node, stmt));
+        DEBUG_print_line(str, indent_level, "bool_val: %d", ATTR(node, bool_val, bool_val));
       }
-      else if(node->kind == AstNode_return_stmt)
+      else if(lit_kind == Literal_char_val)
       {
-        DEBUG_print_ast_node(str, indent_level, "expr", ATTR(node, ast_node, expr));
+        char buf[3] = {0};
+        print_char(buf, ATTR(node, char_val, char_val));
+        DEBUG_print_line(str, indent_level, "char_val: '%s'", buf);
       }
-      else if(node->kind == AstNode_if_stmt)
+      else if(lit_kind == Literal_str)
       {
-        DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
-        DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-        DEBUG_print_ast_node(str, indent_level, "else_body", ATTR(node, ast_node, else_body));
+        DEBUG_print_line(str, indent_level, "str: \"%s\"", ATTR(node, str, str));
       }
-      else if(node->kind == AstNode_while_stmt)
-      {
-        DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
-        DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-      }
-      else if(node->kind == AstNode_for_stmt)
-      {
-        DEBUG_print_ast_node(str, indent_level, "decl_expr", ATTR(node, ast_node, decl_expr));
-        DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
-        DEBUG_print_ast_node(str, indent_level, "loop_expr", ATTR(node, ast_node, loop_expr));
-        DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-      }
-      else if(node->kind == AstNode_cast)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_stmt)
+    {
+      DEBUG_print_ast_node(str, indent_level, "stmt", ATTR(node, ast_node, stmt));
+    }
+    else if(node->kind == AstNode_return_stmt)
+    {
+      DEBUG_print_ast_node(str, indent_level, "ret_expr", ATTR(node, ast_node, ret_expr));
+    }
+    else if(node->kind == AstNode_if_stmt)
+    {
+      DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
+      DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
+      DEBUG_print_ast_node(str, indent_level, "else_body", ATTR(node, ast_node, else_body));
+    }
+    else if(node->kind == AstNode_while_stmt)
+    {
+      DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
+      DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
+    }
+    else if(node->kind == AstNode_for_stmt)
+    {
+      DEBUG_print_ast_node(str, indent_level, "decl_expr", ATTR(node, ast_node, decl_expr));
+      DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
+      DEBUG_print_ast_node(str, indent_level, "loop_expr", ATTR(node, ast_node, loop_expr));
+      DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
+    }
+    else if(node->kind == AstNode_cast)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
         DEBUG_print_ast_node(str, indent_level, "expr", ATTR(node, ast_node, expr));
       }
-      else if(node->kind == AstNode_array)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_array)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
         DEBUG_print_ast_node(str, indent_level, "size_expr", ATTR(node, ast_node, size_expr));
       }
-      else if(node->kind == AstNode_pointer)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_pointer)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
       }
-      else if(node->kind == AstNode_call)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_call)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node_list(str, indent_level, "actual_args", ATTR(node, list, actual_args));
       }
-      else if(node->kind == AstNode_break_stmt
-              || node->kind == AstNode_continue_stmt)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_proc_occur)
+    {
+      if(node->gen_id == 1)
       {
-        /* no other info to print */
+        DEBUG_print_line(str, indent_level, "name: %s", ATTR(node, str, name));
+        DEBUG_print_ast_node_list(str, indent_level, "actual_args", ATTR(node, list, actual_args));
       }
-      else if(node->kind == AstNode_struct_decl)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_break_stmt
+            || node->kind == AstNode_continue_stmt)
+    {
+      /* no other info to print */
+    }
+    else if(node->kind == AstNode_struct_decl)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
       }
-      else if(node->kind == AstNode_union_decl)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_union_decl)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
       }
-      else if(node->kind == AstNode_enum_decl)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_enum_decl)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
       }
-      else if(node->kind == AstNode_init_list)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_init_list)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
       }
-      else if(node->kind == AstNode_goto_stmt)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_goto_stmt)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
       }
-      else if(node->kind == AstNode_label)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_label)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
       }
-      else if(node->kind == AstNode_hoc_new)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_new_proc)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
         DEBUG_print_ast_node(str, indent_level, "count_expr", ATTR(node, ast_node, count_expr));
       }
-      else if(node->kind == AstNode_hoc_putc)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_putc_proc)
+    {
+      if(node->gen_id == 0)
       {
         DEBUG_print_ast_node(str, indent_level, "expr", ATTR(node, ast_node, expr));
       }
       else
         assert(0);
     }
-    else if(node->gen_id == 1)
+    else if(node->kind == AstNode_string)
     {
-      if(node->kind == AstNode_module)
+      if(node->gen_id == 1)
       {
-        DEBUG_print_line(str, indent_level, "file_path: \"%s\"", ATTR(node, str, file_path));
-        DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
-      }
-      else if(node->kind == AstNode_block)
-      {
-        DEBUG_print_ast_node_list(str, indent_level, "nodes", ATTR(node, list, nodes));
-        DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
-      }
-      else if(node->kind == AstNode_var_decl)
-      {
-        DEBUG_print_line(str, indent_level, "name: \"%s\"", ATTR(node, str, name));
-        DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, decl_scope));
+        DEBUG_print_line(str, indent_level, "\"%s\"", ATTR(node, str, str));
       }
       else
         assert(0);
     }
     else
-      assert(0);
+      fail(get_ast_kind_printstr(node->kind));
   }
 }
 

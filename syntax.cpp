@@ -508,17 +508,17 @@ parse_new(TokenStream* input, AstNode** node)
   {
     if(input->token.kind == Token_OpenParens)
     {
-      AstNode* hoc_new = *node = new_ast_node(0, AstNode_hoc_new, clone_source_loc(&input->src_loc));
+      AstNode* new_proc = *node = new_ast_node(0, AstNode_new_proc, clone_source_loc(&input->src_loc));
 
-      if(success = get_next_token(input) && parse_type_expr(input, &ATTR(hoc_new, ast_node, type_expr)))
+      if(success = get_next_token(input) && parse_type_expr(input, &ATTR(new_proc, ast_node, type_expr)))
       {
         if(input->token.kind == Token_Comma)
         {
-          if(success = get_next_token(input) && parse_expression(input, &ATTR(hoc_new, ast_node, count_expr)))
+          if(success = get_next_token(input) && parse_expression(input, &ATTR(new_proc, ast_node, count_expr)))
           {
             if(input->token.kind == Token_CloseParens)
             {
-              if(ATTR(hoc_new, ast_node, count_expr))
+              if(ATTR(new_proc, ast_node, count_expr))
               {
                 success = get_next_token(input);
               }
@@ -552,13 +552,13 @@ parse_putc(TokenStream* input, AstNode** node)
   {
     if(input->token.kind == Token_OpenParens)
     {
-      AstNode* hoc_putc = *node = new_ast_node(0, AstNode_hoc_putc, clone_source_loc(&input->src_loc));
+      AstNode* putc_proc = *node = new_ast_node(0, AstNode_putc_proc, clone_source_loc(&input->src_loc));
 
-      if(success = get_next_token(input) && parse_expression(input, &ATTR(hoc_putc, ast_node, expr)))
+      if(success = get_next_token(input) && parse_expression(input, &ATTR(putc_proc, ast_node, expr)))
       {
         if(input->token.kind == Token_CloseParens)
         {
-          if(ATTR(hoc_putc, ast_node, expr))
+          if(ATTR(putc_proc, ast_node, expr))
           {
             success = get_next_token(input);
           }
@@ -1359,7 +1359,7 @@ parse_return(TokenStream* input, AstNode** node)
   if(input->token.kind == Token_Return)
   {
     AstNode* return_stmt = *node = new_ast_node(0, AstNode_return_stmt, clone_source_loc(&input->src_loc));
-    success = get_next_token(input) && parse_expression(input, &ATTR(return_stmt, ast_node, expr));
+    success = get_next_token(input) && parse_expression(input, &ATTR(return_stmt, ast_node, ret_expr));
   }
 
   return success;

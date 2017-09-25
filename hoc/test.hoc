@@ -1,9 +1,9 @@
 /*
-include "fibo.hoc";
-include "fizzbuzz.hoc";
+*/
 include "math.hoc";
 include "str.hoc";
-*/
+include "fibo.hoc";
+include "fizzbuzz.hoc";
 include "sort.hoc";
 
 var int a = 112;

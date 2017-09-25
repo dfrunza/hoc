@@ -13,6 +13,16 @@ var char* c = "abc";
 proc int
 main()
 {
-  return 0;
+  if(true)
+    return 0;
+  else
+    a = b;
+
+  {
+    var float x = -1.;
+  }
+
+  while(true)
+    a = 2;
 }
 

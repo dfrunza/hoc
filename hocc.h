@@ -337,6 +337,7 @@ typedef enum AstAttributeKind
 typedef enum AstAttributeName
 {
   AstAttributeName__None,
+  AstAttributeName_proc,
   AstAttributeName_nesting_depth,
   AstAttributeName_loop,
   AstAttributeName_formal_args,

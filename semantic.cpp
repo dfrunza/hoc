@@ -51,30 +51,6 @@ get_type_printstr(Type* type)
   return str_cap(str);
 }
 
-#if 0
-bool
-is_arithmetic_op(AstCstOperator op)
-{
-  return op == AstCstOperator_Add || op == AstCstOperator_Sub
-    || op == AstCstOperator_Mul || op == AstCstOperator_Div
-    || op == AstCstOperator_Mod;
-}
-
-bool
-is_logic_op(AstCstOperator op)
-{
-  return op == AstCstOperator_LogicOr || op == AstCstOperator_LogicAnd || op == AstCstOperator_LogicNot;
-}
-
-bool
-is_relation_op(AstCstOperator op)
-{
-  return op == AstCstOperator_Equals || op == AstCstOperator_NotEquals
-      || op == AstCstOperator_Less || op == AstCstOperator_LessEquals
-      || op == AstCstOperator_Greater || op == AstCstOperator_GreaterEquals;
-}
-#endif
-
 char*
 make_tempvar_name(char* label)
 {
@@ -184,7 +160,7 @@ add_symbol(AstNode* node)
     if(decl_sym)
     {
       ATTR(var_occur, ast_node, var_decl) = decl_sym->ast_node;
-      ATTR(var_occur, int_val, decl_scope_depth) = symbol_table->active_scope->nesting_depth - decl_sym->scope->nesting_depth;
+      ATTR(var_occur, int_val, decl_scope_depth) = symbol_table->nesting_depth - decl_sym->scope->nesting_depth;
       register_name(name, var_occur->src_loc, Symbol_var_occur)->ast_node = var_occur;
     }
     else
@@ -255,10 +231,6 @@ void
 add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == Type_basic);
-
-#if 0
-  register_type_decl(new_ast2_type_decl(0, name));
-#endif
 }
 
 void
@@ -270,14 +242,6 @@ add_builtin_types()
   add_builtin_type("float", basic_type_float);
   add_builtin_type("void", basic_type_void);
 }
-
-#if 0
-const char*
-get_builtin_proc_name(AstBuiltinProc proc)
-{
-  return AstBuiltinProc_names[proc];
-}
-#endif
 
 void
 add_builtin_proc(char* name)
@@ -1439,35 +1403,39 @@ name_id(AstNode* node)
       ATTR(if_stmt, ast_node, cond_expr) = cond_expr;
 
       AstNode* body = ATTR(&if_stmt_copy, ast_node, body);
-      if(body->kind == AstNode_block)
+      if(body->kind != AstNode_block)
       {
-        begin_scope(ScopeKind_Block, if_stmt);
-        success = name_id_block(body);
-        end_scope();
+        List* nodes = new_list(arena, List_ast_node);
+        append_list_elem(arena, nodes, body, List_ast_node);
+        body = new_ast_node(0, AstNode_block, body->src_loc);
+        ATTR(body, list, nodes) = nodes;
       }
-      else
-        success = name_id(body);
 
+      begin_scope(ScopeKind_Block, if_stmt);
+      success = name_id_block(body);
+      end_scope();
       if(success)
       {
         ATTR(if_stmt, ast_node, body) = body;
-      }
 
-      AstNode* else_body = ATTR(&if_stmt_copy, ast_node, else_body);
-      if(else_body)
-      {
-        if(else_body->kind == AstNode_block)
+        AstNode* else_body = ATTR(&if_stmt_copy, ast_node, else_body);
+        if(else_body)
         {
+          if(else_body->kind != AstNode_block)
+          {
+            List* nodes = new_list(arena, List_ast_node);
+            append_list_elem(arena, nodes, else_body, List_ast_node);
+            else_body = new_ast_node(0, AstNode_block, else_body->src_loc);
+            ATTR(else_body, list, nodes) = nodes;
+          }
+
           begin_scope(ScopeKind_Block, if_stmt);
           success = name_id_block(else_body);
           end_scope();
-        }
-        else
-          success = name_id(else_body);
-
-        if(success)
-        {
-          ATTR(if_stmt, ast_node, else_body) = else_body;
+          if(success)
+          {
+            ATTR(if_stmt, ast_node, else_body) = else_body;
+          }
         }
       }
     }
@@ -1483,15 +1451,17 @@ name_id(AstNode* node)
       ATTR(while_stmt, ast_node, cond_expr) = cond_expr;
 
       AstNode* body = ATTR(&while_stmt_copy, ast_node, body);
-      if(body->kind == AstNode_block)
+      if(body->kind != AstNode_block)
       {
-        begin_scope(ScopeKind_Loop, while_stmt);
-        success = name_id_block(body);
-        end_scope();
+        List* nodes = new_list(arena, List_ast_node);
+        append_list_elem(arena, nodes, body, List_ast_node);
+        body = new_ast_node(0, AstNode_block, body->src_loc);
+        ATTR(body, list, nodes) = nodes;
       }
-      else
-        success = name_id(body);
 
+      begin_scope(ScopeKind_Loop, while_stmt);
+      success = name_id_block(body);
+      end_scope();
       if(success)
       {
         ATTR(while_stmt, ast_node, body) = body;
@@ -1501,18 +1471,43 @@ name_id(AstNode* node)
   else if(node->kind == AstNode_break_stmt
       || node->kind == AstNode_continue_stmt)
   {
-    ;//skip
+    AstNode* stmt = make_ast_node(1, node, node->kind);
+    Scope* loop_scope = find_scope(ScopeKind_Loop);
+    if(loop_scope)
+    {
+      ATTR(stmt, ast_node, loop) = loop_scope->ast_node;
+      ATTR(stmt, int_val, nesting_depth) = symbol_table->nesting_depth - loop_scope->nesting_depth;
+    }
+    else
+    {
+      char* keyword = "???";
+      if(node->kind == AstNode_break_stmt)
+        keyword = "break";
+      else if(node->kind == AstNode_continue_stmt)
+        keyword = "continue";
+      else
+        assert(0);
+      success = compile_error(stmt->src_loc, "unexpected `%s` at this location", keyword);
+    }
   }
   else if(node->kind == AstNode_return_stmt)
   {
     AstNode ret_stmt_copy = *node;
     AstNode* ret_stmt = make_ast_node(1, node, AstNode_return_stmt);
 
-    AstNode* ret_expr = ATTR(&ret_stmt_copy, ast_node, ret_expr);
-    if(ret_expr && (success = name_id(ret_expr)))
+    Scope* proc_scope = find_scope(ScopeKind_Proc);
+    if(proc_scope)
     {
-      ATTR(ret_stmt, ast_node, ret_expr) = ret_expr;
+      ATTR(ret_stmt, ast_node, proc) = proc_scope->ast_node;
+      ATTR(ret_stmt, int_val, nesting_depth) = symbol_table->nesting_depth - proc_scope->nesting_depth;
+      AstNode* ret_expr = ATTR(&ret_stmt_copy, ast_node, ret_expr);
+      if(ret_expr && (success = name_id(ret_expr)))
+      {
+        ATTR(ret_stmt, ast_node, ret_expr) = ret_expr;
+      }
     }
+    else
+      success = compile_error(ret_stmt->src_loc, "unexpected `return` at this location");
   }
   else if(node->kind == AstNode_putc_proc)
   {

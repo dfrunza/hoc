@@ -570,7 +570,7 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_return_stmt;
-      kind->attrib_count = 1;
+      kind->attrib_count = 3;
       kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
 
       int attrib_index = 0;
@@ -580,6 +580,16 @@ init_ast_meta_info(AstMetaInfo* ast, int gen_id)
       attrib = &kind->attribs[attrib_index++];
       attrib->kind = AstAttribute_ast_node;
       attrib->name = AstAttributeName_ret_expr;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_ast_node;
+      attrib->name = AstAttributeName_proc;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_int_val;
+      attrib->name = AstAttributeName_nesting_depth;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -1309,6 +1319,19 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     else if(node->kind == AstNode_return_stmt)
     {
       DEBUG_print_ast_node(str, indent_level, "ret_expr", ATTR(node, ast_node, ret_expr));
+      if(node->gen_id == 1)
+      {
+        DEBUG_print_line(str, indent_level, "proc(name): %s", ATTR(ATTR(node, ast_node, proc), str, name));
+        DEBUG_print_line(str, indent_level, "nesting_depth: %d", ATTR(node, int_val, nesting_depth));
+      }
+    }
+    else if(node->kind == AstNode_break_stmt
+            || node->kind == AstNode_continue_stmt)
+    {
+      if(node->gen_id == 1)
+      {
+        DEBUG_print_line(str, indent_level, "nesting_depth: %d", ATTR(node, int_val, nesting_depth));
+      }
     }
     else if(node->kind == AstNode_if_stmt)
     {
@@ -1376,11 +1399,6 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
       }
       else
         assert(0);
-    }
-    else if(node->kind == AstNode_break_stmt
-            || node->kind == AstNode_continue_stmt)
-    {
-      /* no other info to print */
     }
     else if(node->kind == AstNode_struct_decl)
     {

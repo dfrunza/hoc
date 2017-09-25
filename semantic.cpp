@@ -1194,7 +1194,6 @@ name_id_block(AstNode* node)
   AstNode block_copy = *node;
   AstNode* block = make_ast_node(1, node, AstNode_block);
   ATTR(block, scope, scope) = symbol_table->active_scope;
-  ATTR(block, list, nodes) = new_list(arena, List_ast_node);
 
   for(ListItem* list_item = ATTR(&block_copy, list, nodes)->first;
       list_item && success;
@@ -1239,12 +1238,10 @@ name_id(AstNode* node)
 
     if(success = add_symbol(var_decl))
     {
-      if(AstNode* init_expr = ATTR(&var_copy, ast_node, init_expr))
+      AstNode* init_expr = ATTR(&var_copy, ast_node, init_expr);
+      if(init_expr && (success = name_id(init_expr)))
       {
-        if(success = name_id(init_expr))
-        {
-          ATTR(var_decl, ast_node, init_expr) = init_expr;
-        }
+        ATTR(var_decl, ast_node, init_expr) = init_expr;
       }
     }
   }
@@ -1342,12 +1339,12 @@ name_id(AstNode* node)
       {
         ATTR(proc_decl, list, formal_args) = ATTR(&proc_copy, list, formal_args);
 
-        AstNode* ret_var_decl = ATTR(proc_decl, ast_node, ret_var) =
+        AstNode* ret_var = ATTR(proc_decl, ast_node, ret_var) =
           new_ast_node(1, AstNode_var_decl, ATTR(&proc_copy, ast_node, ret_type_expr)->src_loc);
-        ATTR(ret_var_decl, str, name) = make_tempvar_name("ret");
+        ATTR(ret_var, str, name) = make_tempvar_name("ret");
 
         AstNode* body = ATTR(&proc_copy, ast_node, body);
-        if(success = (add_symbol(ret_var_decl) && name_id_block(body)))
+        if(success = (add_symbol(ret_var) && name_id_block(body)))
         {
           ATTR(proc_decl, ast_node, body) = body;
         }
@@ -1565,7 +1562,7 @@ name_id(AstNode* node)
     }
   }
   else
-    fail(get_ast_kind_printstr(node->kind));
+    assert(0);
 
   return success;
 }
@@ -1575,28 +1572,6 @@ init_symbol_table()
 {
   symbol_table = mem_push_struct(arena, SymbolTable);
   symbol_table->nesting_depth = -1;
-}
-
-void
-init_operator_table()
-{
-#if 0
-  operator_table = mem_push_array(arena, AstNode2, Operator__Count);
-  AstNode2* op;
-  OperatorKind kind;
-
-  kind = Operator_Assign;
-  op = &operator_table[kind];
-  op->src_loc = 0;
-  op->kind = AstKind2_binop_decl;
-  AST2(op, binop_decl)->kind = kind;
-
-  kind = Operator_Add;
-  op = &operator_table[kind];
-  op->src_loc = 0;
-  op->kind = AstKind2_binop_decl;
-  AST2(op, binop_decl)->kind = kind;
-#endif
 }
 
 bool
@@ -1625,23 +1600,6 @@ semantic(AstNode* module)
   }/*<<<*/
 
   end_scope();
-#if 0
-  AstCall* main_call = new_call(deflt_src_loc);
-  main_call->id = new_id(deflt_src_loc, "main");
-  if(success = sem_call(module_block, module_block, main_call))
-  {
-    if(type_unif(main_call->type, basic_type_int))
-    {
-      list_append(arena, &module_block->node_list, main_call);
-    }
-    else
-    {
-      AstProc* main_proc = (AstProc*)main_call->proc_sym->ast;
-      assert(main_proc->kind == AstKind2_AstProc);
-      success = compile_error(&main_proc->src_loc, "main() must return a `int`");
-    }
-  }
-#endif
 
   return success;
 }

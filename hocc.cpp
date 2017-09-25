@@ -9,7 +9,6 @@ MemoryArena* symbol_arena = 0;
 
 #include "lib.cpp"
 
-//AstNode2* operator_table = 0;
 SymbolTable* symbol_table = 0;
 int tempvar_id = 0;
 

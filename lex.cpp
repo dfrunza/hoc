@@ -19,7 +19,7 @@ Token keyword_list[] =
   {Token_Cast, "cast"},
   {Token_New, "new"},
   {Token_Putc, "putc"},
-  {Token__None, 0}, /* terminator */
+  {Token_None, 0}, /* terminator */
 };
 
 Token*

@@ -86,7 +86,7 @@ SourceLoc;
 
 typedef enum TokenKind
 {
-  Token__None,
+  Token_None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
   Token_Dot,
   Token_ArrowRight,
@@ -191,7 +191,7 @@ AccessLink;
 
 #ifndef OperatorKind_MEMBER_LIST
 #define OperatorKind_MEMBER_LIST()\
-  ENUM_MEMBER(OperatorKind__None),\
+  ENUM_MEMBER(OperatorKind_None),\
   ENUM_MEMBER(OperatorKind_Add),\
   ENUM_MEMBER(OperatorKind_Sub),\
   ENUM_MEMBER(OperatorKind_Mul),\
@@ -243,7 +243,7 @@ get_operator_kind_printstr(OperatorKind op)
 
 #ifndef LiteralKind_MEMBER_LIST
 #define LiteralKind_MEMBER_LIST()\
-  ENUM_MEMBER(Literal__None),\
+  ENUM_MEMBER(Literal_None),\
   ENUM_MEMBER(Literal_int_val),\
   ENUM_MEMBER(Literal_float_val),\
   ENUM_MEMBER(Literal_bool_val),\
@@ -277,7 +277,7 @@ typedef struct Symbol Symbol;
 
 #ifndef ScopeKind_MEMBER_LIST
 #define ScopeKind_MEMBER_LIST()\
-  ENUM_MEMBER(ScopeKind__None),\
+  ENUM_MEMBER(ScopeKind_None),\
   ENUM_MEMBER(ScopeKind_Global),\
   ENUM_MEMBER(ScopeKind_Module),\
   ENUM_MEMBER(ScopeKind_Proc),\
@@ -319,9 +319,9 @@ Scope;
 #define ATTR(NODE, KIND, NAME)\
   (get_ast_attribute_safe((NODE), AstAttribute_##KIND, AstAttributeName_##NAME)->KIND)
 
-typedef enum AstAttributeKind
+typedef enum 
 {
-  AstAttribute__None,
+  AstAttribute_None,
   AstAttribute_ast_node,
   AstAttribute_int_val,
   AstAttribute_float_val,
@@ -332,11 +332,12 @@ typedef enum AstAttributeKind
   AstAttribute_list,
   AstAttribute_lit_kind,
   AstAttribute_scope,
-};
+}
+AstAttributeKind;
 
 typedef enum AstAttributeName
 {
-  AstAttributeName__None,
+  AstAttributeName_None,
   AstAttributeName_proc,
   AstAttributeName_nesting_depth,
   AstAttributeName_loop,
@@ -382,7 +383,7 @@ typedef enum AstAttributeName
   AstAttributeName_non_local_occurs,
 };
 
-typedef struct AstAttribute
+typedef struct
 {
   AstAttributeKind kind;
   AstAttributeName name;
@@ -403,7 +404,7 @@ typedef struct AstAttribute
 }
 AstAttribute;
 
-typedef struct AstAttributeMetaInfo
+typedef struct
 {
   AstAttributeKind kind;
   AstAttributeName name;
@@ -412,7 +413,7 @@ AstAttributeMetaInfo;
 
 #ifndef AstKind_MEMBER_LIST
 #define AstKind_MEMBER_LIST()\
-  ENUM_MEMBER(AstNode__None),\
+  ENUM_MEMBER(AstNode_None),\
   ENUM_MEMBER(AstNode_string),\
   ENUM_MEMBER(AstNode_id),\
   ENUM_MEMBER(AstNode_array),\
@@ -472,7 +473,7 @@ get_ast_kind_printstr(AstKind kind)
   return AstKind_strings[kind];
 }
 
-typedef struct AstKindMetaInfo
+typedef struct
 {
   AstKind kind;
   int attrib_count;
@@ -480,16 +481,24 @@ typedef struct AstKindMetaInfo
 }
 AstKindMetaInfo;
 
-typedef struct AstMetaInfo
+typedef struct
 {
   int kind_count;
   AstKindMetaInfo* kinds;
 }
 AstMetaInfo;
 
+typedef enum
+{
+  Ast_Gen0,
+  Ast_Gen1,
+  Ast_Gen_Count,
+}
+Ast_Gen;
+
 typedef struct AstNode
 {
-  int gen_id;
+  Ast_Gen gen;
   AstKind kind;
   SourceLoc* src_loc;
 
@@ -501,7 +510,7 @@ AstMetaInfo ast_meta_infos[2];
 
 typedef enum TypeKind
 {
-  Type__None,
+  Type_None,
   Type_typevar,
   Type_unary,
   Type_basic,
@@ -514,14 +523,14 @@ typedef enum TypeKind
 
 typedef enum UnaryTypeCtorKind
 {
-  UnaryTypeCtor__None,
+  UnaryTypeCtor_None,
   UnaryTypeCtor_pointer,
   UnaryTypeCtor_array,
 };
 
 typedef enum BasicTypeKind
 {
-  BasicType__None,
+  BasicType_None,
   BasicType_Void,
   BasicType_Int,
   BasicType_Float,
@@ -589,7 +598,7 @@ TypePair;
 
 typedef enum
 {
-  Symbol__None,
+  Symbol_None,
   Symbol_unresolved,
   Symbol_var_decl,
   Symbol_var_occur,
@@ -623,7 +632,7 @@ SymbolTable;
 
 typedef enum
 {
-  Opcode__None,
+  Opcode_None,
   Opcode_PUSH_CHAR,
   Opcode_PUSH_INT,
   Opcode_PUSH_FLOAT,
@@ -693,7 +702,7 @@ InstructionLine;
 
 typedef enum
 {
-  ParamType__None,
+  ParamType_None,
   ParamType_Int32,
   ParamType_Float32,
   ParamType_String,
@@ -703,7 +712,7 @@ ParamType;
 
 typedef enum
 {
-  RegName__None,
+  RegName_None,
   RegName_IP,
   RegName_SP,
   RegName_FP
@@ -756,7 +765,7 @@ VmProgram;
 
 typedef enum
 {
-  List__None,
+  List_None,
   List_ast_node,
   List_VmInstr,
   List_TypePair,

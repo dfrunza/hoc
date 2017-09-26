@@ -624,7 +624,7 @@ typedef struct Symbol
   union
   {
     AstNode* ast_node;
-    Type* type;
+    //Type* type;
   };
 }
 Symbol;

@@ -134,18 +134,18 @@ register_name(char* name, SourceLoc* src_loc, SymbolKind kind)
 
 #if 1
 Type*
-make_type(AstNode* ast_type)
+make_type_from_ast_node(AstNode* type_node)
 {
-  assert(ast_type->gen == Ast_Gen0);
+  assert(type_node->gen == Ast_Gen0);
   Type* result = 0;
 
-  if(ast_type->kind == AstNode_id)
+  if(type_node->kind == AstNode_id)
   {
-    char* name = ATTR(ast_type, str, name);
+    char* name = ATTR(type_node, str, name);
     Symbol* decl_sym = lookup_symbol(name, Symbol_type_decl, SymbolLookup_Active);
     if(decl_sym)
     {
-      result = decl_sym->type;
+      result = ATTR(decl_sym->ast_node, type, type);
     }
     else
       fail("todo");
@@ -255,6 +255,9 @@ void
 add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == Type_basic);
+  AstNode* type_decl = new_ast_node(Ast_Gen1, AstNode_type_decl, 0);
+  ATTR(type_decl, type, type) = type;
+  add_symbol(type_decl, name);
 }
 
 void
@@ -271,7 +274,6 @@ void
 add_builtin_proc(char* name)
 {
   AstNode* proc = new_ast_node(Ast_Gen1, AstNode_proc_decl, 0);
-  //ATTR(proc, str, name) = name;
   add_symbol(proc, name);
 }
 
@@ -1261,7 +1263,9 @@ name_id(AstNode* node)
 
     if(success = add_symbol(var_decl, ATTR(ATTR(&var_copy, ast_node, id), str, name)))
     {
-      AstNode* type = make_ast_node(Ast_Gen1, ATTR(&var_copy, ast_node, type_expr), AstNode_type_decl);
+      //AstNode* type_node = make_ast_node(Ast_Gen1, ATTR(&var_copy, ast_node, type_expr), AstNode_type_decl);
+      AstNode* type_node = ATTR(&var_copy, ast_node, type_expr);
+      Type* type = make_type_from_ast_node(type_node);
 
       AstNode* init_expr = ATTR(&var_copy, ast_node, init_expr);
       if(init_expr && (success = name_id(init_expr)))

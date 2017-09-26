@@ -135,7 +135,6 @@ compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
 void
 init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 {
-  //gen0
   if(gen == Ast_Gen0)
   {/*>>>*/
     ast->kind_count = 21;
@@ -556,7 +555,6 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attrib->name = AstAttributeName_op_kind;
     }
   }/*<<<*/
-  //gen1
   else if(gen == Ast_Gen1)
   {/*>>>*/
     ast->kind_count = 18;
@@ -569,11 +567,16 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_type_decl;
-      kind->attrib_count = 1;
+      kind->attrib_count = 2;
       kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
 
       int attrib_index = 0;
       AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_str;
+      attrib->name = AstAttributeName_name;
 
       assert(attrib_index < kind->attrib_count);
       attrib = &kind->attribs[attrib_index++];

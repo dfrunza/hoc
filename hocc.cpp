@@ -559,12 +559,27 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
   //gen1
   else if(gen == Ast_Gen1)
   {/*>>>*/
-    ast->kind_count = 17;
+    ast->kind_count = 18;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
     int kind_index = 0;
     AstKindMetaInfo* kind = 0;
 
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_type_decl;
+      kind->attrib_count = 1;
+      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+
+      int attrib_index = 0;
+      AstAttributeMetaInfo* attrib = 0;
+
+      assert(attrib_index < kind->attrib_count);
+      attrib = &kind->attribs[attrib_index++];
+      attrib->kind = AstAttribute_type;
+      attrib->name = AstAttributeName_type;
+    }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];

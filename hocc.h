@@ -332,12 +332,14 @@ typedef enum
   AstAttribute_list,
   AstAttribute_lit_kind,
   AstAttribute_scope,
+  AstAttribute_type,
 }
 AstAttributeKind;
 
 typedef enum AstAttributeName
 {
   AstAttributeName_None,
+  AstAttributeName_type,
   AstAttributeName_proc,
   AstAttributeName_nesting_depth,
   AstAttributeName_loop,
@@ -400,6 +402,7 @@ typedef struct
     OperatorKind op_kind;
     LiteralKind lit_kind;
     Scope* scope;
+    Type* type;
   };
 }
 AstAttribute;
@@ -617,7 +620,12 @@ typedef struct Symbol
   char* name;
   Scope* scope;
   int nesting_depth;
-  AstNode* ast_node;
+
+  union
+  {
+    AstNode* ast_node;
+    Type* type;
+  };
 }
 Symbol;
 

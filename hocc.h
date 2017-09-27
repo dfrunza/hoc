@@ -23,8 +23,8 @@ typedef double float64;
 
 #define KILOBYTE (1024ll)
 #define MEGABYTE (1024*KILOBYTE)
-#define false 0
-#define true  1
+#define false (bool)0
+#define true  (bool)1
 #define inline __inline
 #define internal static
 
@@ -543,6 +543,7 @@ typedef enum BasicTypeKind
 
 typedef struct Type
 {
+  char* name;
   TypeKind kind;
   Type* repr_type; // representative member of the set of equivalent types
   AstNode* ast_node;

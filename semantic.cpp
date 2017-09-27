@@ -119,7 +119,7 @@ lookup_symbol(char* name, SymbolKind symbol_kind, SymbolLookup lookup)
 }
 
 Symbol*
-register_name(char* name, SourceLoc* src_loc, SymbolKind kind)
+add_symbol(char* name, SourceLoc* src_loc, SymbolKind kind)
 {
   Symbol* sym = mem_push_struct(symbol_arena, Symbol);
   sym->kind = kind;
@@ -132,32 +132,75 @@ register_name(char* name, SourceLoc* src_loc, SymbolKind kind)
   return sym;
 }
 
-#if 1
-Type*
-make_type_from_ast_node(AstNode* type_node)
+bool
+name_id_type(AstNode* node)
 {
-  assert(type_node->gen == Ast_Gen0);
-  Type* result = 0;
+  assert(node->gen == Ast_Gen0);
+  bool success = true;
 
-  if(type_node->kind == AstNode_id)
+  if(node->kind == AstNode_id)
   {
-    char* name = ATTR(type_node, str, name);
+    AstNode id_copy = *node;
+    AstNode* type_occur = make_ast_node(Ast_Gen1, node, AstNode_type_occur);
+
+    char* name = ATTR(&id_copy, str, name);
     Symbol* decl_sym = lookup_symbol(name, Symbol_type_decl, SymbolLookup_Active);
+    AstNode* type_decl = 0;
     if(decl_sym)
     {
-      result = ATTR(decl_sym->ast_node, type, type);
+      type_decl = decl_sym->ast_node;//decl_sym->type?
     }
     else
-      fail("todo");
+    {
+      type_decl = new_ast_node(Ast_Gen1, AstNode_type_decl, id_copy.src_loc);
+      ATTR(type_decl, type, type) = new_typevar();
+      add_symbol(name, id_copy.src_loc, Symbol_type_decl)->ast_node = type_decl;
+    }
+
+    ATTR(type_occur, ast_node, type_decl) = type_decl;
+    ATTR(type_occur, str, name) = name;
+    add_symbol(name, type_occur->src_loc, Symbol_type_occur)->ast_node = type_occur;
+  }
+  else if(node->kind == AstNode_pointer)
+  {
+#if 0
+    if(name_id_type(ATTR(node, ast_node, type_expr)))
+    {
+      AstNode* type_decl = ATTR(ATTR(node, ast_node, type_occur), ast_node, type_decl);
+      *type = new_pointer_type(ATTR(type_decl, type, type));
+    }
+#endif
+  }
+  else if(node->kind == AstNode_array)
+  {
+#if 0
+    AstNode* size_node = ATTR(node, ast_node, size_expr);
+    if(size_node->kind == AstNode_lit)
+    {
+      if(ATTR(size_node, lit_kind, lit_kind) == Literal_int_val)
+      {
+        Type* elem_type = 0;
+        bool is_constructed = false;
+        if(make_type_from_ast_node(ATTR(node, ast_node, type_expr), &elem_type))
+        {
+          *type = new_array_type(ATTR(size_node, int_val, int_val), elem_type);
+        }
+      }
+      else
+        success = compile_error(size_node->src_loc, "Array size must be an int literal");
+    }
+    else
+      success = compile_error(size_node->src_loc, "Array size must be an int literal");
+#endif
   }
   else
-    fail("todo");
-  return result;
+    assert(0);
+
+  return success;
 }
-#endif
 
 bool
-add_symbol(AstNode* node, char* name)
+register_name(AstNode* node, char* name)
 {
   bool success = true;
 
@@ -173,7 +216,7 @@ add_symbol(AstNode* node, char* name)
     else
     {
       ATTR(var_decl, str, name) = name;
-      register_name(name, var_decl->src_loc, Symbol_var_decl)->ast_node = var_decl;
+      add_symbol(name, var_decl->src_loc, Symbol_var_decl)->ast_node = var_decl;
     }
   }
   else if(node->kind == AstNode_var_occur)
@@ -185,7 +228,7 @@ add_symbol(AstNode* node, char* name)
       ATTR(var_occur, ast_node, var_decl) = decl_sym->ast_node;
       ATTR(var_occur, int_val, decl_scope_depth) = symbol_table->nesting_depth - decl_sym->scope->nesting_depth;
       ATTR(var_occur, str, name) = name;
-      register_name(name, var_occur->src_loc, Symbol_var_occur)->ast_node = var_occur;
+      add_symbol(name, var_occur->src_loc, Symbol_var_occur)->ast_node = var_occur;
     }
     else
       success = compile_error(var_occur->src_loc, "unknown var `%s`", name);
@@ -202,7 +245,7 @@ add_symbol(AstNode* node, char* name)
     else
     {
       ATTR(type_decl, str, name) = name;
-      register_name(name, type_decl->src_loc, Symbol_type_decl)->ast_node = type_decl;
+      add_symbol(name, type_decl->src_loc, Symbol_type_decl)->ast_node = type_decl;
     }
   }
   else if(node->kind == AstNode_type_occur)
@@ -213,7 +256,7 @@ add_symbol(AstNode* node, char* name)
     {
       ATTR(type_occur, ast_node, type_decl) = sym->ast_node;
       ATTR(type_occur, str, name) = name;
-      register_name(name, type_occur->src_loc, Symbol_type_occur)->ast_node = type_occur;
+      add_symbol(name, type_occur->src_loc, Symbol_type_occur)->ast_node = type_occur;
     }
     else
       success = compile_error(type_occur->src_loc, "unknown type `%s`", name);
@@ -230,7 +273,7 @@ add_symbol(AstNode* node, char* name)
     else
     {
       ATTR(proc_decl, str, name) = name;
-      register_name(name, proc_decl->src_loc, Symbol_proc_decl)->ast_node = proc_decl;
+      add_symbol(name, proc_decl->src_loc, Symbol_proc_decl)->ast_node = proc_decl;
     }
   }
   else if(node->kind == AstNode_proc_occur)
@@ -241,7 +284,7 @@ add_symbol(AstNode* node, char* name)
     {
       ATTR(proc_occur, ast_node, proc_decl) = decl_sym->ast_node;
       ATTR(proc_occur, str, name) = name;
-      register_name(name, proc_occur->src_loc, Symbol_proc_occur)->ast_node = proc_occur;
+      add_symbol(name, proc_occur->src_loc, Symbol_proc_occur)->ast_node = proc_occur;
     }
     else
       success = compile_error(proc_occur->src_loc, "unknown proc `%s`", name);
@@ -257,7 +300,7 @@ add_builtin_type(char* name, Type* type)
   assert(type->kind == Type_basic);
   AstNode* type_decl = new_ast_node(Ast_Gen1, AstNode_type_decl, 0);
   ATTR(type_decl, type, type) = type;
-  add_symbol(type_decl, name);
+  register_name(type_decl, name);
 }
 
 void
@@ -274,7 +317,7 @@ void
 add_builtin_proc(char* name)
 {
   AstNode* proc = new_ast_node(Ast_Gen1, AstNode_proc_decl, 0);
-  add_symbol(proc, name);
+  register_name(proc, name);
 }
 
 void
@@ -1261,11 +1304,10 @@ name_id(AstNode* node)
     AstNode var_copy = *node;
     AstNode* var_decl = make_ast_node(Ast_Gen1, node, AstNode_var_decl);
 
-    if(success = add_symbol(var_decl, ATTR(ATTR(&var_copy, ast_node, id), str, name)))
+    if(success = register_name(var_decl, ATTR(ATTR(&var_copy, ast_node, id), str, name)))
     {
-      //AstNode* type_node = make_ast_node(Ast_Gen1, ATTR(&var_copy, ast_node, type_expr), AstNode_type_decl);
       AstNode* type_node = ATTR(&var_copy, ast_node, type_expr);
-      Type* type = make_type_from_ast_node(type_node);
+      name_id_type(type_node);
 
       AstNode* init_expr = ATTR(&var_copy, ast_node, init_expr);
       if(init_expr && (success = name_id(init_expr)))
@@ -1279,7 +1321,7 @@ name_id(AstNode* node)
     AstNode id_copy = *node;
     AstNode* var_occur = make_ast_node(Ast_Gen1, node, AstNode_var_occur);
 
-    success = add_symbol(var_occur, ATTR(&id_copy, str, name));
+    success = register_name(var_occur, ATTR(&id_copy, str, name));
   }
   else if(node->kind == AstNode_bin_expr)
   {
@@ -1317,7 +1359,7 @@ name_id(AstNode* node)
       AstNode* var_decl = new_ast_node(Ast_Gen1, AstNode_var_decl, lit_copy.src_loc);
       char* name = make_tempvar_name("str");
 
-      if(success = add_symbol(var_decl, name))
+      if(success = register_name(var_decl, name))
       {
         AstNode* str = new_ast_node(Ast_Gen1, AstNode_string, lit_copy.src_loc);
         ATTR(str, str, str) = ATTR(&lit_copy, str, str);
@@ -1325,7 +1367,7 @@ name_id(AstNode* node)
 
         AstNode* var_occur = make_ast_node(Ast_Gen1, node, AstNode_var_occur);
 
-        success = add_symbol(var_occur, name);
+        success = register_name(var_occur, name);
       }
     }
     else
@@ -1349,7 +1391,7 @@ name_id(AstNode* node)
     AstNode proc_copy = *node;
     AstNode* proc_decl = make_ast_node(Ast_Gen1, node, AstNode_proc_decl);
 
-    if(success = add_symbol(proc_decl, ATTR(ATTR(&proc_copy, ast_node, id), str, name)))
+    if(success = register_name(proc_decl, ATTR(ATTR(&proc_copy, ast_node, id), str, name)))
     {
       begin_scope(ScopeKind_Proc, proc_decl);
       ATTR(proc_decl, scope, scope) = symbol_table->active_scope;
@@ -1369,7 +1411,7 @@ name_id(AstNode* node)
           new_ast_node(Ast_Gen1, AstNode_var_decl, ATTR(&proc_copy, ast_node, ret_type_expr)->src_loc);
 
         AstNode* body = ATTR(&proc_copy, ast_node, body);
-        if(success = (add_symbol(ret_var, make_tempvar_name("ret")) && name_id_block(body)))
+        if(success = (register_name(ret_var, make_tempvar_name("ret")) && name_id_block(body)))
         {
           ATTR(proc_decl, ast_node, body) = body;
         }
@@ -1382,7 +1424,7 @@ name_id(AstNode* node)
     AstNode call_copy = *node;
     AstNode* proc_occur = make_ast_node(Ast_Gen1, node, AstNode_proc_occur);
 
-    if(success = add_symbol(proc_occur, ATTR(ATTR(&call_copy, ast_node, id), str, name)))
+    if(success = register_name(proc_occur, ATTR(ATTR(&call_copy, ast_node, id), str, name)))
     {
       for(ListItem* list_item = ATTR(&call_copy, list, actual_args)->first;
           list_item && success;
@@ -1535,7 +1577,7 @@ name_id(AstNode* node)
     AstNode putc_copy = *node;
     AstNode* proc_occur = make_ast_node(Ast_Gen1, node, AstNode_proc_occur);
 
-    if(success = add_symbol(proc_occur, "putc"))
+    if(success = register_name(proc_occur, "putc"))
     {
       AstNode* arg = ATTR(&putc_copy, ast_node, expr);
       if(success = name_id(arg))
@@ -1551,7 +1593,7 @@ name_id(AstNode* node)
     AstNode new_copy = *node;
     AstNode* proc_occur = make_ast_node(Ast_Gen1, node, AstNode_proc_occur);
 
-    if(success = add_symbol(proc_occur, "new"))
+    if(success = register_name(proc_occur, "new"))
     {
       //AstNode* type_arg = ATTR(&new_copy, ast_node, type_expr);
       AstNode* count_arg = ATTR(&new_copy, ast_node, count_expr);
@@ -1569,7 +1611,7 @@ name_id(AstNode* node)
     AstNode cast_copy = *node;
     AstNode* proc_occur = make_ast_node(Ast_Gen1, node, AstNode_proc_occur);
 
-    if(success = add_symbol(proc_occur, "cast"))
+    if(success = register_name(proc_occur, "cast"))
     {
       //AstNode* type_arg = ATTR(&cast_copy, ast_node, type_expr);
       AstNode* expr_arg = ATTR(&cast_copy, ast_node, expr);

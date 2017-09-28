@@ -1,20 +1,18 @@
 Type*
-new_basic_type(char* name, BasicTypeKind kind, int size)
+new_basic_type(BasicTypeKind kind, int size)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_basic;
-  type->name = name;
   type->basic.kind = kind;
   type->size = size;
   return type;
 }
 
 Type*
-new_proc_type(char* name, Type* args, Type* ret)
+new_proc_type(Type* args, Type* ret)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_proc;
-  type->name = name;
   type->proc.args = args;
   type->proc.ret = ret;
   return type;
@@ -25,7 +23,6 @@ new_typevar()
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_typevar;
-  type->name = 0;
   type->typevar.id = typevar_id++;
   return type;
 }
@@ -35,7 +32,6 @@ new_product_type(Type* left, Type* right)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_product;
-  type->name = 0;
   type->product.left = left;
   type->product.right = right;
   return type;
@@ -46,7 +42,6 @@ new_array_type(int size, Type* elem)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_array;
-  type->name = 0;
   type->array.size = size;
   type->array.elem = elem;
   return type;
@@ -57,7 +52,6 @@ new_pointer_type(Type* pointee)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_pointer;
-  type->name = 0;
   type->pointer.pointee = pointee;
   return type;
 }
@@ -65,11 +59,11 @@ new_pointer_type(Type* pointee)
 void
 init_types()
 {
-  basic_type_bool = new_basic_type("bool", BasicType_Bool, 1);
-  basic_type_int = new_basic_type("int", BasicType_Int, 1);
-  basic_type_char = new_basic_type("char", BasicType_Char, 1);
-  basic_type_float = new_basic_type("float", BasicType_Float, 1);
-  basic_type_void = new_basic_type("void", BasicType_Void, 0);
+  basic_type_bool = new_basic_type(BasicType_Bool, 1);
+  basic_type_int = new_basic_type(BasicType_Int, 1);
+  basic_type_char = new_basic_type(BasicType_Char, 1);
+  basic_type_float = new_basic_type(BasicType_Float, 1);
+  basic_type_void = new_basic_type(BasicType_Void, 0);
 
   subst_list = new_list(arena, List_TypePair);
 }

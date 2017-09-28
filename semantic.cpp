@@ -133,8 +133,61 @@ add_symbol(char* name, SourceLoc* src_loc, SymbolKind kind)
 }
 
 bool
-name_id_type(AstNode* node)
+make_type_of_type_expr(AstNode* node, Type** type)
 {
+  assert(node->gen == Ast_Gen0);
+  bool success = true;
+
+  if(node->kind == AstNode_id)
+  {
+    char* name = ATTR(node, str, name);
+    Symbol* decl_sym = lookup_symbol(name, Symbol_type_decl, SymbolLookup_Active);
+    if(decl_sym)
+    {
+      *type = ATTR(decl_sym->ast_node, type, type);
+    }
+    else
+    {
+      *type = new_typevar();
+    }
+  }
+  else if(node->kind == AstNode_pointer)
+  {
+    Type* pointee = 0;
+    if(success = make_type_of_type_expr(ATTR(node, ast_node, type_expr), &pointee))
+    {
+      *type = new_pointer_type(pointee);
+    }
+  }
+  else if(node->kind == AstNode_array)
+  {
+    AstNode* size_node = ATTR(node, ast_node, size_expr);
+    if(size_node->kind == AstNode_lit)
+    {
+      if(ATTR(size_node, lit_kind, lit_kind) == Literal_int_val)
+      {
+        Type* elem = 0;
+        if(success = make_type_of_type_expr(ATTR(node, ast_node, type_expr), &elem))
+        {
+          *type = new_array_type(ATTR(size_node, int_val, int_val), elem);
+        }
+      }
+      else
+        success = compile_error(size_node->src_loc, "Array size must be an int literal");
+    }
+    else
+      success = compile_error(size_node->src_loc, "Array size must be an int literal");
+  }
+  else
+    assert(0);
+
+  return success;
+}
+
+#if 0
+bool
+name_id_type(AstNode* node)
+{/*>>>*/
   assert(node->gen == Ast_Gen0);
   bool success = true;
 
@@ -163,13 +216,21 @@ name_id_type(AstNode* node)
   }
   else if(node->kind == AstNode_pointer)
   {
-#if 0
-    if(name_id_type(ATTR(node, ast_node, type_expr)))
+    AstNode* pointee = ATTR(node, ast_node, type_expr); 
+    if(name_id_type(pointee))
     {
-      AstNode* type_decl = ATTR(ATTR(node, ast_node, type_occur), ast_node, type_decl);
-      *type = new_pointer_type(ATTR(type_decl, type, type));
+      assert(pointee->kind == AstNode_type_occur);
+      AstNode* pointee_type_decl = ATTR(pointee, ast_node, type_decl);
+      AstNode* type_decl = new_ast_node(Ast_Gen1, AstNode_type_decl, node->src_loc);
+      ATTR(type_decl, type, type) = new_pointer_type(ATTR(pointee_type_decl, type, type));
+      char* name = make_tempvar_name("typ");
+      add_symbol(name, node->src_loc, Symbol_type_decl)->ast_node = type_decl;
+      ATTR(type_decl, str, name) = name;
+
+      AstNode* type_occur = make_ast_node(Ast_Gen1, node, AstNode_type_occur);
+      ATTR(type_occur, str, name) = name;
+      ATTR(type_occur, ast_node, type_decl) = type_decl;
     }
-#endif
   }
   else if(node->kind == AstNode_array)
   {
@@ -197,7 +258,8 @@ name_id_type(AstNode* node)
     assert(0);
 
   return success;
-}
+}/*<<<*/
+#endif
 
 bool
 register_name(AstNode* node, char* name)
@@ -1306,8 +1368,8 @@ name_id(AstNode* node)
 
     if(success = register_name(var_decl, ATTR(ATTR(&var_copy, ast_node, id), str, name)))
     {
-      AstNode* type_node = ATTR(&var_copy, ast_node, type_expr);
-      name_id_type(type_node);
+      Type* type = 0;
+      make_type_of_type_expr(ATTR(&var_copy, ast_node, type_expr), &type);
 
       AstNode* init_expr = ATTR(&var_copy, ast_node, init_expr);
       if(init_expr && (success = name_id(init_expr)))

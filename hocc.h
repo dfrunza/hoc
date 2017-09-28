@@ -543,7 +543,6 @@ typedef enum BasicTypeKind
 
 typedef struct Type
 {
-  char* name;
   TypeKind kind;
   Type* repr_type; // representative member of the set of equivalent types
   AstNode* ast_node;

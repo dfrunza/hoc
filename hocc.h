@@ -88,65 +88,65 @@ typedef enum TokenKind
 {
   Token_None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
-  Token_Dot,
-  Token_ArrowRight,
-  Token_OpenBracket,
-  Token_CloseBracket,
-  Token_OpenParens,
-  Token_CloseParens,
-  Token_OpenBrace,
-  Token_CloseBrace,
-  Token_Semicolon,
-  Token_Colon,
-  Token_Comma,
-  Token_Percent,
-  Token_Star,
-  Token_FwdSlash,
-  Token_BackSlash,
-  Token_Plus,
-  Token_PlusPlus,
-  Token_Minus,
-  Token_MinusMinus,
-  Token_Exclam,
-  Token_ExclamEquals,
-  Token_Equals,
-  Token_EqualsEquals,
-  Token_AngleRight,
-  Token_AngleRightEquals,
-  Token_AngleLeft,
-  Token_AngleLeftEquals,
-  Token_Ampersand,
-  Token_AmpersandAmpersand,
-  Token_Pipe,
-  Token_PipePipe,
-  Token_Unknown,
-  Token_EndOfInput,
+  Token_dot,
+  Token_arrow_right,
+  Token_open_bracket,
+  Token_close_bracket,
+  Token_open_parens,
+  Token_close_parens,
+  Token_open_brace,
+  Token_close_brace,
+  Token_semicolon,
+  Token_colon,
+  Token_comma,
+  Token_percent,
+  Token_star,
+  Token_fwd_slash,
+  Token_back_slash,
+  Token_plus,
+  Token_plus_plus,
+  Token_minus,
+  Token_minus_minus,
+  Token_exclam,
+  Token_exclam_eq,
+  Token_eq,
+  Token_eq_eq,
+  Token_angle_right,
+  Token_angle_right_eq,
+  Token_angle_left,
+  Token_angle_left_eq,
+  Token_ampersand,
+  Token_ampersand_ampersand,
+  Token_pipe,
+  Token_pipe_pipe,
+  Token_unknown_char,
+  Token_end_of_input,
 
-  Token_Var,
-  Token_If,
-  Token_Else,
-  Token_While,
-  Token_For,
-  Token_Proc,
-  Token_Struct,
-  Token_Union,
-  Token_Return,
-  Token_Break,
-  Token_Continue,
-  Token_Goto,
-  Token_Include,
-  Token_Enum,
-  Token_Cast,
-  Token_New,
-  Token_Putc,
-  Token_True,
-  Token_False,
+  Token_var,
+  Token_type,
+  Token_if,
+  Token_else,
+  Token_while,
+  Token_for,
+  Token_proc,
+  Token_struct,
+  Token_union,
+  Token_return,
+  Token_break,
+  Token_continue,
+  Token_goto,
+  Token_include,
+  Token_enum,
+  Token_new,
+  Token_putc,
+  Token_true,
+  Token_false,
 
-  Token_Id,
-  Token_IntNum,
-  Token_FloatNum,
-  Token_String,
-  Token_Char,
+  Token_id,
+  Token_int_num,
+  Token_float_num,
+  Token_string,
+  Token_char,
 };
 
 typedef struct
@@ -192,33 +192,33 @@ AccessLink;
 #ifndef OperatorKind_MEMBER_LIST
 #define OperatorKind_MEMBER_LIST()\
   ENUM_MEMBER(OperatorKind_None),\
-  ENUM_MEMBER(OperatorKind_Add),\
-  ENUM_MEMBER(OperatorKind_Sub),\
-  ENUM_MEMBER(OperatorKind_Mul),\
-  ENUM_MEMBER(OperatorKind_Div),\
-  ENUM_MEMBER(OperatorKind_Mod),\
-  ENUM_MEMBER(OperatorKind_Neg),\
-  ENUM_MEMBER(OperatorKind_Assign),\
-  ENUM_MEMBER(OperatorKind_PointerDeref),\
-  ENUM_MEMBER(OperatorKind_AddressOf),\
-  ENUM_MEMBER(OperatorKind_MemberSelect),\
-  ENUM_MEMBER(OperatorKind_PtrMemberSelect),\
-  ENUM_MEMBER(OperatorKind_PreDecrement),\
-  ENUM_MEMBER(OperatorKind_PostDecrement),\
-  ENUM_MEMBER(OperatorKind_PreIncrement),\
-  ENUM_MEMBER(OperatorKind_PostIncrement),\
-  ENUM_MEMBER(OperatorKind_ArrayIndex),\
-  ENUM_MEMBER(OperatorKind_Equals),\
-  ENUM_MEMBER(OperatorKind_NotEquals),\
-  ENUM_MEMBER(OperatorKind_Less),\
-  ENUM_MEMBER(OperatorKind_LessEquals),\
-  ENUM_MEMBER(OperatorKind_Greater),\
-  ENUM_MEMBER(OperatorKind_GreaterEquals),\
-  ENUM_MEMBER(OperatorKind_LogicAnd),\
-  ENUM_MEMBER(OperatorKind_LogicOr),\
-  ENUM_MEMBER(OperatorKind_LogicNot),\
-  ENUM_MEMBER(OperatorKind_BitwiseAnd),\
-  ENUM_MEMBER(OperatorKind_BitwiseOr),
+  ENUM_MEMBER(OperatorKind_add),\
+  ENUM_MEMBER(OperatorKind_sub),\
+  ENUM_MEMBER(OperatorKind_mul),\
+  ENUM_MEMBER(OperatorKind_div),\
+  ENUM_MEMBER(OperatorKind_mod),\
+  ENUM_MEMBER(OperatorKind_neg),\
+  ENUM_MEMBER(OperatorKind_assign),\
+  ENUM_MEMBER(OperatorKind_ptr_deref),\
+  ENUM_MEMBER(OperatorKind_address_of),\
+  ENUM_MEMBER(OperatorKind_member_select),\
+  ENUM_MEMBER(OperatorKind_ptr_member_select),\
+  ENUM_MEMBER(OperatorKind_pre_decr),\
+  ENUM_MEMBER(OperatorKind_post_decr),\
+  ENUM_MEMBER(OperatorKind_pre_incr),\
+  ENUM_MEMBER(OperatorKind_post_incr),\
+  ENUM_MEMBER(OperatorKind_array_index),\
+  ENUM_MEMBER(OperatorKind_eq),\
+  ENUM_MEMBER(OperatorKind_not_eq),\
+  ENUM_MEMBER(OperatorKind_less),\
+  ENUM_MEMBER(OperatorKind_less_eq),\
+  ENUM_MEMBER(OperatorKind_greater),\
+  ENUM_MEMBER(OperatorKind_greater_eq),\
+  ENUM_MEMBER(OperatorKind_logic_and),\
+  ENUM_MEMBER(OperatorKind_logic_or),\
+  ENUM_MEMBER(OperatorKind_logic_not),\
+  ENUM_MEMBER(OperatorKind_bit_and),\
+  ENUM_MEMBER(OperatorKind_bit_or),
 #endif
 
 typedef enum OperatorKind
@@ -278,11 +278,11 @@ typedef struct Symbol Symbol;
 #ifndef ScopeKind_MEMBER_LIST
 #define ScopeKind_MEMBER_LIST()\
   ENUM_MEMBER(ScopeKind_None),\
-  ENUM_MEMBER(ScopeKind_Global),\
-  ENUM_MEMBER(ScopeKind_Module),\
-  ENUM_MEMBER(ScopeKind_Proc),\
-  ENUM_MEMBER(ScopeKind_Loop),\
-  ENUM_MEMBER(ScopeKind_Block),
+  ENUM_MEMBER(ScopeKind_global),\
+  ENUM_MEMBER(ScopeKind_module),\
+  ENUM_MEMBER(ScopeKind_proc),\
+  ENUM_MEMBER(ScopeKind_loop),\
+  ENUM_MEMBER(ScopeKind_block),
 #endif
 
 typedef enum ScopeKind
@@ -479,8 +479,8 @@ get_ast_kind_printstr(AstKind kind)
 typedef struct
 {
   AstKind kind;
-  int attrib_count;
-  AstAttributeMetaInfo* attribs;
+  int attr_count;
+  AstAttributeMetaInfo* attrs;
 }
 AstKindMetaInfo;
 
@@ -493,9 +493,9 @@ AstMetaInfo;
 
 typedef enum
 {
-  Ast_Gen0,
-  Ast_Gen1,
-  Ast_Gen_Count,
+  Ast_gen0,
+  Ast_gen1,
+  Ast_gen_Count,
 }
 Ast_Gen;
 
@@ -505,7 +505,7 @@ typedef struct AstNode
   AstKind kind;
   SourceLoc* src_loc;
 
-  AstAttribute attribs[10];
+  AstAttribute attrs[10];
 }
 AstNode;
 
@@ -534,11 +534,11 @@ typedef enum UnaryTypeCtorKind
 typedef enum BasicTypeKind
 {
   BasicType_None,
-  BasicType_Void,
-  BasicType_Int,
-  BasicType_Float,
-  BasicType_Char,
-  BasicType_Bool,
+  BasicType_void,
+  BasicType_int,
+  BasicType_float,
+  BasicType_char,
+  BasicType_bool,
 };
 
 typedef struct Type
@@ -775,8 +775,8 @@ typedef enum
 {
   List_None,
   List_ast_node,
-  List_VmInstr,
-  List_TypePair,
+  List_vm_instr,
+  List_type_pair,
 }
 ListKind;
 

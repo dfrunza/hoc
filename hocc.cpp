@@ -135,7 +135,7 @@ compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
 void
 init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 {
-  if(gen == Ast_Gen0)
+  if(gen == Ast_gen0)
   {/*>>>*/
     ast->kind_count = 21;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
@@ -146,416 +146,416 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_array;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_type_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_size_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_size_expr;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_call;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_id;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_id;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_list;
-      attrib->name = AstAttributeName_actual_args;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_list;
+      attr->name = AstAttributeName_actual_args;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_new_proc;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_type_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_count_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_count_expr;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_putc_proc;
-      kind->attrib_count = 1;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 1;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_expr;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_return_stmt;
-      kind->attrib_count = 1;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 1;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_ret_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_ret_expr;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_stmt;
-      kind->attrib_count = 1;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 1;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_stmt;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_stmt;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_if_stmt;
-      kind->attrib_count = 3;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 3;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_cond_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_cond_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_body;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_else_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_else_body;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_while_stmt;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_cond_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_cond_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_body;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_pointer;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_type_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_expr;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_cast;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_type_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_expr;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_proc;
-      kind->attrib_count = 4;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 4;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_ret_type_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_ret_type_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_id;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_id;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_list;
-      attrib->name = AstAttributeName_formal_args;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_list;
+      attr->name = AstAttributeName_formal_args;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_body;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_lit;
-      kind->attrib_count = 6;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 6;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_lit_kind;
-      attrib->name = AstAttributeName_lit_kind;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_lit_kind;
+      attr->name = AstAttributeName_lit_kind;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_int_val;
-      attrib->name = AstAttributeName_int_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_int_val;
+      attr->name = AstAttributeName_int_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_float_val;
-      attrib->name = AstAttributeName_float_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_float_val;
+      attr->name = AstAttributeName_float_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_bool_val;
-      attrib->name = AstAttributeName_bool_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_bool_val;
+      attr->name = AstAttributeName_bool_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_char_val;
-      attrib->name = AstAttributeName_char_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_char_val;
+      attr->name = AstAttributeName_char_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_str;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_str;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_continue_stmt;
-      kind->attrib_count = 0;
+      kind->attr_count = 0;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_break_stmt;
-      kind->attrib_count = 0;
+      kind->attr_count = 0;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var;
-      kind->attrib_count = 3;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 3;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_type_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_id;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_id;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_init_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_init_expr;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_module;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_file_path;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_file_path;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_body;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_include;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_file_path;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_file_path;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_body;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_block;
-      kind->attrib_count = 1;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 1;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_list;
-      attrib->name = AstAttributeName_nodes;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_list;
+      attr->name = AstAttributeName_nodes;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_id;
-      kind->attrib_count = 1;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 1;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
       
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_name;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_bin_expr;
-      kind->attrib_count = 3;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 3;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_left_operand;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_left_operand;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_right_operand;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_right_operand;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_op_kind;
-      attrib->name = AstAttributeName_op_kind;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_op_kind;
+      attr->name = AstAttributeName_op_kind;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_un_expr;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_operand;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_operand;
       
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_op_kind;
-      attrib->name = AstAttributeName_op_kind;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_op_kind;
+      attr->name = AstAttributeName_op_kind;
     }
   }/*<<<*/
-  else if(gen == Ast_Gen1)
+  else if(gen == Ast_gen1)
   {/*>>>*/
     ast->kind_count = 19;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
@@ -567,451 +567,451 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_type_occur;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_name;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_type_decl;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_decl;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_type_decl;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_name;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_type;
-      attrib->name = AstAttributeName_type;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_type;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_return_stmt;
-      kind->attrib_count = 3;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 3;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_ret_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_ret_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_proc;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_proc;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_int_val;
-      attrib->name = AstAttributeName_nesting_depth;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_int_val;
+      attr->name = AstAttributeName_nesting_depth;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_break_stmt;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_loop;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_loop;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_int_val;
-      attrib->name = AstAttributeName_nesting_depth;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_int_val;
+      attr->name = AstAttributeName_nesting_depth;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_continue_stmt;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_loop;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_loop;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_int_val;
-      attrib->name = AstAttributeName_nesting_depth;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_int_val;
+      attr->name = AstAttributeName_nesting_depth;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_while_stmt;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_cond_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_cond_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_body;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_un_expr;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_operand;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_operand;
       
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_op_kind;
-      attrib->name = AstAttributeName_op_kind;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_op_kind;
+      attr->name = AstAttributeName_op_kind;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_if_stmt;
-      kind->attrib_count = 3;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 3;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_cond_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_cond_expr;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_body;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_else_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_else_body;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_stmt;
-      kind->attrib_count = 1;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 1;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_stmt;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_stmt;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_proc_occur;
-      kind->attrib_count = 4;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 4;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_name;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_proc_decl;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_proc_decl;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_list;
-      attrib->name = AstAttributeName_actual_args;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_list;
+      attr->name = AstAttributeName_actual_args;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_proc_decl;
-      kind->attrib_count = 5;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 5;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_name;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_list;
-      attrib->name = AstAttributeName_formal_args;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_list;
+      attr->name = AstAttributeName_formal_args;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_ret_var;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_ret_var;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_body;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_scope;
-      attrib->name = AstAttributeName_scope;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_scope;
+      attr->name = AstAttributeName_scope;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_lit;
-      kind->attrib_count = 5;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 5;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_lit_kind;
-      attrib->name = AstAttributeName_lit_kind;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_lit_kind;
+      attr->name = AstAttributeName_lit_kind;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_int_val;
-      attrib->name = AstAttributeName_int_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_int_val;
+      attr->name = AstAttributeName_int_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_float_val;
-      attrib->name = AstAttributeName_float_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_float_val;
+      attr->name = AstAttributeName_float_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_bool_val;
-      attrib->name = AstAttributeName_bool_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_bool_val;
+      attr->name = AstAttributeName_bool_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_char_val;
-      attrib->name = AstAttributeName_char_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_char_val;
+      attr->name = AstAttributeName_char_val;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_string;
-      kind->attrib_count = 1;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 1;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_str;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_str;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_module;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_file_path;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_file_path;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_body;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_body;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_block;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_list;
-      attrib->name = AstAttributeName_nodes;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_list;
+      attr->name = AstAttributeName_nodes;
       
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_scope;
-      attrib->name = AstAttributeName_scope;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_scope;
+      attr->name = AstAttributeName_scope;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var_decl;
-      kind->attrib_count = 2;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_name;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
       
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_init_expr;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_init_expr;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var_occur;
-      kind->attrib_count = 4;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 4;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_name;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
       
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_var_decl;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_var_decl;
       
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_scope;
-      attrib->name = AstAttributeName_occur_scope;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_scope;
+      attr->name = AstAttributeName_occur_scope;
       
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_int_val;
-      attrib->name = AstAttributeName_decl_scope_depth;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_int_val;
+      attr->name = AstAttributeName_decl_scope_depth;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_bin_expr;
-      kind->attrib_count = 3;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 3;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_op_kind;
-      attrib->name = AstAttributeName_op_kind;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_op_kind;
+      attr->name = AstAttributeName_op_kind;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_left_operand;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_left_operand;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_ast_node;
-      attrib->name = AstAttributeName_right_operand;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_right_operand;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_lit;
-      kind->attrib_count = 6;
-      kind->attribs = mem_push_array(arena, AstAttributeMetaInfo, kind->attrib_count);
+      kind->attr_count = 6;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
-      int attrib_index = 0;
-      AstAttributeMetaInfo* attrib = 0;
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_lit_kind;
-      attrib->name = AstAttributeName_lit_kind;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_lit_kind;
+      attr->name = AstAttributeName_lit_kind;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_int_val;
-      attrib->name = AstAttributeName_int_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_int_val;
+      attr->name = AstAttributeName_int_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_float_val;
-      attrib->name = AstAttributeName_float_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_float_val;
+      attr->name = AstAttributeName_float_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_bool_val;
-      attrib->name = AstAttributeName_bool_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_bool_val;
+      attr->name = AstAttributeName_bool_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_char_val;
-      attrib->name = AstAttributeName_char_val;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_char_val;
+      attr->name = AstAttributeName_char_val;
 
-      assert(attrib_index < kind->attrib_count);
-      attrib = &kind->attribs[attrib_index++];
-      attrib->kind = AstAttribute_str;
-      attrib->name = AstAttributeName_str;
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_str;
     }
   }/*<<<*/
   else
@@ -1022,7 +1022,7 @@ void
 init_ast_meta_infos()
 {
   AstMetaInfo* ast = 0;
-  int gen_count = Ast_Gen_Count;
+  int gen_count = Ast_gen_Count;
 
   for(int gen = 0; gen < gen_count; gen++)
   {
@@ -1036,7 +1036,7 @@ get_ast_attribute(AstNode* node, AstAttributeName name)
 {
   AstAttribute* result = 0;
 
-  assert(node->gen >= 0 && node->gen < Ast_Gen_Count);
+  assert(node->gen >= 0 && node->gen < Ast_gen_Count);
   AstMetaInfo* ast_meta = &ast_meta_infos[node->gen];
 
   AstKindMetaInfo* kind_meta = 0;
@@ -1054,25 +1054,25 @@ get_ast_attribute(AstNode* node, AstAttributeName name)
 
   if(kind_meta)
   {
-    AstAttributeMetaInfo* attrib_meta = 0;
-    int attrib_index = 0;
+    AstAttributeMetaInfo* attr_meta = 0;
+    int attr_index = 0;
     for(;
-        attrib_index < kind_meta->attrib_count;
-        attrib_index++)
+        attr_index < kind_meta->attr_count;
+        attr_index++)
     {
-      attrib_meta = &kind_meta->attribs[attrib_index];
-      if(attrib_meta->name == name)
+      attr_meta = &kind_meta->attrs[attr_index];
+      if(attr_meta->name == name)
       {
         break;
       }
-      attrib_meta = 0;
+      attr_meta = 0;
     }
 
-    if(attrib_meta)
+    if(attr_meta)
     {
-      result = &node->attribs[attrib_index];
-      assert(result->kind == attrib_meta->kind);
-      assert(result->name == attrib_meta->name);
+      result = &node->attrs[attr_index];
+      assert(result->kind == attr_meta->kind);
+      assert(result->name == attr_meta->name);
     }
     else
       assert(0);
@@ -1097,7 +1097,7 @@ get_ast_attribute_safe(AstNode* node, AstAttributeKind kind, AstAttributeName na
 AstNode*
 make_ast_node(Ast_Gen gen, AstNode* node, AstKind kind)
 {
-  assert(gen >= 0 && gen < Ast_Gen_Count);
+  assert(gen >= 0 && gen < Ast_gen_Count);
   node->gen = gen;
   node->kind = kind;
 
@@ -1116,18 +1116,18 @@ make_ast_node(Ast_Gen gen, AstNode* node, AstKind kind)
     kind_meta = 0;
   }
 
-  mem_zero_array(node->attribs, AstAttribute);
+  mem_zero_array(node->attrs, AstAttribute);
 
   if(kind_meta)
   {
-    for(int attrib_index = 0; 
-       attrib_index < kind_meta->attrib_count;
-       attrib_index++)
+    for(int attr_index = 0; 
+       attr_index < kind_meta->attr_count;
+       attr_index++)
     {
-      AstAttributeMetaInfo* attrib_meta = &kind_meta->attribs[attrib_index];
-      AstAttribute* attrib = &node->attribs[attrib_index];
-      attrib->kind = attrib_meta->kind;
-      attrib->name = attrib_meta->name;
+      AstAttributeMetaInfo* attr_meta = &kind_meta->attrs[attr_index];
+      AstAttribute* attr = &node->attrs[attr_index];
+      attr->kind = attr_meta->kind;
+      attr->name = attr_meta->name;
     }
   }
   else
@@ -1235,7 +1235,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_proc)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "ret_type_expr", ATTR(node, ast_node, ret_type_expr));
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
@@ -1247,7 +1247,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_proc_decl)
     {
-      if(node->gen == Ast_Gen1)
+      if(node->gen == Ast_gen1)
       {
         DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
         DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
@@ -1260,7 +1260,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_var)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
@@ -1271,7 +1271,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_var_decl)
     {
-      if(node->gen == Ast_Gen1)
+      if(node->gen == Ast_gen1)
       {
         DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
         DEBUG_print_ast_node(str, indent_level, "init_expr", ATTR(node, ast_node, init_expr));
@@ -1281,7 +1281,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_id)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
       }
@@ -1290,7 +1290,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_var_occur)
     {
-      if(node->gen == Ast_Gen1)
+      if(node->gen == Ast_gen1)
       {
         DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
         DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, occur_scope));
@@ -1301,7 +1301,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_block)
     {
-      if(node->gen == Ast_Gen1)
+      if(node->gen == Ast_gen1)
       {
         DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
       }
@@ -1354,7 +1354,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     else if(node->kind == AstNode_return_stmt)
     {
       DEBUG_print_ast_node(str, indent_level, "ret_expr", ATTR(node, ast_node, ret_expr));
-      if(node->gen == Ast_Gen1)
+      if(node->gen == Ast_gen1)
       {
         AstNode* proc = ATTR(node, ast_node, proc);
         DEBUG_print_line(str, indent_level, "proc @%lu `%s`", proc, ATTR(proc, str, name));
@@ -1364,7 +1364,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     else if(node->kind == AstNode_break_stmt
             || node->kind == AstNode_continue_stmt)
     {
-      if(node->gen == Ast_Gen1)
+      if(node->gen == Ast_gen1)
       {
         DEBUG_print_line(str, indent_level, "nesting_depth: %d", ATTR(node, int_val, nesting_depth));
       }
@@ -1389,7 +1389,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_cast)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
         DEBUG_print_ast_node(str, indent_level, "expr", ATTR(node, ast_node, expr));
@@ -1399,7 +1399,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_array)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
         DEBUG_print_ast_node(str, indent_level, "size_expr", ATTR(node, ast_node, size_expr));
@@ -1409,7 +1409,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_pointer)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
       }
@@ -1418,7 +1418,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_call)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node_list(str, indent_level, "actual_args", ATTR(node, list, actual_args));
@@ -1428,7 +1428,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_proc_occur)
     {
-      if(node->gen == Ast_Gen1)
+      if(node->gen == Ast_gen1)
       {
         DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
         DEBUG_print_ast_node_list(str, indent_level, "actual_args", ATTR(node, list, actual_args));
@@ -1438,7 +1438,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_struct_decl)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
@@ -1448,7 +1448,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_union_decl)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
@@ -1458,7 +1458,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_enum_decl)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
@@ -1468,7 +1468,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_init_list)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
       }
@@ -1477,7 +1477,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_goto_stmt)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
       }
@@ -1486,7 +1486,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_label)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
       }
@@ -1495,7 +1495,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_new_proc)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
         DEBUG_print_ast_node(str, indent_level, "count_expr", ATTR(node, ast_node, count_expr));
@@ -1505,7 +1505,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_putc_proc)
     {
-      if(node->gen == Ast_Gen0)
+      if(node->gen == Ast_gen0)
       {
         DEBUG_print_ast_node(str, indent_level, "expr", ATTR(node, ast_node, expr));
       }
@@ -1514,7 +1514,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
     }
     else if(node->kind == AstNode_string)
     {
-      if(node->gen == Ast_Gen1)
+      if(node->gen == Ast_gen1)
       {
         DEBUG_print_line(str, indent_level, "\"%s\"", ATTR(node, str, str));
       }
@@ -1561,7 +1561,7 @@ VmProgram*
 translate(char* file_path, char* hoc_text)
 {
   VmProgram* vm_program = mem_push_struct(arena, VmProgram);
-  vm_program->instr_list = new_list(arena, List_VmInstr);
+  vm_program->instr_list = new_list(arena, List_vm_instr);
   vm_program->success = false;
 
   TokenStream token_stream = {0};

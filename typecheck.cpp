@@ -59,13 +59,13 @@ new_pointer_type(Type* pointee)
 void
 init_types()
 {
-  basic_type_bool = new_basic_type(BasicType_Bool, 1);
-  basic_type_int = new_basic_type(BasicType_Int, 1);
-  basic_type_char = new_basic_type(BasicType_Char, 1);
-  basic_type_float = new_basic_type(BasicType_Float, 1);
-  basic_type_void = new_basic_type(BasicType_Void, 0);
+  basic_type_bool = new_basic_type(BasicType_bool, 1);
+  basic_type_int = new_basic_type(BasicType_int, 1);
+  basic_type_char = new_basic_type(BasicType_char, 1);
+  basic_type_float = new_basic_type(BasicType_float, 1);
+  basic_type_void = new_basic_type(BasicType_void, 0);
 
-  subst_list = new_list(arena, List_TypePair);
+  subst_list = new_list(arena, List_type_pair);
 }
 
 bool
@@ -102,15 +102,15 @@ compute_type_width(Type* type)
     type->size = compute_type_width(type->product.left) + compute_type_width(type->product.right);
   else if(type->kind == Type_basic)
   {
-    if(type->basic.kind == BasicType_Int
-       || type->basic.kind == BasicType_Float
-       || type->basic.kind == BasicType_Bool)
+    if(type->basic.kind == BasicType_int
+       || type->basic.kind == BasicType_float
+       || type->basic.kind == BasicType_bool)
     {
       type->size = 4;
     }
-    else if(type->basic.kind == BasicType_Char)
+    else if(type->basic.kind == BasicType_char)
       type->size = 1;
-    else if(type->basic.kind == BasicType_Void)
+    else if(type->basic.kind == BasicType_void)
       type->size = 0;
     else
       assert(0);
@@ -248,7 +248,7 @@ type_subst(List* subst_list, Type* type)
     subst = copy_type(type);
 
     pair = new_type_pair(type, subst);
-    append_list_elem(arena, subst_list, pair, List_TypePair);
+    append_list_elem(arena, subst_list, pair, List_type_pair);
 
     if(subst->kind == Type_typevar)
     {

@@ -205,7 +205,7 @@ fp_bin_to_dec(float v, int* significand, int* exponent)
   while(run_loop)
   {
     k = k + 1;
-    U = cast(int)(R * 10.0);
+    U = (type int)(R * 10.0);
     R = (R * 10.0) - U;
     M = M * 10.0;
     significand[k] = U;

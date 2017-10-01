@@ -35,7 +35,7 @@ rem cl %C_flags% ..\fp3.cpp /link %L_flags%
 goto :end
 
 :hocc_error
-echo hocc.exe Err0R
+echo hocc.exe error
 goto :end
 
 :end

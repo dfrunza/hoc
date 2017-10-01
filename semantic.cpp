@@ -1,48 +1,3 @@
-void
-make_type_printstr(String* str, Type* type)
-{
-  if(type->kind == Type_basic)
-  {
-    if(type->basic.kind == BasicType_bool)
-      str_append(str, "bool");
-    else if(type->basic.kind == BasicType_int)
-      str_append(str, "int");
-    else if(type->basic.kind == BasicType_float)
-      str_append(str, "float");
-    else if(type->basic.kind == BasicType_char)
-      str_append(str, "char");
-    else if(type->basic.kind == BasicType_void)
-      str_append(str, "void");
-  }
-  else if(type->kind == Type_pointer)
-  {
-    make_type_printstr(str, type->pointer.pointee);
-    str_append(str, "*");
-  }
-  else if(type->kind == Type_array)
-  {
-    str_append(str, "(");
-    str_printf(str, "[%d]", type->array.size);
-    make_type_printstr(str, type->array.elem);
-    str_append(str, ")");
-  }
-  else if(type->kind == Type_product)
-  {
-    make_type_printstr(str, type->product.left);
-    str_append(str, ", ");
-    make_type_printstr(str, type->product.right);
-  }
-  else if(type->kind == Type_proc)
-  {
-    make_type_printstr(str, type->proc.ret);
-    str_append(str, " (");
-    make_type_printstr(str, type->proc.args);
-    str_append(str, ")");
-  }
-  else
-    assert(0);
-}
-
 char*
 get_type_printstr(Type* type)
 {
@@ -145,6 +100,7 @@ make_type_of_type_expr(AstNode* node, Type** type)
     if(decl_sym)
     {
       *type = ATTR(decl_sym->ast_node, type, type);
+      //todo: AstNode* type_occur = new_ast_node(Ast_gen1, AstNode_type_occur, node->src_loc);
     }
     else
     {
@@ -161,22 +117,23 @@ make_type_of_type_expr(AstNode* node, Type** type)
   }
   else if(node->kind == AstNode_array)
   {
+    int size = -1;
     AstNode* size_node = ATTR(node, ast_node, size_expr);
-    if(size_node->kind == AstNode_lit)
+    if(size_node)
     {
-      if(ATTR(size_node, lit_kind, lit_kind) == Literal_int_val)
+      if(size_node->kind == AstNode_lit && ATTR(size_node, lit_kind, lit_kind) == Literal_int_val)
       {
-        Type* elem = 0;
-        if(success = make_type_of_type_expr(ATTR(node, ast_node, type_expr), &elem))
-        {
-          *type = new_array_type(ATTR(size_node, int_val, int_val), elem);
-        }
+        size = ATTR(size_node, int_val, int_val);
       }
       else
-        success = compile_error(size_node->src_loc, "Array size must be an int literal");
+        success = compile_error(size_node->src_loc, "array size must be an int literal");
     }
-    else
-      success = compile_error(size_node->src_loc, "Array size must be an int literal");
+
+    Type* elem = 0;
+    if(success = make_type_of_type_expr(ATTR(node, ast_node, type_expr), &elem))
+    {
+      *type = new_array_type(size, elem);
+    }
   }
   else
     assert(0);
@@ -248,10 +205,10 @@ name_id_type(AstNode* node)
         }
       }
       else
-        success = compile_error(size_node->src_loc, "Array size must be an int literal");
+        success = compile_error(size_node->src_loc, "array size must be an int literal");
     }
     else
-      success = compile_error(size_node->src_loc, "Array size must be an int literal");
+      success = compile_error(size_node->src_loc, "array size must be an int literal");
 #endif
   }
   else
@@ -1368,13 +1325,13 @@ name_id(AstNode* node)
 
     if(success = register_name(var_decl, ATTR(ATTR(&var_copy, ast_node, id), str, name)))
     {
-      Type* type = 0;
-      make_type_of_type_expr(ATTR(&var_copy, ast_node, type_expr), &type);
-
-      AstNode* init_expr = ATTR(&var_copy, ast_node, init_expr);
-      if(init_expr && (success = name_id(init_expr)))
+      if(success = make_type_of_type_expr(ATTR(&var_copy, ast_node, type_expr), &ATTR(var_decl, type, type)))
       {
-        ATTR(var_decl, ast_node, init_expr) = init_expr;
+        AstNode* init_expr = ATTR(&var_copy, ast_node, init_expr);
+        if(init_expr && (success = name_id(init_expr)))
+        {
+          ATTR(var_decl, ast_node, init_expr) = init_expr;
+        }
       }
     }
   }
@@ -1472,10 +1429,14 @@ name_id(AstNode* node)
         AstNode* ret_var = ATTR(proc_decl, ast_node, ret_var) =
           new_ast_node(Ast_gen1, AstNode_var_decl, ATTR(&proc_copy, ast_node, ret_type_expr)->src_loc);
 
-        AstNode* body = ATTR(&proc_copy, ast_node, body);
-        if(success = (register_name(ret_var, make_tempvar_name("ret")) && name_id_block(body)))
+        if(success = register_name(ret_var, make_tempvar_name("ret"))
+            && make_type_of_type_expr(ATTR(&proc_copy, ast_node, ret_type_expr), &ATTR(ret_var, type, type)))
         {
-          ATTR(proc_decl, ast_node, body) = body;
+          AstNode* body = ATTR(&proc_copy, ast_node, body);
+          if(success = name_id_block(body))
+          {
+            ATTR(proc_decl, ast_node, body) = body;
+          }
         }
       }
       end_scope();
@@ -1634,6 +1595,7 @@ name_id(AstNode* node)
     else
       success = compile_error(ret_stmt->src_loc, "unexpected `return` at this location");
   }
+#if 0
   else if(node->kind == AstNode_putc_proc)
   {
     AstNode putc_copy = *node;
@@ -1685,6 +1647,14 @@ name_id(AstNode* node)
         ATTR(proc_occur, list, actual_args) = actual_args;
       }
     }
+  }
+#endif
+  else if(node->kind == AstNode_type_expr)
+  {
+    AstNode type_expr_copy = *node;
+    AstNode* type = make_ast_node(Ast_gen1, node, AstNode_type);
+
+    success = make_type_of_type_expr(ATTR(&type_expr_copy, ast_node, type_expr), &ATTR(type, type, type));
   }
   else
     assert(0);

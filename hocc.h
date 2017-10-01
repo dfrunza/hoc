@@ -137,8 +137,8 @@ typedef enum TokenKind
   Token_goto,
   Token_include,
   Token_enum,
-  Token_new,
-  Token_putc,
+//  Token_new,
+//  Token_putc,
   Token_true,
   Token_false,
 
@@ -218,7 +218,8 @@ AccessLink;
   ENUM_MEMBER(OperatorKind_logic_or),\
   ENUM_MEMBER(OperatorKind_logic_not),\
   ENUM_MEMBER(OperatorKind_bit_and),\
-  ENUM_MEMBER(OperatorKind_bit_or),
+  ENUM_MEMBER(OperatorKind_bit_or),\
+  ENUM_MEMBER(OperatorKind_cast),
 #endif
 
 typedef enum OperatorKind
@@ -435,6 +436,7 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_type),\
   ENUM_MEMBER(AstNode_type_decl),\
   ENUM_MEMBER(AstNode_type_occur),\
+  ENUM_MEMBER(AstNode_type_expr),\
   ENUM_MEMBER(AstNode_call),\
   ENUM_MEMBER(AstNode_lit),\
   ENUM_MEMBER(AstNode_return_stmt),\
@@ -446,14 +448,11 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_for_stmt),\
   ENUM_MEMBER(AstNode_break_stmt),\
   ENUM_MEMBER(AstNode_continue_stmt),\
-  ENUM_MEMBER(AstNode_cast),\
   ENUM_MEMBER(AstNode_pointer),\
   ENUM_MEMBER(AstNode_enum_decl),\
   ENUM_MEMBER(AstNode_struct_decl),\
   ENUM_MEMBER(AstNode_union_decl),\
-  ENUM_MEMBER(AstNode_init_list),\
-  ENUM_MEMBER(AstNode_new_proc),\
-  ENUM_MEMBER(AstNode_putc_proc),
+  ENUM_MEMBER(AstNode_init_list),
 #endif
 
 typedef enum AstKind

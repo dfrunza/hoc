@@ -25,6 +25,89 @@ consume_semicolon(TokenStream* input)
 }
 
 bool
+parse_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
+{
+  *node = expr;
+  bool success = true;
+  
+  if(input->token.kind == Token_star)
+  {
+    AstNode* ptr = *node = new_ast_node(Ast_gen0, AstNode_pointer, clone_source_loc(&input->src_loc));
+    ATTR(ptr, ast_node, type_expr) = expr;
+
+    success = get_next_token(input) && parse_rest_of_type_expr(input, *node, node);
+  }
+  return success;
+}
+
+bool
+parse_type_expr(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  if(input->token.kind == Token_open_bracket)
+  {
+    AstNode* array = *node = new_ast_node(Ast_gen0, AstNode_array, clone_source_loc(&input->src_loc));
+
+    if(success = get_next_token(input) && parse_expr(input, &ATTR(array, ast_node, size_expr)))
+    {
+      if(input->token.kind == Token_close_bracket)
+      {
+#if 0
+        if(ATTR(array, ast_node, size_expr))
+        {
+#endif
+          if(success = get_next_token(input) && parse_type_expr(input, &ATTR(array, ast_node, type_expr)))
+          {
+            if(!ATTR(array, ast_node, type_expr))
+            {
+              putback_token(input);
+              success = compile_error(&input->src_loc, "type expression required, at `%s`", get_token_printstr(&input->token));
+            }
+          }
+#if 0
+        }
+        else
+          success = compile_error(&input->src_loc, "[] : expression required between brackets");
+#endif
+      }
+      else
+        success = compile_error(&input->src_loc,  "expected `]`, actual `%s`", get_token_printstr(&input->token));
+    }
+  }
+  else if(input->token.kind == Token_id)
+  {
+    AstNode* id = *node = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
+    ATTR(id, str, name) = input->token.lexeme;
+
+    success = get_next_token(input) && parse_rest_of_type_expr(input, *node, node);
+  }
+  else if(input->token.kind == Token_open_parens)
+  {
+    if(success = get_next_token(input) && parse_type_expr(input, node))
+    {
+      if(*node)
+      {
+        if(input->token.kind == Token_close_parens)
+        {
+          success = get_next_token(input) && parse_rest_of_type_expr(input, *node, node);
+        }
+        else
+          success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+      }
+      else
+      {
+        putback_token(input);
+        success = compile_error(&input->src_loc, "type expression expected, at `%s`", get_token_printstr(&input->token));
+      }
+    }
+  }
+
+  return success;
+}
+
+bool
 parse_initializer_member_list(TokenStream* input, List* member_list)
 {
   bool success = true;
@@ -90,6 +173,7 @@ parse_actual_arg_list(TokenStream* input, List* args)
   {
     arg = 0;
     success = parse_expr(input, &arg);
+
     if(success && arg)
     {
       append_list_elem(arena, args, arg, List_ast_node);
@@ -260,7 +344,7 @@ parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** node)
     else
       assert(0);
 
-    success = get_next_token(input);
+    success = success && get_next_token(input);
   }
 
   return success;
@@ -428,65 +512,7 @@ parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
   return success;
 }
 
-bool
-parse_type_expr_pointer(TokenStream* input, AstNode* expr, AstNode** node)
-{
-  *node = expr;
-  bool success = true;
-  
-  if(input->token.kind == Token_star)
-  {
-    AstNode* ptr = *node = new_ast_node(Ast_gen0, AstNode_pointer, clone_source_loc(&input->src_loc));
-    ATTR(ptr, ast_node, type_expr) = expr;
-
-    success = get_next_token(input) && parse_type_expr_pointer(input, *node, node);
-  }
-  return true;
-}
-
-bool
-parse_type_expr(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = true;
-
-  if(input->token.kind == Token_open_bracket)
-  {
-    AstNode* array = *node = new_ast_node(Ast_gen0, AstNode_array, clone_source_loc(&input->src_loc));
-
-    if(success = get_next_token(input) && parse_expr(input, &ATTR(array, ast_node, size_expr)))
-    {
-      if(input->token.kind == Token_close_bracket)
-      {
-        if(ATTR(array, ast_node, size_expr))
-        {
-          if(success = get_next_token(input) && parse_type_expr(input, &ATTR(array, ast_node, type_expr)))
-          {
-            if(!ATTR(array, ast_node, type_expr))
-            {
-              putback_token(input);
-              success = compile_error(&input->src_loc, "incomplete type expression, at `%s`", get_token_printstr(&input->token));
-            }
-          }
-        }
-        else
-          success = compile_error(&input->src_loc, "[] : expression required between brackets");
-      }
-      else
-        success = compile_error(&input->src_loc,  "expected `]`, actual `%s`", get_token_printstr(&input->token));
-    }
-  }
-  else if(input->token.kind == Token_id)
-  {
-    AstNode* id = *node = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
-    ATTR(id, str, name) = input->token.lexeme;
-
-    success = get_next_token(input) && parse_type_expr_pointer(input, *node, node);
-  }
-
-  return success;
-}
-
+#if 0
 bool
 parse_new(TokenStream* input, AstNode** node)
 {
@@ -566,6 +592,7 @@ parse_putc(TokenStream* input, AstNode** node)
   }
   return success;
 }
+#endif
 
 bool
 parse_selector(TokenStream* input, AstNode** node)
@@ -575,53 +602,36 @@ parse_selector(TokenStream* input, AstNode** node)
 
   if(input->token.kind == Token_open_parens)
   {
-    if(success = get_next_token(input))
+    if(success = get_next_token(input) && parse_expr(input, node))
     {
-      if(input->token.kind == Token_type)
+      AstNode* expr = *node;
+      if(expr)
       {
-        AstNode* cast = *node = new_ast_node(Ast_gen0, AstNode_cast, clone_source_loc(&input->src_loc));
-
-        if(success = get_next_token(input) && parse_type_expr(input, &ATTR(cast, ast_node, type_expr)))
+        if(input->token.kind == Token_close_parens)
         {
-          if(ATTR(cast, ast_node, type_expr))
+          if((success = get_next_token(input)) && expr->kind == AstNode_type_expr)
           {
-            if(input->token.kind == Token_close_parens)
+            AstNode* cast = *node = new_ast_node(Ast_gen0, AstNode_bin_expr, expr->src_loc);
+            ATTR(cast, op_kind, op_kind) = OperatorKind_cast;
+            ATTR(cast, ast_node, left_operand) = expr;
+
+            if(success = parse_expr(input, &ATTR(cast, ast_node, right_operand)))
             {
-              if(success = get_next_token(input) && parse_expr(input, &ATTR(cast, ast_node, expr)))
+              if(!ATTR(cast, ast_node, right_operand))
               {
-                if(!ATTR(cast, ast_node, expr))
-                {
-                  putback_token(input);
-                  success = compile_error(&input->src_loc, "expression expected, at `%s`", get_token_printstr(&input->token));
-                }
+                putback_token(input);
+                success = compile_error(&input->src_loc, "expression expected, at `%s`", get_token_printstr(&input->token));
               }
             }
-            else
-              success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
           }
-          else
-            success = compile_error(&input->src_loc, "type expression required, at `%s`", get_token_printstr(&input->token));
         }
+        else
+          success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
       }
       else
       {
-        if(success = parse_expr(input, node))
-        {
-          if(*node)
-          {
-            if(input->token.kind == Token_close_parens)
-            {
-              success = get_next_token(input);
-            }
-            else
-              success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
-          }
-          else
-          {
-            putback_token(input);
-            success = compile_error(&input->src_loc, "expression expected, at `%s`", get_token_printstr(&input->token));
-          }
-        }
+        putback_token(input);
+        success = compile_error(&input->src_loc, "expression expected, at `%s`", get_token_printstr(&input->token));
       }
     }
   }
@@ -668,10 +678,21 @@ parse_selector(TokenStream* input, AstNode** node)
     ATTR(id, str, name) = input->token.lexeme;
     success = get_next_token(input) && parse_rest_of_id(input, *node, node);
   }
+  else if(input->token.kind == Token_type)
+  {
+    AstNode* type_expr = *node = new_ast_node(Ast_gen0, AstNode_type_expr, clone_source_loc(&input->src_loc));
+    if(success = get_next_token(input) && parse_type_expr(input, &ATTR(type_expr, ast_node, type_expr)))
+    {
+      if(!ATTR(type_expr, ast_node, type_expr))
+        success = compile_error(&input->src_loc, "type expression required, at `%s`", get_token_printstr(&input->token));
+    }
+  }
+#if 0
   else if(input->token.kind == Token_new)
     success = parse_new(input, node);
   else if(input->token.kind == Token_putc)
     success = parse_putc(input, node);
+#endif
 
   return success;
 }

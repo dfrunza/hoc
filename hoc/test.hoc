@@ -6,9 +6,9 @@ include "fizzbuzz.hoc";
 include "sort.hoc";
 */
 
+var int a = 112;
 /*
 var [1]int* t;
-var int a = 112;
 var int b = a;
 var char* c = "abc";
 */
@@ -16,8 +16,9 @@ var char* c = "abc";
 proc int
 main()
 {
-  var int a = *(type int*)4;
-  /*a = f+*(type float*)b;*/
+  a = (type int*)(a+a);
+  a = new(type float, 2);
+  /*a = (type float).size;*/
   /*
   if(true)
     return 0;
@@ -30,6 +31,6 @@ main()
 
   while(true)
     a = 2;
-  */
+    */
 }
 

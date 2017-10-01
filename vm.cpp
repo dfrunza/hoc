@@ -46,32 +46,27 @@ typedef enum
 }
 ExecResult;
 
-bool
-check_stack_bounds(HocMachine* machine, int sp)
+bool check_stack_bounds(HocMachine* machine, int sp)
 {
   return sp > 0 && sp < machine->hp;
 }
 
-bool
-check_memory_bounds(HocMachine* machine, int location)
+bool check_memory_bounds(HocMachine* machine, int location)
 {
   return location > 0 && location <= machine->memory_size;
 }
 
-bool
-check_heap_bounds(HocMachine* machine, int hp)
+bool check_heap_bounds(HocMachine* machine, int hp)
 {
   return (hp > machine->sp) && (hp < machine->hp) && hp < machine->memory_size;
 }
 
-bool
-check_instr_bounds(HocMachine* machine, int address)
+bool check_instr_bounds(HocMachine* machine, int address)
 {
   return address >= 0 && address < machine->instr_count;
 }
 
-void
-clear_memory(HocMachine* machine, int base, int size)
+void clear_memory(HocMachine* machine, int base, int size)
 {
   int new_base = location_at(base, int8, size);
   if(new_base < base)
@@ -84,14 +79,12 @@ clear_memory(HocMachine* machine, int base, int size)
     machine->memory[i] = 0xcd;
 }
 
-int32
-offset_register(int32 reg, int32 offset)
+int32 offset_register(int32 reg, int32 offset)
 {
   return reg + offset*sizeof(int32);
 }
 
-ExecResult
-execute_instr(HocMachine* machine, Instruction* instr)
+ExecResult execute_instr(HocMachine* machine, Instruction* instr)
 {
   Opcode opcode = instr->opcode;
 
@@ -778,8 +771,7 @@ execute_instr(HocMachine* machine, Instruction* instr)
   return Result_OK;
 }
 
-ExecResult
-run_program(HocMachine* machine)
+ExecResult run_program(HocMachine* machine)
 {
   Instruction* instr;
   ExecResult exec_result = Result_OK;
@@ -831,8 +823,7 @@ run_program(HocMachine* machine)
   return exec_result;
 }
 
-bool
-load_bin_image(char* exe_file_name, HocMachine* machine)
+bool load_bin_image(char* exe_file_name, HocMachine* machine)
 {
   uint8* exe_bytes = 0;
   int exe_size = 0;
@@ -881,8 +872,7 @@ load_bin_image(char* exe_file_name, HocMachine* machine)
   return success;
 }
 
-int
-main(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
   int ret = -1;
   assert(argv[0] && argv[0] != '\0');

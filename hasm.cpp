@@ -19,8 +19,7 @@ typedef struct
 }
 SourceProgram;
 
-int
-instr_to_components(char* str, char* components[], int max_component_count)
+int instr_to_components(char* str, char* components[], int max_component_count)
 {
   int component_count = 0;
 
@@ -58,8 +57,7 @@ instr_to_components(char* str, char* components[], int max_component_count)
 }
 
 #if 0
-int
-find_instr_address_at_line(SourceProgram* source, int lineNr)
+int find_instr_address_at_line(SourceProgram* source, int lineNr)
 {
   int result = -1;
   InstructionLine* line = source->lines;
@@ -76,8 +74,7 @@ find_instr_address_at_line(SourceProgram* source, int lineNr)
 }
 #endif
 
-Label*
-find_label(SourceProgram* source, char* label_string)
+Label* find_label(SourceProgram* source, char* label_string)
 {
   Label* result = 0;
   for(int i = 0; i < source->labesl_count; i++)
@@ -92,15 +89,13 @@ find_label(SourceProgram* source, char* label_string)
   return result;
 }
 
-boole
-is_valid_label(char *label)
+bool is_valid_label(char *label)
 {
   char start_char = *label;
   return ('A' <= start_char && start_char <= 'Z') || ('a' <= start_char && start_char <= 'z') || start_char == '.';
 }
 
-void
-process_source_lines(SourceProgram* source)
+void process_source_lines(SourceProgram* source)
 {
   source->line_count = 0;
   char* char_ptr = &source->text[0];
@@ -138,8 +133,7 @@ process_source_lines(SourceProgram* source)
   }
 }
 
-boole
-build_instructions(SourceProgram* source, VmProgram* vm_program)
+bool build_instructions(SourceProgram* source, VmProgram* vm_program)
 {
   vm_program->instr_count = source->line_count;
   vm_program->instructions = mem_push_count_nz(arena, Instruction, vm_program->instr_count);
@@ -441,8 +435,7 @@ build_instructions(SourceProgram* source, VmProgram* vm_program)
   return true;
 }
 
-boole
-convert_hasm_to_instructions(char* text, VmProgram* vm_program)
+bool convert_hasm_to_instructions(char* text, VmProgram* vm_program)
 {
   SourceProgram source = {0};
   source.text = text;

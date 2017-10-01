@@ -22,8 +22,7 @@ Token keyword_list[] =
   {Token_None, 0}, /* terminator */
 };
 
-Token*
-lookup_keyword(Token* list, char* lexeme)
+Token* lookup_keyword(Token* list, char* lexeme)
 {
   Token* result = 0;
   Token* token;
@@ -41,20 +40,17 @@ lookup_keyword(Token* list, char* lexeme)
   return result;
 }
 
-bool
-is_keyword_token(TokenKind kind)
+bool is_keyword_token(TokenKind kind)
 {
   return (kind >= Token_if) && (kind <= Token_false);
 }
 
-bool
-is_literal_token(TokenKind kind)
+bool is_literal_token(TokenKind kind)
 {
   return (kind >= Token_int_num) && (kind <= Token_char);
 }
 
-char*
-install_lexeme(char* begin_char, char* end_char)
+char* install_lexeme(char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
 
@@ -66,8 +62,7 @@ install_lexeme(char* begin_char, char* end_char)
   return lexeme;
 }
 
-bool
-is_valid_escape_char(char c)
+bool is_valid_escape_char(char c)
 {
   return c == 't' || c == 'n' || c == 'r' || c == '0' ||
     c == '\"' || c == '\'' || c == '\\';
@@ -82,8 +77,7 @@ typedef struct
 }
 EscapedStr;
 
-bool
-escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
+bool escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
 {
   bool success = true;
   estr->len = 0;
@@ -113,8 +107,7 @@ escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
   return success;
 }
 
-char*
-install_escaped_str(EscapedStr* estr)
+char* install_escaped_str(EscapedStr* estr)
 {
   assert(estr->begin <= estr->end);
 
@@ -159,8 +152,7 @@ install_escaped_str(EscapedStr* estr)
   return lexeme;
 }
 
-char*
-get_token_printstr(Token* token)
+char* get_token_printstr(Token* token)
 {
   static char char_print_buf[3] = {0};
   char* result = 0;
@@ -287,8 +279,7 @@ get_token_printstr(Token* token)
   return result;
 }
 
-void
-init_token_stream(TokenStream* stream, char* text, char* file_path)
+void init_token_stream(TokenStream* stream, char* text, char* file_path)
 {
   stream->text = text;
   stream->cursor = stream->text;
@@ -300,14 +291,12 @@ init_token_stream(TokenStream* stream, char* text, char* file_path)
   stream->prev_state = mem_push_struct(arena, TokenStream);
 }
 
-void
-putback_token(TokenStream* input)
+void putback_token(TokenStream* input)
 {
   *input = *input->prev_state;
 }
 
-Token*
-get_prev_token(TokenStream* input)
+Token* get_prev_token(TokenStream* input)
 {
   Token* token = &input->token;
   if(input->prev_state)
@@ -315,8 +304,7 @@ get_prev_token(TokenStream* input)
   return token;
 }
 
-bool
-get_next_token(TokenStream* input)
+bool get_next_token(TokenStream* input)
 {
   bool success = true;
   *input->prev_state = *input;

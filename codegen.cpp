@@ -2,8 +2,7 @@ void gen_load_rvalue(List*, AstNode*);
 void gen_load_lvalue(List*, AstNode*);
 void gen_statement(List*, AstNode*);
 
-void
-print_instruction(VmProgram* vm_program, char* code, ...)
+void print_instruction(VmProgram* vm_program, char* code, ...)
 {
   static char strbuf[128] = {0};
   va_list args;
@@ -17,8 +16,7 @@ print_instruction(VmProgram* vm_program, char* code, ...)
   vm_program->text_len++;
 }
 
-void
-emit_instr_reg(List* instr_list, Opcode opcode, RegName reg)
+void emit_instr_reg(List* instr_list, Opcode opcode, RegName reg)
 {
   Instruction* instr = mem_push_struct(arena, Instruction);
   instr->opcode = opcode;
@@ -27,8 +25,7 @@ emit_instr_reg(List* instr_list, Opcode opcode, RegName reg)
   list_append(arena, instr_list, instr);
 }
 
-void
-emit_instr_int(List* instr_list, Opcode opcode, int32 int_val)
+void emit_instr_int(List* instr_list, Opcode opcode, int32 int_val)
 {
   Instruction* instr = mem_push_struct(arena, Instruction);
   instr->opcode = opcode;
@@ -37,8 +34,7 @@ emit_instr_int(List* instr_list, Opcode opcode, int32 int_val)
   list_append(arena, instr_list, instr);
 }
 
-void
-emit_instr_float(List* instr_list, Opcode opcode, float32 float_val)
+void emit_instr_float(List* instr_list, Opcode opcode, float32 float_val)
 {
   Instruction* instr = mem_push_struct(arena, Instruction);
   instr->opcode = opcode;
@@ -47,8 +43,7 @@ emit_instr_float(List* instr_list, Opcode opcode, float32 float_val)
   list_append(arena, instr_list, instr);
 }
 
-void
-emit_instr(List* instr_list, Opcode opcode)
+void emit_instr(List* instr_list, Opcode opcode)
 {
   Instruction* instr = mem_push_struct(arena, Instruction);
   instr->opcode = opcode;
@@ -56,8 +51,7 @@ emit_instr(List* instr_list, Opcode opcode)
   list_append(arena, instr_list, instr);
 }
 
-void
-emit_instr_str(List* instr_list, Opcode opcode, char* str)
+void emit_instr_str(List* instr_list, Opcode opcode, char* str)
 {
   assert(str);
   Instruction* instr = mem_push_struct(arena, Instruction);
@@ -67,8 +61,7 @@ emit_instr_str(List* instr_list, Opcode opcode, char* str)
   list_append(arena, instr_list, instr);
 }
 
-void
-gen_bin_expr(List* code, AstBinExpr* bin_expr)
+void gen_bin_expr(List* code, AstBinExpr* bin_expr)
 {
   AstNode* left_operand = bin_expr->left_operand;
   AstNode* right_operand = bin_expr->right_operand;
@@ -292,8 +285,7 @@ gen_bin_expr(List* code, AstBinExpr* bin_expr)
   }
 }
 
-void
-gen_unr_expr(List* code, AstUnaryExpr* unr_expr)
+void gen_unr_expr(List* code, AstUnaryExpr* unr_expr)
 {
   if(unr_expr->op == AstOpKind_AddressOf)
   {
@@ -335,8 +327,7 @@ gen_unr_expr(List* code, AstUnaryExpr* unr_expr)
   }
 }
 
-void
-gen_call(List* code, AstCall* call)
+void gen_call(List* code, AstCall* call)
 {
   AstProc* proc = (AstProc*)call->proc_sym->ast;
   assert(proc->kind == AstNodeKind_AstProc);
@@ -358,8 +349,7 @@ gen_call(List* code, AstCall* call)
   emit_instr_int(code, Opcode_GROW, -proc->args_size);
 }
 
-void
-gen_load_lvalue(List* code, AstNode* ast)
+void gen_load_lvalue(List* code, AstNode* ast)
 {
   if(ast->kind == AstNodeKind_AstVarOccur)
   {
@@ -388,8 +378,7 @@ gen_load_lvalue(List* code, AstNode* ast)
     assert(0);
 }
 
-void
-gen_load_rvalue(List* code, AstNode* ast)
+void gen_load_rvalue(List* code, AstNode* ast)
 {
   if(ast->kind == AstNodeKind_AstVarOccur)
   {
@@ -425,8 +414,7 @@ gen_load_rvalue(List* code, AstNode* ast)
     assert(0);
 }
 
-void
-gen_return_stmt(List* code, AstReturnStmt* ret_stmt)
+void gen_return_stmt(List* code, AstReturnStmt* ret_stmt)
 {
   if(ret_stmt->assign_expr)
   {
@@ -443,8 +431,7 @@ gen_return_stmt(List* code, AstReturnStmt* ret_stmt)
   emit_instr_str(code, Opcode_GOTO, proc->label_end);
 }
 
-void
-gen_break_stmt(List* code, AstBreakStmt* break_stmt)
+void gen_break_stmt(List* code, AstBreakStmt* break_stmt)
 {
   char* label_break = 0;
   AstNode* loop = break_stmt->loop;
@@ -461,8 +448,7 @@ gen_break_stmt(List* code, AstBreakStmt* break_stmt)
   emit_instr_str(code, Opcode_GOTO, label_break);
 }
 
-void
-gen_block(List* code, AstBlock* block)
+void gen_block(List* code, AstBlock* block)
 {
   for(ListItem* list_item = block->access_links.first;
       list_item;
@@ -495,8 +481,7 @@ gen_block(List* code, AstBlock* block)
   emit_instr_int(code, Opcode_GROW, -block->links_size);
 }
 
-void
-gen_proc(List* code, AstProc* proc)
+void gen_proc(List* code, AstProc* proc)
 {
   AstBlock* block = (AstBlock*)proc->body;
   emit_instr_str(code, Opcode_LABEL, proc->label);
@@ -513,8 +498,7 @@ gen_proc(List* code, AstProc* proc)
   emit_instr(code, Opcode_RETURN);
 }
 
-void
-gen_if_stmt(List* code, AstIfStmt* if_stmt)
+void gen_if_stmt(List* code, AstIfStmt* if_stmt)
 {
   gen_load_rvalue(code, if_stmt->cond_expr);
 
@@ -543,8 +527,7 @@ gen_if_stmt(List* code, AstIfStmt* if_stmt)
   emit_instr_str(code, Opcode_LABEL, if_stmt->label_end);
 }
 
-void
-gen_while_stmt(List* code, AstWhileStmt* while_stmt)
+void gen_while_stmt(List* code, AstWhileStmt* while_stmt)
 {
   emit_instr_str(code, Opcode_LABEL, while_stmt->label_eval);
   gen_load_rvalue(code, while_stmt->cond_expr);
@@ -558,14 +541,12 @@ gen_while_stmt(List* code, AstWhileStmt* while_stmt)
   emit_instr_str(code, Opcode_LABEL, while_stmt->label_break);
 }
 
-void
-gen_empty_stmt(List* code)
+void gen_empty_stmt(List* code)
 {
   emit_instr(code, Opcode_NOOP);
 }
 
-void
-gen_statement(List* code, AstNode* ast)
+void gen_statement(List* code, AstNode* ast)
 {
   if(ast->kind == AstNodeKind_AstBinExpr)
   {
@@ -616,8 +597,7 @@ gen_statement(List* code, AstNode* ast)
     assert(0);
 }
 
-void
-codegen(List* code, uint8** data, int* data_size, AstModule* module)
+void codegen(List* code, uint8** data, int* data_size, AstModule* module)
 {
   AstBlock* module_block = module->body;
 
@@ -663,8 +643,7 @@ codegen(List* code, uint8** data, int* data_size, AstModule* module)
   }
 }
 
-char*
-get_regname_str(RegName reg)
+char* get_regname_str(RegName reg)
 {
   static char* reg_fp = "fp";
   static char* reg_sp = "sp";
@@ -682,8 +661,7 @@ get_regname_str(RegName reg)
   return regname;
 }
 
-void
-print_code(VmProgram* vm_program)
+void print_code(VmProgram* vm_program)
 {
   for(ListItem* list_item = vm_program->instr_list.first;
       list_item;

@@ -1,5 +1,4 @@
-proc int
-strlen(char* str)
+proc int strlen(char* str)
 {
   var int len = 0;
   while(*str != '\0')
@@ -10,8 +9,7 @@ strlen(char* str)
   return len;
 }
 
-proc void
-print_str(char* str)
+proc void print_str(char* str)
 {
   while(*str != '\0')
   {
@@ -20,8 +18,7 @@ print_str(char* str)
   }
 }
 
-proc void
-init_intbuf(int* buf, int len, int val)
+proc void init_intbuf(int* buf, int len, int val)
 {
   var int i = 0;
   while(i < len)
@@ -31,8 +28,7 @@ init_intbuf(int* buf, int len, int val)
   }
 }
 
-proc void
-digit_to_char(char* buf, int pos, int digit)
+proc void digit_to_char(char* buf, int pos, int digit)
 {
   if((digit >= 0) && (digit <= 9))
   {
@@ -59,8 +55,7 @@ digit_to_char(char* buf, int pos, int digit)
   }
 }
 
-proc char*
-int_to_str(char* buf, int buf_len, int i)
+proc char* int_to_str(char* buf, int buf_len, int i)
 {
   var int buf_i = buf_len - 1;
   buf[buf_i] = '\0';
@@ -93,8 +88,7 @@ int_to_str(char* buf, int buf_len, int i)
   return (buf + buf_i);
 }
 
-proc void
-float_to_str(char* buf, int buf_len, float f)
+proc void float_to_str(char* buf, int buf_len, float f)
 {
   var [9]int significand; /* 0-th cell is not used */
   init_intbuf(significand, 9, 0);
@@ -163,15 +157,13 @@ float_to_str(char* buf, int buf_len, float f)
   buf[pos] = '\0';
 }
 
-proc void
-print_int(int i)
+proc void print_int(int i)
 {
   var [20]char buf;
   print_str(int_to_str(buf, 20, i));
 }
 
-proc void
-print_float(float f)
+proc void print_float(float f)
 {
   var [20]char buf;
   float_to_str(buf, 20, f);

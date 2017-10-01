@@ -1,5 +1,4 @@
-void
-assert_f(char* message, char* file, int line)
+void assert_f(char* message, char* file, int line)
 {
   if(DEBUG_enabled)
   {
@@ -13,8 +12,7 @@ assert_f(char* message, char* file, int line)
   }
 }
 
-void
-fail_f(char* file, int line, char* message, ...)
+void fail_f(char* file, int line, char* message, ...)
 {
   fprintf(stderr, "%s(%d) : ", file, line);
 
@@ -31,8 +29,7 @@ fail_f(char* file, int line, char* message, ...)
   *(int*)0 = 0;
 }
 
-bool
-error_f(char* file, int line, char* message, ...)
+bool error_f(char* file, int line, char* message, ...)
 {
   fprintf(stderr, "%s(%d) : ", file, line);
 
@@ -49,14 +46,12 @@ error_f(char* file, int line, char* message, ...)
   return false;
 }
 
-bool
-char_is_letter(char ch)
+bool char_is_letter(char ch)
 {
   return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z');
 }
 
-bool
-char_is_numeric(char c)
+bool char_is_numeric(char c)
 {
   return '0' <= c && c <= '9';
 }
@@ -82,29 +77,25 @@ char_is_numeric(char c)
 #define mem_zero_array(VAR, TYPE)\
   (mem_zero_f(VAR, sizeof_array(VAR) * sizeof(TYPE)))
 
-void
-mem_check_bounds_f(MemoryArena* arena, int elem_size, void* ptr)
+void mem_check_bounds_f(MemoryArena* arena, int elem_size, void* ptr)
 {
   assert(arena->base <= (uint8*)ptr);
   assert((arena->free + elem_size) < arena->cap);
 }
 
-void
-mem_zero_f(void* mem, size_t len)
+void mem_zero_f(void* mem, size_t len)
 {
   memset(mem, 0, len);
 }
 
-void
-mem_zero_range(void* start, void* one_past_end)
+void mem_zero_range(void* start, void* one_past_end)
 {
   size_t len = (uint8*)one_past_end - (uint8*)start;
   assert(len >= 0);
   mem_zero_f(start, len);
 }
 
-void
-free_arena(MemoryArena* arena)
+void free_arena(MemoryArena* arena)
 {
   arena->base = (uint8*)arena + sizeof(MemoryArena);
   arena->free = arena->base;
@@ -116,8 +107,7 @@ free_arena(MemoryArena* arena)
   }
 }
 
-void
-pop_arena(MemoryArena** arena)
+void pop_arena(MemoryArena** arena)
 {
   *arena = (*arena)->prev_arena;
 
@@ -128,8 +118,7 @@ pop_arena(MemoryArena** arena)
   }
 }
 
-MemoryArena*
-push_arena(MemoryArena** arena, size_t size)
+MemoryArena* push_arena(MemoryArena** arena, size_t size)
 {
   assert(size > 0);
 
@@ -157,8 +146,7 @@ push_arena(MemoryArena** arena, size_t size)
   return sub_arena;
 }
 
-void
-begin_temp_memory(MemoryArena** arena)
+void begin_temp_memory(MemoryArena** arena)
 {
   MemoryArena* prev_arena = *arena;
 
@@ -171,14 +159,12 @@ begin_temp_memory(MemoryArena** arena)
   *arena = new_arena;
 }
 
-void
-end_temp_memory(MemoryArena** arena)
+void end_temp_memory(MemoryArena** arena)
 {
   pop_arena(arena);
 }
 
-void*
-mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_mem)
+void* mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_mem)
 {
   assert(count > 0);
 
@@ -196,8 +182,7 @@ mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_
   return element;
 }
 
-MemoryArena*
-new_arena(int size)
+MemoryArena* new_arena(int size)
 {
   void* raw_mem = VirtualAlloc(0, size + sizeof(MemoryArena), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
   MemoryArena* arena = (MemoryArena*)raw_mem;
@@ -207,8 +192,7 @@ new_arena(int size)
   return arena;
 }
 
-ArenaUsage
-arena_usage(MemoryArena* arena)
+ArenaUsage arena_usage(MemoryArena* arena)
 {
   ArenaUsage usage = {0};
 #if 0
@@ -221,8 +205,7 @@ arena_usage(MemoryArena* arena)
   return usage;
 }
 
-bool
-cstr_to_int(char* str, int* integer)
+bool cstr_to_int(char* str, int* integer)
 {
   bool negative = false;
 
@@ -257,8 +240,7 @@ cstr_to_int(char* str, int* integer)
   return true;
 }
 
-bool
-cstr_to_float(char* str, float* result)
+bool cstr_to_float(char* str, float* result)
 {
 #if 0
   bool negative = false;
@@ -316,8 +298,7 @@ cstr_to_float(char* str, float* result)
   return true;
 }
 
-bool
-cstr_start_with(char* str, char* prefix)
+bool cstr_start_with(char* str, char* prefix)
 {
   while(*str == *prefix)
   {
@@ -330,8 +311,7 @@ cstr_start_with(char* str, char* prefix)
   return result;
 }
 
-bool
-cstr_match(char* str_a, char* str_b)
+bool cstr_match(char* str_a, char* str_b)
 {
   while(*str_a == *str_b)
   {
@@ -344,8 +324,7 @@ cstr_match(char* str_a, char* str_b)
   return result;
 }
 
-int
-cstr_len(char* str)
+int cstr_len(char* str)
 {
   int len = 0;
   while(*str++ != 0)
@@ -353,8 +332,7 @@ cstr_len(char* str)
   return len;
 }
 
-char*
-cstr_copy(char* dest_str, char* src_str)
+char* cstr_copy(char* dest_str, char* src_str)
 {
   do
     *dest_str++ = *src_str++;
@@ -362,8 +340,7 @@ cstr_copy(char* dest_str, char* src_str)
   return dest_str;
 }
 
-void
-cstr_append(char* dest_str, char* src_str)
+void cstr_append(char* dest_str, char* src_str)
 {
   while(*dest_str)
     dest_str++;
@@ -374,8 +351,7 @@ cstr_append(char* dest_str, char* src_str)
   *dest_str = '\0';
 }
 
-void
-cstr_copy_substr(char* dest_str, char* begin_char, char* end_char)
+void cstr_copy_substr(char* dest_str, char* begin_char, char* end_char)
 {
   char* src_str = begin_char;
 
@@ -386,38 +362,42 @@ cstr_copy_substr(char* dest_str, char* begin_char, char* end_char)
 
 /* TODO: Check arena boundaries in the str_* functions */
 
-void
-str_init(String* str, MemoryArena* arena)
+void str_init(String* str, MemoryArena* arena)
 {
-  str->arena = arena;
-  str->head = mem_push_struct(arena, char);
-  str->end = str->head;
+  if(arena->str)
+  {
+    // Two Strings cannot be attached to an Arena both at the same time
+    mem_zero_struct(str, String);
+  }
+  else
+  {
+    str->arena = arena;
+    str->head = mem_push_struct(arena, char);
+    str->end = str->head;
+    arena->str = str;
+  }
 }
 
-uint
-str_len(String* str)
+uint str_len(String* str)
 {
   assert(str->head <= str->end);
   uint len = (uint)(str->end - str->head);
   return len;
 }
 
-void
-str_stdout(String* str)
+void str_stdout(String* str)
 {
   fputs(str->head, stdout);
 }
 
-String*
-str_new(MemoryArena* arena)
+String* str_new(MemoryArena* arena)
 {
   String* str = mem_push_struct(arena, String);
   str_init(str, arena);
   return str;
 }
 
-void
-str_append(String* str, char* cstr)
+void str_append(String* str, char* cstr)
 {
   assert(str->head && str->end && str->arena);
   MemoryArena* arena = str->arena;
@@ -433,8 +413,7 @@ str_append(String* str, char* cstr)
   }
 }
 
-void
-str_printf_va(String* str, char* fmessage, va_list varargs)
+void str_printf_va(String* str, char* fmessage, va_list varargs)
 {
   assert(str->head && str->end && str->arena);
   MemoryArena* arena = str->arena;
@@ -447,8 +426,7 @@ str_printf_va(String* str, char* fmessage, va_list varargs)
   arena->free = (uint8*)str->end+1;
 }
 
-void
-str_printf(String* str, char* fmessage, ...)
+void str_printf(String* str, char* fmessage, ...)
 {
   va_list varargs;
   va_start(varargs, fmessage);
@@ -456,8 +434,7 @@ str_printf(String* str, char* fmessage, ...)
   va_end(varargs);
 }
 
-void
-str_tidyup(String* str)
+void str_tidyup(String* str)
 {
   assert(str->head <= str->end);
   if(str->end > str->head)
@@ -471,8 +448,7 @@ str_tidyup(String* str)
   }
 }
 
-void
-str_free(String* str)
+void str_free(String* str)
 {
   assert(str->head <= str->end);
   MemoryArena* arena = str->arena;
@@ -482,16 +458,15 @@ str_free(String* str)
   arena->free = (uint8*)str->head;
 }
 
-char*
-str_cap(String* str)
+char* str_cap(String* str)
 {
   *(str->end++) = 0;
   assert(str->end < (char*)str->arena->cap);
+  str->arena->str = 0;
   return str->head;
 }
 
-char*
-path_find_leaf(char* file_path)
+char* path_find_leaf(char* file_path)
 {
   char* p_char = file_path;
   char* leaf = p_char;
@@ -507,8 +482,7 @@ path_find_leaf(char* file_path)
   return leaf;
 }
 
-char*
-path_make_stem(char* file_path)
+char* path_make_stem(char* file_path)
 {
   char* leaf = path_find_leaf(file_path);
 
@@ -523,8 +497,7 @@ path_make_stem(char* file_path)
   return leaf;
 }
 
-char*
-path_make_dir(char* file_path)
+char* path_make_dir(char* file_path)
 {
   char* leaf = path_find_leaf(file_path);
   if(leaf)
@@ -532,8 +505,7 @@ path_make_dir(char* file_path)
   return file_path;
 }
 
-int
-file_write_bytes(char* file_path, uint8* bytes, int count)
+int file_write_bytes(char* file_path, uint8* bytes, int count)
 {
   int bytes_written = 0;
   FILE* h_file = fopen(file_path, "wb");
@@ -545,8 +517,7 @@ file_write_bytes(char* file_path, uint8* bytes, int count)
   return bytes_written;
 }
 
-int
-file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path)
+int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path)
 {
   *bytes = 0;
   int byte_count = 0;
@@ -566,8 +537,7 @@ file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path)
   return byte_count;
 }
 
-char*
-file_read_text(MemoryArena* arena, char* file_path)
+char* file_read_text(MemoryArena* arena, char* file_path)
 {
   char* text = 0;
   file_read_bytes(arena, (uint8**)&text, file_path);
@@ -575,16 +545,14 @@ file_read_text(MemoryArena* arena, char* file_path)
   return text;
 }
 
-bool
-str_dump_to_file(String* str, char* file_path)
+bool str_dump_to_file(String* str, char* file_path)
 {
   int char_count = str_len(str);
   int bytes_written = file_write_bytes(file_path, (uint8*)str->head, str_len(str));
   return (char_count == bytes_written);
 }
 
-int
-stdin_read(char buf[], int buf_size)
+int stdin_read(char buf[], int buf_size)
 {
   HANDLE h_std = GetStdHandle(STD_INPUT_HANDLE);
   DWORD bytes_read = 0;
@@ -608,8 +576,7 @@ stdin_read(char buf[], int buf_size)
   return (int)bytes_read;
 }
 
-void
-print_char(char buf[3], char raw_char)
+void print_char(char buf[3], char raw_char)
 {
   if(raw_char == '\0')
     cstr_copy(buf, "\\0");

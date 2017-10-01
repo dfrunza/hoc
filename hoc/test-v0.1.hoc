@@ -4,8 +4,7 @@ include "sort.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 
-proc void
-print_numbers(int* numbers, int len)
+proc void print_numbers(int* numbers, int len)
 {
   var int i = 0;
   while(i < len)
@@ -17,8 +16,7 @@ print_numbers(int* numbers, int len)
   }
 }
 
-proc int*
-make_numbers(int how_many)
+proc int* make_numbers(int how_many)
 {
   var int i = 0;
   var int c1 = 17;
@@ -37,8 +35,7 @@ make_numbers(int how_many)
   return numbers;
 }
 
-proc int
-main()
+proc int main()
 {
   var float f1 = -12.0;
   var float f2 = 0.058;

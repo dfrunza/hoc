@@ -3,8 +3,7 @@ int last_label_id;
 void rt_statement(AstNode* ast);
 void rt_block_stmts(List* stmt_list);
 
-void
-make_unique_label(String* label)
+void make_unique_label(String* label)
 {
   sprintf(label->head, "L%d", last_label_id++);
   int len = cstr_len(label->head);
@@ -13,8 +12,7 @@ make_unique_label(String* label)
   arena->free = (uint8*)label->end + 1;
 }
 
-int
-compute_data_loc(int sp, List* areas)
+int compute_data_loc(int sp, List* areas)
 {
   for(ListItem* list_item = areas->first;
       list_item;
@@ -28,8 +26,7 @@ compute_data_loc(int sp, List* areas)
   return sp;
 }
 
-void
-fixup_data_loc(int fp, List* areas)
+void fixup_data_loc(int fp, List* areas)
 {
   for(ListItem* list_item = areas->first;
       list_item;
@@ -40,8 +37,7 @@ fixup_data_loc(int fp, List* areas)
   }
 }
 
-void
-compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
+void compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
 {
   int fp = compute_data_loc(0, pre_fp_data);
   compute_data_loc(fp, post_fp_data);
@@ -49,8 +45,7 @@ compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
   fixup_data_loc(fp, post_fp_data);
 }
 
-void
-rt_call(AstCall* call)
+void rt_call(AstCall* call)
 {
   List* args_list = &call->args->list;
   for(ListItem* list_item = args_list->first;
@@ -61,8 +56,7 @@ rt_call(AstCall* call)
   }
 }
 
-void
-compute_locals_data_size(AstBlock* block, List* area_list)
+void compute_locals_data_size(AstBlock* block, List* area_list)
 {
   for(ListItem* list_item = block->local_decls.first;
       list_item;
@@ -75,8 +69,7 @@ compute_locals_data_size(AstBlock* block, List* area_list)
   }
 }
 
-void
-rt_block(AstBlock* block)
+void rt_block(AstBlock* block)
 {
   List pre_fp_data = {0};
   list_init(&pre_fp_data);
@@ -121,8 +114,7 @@ rt_block(AstBlock* block)
   rt_block_stmts(&block->node_list);
 }
 
-void
-rt_while_stmt(AstWhileStmt* while_stmt)
+void rt_while_stmt(AstWhileStmt* while_stmt)
 {
   rt_statement(while_stmt->cond_expr);
 
@@ -147,8 +139,7 @@ rt_while_stmt(AstWhileStmt* while_stmt)
     rt_statement(while_stmt->body);
 }
 
-void
-rt_if_stmt(AstIfStmt* if_stmt)
+void rt_if_stmt(AstIfStmt* if_stmt)
 {
   rt_statement(if_stmt->cond_expr);
 
@@ -184,8 +175,7 @@ rt_if_stmt(AstIfStmt* if_stmt)
   }
 }
 
-void
-rt_bin_expr(AstBinExpr* bin_expr)
+void rt_bin_expr(AstBinExpr* bin_expr)
 {
   String* label_id = str_new(arena);
   make_unique_label(label_id);
@@ -199,14 +189,12 @@ rt_bin_expr(AstBinExpr* bin_expr)
   rt_statement(bin_expr->right_operand);
 }
 
-void
-rt_unr_expr(AstUnaryExpr* unr_expr)
+void rt_unr_expr(AstUnaryExpr* unr_expr)
 {
   rt_statement(unr_expr->operand);
 }
 
-void
-rt_statement(AstNode* ast)
+void rt_statement(AstNode* ast)
 {
   if(ast->kind == AstNodeKind_AstBinExpr)
     rt_bin_expr((AstBinExpr*)ast);
@@ -256,8 +244,7 @@ rt_statement(AstNode* ast)
     assert(0);
 }
 
-void
-rt_block_stmts(List* stmt_list)
+void rt_block_stmts(List* stmt_list)
 {
   for(ListItem* list_item = stmt_list->first;
       list_item;
@@ -267,8 +254,7 @@ rt_block_stmts(List* stmt_list)
   }
 }
 
-void
-rt_proc(AstProc* proc)
+void rt_proc(AstProc* proc)
 {
   proc->label = proc->id->name;
 
@@ -316,8 +302,7 @@ rt_proc(AstProc* proc)
   rt_block_stmts(&block->node_list);
 }
  
-void
-build_runtime(AstModule* module)
+void build_runtime(AstModule* module)
 {
   AstBlock* module_block = (AstBlock*)module->body;
   for(ListItem* list_item = module->proc_defs.first;

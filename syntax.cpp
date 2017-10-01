@@ -5,16 +5,14 @@ bool parse_selector(TokenStream*, AstNode**);
 bool parse_un_expr(TokenStream*, AstNode**);
 bool parse_struct_member_list(TokenStream*, List*);
 
-SourceLoc*
-clone_source_loc(SourceLoc* src_loc)
+SourceLoc* clone_source_loc(SourceLoc* src_loc)
 {
   SourceLoc* clone = mem_push_struct(arena, SourceLoc);
   *clone = *src_loc;
   return clone;
 }
 
-bool
-consume_semicolon(TokenStream* input)
+bool consume_semicolon(TokenStream* input)
 {
   bool success = true;
   if(input->token.kind == Token_semicolon)
@@ -24,8 +22,7 @@ consume_semicolon(TokenStream* input)
   return success;
 }
 
-bool
-parse_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
+bool parse_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
 {
   *node = expr;
   bool success = true;
@@ -40,8 +37,7 @@ parse_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
   return success;
 }
 
-bool
-parse_type_expr(TokenStream* input, AstNode** node)
+bool parse_type_expr(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -107,8 +103,7 @@ parse_type_expr(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_initializer_member_list(TokenStream* input, List* member_list)
+bool parse_initializer_member_list(TokenStream* input, List* member_list)
 {
   bool success = true;
 
@@ -141,8 +136,7 @@ parse_initializer_member_list(TokenStream* input, List* member_list)
   return success;
 }
 
-bool
-parse_initializer_list(TokenStream* input, AstNode** node)
+bool parse_initializer_list(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -163,8 +157,7 @@ parse_initializer_list(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_actual_arg_list(TokenStream* input, List* args)
+bool parse_actual_arg_list(TokenStream* input, List* args)
 {
   bool success = true;
 
@@ -188,8 +181,7 @@ parse_actual_arg_list(TokenStream* input, List* args)
   return success;
 }
 
-bool
-parse_node_list(TokenStream* input, List* node_list)
+bool parse_node_list(TokenStream* input, List* node_list)
 {
   bool success = true;
 
@@ -210,8 +202,7 @@ parse_node_list(TokenStream* input, List* node_list)
   return success;
 }
 
-bool
-parse_block(TokenStream* input, AstNode** node)
+bool parse_block(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -236,8 +227,7 @@ parse_block(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
+bool parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool success = true;
@@ -291,8 +281,7 @@ parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
   return success;
 }
 
-bool
-parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** node)
+bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool success = true;
@@ -350,8 +339,7 @@ parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** node)
   return success;
 }
 
-bool
-parse_factor(TokenStream* input, AstNode** node)
+bool parse_factor(TokenStream* input, AstNode** node)
 {
   bool success = true;
 
@@ -360,8 +348,7 @@ parse_factor(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
+bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool success = true;
@@ -399,8 +386,7 @@ parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node)
   return success;
 }
 
-bool
-parse_term(TokenStream* input, AstNode** node)
+bool parse_term(TokenStream* input, AstNode** node)
 {
   bool success = true;
 
@@ -409,8 +395,7 @@ parse_term(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
+bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool success = true;
@@ -457,8 +442,7 @@ parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
   return success;
 }
 
-bool
-parse_assignment(TokenStream* input, AstNode** node)
+bool parse_assignment(TokenStream* input, AstNode** node)
 {
   bool success = true;
 
@@ -467,8 +451,7 @@ parse_assignment(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
+bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
   bool success = true;
@@ -557,8 +540,7 @@ parse_new(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_putc(TokenStream* input, AstNode** node)
+bool parse_putc(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = false;
@@ -594,8 +576,7 @@ parse_putc(TokenStream* input, AstNode** node)
 }
 #endif
 
-bool
-parse_selector(TokenStream* input, AstNode** node)
+bool parse_selector(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -697,8 +678,7 @@ parse_selector(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_formal_arg(TokenStream* input, AstNode** node)
+bool parse_formal_arg(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -721,8 +701,7 @@ parse_formal_arg(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_formal_arg_list(TokenStream* input, List* arg_list)
+bool parse_formal_arg_list(TokenStream* input, List* arg_list)
 {
   bool success = true;
 
@@ -747,8 +726,7 @@ parse_formal_arg_list(TokenStream* input, List* arg_list)
   return success;
 }
 
-bool
-parse_un_expr(TokenStream* input, AstNode** node)
+bool parse_un_expr(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -804,8 +782,7 @@ parse_un_expr(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_expr(TokenStream* input, AstNode** node)
+bool parse_expr(TokenStream* input, AstNode** node)
 {
   bool success = true;
 
@@ -814,8 +791,7 @@ parse_expr(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_var_decl(TokenStream* input, AstNode** node)
+bool parse_var_decl(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -860,8 +836,7 @@ parse_var_decl(TokenStream* input, AstNode** node)
 }
 
 #if 0
-bool
-parse_for(TokenStream* input, AstNode1** node)
+bool parse_for(TokenStream* input, AstNode1** node)
 {
   *node = 0;
   bool success = true;
@@ -916,8 +891,7 @@ parse_for(TokenStream* input, AstNode1** node)
 }
 #endif
 
-bool
-parse_while(TokenStream* input, AstNode** node)
+bool parse_while(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -969,8 +943,7 @@ parse_while(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_else(TokenStream* input, AstNode** node)
+bool parse_else(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -992,8 +965,7 @@ parse_else(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_if(TokenStream* input, AstNode** node)
+bool parse_if(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1050,8 +1022,7 @@ parse_if(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_proc(TokenStream* input, AstNode** node)
+bool parse_proc(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1116,8 +1087,7 @@ parse_proc(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_include(TokenStream* input, AstNode** node)
+bool parse_include(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1163,8 +1133,7 @@ parse_include(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_enum(TokenStream* input, AstNode** node)
+bool parse_enum(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1225,8 +1194,7 @@ parse_enum(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_union(TokenStream* input, AstNode** node)
+bool parse_union(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1251,8 +1219,7 @@ parse_union(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_struct(TokenStream* input, AstNode** node)
+bool parse_struct(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1277,8 +1244,7 @@ parse_struct(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_struct_member_list(TokenStream* input, List* member_list)
+bool parse_struct_member_list(TokenStream* input, List* member_list)
 {
   bool success = true;
 
@@ -1349,8 +1315,7 @@ parse_struct_member_list(TokenStream* input, List* member_list)
   return success;
 }
 
-bool
-parse_var(TokenStream* input, AstNode** node)
+bool parse_var(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = false;
@@ -1360,8 +1325,7 @@ parse_var(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_return(TokenStream* input, AstNode** node)
+bool parse_return(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1420,8 +1384,7 @@ parse_goto(TokenStream* input, AstNode1** node)
 }
 #endif
 
-bool
-parse_continue(TokenStream* input, AstNode** node)
+bool parse_continue(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1434,8 +1397,7 @@ parse_continue(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_break(TokenStream* input, AstNode** node)
+bool parse_break(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1448,8 +1410,7 @@ parse_break(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse_node(TokenStream* input, AstNode** node)
+bool parse_node(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
@@ -1562,8 +1523,7 @@ parse_node(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool
-parse(TokenStream* input, AstNode** node)
+bool parse(TokenStream* input, AstNode** node)
 {
   bool success = true;
 

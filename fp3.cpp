@@ -14,8 +14,7 @@ struct Decimal
   int8 exponent;
 };
 
-double
-convert_fixed_to_float(struct FixedPoint* fp)
+double convert_fixed_to_float(struct FixedPoint* fp)
 {
   double result = 0;
 
@@ -26,8 +25,7 @@ convert_fixed_to_float(struct FixedPoint* fp)
   return result;
 }
 
-struct FixedPoint
-convert_fixed_point_base(struct FixedPoint* b_number, uint8 B)
+struct FixedPoint convert_fixed_point_base(struct FixedPoint* b_number, uint8 B)
 {
   struct FixedPoint B_number = {0};
   B_number.base = B;
@@ -55,14 +53,12 @@ convert_fixed_point_base(struct FixedPoint* b_number, uint8 B)
   return B_number;
 }
 
-double
-log_b(int base, double x)
+double log_b(int base, double x)
 {
   return log(x)/log(base);
 }
 
-char
-digit_to_ascii(int digit)
+char digit_to_ascii(int digit)
 {
   switch(digit)
   {
@@ -80,8 +76,7 @@ digit_to_ascii(int digit)
   return '?';
 }
 
-void
-print_dec(struct Decimal* dec, char* buf)
+void print_dec(struct Decimal* dec, char* buf)
 {
   int pos = 0;
   buf[pos++] = '0';
@@ -95,8 +90,7 @@ print_dec(struct Decimal* dec, char* buf)
   buf[pos] = '\0';
 }
 
-struct Decimal
-fp_bin_to_dec(float v)
+struct Decimal fp_bin_to_dec(float v)
 {
   struct Decimal dec_number = {0};
 
@@ -130,8 +124,7 @@ fp_bin_to_dec(float v)
   return dec_number;
 }
 
-int
-main()
+int main()
 {
   /*
   struct FixedPoint b_number = {0};

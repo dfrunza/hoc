@@ -1,5 +1,4 @@
-proc void
-swap(int* data, int i, int j)
+proc void swap(int* data, int i, int j)
 {
   if(i != j)
   {
@@ -9,8 +8,7 @@ swap(int* data, int i, int j)
   }
 }
 
-proc void
-insertion_sort(int* array, int len)
+proc void insertion_sort(int* array, int len)
 {
   var int i = 0;
 
@@ -27,8 +25,7 @@ insertion_sort(int* array, int len)
 }
 
 /* Returns -1 if all keys are equal.  */
-proc int
-qs_find_pivot_index(int* data, int start_index, int end_index)
+proc int qs_find_pivot_index(int* data, int start_index, int end_index)
 {
   var int index = -1;
   var int i = start_index;
@@ -52,8 +49,7 @@ qs_find_pivot_index(int* data, int start_index, int end_index)
 
 /*proc void quick_sort_recurs(int* data, int i, int j);*/
 
-proc void
-quick_sort_recurs(int* data, int i, int j)
+proc void quick_sort_recurs(int* data, int i, int j)
 {
   var int pivot_index = qs_find_pivot_index(data, i, j);
 
@@ -77,8 +73,7 @@ quick_sort_recurs(int* data, int i, int j)
   }
 }
 
-proc void
-quick_sort(int* data, int len)
+proc void quick_sort(int* data, int len)
 {
   quick_sort_recurs(data, 0, len - 1);
 }

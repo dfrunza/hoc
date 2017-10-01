@@ -28,6 +28,8 @@ typedef double float64;
 #define inline __inline
 #define internal static
 
+typedef struct String String;
+
 typedef struct MemoryArena
 {
   uint8* base;
@@ -35,6 +37,7 @@ typedef struct MemoryArena
   uint8* cap;
   struct MemoryArena* prev_arena;
   char* label;
+  struct String* str;
 }
 MemoryArena;
 
@@ -45,7 +48,7 @@ typedef struct
 }
 ArenaUsage;
 
-typedef struct
+typedef struct String
 {
   char* head;
   char* end;
@@ -317,9 +320,6 @@ typedef struct Scope
 }
 Scope;
 
-#define ATTR(NODE, KIND, NAME)\
-  (get_ast_attribute_safe((NODE), AstAttribute_##KIND, AstAttributeName_##NAME)->KIND)
-
 typedef enum 
 {
   AstAttribute_None,
@@ -334,12 +334,14 @@ typedef enum
   AstAttribute_lit_kind,
   AstAttribute_scope,
   AstAttribute_type,
+  AstAttribute_symbol,
 }
 AstAttributeKind;
 
 typedef enum AstAttributeName
 {
   AstAttributeName_None,
+  AstAttributeName_symbol,
   AstAttributeName_type,
   AstAttributeName_proc,
   AstAttributeName_nesting_depth,
@@ -404,6 +406,7 @@ typedef struct
     LiteralKind lit_kind;
     Scope* scope;
     Type* type;
+    Symbol* symbol;
   };
 }
 AstAttribute;
@@ -428,11 +431,7 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_block),\
   ENUM_MEMBER(AstNode_stmt),\
   ENUM_MEMBER(AstNode_var),\
-  ENUM_MEMBER(AstNode_var_decl),\
-  ENUM_MEMBER(AstNode_var_occur),\
   ENUM_MEMBER(AstNode_proc),\
-  ENUM_MEMBER(AstNode_proc_decl),\
-  ENUM_MEMBER(AstNode_proc_occur),\
   ENUM_MEMBER(AstNode_type),\
   ENUM_MEMBER(AstNode_type_decl),\
   ENUM_MEMBER(AstNode_type_occur),\
@@ -497,6 +496,9 @@ typedef enum
   Ast_gen_Count,
 }
 Ast_Gen;
+
+#define ATTR(NODE, KIND, NAME)\
+  (get_ast_attribute_safe((NODE), AstAttribute_##KIND, AstAttributeName_##NAME)->KIND)
 
 typedef struct AstNode
 {
@@ -611,19 +613,51 @@ typedef enum
 }
 SymbolKind;
 
+#define SYM(VAR, NAME)\
+  (((VAR)->kind == Symbol_##NAME) ? &(VAR)->NAME : 0)
+
 typedef struct Symbol
 {
   SymbolKind kind;
 
   Symbol* prev_symbol;
   char* name;
+  SourceLoc* src_loc;
   Scope* scope;
   int nesting_depth;
+  Type* type;
 
   union
   {
-    AstNode* ast_node;
-    //Type* type;
+    //AstNode* ast_node;
+
+    struct
+    {
+      void* init_data;
+    }
+    var_decl;
+
+    struct
+    {
+      Symbol* var_decl;
+      int decl_scope_depth;
+    }
+    var_occur;
+
+    struct
+    {
+      Symbol* ret_var;
+      List* formal_args;
+      List* body;
+    }
+    proc_decl;
+
+    struct
+    {
+      Symbol* proc_decl;
+      List* actual_args;
+    }
+    proc_occur;
   };
 }
 Symbol;
@@ -778,6 +812,9 @@ typedef enum
   List_type_pair,
 }
 ListKind;
+
+#define ITEM(VAR, NAME)\
+  (((VAR)->kind == List_##NAME) ? (VAR)->NAME : 0)
 
 typedef struct ListItem
 {

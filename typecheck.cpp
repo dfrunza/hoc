@@ -1,5 +1,4 @@
-Type*
-new_basic_type(BasicTypeKind kind, int size)
+Type* new_basic_type(BasicTypeKind kind, int size)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_basic;
@@ -8,8 +7,7 @@ new_basic_type(BasicTypeKind kind, int size)
   return type;
 }
 
-Type*
-new_proc_type(Type* args, Type* ret)
+Type* new_proc_type(Type* args, Type* ret)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_proc;
@@ -18,8 +16,7 @@ new_proc_type(Type* args, Type* ret)
   return type;
 }
 
-Type*
-new_typevar()
+Type* new_typevar()
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_typevar;
@@ -27,8 +24,7 @@ new_typevar()
   return type;
 }
 
-Type*
-new_product_type(Type* left, Type* right)
+Type* new_product_type(Type* left, Type* right)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_product;
@@ -37,8 +33,7 @@ new_product_type(Type* left, Type* right)
   return type;
 }
 
-Type*
-new_array_type(int size, Type* elem)
+Type* new_array_type(int size, Type* elem)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_array;
@@ -47,8 +42,7 @@ new_array_type(int size, Type* elem)
   return type;
 }
 
-Type*
-new_pointer_type(Type* pointee)
+Type* new_pointer_type(Type* pointee)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_pointer;
@@ -56,8 +50,7 @@ new_pointer_type(Type* pointee)
   return type;
 }
 
-void
-init_types()
+void init_types()
 {
   basic_type_bool = new_basic_type(BasicType_bool, 1);
   basic_type_int = new_basic_type(BasicType_int, 1);
@@ -68,8 +61,7 @@ init_types()
   subst_list = new_list(arena, List_type_pair);
 }
 
-bool
-types_are_equal(Type* type_a, Type* type_b)
+bool types_are_equal(Type* type_a, Type* type_b)
 {
   bool are_equal = false;
 
@@ -93,8 +85,7 @@ types_are_equal(Type* type_a, Type* type_b)
   return are_equal;
 }
 
-int
-compute_type_width(Type* type)
+int compute_type_width(Type* type)
 {
   if(type->kind == Type_array)
     type->size = type->array.size * compute_type_width(type->array.elem);
@@ -122,16 +113,14 @@ compute_type_width(Type* type)
   return type->size;
 }
 
-Type*
-copy_type(Type* type)
+Type* copy_type(Type* type)
 {
   Type* copy = mem_push_struct(arena, Type);
   *copy = *type;
   return copy;
 }
 
-Type*
-get_type_repr(Type* type)
+Type* get_type_repr(Type* type)
 {
   Type* result = type;
   while(type->repr_type)
@@ -142,8 +131,7 @@ get_type_repr(Type* type)
   return result;
 }
 
-void
-set_union(Type* type_a, Type* type_b)
+void set_union(Type* type_a, Type* type_b)
 {
   if(type_a->kind == Type_typevar)
     type_a->repr_type = type_b;
@@ -151,8 +139,7 @@ set_union(Type* type_a, Type* type_b)
     type_b->repr_type = type_a;
 }
 
-bool
-type_unif(Type* type_a, Type* type_b)
+bool type_unif(Type* type_a, Type* type_b)
 {
   bool success = false;
   Type* repr_type_a = get_type_repr(type_a);
@@ -205,8 +192,7 @@ type_unif(Type* type_a, Type* type_b)
   return success;
 }
 
-TypePair*
-new_type_pair(Type* key, Type* value)
+TypePair* new_type_pair(Type* key, Type* value)
 {
   TypePair* pair = mem_push_struct(arena, TypePair);
   pair->key = key;
@@ -214,8 +200,7 @@ new_type_pair(Type* key, Type* value)
   return pair;
 }
 
-TypePair*
-find_pair(List* subst_list, Type* type)
+TypePair* find_pair(List* subst_list, Type* type)
 {
   TypePair* result = 0;
   for(ListItem* list_item = subst_list->first;
@@ -232,8 +217,7 @@ find_pair(List* subst_list, Type* type)
   return result;
 }
 
-Type*
-type_subst(List* subst_list, Type* type)
+Type* type_subst(List* subst_list, Type* type)
 {
   type = get_type_repr(type);
   Type* subst = 0;

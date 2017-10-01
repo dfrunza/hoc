@@ -20,19 +20,14 @@ Type* basic_type_void;
 List* subst_list;
 int typevar_id = 1;
 
-#define ITEM(VAR, NAME)\
-  (((VAR)->kind == List##_##NAME) ? (VAR)->NAME : 0)
-
-List*
-new_list(MemoryArena* arena, ListKind kind)
+List* new_list(MemoryArena* arena, ListKind kind)
 {
   List* list = mem_push_struct(arena, List);
   list->kind = kind;
   return list;
 }
 
-void
-remove_list_item(List* list, ListItem* item)
+void remove_list_item(List* list, ListItem* item)
 {
   if(item->prev)
   {
@@ -52,8 +47,7 @@ remove_list_item(List* list, ListItem* item)
    * they may be needed in an iteration loop */
 }
 
-void
-append_list_item(List* list, ListItem* item)
+void append_list_item(List* list, ListItem* item)
 {
   assert(list->kind == item->kind);
 
@@ -71,8 +65,7 @@ append_list_item(List* list, ListItem* item)
   }
 }
 
-void
-append_list_elem(MemoryArena* arena, List* list, void* elem, ListKind kind)
+void append_list_elem(MemoryArena* arena, List* list, void* elem, ListKind kind)
 {
   ListItem* item = mem_push_struct(arena, ListItem);
   item->elem = elem;
@@ -80,8 +73,7 @@ append_list_elem(MemoryArena* arena, List* list, void* elem, ListKind kind)
   append_list_item(list, item);
 }
 
-void
-replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
+void replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
 {
   ListItem* prev_b_item = at_b_item->prev;
   ListItem* next_b_item = at_b_item->next;
@@ -111,8 +103,7 @@ replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
     list_b->last = list_a->last;
 }
 
-bool
-compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
+bool compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
 {
   char* filename_buf = mem_push_array_nz(arena, char, cstr_len(file));
   cstr_copy(filename_buf, file);
@@ -132,11 +123,10 @@ compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
   return false;
 }
 
-void
-init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
+void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 {
   if(gen == Ast_gen0)
-  {/*>>>*/
+  {/*>>> gen0*/
     ast->kind_count = 21;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
@@ -576,7 +566,7 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     }
   }/*<<<*/
   else if(gen == Ast_gen1)
-  {/*>>>*/
+  {/*>>> gen1*/
     ast->kind_count = 20;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
@@ -786,8 +776,8 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_proc_occur;
-      kind->attr_count = 4;
+      kind->kind = AstNode_call;
+      kind->attr_count = 1;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -795,24 +785,26 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_str;
-      attr->name = AstAttributeName_name;
+      attr->kind = AstAttribute_symbol;
+      attr->name = AstAttributeName_proc_decl;
 
+#if 0
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_proc_decl;
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_list;
       attr->name = AstAttributeName_actual_args;
+#endif
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_proc_decl;
-      kind->attr_count = 5;
+      kind->kind = AstNode_proc; // declaration of proc
+      kind->attr_count = 2;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -820,18 +812,24 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_symbol;
+      attr->name = AstAttributeName_proc_decl;
+
+#if 0
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_str;
       attr->name = AstAttributeName_name;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_list;
-      attr->name = AstAttributeName_formal_args;
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_ret_var;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_ret_var;
+      attr->kind = AstAttribute_list;
+      attr->name = AstAttributeName_formal_args;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -842,6 +840,7 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_scope;
       attr->name = AstAttributeName_scope;
+#endif
     }
     {
       assert(kind_index < ast->kind_count);
@@ -936,13 +935,18 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_var_decl;
-      kind->attr_count = 3;
+      kind->kind = AstNode_var; // occurrence of a var
+      kind->attr_count = 1;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
 
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_symbol;
+      attr->name = AstAttributeName_symbol;
+#if 0
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_str;
@@ -957,8 +961,10 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
       attr->name = AstAttributeName_init_expr;
+#endif
     }
     {
+#if 0
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var_occur;
@@ -987,6 +993,7 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_int_val;
       attr->name = AstAttributeName_decl_scope_depth;
+#endif
     }
     {
       assert(kind_index < ast->kind_count);
@@ -1058,8 +1065,7 @@ init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     assert(0);
 }
 
-void
-init_ast_meta_infos()
+void init_ast_meta_infos()
 {
   AstMetaInfo* ast = 0;
   int gen_count = Ast_gen_Count;
@@ -1071,8 +1077,7 @@ init_ast_meta_infos()
   }
 }
 
-AstAttribute*
-get_ast_attribute(AstNode* node, AstAttributeName name)
+AstAttribute* get_ast_attribute(AstNode* node, AstAttributeName name)
 {
   AstAttribute* result = 0;
 
@@ -1123,8 +1128,10 @@ get_ast_attribute(AstNode* node, AstAttributeName name)
   return result;
 }
 
-AstAttribute*
-get_ast_attribute_safe(AstNode* node, AstAttributeKind kind, AstAttributeName name)
+#define ATTR(NODE, KIND, NAME)\
+  (get_ast_attribute_safe((NODE), AstAttribute_##KIND, AstAttributeName_##NAME)->KIND)
+
+AstAttribute* get_ast_attribute_safe(AstNode* node, AstAttributeKind kind, AstAttributeName name)
 {
   AstAttribute* result = 0;
   if((result = get_ast_attribute(node, name))->kind != kind)
@@ -1134,8 +1141,7 @@ get_ast_attribute_safe(AstNode* node, AstAttributeKind kind, AstAttributeName na
   return result;
 }
 
-AstNode*
-make_ast_node(Ast_Gen gen, AstNode* node, AstKind kind)
+AstNode* make_ast_node(Ast_Gen gen, AstNode* node, AstKind kind)
 {
   assert(gen >= 0 && gen < Ast_gen_Count);
   node->gen = gen;
@@ -1176,8 +1182,7 @@ make_ast_node(Ast_Gen gen, AstNode* node, AstKind kind)
   return node;
 }
 
-AstNode*
-new_ast_node(Ast_Gen gen, AstKind kind, SourceLoc* src_loc)
+AstNode* new_ast_node(Ast_Gen gen, AstKind kind, SourceLoc* src_loc)
 {
   AstNode* node = mem_push_struct(arena, AstNode);
   node->src_loc = src_loc;
@@ -1185,8 +1190,7 @@ new_ast_node(Ast_Gen gen, AstKind kind, SourceLoc* src_loc)
   return node;
 }
 
-void
-DEBUG_print_arena_usage(char* tag)
+void DEBUG_print_arena_usage(char* tag)
 {
   ArenaUsage usage = arena_usage(arena);
   ArenaUsage sym_usage = arena_usage(symbol_arena);
@@ -1195,8 +1199,7 @@ DEBUG_print_arena_usage(char* tag)
   printf("in_use(symbol_table_arena) : %.2f%%\n", sym_usage.in_use*100);
 }
 
-void
-make_type_printstr(String* str, Type* type)
+void make_type_printstr(String* str, Type* type)
 {
   if(type->kind == Type_basic)
   {
@@ -1243,8 +1246,7 @@ make_type_printstr(String* str, Type* type)
     assert(0);
 }
 
-void
-DEBUG_print_line(String* str, int indent_level, char* message, ...)
+void DEBUG_print_line(String* str, int indent_level, char* message, ...)
 {
   for(int i = 0; i < indent_level; i++)
   {
@@ -1259,8 +1261,7 @@ DEBUG_print_line(String* str, int indent_level, char* message, ...)
   str_append(str, "\n");
 }
 
-void
-DEBUG_print_type(String* str, int indent_level, char* tag, Type* type)
+void DEBUG_print_type(String* str, int indent_level, char* tag, Type* type)
 {
   for(int i = 0; i < indent_level; i++)
   {
@@ -1277,8 +1278,7 @@ DEBUG_print_type(String* str, int indent_level, char* tag, Type* type)
   str_append(str, "\n");
 }
 
-void
-DEBUG_print_scope(String* str, int indent_level, char* tag, Scope* scope)
+void DEBUG_print_scope(String* str, int indent_level, char* tag, Scope* scope)
 {
   if(scope)
   {
@@ -1305,8 +1305,7 @@ DEBUG_print_scope(String* str, int indent_level, char* tag, Scope* scope)
   }
 }
 
-void
-DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
+void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
 {
   if(node)
   {
@@ -1347,18 +1346,14 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
         DEBUG_print_ast_node_list(str, indent_level, "formal_args", ATTR(node, list, formal_args));
         DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
       }
-      else
-        assert(0);
-    }
-    else if(node->kind == AstNode_proc_decl)
-    {
-      if(node->gen == Ast_gen1)
+      else if(node->gen == Ast_gen1)
       {
-        DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
-        DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
-        DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-        DEBUG_print_ast_node_list(str, indent_level, "formal_args", ATTR(node, list, formal_args));
-        DEBUG_print_ast_node(str, indent_level, "ret_var", ATTR(node, ast_node, ret_var));
+        //todo: print the symbol
+        //DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
+        //DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
+        //DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
+        //DEBUG_print_ast_node_list(str, indent_level, "formal_args", ATTR(node, list, formal_args));
+        //DEBUG_print_ast_node(str, indent_level, "ret_var", ATTR(node, ast_node, ret_var));
       }
       else
         assert(0);
@@ -1371,9 +1366,14 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node(str, indent_level, "init_expr", ATTR(node, ast_node, init_expr));
       }
+      else if(node->gen == Ast_gen1)
+      {
+        //todo: print the occurrence symbol
+      }
       else
         assert(0);
     }
+#if 0
     else if(node->kind == AstNode_var_decl)
     {
       if(node->gen == Ast_gen1)
@@ -1385,6 +1385,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
       else
         assert(0);
     }
+#endif
     else if(node->kind == AstNode_id)
     {
       if(node->gen == Ast_gen0)
@@ -1394,6 +1395,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
       else
         assert(0);
     }
+#if 0
     else if(node->kind == AstNode_var_occur)
     {
       if(node->gen == Ast_gen1)
@@ -1405,6 +1407,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
       else
         assert(0);
     }
+#endif
     else if(node->kind == AstNode_block)
     {
       if(node->gen == Ast_gen1)
@@ -1531,9 +1534,14 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node_list(str, indent_level, "actual_args", ATTR(node, list, actual_args));
       }
+      else if(node->gen == Ast_gen1)
+      {
+        //todo: print the occurrence symbol
+      }
       else
         assert(0);
     }
+#if 0
     else if(node->kind == AstNode_proc_occur)
     {
       if(node->gen == Ast_gen1)
@@ -1544,6 +1552,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
       else
         assert(0);
     }
+#endif
     else if(node->kind == AstNode_struct_decl)
     {
       if(node->gen == Ast_gen0)
@@ -1654,8 +1663,7 @@ DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
   }
 }
 
-void
-DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* node_list)
+void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* node_list)
 {
   if(node_list->first)
   {
@@ -1685,8 +1693,7 @@ DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* node_l
 #include "hasm.cpp"
 */
 
-VmProgram*
-translate(char* file_path, char* hoc_text)
+VmProgram* translate(char* file_path, char* hoc_text)
 {
   VmProgram* vm_program = mem_push_struct(arena, VmProgram);
   vm_program->instr_list = new_list(arena, List_vm_instr);
@@ -1777,8 +1784,7 @@ typedef struct
 }
 OutFileNames;
 
-bool
-make_out_file_names(OutFileNames* out_files, char* src_file_path)
+bool make_out_file_names(OutFileNames* out_files, char* src_file_path)
 {
   char* stem = mem_push_array_nz(arena, char, cstr_len(src_file_path));
   cstr_copy(stem, src_file_path);
@@ -1811,8 +1817,7 @@ make_out_file_names(OutFileNames* out_files, char* src_file_path)
   return success;
 }
 
-char*
-make_vm_exe_path(char* hocc_exe_path)
+char* make_vm_exe_path(char* hocc_exe_path)
 {
   char* vm_exe_path = mem_push_array_nz(arena, char, cstr_len(hocc_exe_path) + cstr_len("vm.exe"));
   cstr_copy(vm_exe_path, hocc_exe_path);
@@ -1821,8 +1826,7 @@ make_vm_exe_path(char* hocc_exe_path)
   return vm_exe_path;
 }
 
-bool
-write_hasm_file(OutFileNames* out_files, VmProgram* vm_program)
+bool write_hasm_file(OutFileNames* out_files, VmProgram* vm_program)
 {
   int bytes_written = file_write_bytes(out_files->hasm.name, (uint8*)vm_program->text.head, vm_program->text_len);
   bool success = (bytes_written == vm_program->text_len);
@@ -1831,8 +1835,7 @@ write_hasm_file(OutFileNames* out_files, VmProgram* vm_program)
   return success;
 }
 
-int
-main(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
   bool success = true;
 

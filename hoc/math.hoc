@@ -1,5 +1,4 @@
-proc int
-max(int a, int b)
+proc int max(int a, int b)
 {
   var int result = a;
   if(a < b)
@@ -7,8 +6,7 @@ max(int a, int b)
   return result;
 }
 
-proc int
-min(int a, int b)
+proc int min(int a, int b)
 {
   var int result = a;
   if(a > b)
@@ -16,8 +14,7 @@ min(int a, int b)
   return result;
 }
 
-proc float
-fmax(float a, float b)
+proc float fmax(float a, float b)
 {
   var float result = a;
   if(a < b)
@@ -25,8 +22,7 @@ fmax(float a, float b)
   return result;
 }
 
-proc float
-fmin(float a, float b)
+proc float fmin(float a, float b)
 {
   var float result = a;
   if(a > b)
@@ -34,16 +30,14 @@ fmin(float a, float b)
   return result;
 }
 
-proc int
-abs(int a)
+proc int abs(int a)
 {
   if(a < 0)
     a = -a;
   return a;
 }
 
-proc float
-fabs(float a)
+proc float fabs(float a)
 {
   if(a < 0.0)
     a = -a;
@@ -52,8 +46,7 @@ fabs(float a)
 
 /*proc int gcd_recurs(int a, int b);*/
 
-proc int
-gcd_recurs(int a, int b)
+proc int gcd_recurs(int a, int b)
 {
   var int result = a;
   if(b != 0)
@@ -68,8 +61,7 @@ gcd_recurs(int a, int b)
   return result;
 }
 
-proc int
-gcd_iter(int a, int b)
+proc int gcd_iter(int a, int b)
 {
   while(a != b)
   {
@@ -84,8 +76,7 @@ gcd_iter(int a, int b)
 /*
    Greatest Common Divisor
  */
-proc int
-gcd(int a, int b)
+proc int gcd(int a, int b)
 {
   /*
   return gcd_recurs(abs(a), abs(b)); */
@@ -95,14 +86,12 @@ gcd(int a, int b)
 /*
    Least Common Multiple
  */
-proc int
-lcm(int a, int b)
+proc int lcm(int a, int b)
 {
   return abs(a*b)/gcd(a, b);
 }
 
-proc float
-ipow(float a, int p)
+proc float ipow(float a, int p)
 {
   var bool inv = (p < 0);
   p = abs(p);
@@ -122,8 +111,7 @@ ipow(float a, int p)
 }
 
 
-proc float
-sqrt_iter(float x, float g)
+proc float sqrt_iter(float x, float g)
 {
   var float r = x/g;
 
@@ -139,8 +127,7 @@ sqrt_iter(float x, float g)
 /*
    Computes the largest number 'r' such that 'r*r <= x'
  */
-proc float
-sqrt(float x)
+proc float sqrt(float x)
 {
   var float g = x;
   var float r = 1.0;
@@ -157,8 +144,7 @@ sqrt(float x)
    Integer log_b of n : the largest integer x such that
       pow(b, x) <= n
 */
-proc int
-floor_log_b(int b, float n)
+proc int floor_log_b(int b, float n)
 {
   var int x = 0;
   var float b_pow_x = 1;
@@ -186,8 +172,7 @@ floor_log_b(int b, float n)
 }
 
 /* Returns the number of significand 10-base digits */
-proc int
-fp_bin_to_dec(float v, int* significand, int* exponent)
+proc int fp_bin_to_dec(float v, int* significand, int* exponent)
 {
   var float v_abs = fabs(v);
   var int x = floor_log_b(10, v_abs) + 1;

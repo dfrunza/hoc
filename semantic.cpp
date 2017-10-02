@@ -83,7 +83,7 @@ Symbol* add_symbol(char* name, SourceLoc* src_loc, SymbolKind kind)
   return sym;
 }
 
-bool make_type_of_type_expr(AstNode* node, Type** type)
+bool make_type_of_type_node(AstNode* node, Type** type)
 {
   assert(node->gen == Ast_gen0);
   bool success = true;
@@ -95,7 +95,6 @@ bool make_type_of_type_expr(AstNode* node, Type** type)
     if(decl_sym)
     {
       *type = decl_sym->type;
-      //todo: AstNode* type_occur = new_ast_node(Ast_gen1, AstNode_type_occur, node->src_loc);
     }
     else
     {
@@ -105,7 +104,7 @@ bool make_type_of_type_expr(AstNode* node, Type** type)
   else if(node->kind == AstNode_pointer)
   {
     Type* pointee = 0;
-    if(success = make_type_of_type_expr(ATTR(node, ast_node, type_expr), &pointee))
+    if(success = make_type_of_type_node(ATTR(node, ast_node, type), &pointee))
     {
       *type = new_pointer_type(pointee);
     }
@@ -125,7 +124,7 @@ bool make_type_of_type_expr(AstNode* node, Type** type)
     }
 
     Type* elem = 0;
-    if(success = make_type_of_type_expr(ATTR(node, ast_node, type_expr), &elem))
+    if(success = make_type_of_type_node(ATTR(node, ast_node, type), &elem))
     {
       *type = new_array_type(size, elem);
     }
@@ -1132,34 +1131,25 @@ bool name_id(AstNode* node)
   }
   else if(node->kind == AstNode_var)
   {
-    char* name = ATTR(ATTR(node, ast_node, id), str, name);
+    AstNode var_gen0 = *node;
+    AstNode* var_gen1 = make_ast_node(Ast_gen1, node, AstNode_var);
+
+    char* name = ATTR(ATTR(&var_gen0, ast_node, id), str, name);
     Symbol* decl_sym = lookup_symbol(name, Symbol_var_decl, SymbolLookup_active);
     if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
     {
-      success = compile_error(node->src_loc, "variable `%s` already declared", name);
+      success = compile_error(var_gen1->src_loc, "variable `%s` already declared", name);
       compile_error(decl_sym->src_loc, "see previous declaration of `%s`", name);
     }
     else
     {
-      decl_sym = add_symbol(name, node->src_loc, Symbol_var_decl);
-      success = make_type_of_type_expr(ATTR(node, ast_node, type_expr), &decl_sym->type);
-    }
-#if 0
-    AstNode var_copy = *node;
-    AstNode* var_decl = make_ast_node(Ast_gen1, node, AstNode_var_decl);
-
-    if(success = register_name(var_decl, ATTR(ATTR(&var_copy, ast_node, id), str, name)))
-    {
-      if(success = make_type_of_type_expr(ATTR(&var_copy, ast_node, type_expr), &ATTR(var_decl, type, type)))
+      decl_sym = add_symbol(name, var_gen1->src_loc, Symbol_var_decl);
+      AstNode* type = ATTR(&var_gen0, ast_node, type);
+      if(success = name_id(type))
       {
-        AstNode* init_expr = ATTR(&var_copy, ast_node, init_expr);
-        if(init_expr && (success = name_id(init_expr)))
-        {
-          ATTR(var_decl, ast_node, init_expr) = init_expr;
-        }
+        decl_sym->type = ATTR(type, type, type);
       }
     }
-#endif
   }
   else if(node->kind == AstNode_id)
   {
@@ -1171,15 +1161,12 @@ bool name_id(AstNode* node)
       //occur_sym->type = decl_sym->type; ??
       SYM(occur_sym, var_occur)->var_decl = decl_sym;
       SYM(occur_sym, var_occur)->decl_scope_depth = decl_sym->nesting_depth - occur_sym->nesting_depth;
+
+      AstNode* var = make_ast_node(Ast_gen1, node, AstNode_var);
+      ATTR(var, symbol, var_occur) = occur_sym;
     }
     else
       success = compile_error(node->src_loc, "unknown var `%s`", name);
-#if 0
-    AstNode id_copy = *node;
-    AstNode* var_occur = make_ast_node(Ast_gen1, node, AstNode_var_occur);
-
-    success = register_name(var_occur, ATTR(&id_copy, str, name));
-#endif
   }
   else if(node->kind == AstNode_bin_expr)
   {
@@ -1214,25 +1201,17 @@ bool name_id(AstNode* node)
 
     if(lit_kind == Literal_str)
     {
-      char* name = make_temp_name("str");
-      Symbol* decl_sym = add_symbol(name, lit_gen0.src_loc, Symbol_var_decl);
+      char* name = make_temp_name("var");
+      Symbol* decl_sym = add_symbol(name, node->src_loc, Symbol_var_decl);
       SYM(decl_sym, var_decl)->init_data = ATTR(&lit_gen0, str, str);
       //todo: set the type of the decl
-#if 0
-      AstNode* var_decl = new_ast_node(Ast_gen1, AstNode_var_decl, lit_gen0.src_loc);
-      char* name = make_temp_name("str");
 
-      if(success = register_name(var_decl, name))
-      {
-        AstNode* str = new_ast_node(Ast_gen1, AstNode_string, lit_gen0.src_loc);
-        ATTR(str, str, str) = ATTR(&lit_gen0, str, str);
-        ATTR(var_decl, ast_node, init_expr) = str;
+      Symbol* occur_sym = add_symbol(name, node->src_loc, Symbol_var_occur);
+      SYM(occur_sym, var_occur)->var_decl = decl_sym;
+      SYM(occur_sym, var_occur)->decl_scope_depth = decl_sym->nesting_depth - occur_sym->nesting_depth;
 
-        AstNode* var_occur = make_ast_node(Ast_gen1, node, AstNode_var_occur);
-
-        success = register_name(var_occur, name);
-      }
-#endif
+      AstNode* var = make_ast_node(Ast_gen1, node, AstNode_var);
+      ATTR(var, symbol, var_occur) = occur_sym;
     }
     else
     {
@@ -1279,51 +1258,16 @@ bool name_id(AstNode* node)
       {
         SYM(decl_sym, proc_decl)->formal_args = ATTR(&proc_gen0, list, formal_args);
 
-        char* ret_var_name = make_temp_name("var");
-        AstNode* ret_type_expr = ATTR(&proc_gen0, ast_node, ret_type_expr);
-        Symbol* ret_var_decl = add_symbol(ret_var_name, ret_type_expr->src_loc, Symbol_var_decl);
-        success = make_type_of_type_expr(ret_type_expr, &ret_var_decl->type);
-        Symbol* ret_var_occur = add_symbol(ret_var_name, ret_type_expr->src_loc, Symbol_var_occur);
-        SYM(ret_var_occur, var_occur)->var_decl = ret_var_decl;
+        AstNode* ret_var_id = new_ast_node(Ast_gen0, AstNode_id, proc_gen1->src_loc);
+        ATTR(ret_var_id, str, name) = make_temp_name("var");
+        AstNode* ret_var = new_ast_node(Ast_gen0, AstNode_var, proc_gen1->src_loc);
+        ATTR(ret_var, ast_node, type) = ATTR(&proc_gen0, ast_node, ret_type);
+        ATTR(ret_var, ast_node, id) = ret_var_id;
+
+        success = name_id(ret_var);
       }
       end_scope();
     }
-#if 0
-    AstNode proc_copy = *node;
-    AstNode* proc_decl = make_ast_node(Ast_gen1, node, AstNode_proc_decl);
-
-    if(success = register_name(proc_decl, ATTR(ATTR(&proc_copy, ast_node, id), str, name)))
-    {
-      begin_scope(ScopeKind_proc, proc_decl);
-      ATTR(proc_decl, scope, scope) = symbol_table->active_scope;
-
-      for(ListItem* list_item = ATTR(&proc_copy, list, formal_args)->first;
-          list_item && success;
-          list_item = list_item->next)
-      {
-        success = name_id(ITEM(list_item, ast_node));
-      }
-
-      if(success)
-      {
-        ATTR(proc_decl, list, formal_args) = ATTR(&proc_copy, list, formal_args);
-
-        AstNode* ret_var = ATTR(proc_decl, ast_node, ret_var) =
-          new_ast_node(Ast_gen1, AstNode_var_decl, ATTR(&proc_copy, ast_node, ret_type_expr)->src_loc);
-
-        if(success = register_name(ret_var, make_temp_name("ret"))
-            && make_type_of_type_expr(ATTR(&proc_copy, ast_node, ret_type_expr), &ATTR(ret_var, type, type)))
-        {
-          AstNode* body = ATTR(&proc_copy, ast_node, body);
-          if(success = name_id_block(body))
-          {
-            ATTR(proc_decl, ast_node, body) = body;
-          }
-        }
-      }
-      end_scope();
-    }
-#endif
   }
   else if(node->kind == AstNode_call)
   {
@@ -1352,26 +1296,6 @@ bool name_id(AstNode* node)
         ATTR(call_gen1, list, actual_args) = ATTR(&call_gen0, list, actual_args);
       }
     }
-
-#if 0
-    AstNode call_copy = *node;
-    AstNode* proc_occur = make_ast_node(Ast_gen1, node, AstNode_proc_occur);
-
-    if(success = register_name(proc_occur, ATTR(ATTR(&call_copy, ast_node, id), str, name)))
-    {
-      for(ListItem* list_item = ATTR(&call_copy, list, actual_args)->first;
-          list_item && success;
-          list_item = list_item->next)
-      {
-        success = name_id(ITEM(list_item, ast_node));
-      }
-
-      if(success)
-      {
-        ATTR(proc_occur, list, actual_args) = ATTR(&call_copy, list, actual_args);
-      }
-    }
-#endif
   }
   else if(node->kind == AstNode_block)
   {
@@ -1506,66 +1430,12 @@ bool name_id(AstNode* node)
     else
       success = compile_error(ret_stmt->src_loc, "unexpected `return` at this location");
   }
-#if 0
-  else if(node->kind == AstNode_putc_proc)
+  else if(node->kind == AstNode_type)
   {
-    AstNode putc_copy = *node;
-    AstNode* proc_occur = make_ast_node(Ast_gen1, node, AstNode_proc_occur);
+    AstNode type_gen0 = *node;
+    AstNode* type_gen1 = make_ast_node(Ast_gen1, node, AstNode_type);
 
-    if(success = register_name(proc_occur, "putc"))
-    {
-      AstNode* arg = ATTR(&putc_copy, ast_node, expr);
-      if(success = name_id(arg))
-      {
-        List* actual_args = new_list(arena, List_ast_node);
-        append_list_elem(arena, actual_args, arg, List_ast_node);
-        ATTR(proc_occur, list, actual_args) = actual_args;
-      }
-    }
-  }
-  else if(node->kind == AstNode_new_proc)
-  {
-    AstNode new_copy = *node;
-    AstNode* proc_occur = make_ast_node(Ast_gen1, node, AstNode_proc_occur);
-
-    if(success = register_name(proc_occur, "new"))
-    {
-      //AstNode* type_arg = ATTR(&new_copy, ast_node, type_expr);
-      AstNode* count_arg = ATTR(&new_copy, ast_node, count_expr);
-      if(success = (name_id(count_arg)/* && name_id(type_arg)*/))
-      {
-        List* actual_args = new_list(arena, List_ast_node);
-        //append_list_elem(arena, actual_args, type_arg, List_ast_node);
-        append_list_elem(arena, actual_args, count_arg, List_ast_node);
-        ATTR(proc_occur, list, actual_args) = actual_args;
-      }
-    }
-  }
-  else if(node->kind == AstNode_cast)
-  {
-    AstNode cast_copy = *node;
-    AstNode* proc_occur = make_ast_node(Ast_gen1, node, AstNode_proc_occur);
-
-    if(success = register_name(proc_occur, "cast"))
-    {
-      //AstNode* type_arg = ATTR(&cast_copy, ast_node, type_expr);
-      AstNode* expr_arg = ATTR(&cast_copy, ast_node, expr);
-      if(success = (/*name_id(type_arg) && */name_id(expr_arg)))
-      {
-        List* actual_args = new_list(arena, List_ast_node);
-        //append_list_elem(arena, actual_args, type_arg, List_ast_node);
-        append_list_elem(arena, actual_args, expr_arg, List_ast_node);
-        ATTR(proc_occur, list, actual_args) = actual_args;
-      }
-    }
-  }
-#endif
-  else if(node->kind == AstNode_type_expr)
-  {
-    AstNode type_expr_copy = *node;
-    AstNode* type = make_ast_node(Ast_gen1, node, AstNode_type);
-
-    success = make_type_of_type_expr(ATTR(&type_expr_copy, ast_node, type_expr), &ATTR(type, type, type));
+    success = make_type_of_type_node(ATTR(&type_gen0, ast_node, type_expr), &ATTR(type_gen1, type, type));
   }
   else
     assert(0);

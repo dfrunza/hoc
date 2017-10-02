@@ -1,26 +1,30 @@
 /*
+*/
 include "math.hoc";
 include "str.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
-*/
 
 var int a = 112;
-/*
 var [1]int* t;
 var int b = a;
 var char* c = "abc";
+/*
 */
 
-proc int foo()
+proc int foo(int bubbles, bool troubles)
 {
+  var float nonsense = 0.0;
+  return nonsense;
 }
 
 proc int main()
 {
-  foo();
   /*
+  a = (type int*)b;
+  */
+  foo(a, b);
   if(true)
     return 0;
   else
@@ -32,6 +36,7 @@ proc int main()
 
   while(true)
     a = 2;
+  /*
     */
 }
 

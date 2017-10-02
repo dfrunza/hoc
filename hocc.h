@@ -627,11 +627,9 @@ typedef struct Symbol
 
   union
   {
-    //AstNode* ast_node;
-
     struct
     {
-      void* init_data;
+      void* data;
     }
     var_decl;
 
@@ -645,15 +643,12 @@ typedef struct Symbol
     struct
     {
       Symbol* ret_var;
-      List* formal_args;
-      List* body;
     }
     proc_decl;
 
     struct
     {
       Symbol* proc_decl;
-      List* actual_args;
     }
     proc_occur;
   };

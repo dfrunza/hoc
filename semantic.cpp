@@ -1133,8 +1133,9 @@ bool name_id(AstNode* node)
   {
     AstNode var_gen0 = *node;
     AstNode* var_gen1 = make_ast_node(Ast_gen1, node, AstNode_var);
-
     char* name = ATTR(ATTR(&var_gen0, ast_node, id), str, name);
+    ATTR(var_gen1, str, name) = name;
+
     Symbol* decl_sym = lookup_symbol(name, Symbol_var_decl, SymbolLookup_active);
     if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
     {
@@ -1202,8 +1203,9 @@ bool name_id(AstNode* node)
     if(lit_kind == Literal_str)
     {
       char* name = make_temp_name("var");
+      //todo: add the symbol to the global scope
       Symbol* decl_sym = add_symbol(name, node->src_loc, Symbol_var_decl);
-      SYM(decl_sym, var_decl)->init_data = ATTR(&lit_gen0, str, str);
+      SYM(decl_sym, var_decl)->data = ATTR(&lit_gen0, str, str);
       //todo: set the type of the decl
 
       Symbol* occur_sym = add_symbol(name, node->src_loc, Symbol_var_occur);
@@ -1234,6 +1236,7 @@ bool name_id(AstNode* node)
     AstNode proc_gen0 = *node;
     AstNode* proc_gen1 = make_ast_node(Ast_gen1, node, AstNode_proc);
     char* name = ATTR(ATTR(&proc_gen0, ast_node, id), str, name);
+    ATTR(proc_gen1, str, name) = name;
 
     Symbol* decl_sym = lookup_symbol(name, Symbol_proc_decl, SymbolLookup_module);
     if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
@@ -1256,8 +1259,21 @@ bool name_id(AstNode* node)
 
       if(success)
       {
-        SYM(decl_sym, proc_decl)->formal_args = ATTR(&proc_gen0, list, formal_args);
+        ATTR(proc_gen1, list, formal_args) = ATTR(&proc_gen0, list, formal_args);
 
+        AstNode* ret_type = ATTR(&proc_gen0, ast_node, ret_type);
+        if(success = name_id(ret_type))
+        {
+          char* name = make_temp_name("var");
+          Symbol* ret_var = add_symbol(name, proc_gen1->src_loc, Symbol_var_decl);
+          SYM(decl_sym, proc_decl)->ret_var = ret_var;
+
+          if(success = name_id(ATTR(&proc_gen0, ast_node, body)))
+          {
+            ATTR(proc_gen1, ast_node, body) = ATTR(&proc_gen0, ast_node, body);
+          }
+        }
+#if 0
         AstNode* ret_var_id = new_ast_node(Ast_gen0, AstNode_id, proc_gen1->src_loc);
         ATTR(ret_var_id, str, name) = make_temp_name("var");
         AstNode* ret_var = new_ast_node(Ast_gen0, AstNode_var, proc_gen1->src_loc);
@@ -1265,6 +1281,7 @@ bool name_id(AstNode* node)
         ATTR(ret_var, ast_node, id) = ret_var_id;
 
         success = name_id(ret_var);
+#endif
       }
       end_scope();
     }
@@ -1273,7 +1290,8 @@ bool name_id(AstNode* node)
   {
     AstNode call_gen0 = *node;
     AstNode* call_gen1 = make_ast_node(Ast_gen1, node, AstNode_call);
-    char* name = ATTR(&call_gen0, str, name);
+    char* name = ATTR(ATTR(&call_gen0, ast_node, id), str, name);
+    ATTR(call_gen1, str, name) = name;
 
     Symbol* decl_sym = lookup_symbol(name, Symbol_proc_decl, SymbolLookup_active);
     if(decl_sym)

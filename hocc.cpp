@@ -677,7 +677,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_call;
+      kind->kind = AstNode_call; // occurrence of proc
       kind->attr_count = 3;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
@@ -834,7 +834,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_var; // occurrence of a var
+      kind->kind = AstNode_var_occur; // occurrence of var
       kind->attr_count = 2;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
@@ -849,31 +849,20 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_symbol;
-      attr->name = AstAttributeName_var_occur;
+      attr->name = AstAttributeName_occur_sym;
 
 #if 0
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_str;
-      attr->name = AstAttributeName_name;
-      
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_type;
       attr->name = AstAttributeName_type;
-      
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_init_expr;
 #endif
     }
     {
-#if 0
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_var_occur;
-      kind->attr_count = 4;
+      kind->kind = AstNode_var_decl; // declaration of var
+      kind->attr_count = 3;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -883,22 +872,16 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_str;
       attr->name = AstAttributeName_name;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_symbol;
+      attr->name = AstAttributeName_decl_sym;
       
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_var_decl;
-      
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_scope;
-      attr->name = AstAttributeName_occur_scope;
-      
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_int_val;
-      attr->name = AstAttributeName_decl_scope_depth;
-#endif
+      attr->name = AstAttributeName_init_expr;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -1271,7 +1254,21 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node(str, indent_level, "init_expr", ATTR(node, ast_node, init_expr));
       }
-      else if(node->gen == Ast_gen1)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_var_decl)
+    {
+      if(node->gen == Ast_gen1)
+      {
+        DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
+      }
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_var_occur)
+    {
+      if(node->gen == Ast_gen1)
       {
         DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
       }

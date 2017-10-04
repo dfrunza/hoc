@@ -161,12 +161,27 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_type;
+      attr->name = AstAttributeName_type_expr;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
       attr->name = AstAttributeName_size_expr;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_pointer;
+      kind->attr_count = 1;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
+
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_expr;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -262,26 +277,6 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
       attr->name = AstAttributeName_body;
-    }
-    {
-      assert(kind_index < ast->kind_count);
-      kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_pointer;
-      kind->attr_count = 2;
-      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
-
-      int attr_index = 0;
-      AstAttributeMetaInfo* attr = 0;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_type;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_expr;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -508,7 +503,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
   }/*<<<*/
   else if(gen == Ast_gen1)
   {/*>>> gen1*/
-    ast->kind_count = 20;
+    ast->kind_count = 21;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
     int kind_index = 0;
@@ -517,7 +512,27 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_type;
+      kind->kind = AstNode_array;
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
+
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_expr;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_size_expr;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_pointer;
       kind->attr_count = 1;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
@@ -526,8 +541,43 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_type;
-      attr->name = AstAttributeName_type;
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_expr;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_type; // type node
+      kind->attr_count = 1;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
+
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_expr;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_type_occur;
+      kind->attr_count = 2;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
+
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_symbol;
+      attr->name = AstAttributeName_occur_sym;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -834,6 +884,36 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_var_decl; // declaration of var
+      kind->attr_count = 4;
+      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
+
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_symbol;
+      attr->name = AstAttributeName_decl_sym;
+      
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_init_expr;
+    }
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var_occur; // occurrence of var
       kind->attr_count = 2;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
@@ -857,31 +937,6 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr->kind = AstAttribute_type;
       attr->name = AstAttributeName_type;
 #endif
-    }
-    {
-      assert(kind_index < ast->kind_count);
-      kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_var_decl; // declaration of var
-      kind->attr_count = 3;
-      kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
-
-      int attr_index = 0;
-      AstAttributeMetaInfo* attr = 0;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_str;
-      attr->name = AstAttributeName_name;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_symbol;
-      attr->name = AstAttributeName_decl_sym;
-      
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_init_expr;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -1376,7 +1431,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     {
       if(node->gen == Ast_gen0)
       {
-        DEBUG_print_ast_node(str, indent_level, "type", ATTR(node, ast_node, type));
+        DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
         DEBUG_print_ast_node(str, indent_level, "size_expr", ATTR(node, ast_node, size_expr));
       }
       else
@@ -1386,7 +1441,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     {
       if(node->gen == Ast_gen0)
       {
-        DEBUG_print_ast_node(str, indent_level, "type", ATTR(node, ast_node, type));
+        DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
       }
       else
         assert(0);

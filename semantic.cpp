@@ -1087,6 +1087,57 @@ sem_statement(AstBlock* module_block,
 
 bool name_id(AstNode* node);
 
+bool name_id_type(AstNode* node)
+{
+  assert(node->gen == Ast_gen0);
+  bool success = true;
+
+  if(node->kind == AstNode_id)
+  {
+    AstNode id_gen0 = *node;
+    AstNode* type_occur_gen1 = make_ast_node(Ast_gen1, node, AstNode_type_occur);
+    char* name = ATTR(&id_gen0, str, name);
+    ATTR(type_occur_gen1, str, name) = name;
+
+    Symbol* decl_sym = lookup_symbol(name, Symbol_type_decl, SymbolLookup_active);
+    if(decl_sym)
+    {
+      Symbol* occur_sym = add_symbol(name, type_occur_gen1->src_loc, Symbol_type_occur);
+      SYM(occur_sym, type_occur)->type_decl = decl_sym;
+
+      ATTR(type_occur_gen1, symbol, occur_sym) = occur_sym;
+    }
+    else
+      fail("unknown type `%s`", name);
+  }
+  else if(node->kind == AstNode_pointer)
+  {
+    AstNode ptr_gen0 = *node;
+    AstNode* ptr_gen1 = make_ast_node(Ast_gen1, node, AstNode_pointer);
+
+    if(success = name_id_type(ATTR(&ptr_gen0, ast_node, type_expr)))
+    {
+      ATTR(ptr_gen1, ast_node, type_expr) = ATTR(&ptr_gen0, ast_node, type_expr);
+    }
+  }
+  else if(node->kind == AstNode_array)
+  {
+    AstNode array_gen0 = *node;
+    AstNode* array_gen1 = make_ast_node(Ast_gen1, node, AstNode_array);
+
+    if(success = name_id_type(ATTR(&array_gen0, ast_node, type_expr)) &&
+        name_id(ATTR(&array_gen0, ast_node, size_expr)))
+    {
+      ATTR(array_gen1, ast_node, type_expr) = ATTR(&array_gen0, ast_node, type_expr);
+      ATTR(array_gen1, ast_node, size_expr) = ATTR(&array_gen0, ast_node, size_expr);
+    }
+  }
+  else
+    assert(0);
+
+  return success;
+}
+
 bool name_id_block(AstNode* node)
 {
   assert(node->kind == AstNode_block);
@@ -1111,7 +1162,7 @@ bool name_id_block(AstNode* node)
 
 bool name_id(AstNode* node)
 {
-  assert(node && node->gen == Ast_gen0);
+  assert(node->gen == Ast_gen0);
   bool success = true;
 
   if(node->kind == AstNode_module)
@@ -1146,13 +1197,17 @@ bool name_id(AstNode* node)
     {
       decl_sym = add_symbol(name, var_decl_gen1->src_loc, Symbol_var_decl);
       ATTR(var_decl_gen1, symbol, decl_sym) = decl_sym;
-#if 0
-      AstNode* type = ATTR(&var_gen0, ast_node, type);
-      if(success = name_id(type))
+
+      if(success = name_id(ATTR(&var_gen0, ast_node, type)))
       {
-        decl_sym->type = ATTR(type, type, type);
+        ATTR(var_decl_gen1, ast_node, type) = ATTR(&var_gen0, ast_node, type);
       }
-#endif
+
+      AstNode* init_expr = ATTR(&var_gen0, ast_node, init_expr);
+      if((success && init_expr) && (success = name_id(init_expr)))
+      {
+        ATTR(var_decl_gen1, ast_node, init_expr) = init_expr;
+      }
     }
   }
   else if(node->kind == AstNode_id)
@@ -1216,8 +1271,9 @@ bool name_id(AstNode* node)
       SYM(occur_sym, var_occur)->var_decl = decl_sym;
       SYM(occur_sym, var_occur)->decl_scope_depth = decl_sym->nesting_depth - occur_sym->nesting_depth;
 
-      AstNode* var = make_ast_node(Ast_gen1, node, AstNode_var);
-      ATTR(var, symbol, occur_sym) = occur_sym;
+      AstNode* var_occur = make_ast_node(Ast_gen1, node, AstNode_var_occur);
+      ATTR(var_occur, str, name) = name;
+      ATTR(var_occur, symbol, occur_sym) = occur_sym;
     }
     else
     {
@@ -1445,13 +1501,13 @@ bool name_id(AstNode* node)
   }
   else if(node->kind == AstNode_type)
   {
-    assert(0);
-#if 0
     AstNode type_gen0 = *node;
     AstNode* type_gen1 = make_ast_node(Ast_gen1, node, AstNode_type);
 
-    success = make_type_of_type_node(ATTR(&type_gen0, ast_node, type_expr), &ATTR(type_gen1, type, type));
-#endif
+    if(success = name_id_type(ATTR(&type_gen0, ast_node, type_expr)))
+    {
+      ATTR(type_gen1, ast_node, type_expr) = ATTR(&type_gen0, ast_node, type_expr);
+    }
   }
   else
     assert(0);

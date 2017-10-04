@@ -30,7 +30,7 @@ bool parse_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
   if(input->token.kind == Token_star)
   {
     AstNode* ptr = *node = new_ast_node(Ast_gen0, AstNode_pointer, clone_source_loc(&input->src_loc));
-    ATTR(ptr, ast_node, type) = expr;
+    ATTR(ptr, ast_node, type_expr) = expr;
 
     success = get_next_token(input) && parse_rest_of_type_expr(input, *node, node);
   }
@@ -54,9 +54,9 @@ bool parse_type_expr(TokenStream* input, AstNode** node)
         if(ATTR(array, ast_node, size_expr))
         {
 #endif
-          if(success = get_next_token(input) && parse_type_expr(input, &ATTR(array, ast_node, type)))
+          if(success = get_next_token(input) && parse_type_expr(input, &ATTR(array, ast_node, type_expr)))
           {
-            if(!ATTR(array, ast_node, type))
+            if(!ATTR(array, ast_node, type_expr))
             {
               putback_token(input);
               success = compile_error(&input->src_loc, "type expression required, at `%s`", get_token_printstr(&input->token));

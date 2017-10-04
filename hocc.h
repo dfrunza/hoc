@@ -436,6 +436,7 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_var_occur),\
   ENUM_MEMBER(AstNode_proc),\
   ENUM_MEMBER(AstNode_type),\
+  ENUM_MEMBER(AstNode_type_occur),\
   ENUM_MEMBER(AstNode_call),\
   ENUM_MEMBER(AstNode_lit),\
   ENUM_MEMBER(AstNode_return_stmt),\
@@ -641,6 +642,12 @@ typedef struct Symbol
       int decl_scope_depth;
     }
     var_occur;
+
+    struct
+    {
+      Symbol* type_decl;
+    }
+    type_occur;
 
     struct
     {

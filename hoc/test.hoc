@@ -10,20 +10,21 @@ var int a = 112;
 var [1]int* t;
 var int b = a;
 var char* c = "abc";
-/*
-*/
 
 proc int foo(int bubbles, bool troubles)
 {
   var float nonsense = 0.0;
+  /*
+  main();
+  */
   return nonsense;
 }
+/*
+*/
 
 proc int main()
 {
-  /*
   a = (type int*)b;
-  */
   foo(a, b);
   if(true)
     return 0;
@@ -36,7 +37,5 @@ proc int main()
 
   while(true)
     a = 2;
-  /*
-    */
 }
 

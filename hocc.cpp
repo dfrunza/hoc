@@ -5,7 +5,6 @@ bool DEBUG_zero_arena = true;
 bool DEBUG_check_arena_bounds = true;
 
 MemoryArena* arena = 0;
-MemoryArena* symbol_arena = 0;
 
 #include "lib.cpp"
 
@@ -24,6 +23,7 @@ List* new_list(MemoryArena* arena, ListKind kind)
 {
   List* list = mem_push_struct(arena, List);
   list->kind = kind;
+  list->arena = arena;
   return list;
 }
 
@@ -65,7 +65,7 @@ void append_list_item(List* list, ListItem* item)
   }
 }
 
-void append_list_elem(MemoryArena* arena, List* list, void* elem, ListKind kind)
+void append_list_elem(List* list, void* elem, ListKind kind)
 {
   ListItem* item = mem_push_struct(arena, ListItem);
   item->elem = elem;
@@ -1133,13 +1133,10 @@ AstNode* new_ast_node(Ast_Gen gen, AstKind kind, SourceLoc* src_loc)
   return node;
 }
 
-void DEBUG_print_arena_usage(char* tag)
+void DEBUG_print_arena_usage(MemoryArena* arena, char* tag)
 {
   ArenaUsage usage = arena_usage(arena);
-  ArenaUsage sym_usage = arena_usage(symbol_arena);
-  printf("-----  %s  -----\n", tag);
-  printf("in_use(arena) : %.2f%%\n", usage.in_use*100);
-  printf("in_use(symbol_table_arena) : %.2f%%\n", sym_usage.in_use*100);
+  printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
 }
 
 void make_type_printstr(String* str, Type* type)
@@ -1439,7 +1436,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     }
     else if(node->kind == AstNode_pointer)
     {
-      if(node->gen == Ast_gen0)
+      if(node->gen == Ast_gen0 || node->gen == Ast_gen1)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
       }
@@ -1528,13 +1525,18 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     }
     else if(node->kind == AstNode_type)
     {
-      if(node->gen == Ast_gen0)
+      if(node->gen == Ast_gen0 || node->gen == Ast_gen1)
       {
         DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
       }
-      else if(node->gen == Ast_gen1)
+      else
+        assert(0);
+    }
+    else if(node->kind == AstNode_type_occur)
+    {
+      if(node->gen == Ast_gen1)
       {
-        DEBUG_print_type(str, indent_level, "type", ATTR(node, type, type));
+        DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
       }
       else
         assert(0);
@@ -1591,7 +1593,8 @@ VmProgram* translate(char* file_path, char* hoc_text)
   {
     if(DEBUG_enabled)/*>>>*/
     {
-      DEBUG_print_arena_usage("Parse");
+      printf("--- Parse ---\n");
+      DEBUG_print_arena_usage(arena, "arena");
 
       begin_temp_memory(&arena);
       String* str = str_new(arena);
@@ -1723,26 +1726,14 @@ int main(int argc, char* argv[])
   if(success = (argc >= 2))
   {
     arena = new_arena(ARENA_SIZE);
-    symbol_arena = push_arena(&arena, SYMBOL_ARENA_SIZE);
-
-    if(DEBUG_enabled)/*>>>*/
-    {
-#if 0
-      begin_temp_memory(&arena);
-      printf("----- CST struct sizes -----\n");
-      DEBUG_print_sizeof_ast_structs(NodeKind_cst);
-      printf("----- AST struct sizes -----\n");
-      DEBUG_print_sizeof_ast_structs(NodeKind_ast);
-      end_temp_memory(&arena);
-#endif
-    }/*<<<*/
 
     char* src_file_path = argv[1];
 
     char* hoc_text = file_read_text(arena, src_file_path);
     if(DEBUG_enabled)/*>>>*/
     {
-      DEBUG_print_arena_usage("Read HoC text");/*<<<*/
+      printf("--- Read HoC text ---\n");
+      DEBUG_print_arena_usage(arena, "arena");/*<<<*/
     }
 
     if(success = to_bool(hoc_text))

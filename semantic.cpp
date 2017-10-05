@@ -71,7 +71,7 @@ Symbol* lookup_symbol(char* name, SymbolKind symbol_kind, SymbolLookup lookup)
 
 Symbol* add_symbol(char* name, SourceLoc* src_loc, SymbolKind kind)
 {
-  Symbol* sym = mem_push_struct(symbol_arena, Symbol);
+  Symbol* sym = mem_push_struct(symbol_table->arena, Symbol);
   sym->kind = kind;
   sym->name = name;
   sym->src_loc = src_loc;
@@ -165,7 +165,7 @@ void add_builtin_procs()
 
 void begin_scope(ScopeKind kind, AstNode* ast_node)
 {
-  Scope* scope = mem_push_struct(symbol_arena, Scope);
+  Scope* scope = mem_push_struct(symbol_table->arena, Scope);
   scope->kind = kind;
   scope->nesting_depth = ++symbol_table->nesting_depth;
   scope->encl_scope = symbol_table->active_scope;
@@ -1108,7 +1108,7 @@ bool name_id_type(AstNode* node)
       ATTR(type_occur_gen1, symbol, occur_sym) = occur_sym;
     }
     else
-      fail("unknown type `%s`", name);
+      success = compile_error(type_occur_gen1->src_loc, "unknown type `%s`", name);
   }
   else if(node->kind == AstNode_pointer)
   {
@@ -1321,6 +1321,10 @@ bool name_id(AstNode* node)
       {
         ATTR(proc_gen1, list, formal_args) = ATTR(&proc_gen0, list, formal_args);
 
+        if(success = name_id(ATTR(&proc_gen0, ast_node, body)))
+        {
+          ATTR(proc_gen1, ast_node, body) = ATTR(&proc_gen0, ast_node, body);
+        }
 #if 0
         AstNode* ret_type = ATTR(&proc_gen0, ast_node, ret_type);
         if(success = name_id(ret_type))
@@ -1365,11 +1369,13 @@ bool name_id(AstNode* node)
         ATTR(call_gen1, list, actual_args) = ATTR(&call_gen0, list, actual_args);
       }
     }
+    else
+      success = compile_error(call_gen1->src_loc, "unknown proc `%s`", name);
   }
   else if(node->kind == AstNode_block)
   {
     begin_scope(ScopeKind_block, 0);
-    name_id_block(node);
+    success = name_id_block(node);
     end_scope();
   }
   else if(node->kind == AstNode_stmt)
@@ -1396,7 +1402,7 @@ bool name_id(AstNode* node)
       if(body->kind != AstNode_block)
       {
         List* nodes = new_list(arena, List_ast_node);
-        append_list_elem(arena, nodes, body, List_ast_node);
+        append_list_elem(nodes, body, List_ast_node);
         body = new_ast_node(Ast_gen0, AstNode_block, body->src_loc);
         ATTR(body, list, nodes) = nodes;
       }
@@ -1414,7 +1420,7 @@ bool name_id(AstNode* node)
           if(else_body->kind != AstNode_block)
           {
             List* nodes = new_list(arena, List_ast_node);
-            append_list_elem(arena, nodes, else_body, List_ast_node);
+            append_list_elem(nodes, else_body, List_ast_node);
             else_body = new_ast_node(Ast_gen0, AstNode_block, else_body->src_loc);
             ATTR(else_body, list, nodes) = nodes;
           }
@@ -1444,7 +1450,7 @@ bool name_id(AstNode* node)
       if(body->kind != AstNode_block)
       {
         List* nodes = new_list(arena, List_ast_node);
-        append_list_elem(arena, nodes, body, List_ast_node);
+        append_list_elem(nodes, body, List_ast_node);
         body = new_ast_node(Ast_gen0, AstNode_block, body->src_loc);
         ATTR(body, list, nodes) = nodes;
       }
@@ -1517,7 +1523,9 @@ bool name_id(AstNode* node)
 
 void init_symbol_table()
 {
-  symbol_table = mem_push_struct(arena, SymbolTable);
+  MemoryArena* symbol_arena = push_arena(&arena, SYMBOL_ARENA_SIZE);
+  symbol_table = mem_push_struct(symbol_arena, SymbolTable);
+  symbol_table->arena = symbol_arena;
   symbol_table->nesting_depth = -1;
 }
 
@@ -1535,7 +1543,9 @@ bool semantic(AstNode* module)
 
   if(DEBUG_enabled)/*>>>*/
   {
-    DEBUG_print_arena_usage("Name ID");
+    printf("--- Name ID ---\n");
+    DEBUG_print_arena_usage(arena, "arena");
+    DEBUG_print_arena_usage(symbol_table->arena, "symbol_table");
 
     begin_temp_memory(&arena);
     String* str = str_new(arena);

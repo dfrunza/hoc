@@ -670,6 +670,7 @@ typedef struct
   int nesting_depth;
   int sym_count;
   int scope_count;
+  MemoryArena* arena;
 }
 SymbolTable;
 
@@ -838,6 +839,7 @@ typedef struct List
   ListKind kind;
   ListItem* first;
   ListItem* last;
+  MemoryArena* arena;
 }
 List;
 

@@ -232,7 +232,7 @@ Type* type_subst(List* subst_list, Type* type)
     subst = copy_type(type);
 
     pair = new_type_pair(type, subst);
-    append_list_elem(arena, subst_list, pair, List_type_pair);
+    append_list_elem(subst_list, pair, List_type_pair);
 
     if(subst->kind == Type_typevar)
     {

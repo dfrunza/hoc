@@ -144,7 +144,7 @@ bool parse_initializer_member_list(TokenStream* input, List* member_list)
 
       if(success && member)
       {
-        append_list_elem(arena, member_list, member, List_ast_node);
+        append_list_elem(member_list, member, List_ast_node);
         if(input->token.kind == Token_comma)
           success = get_next_token(input);
       }
@@ -187,7 +187,7 @@ bool parse_actual_arg_list(TokenStream* input, List* args)
 
     if(success && arg)
     {
-      append_list_elem(arena, args, arg, List_ast_node);
+      append_list_elem(args, arg, List_ast_node);
       if(input->token.kind == Token_comma)
       {
         if((success = get_next_token(input)) && input->token.kind == Token_close_parens)
@@ -212,7 +212,7 @@ bool parse_node_list(TokenStream* input, List* node_list)
 
     if((success = parse_node(input, &node)) && node)
     {
-      append_list_elem(arena, node_list, node, List_ast_node);
+      append_list_elem(node_list, node, List_ast_node);
     }
   }
   while(success && node);
@@ -728,7 +728,7 @@ bool parse_formal_arg_list(TokenStream* input, List* arg_list)
     arg = 0;
     if((success = parse_formal_arg(input, &arg)) && arg)
     {
-      append_list_elem(arena, arg_list, arg, List_ast_node);
+      append_list_elem(arg_list, arg, List_ast_node);
       if(input->token.kind == Token_comma)
       {
         success = get_next_token(input);
@@ -1182,7 +1182,7 @@ bool parse_enum(TokenStream* input, AstNode** node)
           {
             member = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
             ATTR(member, str, name) = input->token.lexeme;
-            append_list_elem(arena, ATTR(enum_decl, list, members), member, List_ast_node);
+            append_list_elem(ATTR(enum_decl, list, members), member, List_ast_node);
 
             if((success = get_next_token(input)) && input->token.kind == Token_comma)
             {
@@ -1308,7 +1308,7 @@ bool parse_struct_member_list(TokenStream* input, List* member_list)
 
           if(success)
           {
-            append_list_elem(arena, member_list, member, List_ast_node);
+            append_list_elem(member_list, member, List_ast_node);
             success = consume_semicolon(input);
           }
         }

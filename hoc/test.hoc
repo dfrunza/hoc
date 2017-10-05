@@ -14,9 +14,7 @@ var char* c = "abc";
 proc int foo(int bubbles, bool troubles)
 {
   var float nonsense = 0.0;
-  /*
   main();
-  */
   return nonsense;
 }
 /*

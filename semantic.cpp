@@ -32,6 +32,26 @@ Scope* find_scope(ScopeKind kind)
   return scope;
 }
 
+Symbol* lookup_symbol_in_scope(char* name, SymbolKind symbol_kind, Scope* scope)
+{
+  Symbol* result = 0;
+  while(!result && scope)
+  {
+    Symbol* symbol = scope->last_symbol;
+    while(symbol)
+    {
+      if(symbol->kind == symbol_kind && cstr_match(symbol->name, name))
+      {
+        result = symbol;
+        break;
+      }
+      symbol = symbol->prev_symbol;
+    }
+    scope = scope->encl_scope;
+  }
+  return result;
+}
+
 Symbol* lookup_symbol(char* name, SymbolKind symbol_kind, SymbolLookup lookup)
 {
   Scope* scope = symbol_table->active_scope;
@@ -50,22 +70,7 @@ Symbol* lookup_symbol(char* name, SymbolKind symbol_kind, SymbolLookup lookup)
   else
     assert(lookup == SymbolLookup_active);
 
-  Symbol* result = 0;
-  while(!result && scope)
-  {
-    Symbol* symbol = scope->last_symbol;
-    while(symbol)
-    {
-      if(symbol->kind == symbol_kind && cstr_match(symbol->name, name))
-      {
-        result = symbol;
-        break;
-      }
-      symbol = symbol->prev_symbol;
-    }
-    scope = scope->encl_scope;
-  }
-
+  Symbol* result = lookup_symbol_in_scope(name, symbol_kind, scope);
   return result;
 }
 
@@ -1085,9 +1090,9 @@ sem_statement(AstBlock* module_block,
 }
 #endif
 
-bool name_id(AstNode* node);
+bool name_id(AstNode* node, List* unknown_syms);
 
-bool name_id_type(AstNode* node)
+bool name_id_type(AstNode* node, List* unknown_syms)
 {
   assert(node->gen == Ast_gen0);
   bool success = true;
@@ -1115,7 +1120,7 @@ bool name_id_type(AstNode* node)
     AstNode ptr_gen0 = *node;
     AstNode* ptr_gen1 = make_ast_node(Ast_gen1, node, AstNode_pointer);
 
-    if(success = name_id_type(ATTR(&ptr_gen0, ast_node, type_expr)))
+    if(success = name_id_type(ATTR(&ptr_gen0, ast_node, type_expr), unknown_syms))
     {
       ATTR(ptr_gen1, ast_node, type_expr) = ATTR(&ptr_gen0, ast_node, type_expr);
     }
@@ -1125,8 +1130,8 @@ bool name_id_type(AstNode* node)
     AstNode array_gen0 = *node;
     AstNode* array_gen1 = make_ast_node(Ast_gen1, node, AstNode_array);
 
-    if(success = name_id_type(ATTR(&array_gen0, ast_node, type_expr)) &&
-        name_id(ATTR(&array_gen0, ast_node, size_expr)))
+    if(success = name_id_type(ATTR(&array_gen0, ast_node, type_expr), unknown_syms) &&
+        name_id(ATTR(&array_gen0, ast_node, size_expr), unknown_syms))
     {
       ATTR(array_gen1, ast_node, type_expr) = ATTR(&array_gen0, ast_node, type_expr);
       ATTR(array_gen1, ast_node, size_expr) = ATTR(&array_gen0, ast_node, size_expr);
@@ -1138,7 +1143,7 @@ bool name_id_type(AstNode* node)
   return success;
 }
 
-bool name_id_block(AstNode* node)
+bool name_id_block(AstNode* node, List* unknown_syms)
 {
   assert(node->kind == AstNode_block);
   bool success = true;
@@ -1150,7 +1155,7 @@ bool name_id_block(AstNode* node)
       list_item && success;
       list_item = list_item->next)
   {
-    success = name_id(ITEM(list_item, ast_node));
+    success = name_id(ITEM(list_item, ast_node), unknown_syms);
   }
 
   if(success)
@@ -1160,7 +1165,7 @@ bool name_id_block(AstNode* node)
   return success;
 }
 
-bool name_id(AstNode* node)
+bool name_id(AstNode* node, List* unknown_syms)
 {
   assert(node->gen == Ast_gen0);
   bool success = true;
@@ -1174,7 +1179,7 @@ bool name_id(AstNode* node)
     AstNode* body = ATTR(&module_copy, ast_node, body);
 
     begin_scope(ScopeKind_module, module);
-    if(success = name_id_block(body))
+    if(success = name_id_block(body, unknown_syms))
     {
       ATTR(module, ast_node, body) = body;
     }
@@ -1198,13 +1203,13 @@ bool name_id(AstNode* node)
       decl_sym = add_symbol(name, var_decl_gen1->src_loc, Symbol_var_decl);
       ATTR(var_decl_gen1, symbol, decl_sym) = decl_sym;
 
-      if(success = name_id(ATTR(&var_gen0, ast_node, type)))
+      if(success = name_id(ATTR(&var_gen0, ast_node, type), unknown_syms))
       {
         ATTR(var_decl_gen1, ast_node, type) = ATTR(&var_gen0, ast_node, type);
       }
 
       AstNode* init_expr = ATTR(&var_gen0, ast_node, init_expr);
-      if((success && init_expr) && (success = name_id(init_expr)))
+      if((success && init_expr) && (success = name_id(init_expr, unknown_syms)))
       {
         ATTR(var_decl_gen1, ast_node, init_expr) = init_expr;
       }
@@ -1237,7 +1242,7 @@ bool name_id(AstNode* node)
 
     AstNode* left_operand = ATTR(&bin_expr_gen0, ast_node, left_operand);
     AstNode* right_operand = ATTR(&bin_expr_gen0 , ast_node, right_operand);
-    if(success = name_id(left_operand) && name_id(right_operand))
+    if(success = name_id(left_operand, unknown_syms) && name_id(right_operand, unknown_syms))
     {
       ATTR(bin_expr_gen1, ast_node, left_operand) = left_operand;
       ATTR(bin_expr_gen1, ast_node, right_operand) = right_operand;
@@ -1250,7 +1255,7 @@ bool name_id(AstNode* node)
     ATTR(un_expr_gen1, op_kind, op_kind) = ATTR(&un_expr_gen0, op_kind, op_kind);
 
     AstNode* operand = ATTR(&un_expr_gen0, ast_node, operand);
-    if(success = name_id(operand))
+    if(success = name_id(operand, unknown_syms))
     {
       ATTR(un_expr_gen1, ast_node, operand) = operand;
     }
@@ -1314,14 +1319,14 @@ bool name_id(AstNode* node)
           list_item && success;
           list_item = list_item->next)
       {
-        success = name_id(ITEM(list_item, ast_node));
+        success = name_id(ITEM(list_item, ast_node), unknown_syms);
       }
 
       if(success)
       {
         ATTR(proc_gen1, list, formal_args) = ATTR(&proc_gen0, list, formal_args);
 
-        if(success = name_id(ATTR(&proc_gen0, ast_node, body)))
+        if(success = name_id(ATTR(&proc_gen0, ast_node, body), unknown_syms))
         {
           ATTR(proc_gen1, ast_node, body) = ATTR(&proc_gen0, ast_node, body);
         }
@@ -1350,32 +1355,35 @@ bool name_id(AstNode* node)
     char* name = ATTR(ATTR(&call_gen0, ast_node, id), str, name);
     ATTR(call_gen1, str, name) = name;
 
+    Symbol* occur_sym = add_symbol(name, call_gen1->src_loc, Symbol_proc_occur);
+    occur_sym->ast_node = call_gen1;
+
     Symbol* decl_sym = lookup_symbol(name, Symbol_proc_decl, SymbolLookup_active);
     if(decl_sym)
     {
-      Symbol* occur_sym = add_symbol(name, call_gen1->src_loc, Symbol_proc_occur);
-      SYM(occur_sym, proc_occur)->proc_decl = decl_sym;
       ATTR(call_gen1, symbol, proc_decl) = decl_sym;
-
-      for(ListItem* list_item = ATTR(&call_gen0, list, actual_args)->first;
-          list_item && success;
-          list_item = list_item->next)
-      {
-        success = name_id(ITEM(list_item, ast_node));
-      }
-
-      if(success)
-      {
-        ATTR(call_gen1, list, actual_args) = ATTR(&call_gen0, list, actual_args);
-      }
     }
     else
-      success = compile_error(call_gen1->src_loc, "unknown proc `%s`", name);
+    {
+      append_list_elem(unknown_syms, occur_sym, List_symbol);
+    }
+
+    for(ListItem* list_item = ATTR(&call_gen0, list, actual_args)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      success = name_id(ITEM(list_item, ast_node), unknown_syms);
+    }
+
+    if(success)
+    {
+      ATTR(call_gen1, list, actual_args) = ATTR(&call_gen0, list, actual_args);
+    }
   }
   else if(node->kind == AstNode_block)
   {
     begin_scope(ScopeKind_block, 0);
-    success = name_id_block(node);
+    success = name_id_block(node, unknown_syms);
     end_scope();
   }
   else if(node->kind == AstNode_stmt)
@@ -1383,7 +1391,7 @@ bool name_id(AstNode* node)
     AstNode stmt_gen0 = *node;
     AstNode* stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_stmt);
 
-    if(success = name_id(ATTR(&stmt_gen0, ast_node, stmt)))
+    if(success = name_id(ATTR(&stmt_gen0, ast_node, stmt), unknown_syms))
     {
       ATTR(stmt_gen1, ast_node, stmt) = ATTR(&stmt_gen0, ast_node, stmt);
     }
@@ -1394,7 +1402,7 @@ bool name_id(AstNode* node)
     AstNode* if_stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_if_stmt);
 
     AstNode* cond_expr = ATTR(&if_stmt_gen0, ast_node, cond_expr);
-    if(success = name_id(cond_expr))
+    if(success = name_id(cond_expr, unknown_syms))
     {
       ATTR(if_stmt_gen1, ast_node, cond_expr) = cond_expr;
 
@@ -1408,8 +1416,9 @@ bool name_id(AstNode* node)
       }
 
       begin_scope(ScopeKind_block, if_stmt_gen1);
-      success = name_id_block(body);
+      success = name_id_block(body, unknown_syms);
       end_scope();
+
       if(success)
       {
         ATTR(if_stmt_gen1, ast_node, body) = body;
@@ -1426,8 +1435,9 @@ bool name_id(AstNode* node)
           }
 
           begin_scope(ScopeKind_block, if_stmt_gen1);
-          success = name_id_block(else_body);
+          success = name_id_block(else_body, unknown_syms);
           end_scope();
+
           if(success)
           {
             ATTR(if_stmt_gen1, ast_node, else_body) = else_body;
@@ -1442,7 +1452,7 @@ bool name_id(AstNode* node)
     AstNode* while_stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_while_stmt);
 
     AstNode* cond_expr = ATTR(&while_stmt_gen0, ast_node, cond_expr);
-    if(success = name_id(cond_expr))
+    if(success = name_id(cond_expr, unknown_syms))
     {
       ATTR(while_stmt_gen1, ast_node, cond_expr) = cond_expr;
 
@@ -1456,8 +1466,9 @@ bool name_id(AstNode* node)
       }
 
       begin_scope(ScopeKind_loop, while_stmt_gen1);
-      success = name_id_block(body);
+      success = name_id_block(body, unknown_syms);
       end_scope();
+
       if(success)
       {
         ATTR(while_stmt_gen1, ast_node, body) = body;
@@ -1497,7 +1508,7 @@ bool name_id(AstNode* node)
       ATTR(ret_stmt_gen1, ast_node, proc) = proc_scope->ast_node;
       ATTR(ret_stmt_gen1, int_val, nesting_depth) = symbol_table->nesting_depth - proc_scope->nesting_depth;
       AstNode* ret_expr = ATTR(&ret_stmt_gen0, ast_node, ret_expr);
-      if(ret_expr && (success = name_id(ret_expr)))
+      if(ret_expr && (success = name_id(ret_expr, unknown_syms)))
       {
         ATTR(ret_stmt_gen1, ast_node, ret_expr) = ret_expr;
       }
@@ -1510,7 +1521,7 @@ bool name_id(AstNode* node)
     AstNode type_gen0 = *node;
     AstNode* type_gen1 = make_ast_node(Ast_gen1, node, AstNode_type);
 
-    if(success = name_id_type(ATTR(&type_gen0, ast_node, type_expr)))
+    if(success = name_id_type(ATTR(&type_gen0, ast_node, type_expr), unknown_syms))
     {
       ATTR(type_gen1, ast_node, type_expr) = ATTR(&type_gen0, ast_node, type_expr);
     }
@@ -1518,6 +1529,26 @@ bool name_id(AstNode* node)
   else
     assert(0);
 
+  return success;
+}
+
+bool resolve_unknown_syms(List* unknown_syms)
+{
+  bool success = true;
+  for(ListItem* list_item = unknown_syms->first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    Symbol* occur_sym = ITEM(list_item, symbol);
+    Symbol* decl_sym = lookup_symbol_in_scope(occur_sym->name, Symbol_proc_decl, occur_sym->scope);
+    if(decl_sym)
+    {
+      SYM(occur_sym, proc_occur)->proc_decl = decl_sym;
+      ATTR(occur_sym->ast_node, symbol, proc_decl) = decl_sym;
+    }
+    else
+      success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
+  }
   return success;
 }
 
@@ -1534,12 +1565,13 @@ bool semantic(AstNode* module)
   bool success = true;
 
   init_types();
-  init_symbol_table();
 
   begin_scope(ScopeKind_global, 0);
   add_builtin_types();
   add_builtin_procs();
-  success = name_id(module);
+
+  List* unknown_syms = new_list(arena, List_symbol);
+  success = name_id(module, unknown_syms) && resolve_unknown_syms(unknown_syms);
 
   if(DEBUG_enabled)/*>>>*/
   {

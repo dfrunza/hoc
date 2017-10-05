@@ -1452,7 +1452,8 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       }
       else if(node->gen == Ast_gen1)
       {
-        //todo: print the occurrence symbol
+        DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
+        DEBUG_print_ast_node_list(str, indent_level, "actual_args", ATTR(node, list, actual_args));
       }
       else
         assert(0);
@@ -1726,6 +1727,7 @@ int main(int argc, char* argv[])
   if(success = (argc >= 2))
   {
     arena = new_arena(ARENA_SIZE);
+    init_symbol_table();
 
     char* src_file_path = argv[1];
 

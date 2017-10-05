@@ -627,6 +627,7 @@ typedef struct Symbol
   Scope* scope;
   int nesting_depth;
   Type* type;
+  AstNode* ast_node;
 
   union
   {
@@ -811,6 +812,7 @@ typedef enum
 {
   List_None,
   List_ast_node,
+  List_symbol,
   List_vm_instr,
   List_type_pair,
 }
@@ -826,6 +828,7 @@ typedef struct ListItem
   {
     void* elem;
     AstNode* ast_node;
+    Symbol* symbol;
     Instruction* instr;
     TypePair* type_pair;
   };

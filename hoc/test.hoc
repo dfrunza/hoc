@@ -1,6 +1,6 @@
-/*
-include "math.hoc";
 include "str.hoc";
+include "math.hoc";
+/*
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
@@ -13,8 +13,7 @@ var char* c = "abc";
 
 proc int foo(int bubbles, bool troubles)
 {
-  var float nonsense = 0.0;
-  main();
+  var float nonsense = main();
   return nonsense;
 }
 /*
@@ -22,7 +21,7 @@ proc int foo(int bubbles, bool troubles)
 
 proc int main()
 {
-  a = (type int*)b;
+  a = (type int*)(b);
   foo(a, b);
   if(true)
     return 0;

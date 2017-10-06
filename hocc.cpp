@@ -1314,6 +1314,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       if(node->gen == Ast_gen1)
       {
         DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
+        DEBUG_print_ast_node(str, indent_level, "init_expr", ATTR(node, ast_node, init_expr));
       }
       else
         assert(0);
@@ -1391,20 +1392,24 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     else if(node->kind == AstNode_return_stmt)
     {
       DEBUG_print_ast_node(str, indent_level, "ret_expr", ATTR(node, ast_node, ret_expr));
+#if 0
       if(node->gen == Ast_gen1)
       {
         AstNode* proc = ATTR(node, ast_node, proc);
         DEBUG_print_line(str, indent_level, "proc @%lu `%s`", proc, ATTR(proc, str, name));
         DEBUG_print_line(str, indent_level, "nesting_depth: %d", ATTR(node, int_val, nesting_depth));
       }
+#endif
     }
     else if(node->kind == AstNode_break_stmt
             || node->kind == AstNode_continue_stmt)
     {
+#if 0
       if(node->gen == Ast_gen1)
       {
         DEBUG_print_line(str, indent_level, "nesting_depth: %d", ATTR(node, int_val, nesting_depth));
       }
+#endif
     }
     else if(node->kind == AstNode_if_stmt)
     {
@@ -1727,7 +1732,10 @@ int main(int argc, char* argv[])
   if(success = (argc >= 2))
   {
     arena = new_arena(ARENA_SIZE);
-    init_symbol_table();
+
+    MemoryArena* symbol_arena = push_arena(&arena, SYMBOL_ARENA_SIZE);
+    symbol_table = mem_push_struct(symbol_arena, SymbolTable);
+    symbol_table->arena = symbol_arena;
 
     char* src_file_path = argv[1];
 

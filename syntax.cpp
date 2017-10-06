@@ -829,21 +829,25 @@ bool parse_var(TokenStream* input, AstNode** node)
         if((success = get_next_token(input)) && input->token.kind == Token_eq
             && (success = get_next_token(input)))
         {
+#if 0
           AstNode* init_expr = ATTR(var, ast_node, init_expr) = new_ast_node(Ast_gen0, AstNode_bin_expr, clone_source_loc(&input->src_loc));
           ATTR(init_expr, op_kind, op_kind) = OperatorKind_assign;
           ATTR(init_expr, ast_node, left_operand) = id;
+#endif
 
-          if(success = parse_initializer_list(input, &ATTR(init_expr, ast_node, right_operand)))
+          AstNode* init_expr = 0;
+          if(success = parse_initializer_list(input, &init_expr))
           {
-            if(!ATTR(init_expr, ast_node, right_operand))
+            if(!init_expr && (success = parse_expr(input, &init_expr)))
             {
-              if(success = parse_expr(input, &ATTR(init_expr, ast_node, right_operand)))
+              if(init_expr)
               {
-                if(!ATTR(init_expr, ast_node, right_operand))
-                {
-                  putback_token(input);
-                  success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
-                }
+                ATTR(var, ast_node, init_expr) = init_expr;
+              }
+              else
+              {
+                putback_token(input);
+                success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
               }
             }
           }

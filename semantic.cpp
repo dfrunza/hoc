@@ -12,6 +12,16 @@ char* make_temp_name(char* label)
   return str_cap(str);
 }
 
+SymbolTable* new_symbol_table(MemoryArena** arena, int size)
+{
+  MemoryArena* symbol_arena = push_arena(arena, size);
+  symbol_table = mem_push_struct(symbol_arena, SymbolTable);
+  symbol_table->arena = symbol_arena;
+  symbol_table->nesting_depth = -1;
+  symbol_table->symbols = new_list(symbol_arena, List_symbol);
+  return symbol_table;
+}
+
 typedef enum SymbolLookup
 {
   SymbolLookup__None,
@@ -84,39 +94,30 @@ Symbol* add_symbol(char* name, SourceLoc* src_loc, SymbolKind kind)
   sym->nesting_depth = symbol_table->nesting_depth;
   sym->prev_symbol = symbol_table->active_scope->last_symbol;
   symbol_table->active_scope->last_symbol = sym;
-  symbol_table->sym_count++;
+  append_list_elem(symbol_table->symbols, sym, List_symbol);
   return sym;
 }
 
-bool make_type_of_type_node(AstNode* node, Type** type)
+Type* make_type_of_type_expr(AstNode* node)
 {
-  assert(node->gen == Ast_gen0);
-  bool success = true;
+  assert(node->gen == Ast_gen1);
+  Type* type = 0;
 
-  if(node->kind == AstNode_id)
+  if(node->kind == AstNode_type_occur)
   {
-    char* name = ATTR(node, str, name);
-    Symbol* decl_sym = lookup_symbol(name, Symbol_type_decl, SymbolLookup_active);
-    if(decl_sym)
-    {
-      *type = decl_sym->type;
-    }
-    else
-    {
-      *type = new_typevar();
-    }
+    Symbol* occur_sym = ATTR(node, symbol, occur_sym);
+    Symbol* decl_sym = SYM(occur_sym, type_occur)->decl_sym;
+    type = SYM(decl_sym, type_decl)->type;
   }
   else if(node->kind == AstNode_pointer)
   {
-    Type* pointee = 0;
-    if(success = make_type_of_type_node(ATTR(node, ast_node, type), &pointee))
-    {
-      *type = new_pointer_type(pointee);
-    }
+    Type* pointee = make_type_of_type_expr(ATTR(node, ast_node, type_expr));
+    type = new_pointer_type(pointee);
   }
   else if(node->kind == AstNode_array)
   {
     int size = -1;
+#if 0
     AstNode* size_node = ATTR(node, ast_node, size_expr);
     if(size_node)
     {
@@ -127,24 +128,22 @@ bool make_type_of_type_node(AstNode* node, Type** type)
       else
         success = compile_error(size_node->src_loc, "array size must be an int literal");
     }
+#endif
 
-    Type* elem = 0;
-    if(success = make_type_of_type_node(ATTR(node, ast_node, type), &elem))
-    {
-      *type = new_array_type(size, elem);
-    }
+    Type* elem = make_type_of_type_expr(ATTR(node, ast_node, type_expr));
+    type = new_array_type(size, elem);
   }
   else
     assert(0);
 
-  return success;
+  return type;
 }
 
 void add_builtin_type(char* name, Type* type)
 {
   assert(type->kind == Type_basic);
   Symbol* decl_sym = add_symbol(name, 0, Symbol_type_decl);
-  decl_sym->type = type;
+  SYM(decl_sym, type_decl)->type = type;
 }
 
 void add_builtin_types()
@@ -176,7 +175,6 @@ void begin_scope(ScopeKind kind, AstNode* ast_node)
   scope->encl_scope = symbol_table->active_scope;
   scope->ast_node = ast_node;
   symbol_table->active_scope = scope;
-  symbol_table->scope_count++;
 }
 
 void end_scope()
@@ -1108,7 +1106,7 @@ bool name_resolve_type(AstNode* node, List* fwd_occurs)
     if(decl_sym)
     {
       Symbol* occur_sym = add_symbol(name, type_occur_gen1->src_loc, Symbol_type_occur);
-      SYM(occur_sym, type_occur)->type_decl = decl_sym;
+      SYM(occur_sym, type_occur)->decl_sym = decl_sym;
 
       ATTR(type_occur_gen1, symbol, occur_sym) = occur_sym;
     }
@@ -1202,6 +1200,7 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
     {
       decl_sym = add_symbol(name, var_decl_gen1->src_loc, Symbol_var_decl);
       ATTR(var_decl_gen1, symbol, decl_sym) = decl_sym;
+      decl_sym->ast_node = var_decl_gen1;
 
       if(success = name_resolve(ATTR(&var_gen0, ast_node, type), fwd_occurs))
       {
@@ -1222,13 +1221,15 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
     char* name = ATTR(&id_gen0, str, name);
     ATTR(var_occur_gen1, str, name) = name;
 
+    Symbol* occur_sym = add_symbol(name, var_occur_gen1->src_loc, Symbol_var_occur);
+    occur_sym->ast_node = var_occur_gen1;
+
     Symbol* decl_sym = lookup_symbol(name, Symbol_var_decl, SymbolLookup_active);
     if(decl_sym)
     {
-      Symbol* occur_sym = add_symbol(name, var_occur_gen1->src_loc, Symbol_var_occur);
-      SYM(occur_sym, var_occur)->var_decl = decl_sym;
-      SYM(occur_sym, var_occur)->decl_scope_depth = decl_sym->nesting_depth - occur_sym->nesting_depth;
+      //SYM(occur_sym, var_occur)->decl_scope_depth = decl_sym->nesting_depth - occur_sym->nesting_depth;
 
+      SYM(occur_sym, var_occur)->decl_sym = decl_sym;
       ATTR(var_occur_gen1, symbol, occur_sym) = occur_sym;
     }
     else
@@ -1265,6 +1266,7 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
     AstNode lit_gen0 = *node;
     LiteralKind lit_kind = ATTR(node, lit_kind, lit_kind);
 
+#if 0
     if(lit_kind == Literal_str)
     {
       char* name = make_temp_name("var");
@@ -1281,6 +1283,7 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
       ATTR(var_occur, symbol, occur_sym) = occur_sym;
     }
     else
+#endif
     {
       AstNode* lit_gen1 = make_ast_node(Ast_gen1, node, AstNode_lit);
       ATTR(lit_gen1, lit_kind, lit_kind) = lit_kind;
@@ -1292,6 +1295,8 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
         ATTR(lit_gen1, char_val, char_val) = ATTR(&lit_gen0, char_val, char_val);
       else if(lit_kind == Literal_bool_val)
         ATTR(lit_gen1, bool_val, bool_val) = ATTR(&lit_gen0, bool_val, bool_val);
+      else if(lit_kind == Literal_str)
+        ATTR(lit_gen1, str, str) = ATTR(&lit_gen0, str, str);
       else
         assert(0);
     }
@@ -1312,7 +1317,13 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
     else
     {
       decl_sym = add_symbol(name, proc_gen1->src_loc, Symbol_proc_decl);
-      ATTR(proc_gen1, symbol, proc_decl) = decl_sym;
+      decl_sym->ast_node = proc_gen1;
+
+      ATTR(proc_gen1, symbol, decl_sym) = decl_sym;
+      ATTR(proc_gen1, list, formal_args) = ATTR(&proc_gen0, list, formal_args);
+      ATTR(proc_gen1, ast_node, ret_type) = ATTR(&proc_gen0, ast_node, ret_type);
+      ATTR(proc_gen1, ast_node, body) = ATTR(&proc_gen0, ast_node, body);
+
       begin_scope(ScopeKind_proc, proc_gen1);
 
       for(ListItem* list_item = ATTR(&proc_gen0, list, formal_args)->first;
@@ -1324,26 +1335,8 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
 
       if(success)
       {
-        ATTR(proc_gen1, list, formal_args) = ATTR(&proc_gen0, list, formal_args);
-
-        if(success = name_resolve(ATTR(&proc_gen0, ast_node, body), fwd_occurs))
-        {
-          ATTR(proc_gen1, ast_node, body) = ATTR(&proc_gen0, ast_node, body);
-        }
-#if 0
-        AstNode* ret_type = ATTR(&proc_gen0, ast_node, ret_type);
-        if(success = name_id(ret_type))
-        {
-          char* name = make_temp_name("var");
-          Symbol* ret_var = add_symbol(name, proc_gen1->src_loc, Symbol_var_decl);
-          SYM(decl_sym, proc_decl)->ret_var = ret_var;
-
-          if(success = name_id(ATTR(&proc_gen0, ast_node, body)))
-          {
-            ATTR(proc_gen1, ast_node, body) = ATTR(&proc_gen0, ast_node, body);
-          }
-        }
-#endif
+        success = name_resolve(ATTR(&proc_gen0, ast_node, ret_type), fwd_occurs) &&
+          name_resolve(ATTR(&proc_gen0, ast_node, body), fwd_occurs);
       }
       end_scope();
     }
@@ -1361,7 +1354,8 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
     Symbol* decl_sym = lookup_symbol(name, Symbol_proc_decl, SymbolLookup_active);
     if(decl_sym)
     {
-      ATTR(call_gen1, symbol, proc_decl) = decl_sym;
+      SYM(occur_sym, proc_occur)->decl_sym = decl_sym;
+      ATTR(call_gen1, symbol, occur_sym) = occur_sym;
     }
     else
     {
@@ -1555,8 +1549,7 @@ bool resolve_fwd_occurs(List* fwd_occurs)
       Symbol* decl_sym = lookup_symbol_in_scope(occur_sym->name, Symbol_proc_decl, occur_sym->scope);
       if(decl_sym)
       {
-        SYM(occur_sym, proc_occur)->proc_decl = decl_sym;
-        ATTR(occur_sym->ast_node, symbol, proc_decl) = decl_sym;
+        SYM(occur_sym, proc_occur)->decl_sym = decl_sym;
       }
       else
         success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
@@ -1567,19 +1560,106 @@ bool resolve_fwd_occurs(List* fwd_occurs)
   return success;
 }
 
+void build_types()
+{
+  for(ListItem* list_item = symbol_table->symbols->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    Symbol* sym = ITEM(list_item, symbol);
+    if(sym->kind == Symbol_var_decl)
+    {
+      AstNode* var_decl = sym->ast_node;
+      AstNode* type_node = ATTR(var_decl, ast_node, type);
+      ATTR(var_decl, type, type) = make_type_of_type_expr(ATTR(type_node, ast_node, type_expr));
+    }
+    else if(sym->kind == Symbol_proc_decl)
+    {
+      AstNode* proc_decl = sym->ast_node;
+      AstNode* ret_type_node = ATTR(proc_decl, ast_node, ret_type);
+      Type* ret_type = make_type_of_type_expr(ATTR(ret_type_node, ast_node, type_expr));
+
+      Type* args_type = basic_type_void;
+      ListItem* arg_list_item = ATTR(proc_decl, list, formal_args)->first;
+      if(arg_list_item)
+      {
+        AstNode* arg = ITEM(arg_list_item, ast_node);
+        AstNode* type_node = ATTR(arg, ast_node, type);
+        args_type = make_type_of_type_expr(ATTR(type_node, ast_node, type_expr));
+
+        for(arg_list_item = arg_list_item->next;
+            arg_list_item;
+            arg_list_item = arg_list_item->next)
+        {
+          AstNode* arg = ITEM(arg_list_item, ast_node);
+          AstNode* type_node = ATTR(arg, ast_node, type);
+          args_type = new_product_type(args_type, make_type_of_type_expr(ATTR(type_node, ast_node, type_expr)));
+        }
+      }
+
+      ATTR(proc_decl, type, type) = new_proc_type(args_type, ret_type);
+    }
+  }
+
+  for(ListItem* list_item = symbol_table->symbols->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    Symbol* sym = ITEM(list_item, symbol);
+    if(sym->kind == Symbol_var_occur)
+    {
+      AstNode* var_occur = sym->ast_node;
+      AstNode* var_decl = SYM(sym, var_occur)->decl_sym->ast_node;
+      ATTR(var_occur, type, type) = ATTR(var_decl, type, type);
+    }
+    else if(sym->kind == Symbol_proc_occur)
+    {
+      AstNode* proc_occur = sym->ast_node;
+      AstNode* proc_decl = SYM(sym, proc_occur)->decl_sym->ast_node;
+      ATTR(proc_occur, type, type) = ATTR(proc_decl, type, type);
+    }
+  }
+}
+
+bool typecheck(AstNode* node)
+{
+  bool success = true;
+
+  if(node->kind == AstNode_module)
+  {
+    AstNode* body = ATTR(node, ast_node, body);
+    success = typecheck(body);
+  }
+  else if(node->kind == AstNode_block)
+  {
+    for(ListItem* list_item = ATTR(node, list, nodes)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      success = typecheck(ITEM(list_item, ast_node));
+    }
+  }
+  else if(node->kind == AstNode_var_decl)
+  {
+    AstNode* type_node = ATTR(node, ast_node, type);
+    ATTR(node, type, type) = make_type_of_type_expr(ATTR(type_node, ast_node, type_expr));
+  }
+  return success;
+}
+
 bool semantic(AstNode* module)
 {
   bool success = true;
 
   init_types();
-  symbol_table->nesting_depth = -1;
 
   begin_scope(ScopeKind_global, 0);
   add_builtin_types();
-  add_builtin_procs();
+  //add_builtin_procs();
 
   List* fwd_occurs = new_list(arena, List_symbol);
   success = name_resolve(module, fwd_occurs) && resolve_fwd_occurs(fwd_occurs);
+  build_types();
 
   if(DEBUG_enabled)/*>>>*/
   {

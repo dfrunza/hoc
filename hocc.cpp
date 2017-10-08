@@ -728,11 +728,16 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_call; // occurrence of proc
-      kind->attr_count = 3;
+      kind->attr_count = 4;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_type;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -742,7 +747,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_symbol;
-      attr->name = AstAttributeName_proc_decl;
+      attr->name = AstAttributeName_occur_sym;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -753,11 +758,21 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_proc; // declaration of proc
-      kind->attr_count = 4;
+      kind->attr_count = 6;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_type;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_ret_type;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -767,7 +782,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_symbol;
-      attr->name = AstAttributeName_proc_decl;
+      attr->name = AstAttributeName_decl_sym;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -795,7 +810,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_lit;
-      kind->attr_count = 5;
+      kind->attr_count = 6;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -825,6 +840,11 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_char_val;
       attr->name = AstAttributeName_char_val;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_str;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -884,12 +904,17 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_var_decl; // declaration of var
-      kind->attr_count = 4;
+      kind->kind = AstNode_var_decl; // declaration of war
+      kind->attr_count = 5;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_type;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -915,11 +940,16 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var_occur; // occurrence of var
-      kind->attr_count = 2;
+      kind->attr_count = 3;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_type;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -930,13 +960,6 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_symbol;
       attr->name = AstAttributeName_occur_sym;
-
-#if 0
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_type;
-      attr->name = AstAttributeName_type;
-#endif
     }
     {
       assert(kind_index < ast->kind_count);
@@ -1020,7 +1043,11 @@ void init_ast_meta_infos()
   }
 }
 
-AstAttribute* get_ast_attribute(AstNode* node, AstAttributeName name)
+
+#define ATTR(NODE, KIND, NAME)\
+  (get_ast_attribute_f((NODE), AstAttribute_##KIND, AstAttributeName_##NAME)->KIND)
+
+AstAttribute* get_ast_attribute_f(AstNode* node, AstAttributeKind kind, AstAttributeName name)
 {
   AstAttribute* result = 0;
 
@@ -1049,7 +1076,7 @@ AstAttribute* get_ast_attribute(AstNode* node, AstAttributeName name)
         attr_index++)
     {
       attr_meta = &kind_meta->attrs[attr_index];
-      if(attr_meta->name == name)
+      if(attr_meta->kind == kind && attr_meta->name == name)
       {
         break;
       }
@@ -1068,19 +1095,6 @@ AstAttribute* get_ast_attribute(AstNode* node, AstAttributeName name)
   else
     assert(0);
 
-  return result;
-}
-
-#define ATTR(NODE, KIND, NAME)\
-  (get_ast_attribute_safe((NODE), AstAttribute_##KIND, AstAttributeName_##NAME)->KIND)
-
-AstAttribute* get_ast_attribute_safe(AstNode* node, AstAttributeKind kind, AstAttributeName name)
-{
-  AstAttribute* result = 0;
-  if((result = get_ast_attribute(node, name))->kind != kind)
-  {
-    result = 0;
-  }
   return result;
 }
 
@@ -1732,10 +1746,7 @@ int main(int argc, char* argv[])
   if(success = (argc >= 2))
   {
     arena = new_arena(ARENA_SIZE);
-
-    MemoryArena* symbol_arena = push_arena(&arena, SYMBOL_ARENA_SIZE);
-    symbol_table = mem_push_struct(symbol_arena, SymbolTable);
-    symbol_table->arena = symbol_arena;
+    symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
 
     char* src_file_path = argv[1];
 

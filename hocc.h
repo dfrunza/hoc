@@ -498,9 +498,6 @@ typedef enum
 }
 Ast_Gen;
 
-#define ATTR(NODE, KIND, NAME)\
-  (get_ast_attribute_safe((NODE), AstAttribute_##KIND, AstAttributeName_##NAME)->KIND)
-
 typedef struct AstNode
 {
   Ast_Gen gen;
@@ -626,7 +623,6 @@ typedef struct Symbol
   SourceLoc* src_loc;
   Scope* scope;
   int nesting_depth;
-  Type* type;
   AstNode* ast_node;
 
   union
@@ -639,14 +635,19 @@ typedef struct Symbol
 
     struct
     {
-      Symbol* var_decl;
-      int decl_scope_depth;
+      Symbol* decl_sym;
     }
     var_occur;
 
     struct
     {
-      Symbol* type_decl;
+      Type* type;
+    }
+    type_decl;
+
+    struct
+    {
+      Symbol* decl_sym;
     }
     type_occur;
 
@@ -658,7 +659,7 @@ typedef struct Symbol
 
     struct
     {
-      Symbol* proc_decl;
+      Symbol* decl_sym;
     }
     proc_occur;
   };
@@ -667,10 +668,9 @@ Symbol;
 
 typedef struct
 {
+  List* symbols;
   Scope* active_scope;
   int nesting_depth;
-  int sym_count;
-  int scope_count;
   MemoryArena* arena;
 }
 SymbolTable;
@@ -813,6 +813,7 @@ typedef enum
   List_None,
   List_ast_node,
   List_symbol,
+  List_scope,
   List_vm_instr,
   List_type_pair,
 }
@@ -829,6 +830,7 @@ typedef struct ListItem
     void* elem;
     AstNode* ast_node;
     Symbol* symbol;
+    Scope* scope;
     Instruction* instr;
     TypePair* type_pair;
   };

@@ -186,7 +186,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_call;
+      kind->kind = AstNode_proc_occur;
       kind->attr_count = 2;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
@@ -281,7 +281,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_proc;
+      kind->kind = AstNode_proc_decl;
       kind->attr_count = 4;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
@@ -363,7 +363,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_var;
+      kind->kind = AstNode_var_decl;
       kind->attr_count = 3;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
@@ -727,7 +727,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_call; // occurrence of proc
+      kind->kind = AstNode_proc_occur; // occurrence of proc
       kind->attr_count = 4;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
@@ -757,7 +757,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_proc; // declaration of proc
+      kind->kind = AstNode_proc_decl; // declaration of proc
       kind->attr_count = 6;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
@@ -1291,7 +1291,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       DEBUG_print_line(str, indent_level, "file_path: \"%s\"", ATTR(node, str, file_path));
       DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
     }
-    else if(node->kind == AstNode_proc)
+    else if(node->kind == AstNode_proc_decl)
     {
       if(node->gen == Ast_gen0)
       {
@@ -1312,7 +1312,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       else
         assert(0);
     }
-    else if(node->kind == AstNode_var)
+    else if(node->kind == AstNode_var_decl)
     {
       if(node->gen == Ast_gen0)
       {
@@ -1320,12 +1320,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
         DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
         DEBUG_print_ast_node(str, indent_level, "init_expr", ATTR(node, ast_node, init_expr));
       }
-      else
-        assert(0);
-    }
-    else if(node->kind == AstNode_var_decl)
-    {
-      if(node->gen == Ast_gen1)
+      else if(node->gen == Ast_gen1)
       {
         DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str, name));
         DEBUG_print_ast_node(str, indent_level, "init_expr", ATTR(node, ast_node, init_expr));
@@ -1462,7 +1457,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       else
         assert(0);
     }
-    else if(node->kind == AstNode_call)
+    else if(node->kind == AstNode_proc_occur)
     {
       if(node->gen == Ast_gen0)
       {

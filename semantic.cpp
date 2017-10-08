@@ -1183,11 +1183,11 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
     }
     end_scope();
   }
-  else if(node->kind == AstNode_var)
+  else if(node->kind == AstNode_var_decl)
   {
-    AstNode var_gen0 = *node;
+    AstNode var_decl_gen0 = *node;
     AstNode* var_decl_gen1 = make_ast_node(Ast_gen1, node, AstNode_var_decl);
-    char* name = ATTR(ATTR(&var_gen0, ast_node, id), str, name);
+    char* name = ATTR(ATTR(&var_decl_gen0, ast_node, id), str, name);
     ATTR(var_decl_gen1, str, name) = name;
 
     Symbol* decl_sym = lookup_symbol(name, Symbol_var_decl, SymbolLookup_active);
@@ -1202,12 +1202,12 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
       ATTR(var_decl_gen1, symbol, decl_sym) = decl_sym;
       decl_sym->ast_node = var_decl_gen1;
 
-      if(success = name_resolve(ATTR(&var_gen0, ast_node, type), fwd_occurs))
+      if(success = name_resolve(ATTR(&var_decl_gen0, ast_node, type), fwd_occurs))
       {
-        ATTR(var_decl_gen1, ast_node, type) = ATTR(&var_gen0, ast_node, type);
+        ATTR(var_decl_gen1, ast_node, type) = ATTR(&var_decl_gen0, ast_node, type);
       }
 
-      AstNode* init_expr = ATTR(&var_gen0, ast_node, init_expr);
+      AstNode* init_expr = ATTR(&var_decl_gen0, ast_node, init_expr);
       if((success && init_expr) && (success = name_resolve(init_expr, fwd_occurs)))
       {
         ATTR(var_decl_gen1, ast_node, init_expr) = init_expr;
@@ -1301,32 +1301,32 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
         assert(0);
     }
   }
-  else if(node->kind == AstNode_proc)
+  else if(node->kind == AstNode_proc_decl)
   {
-    AstNode proc_gen0 = *node;
-    AstNode* proc_gen1 = make_ast_node(Ast_gen1, node, AstNode_proc);
-    char* name = ATTR(ATTR(&proc_gen0, ast_node, id), str, name);
-    ATTR(proc_gen1, str, name) = name;
+    AstNode proc_decl_gen0 = *node;
+    AstNode* proc_decl_gen1 = make_ast_node(Ast_gen1, node, AstNode_proc_decl);
+    char* name = ATTR(ATTR(&proc_decl_gen0, ast_node, id), str, name);
+    ATTR(proc_decl_gen1, str, name) = name;
 
     Symbol* decl_sym = lookup_symbol(name, Symbol_proc_decl, SymbolLookup_module);
     if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
     {
-      success = compile_error(proc_gen1->src_loc, "proc `%s` already declared", name);
+      success = compile_error(proc_decl_gen1->src_loc, "proc `%s` already declared", name);
       compile_error(decl_sym->src_loc, "see previous declaration of `%s`", name);
     }
     else
     {
-      decl_sym = add_symbol(name, proc_gen1->src_loc, Symbol_proc_decl);
-      decl_sym->ast_node = proc_gen1;
+      decl_sym = add_symbol(name, proc_decl_gen1->src_loc, Symbol_proc_decl);
+      decl_sym->ast_node = proc_decl_gen1;
 
-      ATTR(proc_gen1, symbol, decl_sym) = decl_sym;
-      ATTR(proc_gen1, list, formal_args) = ATTR(&proc_gen0, list, formal_args);
-      ATTR(proc_gen1, ast_node, ret_type) = ATTR(&proc_gen0, ast_node, ret_type);
-      ATTR(proc_gen1, ast_node, body) = ATTR(&proc_gen0, ast_node, body);
+      ATTR(proc_decl_gen1, symbol, decl_sym) = decl_sym;
+      ATTR(proc_decl_gen1, list, formal_args) = ATTR(&proc_decl_gen0, list, formal_args);
+      ATTR(proc_decl_gen1, ast_node, ret_type) = ATTR(&proc_decl_gen0, ast_node, ret_type);
+      ATTR(proc_decl_gen1, ast_node, body) = ATTR(&proc_decl_gen0, ast_node, body);
 
-      begin_scope(ScopeKind_proc, proc_gen1);
+      begin_scope(ScopeKind_proc, proc_decl_gen1);
 
-      for(ListItem* list_item = ATTR(&proc_gen0, list, formal_args)->first;
+      for(ListItem* list_item = ATTR(&proc_decl_gen0, list, formal_args)->first;
           list_item && success;
           list_item = list_item->next)
       {
@@ -1335,34 +1335,34 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
 
       if(success)
       {
-        success = name_resolve(ATTR(&proc_gen0, ast_node, ret_type), fwd_occurs) &&
-          name_resolve(ATTR(&proc_gen0, ast_node, body), fwd_occurs);
+        success = name_resolve(ATTR(&proc_decl_gen0, ast_node, ret_type), fwd_occurs) &&
+          name_resolve(ATTR(&proc_decl_gen0, ast_node, body), fwd_occurs);
       }
       end_scope();
     }
   }
-  else if(node->kind == AstNode_call)
+  else if(node->kind == AstNode_proc_occur)
   {
-    AstNode call_gen0 = *node;
-    AstNode* call_gen1 = make_ast_node(Ast_gen1, node, AstNode_call);
-    char* name = ATTR(ATTR(&call_gen0, ast_node, id), str, name);
-    ATTR(call_gen1, str, name) = name;
+    AstNode proc_occur_gen0 = *node;
+    AstNode* proc_occur_gen1 = make_ast_node(Ast_gen1, node, AstNode_proc_occur);
+    char* name = ATTR(ATTR(&proc_occur_gen0, ast_node, id), str, name);
+    ATTR(proc_occur_gen1, str, name) = name;
 
-    Symbol* occur_sym = add_symbol(name, call_gen1->src_loc, Symbol_proc_occur);
-    occur_sym->ast_node = call_gen1;
+    Symbol* occur_sym = add_symbol(name, proc_occur_gen1->src_loc, Symbol_proc_occur);
+    occur_sym->ast_node = proc_occur_gen1;
 
     Symbol* decl_sym = lookup_symbol(name, Symbol_proc_decl, SymbolLookup_active);
     if(decl_sym)
     {
       SYM(occur_sym, proc_occur)->decl_sym = decl_sym;
-      ATTR(call_gen1, symbol, occur_sym) = occur_sym;
+      ATTR(proc_occur_gen1, symbol, occur_sym) = occur_sym;
     }
     else
     {
       append_list_elem(fwd_occurs, occur_sym, List_symbol);
     }
 
-    for(ListItem* list_item = ATTR(&call_gen0, list, actual_args)->first;
+    for(ListItem* list_item = ATTR(&proc_occur_gen0, list, actual_args)->first;
         list_item && success;
         list_item = list_item->next)
     {
@@ -1371,7 +1371,7 @@ bool name_resolve(AstNode* node, List* fwd_occurs)
 
     if(success)
     {
-      ATTR(call_gen1, list, actual_args) = ATTR(&call_gen0, list, actual_args);
+      ATTR(proc_occur_gen1, list, actual_args) = ATTR(&proc_occur_gen0, list, actual_args);
     }
   }
   else if(node->kind == AstNode_block)
@@ -1560,7 +1560,7 @@ bool resolve_fwd_occurs(List* fwd_occurs)
   return success;
 }
 
-void build_types()
+void build_occur_and_decl_types()
 {
   for(ListItem* list_item = symbol_table->symbols->first;
       list_item;
@@ -1659,8 +1659,6 @@ bool semantic(AstNode* module)
 
   List* fwd_occurs = new_list(arena, List_symbol);
   success = name_resolve(module, fwd_occurs) && resolve_fwd_occurs(fwd_occurs);
-  build_types();
-
   if(DEBUG_enabled)/*>>>*/
   {
     printf("--- Name ID ---\n");
@@ -1674,8 +1672,9 @@ bool semantic(AstNode* module)
     str_dump_to_file(str, "debug_name_resolve.txt");
     end_temp_memory(&arena);
   }/*<<<*/
-
   end_scope();
+
+  build_occur_and_decl_types();
 
   return success;
 }

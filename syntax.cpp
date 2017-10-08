@@ -255,11 +255,11 @@ bool parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
     // procedure call
     if(left_node->kind == AstNode_id)
     {
-      AstNode* call = *node = new_ast_node(Ast_gen0, AstNode_call, clone_source_loc(&input->src_loc));
-      ATTR(call, ast_node, id) = left_node;
-      ATTR(call, list, actual_args) = new_list(arena, List_ast_node);
+      AstNode* proc_occur = *node = new_ast_node(Ast_gen0, AstNode_proc_occur, clone_source_loc(&input->src_loc));
+      ATTR(proc_occur, ast_node, id) = left_node;
+      ATTR(proc_occur, list, actual_args) = new_list(arena, List_ast_node);
 
-      if(success = get_next_token(input) && parse_actual_arg_list(input, ATTR(call, list, actual_args)))
+      if(success = get_next_token(input) && parse_actual_arg_list(input, ATTR(proc_occur, list, actual_args)))
       {
         if(input->token.kind == Token_close_parens)
           success = get_next_token(input);
@@ -703,12 +703,12 @@ bool parse_formal_arg(TokenStream* input, AstNode** node)
   AstNode* type = 0;
   if((success = parse_type(input, &type)) && type)
   {
-    AstNode* var = *node = new_ast_node(Ast_gen0, AstNode_var, clone_source_loc(&input->src_loc));
-    ATTR(var, ast_node, type) = type;
+    AstNode* var_decl = *node = new_ast_node(Ast_gen0, AstNode_var_decl, clone_source_loc(&input->src_loc));
+    ATTR(var_decl, ast_node, type) = type;
 
     if(input->token.kind == Token_id)
     {
-      AstNode* id = ATTR(var, ast_node, id) = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
+      AstNode* id = ATTR(var_decl, ast_node, id) = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
       ATTR(id, str, name) = input->token.lexeme;
       success = get_next_token(input);
     }
@@ -818,19 +818,19 @@ bool parse_var(TokenStream* input, AstNode** node)
   {
     if(type)
     {
-      AstNode* var = *node = new_ast_node(Ast_gen0, AstNode_var, clone_source_loc(&input->src_loc));
-      ATTR(var, ast_node, type) = type;
+      AstNode* var_decl = *node = new_ast_node(Ast_gen0, AstNode_var_decl, clone_source_loc(&input->src_loc));
+      ATTR(var_decl, ast_node, type) = type;
 
       if(input->token.kind == Token_id)
       {
-        AstNode* id = ATTR(var, ast_node, id) = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
+        AstNode* id = ATTR(var_decl, ast_node, id) = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
         ATTR(id, str, name) = input->token.lexeme;
 
         if((success = get_next_token(input)) && input->token.kind == Token_eq
             && (success = get_next_token(input)))
         {
 #if 0
-          AstNode* init_expr = ATTR(var, ast_node, init_expr) = new_ast_node(Ast_gen0, AstNode_bin_expr, clone_source_loc(&input->src_loc));
+          AstNode* init_expr = ATTR(var_decl, ast_node, init_expr) = new_ast_node(Ast_gen0, AstNode_bin_expr, clone_source_loc(&input->src_loc));
           ATTR(init_expr, op_kind, op_kind) = OperatorKind_assign;
           ATTR(init_expr, ast_node, left_operand) = id;
 #endif
@@ -842,7 +842,7 @@ bool parse_var(TokenStream* input, AstNode** node)
             {
               if(init_expr)
               {
-                ATTR(var, ast_node, init_expr) = init_expr;
+                ATTR(var_decl, ast_node, init_expr) = init_expr;
               }
               else
               {
@@ -1059,12 +1059,12 @@ bool parse_proc(TokenStream* input, AstNode** node)
   {
     if(ret_type)
     {
-      AstNode* proc = *node = new_ast_node(Ast_gen0, AstNode_proc, clone_source_loc(&input->src_loc));
-      ATTR(proc, ast_node, ret_type) = ret_type;
+      AstNode* proc_decl = *node = new_ast_node(Ast_gen0, AstNode_proc_decl, clone_source_loc(&input->src_loc));
+      ATTR(proc_decl, ast_node, ret_type) = ret_type;
 
       if(input->token.kind == Token_id)
       {
-        AstNode* id = ATTR(proc, ast_node, id) = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
+        AstNode* id = ATTR(proc_decl, ast_node, id) = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
         ATTR(id, str, name) = input->token.lexeme;
 
         if(!(success = get_next_token(input)))
@@ -1075,21 +1075,21 @@ bool parse_proc(TokenStream* input, AstNode** node)
           if(!(success = get_next_token(input)))
             return success;
 
-          ATTR(proc, list, formal_args) = new_list(arena, List_ast_node);
-          if(success = parse_formal_arg_list(input, ATTR(proc, list, formal_args)))
+          ATTR(proc_decl, list, formal_args) = new_list(arena, List_ast_node);
+          if(success = parse_formal_arg_list(input, ATTR(proc_decl, list, formal_args)))
           {
             if(input->token.kind == Token_close_parens)
             {
 #if 0
-              if(success = get_next_token(input) && parse_block(input, &proc->body))
+              if(success = get_next_token(input) && parse_block(input, &proc_decl->body))
               {
-                if(!proc->body && (proc->is_decl = success = consume_semicolon(input)))
-                  proc->body = (AstNode1*)new_ast1_block(&(*node)->src_loc);
+                if(!proc_decl->body && (proc_decl->is_decl = success = consume_semicolon(input)))
+                  proc_decl->body = (AstNode1*)new_ast1_block(&(*node)->src_loc);
               }
 #else
-              if(success = get_next_token(input) && parse_block(input, &ATTR(proc, ast_node, body)))
+              if(success = get_next_token(input) && parse_block(input, &ATTR(proc_decl, ast_node, body)))
               {
-                if(!ATTR(proc, ast_node, body))
+                if(!ATTR(proc_decl, ast_node, body))
                   success = consume_semicolon(input);
               }
 #endif
@@ -1293,12 +1293,12 @@ bool parse_struct_member_list(TokenStream* input, List* member_list)
 
         if(success && type)
         {
-          AstNode* var = member = new_ast_node(Ast_gen0, AstNode_var, clone_source_loc(&input->src_loc));
-          ATTR(var, ast_node, type) = type;
+          AstNode* var_decl = member = new_ast_node(Ast_gen0, AstNode_var_decl, clone_source_loc(&input->src_loc));
+          ATTR(var_decl, ast_node, type) = type;
 
           if(input->token.kind == Token_id)
           {
-            AstNode* id = ATTR(var, ast_node, id) = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
+            AstNode* id = ATTR(var_decl, ast_node, id) = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(&input->src_loc));
             ATTR(id, str, name) = input->token.lexeme;
             success = get_next_token(input);
           }

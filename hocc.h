@@ -431,13 +431,12 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_include),\
   ENUM_MEMBER(AstNode_block),\
   ENUM_MEMBER(AstNode_stmt),\
-  ENUM_MEMBER(AstNode_var),\
   ENUM_MEMBER(AstNode_var_decl),\
   ENUM_MEMBER(AstNode_var_occur),\
-  ENUM_MEMBER(AstNode_proc),\
+  ENUM_MEMBER(AstNode_proc_decl),\
+  ENUM_MEMBER(AstNode_proc_occur),\
   ENUM_MEMBER(AstNode_type),\
   ENUM_MEMBER(AstNode_type_occur),\
-  ENUM_MEMBER(AstNode_call),\
   ENUM_MEMBER(AstNode_lit),\
   ENUM_MEMBER(AstNode_return_stmt),\
   ENUM_MEMBER(AstNode_goto_stmt),\

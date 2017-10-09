@@ -537,6 +537,7 @@ typedef enum BasicTypeKind
   BasicType_float,
   BasicType_char,
   BasicType_bool,
+  BasicType_type,
 };
 
 typedef struct Type
@@ -544,7 +545,7 @@ typedef struct Type
   TypeKind kind;
   Type* repr_type; // representative member of the set of equivalent types
   AstNode* ast_node;
-  int size; // -> width
+  int width;
 
   union
   {
@@ -623,6 +624,7 @@ typedef struct Symbol
   Scope* scope;
   int nesting_depth;
   AstNode* ast_node;
+  Type* type;
 
   union
   {

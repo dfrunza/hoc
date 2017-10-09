@@ -22,6 +22,7 @@ proc int foo(int bubbles, bool troubles)
 proc int main()
 {
   a = (type int*)(b);
+  a = 1 + 2;
   foo(a, b);
   if(true)
     return 0;

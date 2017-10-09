@@ -335,7 +335,7 @@ bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** no
     if(input->token.kind == Token_minus_minus)
     {
 #if 0
-      un_expr->op = OperatorKin_PostDecrement;
+      un_expr->op = OperatorKind_PostDecrement;
 #else
       success = compile_error(&input->src_loc, "`--` not supported");
 #endif
@@ -836,19 +836,16 @@ bool parse_var(TokenStream* input, AstNode** node)
 #endif
 
           AstNode* init_expr = 0;
-          if(success = parse_initializer_list(input, &init_expr))
+          if(!init_expr && (success = parse_expr(input, &init_expr)))
           {
-            if(!init_expr && (success = parse_expr(input, &init_expr)))
+            if(init_expr)
             {
-              if(init_expr)
-              {
-                ATTR(var_decl, ast_node, init_expr) = init_expr;
-              }
-              else
-              {
-                putback_token(input);
-                success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
-              }
+              ATTR(var_decl, ast_node, init_expr) = init_expr;
+            }
+            else
+            {
+              putback_token(input);
+              success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
             }
           }
         }
@@ -940,18 +937,31 @@ bool parse_while(TokenStream* input, AstNode** node)
       {
         if(input->token.kind == Token_close_parens)
         {
-          if(!(success = get_next_token(input)))
+          AstNode* body = 0;
+          success = get_next_token(input) && parse_block(input, &body);
+          if(!success)
             return success;
 
-          if(!(success = parse_block(input, &ATTR(while_stmt, ast_node, body))))
-            return success;
-
-          if(!ATTR(while_stmt, ast_node, body))
+          if(body)
           {
-            if((success = parse_node(input, &ATTR(while_stmt, ast_node, body))) && !ATTR(while_stmt, ast_node, body))
+            ATTR(while_stmt, ast_node, body) = body;
+          }
+          else
+          {
+            if(success = parse_node(input, &body))
             {
-              putback_token(input);
-              success = compile_error(&input->src_loc, "statement required, at `%s`", get_token_printstr(&input->token));
+              if(body)
+              {
+                AstNode* block = new_ast_node(Ast_gen0, AstNode_block, clone_source_loc(&input->src_loc));
+                ATTR(block, list, nodes) = new_list(arena, List_ast_node);
+                append_list_elem(ATTR(block, list, nodes), body, List_ast_node);
+                ATTR(while_stmt, ast_node, body) = block;
+              }
+              else
+              {
+                putback_token(input);
+                success = compile_error(&input->src_loc, "statement required, at `%s`", get_token_printstr(&input->token));
+              }
             }
           }
         }
@@ -977,14 +987,29 @@ bool parse_else(TokenStream* input, AstNode** node)
 
   if(input->token.kind == Token_else)
   {
-    if(success = get_next_token(input) && parse_block(input, node))
+    AstNode* body = 0;
+    if(success = get_next_token(input) && parse_block(input, &body))
     {
-      if(!*node)
+      if(body)
       {
-        if((success = parse_node(input, node)) && !*node)
+        *node = body;
+      }
+      else
+      {
+        if(success = parse_node(input, &body))
         {
-          putback_token(input);
-          success = compile_error(&input->src_loc, "statement required, at `%s`", get_token_printstr(&input->token));
+          if(body)
+          {
+            AstNode* block = new_ast_node(Ast_gen0, AstNode_block, clone_source_loc(&input->src_loc));
+            ATTR(block, list, nodes) = new_list(arena, List_ast_node);
+            append_list_elem(ATTR(block, list, nodes), body, List_ast_node);
+            *node = block;
+          }
+          else
+          {
+            putback_token(input);
+            success = compile_error(&input->src_loc, "statement required, at `%s`", get_token_printstr(&input->token));
+          }
         }
       }
     }
@@ -1014,24 +1039,34 @@ bool parse_if(TokenStream* input, AstNode** node)
       {
         if(ATTR(if_stmt, ast_node, cond_expr))
         {
-          success = get_next_token(input) && parse_block(input, &ATTR(if_stmt, ast_node, body));
+          AstNode* body = 0;
+          success = get_next_token(input) && parse_block(input, &body);
           if(!success)
             return success;
 
-          if(!ATTR(if_stmt, ast_node, body))
-            success = parse_node(input, &ATTR(if_stmt, ast_node, body));
-
-          if(success)
+          if(body)
           {
-            if(ATTR(if_stmt, ast_node, body))
+            ATTR(if_stmt, ast_node, body) = body;
+          }
+          else if(success = parse_node(input, &body))
+          {
+            if(body)
             {
-              success = parse_else(input, &ATTR(if_stmt, ast_node, else_body));
+              AstNode* block = new_ast_node(Ast_gen0, AstNode_block, clone_source_loc(&input->src_loc));
+              ATTR(block, list, nodes) = new_list(arena, List_ast_node);
+              append_list_elem(ATTR(block, list, nodes), body, List_ast_node);
+              ATTR(if_stmt, ast_node, body) = block;
             }
             else
             {
               putback_token(input);
               success = compile_error(&input->src_loc, "statement required, at `%s`", get_token_printstr(&input->token));
             }
+          }
+
+          if(success)
+          {
+            success = parse_else(input, &ATTR(if_stmt, ast_node, else_body));
           }
         }
         else

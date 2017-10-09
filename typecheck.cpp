@@ -1,9 +1,8 @@
-Type* new_basic_type(BasicTypeKind kind, int size)
+Type* new_basic_type(BasicTypeKind kind)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = Type_basic;
   type->basic.kind = kind;
-  type->size = size;
   return type;
 }
 
@@ -52,11 +51,12 @@ Type* new_pointer_type(Type* pointee)
 
 void init_types()
 {
-  basic_type_bool = new_basic_type(BasicType_bool, 1);
-  basic_type_int = new_basic_type(BasicType_int, 1);
-  basic_type_char = new_basic_type(BasicType_char, 1);
-  basic_type_float = new_basic_type(BasicType_float, 1);
-  basic_type_void = new_basic_type(BasicType_void, 0);
+  basic_type_bool = new_basic_type(BasicType_bool);
+  basic_type_int = new_basic_type(BasicType_int);
+  basic_type_char = new_basic_type(BasicType_char);
+  basic_type_float = new_basic_type(BasicType_float);
+  basic_type_void = new_basic_type(BasicType_void);
+  basic_type_type = new_basic_type(BasicType_type);
 
   subst_list = new_list(arena, List_type_pair);
 }
@@ -68,17 +68,27 @@ bool types_are_equal(Type* type_a, Type* type_b)
   if((type_a->kind != Type_typevar) && (type_b->kind == type_a->kind))
   {
     if(type_a->kind == Type_basic)
+    {
       are_equal = (type_a->basic.kind == type_b->basic.kind);
+    }
     else if(type_a->kind == Type_proc)
+    {
       are_equal = types_are_equal(type_a->proc.args, type_b->proc.args)
         && types_are_equal(type_a->proc.ret, type_b->proc.ret);
+    }
     else if(type_a->kind == Type_pointer)
+    {
       are_equal = types_are_equal(type_a->pointer.pointee, type_b->pointer.pointee);
+    }
     else if(type_a->kind == Type_product)
+    {
       are_equal = types_are_equal(type_a->product.left, type_b->product.right);
+    }
     else if(type_a->kind == Type_array)
+    {
       are_equal = types_are_equal(type_a->array.elem, type_b->array.elem)
         && type_a->array.size == type_b->array.size;
+    }
     else
       assert(false);
   }
@@ -88,29 +98,29 @@ bool types_are_equal(Type* type_a, Type* type_b)
 int compute_type_width(Type* type)
 {
   if(type->kind == Type_array)
-    type->size = type->array.size * compute_type_width(type->array.elem);
+    type->width = type->array.size * compute_type_width(type->array.elem);
   else if(type->kind == Type_product)
-    type->size = compute_type_width(type->product.left) + compute_type_width(type->product.right);
+    type->width = compute_type_width(type->product.left) + compute_type_width(type->product.right);
   else if(type->kind == Type_basic)
   {
     if(type->basic.kind == BasicType_int
        || type->basic.kind == BasicType_float
        || type->basic.kind == BasicType_bool)
     {
-      type->size = 4;
+      type->width = 4;
     }
     else if(type->basic.kind == BasicType_char)
-      type->size = 1;
+      type->width = 1;
     else if(type->basic.kind == BasicType_void)
-      type->size = 0;
+      type->width = 0;
     else
       assert(0);
   }
   else if(type->kind == Type_pointer)
-    type->size = 4;
+    type->width = 4;
   else
     assert(0);
-  return type->size;
+  return type->width;
 }
 
 Type* copy_type(Type* type)

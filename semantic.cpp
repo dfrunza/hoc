@@ -171,6 +171,7 @@ void add_builtin_types()
   add_builtin_type("type", basic_type_type);
 }
 
+#if 0
 void add_builtin_proc(char* name, Type* type)
 {
   AstNode* proc_node = new_ast_node(Ast_gen1, AstNode_proc_decl, 0);
@@ -192,6 +193,7 @@ void add_builtin_procs()
 
   add_builtin_proc("putc", new_proc_type(basic_type_char, basic_type_void));
 }
+#endif
 
 void begin_scope(ScopeKind kind, AstNode* ast_node)
 {
@@ -238,9 +240,9 @@ struct NameResolveContext
   List* unresolved_proc_occurs;
 };
 
-bool name_resolve(AstNode* node, NameResolveContext* context);
+bool name_resolve(AstNode* node);
 
-bool name_resolve_type(AstNode* node, NameResolveContext* context)
+bool name_resolve_type(AstNode* node)
 {
   assert(node->gen == Ast_gen0);
   bool success = true;
@@ -268,7 +270,7 @@ bool name_resolve_type(AstNode* node, NameResolveContext* context)
     AstNode ptr_gen0 = *node;
     AstNode* ptr_gen1 = make_ast_node(Ast_gen1, node, AstNode_pointer);
 
-    if(success = name_resolve_type(ATTR(&ptr_gen0, ast_node, type_expr), context))
+    if(success = name_resolve_type(ATTR(&ptr_gen0, ast_node, type_expr)))
     {
       ATTR(ptr_gen1, ast_node, type_expr) = ATTR(&ptr_gen0, ast_node, type_expr);
     }
@@ -278,8 +280,8 @@ bool name_resolve_type(AstNode* node, NameResolveContext* context)
     AstNode array_gen0 = *node;
     AstNode* array_gen1 = make_ast_node(Ast_gen1, node, AstNode_array);
 
-    if(success = name_resolve_type(ATTR(&array_gen0, ast_node, type_expr), context) &&
-        name_resolve(ATTR(&array_gen0, ast_node, size_expr), context))
+    if(success = name_resolve_type(ATTR(&array_gen0, ast_node, type_expr)) &&
+        name_resolve(ATTR(&array_gen0, ast_node, size_expr)))
     {
       ATTR(array_gen1, ast_node, type_expr) = ATTR(&array_gen0, ast_node, type_expr);
       ATTR(array_gen1, ast_node, size_expr) = ATTR(&array_gen0, ast_node, size_expr);
@@ -291,7 +293,7 @@ bool name_resolve_type(AstNode* node, NameResolveContext* context)
   return success;
 }
 
-bool name_resolve_block(AstNode* node, NameResolveContext* context)
+bool name_resolve_block(AstNode* node)
 {
   assert(node->kind == AstNode_block);
   bool success = true;
@@ -303,7 +305,7 @@ bool name_resolve_block(AstNode* node, NameResolveContext* context)
       list_item && success;
       list_item = list_item->next)
   {
-    success = name_resolve(ITEM(list_item, ast_node), context);
+    success = name_resolve(ITEM(list_item, ast_node));
   }
 
   if(success)
@@ -313,7 +315,7 @@ bool name_resolve_block(AstNode* node, NameResolveContext* context)
   return success;
 }
 
-bool name_resolve(AstNode* node, NameResolveContext* context)
+bool name_resolve(AstNode* node)
 {
   assert(node->gen == Ast_gen0);
   bool success = true;
@@ -328,7 +330,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
 
     begin_scope(ScopeKind_module, module);
     ATTR(module, ast_node, body) = body;
-    success = name_resolve_block(body, context);
+    success = name_resolve_block(body);
     end_scope();
   }
   else if(node->kind == AstNode_var_decl)
@@ -337,8 +339,6 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
     AstNode* var_decl_gen1 = make_ast_node(Ast_gen1, node, AstNode_var_decl);
     char* name = ATTR(ATTR(&var_decl_gen0, ast_node, id), str, name);
     ATTR(var_decl_gen1, str, name) = name;
-
-    append_list_elem(context->var_decls, var_decl_gen1, List_ast_node);
 
     Symbol* decl_sym = lookup_symbol(name, Symbol_var_decl, SymbolLookup_active);
     if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
@@ -353,12 +353,12 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
       decl_sym->ast_node = var_decl_gen1;
 
       ATTR(var_decl_gen1, ast_node, type) = ATTR(&var_decl_gen0, ast_node, type);
-      success = name_resolve(ATTR(&var_decl_gen0, ast_node, type), context);
+      success = name_resolve(ATTR(&var_decl_gen0, ast_node, type));
 
       AstNode* init_expr = ATTR(var_decl_gen1, ast_node, init_expr) = ATTR(&var_decl_gen0, ast_node, init_expr);
       if(success && init_expr)
       {
-        success = name_resolve(init_expr, context);
+        success = name_resolve(init_expr);
       }
     }
   }
@@ -369,8 +369,6 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
     char* name = ATTR(&id_gen0, str, name);
     ATTR(var_occur_gen1, str, name) = name;
 
-    append_list_elem(context->var_occurs, var_occur_gen1, List_ast_node);
-
     Symbol* occur_sym = add_symbol(name, var_occur_gen1->src_loc, Symbol_var_occur);
     occur_sym->ast_node = var_occur_gen1;
 
@@ -379,6 +377,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
     {
       SYM(occur_sym, var_occur)->decl_sym = decl_sym;
       ATTR(var_occur_gen1, symbol, occur_sym) = occur_sym;
+      ATTR(var_occur_gen1, ast_node, var_decl) = decl_sym->ast_node;
     }
     else
       success = compile_error(var_occur_gen1->src_loc, "unknown var `%s`", name);
@@ -389,8 +388,6 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
     AstNode* proc_decl_gen1 = make_ast_node(Ast_gen1, node, AstNode_proc_decl);
     char* name = ATTR(ATTR(&proc_decl_gen0, ast_node, id), str, name);
     ATTR(proc_decl_gen1, str, name) = name;
-
-    append_list_elem(context->proc_decls, proc_decl_gen1, List_ast_node);
 
     Symbol* decl_sym = lookup_symbol(name, Symbol_proc_decl, SymbolLookup_module);
     if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
@@ -414,13 +411,13 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
           list_item && success;
           list_item = list_item->next)
       {
-        success = name_resolve(ITEM(list_item, ast_node), context);
+        success = name_resolve(ITEM(list_item, ast_node));
       }
 
       if(success)
       {
-        success = name_resolve(ATTR(&proc_decl_gen0, ast_node, ret_type), context) &&
-          name_resolve(ATTR(&proc_decl_gen0, ast_node, body), context);
+        success = name_resolve(ATTR(&proc_decl_gen0, ast_node, ret_type)) &&
+          name_resolve(ATTR(&proc_decl_gen0, ast_node, body));
       }
       end_scope();
     }
@@ -432,8 +429,6 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
     char* name = ATTR(ATTR(&proc_occur_gen0, ast_node, id), str, name);
     ATTR(proc_occur_gen1, str, name) = name;
 
-    append_list_elem(context->proc_occurs, proc_occur_gen1, List_ast_node);
-
     Symbol* occur_sym = add_symbol(name, proc_occur_gen1->src_loc, Symbol_proc_occur);
     occur_sym->ast_node = proc_occur_gen1;
     ATTR(proc_occur_gen1, symbol, occur_sym) = occur_sym;
@@ -442,18 +437,22 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
     if(decl_sym)
     {
       SYM(occur_sym, proc_occur)->decl_sym = decl_sym;
+      ATTR(proc_occur_gen1, symbol, occur_sym) = occur_sym;
+      ATTR(proc_occur_gen1, ast_node, proc_decl) = occur_sym->ast_node;
     }
+#if 0
     else
     {
       append_list_elem(context->unresolved_proc_occurs, proc_occur_gen1, List_ast_node);
     }
+#endif
 
     ATTR(proc_occur_gen1, list, actual_args) = ATTR(&proc_occur_gen0, list, actual_args);
     for(ListItem* list_item = ATTR(&proc_occur_gen0, list, actual_args)->first;
         list_item && success;
         list_item = list_item->next)
     {
-      success = name_resolve(ITEM(list_item, ast_node), context);
+      success = name_resolve(ITEM(list_item, ast_node));
     }
   }
   else if(node->kind == AstNode_bin_expr)
@@ -464,7 +463,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
 
     AstNode* left_operand = ATTR(&bin_expr_gen0, ast_node, left_operand);
     AstNode* right_operand = ATTR(&bin_expr_gen0 , ast_node, right_operand);
-    if(success = name_resolve(left_operand, context) && name_resolve(right_operand, context))
+    if(success = name_resolve(left_operand) && name_resolve(right_operand))
     {
       ATTR(bin_expr_gen1, ast_node, left_operand) = left_operand;
       ATTR(bin_expr_gen1, ast_node, right_operand) = right_operand;
@@ -477,7 +476,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
     ATTR(un_expr_gen1, op_kind, op_kind) = ATTR(&un_expr_gen0, op_kind, op_kind);
 
     AstNode* operand = ATTR(&un_expr_gen0, ast_node, operand);
-    if(success = name_resolve(operand, context))
+    if(success = name_resolve(operand))
     {
       ATTR(un_expr_gen1, ast_node, operand) = operand;
     }
@@ -526,7 +525,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
   else if(node->kind == AstNode_block)
   {
     begin_scope(ScopeKind_block, 0);
-    success = name_resolve_block(node, context);
+    success = name_resolve_block(node);
     end_scope();
   }
   else if(node->kind == AstNode_stmt)
@@ -534,7 +533,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
     AstNode stmt_gen0 = *node;
     AstNode* stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_stmt);
 
-    if(success = name_resolve(ATTR(&stmt_gen0, ast_node, stmt), context))
+    if(success = name_resolve(ATTR(&stmt_gen0, ast_node, stmt)))
     {
       ATTR(stmt_gen1, ast_node, stmt) = ATTR(&stmt_gen0, ast_node, stmt);
     }
@@ -545,7 +544,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
     AstNode* if_stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_if_stmt);
 
     AstNode* cond_expr = ATTR(&if_stmt_gen0, ast_node, cond_expr);
-    if(success = name_resolve(cond_expr, context))
+    if(success = name_resolve(cond_expr))
     {
       ATTR(if_stmt_gen1, ast_node, cond_expr) = cond_expr;
 
@@ -559,7 +558,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
       }
 
       begin_scope(ScopeKind_block, if_stmt_gen1);
-      success = name_resolve(body, context);
+      success = name_resolve(body);
       end_scope();
 
       if(success)
@@ -578,7 +577,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
           }
 
           begin_scope(ScopeKind_block, if_stmt_gen1);
-          success = name_resolve_block(else_body, context);
+          success = name_resolve_block(else_body);
           end_scope();
 
           if(success)
@@ -595,7 +594,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
     AstNode* while_stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_while_stmt);
 
     AstNode* cond_expr = ATTR(&while_stmt_gen0, ast_node, cond_expr);
-    if(success = name_resolve(cond_expr, context))
+    if(success = name_resolve(cond_expr))
     {
       ATTR(while_stmt_gen1, ast_node, cond_expr) = cond_expr;
 
@@ -609,7 +608,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
       }
 
       begin_scope(ScopeKind_loop, while_stmt_gen1);
-      success = name_resolve_block(body, context);
+      success = name_resolve_block(body);
       end_scope();
 
       if(success)
@@ -623,12 +622,10 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
   {
     make_ast_node(Ast_gen1, node, node->kind);
 
-#if 0
     Scope* loop_scope = find_scope(ScopeKind_loop);
     if(loop_scope)
     {
-      ATTR(stmt_gen1, ast_node, loop) = loop_scope->ast_node;
-      ATTR(stmt_gen1, int_val, nesting_depth) = symbol_table->nesting_depth - loop_scope->nesting_depth;
+      ATTR(node, ast_node, loop) = loop_scope->ast_node;
     }
     else
     {
@@ -639,42 +636,35 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
         keyword = "continue";
       else
         assert(0);
-      success = compile_error(stmt_gen1->src_loc, "unexpected `%s` at this location", keyword);
+      success = compile_error(node->src_loc, "unexpected `%s` at this location", keyword);
     }
-#endif
   }
   else if(node->kind == AstNode_return_stmt)
   {
     AstNode ret_stmt_gen0 = *node;
     AstNode* ret_stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_return_stmt);
 
-    AstNode* ret_expr = ATTR(&ret_stmt_gen0, ast_node, ret_expr);
-    if(ret_expr && (success = name_resolve(ret_expr, context)))
-    {
-      ATTR(ret_stmt_gen1, ast_node, ret_expr) = ret_expr;
-    }
-#if 0
     Scope* proc_scope = find_scope(ScopeKind_proc);
     if(proc_scope)
     {
       ATTR(ret_stmt_gen1, ast_node, proc) = proc_scope->ast_node;
-      ATTR(ret_stmt_gen1, int_val, nesting_depth) = symbol_table->nesting_depth - proc_scope->nesting_depth;
+
       AstNode* ret_expr = ATTR(&ret_stmt_gen0, ast_node, ret_expr);
-      if(ret_expr && (success = name_resolve(ret_expr, context)))
+      ATTR(ret_stmt_gen1, ast_node, ret_expr) = ret_expr;
+      if(ret_expr)
       {
-        ATTR(ret_stmt_gen1, ast_node, ret_expr) = ret_expr;
+        success = name_resolve(ret_expr);
       }
     }
     else
       success = compile_error(ret_stmt_gen1->src_loc, "unexpected `return` at this location");
-#endif
   }
   else if(node->kind == AstNode_type)
   {
     AstNode type_gen0 = *node;
     AstNode* type_gen1 = make_ast_node(Ast_gen1, node, AstNode_type);
 
-    if(success = name_resolve_type(ATTR(&type_gen0, ast_node, type_expr), context))
+    if(success = name_resolve_type(ATTR(&type_gen0, ast_node, type_expr)))
     {
       ATTR(type_gen1, ast_node, type_expr) = ATTR(&type_gen0, ast_node, type_expr);
     }
@@ -685,6 +675,7 @@ bool name_resolve(AstNode* node, NameResolveContext* context)
   return success;
 }
 
+#if 0
 bool resolve_proc_occurs(List* occurs)
 {
   bool success = true;
@@ -706,80 +697,44 @@ bool resolve_proc_occurs(List* occurs)
   }
   return success;
 }
+#endif
 
-void build_decl_and_occur_types(List* var_decls, List* proc_decls,
-    List* var_occurs, List* proc_occurs)
+void build_type_of_node(AstNode* node);
+
+Type* make_proc_arguments_type(List* args)
 {
-  for(ListItem* list_item = var_decls->first;
+  for(ListItem* list_item = args->first;
       list_item;
       list_item = list_item->next)
   {
-    AstNode* decl_node = ITEM(list_item, ast_node);
-    assert(decl_node->kind == AstNode_var_decl);
-
-    AstNode* type_node = ATTR(decl_node, ast_node, type);
-    ATTR(decl_node, type, type) = make_type_of_type_expr(ATTR(type_node, ast_node, type_expr));
+    build_type_of_node(ITEM(list_item, ast_node));
   }
 
-  for(ListItem* list_item = proc_decls->first;
-      list_item;
-      list_item = list_item->next)
+  Type* type = basic_type_void;
+  ListItem* list_item = args->first;
+  if(list_item)
   {
-    AstNode* decl_node = ITEM(list_item, ast_node);
-    assert(decl_node->kind == AstNode_proc_decl);
+    AstNode* arg = ITEM(list_item, ast_node);
+    type = ATTR(arg, type, type);
 
-    AstNode* ret_type_node = ATTR(decl_node, ast_node, ret_type);
-    Type* ret_type = make_type_of_type_expr(ATTR(ret_type_node, ast_node, type_expr));
-
-    Type* args_type = basic_type_void;
-    ListItem* arg_list_item = ATTR(decl_node, list, formal_args)->first;
-    if(arg_list_item)
+    for(list_item = list_item->next;
+        list_item;
+        list_item = list_item->next)
     {
-      AstNode* arg = ITEM(arg_list_item, ast_node);
-      AstNode* type_node = ATTR(arg, ast_node, type);
-      args_type = make_type_of_type_expr(ATTR(type_node, ast_node, type_expr));
-
-      for(arg_list_item = arg_list_item->next;
-          arg_list_item;
-          arg_list_item = arg_list_item->next)
-      {
-        AstNode* arg = ITEM(arg_list_item, ast_node);
-        AstNode* type_node = ATTR(arg, ast_node, type);
-        args_type = new_product_type(args_type, make_type_of_type_expr(ATTR(type_node, ast_node, type_expr)));
-      }
+      AstNode* arg = ITEM(list_item, ast_node);
+      type = new_product_type(type, ATTR(arg, type, type));
     }
-
-    ATTR(decl_node, type, type) = new_proc_type(args_type, ret_type);
   }
-
-  for(ListItem* list_item = var_occurs->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    AstNode* occur_node = ITEM(list_item, ast_node);
-    Symbol* occur_sym = ATTR(occur_node, symbol, occur_sym);
-    AstNode* decl_node = SYM(occur_sym, var_occur)->decl_sym->ast_node;
-    ATTR(occur_node, type, type) = ATTR(decl_node, type, type);
-  }
-
-  for(ListItem* list_item = proc_occurs->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    AstNode* occur_node = ITEM(list_item, ast_node);
-    Symbol* occur_sym = ATTR(occur_node, symbol, occur_sym);
-    AstNode* decl_node = SYM(occur_sym, proc_occur)->decl_sym->ast_node;
-    ATTR(occur_node, type, type) = ATTR(decl_node, type, type);
-  }
+  return type;
 }
 
-void make_type_of_node(AstNode* node)
+void build_type_of_node(AstNode* node)
 {
   assert(node->gen == Ast_gen1);
 
   if(node->kind == AstNode_module)
   {
-    make_type_of_node(ATTR(node, ast_node, body));
+    build_type_of_node(ATTR(node, ast_node, body));
   }
   else if(node->kind == AstNode_block)
   {
@@ -787,26 +742,51 @@ void make_type_of_node(AstNode* node)
         list_item;
         list_item = list_item->next)
     {
-      make_type_of_node(ITEM(list_item, ast_node));
+      build_type_of_node(ITEM(list_item, ast_node));
     }
   }
   else if(node->kind == AstNode_stmt)
   {
-    make_type_of_node(ATTR(node, ast_node, stmt));
+    build_type_of_node(ATTR(node, ast_node, stmt));
+  }
+  else if(node->kind == AstNode_var_decl)
+  {
+    AstNode* type_node = ATTR(node, ast_node, type);
+    build_type_of_node(type_node);
+    ATTR(node, type, type) = ATTR(type_node, type, type);
+  }
+  else if(node->kind == AstNode_var_occur)
+  {
+    AstNode* var_decl = ATTR(node, ast_node, var_decl);
+    ATTR(node, type, type) = ATTR(var_decl, type, type);
+  }
+  else if(node->kind == AstNode_proc_decl)
+  {
+    AstNode* ret_type_node = ATTR(node, ast_node, ret_type);
+    build_type_of_node(ret_type_node);
+    Type* ret_type = ATTR(ret_type_node, type, type);
+    Type* args_type = make_proc_arguments_type(ATTR(node, list, formal_args));
+    ATTR(node, type, type) = new_proc_type(args_type, ret_type);
+    build_type_of_node(ATTR(node, ast_node, body));
+  }
+  else if(node->kind == AstNode_proc_occur)
+  {
+    Type* args_type = make_proc_arguments_type(ATTR(node, list, actual_args));
+    ATTR(node, type, type) = new_proc_type(args_type, new_typevar());
   }
   else if(node->kind == AstNode_bin_expr)
   {
     AstNode* left_operand = ATTR(node, ast_node, left_operand);
-    make_type_of_node(left_operand);
+    build_type_of_node(left_operand);
     AstNode* right_operand = ATTR(node, ast_node, right_operand);
-    make_type_of_node(right_operand);
+    build_type_of_node(right_operand);
     ATTR(node, type, type) = new_proc_type(new_product_type(ATTR(left_operand, type, type),
           ATTR(right_operand, type, type)), new_typevar());
   }
   else if(node->kind == AstNode_un_expr)
   {
     AstNode* operand = ATTR(node, ast_node, operand);
-    make_type_of_node(operand);
+    build_type_of_node(operand);
     ATTR(node, type, type) = new_proc_type(ATTR(operand, type, type), new_typevar());
   }
   else if(node->kind == AstNode_lit)
@@ -826,39 +806,48 @@ void make_type_of_node(AstNode* node)
     else
       assert(0);
   }
-  else if(node->kind == AstNode_proc_decl)
-  {
-    make_type_of_node(ATTR(node, ast_node, body));
-  }
   else if(node->kind == AstNode_type)
   {
     ATTR(node, type, type) = make_type_of_type_expr(ATTR(node, ast_node, type_expr));
   }
   else if(node->kind == AstNode_while_stmt)
   {
-    make_type_of_node(ATTR(node, ast_node, cond_expr));
-    make_type_of_node(ATTR(node, ast_node, body));
+    build_type_of_node(ATTR(node, ast_node, cond_expr));
+    build_type_of_node(ATTR(node, ast_node, body));
   }
   else if(node->kind == AstNode_if_stmt)
   {
-    make_type_of_node(ATTR(node, ast_node, cond_expr));
-    make_type_of_node(ATTR(node, ast_node, body));
+    build_type_of_node(ATTR(node, ast_node, cond_expr));
+    build_type_of_node(ATTR(node, ast_node, body));
     AstNode* else_body = ATTR(node, ast_node, else_body);
     if(else_body)
     {
-      make_type_of_node(ATTR(node, ast_node, else_body));
+      build_type_of_node(ATTR(node, ast_node, else_body));
     }
   }
-  // else fall through
+  else if(node->kind == AstNode_return_stmt)
+  {
+    AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
+    if(ret_expr)
+    {
+      build_type_of_node(ret_expr);
+    }
+  }
+  else if(node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt)
+  {
+    ; // skip
+  }
+  else
+    assert(0);
 }
 
-bool typecheck(AstNode* node, Scope* global_scope)
+bool typecheck(AstNode* node)
 {
   bool success = true;
 
   if(node->kind == AstNode_module)
   {
-    success = typecheck(ATTR(node, ast_node, body), global_scope);
+    success = typecheck(ATTR(node, ast_node, body));
   }
   else if(node->kind == AstNode_block)
   {
@@ -866,31 +855,26 @@ bool typecheck(AstNode* node, Scope* global_scope)
         list_item && success;
         list_item = list_item->next)
     {
-      success = typecheck(ITEM(list_item, ast_node), global_scope);
+      success = typecheck(ITEM(list_item, ast_node));
     }
   }
   else if(node->kind == AstNode_stmt)
   {
-    success = typecheck(ATTR(node, ast_node, stmt), global_scope);
+    success = typecheck(ATTR(node, ast_node, stmt));
   }
   else if(node->kind == AstNode_bin_expr)
   {
     OperatorKind op_kind = ATTR(node, op_kind, op_kind);
     if(op_kind == OperatorKind_add)
     {
-//      List* symbol_set = collect_symbols_in_scope("add", Symbol_proc_decl, global_scope);
-//      int x = 0;
     }
     else if(op_kind == OperatorKind_assign)
     {
-//      List* symbol_set = collect_symbols_in_scope("store", Symbol_proc_decl, global_scope);
-//      List* unified_types = new_list(arena, List_type);
-//      int x = 0;
     }
   }
   else if(node->kind == AstNode_proc_decl)
   {
-    success = typecheck(ATTR(node, ast_node, body), global_scope);
+    success = typecheck(ATTR(node, ast_node, body));
   }
   return success;
 }
@@ -902,19 +886,19 @@ bool semantic(AstNode* module)
   init_types();
 
   begin_scope(ScopeKind_global, 0);
-  Scope* global_scope = symbol_table->active_scope;
   add_builtin_types();
-  add_builtin_procs();
+  //add_builtin_procs();
 
+#if 0
   NameResolveContext resolve_context = {0};
   resolve_context.var_decls = new_list(arena, List_ast_node);
   resolve_context.proc_decls = new_list(arena, List_ast_node);
   resolve_context.var_occurs = new_list(arena, List_ast_node);
   resolve_context.proc_occurs = new_list(arena, List_ast_node);
   resolve_context.unresolved_proc_occurs = new_list(arena, List_ast_node);
+#endif
 
-  if(success = name_resolve(module, &resolve_context) &&
-      resolve_proc_occurs(resolve_context.unresolved_proc_occurs))
+  if(success = name_resolve(module))
   {
     if(DEBUG_enabled)/*>>>*/
     {
@@ -924,18 +908,19 @@ bool semantic(AstNode* module)
 
       begin_temp_memory(&arena);
       String* str = str_new(arena);
-      DEBUG_print_scope(str, 0, "global_scope", find_scope(ScopeKind_global));
+      DEBUG_print_scope(str, 0, "global_scope", symbol_table->active_scope);
       DEBUG_print_ast_node(str, 0, "module", module);
       str_dump_to_file(str, "debug_name_resolve.txt");
       end_temp_memory(&arena);
     }/*<<<*/
-    end_scope();
 
-    build_decl_and_occur_types(resolve_context.var_decls, resolve_context.proc_decls,
-        resolve_context.var_occurs, resolve_context.proc_occurs);
-    make_type_of_node(module);
-    success = typecheck(module, global_scope);
+//    build_decl_and_occur_types(resolve_context.var_decls, resolve_context.proc_decls,
+//        resolve_context.var_occurs, resolve_context.proc_occurs);
+    build_type_of_node(module);
+    success = typecheck(module);
   }
+
+  end_scope();
 
   return success;
 }

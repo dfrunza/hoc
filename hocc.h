@@ -355,6 +355,7 @@ typedef enum AstAttributeName
   AstAttributeName_decl_scope,
   AstAttributeName_occur_scope,
   AstAttributeName_decl_scope_depth,
+  AstAttributeName_var_decl,
   AstAttributeName_proc_decl,
   AstAttributeName_type_decl,
   AstAttributeName_operand,

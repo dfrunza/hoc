@@ -171,7 +171,7 @@ void add_builtin_types()
   add_builtin_type("type", basic_type_type);
 }
 
-#if 0
+#if 1
 void add_builtin_proc(char* name, Type* type)
 {
   AstNode* proc_node = new_ast_node(Ast_gen1, AstNode_proc_decl, 0);
@@ -183,6 +183,7 @@ void add_builtin_proc(char* name, Type* type)
 
 void add_builtin_procs()
 {
+#if 0
   add_builtin_proc("add", new_proc_type(new_product_type(basic_type_int, basic_type_int), basic_type_int));
   add_builtin_proc("add", new_proc_type(new_product_type(basic_type_float, basic_type_float), basic_type_float));
 
@@ -190,6 +191,7 @@ void add_builtin_procs()
     Type* operand_type = new_typevar();
     add_builtin_proc("store", new_proc_type(new_product_type(new_pointer_type(operand_type), operand_type), operand_type));
   }
+#endif
 
   add_builtin_proc("putc", new_proc_type(basic_type_char, basic_type_void));
 }
@@ -230,15 +232,6 @@ void process_includes(List* include_list, List* module_list, ListItem* module_li
 
   mem_zero_struct(include_list, List);
 }
-
-struct NameResolveContext
-{
-  List* var_decls;
-  List* proc_decls;
-  List* var_occurs;
-  List* proc_occurs;
-  List* unresolved_proc_occurs;
-};
 
 bool name_resolve(AstNode* node);
 
@@ -753,12 +746,12 @@ void build_type_of_node(AstNode* node)
   {
     AstNode* type_node = ATTR(node, ast_node, type);
     build_type_of_node(type_node);
-    ATTR(node, type, type) = ATTR(type_node, type, type);
+    ATTR(node, type, eval_type) = ATTR(node, type, type) = ATTR(type_node, type, type);
   }
   else if(node->kind == AstNode_var_occur)
   {
     AstNode* var_decl = ATTR(node, ast_node, var_decl);
-    ATTR(node, type, type) = ATTR(var_decl, type, type);
+    ATTR(node, type, eval_type) = ATTR(node, type, type) = ATTR(var_decl, type, type);
   }
   else if(node->kind == AstNode_proc_decl)
   {
@@ -767,12 +760,16 @@ void build_type_of_node(AstNode* node)
     Type* ret_type = ATTR(ret_type_node, type, type);
     Type* args_type = make_proc_arguments_type(ATTR(node, list, formal_args));
     ATTR(node, type, type) = new_proc_type(args_type, ret_type);
+    ATTR(node, type, eval_type) = ret_type;
+
     build_type_of_node(ATTR(node, ast_node, body));
   }
   else if(node->kind == AstNode_proc_occur)
   {
     Type* args_type = make_proc_arguments_type(ATTR(node, list, actual_args));
-    ATTR(node, type, type) = new_proc_type(args_type, new_typevar());
+    Type* ret_type = new_typevar();
+    ATTR(node, type, type) = new_proc_type(args_type, ret_type);
+    ATTR(node, type, eval_type) = ret_type;
   }
   else if(node->kind == AstNode_bin_expr)
   {
@@ -780,35 +777,44 @@ void build_type_of_node(AstNode* node)
     build_type_of_node(left_operand);
     AstNode* right_operand = ATTR(node, ast_node, right_operand);
     build_type_of_node(right_operand);
-    ATTR(node, type, type) = new_proc_type(new_product_type(ATTR(left_operand, type, type),
-          ATTR(right_operand, type, type)), new_typevar());
+
+    Type* ret_type = new_typevar();
+    ATTR(node, type, type) = new_proc_type(new_product_type(ATTR(left_operand, type, eval_type),
+          ATTR(right_operand, type, eval_type)), ret_type);
+    ATTR(node, type, eval_type) = ret_type;
   }
   else if(node->kind == AstNode_un_expr)
   {
     AstNode* operand = ATTR(node, ast_node, operand);
     build_type_of_node(operand);
-    ATTR(node, type, type) = new_proc_type(ATTR(operand, type, type), new_typevar());
+
+    Type* ret_type = new_typevar();
+    ATTR(node, type, type) = new_proc_type(ATTR(operand, type, type), ret_type);
+    ATTR(node, type, eval_type) = ret_type;
   }
   else if(node->kind == AstNode_lit)
   {
     LiteralKind lit_kind = ATTR(node, lit_kind, lit_kind);
 
+    Type* type = 0;
     if(lit_kind == Literal_int_val)
-      ATTR(node, type, type) = basic_type_int;
+      type = basic_type_int;
     else if(lit_kind == Literal_float_val)
-      ATTR(node, type, type) = basic_type_float;
+      type = basic_type_float;
     else if(lit_kind == Literal_char_val)
-      ATTR(node, type, type) = basic_type_char;
+      type = basic_type_char;
     else if(lit_kind == Literal_bool_val)
-      ATTR(node, type, type) = basic_type_bool;
+      type = basic_type_bool;
     else if(lit_kind == Literal_str)
-      ATTR(node, type, type) = new_pointer_type(basic_type_char);
+      type = new_pointer_type(basic_type_char);
     else
       assert(0);
+
+    ATTR(node, type, eval_type) = ATTR(node, type, type) = type;
   }
   else if(node->kind == AstNode_type)
   {
-    ATTR(node, type, type) = make_type_of_type_expr(ATTR(node, ast_node, type_expr));
+    ATTR(node, type, eval_type) = ATTR(node, type, type) = make_type_of_type_expr(ATTR(node, ast_node, type_expr));
   }
   else if(node->kind == AstNode_while_stmt)
   {
@@ -843,6 +849,7 @@ void build_type_of_node(AstNode* node)
 
 bool typecheck(AstNode* node)
 {
+  assert(node->gen == Ast_gen1);
   bool success = true;
 
   if(node->kind == AstNode_module)
@@ -862,19 +869,71 @@ bool typecheck(AstNode* node)
   {
     success = typecheck(ATTR(node, ast_node, stmt));
   }
+  else if(node->kind == AstNode_var_decl)
+  {
+    //?? check the init expr
+  }
+  else if(node->kind == AstNode_var_occur)
+  {
+    //??? nothing to do
+  }
   else if(node->kind == AstNode_bin_expr)
   {
-    OperatorKind op_kind = ATTR(node, op_kind, op_kind);
-    if(op_kind == OperatorKind_add)
-    {
-    }
-    else if(op_kind == OperatorKind_assign)
-    {
-    }
+#if 0
+    Type* expr_ty = ATTR(node, type, type);
+    Type* ty_var = new_typevar();
+    Type* check_ty = new_proc_type(new_product_type(ty_var, ty_var), ty_var);
+    success = type_unif(expr_ty, check_ty);
+    if(!success)
+      compile_error(node->src_loc, "typecheck failed");
+#endif
+#if 1
+    Type* expr_ty = ATTR(node, type, type); assert(expr_ty->kind == Type_proc);
+    Type* left_operand_ty = ATTR(ATTR(node, ast_node, left_operand), type, eval_type);
+    Type* right_operand_ty = ATTR(ATTR(node, ast_node, right_operand), type, eval_type);
+    success = type_unif(left_operand_ty, right_operand_ty) &&
+      type_unif(left_operand_ty, expr_ty->proc.ret);
+    if(!success)
+      compile_error(node->src_loc, "typecheck failed");
+#endif
+#if 0
+    Type* expr_ty = ATTR(node, type, type); assert(expr_ty->kind == Type_proc);
+    Type* operands_ty = expr_ty->proc.args; assert(operands_ty->kind == Type_product);
+    success = type_unif(operands_ty->product.left, operands_ty->product.right) &&
+        type_unif(operands_ty->product.left, expr_ty->proc.ret);
+    if(!success)
+      compile_error(node->src_loc, "typecheck failed");
+    // todo: handle the special case of array index exprs.
+#endif
   }
   else if(node->kind == AstNode_proc_decl)
   {
     success = typecheck(ATTR(node, ast_node, body));
+  }
+  else if(node->kind == AstNode_proc_occur)
+  {
+    AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
+    if(!proc_decl)
+    {
+      Symbol* occur_sym = ATTR(node, symbol, occur_sym);
+      Symbol* decl_sym = lookup_symbol_in_scope(occur_sym->name, Symbol_proc_decl, occur_sym->scope);
+      if(decl_sym)
+      {
+        SYM(occur_sym, proc_occur)->decl_sym = decl_sym;
+        ATTR(node, ast_node, proc_decl) = decl_sym->ast_node;
+      }
+      else
+        success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
+    }
+
+#if 0
+    Type* decl_ty = ATTR(proc_decl, type, type); assert(decl_ty->kind == Type_proc);
+    Type* occur_ty = ATTR(node, type, type); assert(occur_ty->kind == Type_proc);
+    if(success = type_unif(decl_ty, occur_ty))
+    {
+      ATTR(node, type, eval_ty) = occur_ty->proc.ret;
+    }
+#endif
   }
   return success;
 }
@@ -887,16 +946,7 @@ bool semantic(AstNode* module)
 
   begin_scope(ScopeKind_global, 0);
   add_builtin_types();
-  //add_builtin_procs();
-
-#if 0
-  NameResolveContext resolve_context = {0};
-  resolve_context.var_decls = new_list(arena, List_ast_node);
-  resolve_context.proc_decls = new_list(arena, List_ast_node);
-  resolve_context.var_occurs = new_list(arena, List_ast_node);
-  resolve_context.proc_occurs = new_list(arena, List_ast_node);
-  resolve_context.unresolved_proc_occurs = new_list(arena, List_ast_node);
-#endif
+  add_builtin_procs();
 
   if(success = name_resolve(module))
   {
@@ -914,10 +964,10 @@ bool semantic(AstNode* module)
       end_temp_memory(&arena);
     }/*<<<*/
 
-//    build_decl_and_occur_types(resolve_context.var_decls, resolve_context.proc_decls,
-//        resolve_context.var_occurs, resolve_context.proc_occurs);
     build_type_of_node(module);
     success = typecheck(module);
+    if(!success)
+      compile_error(module->src_loc, "typecheck failed");
   }
 
   end_scope();

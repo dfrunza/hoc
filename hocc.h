@@ -345,6 +345,7 @@ typedef enum AstAttributeName
   AstAttributeName_decl_sym,
   AstAttributeName_occur_sym,
   AstAttributeName_type,
+  AstAttributeName_eval_type,
   AstAttributeName_type_expr,
   AstAttributeName_proc,
   AstAttributeName_nesting_depth,

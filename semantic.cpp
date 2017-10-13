@@ -711,14 +711,14 @@ Type* make_proc_arguments_type(List* args)
   if(list_item)
   {
     AstNode* arg = ITEM(list_item, ast_node);
-    type = ATTR(arg, type, type);
+    type = ATTR(arg, type, eval_type);
 
     for(list_item = list_item->next;
         list_item;
         list_item = list_item->next)
     {
       AstNode* arg = ITEM(list_item, ast_node);
-      type = new_product_type(type, ATTR(arg, type, type));
+      type = new_product_type(type, ATTR(arg, type, eval_type));
     }
   }
   return type;
@@ -776,7 +776,16 @@ void build_type_of_node(AstNode* node)
   else if(node->kind == AstNode_proc_occur)
   {
     Type* args_type = make_proc_arguments_type(ATTR(node, list, actual_args));
-    Type* ret_type = new_typevar();
+    Type* ret_type = 0;
+    AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
+    if(proc_decl)
+    {
+      ret_type = ATTR(proc_decl, type, eval_type);
+    }
+    else
+    {
+      ret_type = new_typevar();
+    }
     ATTR(node, type, type) = new_proc_type(args_type, ret_type);
     ATTR(node, type, eval_type) = ret_type;
   }

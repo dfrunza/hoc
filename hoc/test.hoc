@@ -14,10 +14,15 @@ var int b = a;
 var char* c = "abc";
 */
 
-proc int foo(int bubbles, bool troubles)
+proc int foo(int bubbles)
 {
   var int nonsense = main();
   return nonsense;
+}
+
+proc int bar()
+{
+  return 1234;
 }
 /*
 */
@@ -25,8 +30,7 @@ proc int foo(int bubbles, bool troubles)
 proc int main()
 {
   /*a = (type int)1.12;*/
-  var char* str;
-  putc(*str);
+  a = foo(bar());
 
   /*
   foo(a, b);

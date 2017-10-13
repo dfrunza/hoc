@@ -24,10 +24,9 @@ proc int foo(int bubbles, bool troubles)
 
 proc int main()
 {
-  /*a = (type int*)(b);*/
-  a = a + b;
-  a = foo(0, true);
-  /*p_a = a;*/
+  /*a = (type int)1.12;*/
+  var char* str;
+  putc(*str);
 
   /*
   foo(a, b);

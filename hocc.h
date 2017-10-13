@@ -194,35 +194,35 @@ AccessLink;
 
 #ifndef OperatorKind_MEMBER_LIST
 #define OperatorKind_MEMBER_LIST()\
-  ENUM_MEMBER(OperatorKind_None),\
-  ENUM_MEMBER(OperatorKind_add),\
-  ENUM_MEMBER(OperatorKind_sub),\
-  ENUM_MEMBER(OperatorKind_mul),\
-  ENUM_MEMBER(OperatorKind_div),\
-  ENUM_MEMBER(OperatorKind_mod),\
-  ENUM_MEMBER(OperatorKind_neg),\
-  ENUM_MEMBER(OperatorKind_assign),\
-  ENUM_MEMBER(OperatorKind_ptr_deref),\
-  ENUM_MEMBER(OperatorKind_address_of),\
-  ENUM_MEMBER(OperatorKind_member_select),\
-  ENUM_MEMBER(OperatorKind_ptr_member_select),\
-  ENUM_MEMBER(OperatorKind_pre_decr),\
-  ENUM_MEMBER(OperatorKind_post_decr),\
-  ENUM_MEMBER(OperatorKind_pre_incr),\
-  ENUM_MEMBER(OperatorKind_post_incr),\
-  ENUM_MEMBER(OperatorKind_array_index),\
-  ENUM_MEMBER(OperatorKind_eq),\
-  ENUM_MEMBER(OperatorKind_not_eq),\
-  ENUM_MEMBER(OperatorKind_less),\
-  ENUM_MEMBER(OperatorKind_less_eq),\
-  ENUM_MEMBER(OperatorKind_greater),\
-  ENUM_MEMBER(OperatorKind_greater_eq),\
-  ENUM_MEMBER(OperatorKind_logic_and),\
-  ENUM_MEMBER(OperatorKind_logic_or),\
-  ENUM_MEMBER(OperatorKind_logic_not),\
-  ENUM_MEMBER(OperatorKind_bit_and),\
-  ENUM_MEMBER(OperatorKind_bit_or),\
-  ENUM_MEMBER(OperatorKind_cast),
+  ENUM_MEMBER(Operator_None),\
+  ENUM_MEMBER(Operator_add),\
+  ENUM_MEMBER(Operator_sub),\
+  ENUM_MEMBER(Operator_mul),\
+  ENUM_MEMBER(Operator_div),\
+  ENUM_MEMBER(Operator_mod),\
+  ENUM_MEMBER(Operator_neg),\
+  ENUM_MEMBER(Operator_assign),\
+  ENUM_MEMBER(Operator_deref),\
+  ENUM_MEMBER(Operator_address_of),\
+  ENUM_MEMBER(Operator_member_select),\
+  ENUM_MEMBER(Operator_ptr_member_select),\
+  ENUM_MEMBER(Operator_pre_decr),\
+  ENUM_MEMBER(Operator_post_decr),\
+  ENUM_MEMBER(Operator_pre_incr),\
+  ENUM_MEMBER(Operator_post_incr),\
+  ENUM_MEMBER(Operator_array_index),\
+  ENUM_MEMBER(Operator_eq),\
+  ENUM_MEMBER(Operator_not_eq),\
+  ENUM_MEMBER(Operator_less),\
+  ENUM_MEMBER(Operator_less_eq),\
+  ENUM_MEMBER(Operator_greater),\
+  ENUM_MEMBER(Operator_greater_eq),\
+  ENUM_MEMBER(Operator_logic_and),\
+  ENUM_MEMBER(Operator_logic_or),\
+  ENUM_MEMBER(Operator_logic_not),\
+  ENUM_MEMBER(Operator_bit_and),\
+  ENUM_MEMBER(Operator_bit_or),\
+  ENUM_MEMBER(Operator_cast),
 #endif
 
 typedef enum OperatorKind
@@ -515,21 +515,22 @@ typedef enum TypeKind
 {
   Type_None,
   Type_typevar,
-  Type_unary,
+  //Type_unary,
   Type_basic,
-  Type_type,
   Type_proc,
   Type_product,
   Type_pointer,
   Type_array,
 };
 
+/*
 typedef enum UnaryTypeCtorKind
 {
   UnaryTypeCtor_None,
   UnaryTypeCtor_pointer,
   UnaryTypeCtor_array,
 };
+*/
 
 typedef enum BasicTypeKind
 {

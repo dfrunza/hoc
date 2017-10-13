@@ -3,7 +3,7 @@ proc int strlen(char* str)
   var int len = 0;
   while(*str != '\0')
   {
-    str = str + 1;
+    str = str + (type char*)1;
     len = len + 1;
   }
   return len;

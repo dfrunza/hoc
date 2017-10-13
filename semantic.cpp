@@ -174,11 +174,14 @@ void add_builtin_types()
 #if 1
 void add_builtin_proc(char* name, Type* type)
 {
-  AstNode* proc_node = new_ast_node(Ast_gen1, AstNode_proc_decl, 0);
-  ATTR(proc_node, type, type) = type;
+  assert(type->kind == Type_proc);
+  AstNode* proc_decl = new_ast_node(Ast_gen1, AstNode_proc_decl, 0);
+  ATTR(proc_decl, str, name) = name;
+  ATTR(proc_decl, type, type) = type;
+  ATTR(proc_decl, type, eval_type) = type->proc.ret;
   Symbol* decl_sym = add_symbol(name, 0, Symbol_proc_decl);
   decl_sym->type = type;
-  decl_sym->ast_node = proc_node;
+  decl_sym->ast_node = proc_decl;
 }
 
 void add_builtin_procs()
@@ -797,9 +800,7 @@ void build_type_of_node(AstNode* node)
     AstNode* operand = ATTR(node, ast_node, operand);
     build_type_of_node(operand);
 
-    Type* ret_type = new_typevar();
-    ATTR(node, type, type) = new_proc_type(ATTR(operand, type, type), ret_type);
-    ATTR(node, type, eval_type) = ret_type;
+    ATTR(node, type, type) = ATTR(node, type, eval_type) = new_typevar();
   }
   else if(node->kind == AstNode_lit)
   {
@@ -889,13 +890,9 @@ bool typecheck(AstNode* node)
         Type* init_expr_ty = ATTR(init_expr, type, eval_type);
         success = type_unif(var_ty, init_expr_ty);
         if(!success)
-          compile_error(node->src_loc, "typecheck error");
+          compile_error(node->src_loc, "typecheck error (var init_expr)");
       }
     }
-  }
-  else if(node->kind == AstNode_var_occur)
-  {
-    //??? nothing to do
   }
   else if(node->kind == AstNode_bin_expr)
   {
@@ -906,9 +903,51 @@ bool typecheck(AstNode* node)
       Type* expr_ty = ATTR(node, type, eval_type);
       Type* right_operand_ty = ATTR(right_operand, type, eval_type);
       Type* left_operand_ty = ATTR(left_operand, type, eval_type);
-      success = type_unif(left_operand_ty, right_operand_ty) && type_unif(left_operand_ty, expr_ty);
-      if(!success)
-        compile_error(node->src_loc, "typecheck error");
+
+      OperatorKind op_kind = ATTR(node, op_kind, op_kind);
+      if(op_kind == Operator_cast)
+      {
+        success = type_unif(left_operand_ty, expr_ty);
+        if(!success)
+          compile_error(node->src_loc, "typecheck error (cast)");
+      }
+      else
+      {
+        success = type_unif(left_operand_ty, right_operand_ty) && type_unif(left_operand_ty, expr_ty);
+        if(!success)
+          compile_error(node->src_loc, "typecheck error (bin_expr)");
+      }
+    }
+  }
+  else if(node->kind == AstNode_un_expr)
+  {
+    AstNode* operand = ATTR(node, ast_node, operand);
+    if(success = typecheck(operand))
+    {
+      Type* expr_ty = ATTR(node, type, eval_type);
+      Type* operand_ty = ATTR(operand, type, eval_type);
+
+      OperatorKind op_kind = ATTR(node, op_kind, op_kind);
+      if(op_kind == Operator_neg || op_kind == Operator_logic_not)
+      {
+        success = type_unif(operand_ty, expr_ty);
+      }
+      else if(op_kind == Operator_deref)
+      {
+        Type* pointee_ty = new_typevar();
+        if(success = type_unif(operand_ty, new_pointer_type(pointee_ty)))
+        {
+          success = type_unif(pointee_ty, expr_ty);
+        }
+        else
+          success = compile_error(operand->src_loc, "pointer type expected");
+      }
+      else if(op_kind == Operator_address_of)
+      {
+        success = type_unif(expr_ty, new_pointer_type(operand_ty));
+      }
+      else
+        assert(0);
     }
   }
   else if(node->kind == AstNode_proc_decl)
@@ -935,7 +974,7 @@ bool typecheck(AstNode* node)
     Type* occur_ty = ATTR(node, type, type);
     success = type_unif(decl_ty, occur_ty);
     if(!success)
-      compile_error(node->src_loc, "typecheck error");
+      compile_error(node->src_loc, "typecheck error (proc occur)");
   }
   else if(node->kind == AstNode_return_stmt)
   {
@@ -949,11 +988,28 @@ bool typecheck(AstNode* node)
         Type* ret_expr_ty = ATTR(ret_expr, type, eval_type);
         success = type_unif(proc_ret_ty, ret_expr_ty);
         if(!success)
-          compile_error(node->src_loc, "typecheck error");
+          compile_error(node->src_loc, "typecheck error (return stmt)");
       }
     }
   }
-  else if(node->kind == AstNode_lit)
+  else if(node->kind == AstNode_while_stmt)
+  {
+    success = typecheck(ATTR(node, ast_node, cond_expr)) &&
+      typecheck(ATTR(node, ast_node, body));
+  }
+  else if(node->kind == AstNode_if_stmt)
+  {
+    success = typecheck(ATTR(node, ast_node, cond_expr)) &&
+      typecheck(ATTR(node, ast_node, body));
+    AstNode*else_body = ATTR(node, ast_node, else_body);
+    if(else_body && success)
+    {
+      success = typecheck(ATTR(node, ast_node, else_body));
+    }
+  }
+  else if(node->kind == AstNode_var_occur || node->kind == AstNode_lit
+      || node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt
+      || node->kind == AstNode_type)
   {
     ; // skip
   }

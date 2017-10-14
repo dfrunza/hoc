@@ -12,6 +12,14 @@ char* make_temp_name(char* label)
   return str_cap(str);
 }
 
+bool is_relational_operator(OperatorKind op_kind)
+{
+  return op_kind == Operator_logic_and || op_kind == Operator_logic_or
+          || op_kind == Operator_less || op_kind == Operator_less_eq
+          || op_kind == Operator_greater || op_kind == Operator_greater_eq
+          || op_kind == Operator_eq || op_kind == Operator_not_eq;
+}
+
 SymbolTable* new_symbol_table(MemoryArena** arena, int size)
 {
   MemoryArena* symbol_arena = push_arena(arena, size);
@@ -276,11 +284,15 @@ bool name_resolve_type(AstNode* node)
     AstNode array_gen0 = *node;
     AstNode* array_gen1 = make_ast_node(Ast_gen1, node, AstNode_array);
 
-    if(success = name_resolve_type(ATTR(&array_gen0, ast_node, type_expr)) &&
-        name_resolve(ATTR(&array_gen0, ast_node, size_expr)))
+    ATTR(array_gen1, ast_node, type_expr) = ATTR(&array_gen0, ast_node, type_expr);
+    AstNode* size_expr = ATTR(array_gen1, ast_node, size_expr) = ATTR(&array_gen0, ast_node, size_expr);
+
+    if(success = name_resolve_type(ATTR(&array_gen0, ast_node, type_expr)))
     {
-      ATTR(array_gen1, ast_node, type_expr) = ATTR(&array_gen0, ast_node, type_expr);
-      ATTR(array_gen1, ast_node, size_expr) = ATTR(&array_gen0, ast_node, size_expr);
+      if(size_expr)
+      {
+        success = name_resolve(size_expr);
+      }
     }
   }
   else
@@ -797,12 +809,6 @@ void build_type_of_node(AstNode* node)
     build_type_of_node(right_operand);
 
     ATTR(node, type, eval_type) = ATTR(node, type, type) = new_typevar();
-#if 0
-    Type* ret_type = new_typevar();
-    ATTR(node, type, type) = new_proc_type(new_product_type(ATTR(left_operand, type, eval_type),
-          ATTR(right_operand, type, eval_type)), ret_type);
-    ATTR(node, type, eval_type) = ret_type;
-#endif
   }
   else if(node->kind == AstNode_un_expr)
   {
@@ -920,6 +926,21 @@ bool typecheck(AstNode* node)
         if(!success)
           compile_error(node->src_loc, "typecheck error (cast)");
       }
+      else if(op_kind == Operator_array_index)
+      {
+        if(success = type_unif(right_operand_ty, basic_type_int))
+        {
+          success = type_unif(left_operand_ty, new_array_type(-1, expr_ty));
+          if(!success)
+            compile_error(node->src_loc, "typecheck error (array index)");
+        }
+        else
+          compile_error(node->src_loc, "int type expected");
+      }
+      else if(is_relational_operator(op_kind))
+      {
+        success = type_unif(expr_ty, basic_type_bool);
+      }
       else
       {
         success = type_unif(left_operand_ty, right_operand_ty) && type_unif(left_operand_ty, expr_ty);
@@ -989,11 +1010,14 @@ bool typecheck(AstNode* node)
           success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
       }
 
-      Type* decl_ty = ATTR(proc_decl, type, type);
-      Type* occur_ty = ATTR(node, type, type);
-      success = type_unif(decl_ty, occur_ty);
-      if(!success)
-        compile_error(node->src_loc, "typecheck error (proc occur)");
+      if(success)
+      {
+        Type* decl_ty = ATTR(proc_decl, type, type);
+        Type* occur_ty = ATTR(node, type, type);
+        success = type_unif(decl_ty, occur_ty);
+        if(!success)
+          compile_error(node->src_loc, "typecheck error (proc occur)");
+      }
     }
   }
   else if(node->kind == AstNode_return_stmt)

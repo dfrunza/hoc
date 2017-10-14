@@ -14,6 +14,7 @@ var int b = a;
 var char* c = "abc";
 */
 
+/*
 proc int* foo(int bubbles)
 {
   var int* nonsense = &main();
@@ -24,16 +25,15 @@ proc int bar()
 {
   return 1234;
 }
-/*
 */
 
 proc int main()
 {
-  /*a = (type int)1.12;*/
-  a = *foo(bar());
+  var []char c;
+  var char* p;
+  p = c;
 
-  /*
-  foo(a, b);
+/*
   if(true)
     return 0;
   else
@@ -45,6 +45,6 @@ proc int main()
 
   while(true)
     a = 2;
-    */
+*/
 }
 

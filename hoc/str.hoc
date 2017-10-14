@@ -14,7 +14,7 @@ proc void print_str(char* str)
   while(*str != '\0')
   {
     putc(*str);
-    str = str + 1;
+    str = str + (type char*)1;
   }
 }
 
@@ -85,7 +85,7 @@ proc char* int_to_str(char* buf, int buf_len, int i)
     buf[buf_i] = '-';
   }
 
-  return (buf + buf_i);
+  return (buf + (type char*)buf_i);
 }
 
 proc void float_to_str(char* buf, int buf_len, float f)
@@ -149,7 +149,7 @@ proc void float_to_str(char* buf, int buf_len, float f)
     while(*exponent_str != '\0')
     {
       buf[pos] = *exponent_str;
-      exponent_str = exponent_str + 1;
+      exponent_str = exponent_str + (type char*)1;
       pos = pos + 1;
     }
   }

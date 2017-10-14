@@ -14,35 +14,28 @@ var int b = a;
 var char* c = "abc";
 */
 
+/*
 proc int* foo(int bubbles)
 {
-  /*
   var int* nonsense = &main();
   return nonsense;
-  */
-  return (type int*)0;
 }
 
-proc void bar()
+proc int bar()
 {
-  var int b = 0;
+  var int* i = (type int*)2.2;
+  return *i;
 }
-/*
 */
 
-proc []int main()
+proc int main()
 {
-  var [4]char c;
-  var char* p;
-  p = c;
-  return (type []int)0;
-
-/*
-  if(true)
+  if(1 < 1)
     return 0;
   else
-    a = b;
+    ;
 
+/*
   {
     var float x = -1.;
   }

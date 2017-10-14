@@ -50,21 +50,6 @@ Scope* find_scope(ScopeKind kind)
   return scope;
 }
 
-List* collect_symbols_in_scope(char* name, SymbolKind symbol_kind, Scope* scope)
-{
-  List* symbol_set = new_list(arena, List_symbol);
-  Symbol* symbol = scope->last_symbol;
-  while(symbol)
-  {
-    if(symbol->kind == symbol_kind && cstr_match(symbol->name, name))
-    {
-      append_list_elem(symbol_set, symbol, List_symbol);
-    }
-    symbol = symbol->prev_symbol;
-  }
-  return symbol_set;
-}
-
 Symbol* lookup_symbol_in_scope(char* name, SymbolKind symbol_kind, Scope* scope)
 {
   Symbol* result = 0;
@@ -523,9 +508,10 @@ bool name_resolve(AstNode* node)
     AstNode stmt_gen0 = *node;
     AstNode* stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_stmt);
 
-    if(success = name_resolve(ATTR(&stmt_gen0, ast_node, stmt)))
+    AstNode* actual_stmt = ATTR(stmt_gen1, ast_node, stmt) = ATTR(&stmt_gen0, ast_node, stmt);
+    if(actual_stmt)
     {
-      ATTR(stmt_gen1, ast_node, stmt) = ATTR(&stmt_gen0, ast_node, stmt);
+      success = name_resolve(actual_stmt);
     }
   }
   else if(node->kind == AstNode_if_stmt)
@@ -713,7 +699,11 @@ void build_type_of_node(AstNode* node)
   }
   else if(node->kind == AstNode_stmt)
   {
-    build_type_of_node(ATTR(node, ast_node, stmt));
+    AstNode* actual_stmt = ATTR(node, ast_node, stmt);
+    if(actual_stmt)
+    {
+      build_type_of_node(actual_stmt);
+    }
   }
   else if(node->kind == AstNode_var_decl)
   {
@@ -856,7 +846,11 @@ bool typecheck(AstNode* node)
   }
   else if(node->kind == AstNode_stmt)
   {
-    success = typecheck(ATTR(node, ast_node, stmt));
+    AstNode* actual_stmt = ATTR(node, ast_node, stmt);
+    if(actual_stmt)
+    {
+      success = typecheck(actual_stmt);
+    }
   }
   else if(node->kind == AstNode_var_decl)
   {
@@ -901,14 +895,24 @@ bool typecheck(AstNode* node)
         else
           compile_error(node->src_loc, "int type expected");
       }
-      else if(is_relational_operator(op_kind))
-      {
-        success = type_unif(expr_ty, basic_type_bool);
-      }
       else
       {
-        success = type_unif(left_operand_ty, right_operand_ty) && type_unif(left_operand_ty, expr_ty);
-        if(!success)
+        if(success = type_unif(left_operand_ty, right_operand_ty))
+        {
+          if(is_relational_operator(op_kind))
+          {
+            success = type_unif(expr_ty, basic_type_bool);
+            if(!success)
+              compile_error(node->src_loc, "bool type expected");
+          }
+          else
+          {
+            success = type_unif(expr_ty, left_operand_ty);
+            if(!success)
+              compile_error(node->src_loc, "typecheck error (bin_expr)");
+          }
+        }
+        else
           compile_error(node->src_loc, "typecheck error (bin_expr)");
       }
     }
@@ -1041,17 +1045,31 @@ bool typecheck(AstNode* node)
   }
   else if(node->kind == AstNode_while_stmt)
   {
-    success = typecheck(ATTR(node, ast_node, cond_expr)) &&
-      typecheck(ATTR(node, ast_node, body));
+    AstNode* cond_expr = ATTR(node, ast_node, cond_expr);
+    if(success = typecheck(cond_expr) && typecheck(ATTR(node, ast_node, body)))
+    {
+      Type* cond_ty = ATTR(cond_expr, type, eval_type);
+      success = type_unif(cond_ty, basic_type_bool);
+      if(!success)
+        compile_error(cond_expr->src_loc, "bool type expected");
+    }
   }
   else if(node->kind == AstNode_if_stmt)
   {
-    success = typecheck(ATTR(node, ast_node, cond_expr)) &&
-      typecheck(ATTR(node, ast_node, body));
-    AstNode*else_body = ATTR(node, ast_node, else_body);
-    if(else_body && success)
+    AstNode* cond_expr = ATTR(node, ast_node, cond_expr);
+    if(success = typecheck(cond_expr) && typecheck(ATTR(node, ast_node, body)))
     {
-      success = typecheck(ATTR(node, ast_node, else_body));
+      Type* cond_ty = ATTR(cond_expr, type, eval_type);
+      if(success = type_unif(cond_ty, basic_type_bool))
+      {
+        AstNode*else_body = ATTR(node, ast_node, else_body);
+        if(else_body && success)
+        {
+          success = typecheck(ATTR(node, ast_node, else_body));
+        }
+      }
+      else
+        compile_error(cond_expr->src_loc, "bool type expected");
     }
   }
   else if(node->kind == AstNode_var_occur || node->kind == AstNode_lit

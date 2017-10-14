@@ -202,9 +202,9 @@ bool type_unif(Type* type_a, Type* type_b)
         assert(false);
     }
   }
-#if 1
   else
   {
+    /* Arrays and pointer types are equivalent. */
     if(repr_type_a->kind == Type_array && repr_type_b->kind == Type_pointer)
     {
       success = type_unif(repr_type_a->array.elem, repr_type_b->pointer.pointee);
@@ -214,7 +214,6 @@ bool type_unif(Type* type_a, Type* type_b)
       success = type_unif(repr_type_a->pointer.pointee, repr_type_b->array.elem);
     }
   }
-#endif
 
   return success;
 }

@@ -1,9 +1,9 @@
-/*
 include "str.hoc";
 include "math.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
+/*
 */
 
 var int a = 1;
@@ -14,24 +14,28 @@ var int b = a;
 var char* c = "abc";
 */
 
-/*
 proc int* foo(int bubbles)
 {
+  /*
   var int* nonsense = &main();
   return nonsense;
+  */
+  return (type int*)0;
 }
 
-proc int bar()
+proc void bar()
 {
-  return 1234;
+  var int b = 0;
 }
+/*
 */
 
-proc int main()
+proc []int main()
 {
-  var []char c;
+  var [4]char c;
   var char* p;
   p = c;
+  return (type []int)0;
 
 /*
   if(true)

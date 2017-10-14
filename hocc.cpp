@@ -374,12 +374,12 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_type;
+      attr->name = AstAttributeName_id;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_id;
+      attr->name = AstAttributeName_type;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -979,11 +979,6 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_type;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_str;
       attr->name = AstAttributeName_name;
 
@@ -991,6 +986,11 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_symbol;
       attr->name = AstAttributeName_decl_sym;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type;
       
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];

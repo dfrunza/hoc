@@ -651,35 +651,6 @@ bool name_resolve(AstNode* node)
   return success;
 }
 
-void build_type_of_node(AstNode* node);
-
-Type* make_proc_arguments_type(List* args)
-{
-  for(ListItem* list_item = args->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    build_type_of_node(ITEM(list_item, ast_node));
-  }
-
-  Type* type = basic_type_void;
-  ListItem* list_item = args->first;
-  if(list_item)
-  {
-    AstNode* arg = ITEM(list_item, ast_node);
-    type = ATTR(arg, type, eval_type);
-
-    for(list_item = list_item->next;
-        list_item;
-        list_item = list_item->next)
-    {
-      AstNode* arg = ITEM(list_item, ast_node);
-      type = new_product_type(type, ATTR(arg, type, eval_type));
-    }
-  }
-  return type;
-}
-
 void build_type_of_node(AstNode* node)
 {
   assert(node->gen == Ast_gen1);
@@ -709,7 +680,7 @@ void build_type_of_node(AstNode* node)
   {
     AstNode* type_node = ATTR(node, ast_node, type);
     build_type_of_node(type_node);
-    ATTR(node, type, eval_type) = ATTR(node, type, type) = ATTR(type_node, type, type);
+    ATTR(node, type, type) = ATTR(type_node, type, type);
 
     AstNode* init_expr = ATTR(node, ast_node, init_expr);
     if(init_expr)
@@ -720,35 +691,67 @@ void build_type_of_node(AstNode* node)
   else if(node->kind == AstNode_var_occur)
   {
     AstNode* var_decl = ATTR(node, ast_node, var_decl);
-    ATTR(node, type, eval_type) = ATTR(node, type, type) = ATTR(var_decl, type, type);
+    ATTR(node, type, type) = ATTR(var_decl, type, type);
   }
   else if(node->kind == AstNode_proc_decl)
   {
     AstNode* ret_type_node = ATTR(node, ast_node, ret_type);
     build_type_of_node(ret_type_node);
     Type* ret_type = ATTR(ret_type_node, type, type);
-    Type* args_type = make_proc_arguments_type(ATTR(node, list, formal_args));
+
+    List* args = ATTR(node, list, formal_args);
+    for(ListItem* list_item = args->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      build_type_of_node(ITEM(list_item, ast_node));
+    }
+
+    Type* args_type = basic_type_void;
+    ListItem* list_item = args->first;
+    if(list_item)
+    {
+      AstNode* arg = ITEM(list_item, ast_node);
+      args_type = ATTR(arg, type, type);
+
+      for(list_item = list_item->next;
+          list_item;
+          list_item = list_item->next)
+      {
+        AstNode* arg = ITEM(list_item, ast_node);
+        args_type = new_product_type(args_type, ATTR(arg, type, type));
+      }
+    }
+
     ATTR(node, type, type) = new_proc_type(args_type, ret_type);
-    ATTR(node, type, eval_type) = ret_type;
 
     AstNode* body = ATTR(node, ast_node, body);
     build_type_of_node(body);
   }
   else if(node->kind == AstNode_proc_occur)
   {
-    Type* args_type = make_proc_arguments_type(ATTR(node, list, actual_args));
-    Type* ret_type = 0;
+    List* args = ATTR(node, list, actual_args);
+    for(ListItem* list_item = args->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      build_type_of_node(ITEM(list_item, ast_node));
+    }
+
+    Type* ret_type = 0, *args_type = 0;
     AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
     if(proc_decl)
     {
-      ret_type = ATTR(proc_decl, type, eval_type);
+      Type* decl_type = ATTR(proc_decl, type, type);
+      ret_type = decl_type->proc.ret;
+      args_type = decl_type->proc.args;
     }
     else
     {
       ret_type = new_typevar();
+      args_type = new_typevar();
     }
     ATTR(node, type, type) = new_proc_type(args_type, ret_type);
-    ATTR(node, type, eval_type) = ret_type;
   }
   else if(node->kind == AstNode_bin_expr)
   {
@@ -757,14 +760,14 @@ void build_type_of_node(AstNode* node)
     AstNode* right_operand = ATTR(node, ast_node, right_operand);
     build_type_of_node(right_operand);
 
-    ATTR(node, type, eval_type) = ATTR(node, type, type) = new_typevar();
+    ATTR(node, type, type) = new_typevar();
   }
   else if(node->kind == AstNode_un_expr)
   {
     AstNode* operand = ATTR(node, ast_node, operand);
     build_type_of_node(operand);
 
-    ATTR(node, type, type) = ATTR(node, type, eval_type) = new_typevar();
+    ATTR(node, type, type) = new_typevar();
   }
   else if(node->kind == AstNode_lit)
   {
@@ -784,11 +787,11 @@ void build_type_of_node(AstNode* node)
     else
       assert(0);
 
-    ATTR(node, type, eval_type) = ATTR(node, type, type) = type;
+    ATTR(node, type, type) = type;
   }
   else if(node->kind == AstNode_type)
   {
-    ATTR(node, type, eval_type) = ATTR(node, type, type) = make_type_of_type_expr(ATTR(node, ast_node, type_expr));
+    ATTR(node, type, type) = make_type_of_type_expr(ATTR(node, ast_node, type_expr));
   }
   else if(node->kind == AstNode_while_stmt)
   {
@@ -811,11 +814,11 @@ void build_type_of_node(AstNode* node)
     if(ret_expr)
     {
       build_type_of_node(ret_expr);
-      ATTR(node, type, type) = ATTR(node, type, eval_type) = ATTR(ret_expr, type, eval_type);
+      ATTR(node, type, type) = new_typevar();
     }
     else
     {
-      ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
+      ATTR(node, type, type) = basic_type_void;
     }
   }
   else if(node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt)
@@ -854,12 +857,14 @@ bool typecheck(AstNode* node)
   }
   else if(node->kind == AstNode_var_decl)
   {
+    ATTR(node, type, eval_type) = ATTR(node, type, type);
+
     AstNode* init_expr = ATTR(node, ast_node, init_expr);
     if(init_expr)
     {
       if(success = typecheck(init_expr))
       {
-        Type* var_ty = ATTR(node, type, type);
+        Type* var_ty = ATTR(node, type, eval_type);
         Type* init_expr_ty = ATTR(init_expr, type, eval_type);
         success = type_unif(var_ty, init_expr_ty);
         if(!success)
@@ -867,20 +872,25 @@ bool typecheck(AstNode* node)
       }
     }
   }
+  else if(node->kind == AstNode_var_occur)
+  {
+    ATTR(node, type, eval_type) = ATTR(node, type, type);
+  }
   else if(node->kind == AstNode_bin_expr)
   {
     AstNode* right_operand = ATTR(node, ast_node, right_operand);
     AstNode* left_operand = ATTR(node, ast_node, left_operand);
+
     if(success = typecheck(right_operand) && typecheck(left_operand))
     {
-      Type* expr_ty = ATTR(node, type, eval_type);
+      Type* expr_ty = ATTR(node, type, eval_type) = new_typevar();//ATTR(node, type, eval_type);
       Type* right_operand_ty = ATTR(right_operand, type, eval_type);
       Type* left_operand_ty = ATTR(left_operand, type, eval_type);
 
       OperatorKind op_kind = ATTR(node, op_kind, op_kind);
       if(op_kind == Operator_cast)
       {
-        success = type_unif(left_operand_ty, expr_ty);
+        success = type_unif(expr_ty, left_operand_ty);
         if(!success)
           compile_error(node->src_loc, "typecheck error (cast)");
       }
@@ -922,7 +932,7 @@ bool typecheck(AstNode* node)
     AstNode* operand = ATTR(node, ast_node, operand);
     if(success = typecheck(operand))
     {
-      Type* expr_ty = ATTR(node, type, eval_type);
+      Type* expr_ty = ATTR(node, type, eval_type) = new_typevar();
       Type* operand_ty = ATTR(operand, type, eval_type);
 
       OperatorKind op_kind = ATTR(node, op_kind, op_kind);
@@ -950,10 +960,13 @@ bool typecheck(AstNode* node)
   }
   else if(node->kind == AstNode_proc_decl)
   {
+    ATTR(node, type, eval_type) = ATTR(node, type, type);
+
     AstNode* body = ATTR(node, ast_node, body);
     if(success = typecheck(body))
     {
-      Type* ret_ty = ATTR(node, type, eval_type);
+      Type* proc_ty = ATTR(node, type, type);
+      Type* ret_ty = proc_ty->proc.ret;
       Type* body_ty = ATTR(body, type, eval_type);
 
       if(!body_ty)
@@ -963,7 +976,7 @@ bool typecheck(AstNode* node)
 
       success = type_unif(body_ty, ret_ty);
       if(!success)
-        success = compile_error(node->src_loc, "typecheck error (proc body)");
+        success = compile_error(body->src_loc, "typecheck error (proc body)");
     }
   }
   else if(node->kind == AstNode_proc_occur)
@@ -978,6 +991,7 @@ bool typecheck(AstNode* node)
 
     if(success)
     {
+#if 1 //todo: this chunk of code does not belongs here
       AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
       if(!proc_decl)
       {
@@ -991,21 +1005,41 @@ bool typecheck(AstNode* node)
         else
           success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
       }
+#endif
 
       if(success)
       {
-        Type* decl_ty = ATTR(proc_decl, type, type);
+        Type* args_ty = basic_type_void;
+        ListItem* list_item = args->first;
+        if(list_item)
+        {
+          AstNode* arg = ITEM(list_item, ast_node);
+          args_ty = ATTR(arg, type, eval_type);
+
+          for(list_item = list_item->next;
+              list_item;
+              list_item = list_item->next)
+          {
+            AstNode* arg = ITEM(list_item, ast_node);
+            args_ty = new_product_type(args_ty, ATTR(arg, type, eval_type));
+          }
+        }
+
         Type* occur_ty = ATTR(node, type, type);
-        success = type_unif(decl_ty, occur_ty);
-        if(!success)
-          compile_error(node->src_loc, "typecheck error (proc occur)");
+        assert(occur_ty->kind == Type_proc);
+        if(success = type_unif(occur_ty->proc.args, args_ty))
+        {
+          ATTR(node, type, eval_type) = occur_ty->proc.ret;
+        }
+        else
+          compile_error(node->src_loc, "typecheck error (proc args)");
       }
     }
   }
   else if(node->kind == AstNode_return_stmt)
   {
     AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
-    Type* ret_ty = ATTR(node, type, eval_type);
+    Type* ret_ty = ATTR(node, type, eval_type) = ATTR(node, type, type);
     Type* ret_expr_ty = basic_type_void;
     if(ret_expr)
     {
@@ -1020,7 +1054,7 @@ bool typecheck(AstNode* node)
       if(success = type_unif(ret_ty, ret_expr_ty))
       {
         AstNode* proc = ATTR(node, ast_node, proc);
-        Type* proc_ret_ty = ATTR(proc, type, eval_type);
+        Type* proc_ret_ty = ATTR(proc, type, eval_type)->proc.ret;
         if(success = type_unif(ret_expr_ty, proc_ret_ty))
         {
           AstNode* body = ATTR(proc, ast_node, body);
@@ -1072,9 +1106,15 @@ bool typecheck(AstNode* node)
         compile_error(cond_expr->src_loc, "bool type expected");
     }
   }
-  else if(node->kind == AstNode_var_occur || node->kind == AstNode_lit
-      || node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt
-      || node->kind == AstNode_type)
+  else if(node->kind == AstNode_lit)
+  {
+    ATTR(node, type, eval_type) = ATTR(node, type, type);
+  }
+  else if(node->kind == AstNode_type)
+  {
+    ATTR(node, type, eval_type) = ATTR(node, type, type);
+  }
+  else if(node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt)
   {
     ; // skip
   }

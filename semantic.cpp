@@ -965,25 +965,36 @@ bool typecheck(AstNode* node)
   }
   else if(node->kind == AstNode_proc_occur)
   {
-    AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
-    if(!proc_decl)
+    List* args = ATTR(node, list, actual_args);
+    for(ListItem* list_item = args->first;
+        list_item && success;
+        list_item = list_item->next)
     {
-      Symbol* occur_sym = ATTR(node, symbol, occur_sym);
-      Symbol* decl_sym = lookup_symbol_in_scope(occur_sym->name, Symbol_proc_decl, occur_sym->scope);
-      if(decl_sym)
-      {
-        SYM(occur_sym, proc_occur)->decl_sym = decl_sym;
-        proc_decl = ATTR(node, ast_node, proc_decl) = decl_sym->ast_node;
-      }
-      else
-        success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
+      success = typecheck(ITEM(list_item, ast_node));
     }
 
-    Type* decl_ty = ATTR(proc_decl, type, type);
-    Type* occur_ty = ATTR(node, type, type);
-    success = type_unif(decl_ty, occur_ty);
-    if(!success)
-      compile_error(node->src_loc, "typecheck error (proc occur)");
+    if(success)
+    {
+      AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
+      if(!proc_decl)
+      {
+        Symbol* occur_sym = ATTR(node, symbol, occur_sym);
+        Symbol* decl_sym = lookup_symbol_in_scope(occur_sym->name, Symbol_proc_decl, occur_sym->scope);
+        if(decl_sym)
+        {
+          SYM(occur_sym, proc_occur)->decl_sym = decl_sym;
+          proc_decl = ATTR(node, ast_node, proc_decl) = decl_sym->ast_node;
+        }
+        else
+          success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
+      }
+
+      Type* decl_ty = ATTR(proc_decl, type, type);
+      Type* occur_ty = ATTR(node, type, type);
+      success = type_unif(decl_ty, occur_ty);
+      if(!success)
+        compile_error(node->src_loc, "typecheck error (proc occur)");
+    }
   }
   else if(node->kind == AstNode_return_stmt)
   {

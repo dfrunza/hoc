@@ -14,9 +14,9 @@ var int b = a;
 var char* c = "abc";
 */
 
-proc int foo(int bubbles)
+proc int* foo(int bubbles)
 {
-  var int nonsense = main();
+  var int* nonsense = &main();
   return nonsense;
 }
 
@@ -30,7 +30,7 @@ proc int bar()
 proc int main()
 {
   /*a = (type int)1.12;*/
-  a = foo(bar());
+  a = *foo(bar());
 
   /*
   foo(a, b);

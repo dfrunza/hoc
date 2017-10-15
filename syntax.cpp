@@ -614,7 +614,7 @@ bool parse_selector(TokenStream* input, AstNode** node)
             ATTR(cast, op_kind, op_kind) = Operator_cast;
             ATTR(cast, ast_node, left_operand) = expr;
 
-            if(success = parse_expr(input, &ATTR(cast, ast_node, right_operand)))
+            if(success = parse_un_expr(input, &ATTR(cast, ast_node, right_operand)))
             {
               if(!ATTR(cast, ast_node, right_operand))
               {

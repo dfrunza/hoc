@@ -217,9 +217,9 @@ void process_includes(List* include_list, List* module_list, ListItem* module_li
   mem_zero_struct(include_list, List);
 }
 
-bool name_resolve(AstNode* node);
+bool name_ident(AstNode* node);
 
-bool name_resolve_type(AstNode* node)
+bool name_ident_type(AstNode* node)
 {
   assert(node->gen == Ast_gen0);
   bool success = true;
@@ -247,7 +247,7 @@ bool name_resolve_type(AstNode* node)
     AstNode ptr_gen0 = *node;
     AstNode* ptr_gen1 = make_ast_node(Ast_gen1, node, AstNode_pointer);
 
-    if(success = name_resolve_type(ATTR(&ptr_gen0, ast_node, type_expr)))
+    if(success = name_ident_type(ATTR(&ptr_gen0, ast_node, type_expr)))
     {
       ATTR(ptr_gen1, ast_node, type_expr) = ATTR(&ptr_gen0, ast_node, type_expr);
     }
@@ -260,11 +260,11 @@ bool name_resolve_type(AstNode* node)
     ATTR(array_gen1, ast_node, type_expr) = ATTR(&array_gen0, ast_node, type_expr);
     AstNode* size_expr = ATTR(array_gen1, ast_node, size_expr) = ATTR(&array_gen0, ast_node, size_expr);
 
-    if(success = name_resolve_type(ATTR(&array_gen0, ast_node, type_expr)))
+    if(success = name_ident_type(ATTR(&array_gen0, ast_node, type_expr)))
     {
       if(size_expr)
       {
-        success = name_resolve(size_expr);
+        success = name_ident(size_expr);
       }
     }
   }
@@ -274,7 +274,7 @@ bool name_resolve_type(AstNode* node)
   return success;
 }
 
-bool name_resolve_block(AstNode* node)
+bool name_ident_block(AstNode* node)
 {
   assert(node->kind == AstNode_block);
   bool success = true;
@@ -286,7 +286,7 @@ bool name_resolve_block(AstNode* node)
       list_item && success;
       list_item = list_item->next)
   {
-    success = name_resolve(ITEM(list_item, ast_node));
+    success = name_ident(ITEM(list_item, ast_node));
   }
 
   if(success)
@@ -296,7 +296,7 @@ bool name_resolve_block(AstNode* node)
   return success;
 }
 
-bool name_resolve(AstNode* node)
+bool name_ident(AstNode* node)
 {
   assert(node->gen == Ast_gen0);
   bool success = true;
@@ -311,7 +311,7 @@ bool name_resolve(AstNode* node)
 
     begin_scope(ScopeKind_module, module);
     ATTR(module, ast_node, body) = body;
-    success = name_resolve_block(body);
+    success = name_ident_block(body);
     end_scope();
   }
   else if(node->kind == AstNode_var_decl)
@@ -334,12 +334,12 @@ bool name_resolve(AstNode* node)
       decl_sym->ast_node = var_decl_gen1;
 
       ATTR(var_decl_gen1, ast_node, type) = ATTR(&var_decl_gen0, ast_node, type);
-      success = name_resolve(ATTR(&var_decl_gen0, ast_node, type));
+      success = name_ident(ATTR(&var_decl_gen0, ast_node, type));
 
       AstNode* init_expr = ATTR(var_decl_gen1, ast_node, init_expr) = ATTR(&var_decl_gen0, ast_node, init_expr);
       if(success && init_expr)
       {
-        success = name_resolve(init_expr);
+        success = name_ident(init_expr);
       }
     }
   }
@@ -392,13 +392,13 @@ bool name_resolve(AstNode* node)
           list_item && success;
           list_item = list_item->next)
       {
-        success = name_resolve(ITEM(list_item, ast_node));
+        success = name_ident(ITEM(list_item, ast_node));
       }
 
       if(success)
       {
-        success = name_resolve(ATTR(&proc_decl_gen0, ast_node, ret_type)) &&
-          name_resolve(ATTR(&proc_decl_gen0, ast_node, body));
+        success = name_ident(ATTR(&proc_decl_gen0, ast_node, ret_type)) &&
+          name_ident(ATTR(&proc_decl_gen0, ast_node, body));
       }
       end_scope();
     }
@@ -427,7 +427,7 @@ bool name_resolve(AstNode* node)
         list_item && success;
         list_item = list_item->next)
     {
-      success = name_resolve(ITEM(list_item, ast_node));
+      success = name_ident(ITEM(list_item, ast_node));
     }
   }
   else if(node->kind == AstNode_bin_expr)
@@ -438,7 +438,7 @@ bool name_resolve(AstNode* node)
 
     AstNode* left_operand = ATTR(&bin_expr_gen0, ast_node, left_operand);
     AstNode* right_operand = ATTR(&bin_expr_gen0 , ast_node, right_operand);
-    if(success = name_resolve(left_operand) && name_resolve(right_operand))
+    if(success = name_ident(left_operand) && name_ident(right_operand))
     {
       ATTR(bin_expr_gen1, ast_node, left_operand) = left_operand;
       ATTR(bin_expr_gen1, ast_node, right_operand) = right_operand;
@@ -451,7 +451,7 @@ bool name_resolve(AstNode* node)
     ATTR(un_expr_gen1, op_kind, op_kind) = ATTR(&un_expr_gen0, op_kind, op_kind);
 
     AstNode* operand = ATTR(&un_expr_gen0, ast_node, operand);
-    if(success = name_resolve(operand))
+    if(success = name_ident(operand))
     {
       ATTR(un_expr_gen1, ast_node, operand) = operand;
     }
@@ -500,7 +500,7 @@ bool name_resolve(AstNode* node)
   else if(node->kind == AstNode_block)
   {
     begin_scope(ScopeKind_block, 0);
-    success = name_resolve_block(node);
+    success = name_ident_block(node);
     end_scope();
   }
   else if(node->kind == AstNode_stmt)
@@ -511,7 +511,7 @@ bool name_resolve(AstNode* node)
     AstNode* actual_stmt = ATTR(stmt_gen1, ast_node, stmt) = ATTR(&stmt_gen0, ast_node, stmt);
     if(actual_stmt)
     {
-      success = name_resolve(actual_stmt);
+      success = name_ident(actual_stmt);
     }
   }
   else if(node->kind == AstNode_if_stmt)
@@ -520,7 +520,7 @@ bool name_resolve(AstNode* node)
     AstNode* if_stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_if_stmt);
 
     AstNode* cond_expr = ATTR(&if_stmt_gen0, ast_node, cond_expr);
-    if(success = name_resolve(cond_expr))
+    if(success = name_ident(cond_expr))
     {
       ATTR(if_stmt_gen1, ast_node, cond_expr) = cond_expr;
 
@@ -534,7 +534,7 @@ bool name_resolve(AstNode* node)
       }
 
       begin_scope(ScopeKind_block, if_stmt_gen1);
-      success = name_resolve(body);
+      success = name_ident(body);
       end_scope();
 
       if(success)
@@ -553,7 +553,7 @@ bool name_resolve(AstNode* node)
           }
 
           begin_scope(ScopeKind_block, if_stmt_gen1);
-          success = name_resolve_block(else_body);
+          success = name_ident_block(else_body);
           end_scope();
 
           if(success)
@@ -570,7 +570,7 @@ bool name_resolve(AstNode* node)
     AstNode* while_stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_while_stmt);
 
     AstNode* cond_expr = ATTR(&while_stmt_gen0, ast_node, cond_expr);
-    if(success = name_resolve(cond_expr))
+    if(success = name_ident(cond_expr))
     {
       ATTR(while_stmt_gen1, ast_node, cond_expr) = cond_expr;
 
@@ -584,7 +584,7 @@ bool name_resolve(AstNode* node)
       }
 
       begin_scope(ScopeKind_loop, while_stmt_gen1);
-      success = name_resolve_block(body);
+      success = name_ident_block(body);
       end_scope();
 
       if(success)
@@ -629,7 +629,7 @@ bool name_resolve(AstNode* node)
       ATTR(ret_stmt_gen1, ast_node, ret_expr) = ret_expr;
       if(ret_expr)
       {
-        success = name_resolve(ret_expr);
+        success = name_ident(ret_expr);
       }
     }
     else
@@ -640,7 +640,7 @@ bool name_resolve(AstNode* node)
     AstNode type_gen0 = *node;
     AstNode* type_gen1 = make_ast_node(Ast_gen1, node, AstNode_type);
 
-    if(success = name_resolve_type(ATTR(&type_gen0, ast_node, type_expr)))
+    if(success = name_ident_type(ATTR(&type_gen0, ast_node, type_expr)))
     {
       ATTR(type_gen1, ast_node, type_expr) = ATTR(&type_gen0, ast_node, type_expr);
     }
@@ -883,7 +883,7 @@ bool typecheck(AstNode* node)
 
     if(success = typecheck(right_operand) && typecheck(left_operand))
     {
-      Type* expr_ty = ATTR(node, type, eval_type) = new_typevar();//ATTR(node, type, eval_type);
+      Type* expr_ty = ATTR(node, type, eval_type) = new_typevar();
       Type* right_operand_ty = ATTR(right_operand, type, eval_type);
       Type* left_operand_ty = ATTR(left_operand, type, eval_type);
 
@@ -1133,7 +1133,7 @@ bool semantic(AstNode* module)
   add_builtin_types();
   add_builtin_procs();
 
-  if(success = name_resolve(module))
+  if(success = name_ident(module))
   {
     if(DEBUG_enabled)/*>>>*/
     {
@@ -1145,7 +1145,7 @@ bool semantic(AstNode* module)
       String* str = str_new(arena);
       DEBUG_print_scope(str, 0, "global_scope", symbol_table->active_scope);
       DEBUG_print_ast_node(str, 0, "module", module);
-      str_dump_to_file(str, "debug_name_resolve.txt");
+      str_dump_to_file(str, "debug_name_ident.txt");
       end_temp_memory(&arena);
     }/*<<<*/
 

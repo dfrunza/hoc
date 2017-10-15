@@ -345,8 +345,11 @@ typedef enum AstAttributeName
   AstAttributeName_decl_sym,
   AstAttributeName_occur_sym,
   AstAttributeName_type,
+  AstAttributeName_type_decl,
   AstAttributeName_eval_type,
   AstAttributeName_type_expr,
+  AstAttributeName_pointee_expr,
+  AstAttributeName_elem_expr,
   AstAttributeName_proc,
   AstAttributeName_nesting_depth,
   AstAttributeName_loop,
@@ -358,7 +361,6 @@ typedef enum AstAttributeName
   AstAttributeName_decl_scope_depth,
   AstAttributeName_var_decl,
   AstAttributeName_proc_decl,
-  AstAttributeName_type_decl,
   AstAttributeName_operand,
   AstAttributeName_left_operand,
   AstAttributeName_right_operand,
@@ -437,7 +439,7 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_var_occur),\
   ENUM_MEMBER(AstNode_proc_decl),\
   ENUM_MEMBER(AstNode_proc_occur),\
-  ENUM_MEMBER(AstNode_type),\
+  ENUM_MEMBER(AstNode_type_decl),\
   ENUM_MEMBER(AstNode_type_occur),\
   ENUM_MEMBER(AstNode_lit),\
   ENUM_MEMBER(AstNode_return_stmt),\

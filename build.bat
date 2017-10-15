@@ -41,6 +41,6 @@ goto :end
 :end
 popd
 
-cloc.exe hocc.h codegen.cpp hasm.cpp hocc.cpp lex.cpp lib.cpp runtime.cpp semantic.cpp syntax.cpp typecheck.cpp vm.cpp
+cloc.exe hocc.h codegen.cpp hasm.cpp hocc.cpp lex.cpp lib.cpp runtime.cpp semantic.cpp syntax.cpp type.cpp vm.cpp
 
 

@@ -10,27 +10,25 @@ include "sort.hoc";
 var int a = 1;
 var int b;
 var [1]int* t;
-var int b = a;
 var char* c = "abc";
 */
 
-/*
-proc int* foo(int bubbles)
+proc int foo(int bubbles)
 {
-  var int* nonsense = &main(0);
+  var int nonsense;
+  nonsense = main();
   return nonsense;
 }
 
+/*
 proc int bar(char* p)
 {
   var int* i = (type int*)2.2;
-  return *i;
+  return *foo(*i);
 }
 */
 
 proc void main()
 {
-  var float c;
-  c = (type float)(199 + 232);
 }
 

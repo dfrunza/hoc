@@ -30,7 +30,7 @@ bool parse_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
   if(input->token.kind == Token_star)
   {
     AstNode* ptr = *node = new_ast_node(Ast_gen0, AstNode_pointer, clone_source_loc(&input->src_loc));
-    ATTR(ptr, ast_node, type_expr) = expr;
+    ATTR(ptr, ast_node, pointee_expr) = expr;
 
     success = get_next_token(input) && parse_rest_of_type_expr(input, *node, node);
   }
@@ -54,9 +54,9 @@ bool parse_type_expr(TokenStream* input, AstNode** node)
         if(ATTR(array, ast_node, size_expr))
         {
 #endif
-          if(success = get_next_token(input) && parse_type_expr(input, &ATTR(array, ast_node, type_expr)))
+          if(success = get_next_token(input) && parse_type_expr(input, &ATTR(array, ast_node, elem_expr)))
           {
-            if(!ATTR(array, ast_node, type_expr))
+            if(!ATTR(array, ast_node, elem_expr))
             {
               putback_token(input);
               success = compile_error(&input->src_loc, "type expression required, at `%s`", get_token_printstr(&input->token));
@@ -113,7 +113,7 @@ bool parse_type(TokenStream* input, AstNode** node)
   {
     if(type_expr)
     {
-      AstNode* type = *node = new_ast_node(Ast_gen0, AstNode_type, clone_source_loc(&input->src_loc));
+      AstNode* type = *node = new_ast_node(Ast_gen0, AstNode_type_decl, clone_source_loc(&input->src_loc));
       ATTR(type, ast_node, type_expr) = type_expr;
     }
   }
@@ -608,7 +608,7 @@ bool parse_selector(TokenStream* input, AstNode** node)
       {
         if(input->token.kind == Token_close_parens)
         {
-          if((success = get_next_token(input)) && expr->kind == AstNode_type)
+          if((success = get_next_token(input)) && expr->kind == AstNode_type_decl)
           {
             AstNode* cast = *node = new_ast_node(Ast_gen0, AstNode_bin_expr, expr->src_loc);
             ATTR(cast, op_kind, op_kind) = Operator_cast;

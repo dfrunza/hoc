@@ -137,7 +137,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_type;
+      kind->kind = AstNode_type_decl;
       kind->attr_count = 1;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
@@ -162,7 +162,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_type_expr;
+      attr->name = AstAttributeName_elem_expr;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -182,7 +182,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_type_expr;
+      attr->name = AstAttributeName_pointee_expr;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -514,7 +514,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_array;
-      kind->attr_count = 2;
+      kind->attr_count = 4;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -523,18 +523,28 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_type_expr;
+      attr->name = AstAttributeName_elem_expr;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
       attr->name = AstAttributeName_size_expr;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_type;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_eval_type;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_pointer;
-      kind->attr_count = 1;
+      kind->attr_count = 3;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -543,17 +553,37 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_type_expr;
+      attr->name = AstAttributeName_pointee_expr;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_type;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_eval_type;
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_type; // type node
-      kind->attr_count = 3;
+      kind->kind = AstNode_type_decl;
+      kind->attr_count = 5;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_name;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_symbol;
+      attr->name = AstAttributeName_decl_sym;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -574,7 +604,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_type_occur;
-      kind->attr_count = 2;
+      kind->attr_count = 5;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -589,6 +619,21 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_symbol;
       attr->name = AstAttributeName_occur_sym;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_type_decl;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_type;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_eval_type;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -1535,7 +1580,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     {
       if(node->gen == Ast_gen0 || node->gen == Ast_gen1)
       {
-        DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
+        DEBUG_print_ast_node(str, indent_level, "elem_expr", ATTR(node, ast_node, elem_expr));
         DEBUG_print_ast_node(str, indent_level, "size_expr", ATTR(node, ast_node, size_expr));
       }
       else
@@ -1545,7 +1590,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     {
       if(node->gen == Ast_gen0 || node->gen == Ast_gen1)
       {
-        DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
+        DEBUG_print_ast_node(str, indent_level, "pointee_expr", ATTR(node, ast_node, pointee_expr));
       }
       else
         assert(0);
@@ -1631,7 +1676,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       else
         assert(0);
     }
-    else if(node->kind == AstNode_type)
+    else if(node->kind == AstNode_type_decl)
     {
       if(node->gen == Ast_gen0 || node->gen == Ast_gen1)
       {
@@ -1676,7 +1721,7 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
 
 #include "lex.cpp"
 #include "syntax.cpp"
-#include "typecheck.cpp"
+#include "type.cpp"
 #include "semantic.cpp"
 /*
 #include "runtime.cpp"

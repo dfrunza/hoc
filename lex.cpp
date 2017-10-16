@@ -55,7 +55,7 @@ char* install_lexeme(char* begin_char, char* end_char)
   assert(end_char >= begin_char);
 
   /* TODO: Search the lexeme, and if found, then return it. */
-  size_t len = end_char - begin_char + 1;
+  int len = (int)(end_char - begin_char + 1);
   char* lexeme = mem_push_array_nz(arena, char, len + 1); // +NULL
   cstr_copy_substr(lexeme, begin_char, end_char);
   lexeme[len] = 0; // cap the string

@@ -83,15 +83,15 @@ void mem_check_bounds_f(MemoryArena* arena, int elem_size, void* ptr)
   assert((arena->free + elem_size) < arena->cap);
 }
 
-void mem_zero_f(void* mem, size_t len)
+void mem_zero_f(void* mem, int len)
 {
-  memset(mem, 0, len);
+  memset(mem, 0, (size_t)len);
 }
 
 void mem_zero_range(void* start, void* one_past_end)
 {
-  size_t len = (uint8*)one_past_end - (uint8*)start;
-  assert(len >= 0);
+  assert(one_past_end >= start);
+  int len = (int)((uint8*)one_past_end - (uint8*)start);
   mem_zero_f(start, len);
 }
 
@@ -118,7 +118,7 @@ void pop_arena(MemoryArena** arena)
   }
 }
 
-MemoryArena* push_arena(MemoryArena** arena, size_t size)
+MemoryArena* push_arena(MemoryArena** arena, int size)
 {
   assert(size > 0);
 
@@ -164,7 +164,7 @@ void end_temp_memory(MemoryArena** arena)
   pop_arena(arena);
 }
 
-void* mem_push_struct_f(MemoryArena* arena, size_t elem_size, size_t count, bool zero_mem)
+void* mem_push_struct_f(MemoryArena* arena, int elem_size, int count, bool zero_mem)
 {
   assert(count > 0);
 
@@ -200,7 +200,8 @@ ArenaUsage arena_usage(MemoryArena* arena)
 #else
   uint8* base = arena->base;
 #endif
-  usage.total_avail = arena->cap - base;
+  assert(arena->cap > base);
+  usage.total_avail = (int)(arena->cap - base);
   usage.in_use = (arena->free - base) / (double)usage.total_avail;
   return usage;
 }
@@ -378,10 +379,10 @@ void str_init(String* str, MemoryArena* arena)
   }
 }
 
-uint str_len(String* str)
+int str_len(String* str)
 {
   assert(str->head <= str->end);
-  uint len = (uint)(str->end - str->head);
+  int len = (int)(str->end - str->head);
   return len;
 }
 
@@ -511,7 +512,7 @@ int file_write_bytes(char* file_path, uint8* bytes, int count)
   FILE* h_file = fopen(file_path, "wb");
   if(h_file)
   {
-    bytes_written = (int)fwrite(bytes, 1, count, h_file);
+    bytes_written = (int)fwrite(bytes, 1, (size_t)count, h_file);
     fclose(h_file);
   }
   return bytes_written;
@@ -530,7 +531,7 @@ int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path)
     {
       fseek(file, 0, SEEK_SET);
       *bytes = mem_push_array_nz(arena, uint8, byte_count);
-      fread(*bytes, byte_count, 1, file);
+      fread(*bytes, (size_t)byte_count, 1, file);
     }
     fclose(file);
   }
@@ -557,7 +558,7 @@ int stdin_read(char buf[], int buf_size)
   HANDLE h_std = GetStdHandle(STD_INPUT_HANDLE);
   DWORD bytes_read = 0;
 
-  if(h_std && ReadFile(h_std, buf, buf_size, &bytes_read, 0))
+  if(h_std && ReadFile(h_std, buf, (DWORD)buf_size, &bytes_read, 0))
   {
     if(bytes_read)
     {

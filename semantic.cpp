@@ -36,13 +36,14 @@ SymbolTable* new_symbol_table(MemoryArena** arena, int size)
   return symbol_table;
 }
 
-typedef enum SymbolLookup
+typedef enum
 {
   SymbolLookup__None,
   SymbolLookup_active,
   SymbolLookup_module,
   SymbolLookup_global,
-};
+}
+SymbolLookup;
 
 Scope* find_scope(ScopeKind kind)
 {

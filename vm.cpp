@@ -81,7 +81,7 @@ void clear_memory(HocMachine* machine, int base, int size)
 
 int32 offset_register(int32 reg, int32 offset)
 {
-  return reg + offset*sizeof(int32);
+  return reg + offset * (int)sizeof(int32);
 }
 
 ExecResult execute_instr(HocMachine* machine, Instruction* instr)
@@ -815,6 +815,11 @@ ExecResult run_program(HocMachine* machine)
         error("attemp to divide by zero");
         break;
 
+      case Result_EndOfProgram:
+      case Result_OK:
+      case Result__Count:
+        ;
+
       default:
         assert(0);
     }
@@ -839,7 +844,7 @@ bool load_bin_image(char* exe_file_name, HocMachine* machine)
     {
       int nr_sections = nt_header->FileHeader.NumberOfSections;
       IMAGE_SECTION_HEADER* section_header = (IMAGE_SECTION_HEADER*)((uint8*)nt_header + sizeof(IMAGE_NT_HEADERS));
-      exe_size = nt_header->OptionalHeader.SizeOfHeaders;
+      exe_size = (int)nt_header->OptionalHeader.SizeOfHeaders;
       for(int i = 0; i < nr_sections; i++)
       {
         exe_size += section_header->SizeOfRawData;
@@ -856,10 +861,10 @@ bool load_bin_image(char* exe_file_name, HocMachine* machine)
     if(cstr_match(bin_image->sig, BINCODE_SIGNATURE))
     {
       machine->instructions = (Instruction*)(hoc_base + bin_image->code_offset);
-      machine->instr_count = bin_image->code_size / sizeof(Instruction);
+      machine->instr_count = bin_image->code_size / (int)sizeof(Instruction);
 
       machine->data = (uint8*)(hoc_base + bin_image->data_offset);
-      machine->data_size = bin_image->data_size / sizeof(uint8);
+      machine->data_size = bin_image->data_size / (int)sizeof(uint8);
 
       for(int i = 0; i < machine->data_size; i++)
         machine->memory[i] = machine->data[i];

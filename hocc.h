@@ -1,4 +1,6 @@
 #include <stdio.h>
+#define VC_EXTRALEAN
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
 #define ARENA_SIZE (3*MEGABYTE)
@@ -8,7 +10,6 @@
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
-//typedef int boole;
 
 typedef char int8;
 typedef short int16;
@@ -43,7 +44,7 @@ MemoryArena;
 
 typedef struct
 {
-  size_t total_avail;
+  int total_avail;
   double in_use;
 }
 ArenaUsage;
@@ -87,7 +88,7 @@ typedef struct
 }
 SourceLoc;
 
-typedef enum TokenKind
+typedef enum
 {
   Token_None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
@@ -140,8 +141,6 @@ typedef enum TokenKind
   Token_goto,
   Token_include,
   Token_enum,
-//  Token_new,
-//  Token_putc,
   Token_true,
   Token_false,
 
@@ -150,7 +149,8 @@ typedef enum TokenKind
   Token_float_num,
   Token_string,
   Token_char,
-};
+}
+TokenKind;
 
 typedef struct
 {
@@ -225,12 +225,13 @@ AccessLink;
   ENUM_MEMBER(Operator_cast),
 #endif
 
-typedef enum OperatorKind
+typedef enum
 {
 #define ENUM_MEMBER(NAME) NAME
   OperatorKind_MEMBER_LIST()
 #undef ENUM_MEMBER
-};
+}
+OperatorKind;
 
 char* OperatorKind_strings[] =
 {
@@ -239,8 +240,7 @@ char* OperatorKind_strings[] =
 #undef ENUM_MEMBER
 };
 
-char*
-get_operator_kind_printstr(OperatorKind op)
+char* get_operator_kind_printstr(OperatorKind op)
 {
   return OperatorKind_strings[op];
 }
@@ -255,12 +255,13 @@ get_operator_kind_printstr(OperatorKind op)
   ENUM_MEMBER(Literal_str),
 #endif
 
-typedef enum LiteralKind
+typedef enum
 {
 #define ENUM_MEMBER(NAME) NAME
   LiteralKind_MEMBER_LIST()
 #undef ENUM_MEMBER
-};
+}
+LiteralKind;
 
 char* LiteralKind_strings[] =
 {
@@ -269,8 +270,7 @@ char* LiteralKind_strings[] =
 #undef ENUM_MEMBER
 };
 
-char*
-get_literal_kind_printstr(LiteralKind kind)
+char* get_literal_kind_printstr(LiteralKind kind)
 {
   return LiteralKind_strings[kind];
 }
@@ -289,12 +289,13 @@ typedef struct Symbol Symbol;
   ENUM_MEMBER(ScopeKind_block),
 #endif
 
-typedef enum ScopeKind
+typedef enum
 {
 #define ENUM_MEMBER(NAME) NAME
   ScopeKind_MEMBER_LIST()
 #undef ENUM_MEMBER
-};
+}
+ScopeKind;
 
 char* ScopeKind_strings[] =
 {
@@ -303,8 +304,7 @@ char* ScopeKind_strings[] =
 #undef ENUM_MEMBER
 };
 
-char*
-get_scope_kind_printstr(ScopeKind kind)
+char* get_scope_kind_printstr(ScopeKind kind)
 {
   return ScopeKind_strings[kind];
 }
@@ -338,7 +338,7 @@ typedef enum
 }
 AstAttributeKind;
 
-typedef enum AstAttributeName
+typedef enum
 {
   AstAttributeName_None,
   AstAttributeName_symbol,
@@ -391,7 +391,8 @@ typedef enum AstAttributeName
   AstAttributeName_lit_kind,
   AstAttributeName_local_decls,
   AstAttributeName_non_local_occurs,
-};
+}
+AstAttributeName;
 
 typedef struct
 {
@@ -458,12 +459,13 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_init_list),
 #endif
 
-typedef enum AstKind
+typedef enum 
 {
 #define ENUM_MEMBER(NAME) NAME
   AstKind_MEMBER_LIST()
 #undef ENUM_MEMBER
-};
+}
+AstKind;
 
 char* AstKind_strings[] =
 {
@@ -472,8 +474,7 @@ char* AstKind_strings[] =
 #undef ENUM_MEMBER
 };
 
-char*
-get_ast_kind_printstr(AstKind kind)
+char* get_ast_kind_printstr(AstKind kind)
 {
   return AstKind_strings[kind];
 }
@@ -513,7 +514,7 @@ AstNode;
 
 AstMetaInfo ast_meta_infos[2];
 
-typedef enum TypeKind
+typedef enum
 {
   Type_None,
   Type_typevar,
@@ -522,9 +523,10 @@ typedef enum TypeKind
   Type_product,
   Type_pointer,
   Type_array,
-};
+}
+TypeKind;
 
-typedef enum BasicTypeKind
+typedef enum
 {
   BasicType_None,
   BasicType_void,
@@ -533,7 +535,8 @@ typedef enum BasicTypeKind
   BasicType_char,
   BasicType_bool,
   BasicType_type,
-};
+}
+BasicTypeKind;
 
 typedef struct Type
 {
@@ -790,8 +793,6 @@ BinCode;
 
 typedef struct
 {
-  bool success;
-
   String text;
   int text_len;
 
@@ -801,6 +802,8 @@ typedef struct
 
   uint8* data;
   int data_size;
+
+  bool success;
 }
 VmProgram;
 

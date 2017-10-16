@@ -4,7 +4,7 @@ include "sort.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 
-proc void print_numbers(int* numbers, int len)
+proc void print_numbers([]int numbers, int len)
 {
   var int i = 0;
   while(i < len)
@@ -16,12 +16,12 @@ proc void print_numbers(int* numbers, int len)
   }
 }
 
-proc int* make_numbers(int how_many)
+proc []int make_numbers(int how_many)
 {
   var int i = 0;
   var int c1 = 17;
   var int c2 = 31;
-  var int* numbers = new(int, how_many);
+  var int* numbers = (type int*)0; /* = new(type int, how_many);*/
 
   while(i < how_many)
   {
@@ -57,9 +57,8 @@ proc int main()
   print_str(")=");
   print_int(i_r);
 
-  /*
   var int nr_count = 30;
-  var int* numbers = make_numbers(nr_count);
+  var []int numbers = make_numbers(nr_count);
   print_str("\n--- SHUFFLED ---\n");
   print_numbers(numbers, nr_count);
 
@@ -72,6 +71,7 @@ proc int main()
 
   print_str("\n--- FIZZBUZZ ---\n");
   fizzbuzz(50);
+  /*
   */
   return 0;
 }

@@ -90,7 +90,7 @@ bool types_are_equal(Type* type_a, Type* type_b)
         && type_a->array.size == type_b->array.size;
     }
     else
-      assert(false);
+      assert(0);
   }
   return are_equal;
 }
@@ -199,7 +199,7 @@ bool type_unif(Type* type_a, Type* type_b)
 #endif
       }
       else
-        assert(false);
+        assert(0);
     }
   }
   else
@@ -283,9 +283,53 @@ Type* type_subst(List* subst_list, Type* type)
       subst->array.elem = type_subst(subst_list, subst->array.elem);
     }
     else
-      assert(false);
+      assert(0);
   }
   return subst;
 }
 
+bool normalize_type(Type* type, Type** resolved_type)
+{
+  bool success = true;
+
+  if(type->kind == Type_typevar)
+  {
+    type = get_type_repr(type);
+    if(type->kind == Type_typevar)
+    {
+      success = false;
+    }
+  }
+  else if(type->kind == Type_basic)
+  {
+    ; // ok
+  }
+  else if(type->kind == Type_proc)
+  {
+    success = normalize_type(type->proc.args, &type->proc.args)
+      && normalize_type(type->proc.ret, &type->proc.ret);
+  }
+  else if(type->kind == Type_product)
+  {
+    success = normalize_type(type->product.left, &type->product.left)
+      && normalize_type(type->product.right, &type->product.right);
+  }
+  else if(type->kind == Type_pointer)
+  {
+    success = normalize_type(type->pointer.pointee, &type->pointer.pointee);
+  }
+  else if(type->kind == Type_array)
+  {
+    success = normalize_type(type->array.elem, &type->array.elem);
+  }
+  else
+    assert(0);
+
+  if(success)
+  {
+    *resolved_type = type;
+  }
+
+  return success;
+}
 

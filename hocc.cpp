@@ -1334,6 +1334,10 @@ void make_type_printstr(String* str, Type* type)
     make_type_printstr(str, type->proc.args);
     str_append(str, ")");
   }
+  else if(type->kind == Type_typevar)
+  {
+    str_printf(str, "$type%d", type->typevar.id);
+  }
   else
     assert(0);
 }

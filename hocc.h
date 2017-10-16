@@ -517,22 +517,12 @@ typedef enum TypeKind
 {
   Type_None,
   Type_typevar,
-  //Type_unary,
   Type_basic,
   Type_proc,
   Type_product,
   Type_pointer,
   Type_array,
 };
-
-/*
-typedef enum UnaryTypeCtorKind
-{
-  UnaryTypeCtor_None,
-  UnaryTypeCtor_pointer,
-  UnaryTypeCtor_array,
-};
-*/
 
 typedef enum BasicTypeKind
 {
@@ -549,7 +539,7 @@ typedef struct Type
 {
   TypeKind kind;
   Type* repr_type; // representative member of the set of equivalent types
-  AstNode* ast_node;
+  //AstNode* ast_node;
   int width;
 
   union

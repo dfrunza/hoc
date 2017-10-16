@@ -6,18 +6,17 @@ include "fizzbuzz.hoc";
 include "sort.hoc";
 */
 
-/*
 var int a = 1;
 var int b;
+/*
 var [1]int* t;
 var char* c = "abc";
 */
 
-proc int foo(int bubbles)
+proc void foo()
 {
-  var int nonsense;
-  nonsense = main();
-  return nonsense;
+  var float* f;
+  f = &(type float)main();
 }
 
 /*
@@ -28,7 +27,11 @@ proc int bar(char* p)
 }
 */
 
-proc void main()
+proc int main()
 {
+  return 0;
 }
+
+
+
 

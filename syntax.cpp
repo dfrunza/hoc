@@ -433,11 +433,21 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     else if(input->token.kind == Token_minus)
       ATTR(bin_expr, op_kind, op_kind) = Operator_sub;
     else if(input->token.kind == Token_pipe)
+    {
+#if 0
       ATTR(bin_expr, op_kind, op_kind) = Operator_bit_or;
+#endif
+      success = compile_error(&input->src_loc, "operator `%s` not supported", get_token_printstr(&input->token));
+    }
     else if(input->token.kind == Token_pipe_pipe)
       ATTR(bin_expr, op_kind, op_kind) = Operator_logic_or;
     else if(input->token.kind == Token_ampersand)
+    {
+#if 0
       ATTR(bin_expr, op_kind, op_kind) = Operator_bit_and;
+#endif
+      success = compile_error(&input->src_loc, "operator `%s` not supported", get_token_printstr(&input->token));
+    }
     else if(input->token.kind == Token_ampersand_ampersand)
       ATTR(bin_expr, op_kind, op_kind) = Operator_logic_and;
     else

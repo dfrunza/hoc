@@ -17,8 +17,6 @@ Token keyword_list[] =
   {Token_struct, "struct"},
   {Token_union, "union"},
   {Token_enum, "enum"},
-//  {Token_new, "new"},
-//  {Token_putc, "putc"},
   {Token_None, 0}, /* terminator */
 };
 
@@ -251,12 +249,6 @@ char* get_token_printstr(Token* token)
     result = "type";
   else if(token->kind == Token_goto)
     result = "goto";
-#if 0
-  else if(token->kind == Token_new)
-    result = "new";
-  else if(token->kind == Token_putc)
-    result = "putc";
-#endif
   else if(token->kind == Token_true)
     result = "true";
   else if(token->kind == Token_false)

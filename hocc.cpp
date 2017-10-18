@@ -1779,10 +1779,36 @@ VmProgram* translate(char* file_path, char* hoc_text)
     }
 #endif
 
-    if(vm_program->success = semantic(module))
+    init_types();
+
+    begin_scope(ScopeKind_global, 0);
+    add_builtin_types();
+    add_builtin_procs();
+
+    if(vm_program->success = name_ident(module))
     {
-      assert(symbol_table->active_scope == 0);
-      assert(symbol_table->nesting_depth == -1);
+      if(DEBUG_enabled)/*>>>*/
+      {
+        printf("--- Name ID ---\n");
+        DEBUG_print_arena_usage(arena, "arena");
+        DEBUG_print_arena_usage(symbol_table->arena, "symbol_table");
+
+        begin_temp_memory(&arena);
+        String* str = str_new(arena);
+        DEBUG_print_scope(str, 0, "global_scope", symbol_table->active_scope);
+        DEBUG_print_ast_node(str, 0, "module", module);
+        str_dump_to_file(str, "debug_name_ident.txt");
+        end_temp_memory(&arena);
+      }/*<<<*/
+
+      build_types(module);
+      vm_program->success = eval_types(module) && normalize_types(module) && typecheck(module);
+
+      if(DEBUG_enabled)/*>>>*/
+      {
+        printf("--- Typecheck ---\n");
+        DEBUG_print_arena_usage(arena, "arena");
+      }/*<<<*/
 
 #if 0
       build_runtime(module);
@@ -1902,8 +1928,8 @@ int main(int argc, char* argv[])
 #if 0
         if(DEBUG_enabled)/*>>>*/
         {
-          printf("symbol count : %d\n", symbol_table->sym_count);/*<<<*/
-        }
+          printf("symbol count : %d\n", symbol_table->sym_count);
+        }/*<<<*/
 #endif
         
         OutFileNames out_files = {0};

@@ -14,21 +14,21 @@ var char* c = "abc";
 */
 
 /*
+*/
 proc int foo()
 {
+  return 0;
 }
 
 proc int bar(char* p)
 {
-}
-*/
-
-proc void main()
-{
   var int a;
-  var int b;
-  var bool c;
-  c = a && b;
+  return 2*a;
+}
+
+proc int main()
+{
+  return 23;
 }
 
 

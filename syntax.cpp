@@ -453,7 +453,7 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     else
       assert(0);
 
-    if(success = get_next_token(input) && parse_term(input, &ATTR(bin_expr, ast_node, right_operand)))
+    if(success && (success = get_next_token(input) && parse_term(input, &ATTR(bin_expr, ast_node, right_operand))))
     {
       if(ATTR(bin_expr, ast_node, right_operand))
       {

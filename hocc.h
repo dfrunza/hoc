@@ -1,8 +1,3 @@
-#include <stdio.h>
-#define VC_EXTRALEAN
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-
 #define ARENA_SIZE (3*MEGABYTE)
 #define SYMBOL_ARENA_SIZE (ARENA_SIZE/8)
 #define BINCODE_SIGNATURE "HC"
@@ -10,6 +5,7 @@
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
+typedef unsigned int bool;
 
 typedef char int8;
 typedef short int16;
@@ -57,23 +53,8 @@ typedef struct String
 }
 String;
 
-#define assert(EXPR)\
-  do { if(!(EXPR)) assert_f(#EXPR, __FILE__, __LINE__); } while(0);
-
-#define fail(MESSAGE, ...)\
-  fail_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__)
-
 #define sizeof_array(ARRAY)\
   (sizeof(ARRAY)/sizeof(ARRAY[0]))
-
-#define to_bool(EXPR)\
-  ((EXPR) ? true : false)
-
-#define error(MESSAGE, ...)\
-  error_f(__FILE__, __LINE__, (MESSAGE), __VA_ARGS__)
-
-#define compile_error(SRC, MESSAGE, ...)\
-  compile_error_f(__FILE__, __LINE__, (SRC), (MESSAGE), __VA_ARGS__)
 
 #define OBJ(VAR, KIND, NAME)\
   (((VAR)->kind == KIND##_##NAME) ? &(VAR)->NAME : 0)
@@ -233,16 +214,62 @@ typedef enum
 }
 OperatorKind;
 
-char* OperatorKind_strings[] =
-{
-#define ENUM_MEMBER(NAME) #NAME
-  OperatorKind_MEMBER_LIST()
-#undef ENUM_MEMBER
-};
-
 char* get_operator_kind_printstr(OperatorKind op)
 {
-  return OperatorKind_strings[op];
+  char* str = "???";
+  if(op == Operator_add)
+    str = "+";
+  else if(op == Operator_sub)
+    str = "-";
+  else if(op == Operator_mul)
+    str = "*";
+  else if(op == Operator_div)
+    str = "/";
+  else if(op == Operator_mod)
+    str = "%";
+  else if(op == Operator_neg)
+    str = "-";
+  else if (op == Operator_assign)
+    str = "=";
+  else if(op == Operator_deref)
+    str = "*";
+  else if(op == Operator_address_of)
+    str = "&";
+  else if(op == Operator_member_select)
+    str = ".";
+  else if(op == Operator_ptr_member_select)
+    str = "->";
+  else if(op == Operator_pre_decr || op == Operator_post_decr)
+    str = "--";
+  else if(op == Operator_pre_incr || op == Operator_post_incr)
+    str = "++";
+  else if(op == Operator_array_index)
+    str = "[]";
+  else if(op == Operator_eq)
+    str = "==";
+  else if(op == Operator_not_eq)
+    str = "!=";
+  else if(op == Operator_less)
+    str = "<";
+  else if(op == Operator_less_eq)
+    str = "<=";
+  else if(op == Operator_greater)
+    str = ">";
+  else if(op == Operator_greater_eq)
+    str = ">=";
+  else if(op == Operator_logic_and)
+    str = "&&";
+  else if(op == Operator_logic_or)
+    str = "||";
+  else if(op == Operator_logic_not)
+    str = "!";
+  else if(op == Operator_bit_and)
+    str = "&";
+  else if(op == Operator_bit_or)
+    str = "|";
+  else if(op == Operator_cast)
+    str = "(cast)";
+  return str;
 }
 
 #ifndef LiteralKind_MEMBER_LIST

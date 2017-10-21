@@ -1,13 +1,3 @@
-#include "hocc.h"
-
-bool DEBUG_enabled = true;
-bool DEBUG_zero_arena = true;
-bool DEBUG_check_arena_bounds = true;
-
-MemoryArena* arena = 0;
-
-#include "lib.cpp"
-
 SymbolTable* symbol_table = 0;
 int tempvar_id = 0;
 
@@ -19,6 +9,8 @@ Type* basic_type_void;
 Type* basic_type_type;
 List* subst_list;
 int typevar_id = 1;
+
+int last_label_id;
 
 List* new_list(MemoryArena* arena, ListKind kind)
 {
@@ -102,26 +94,6 @@ void replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
   }
   else
     list_b->last = list_a->last;
-}
-
-bool compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
-{
-  char* filename_buf = mem_push_array_nz(arena, char, cstr_len(file));
-  cstr_copy(filename_buf, file);
-
-  if(src_loc && src_loc->line_nr >= 0)
-    fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
-            path_make_stem(filename_buf), line);
-  else
-    fprintf(stderr, "%s(%d) : ", file, line);
-
-  va_list args;
-  va_start(args, message);
-  vfprintf(stderr, message, args);
-  va_end(args);
-
-  fprintf(stderr, "\n");
-  return false;
 }
 
 void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
@@ -1288,7 +1260,7 @@ AstNode* new_ast_node(Ast_Gen gen, AstKind kind, SourceLoc* src_loc)
 void DEBUG_print_arena_usage(MemoryArena* arena, char* tag)
 {
   ArenaUsage usage = arena_usage(arena);
-  printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
+  h_printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
 }
 
 void make_type_printstr(String* str, Type* type)
@@ -1723,14 +1695,14 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
   }
 }
 
-#include "lex.cpp"
-#include "syntax.cpp"
-#include "type.cpp"
-#include "semantic.cpp"
+#include "lex.c"
+#include "syntax.c"
+#include "type.c"
+#include "semantic.c"
 /*
-#include "runtime.cpp"
-#include "codegen.cpp"
-#include "hasm.cpp"
+#include "runtime.c"
+#include "codegen.c"
+#include "hasm.c"
 */
 
 VmProgram* translate(char* file_path, char* hoc_text)
@@ -1750,7 +1722,7 @@ VmProgram* translate(char* file_path, char* hoc_text)
   {
     if(DEBUG_enabled)/*>>>*/
     {
-      printf("--- Parse ---\n");
+      h_printf("--- Parse ---\n");
       DEBUG_print_arena_usage(arena, "arena");
 
       begin_temp_memory(&arena);
@@ -1789,7 +1761,7 @@ VmProgram* translate(char* file_path, char* hoc_text)
     {
       if(DEBUG_enabled)/*>>>*/
       {
-        printf("--- Name ID ---\n");
+        h_printf("--- Name ID ---\n");
         DEBUG_print_arena_usage(arena, "arena");
         DEBUG_print_arena_usage(symbol_table->arena, "symbol_table");
 
@@ -1806,7 +1778,7 @@ VmProgram* translate(char* file_path, char* hoc_text)
 
       if(DEBUG_enabled)/*>>>*/
       {
-        printf("--- Typecheck ---\n");
+        h_printf("--- Typecheck ---\n");
         DEBUG_print_arena_usage(arena, "arena");
       }/*<<<*/
 
@@ -1835,165 +1807,4 @@ VmProgram* translate(char* file_path, char* hoc_text)
   return vm_program;
 }
 
-typedef struct
-{
-  char* name;
-  int len;
-}
-FileName;
-
-typedef struct
-{
-  char strings[4*80 + 4*10];
-  FileName hasm;
-  FileName bincode;
-  FileName exe;
-}
-OutFileNames;
-
-bool make_out_file_names(OutFileNames* out_files, char* src_file_path)
-{
-  char* stem = mem_push_array_nz(arena, char, cstr_len(src_file_path));
-  cstr_copy(stem, src_file_path);
-  stem = path_make_stem(stem);
-
-  int stem_len = cstr_len(stem);
-  assert(stem_len > 0);
-  bool success = true;
-
-  if(success = (stem_len > 0 && stem_len < 81))
-  {
-    char* str = out_files->strings;
-
-    sprintf(str, "%s.hasm", stem);
-    out_files->hasm.name = str;
-    out_files->hasm.len = cstr_len(out_files->hasm.name);
-    str = out_files->hasm.name + out_files->hasm.len + 1;
-
-    sprintf(str, "%s.bincode", stem);
-    out_files->bincode.name = str;
-    out_files->bincode.len = cstr_len(out_files->bincode.name);
-    str = out_files->bincode.name + out_files->bincode.len + 1;
-
-    sprintf(str, "%s.exe", stem);
-    out_files->exe.name = str;
-    out_files->exe.len = cstr_len(out_files->exe.name);
-  }
-  else
-    error("length of file name must be between 1..80 : '%s'", stem);
-  return success;
-}
-
-char* make_vm_exe_path(char* hocc_exe_path)
-{
-  char* vm_exe_path = mem_push_array_nz(arena, char, cstr_len(hocc_exe_path) + cstr_len("vm.exe"));
-  cstr_copy(vm_exe_path, hocc_exe_path);
-  path_make_dir(vm_exe_path);
-  cstr_append(vm_exe_path, "vm.exe");
-  return vm_exe_path;
-}
-
-bool write_hasm_file(OutFileNames* out_files, VmProgram* vm_program)
-{
-  int bytes_written = file_write_bytes(out_files->hasm.name, (uint8*)vm_program->text.head, vm_program->text_len);
-  bool success = (bytes_written == vm_program->text_len);
-  if(!success)
-    error("HASM file '%s' incompletely written", out_files->hasm.name);
-  return success;
-}
-
-int main(int argc, char* argv[])
-{
-  bool success = true;
-
-  if(success = (argc >= 2))
-  {
-    arena = new_arena(ARENA_SIZE);
-    symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
-
-    char* src_file_path = argv[1];
-
-    char* hoc_text = file_read_text(arena, src_file_path);
-    if(DEBUG_enabled)/*>>>*/
-    {
-      printf("--- Read HoC text ---\n");
-      DEBUG_print_arena_usage(arena, "arena");/*<<<*/
-    }
-
-    if(success = to_bool(hoc_text))
-    {
-      VmProgram* vm_program = translate(src_file_path, hoc_text);
-      if(success = vm_program->success)
-      {
-#if 0
-        if(DEBUG_enabled)/*>>>*/
-        {
-          printf("symbol count : %d\n", symbol_table->sym_count);
-        }/*<<<*/
-#endif
-        
-        OutFileNames out_files = {0};
-        if(success = make_out_file_names(&out_files, src_file_path))
-        {
-#if 0
-          BinCode* bin_image = mem_push_struct(arena, BinCode);
-          cstr_copy(bin_image->sig, BINCODE_SIGNATURE);
-
-          char* hasm_text = str_cap(&vm_program->text);
-
-          if(DEBUG_enabled)/*>>>*/
-            write_hasm_file(&out_files, vm_program);/*<<<*/
-
-          if(success = convert_hasm_to_instructions(hasm_text, vm_program))
-          {
-            char* hocc_exe_path = argv[0];
-            char* vm_exe_path = make_vm_exe_path(hocc_exe_path);
-
-            uint8* vm_bytes = 0;
-            int vm_size = 0;
-            if(vm_size = file_read_bytes(arena, &vm_bytes, vm_exe_path))
-            {
-              FILE* exe_file = fopen(out_files.exe.name, "wb");
-              if(exe_file)
-              {
-                bin_image->code_offset = sizeof(BinCode);
-                bin_image->code_size = sizeof(Instruction) * vm_program->instr_count;
-
-                bin_image->data_offset = bin_image->code_offset + bin_image->code_size;
-                bin_image->data_size = sizeof(uint8) * vm_program->data_size;
-
-                if((int)fwrite(vm_bytes, 1, vm_size, exe_file) == vm_size
-                  && (int)fwrite(bin_image, sizeof(BinCode), 1, exe_file) == 1
-                  && (int)fwrite(vm_program->instructions, sizeof(Instruction), vm_program->instr_count, exe_file) == vm_program->instr_count
-                  && (int)fwrite(vm_program->data, sizeof(uint8), vm_program->data_size, exe_file) == vm_program->data_size)
-                {
-                  ;/*OK*/
-                }
-                else
-                  success = error("could not write to file `%s`", out_files.exe.name);
-                fclose(exe_file);
-              }
-              else
-                success = error("could not write to file `%s`", out_files.exe.name);
-            }
-            else
-              success = error("could not read file `%s`", vm_exe_path);
-          }
-#endif
-        }
-      }
-      else
-        success = error("program could not be translated");
-    }
-    else
-      success = error("could not read source file `%s`", src_file_path);
-  }
-  else
-    success = error("missing argument : input source file");
-
-#if 0
-  getc(stdin);
-#endif
-  return success ? 0 : -1;
-}
 

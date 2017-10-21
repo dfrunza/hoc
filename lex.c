@@ -359,13 +359,13 @@ loop:
     {
       token->kind = Token_float_num;
       token->float_val = mem_push_struct(arena, float);
-      sscanf(digit_buf, "%f", token->float_val);
+      h_sscanf(digit_buf, "%f", token->float_val);
     }
     else
     {
       token->kind = Token_int_num;
       token->int_val = mem_push_struct(arena, int);
-      sscanf(digit_buf, "%d", token->int_val);
+      h_sscanf(digit_buf, "%d", token->int_val);
     }
   }
   else if(c == '-')

@@ -1,4 +1,5 @@
 #include "hocc.h"
+#include "platform.h"
 
 bool DEBUG_enabled = true;
 bool DEBUG_zero_arena = true;
@@ -6,7 +7,7 @@ bool DEBUG_check_arena_bounds = true;
 
 MemoryArena* arena = 0;
 
-#include "lib.cpp"
+#include "lib.c"
 
 #define VM_MEMORY_SIZE 2048
 
@@ -736,7 +737,7 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       if(check_stack_bounds(machine, arg_sp))
       {
         int8 arg = memory_at(arg_sp, int8, 0);
-        putc(arg, stdout);
+        h_putc(arg);
 
         machine->sp = arg_sp;
         machine->ip++;
@@ -827,6 +828,8 @@ ExecResult run_program(HocMachine* machine)
 
   return exec_result;
 }
+
+#include "platform.c"
 
 bool load_bin_image(char* exe_file_name, HocMachine* machine)
 {

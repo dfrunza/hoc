@@ -1366,6 +1366,7 @@ bool typecheck(AstNode* node)
       {
         if(types_are_equal(ret_ty, basic_type_int)
             || types_are_equal(ret_ty, basic_type_float)
+            || (types_are_equal(ret_ty, basic_type_char))
             || (ret_ty->kind == Type_pointer))
         {
           ;//ok

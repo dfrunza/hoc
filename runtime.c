@@ -1,5 +1,3 @@
-int last_label_id;
-
 void rt_statement(AstNode* ast);
 void rt_block_stmts(List* stmt_list);
 

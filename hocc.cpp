@@ -1802,7 +1802,7 @@ VmProgram* translate(char* file_path, char* hoc_text)
       }/*<<<*/
 
       build_types(module);
-      vm_program->success = eval_types(module) && normalize_types(module) && typecheck(module);
+      vm_program->success = eval_types(module) && resolve_types(module) && typecheck(module);
 
       if(DEBUG_enabled)/*>>>*/
       {

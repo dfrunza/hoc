@@ -1,10 +1,10 @@
 /*
+*/
 include "str.hoc";
 include "math.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
-*/
 
 /*
 var bool a = 1;
@@ -14,21 +14,24 @@ var char* c = "abc";
 */
 
 /*
-*/
 proc int foo()
 {
   return 0;
 }
+*/
 
-proc int bar(char* p)
+proc char* bar(int x)
 {
-  var int a;
-  return 2*a;
+  var char* p;
+  return p;
 }
 
-proc int main()
+proc void main()
 {
-  return 23;
+  var [1]int a;
+  var [1]int b;
+  var int* c;
+  c + &a[1];
 }
 
 

@@ -288,7 +288,7 @@ Type* type_subst(List* subst_list, Type* type)
   return subst;
 }
 
-bool normalize_type(Type* type, Type** resolved_type)
+bool resolve_type(Type* type, Type** resolved_type)
 {
   bool success = true;
 
@@ -306,21 +306,21 @@ bool normalize_type(Type* type, Type** resolved_type)
   }
   else if(type->kind == Type_proc)
   {
-    success = normalize_type(type->proc.args, &type->proc.args)
-      && normalize_type(type->proc.ret, &type->proc.ret);
+    success = resolve_type(type->proc.args, &type->proc.args)
+      && resolve_type(type->proc.ret, &type->proc.ret);
   }
   else if(type->kind == Type_product)
   {
-    success = normalize_type(type->product.left, &type->product.left)
-      && normalize_type(type->product.right, &type->product.right);
+    success = resolve_type(type->product.left, &type->product.left)
+      && resolve_type(type->product.right, &type->product.right);
   }
   else if(type->kind == Type_pointer)
   {
-    success = normalize_type(type->pointer.pointee, &type->pointer.pointee);
+    success = resolve_type(type->pointer.pointee, &type->pointer.pointee);
   }
   else if(type->kind == Type_array)
   {
-    success = normalize_type(type->array.elem, &type->array.elem);
+    success = resolve_type(type->array.elem, &type->array.elem);
   }
   else
     assert(0);

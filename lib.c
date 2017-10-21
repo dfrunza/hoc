@@ -432,3 +432,87 @@ void print_char(char buf[3], char raw_char)
     *buf = raw_char;
 }
 
+List* new_list(MemoryArena* arena, ListKind kind)
+{
+  List* list = mem_push_struct(arena, List);
+  list->kind = kind;
+  list->arena = arena;
+  return list;
+}
+
+void remove_list_item(List* list, ListItem* item)
+{
+  if(item->prev)
+  {
+    item->prev->next = item->next;
+    if(item->next)
+      item->next->prev = item->prev;
+  }
+
+  if(item == list->first && item == list->last)
+    list->first = list->last = 0;
+  else if(item == list->first)
+    list->first = item->next;
+  else if(item == list->last)
+    list->last = item->prev;
+
+  /* NOTE(to myself): Don't nullify the item->next and item->prev pointers;
+   * they may be needed in an iteration loop */
+}
+
+void append_list_item(List* list, ListItem* item)
+{
+  assert(list->kind == item->kind);
+
+  if(list->last)
+  {
+    item->prev = list->last;
+    item->next = 0;
+    list->last->next = item;
+    list->last = item;
+  }
+  else
+  {
+    list->first = list->last = item;
+    item->next = item->prev = 0;
+  }
+}
+
+void append_list_elem(List* list, void* elem, ListKind kind)
+{
+  ListItem* item = mem_push_struct(arena, ListItem);
+  item->elem = elem;
+  item->kind = kind;
+  append_list_item(list, item);
+}
+
+void replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
+{
+  ListItem* prev_b_item = at_b_item->prev;
+  ListItem* next_b_item = at_b_item->next;
+
+  if(list_a->first)
+  {
+    if(prev_b_item)
+      prev_b_item->next = list_a->first;
+    else
+      list_b->first = list_a->first;
+  }
+  else
+  {
+    if(prev_b_item)
+      prev_b_item->next = next_b_item;
+    else
+      list_b->first = next_b_item;
+  }
+
+  if(next_b_item)
+  {
+    next_b_item->prev = list_a->last;
+    if(list_a->last)
+      list_a->last->next = next_b_item;
+  }
+  else
+    list_b->last = list_a->last;
+}
+

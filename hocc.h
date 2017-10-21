@@ -1,5 +1,4 @@
 #define ARENA_SIZE (3*MEGABYTE)
-#define SYMBOL_ARENA_SIZE (ARENA_SIZE/8)
 #define BINCODE_SIGNATURE "HC"
 
 typedef unsigned char uchar;

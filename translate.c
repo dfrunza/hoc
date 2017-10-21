@@ -1,3 +1,5 @@
+#define SYMBOL_ARENA_SIZE (ARENA_SIZE / 8)
+
 SymbolTable* symbol_table = 0;
 int tempvar_id = 0;
 
@@ -11,90 +13,6 @@ List* subst_list;
 int typevar_id = 1;
 
 int last_label_id;
-
-List* new_list(MemoryArena* arena, ListKind kind)
-{
-  List* list = mem_push_struct(arena, List);
-  list->kind = kind;
-  list->arena = arena;
-  return list;
-}
-
-void remove_list_item(List* list, ListItem* item)
-{
-  if(item->prev)
-  {
-    item->prev->next = item->next;
-    if(item->next)
-      item->next->prev = item->prev;
-  }
-
-  if(item == list->first && item == list->last)
-    list->first = list->last = 0;
-  else if(item == list->first)
-    list->first = item->next;
-  else if(item == list->last)
-    list->last = item->prev;
-
-  /* NOTE(to myself): Don't nullify the item->next and item->prev pointers;
-   * they may be needed in an iteration loop */
-}
-
-void append_list_item(List* list, ListItem* item)
-{
-  assert(list->kind == item->kind);
-
-  if(list->last)
-  {
-    item->prev = list->last;
-    item->next = 0;
-    list->last->next = item;
-    list->last = item;
-  }
-  else
-  {
-    list->first = list->last = item;
-    item->next = item->prev = 0;
-  }
-}
-
-void append_list_elem(List* list, void* elem, ListKind kind)
-{
-  ListItem* item = mem_push_struct(arena, ListItem);
-  item->elem = elem;
-  item->kind = kind;
-  append_list_item(list, item);
-}
-
-void replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
-{
-  ListItem* prev_b_item = at_b_item->prev;
-  ListItem* next_b_item = at_b_item->next;
-
-  if(list_a->first)
-  {
-    if(prev_b_item)
-      prev_b_item->next = list_a->first;
-    else
-      list_b->first = list_a->first;
-  }
-  else
-  {
-    if(prev_b_item)
-      prev_b_item->next = next_b_item;
-    else
-      list_b->first = next_b_item;
-  }
-
-  if(next_b_item)
-  {
-    next_b_item->prev = list_a->last;
-    if(list_a->last)
-      list_a->last->next = next_b_item;
-  }
-  else
-    list_b->last = list_a->last;
-}
 
 void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 {
@@ -1153,7 +1071,6 @@ void init_ast_meta_infos()
   }
 }
 
-
 #define ATTR(NODE, KIND, NAME)\
   (get_ast_attribute_f((NODE), AstAttribute_##KIND, AstAttributeName_##NAME)->KIND)
 
@@ -1732,9 +1649,8 @@ VmProgram* translate(char* file_path, char* hoc_text)
       end_temp_memory(&arena);
     }/*<<<*/
 
-#if 1
+    /*>>> process the includes*/
     {
-      // process the includes
       AstNode* module_body = ATTR(module, ast_node, body);
       for(ListItem* list_item = ATTR(module_body, list, nodes)->first;
           list_item;
@@ -1748,11 +1664,11 @@ VmProgram* translate(char* file_path, char* hoc_text)
           process_includes(ATTR(include_body, list, nodes), ATTR(module_body, list, nodes), list_item);
         }
       }
-    }
-#endif
+    }/*<<<*/
 
     init_types();
 
+    symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
     begin_scope(ScopeKind_global, 0);
     add_builtin_types();
     add_builtin_procs();

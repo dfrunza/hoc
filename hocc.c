@@ -86,7 +86,6 @@ int main(int argc, char* argv[])
   if(success = (argc >= 2))
   {
     arena = new_arena(ARENA_SIZE);
-    symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
 
     char* src_file_path = argv[1];
 

@@ -1424,54 +1424,38 @@ bool typecheck(AstNode* node)
       {
         if(!types_are_equal(left_arg_ty, right_arg_ty))
         {
+          bool valid_cast = false;
+
           if(types_are_equal(left_arg_ty, basic_type_int))
           {
-            if(types_are_equal(right_arg_ty, basic_type_float)
+            // int <- float | bool | pointer | char
+            valid_cast = types_are_equal(right_arg_ty, basic_type_float)
                 || types_are_equal(right_arg_ty, basic_type_bool)
                 || types_are_equal(right_arg_ty, basic_type_char)
-                || (right_arg_ty->kind == Type_pointer))
-            {
-              ;// int <- float | bool | pointer | char
-            }
-            else
-              success = compile_error(node->src_loc, "type error: invalid cast `%s` -> `%s`",
-                  get_type_printstr(right_arg_ty), get_type_printstr(left_arg_ty));
+                || (right_arg_ty->kind == Type_pointer);
           }
           else if(types_are_equal(left_arg_ty, basic_type_float))
           {
-            if(types_are_equal(right_arg_ty, basic_type_int))
-            {
-              ;// float <- int
-            }
-            else
-              success = compile_error(node->src_loc, "type error: invalid cast `%s` -> `%s`",
-                  get_type_printstr(right_arg_ty), get_type_printstr(left_arg_ty));
+            // float <- int
+            valid_cast = types_are_equal(right_arg_ty, basic_type_int);
           }
           else if(left_arg_ty->kind == Type_pointer)
           {
-            if(right_arg_ty->kind == Type_pointer
-                || right_arg_ty->kind == Type_array
-                || types_are_equal(right_arg_ty, basic_type_int))
-            {
-              ;// pointer <- pointer | array | int
-            }
-            else
-              success = compile_error(node->src_loc, "type error: invalid cast `%s` -> `%s`",
-                  get_type_printstr(right_arg_ty), get_type_printstr(left_arg_ty));
+            // pointer <- pointer | array | int
+            valid_cast = (right_arg_ty->kind == Type_pointer)
+                || (right_arg_ty->kind == Type_array)
+                || types_are_equal(right_arg_ty, basic_type_int);
           }
           else if(left_arg_ty->kind == Type_array)
           {
-            if(right_arg_ty->kind == Type_pointer || right_arg_ty->kind == Type_array)
-            {
-              ;// array <- pointer | array
-            }
-            else
-              success = compile_error(node->src_loc, "type error: invalid cast `%s` -> `%s`",
-                  get_type_printstr(right_arg_ty), get_type_printstr(left_arg_ty));
+            // array <- pointer | array
+            valid_cast = (right_arg_ty->kind == Type_pointer) || (right_arg_ty->kind == Type_array);
           }
-          else if(types_are_equal(left_arg_ty, basic_type_void))
+
+          if(!(success = valid_cast))
           {
-            success = compile_error(node->src_loc, "type error: cannot cast to `void`");
+            compile_error(node->src_loc, "type error: invalid cast `%s` -> `%s`",
+                get_type_printstr(right_arg_ty), get_type_printstr(left_arg_ty));
           }
         }
       }

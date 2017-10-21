@@ -1,10 +1,10 @@
 /*
-*/
 include "str.hoc";
 include "math.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
+*/
 
 /*
 var bool a = 1;
@@ -31,7 +31,8 @@ proc void main()
   var [1]int a;
   var [1]int b;
   var int* c;
-  c + &a[1];
+  var char p;
+  p = (type char)c;
 }
 
 

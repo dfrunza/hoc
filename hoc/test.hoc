@@ -1,14 +1,15 @@
+/*
 include "str.hoc";
 include "math.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
-/*
 */
 
 /*
-var bool a = 1;
-var bool b;
+var int a;
+var int b;
+
 var [1]int* t;
 var char* c = "abc";
 */
@@ -18,19 +19,24 @@ proc int foo(char s)
 {
   return 0;
 }
-*/
 
 proc char* bar(int x)
 {
   var char* p;
   return p;
 }
+*/
 
 proc void main()
 {
-  var char* s = "abc";
-  var char p;
-  putc(*s);
+  var int a;
+  var int b;
+  var int c;
+
+  {
+    var int c;
+    c = a + b;
+  }
 }
 
 

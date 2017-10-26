@@ -158,6 +158,25 @@ typedef struct TokenStream
 }
 TokenStream;
 
+typedef enum
+{
+  DataArea_None,
+  DataArea_object,
+  DataArea_link,
+}
+DataAreaKind;
+
+typedef struct
+{
+  DataAreaKind kind;
+
+  int loc;
+  int size;
+  int decl_scope_depth;
+}
+DataArea;
+
+/*
 typedef struct
 {
   int loc;
@@ -167,10 +186,11 @@ DataArea;
 
 typedef struct
 {
-  int actv_rec_offset;
+  int decl_scope_offset;
   DataArea data;
 }
 AccessLink;
+*/
 
 #ifndef OperatorKind_MEMBER_LIST
 #define OperatorKind_MEMBER_LIST()\
@@ -307,12 +327,12 @@ typedef struct Symbol Symbol;
 
 #ifndef ScopeKind_MEMBER_LIST
 #define ScopeKind_MEMBER_LIST()\
-  ENUM_MEMBER(ScopeKind_None),\
-  ENUM_MEMBER(ScopeKind_global),\
-  ENUM_MEMBER(ScopeKind_module),\
-  ENUM_MEMBER(ScopeKind_proc),\
-  ENUM_MEMBER(ScopeKind_loop),\
-  ENUM_MEMBER(ScopeKind_block),
+  ENUM_MEMBER(Scope_None),\
+  ENUM_MEMBER(Scope_global),\
+  ENUM_MEMBER(Scope_module),\
+  ENUM_MEMBER(Scope_proc),\
+  ENUM_MEMBER(Scope_loop),\
+  ENUM_MEMBER(Scope_block),
 #endif
 
 typedef enum
@@ -343,6 +363,9 @@ typedef struct Scope
   int nesting_depth;
   struct Scope* encl_scope;
   AstNode* ast_node;
+
+  int data_area_size;
+  List* access_links;
 }
 Scope;
 
@@ -361,6 +384,7 @@ typedef enum
   AstAttribute_scope,
   AstAttribute_type,
   AstAttribute_symbol,
+  AstAttribute_data_area,
 }
 AstAttributeKind;
 
@@ -417,6 +441,7 @@ typedef enum
   AstAttributeName_lit_kind,
   AstAttributeName_local_decls,
   AstAttributeName_non_local_occurs,
+  AstAttributeName_data_area,
 }
 AstAttributeName;
 
@@ -439,6 +464,7 @@ typedef struct
     Scope* scope;
     Type* type;
     Symbol* symbol;
+    DataArea* data_area;
   };
 }
 AstAttribute;
@@ -568,7 +594,6 @@ typedef struct Type
 {
   TypeKind kind;
   Type* repr_type; // representative member of the set of equivalent types
-  //AstNode* ast_node;
   int width;
 
   union
@@ -652,23 +677,28 @@ typedef struct Symbol
 
   union
   {
+#if 0
     struct
     {
-      void* data;
+      DataArea data_area;
     }
     var_decl;
+#endif
 
     struct
     {
       Symbol* decl_sym;
+      int decl_scope_depth;
     }
     var_occur;
 
+#if 0
     struct
     {
       Type* type;
     }
     type_decl;
+#endif
 
     struct
     {
@@ -676,11 +706,14 @@ typedef struct Symbol
     }
     type_occur;
 
+#if 0
     struct
     {
-      Symbol* ret_var;
+      Symbol* ret;
+      List* args;
     }
     proc_decl;
+#endif
 
     struct
     {
@@ -694,6 +727,8 @@ Symbol;
 typedef struct
 {
   List* symbols;
+  List* scopes;
+  Scope* global_scope;
   Scope* active_scope;
   int nesting_depth;
   MemoryArena* arena;
@@ -841,6 +876,7 @@ typedef enum
   List_scope,
   List_vm_instr,
   List_type_pair,
+  List_data_area,
 }
 ListKind;
 
@@ -858,6 +894,7 @@ typedef struct ListItem
     Scope* scope;
     Instruction* instr;
     TypePair* type_pair;
+    DataArea* data_area;
   };
   struct ListItem* next;
   struct ListItem* prev;

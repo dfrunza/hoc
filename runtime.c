@@ -1,3 +1,4 @@
+#if 0
 void rt_statement(AstNode* ast);
 void rt_block_stmts(List* stmt_list);
 
@@ -9,6 +10,7 @@ void make_unique_label(String* label)
   MemoryArena* arena = label->arena;
   arena->free = (uint8*)label->end + 1;
 }
+#endif
 
 int compute_data_loc(int sp, List* areas)
 {
@@ -16,10 +18,10 @@ int compute_data_loc(int sp, List* areas)
       list_item;
       list_item = list_item->next)
   {
-    DataArea* data = (DataArea*)list_item->elem;
-    data->loc = sp;
-    assert(data->size > 0);
-    sp += data->size;
+    DataArea* area = ITEM(list_item, data_area);
+    area->loc = sp;
+    assert(area->size >= 0);
+    sp += area->size;
   }
   return sp;
 }
@@ -30,12 +32,12 @@ void fixup_data_loc(int fp, List* areas)
       list_item;
       list_item = list_item->next)
   {
-    DataArea* data = (DataArea*)list_item->elem;
-    data->loc = data->loc - fp;
+    DataArea* area = ITEM(list_item, data_area);
+    area->loc = area->loc - fp;
   }
 }
 
-void compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
+void compute_area_locations(List* pre_fp_data, List* post_fp_data)
 {
   int fp = compute_data_loc(0, pre_fp_data);
   compute_data_loc(fp, post_fp_data);
@@ -43,6 +45,7 @@ void compute_activation_record_locations(List* pre_fp_data, List* post_fp_data)
   fixup_data_loc(fp, post_fp_data);
 }
 
+#if 0
 void rt_call(AstCall* call)
 {
   List* args_list = &call->args->list;
@@ -300,9 +303,8 @@ void rt_proc(AstProc* proc)
   rt_block_stmts(&block->node_list);
 }
  
-void build_runtime(AstModule* module)
+void build_runtime(AstNode* node)
 {
-  AstBlock* module_block = (AstBlock*)module->body;
   for(ListItem* list_item = module->proc_defs.first;
       list_item;
       list_item = list_item->next)
@@ -325,4 +327,149 @@ void build_runtime(AstModule* module)
   compute_activation_record_locations(&pre_fp_data, &post_fp_data);
   rt_block_stmts(&module_block->node_list);
 }
+#endif
+
+void compute_locals_area_size(Scope* scope, List* local_data_areas)
+{
+  for(Symbol* symbol = scope->last_symbol;
+      symbol;
+      symbol = symbol->prev_symbol)
+  {
+    if(symbol->kind == Symbol_var_decl)
+    {
+      AstNode* var_decl = symbol->ast_node;
+      DataArea* data_area = ATTR(var_decl, data_area, data_area) = mem_push_struct(arena, DataArea);
+      data_area->size = ATTR(var_decl, type, type)->width;
+      scope->data_area_size += data_area->size;
+      append_list_elem(local_data_areas, data_area, List_data_area);
+    }
+  }
+}
+
+void build_runtime()
+{
+  for(ListItem* list_item = symbol_table->scopes->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    Scope* scope = ITEM(list_item, scope);
+    if(scope->kind == Scope_global)
+    {
+      List* pre_fp_areas = new_list(arena, List_data_area);
+      List* post_fp_areas = new_list(arena, List_data_area);
+
+      DataArea* base_offset = mem_push_struct(arena, DataArea);
+      base_offset->size = 1; // null ptr
+      scope->data_area_size = base_offset->size;
+      append_list_elem(post_fp_areas, base_offset, List_data_area);
+
+      compute_area_locations(pre_fp_areas, post_fp_areas);
+    }
+    else if(scope->kind == Scope_module)
+    {
+      List* pre_fp_areas = new_list(arena, List_data_area);
+      List* post_fp_areas = new_list(arena, List_data_area);
+
+      compute_locals_area_size(scope, post_fp_areas);
+      compute_area_locations(pre_fp_areas, post_fp_areas);
+    }
+    else if(scope->kind == Scope_proc)
+    {
+      List* pre_fp_areas = new_list(arena, List_data_area);
+      List* post_fp_areas = new_list(arena, List_data_area);
+
+      AstNode* proc = scope->ast_node;
+      AstNode* ret_var = ATTR(proc, ast_node, ret_var);
+      DataArea* ret_area = ATTR(ret_var, data_area, data_area) = mem_push_struct(arena, DataArea);
+      ret_area->kind = DataArea_object;
+      ret_area->size = ATTR(ret_var, type, type)->width;
+      scope->data_area_size += ret_area->size;
+      append_list_elem(pre_fp_areas, ret_area, List_data_area);
+
+      for(ListItem* list_item = ATTR(proc, list, formal_args)->first;
+          list_item;
+          list_item = list_item->next)
+      {
+        AstNode* arg = ITEM(list_item, ast_node);
+        DataArea* arg_area = ATTR(arg, data_area, data_area) = mem_push_struct(arena, DataArea);
+        arg_area->kind = DataArea_object;
+        arg_area->size = ATTR(arg, type, type)->width;
+        scope->data_area_size += arg_area->size;
+        append_list_elem(pre_fp_areas, arg_area, List_data_area);
+      }
+
+      DataArea* ctrl_links = mem_push_struct(arena, DataArea);
+      ctrl_links->kind = DataArea_object;
+      ctrl_links->size = 3*4; // fp, sp, ip
+      append_list_elem(pre_fp_areas, ctrl_links, List_data_area);
+
+      compute_locals_area_size(scope, post_fp_areas);
+      compute_area_locations(pre_fp_areas, post_fp_areas);
+    }
+    else if(scope->kind == Scope_block)
+    {
+      List* pre_fp_areas = new_list(arena, List_data_area);
+      List* post_fp_areas = new_list(arena, List_data_area);
+      List* access_links = new_list(arena, List_data_area);
+      int access_links_size = 0;
+
+      for(Symbol* symbol = scope->last_symbol;
+          symbol;
+          symbol = symbol->prev_symbol)
+      {
+        if(symbol->kind == Symbol_var_occur)
+        {
+          AstNode* var_occur = symbol->ast_node;
+          
+          int decl_scope_depth = symbol->var_occur.decl_scope_depth;
+          if(decl_scope_depth > 0)
+          {
+            // non-local
+            DataArea* link = 0;
+            for(ListItem* list_item = access_links->first;
+                list_item;
+                list_item = list_item->next)
+            {
+              link = ITEM(list_item, data_area);
+              if(link->decl_scope_depth == symbol->var_occur.decl_scope_depth)
+              {
+                break;
+              }
+              link = 0;
+            }
+            if(!link)
+            {
+              link = mem_push_struct(arena, DataArea);
+              link->kind = DataArea_link;
+              link->decl_scope_depth = symbol->var_occur.decl_scope_depth;
+              link->size = 4; // size of an int
+              append_list_elem(access_links, link, List_data_area);
+              append_list_elem(pre_fp_areas, link, List_data_area);
+              access_links_size += link->size;
+            }
+            ATTR(var_occur, data_area, data_area) = link;
+          }
+          else if(decl_scope_depth == 0)
+          {
+            // local
+            AstNode* var_decl = ATTR(var_occur, ast_node, var_decl);
+            ATTR(var_occur, data_area, data_area) = ATTR(var_decl, data_area, data_area);
+          }
+          else
+            assert(0);
+        }
+      }
+
+      DataArea* old_fp = mem_push_struct(arena, DataArea);
+      old_fp->size = 4; // size of an int
+      append_list_elem(pre_fp_areas, old_fp, List_data_area);
+
+      compute_locals_area_size(scope, post_fp_areas);
+      compute_area_locations(pre_fp_areas, post_fp_areas);
+    }
+    int x = 0; x++;
+  }
+  int x = 0; x++;
+}
+
 

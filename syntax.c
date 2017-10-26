@@ -1099,13 +1099,18 @@ bool parse_proc(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
+  AstNode* proc_decl = *node = new_ast_node(Ast_gen0, AstNode_proc_decl, clone_source_loc(&input->src_loc));
   AstNode* ret_type = 0;
   if(success = parse_type(input, &ret_type))
   {
     if(ret_type)
     {
-      AstNode* proc_decl = *node = new_ast_node(Ast_gen0, AstNode_proc_decl, clone_source_loc(&input->src_loc));
-      ATTR(proc_decl, ast_node, ret_type) = ret_type;
+      AstNode* ret_var = ATTR(proc_decl, ast_node, ret_var)
+        = new_ast_node(Ast_gen0, AstNode_var_decl, clone_source_loc(ret_type->src_loc));
+      AstNode* ret_id = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(ret_type->src_loc));
+      ATTR(ret_id, str, name) = make_temp_name("ret");
+      ATTR(ret_var, ast_node, id) = ret_id;
+      ATTR(ret_var, ast_node, type) = ret_type;
 
       if(input->token.kind == Token_id)
       {

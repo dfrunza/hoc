@@ -98,9 +98,17 @@ bool types_are_equal(Type* type_a, Type* type_b)
 int compute_type_width(Type* type)
 {
   if(type->kind == Type_array)
+  {
     type->width = type->array.size * compute_type_width(type->array.elem);
+  }
   else if(type->kind == Type_product)
+  {
     type->width = compute_type_width(type->product.left) + compute_type_width(type->product.right);
+  }
+  else if(type->kind == Type_proc)
+  {
+    type->width = compute_type_width(type->proc.ret) + compute_type_width(type->proc.args);
+  }
   else if(type->kind == Type_basic)
   {
     if(type->basic.kind == BasicType_int
@@ -117,7 +125,9 @@ int compute_type_width(Type* type)
       assert(0);
   }
   else if(type->kind == Type_pointer)
+  {
     type->width = 4;
+  }
   else
     assert(0);
   return type->width;

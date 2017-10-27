@@ -96,7 +96,7 @@ int main(int argc, char* argv[])
       DEBUG_print_arena_usage(arena, "arena");/*<<<*/
     }
 
-    if(success = (bool)hoc_text)
+    if(success = (hoc_text != 0))
     {
       VmProgram* vm_program = translate(src_file_path, hoc_text);
       if(success = vm_program->success)

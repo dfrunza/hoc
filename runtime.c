@@ -379,6 +379,7 @@ void build_runtime()
       List* post_fp_areas = new_list(arena, List_data_area);
 
       AstNode* proc = scope->ast_node;
+      assert(proc->kind == AstNode_proc_decl);
       AstNode* ret_var = ATTR(proc, ast_node, ret_var);
       DataArea* ret_area = ATTR(ret_var, data_area, data_area) = mem_push_struct(arena, DataArea);
       ret_area->kind = DataArea_object;

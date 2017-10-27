@@ -375,7 +375,7 @@ bool name_ident(AstNode* node)
       if(success)
       {
         success = name_ident(ATTR(&proc_decl_gen0, ast_node, ret_var))
-          && name_ident(ATTR(&proc_decl_gen0, ast_node, body));
+          && name_ident_block(ATTR(&proc_decl_gen0, ast_node, body));
       }
       end_scope();
     }
@@ -476,11 +476,8 @@ bool name_ident(AstNode* node)
   }
   else if(node->kind == AstNode_block)
   {
-    Scope* scope = begin_scope(Scope_block, 0);
-    if(success = name_ident_block(node))
-    {
-      scope->ast_node = node;
-    }
+    begin_scope(Scope_block, node);
+    success = name_ident_block(node);
     end_scope();
   }
   else if(node->kind == AstNode_stmt)

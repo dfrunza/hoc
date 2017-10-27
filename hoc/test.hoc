@@ -27,16 +27,11 @@ proc char* bar(int x)
 }
 */
 
-proc void main()
+proc void main(int za)
 {
   var int a;
   var int b;
   var int c;
-
-  {
-    var int c;
-    c = a + b;
-  }
 }
 
 

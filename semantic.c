@@ -288,6 +288,20 @@ bool name_ident(AstNode* node)
     success = name_ident_block(body);
     end_scope();
   }
+  else if(node->kind == AstNode_type_decl)
+  {
+    AstNode type_gen0 = *node;
+    AstNode* type_gen1 = make_ast_node(Ast_gen1, node, AstNode_type_decl);
+
+    ATTR(type_gen1, ast_node, type_expr) = ATTR(&type_gen0, ast_node, type_expr);
+
+    if(success = name_ident_type(ATTR(&type_gen0, ast_node, type_expr)))
+    {
+      Symbol* decl_sym = add_symbol(make_temp_name("typ"), node->src_loc, Symbol_type_decl);
+      ATTR(type_gen1, symbol, decl_sym) = decl_sym;
+      decl_sym->ast_node = type_gen1;
+    }
+  }
   else if(node->kind == AstNode_var_decl)
   {
     AstNode var_decl_gen0 = *node;
@@ -612,20 +626,6 @@ bool name_ident(AstNode* node)
     else
       success = compile_error(ret_stmt_gen1->src_loc, "unexpected `return` at this location");
   }
-  else if(node->kind == AstNode_type_decl)
-  {
-    AstNode type_gen0 = *node;
-    AstNode* type_gen1 = make_ast_node(Ast_gen1, node, AstNode_type_decl);
-
-    ATTR(type_gen1, ast_node, type_expr) = ATTR(&type_gen0, ast_node, type_expr);
-
-    if(success = name_ident_type(ATTR(&type_gen0, ast_node, type_expr)))
-    {
-      Symbol* decl_sym = add_symbol(make_temp_name("typ"), node->src_loc, Symbol_type_decl);
-      ATTR(type_gen1, symbol, decl_sym) = decl_sym;
-      decl_sym->ast_node = type_gen1;
-    }
-  }
   else
     assert(0);
 
@@ -697,10 +697,6 @@ void build_types(AstNode* node)
   }
   else if(node->kind == AstNode_proc_decl)
   {
-    AstNode* ret_var = ATTR(node, ast_node, ret_var);
-    build_types(ret_var);
-    Type* ret_type = ATTR(ret_var, type, eval_type);
-
     List* args = ATTR(node, list, formal_args);
     for(ListItem* list_item = args->first;
         list_item;
@@ -725,6 +721,10 @@ void build_types(AstNode* node)
       }
     }
 
+    AstNode* ret_var = ATTR(node, ast_node, ret_var);
+    build_types(ret_var);
+    Type* ret_type = ATTR(ret_var, type, eval_type);
+
     ATTR(node, type, type) = new_proc_type(args_type, ret_type);
     ATTR(node, type, eval_type) = ret_type;
 
@@ -742,18 +742,27 @@ void build_types(AstNode* node)
       build_types(ITEM(list_item, ast_node));
     }
 
-    Type* ret_type = 0, *args_type = 0;
+    Type* args_type = basic_type_void;
+    ListItem* list_item = ATTR(node, list, actual_args)->first;
+    if(list_item)
+    {
+      AstNode* arg = ITEM(list_item, ast_node);
+      args_type = ATTR(arg, type, eval_type);
+
+      for(list_item = list_item->next;
+          list_item;
+          list_item = list_item->next)
+      {
+        AstNode* arg = ITEM(list_item, ast_node);
+        args_type = new_product_type(args_type, ATTR(arg, type, eval_type));
+      }
+    }
+
+    Type* ret_type = new_typevar();
     AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
     if(proc_decl)
     {
-      Type* decl_type = ATTR(proc_decl, type, type);
-      ret_type = decl_type->proc.ret;
-      args_type = decl_type->proc.args;
-    }
-    else
-    {
-      ret_type = new_typevar();
-      args_type = new_typevar();
+      ret_type = ATTR(proc_decl, type, type)->proc.ret;
     }
 
     ATTR(node, type, type) = new_proc_type(args_type, ret_type);
@@ -1068,10 +1077,8 @@ bool eval_types(AstNode* node)
         }
 
         Type* ret_ty = ATTR(proc_decl, type, type)->proc.ret;
-        Type* occur_ty = ATTR(node, type, type);
-        assert(occur_ty->kind == Type_proc);
-        Type* decl_ty = ATTR(proc_decl, type, type);
-        assert(decl_ty->kind == Type_proc);
+        Type* occur_ty = ATTR(node, type, type); assert(occur_ty->kind == Type_proc);
+        Type* decl_ty = ATTR(proc_decl, type, type); assert(decl_ty->kind == Type_proc);
         if(success = type_unif(occur_ty->proc.args, args_ty) && type_unif(occur_ty->proc.ret, ret_ty))
         {
           success = type_unif(decl_ty, occur_ty);

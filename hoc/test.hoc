@@ -19,21 +19,21 @@ proc int foo(char s)
 {
   return 0;
 }
+*/
 
-proc char* bar(int x)
+proc int bar(int x, float v)
 {
   var char* p;
-  return p;
+  return 0;
 }
-*/
 
 proc void main(int za)
 {
   var int a;
   var int b;
   var int c;
+  var float v;
+  a = (a - bar(b, v)) * bar(c, (type float)1);
 }
-
-
 
 

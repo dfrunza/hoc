@@ -209,7 +209,7 @@ bool name_ident_type(AstNode* node)
     if(decl_sym)
     {
       Symbol* occur_sym = add_symbol(name, type_occur_gen1->src_loc, Symbol_type, Occur_occur);
-      occur_sym->occur.decl_sym = decl_sym;
+      //occur_sym->occur.decl_sym = decl_sym;
       ATTR(type_occur_gen1, ast_node, type_decl) = decl_sym->ast_node;
 
       ATTR(type_occur_gen1, symbol, occur_sym) = occur_sym;
@@ -340,12 +340,12 @@ bool name_ident(AstNode* node)
     Symbol* decl_sym = lookup_symbol(name, Symbol_var, Occur_decl, SymbolLookup_active);
     if(decl_sym)
     {
-      occur_sym->occur.decl_sym = decl_sym;
+      //occur_sym->occur.decl_sym = decl_sym;
       ATTR(var_occur_gen1, symbol, occur_sym) = occur_sym;
       ATTR(var_occur_gen1, ast_node, var_decl) = decl_sym->ast_node;
 
       assert(decl_sym->nesting_depth <= occur_sym->nesting_depth);
-      occur_sym->occur.decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
+      //occur_sym->occur.decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
     }
     else
       success = compile_error(var_occur_gen1->src_loc, "unknown var `%s`", name);
@@ -404,7 +404,7 @@ bool name_ident(AstNode* node)
     Symbol* decl_sym = lookup_symbol(name, Symbol_proc, Occur_decl, SymbolLookup_active);
     if(decl_sym)
     {
-      occur_sym->occur.decl_sym = decl_sym;
+      //occur_sym->occur.decl_sym = decl_sym;
       ATTR(proc_occur_gen1, symbol, occur_sym) = occur_sym;
       ATTR(proc_occur_gen1, ast_node, proc_decl) = decl_sym->ast_node;
     }
@@ -1047,7 +1047,7 @@ bool eval_types(AstNode* node)
         Symbol* decl_sym = lookup_symbol_in_scope(occur_sym->name, Symbol_proc, Occur_decl, occur_sym->scope);
         if(decl_sym)
         {
-          occur_sym->occur.decl_sym = decl_sym;
+          //occur_sym->occur.decl_sym = decl_sym;
           proc_decl = ATTR(node, ast_node, proc_decl) = decl_sym->ast_node;
         }
         else

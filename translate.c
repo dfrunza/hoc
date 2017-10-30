@@ -1710,7 +1710,7 @@ VmProgram* translate(char* file_path, char* hoc_text)
           DEBUG_print_arena_usage(arena, "arena");
         }/*<<<*/
 
-        build_runtime();
+        build_runtime2(module);
         if(DEBUG_enabled)/*>>>*/
         {
           h_printf("--- Runtime ---\n");

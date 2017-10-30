@@ -532,7 +532,7 @@ void build_runtime()
         {
           AstNode* var_occur = symbol->ast_node;
           
-          int decl_scope_offset = symbol->occur.decl_scope_offset;
+          int decl_scope_offset = ATTR(var_occur, int_val, decl_scope_offset); //symbol->occur.decl_scope_offset;
           if(decl_scope_offset > 0)
           {
             // non-local

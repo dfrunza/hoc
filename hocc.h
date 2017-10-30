@@ -676,7 +676,7 @@ typedef struct Symbol
   int nesting_depth;
   AstNode* ast_node;
   Type* type;
-  Occur occur;
+  //Occur occur;
 }
 Symbol;
 

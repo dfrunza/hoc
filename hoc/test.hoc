@@ -29,11 +29,13 @@ proc int bar(int x, float v)
 
 proc void main(int za)
 {
+  /*
   var int a;
   var int b;
   var int c;
   var float v;
   a = (a - bar(b, v)) * bar(c, (type float)1);
+  */
 }
 
 

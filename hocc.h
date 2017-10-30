@@ -172,25 +172,9 @@ typedef struct
 
   int loc;
   int size;
-  int decl_scope_depth;
-}
-DataArea;
-
-/*
-typedef struct
-{
-  int loc;
-  int size;
-}
-DataArea;
-
-typedef struct
-{
   int decl_scope_offset;
-  DataArea data;
 }
-AccessLink;
-*/
+DataArea;
 
 #ifndef OperatorKind_MEMBER_LIST
 #define OperatorKind_MEMBER_LIST()\
@@ -402,13 +386,13 @@ typedef enum
   AstAttributeName_elem_expr,
   AstAttributeName_proc,
   AstAttributeName_nesting_depth,
+  AstAttributeName_decl_scope_offset,
   AstAttributeName_loop,
   AstAttributeName_formal_args,
   AstAttributeName_ret_var,
   AstAttributeName_scope,
   AstAttributeName_decl_scope,
   AstAttributeName_occur_scope,
-  AstAttributeName_decl_scope_depth,
   AstAttributeName_var_decl,
   AstAttributeName_proc_decl,
   AstAttributeName_operand,
@@ -650,22 +634,40 @@ TypePair;
 typedef enum
 {
   Symbol_None,
-  Symbol_unresolved,
-  Symbol_var_decl,
-  Symbol_var_occur,
-  Symbol_type_decl,
-  Symbol_type_occur,
-  Symbol_proc_decl,
-  Symbol_proc_occur,
+  Symbol_var,
+  /*
+  Symbol_ret_var,
+  Symbol_formal_arg,
+  */
+  Symbol_type,
+  Symbol_proc,
 }
 SymbolKind;
 
+typedef enum
+{
+  Occur_None,
+  Occur_decl,
+  Occur_occur,
+}
+OccurKind;
+
+typedef struct
+{
+  Symbol* decl_sym;
+  int decl_scope_offset;
+}
+Occur;
+
+#if 0
 #define SYM(VAR, NAME)\
   (((VAR)->kind == Symbol_##NAME) ? &(VAR)->NAME : 0)
+#endif
 
 typedef struct Symbol
 {
   SymbolKind kind;
+  OccurKind occur_kind;
 
   Symbol* prev_symbol;
   char* name;
@@ -674,53 +676,7 @@ typedef struct Symbol
   int nesting_depth;
   AstNode* ast_node;
   Type* type;
-
-  union
-  {
-#if 0
-    struct
-    {
-      DataArea data_area;
-    }
-    var_decl;
-#endif
-
-    struct
-    {
-      Symbol* decl_sym;
-      int decl_scope_depth;
-    }
-    var_occur;
-
-#if 0
-    struct
-    {
-      Type* type;
-    }
-    type_decl;
-#endif
-
-    struct
-    {
-      Symbol* decl_sym;
-    }
-    type_occur;
-
-#if 0
-    struct
-    {
-      Symbol* ret;
-      List* args;
-    }
-    proc_decl;
-#endif
-
-    struct
-    {
-      Symbol* decl_sym;
-    }
-    proc_occur;
-  };
+  Occur occur;
 }
 Symbol;
 

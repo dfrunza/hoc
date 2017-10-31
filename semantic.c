@@ -54,22 +54,29 @@ Scope* find_scope(ScopeKind kind)
   return scope;
 }
 
+Symbol* lookup_symbol(char* name, List* symbols, SymbolKind symbol_kind)
+{
+  Symbol* result = 0;
+  ListItem* list_item = symbols->last;
+  while(list_item)
+  {
+    Symbol* symbol = ITEM(list_item, symbol);
+    if(symbol->kind == symbol_kind && cstr_match(symbol->name, name))
+    {
+      result = symbol;
+      break;
+    }
+    list_item = list_item->prev;
+  }
+  return result;
+}
+
 Symbol* lookup_decl_symbol(char* name, Scope* scope, SymbolKind symbol_kind)
 {
   Symbol* result = 0;
   while(!result && scope)
   {
-    ListItem* list_item = scope->decls->last;
-    while(list_item)
-    {
-      Symbol* symbol = ITEM(list_item, symbol);
-      if(symbol->kind == symbol_kind && cstr_match(symbol->name, name))
-      {
-        result = symbol;
-        break;
-      }
-      list_item = list_item->prev;
-    }
+    result = lookup_symbol(name, scope->decls, symbol_kind);
     scope = scope->encl_scope;
   }
   return result;
@@ -80,17 +87,7 @@ Symbol* lookup_occur_symbol(char* name, Scope* scope, SymbolKind symbol_kind)
   Symbol* result = 0;
   while(!result && scope)
   {
-    ListItem* list_item = scope->occurs->last;
-    while(list_item)
-    {
-      Symbol* symbol = ITEM(list_item, symbol);
-      if(symbol->kind == symbol_kind && cstr_match(symbol->name, name))
-      {
-        result = symbol;
-        break;
-      }
-      list_item = list_item->prev;
-    }
+    result = lookup_symbol(name, scope->occurs, symbol_kind);
     scope = scope->encl_scope;
   }
   return result;

@@ -23,7 +23,7 @@ proc int foo(char s)
 
 proc int bar(int x, float v)
 {
-  v = zain(x) + (type float)x;
+  v = (type float)bar(x, v) + (type float)x;
   var char* p;
   return 0;
 }

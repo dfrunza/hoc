@@ -343,7 +343,8 @@ typedef struct Scope
 {
   ScopeKind kind;
 
-  Symbol* last_symbol;
+  List* decls;
+  List* occurs;
   int nesting_depth;
   struct Scope* encl_scope;
   AstNode* ast_node;
@@ -644,21 +645,6 @@ typedef enum
 }
 SymbolKind;
 
-typedef enum
-{
-  Occur_None,
-  Occur_decl,
-  Occur_occur,
-}
-OccurKind;
-
-typedef struct
-{
-  Symbol* decl_sym;
-  int decl_scope_offset;
-}
-Occur;
-
 #if 0
 #define SYM(VAR, NAME)\
   (((VAR)->kind == Symbol_##NAME) ? &(VAR)->NAME : 0)
@@ -667,22 +653,18 @@ Occur;
 typedef struct Symbol
 {
   SymbolKind kind;
-  OccurKind occur_kind;
 
-  Symbol* prev_symbol;
   char* name;
   SourceLoc* src_loc;
   Scope* scope;
   int nesting_depth;
   AstNode* ast_node;
   Type* type;
-  //Occur occur;
 }
 Symbol;
 
 typedef struct
 {
-  List* symbols;
   List* scopes;
   Scope* global_scope;
   Scope* active_scope;

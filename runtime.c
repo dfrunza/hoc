@@ -331,11 +331,12 @@ void build_runtime(AstNode* node)
 
 void compute_locals_area_size(Scope* scope, List* local_data_areas)
 {
-  for(Symbol* symbol = scope->last_symbol;
-      symbol;
-      symbol = symbol->prev_symbol)
+  for(ListItem* list_item = scope->decls->first;
+      list_item;
+      list_item = list_item->next)
   {
-    if(symbol->kind == Symbol_var && symbol->occur_kind == Occur_decl)
+    Symbol* symbol = ITEM(list_item, symbol);
+    if(symbol->kind == Symbol_var)
     {
       AstNode* var_decl = symbol->ast_node;
       DataArea* data_area = ATTR(var_decl, data_area, data_area) = mem_push_struct(arena, DataArea);
@@ -346,6 +347,7 @@ void compute_locals_area_size(Scope* scope, List* local_data_areas)
   }
 }
 
+#if 0
 void build_runtime2(AstNode* node)
 {
   assert(node->gen == Ast_gen1);
@@ -456,6 +458,7 @@ void build_runtime2(AstNode* node)
       assert(0);
   }
 }
+#endif
 
 void build_runtime()
 {
@@ -524,15 +527,16 @@ void build_runtime()
       List* access_links = new_list(arena, List_data_area);
       int access_links_size = 0;
 
-      for(Symbol* symbol = scope->last_symbol;
-          symbol;
-          symbol = symbol->prev_symbol)
+      for(ListItem* list_item = scope->occurs->first;
+          list_item;
+          list_item = list_item->next)
       {
-        if(symbol->kind == Symbol_var && symbol->occur_kind == Occur_occur)
+        Symbol* symbol = ITEM(list_item, symbol);
+        if(symbol->kind == Symbol_var)
         {
           AstNode* var_occur = symbol->ast_node;
           
-          int decl_scope_offset = ATTR(var_occur, int_val, decl_scope_offset); //symbol->occur.decl_scope_offset;
+          int decl_scope_offset = ATTR(var_occur, int_val, decl_scope_offset);
           if(decl_scope_offset > 0)
           {
             // non-local

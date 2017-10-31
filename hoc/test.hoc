@@ -23,12 +23,14 @@ proc int foo(char s)
 
 proc int bar(int x, float v)
 {
+  v = zain(x) + (type float)x;
   var char* p;
   return 0;
 }
 
-proc void main(int za)
+proc float zain(int za)
 {
+  return 0.;
   /*
   var int a;
   var int b;

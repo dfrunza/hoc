@@ -305,18 +305,13 @@ void cstr_copy_substr(char* dest_str, char* begin_char, char* end_char)
 
 void str_init(String* str, MemoryArena* arena)
 {
-  if(arena->str)
-  {
-    // Two Strings cannot be attached to an Arena both at the same time
-    mem_zero_struct(str, String);
-  }
-  else
-  {
-    str->arena = arena;
-    str->head = mem_push_struct(arena, char);
-    str->end = str->head;
-    arena->str = str;
-  }
+  // Two Strings cannot be both attached to an Arena at the same time
+  assert(!arena->str);
+
+  str->arena = arena;
+  str->head = mem_push_struct(arena, char);
+  str->end = str->head;
+  arena->str = str;
 }
 
 int str_len(String* str)
@@ -350,7 +345,7 @@ void str_append(String* str, char* cstr)
   int len = cstr_len(cstr);
   if(len > 0)
   {
-    mem_push_array_nz(arena, char, len); // will implicitly check bounds
+    mem_push_array_nz(arena, char, len); // will implicitly check arena bounds
     cstr_copy(str->end, cstr);
     str->end = (char*)arena->free-1;
   }

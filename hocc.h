@@ -339,16 +339,28 @@ char* get_scope_kind_printstr(ScopeKind kind)
   return ScopeKind_strings[kind];
 }
 
+typedef enum
+{
+  Symbol_None,
+  Symbol_var,
+  Symbol_type,
+  Symbol_proc,
+  Symbol_Count,
+}
+SymbolKind;
+
 typedef struct Scope
 {
   ScopeKind kind;
 
-  List* decls;
-  List* occurs;
   int nesting_depth;
   struct Scope* encl_scope;
   AstNode* ast_node;
 
+  List* decls[Symbol_Count];
+  List* occurs;
+  Symbol* ret_var;
+  List* formal_args;
   int data_area_size;
   List* access_links;
 }
@@ -631,19 +643,6 @@ typedef struct
   Type* value;
 }
 TypePair;
-
-typedef enum
-{
-  Symbol_None,
-  Symbol_var,
-  /*
-  Symbol_ret_var,
-  Symbol_formal_arg,
-  */
-  Symbol_type,
-  Symbol_proc,
-}
-SymbolKind;
 
 #if 0
 #define SYM(VAR, NAME)\

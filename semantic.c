@@ -74,9 +74,24 @@ Symbol* lookup_symbol(char* name, List* symbols, SymbolKind symbol_kind)
 Symbol* lookup_decl_symbol(char* name, Scope* scope, SymbolKind symbol_kind)
 {
   Symbol* result = 0;
+
+  result = lookup_symbol(name, scope->decls[symbol_kind], symbol_kind);
+  if(!result && scope->kind == Scope_proc)
+  {
+    if(!(result = lookup_symbol(name, scope->formal_args, symbol_kind)))
+    {
+      Symbol* ret_var = scope->ret_var;
+      if(ret_var && ret_var->kind == symbol_kind && cstr_match(ret_var->name, name))
+      {
+        result = ret_var;
+      }
+    }
+  }
+
+  scope = scope->encl_scope;
   while(!result && scope)
   {
-    result = lookup_symbol(name, scope->decls, symbol_kind);
+    result = lookup_decl_symbol(name, scope, symbol_kind);
     scope = scope->encl_scope;
   }
   return result;
@@ -93,6 +108,30 @@ Symbol* lookup_occur_symbol(char* name, Scope* scope, SymbolKind symbol_kind)
   return result;
 }
 
+Symbol* add_ret_var_symbol(char* name, SourceLoc* src_loc)
+{
+  Symbol* sym = mem_push_struct(symbol_table->arena, Symbol);
+  sym->kind = Symbol_var;
+  sym->name = name;
+  sym->src_loc = src_loc;
+  sym->scope = symbol_table->active_scope; assert(sym->scope->kind == Scope_proc);
+  sym->nesting_depth = symbol_table->nesting_depth;
+  symbol_table->active_scope->ret_var = sym;
+  return sym;
+}
+
+Symbol* add_formal_arg_symbol(char* name, SourceLoc* src_loc)
+{
+  Symbol* sym = mem_push_struct(symbol_table->arena, Symbol);
+  sym->kind = Symbol_var;
+  sym->name = name;
+  sym->src_loc = src_loc;
+  sym->scope = symbol_table->active_scope; assert(sym->scope->kind == Scope_proc);
+  sym->nesting_depth = symbol_table->nesting_depth;
+  append_list_elem(symbol_table->active_scope->formal_args, sym, List_symbol);
+  return sym;
+}
+
 Symbol* add_decl_symbol(char* name, SourceLoc* src_loc, SymbolKind kind)
 {
   Symbol* sym = mem_push_struct(symbol_table->arena, Symbol);
@@ -101,7 +140,7 @@ Symbol* add_decl_symbol(char* name, SourceLoc* src_loc, SymbolKind kind)
   sym->src_loc = src_loc;
   sym->scope = symbol_table->active_scope;
   sym->nesting_depth = symbol_table->nesting_depth;
-  append_list_elem(symbol_table->active_scope->decls, sym, List_symbol);
+  append_list_elem(symbol_table->active_scope->decls[kind], sym, List_symbol);
   return sym;
 }
 
@@ -163,7 +202,14 @@ Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
   scope->nesting_depth = ++symbol_table->nesting_depth;
   scope->encl_scope = symbol_table->active_scope;
   scope->ast_node = ast_node;
-  scope->decls = new_list(arena, List_symbol);
+  for(int i = 0; i < Symbol_Count; i++)
+  {
+    scope->decls[i] = new_list(arena, List_symbol);
+  }
+  if(kind == Scope_proc)
+  {
+    scope->formal_args = new_list(arena, List_symbol);
+  }
   scope->occurs = new_list(arena, List_symbol);
   symbol_table->active_scope = scope;
   append_list_elem(symbol_table->scopes, scope, List_scope);
@@ -268,6 +314,63 @@ bool name_ident_block(AstNode* node)
     success = name_ident(ITEM(list_item, ast_node));
   }
 
+  return success;
+}
+
+bool name_ident_ret_var(AstNode* node)
+{
+  assert(node->kind == AstNode_var_decl);
+
+  bool success = true;
+  AstNode var_decl_gen0 = *node;
+  AstNode* var_decl_gen1 = make_ast_node(Ast_gen1, node, AstNode_var_decl);
+  char* name = ATTR(ATTR(&var_decl_gen0, ast_node, id), str, name);
+  ATTR(var_decl_gen1, str, name) = name;
+
+  Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope, Symbol_var);
+  if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
+  {
+    assert(0);
+    //success = compile_error(var_decl_gen1->src_loc, "variable `%s` already declared", name);
+    //compile_error(decl_sym->src_loc, "see previous declaration of `%s`", name);
+  }
+  else
+  {
+    decl_sym = add_ret_var_symbol(name, var_decl_gen1->src_loc);
+    ATTR(var_decl_gen1, symbol, decl_sym) = decl_sym;
+    decl_sym->ast_node = var_decl_gen1;
+
+    ATTR(var_decl_gen1, ast_node, type) = ATTR(&var_decl_gen0, ast_node, type);
+    success = name_ident(ATTR(&var_decl_gen0, ast_node, type));
+  }
+  return success;
+}
+
+bool name_ident_formal_arg(AstNode* node)
+{
+  assert(node->kind == AstNode_var_decl);
+
+  bool success = true;
+  AstNode var_decl_gen0 = *node;
+  AstNode* var_decl_gen1 = make_ast_node(Ast_gen1, node, AstNode_var_decl);
+  char* name = ATTR(ATTR(&var_decl_gen0, ast_node, id), str, name);
+  ATTR(var_decl_gen1, str, name) = name;
+
+  Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope, Symbol_var);
+  if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
+  {
+    success = compile_error(var_decl_gen1->src_loc, "formal arg `%s` already declared", name);
+    compile_error(decl_sym->src_loc, "see previous declaration of `%s`", name);
+  }
+  else
+  {
+    decl_sym = add_formal_arg_symbol(name, var_decl_gen1->src_loc);
+    ATTR(var_decl_gen1, symbol, decl_sym) = decl_sym;
+    decl_sym->ast_node = var_decl_gen1;
+
+    ATTR(var_decl_gen1, ast_node, type) = ATTR(&var_decl_gen0, ast_node, type);
+    success = name_ident(ATTR(&var_decl_gen0, ast_node, type));
+  }
   return success;
 }
 
@@ -382,12 +485,12 @@ bool name_ident(AstNode* node)
           list_item && success;
           list_item = list_item->next)
       {
-        success = name_ident(ITEM(list_item, ast_node));
+        success = name_ident_formal_arg(ITEM(list_item, ast_node));
       }
 
       if(success)
       {
-        success = name_ident(ATTR(&proc_decl_gen0, ast_node, ret_var))
+        success = name_ident_ret_var(ATTR(&proc_decl_gen0, ast_node, ret_var))
           && name_ident_block(ATTR(&proc_decl_gen0, ast_node, body));
       }
       end_scope();

@@ -21,23 +21,13 @@ proc int foo(char s)
 }
 */
 
-proc int bar(int x, float v)
+proc void bar()
 {
-  v = (type float)bar(x, v) + (type float)x;
-  var char* p;
-  return 0;
+  var int i;
+  var int j;
+  var int k;
+  k = i + j;
 }
 
-proc float zain(int za)
-{
-  return 0.;
-  /*
-  var int a;
-  var int b;
-  var int c;
-  var float v;
-  a = (a - bar(b, v)) * bar(c, (type float)1);
-  */
-}
 
 

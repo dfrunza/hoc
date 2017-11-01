@@ -331,19 +331,16 @@ void build_runtime(AstNode* node)
 
 void compute_locals_area_size(Scope* scope, List* local_data_areas)
 {
-  for(ListItem* list_item = scope->decls->first;
+  for(ListItem* list_item = scope->decls[Symbol_var]->first;
       list_item;
       list_item = list_item->next)
   {
     Symbol* symbol = ITEM(list_item, symbol);
-    if(symbol->kind == Symbol_var)
-    {
-      AstNode* var_decl = symbol->ast_node;
-      DataArea* data_area = ATTR(var_decl, data_area, data_area) = mem_push_struct(arena, DataArea);
-      data_area->size = ATTR(var_decl, type, type)->width;
-      scope->data_area_size += data_area->size;
-      append_list_elem(local_data_areas, data_area, List_data_area);
-    }
+    AstNode* var_decl = symbol->ast_node;
+    DataArea* data_area = ATTR(var_decl, data_area, data_area) = mem_push_struct(arena, DataArea);
+    data_area->size = ATTR(var_decl, type, type)->width;
+    scope->data_area_size += data_area->size;
+    append_list_elem(local_data_areas, data_area, List_data_area);
   }
 }
 

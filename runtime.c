@@ -10,42 +10,7 @@ void make_unique_label(String* label)
   MemoryArena* arena = label->arena;
   arena->free = (uint8*)label->end + 1;
 }
-#endif
 
-int compute_data_loc(int sp, List* areas)
-{
-  for(ListItem* list_item = areas->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    DataArea* area = ITEM(list_item, data_area);
-    area->loc = sp;
-    assert(area->size >= 0);
-    sp += area->size;
-  }
-  return sp;
-}
-
-void fixup_data_loc(int fp, List* areas)
-{
-  for(ListItem* list_item = areas->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    DataArea* area = ITEM(list_item, data_area);
-    area->loc = area->loc - fp;
-  }
-}
-
-void compute_area_locations(List* pre_fp_data, List* post_fp_data)
-{
-  int fp = compute_data_loc(0, pre_fp_data);
-  compute_data_loc(fp, post_fp_data);
-  fixup_data_loc(fp, pre_fp_data);
-  fixup_data_loc(fp, post_fp_data);
-}
-
-#if 0
 void rt_call(AstCall* call)
 {
   List* args_list = &call->args->list;
@@ -329,133 +294,54 @@ void build_runtime(AstNode* node)
 }
 #endif
 
+int compute_data_loc(int sp, List* areas)
+{
+  for(ListItem* list_item = areas->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    DataArea* area = ITEM(list_item, data_area);
+    area->loc = sp;
+    assert(area->size >= 0);
+    sp += area->size;
+  }
+  return sp;
+}
+
+void fixup_data_loc(int fp, List* areas)
+{
+  for(ListItem* list_item = areas->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    DataArea* area = ITEM(list_item, data_area);
+    area->loc = area->loc - fp;
+  }
+}
+
+void compute_area_locations(List* pre_fp_data, List* post_fp_data)
+{
+  int fp = compute_data_loc(0, pre_fp_data);
+  compute_data_loc(fp, post_fp_data);
+  fixup_data_loc(fp, pre_fp_data);
+  fixup_data_loc(fp, post_fp_data);
+}
+
 void compute_locals_area_size(Scope* scope, List* local_data_areas)
 {
   for(ListItem* list_item = scope->decls[Symbol_var]->first;
       list_item;
       list_item = list_item->next)
   {
-    Symbol* symbol = ITEM(list_item, symbol);
-    AstNode* var_decl = symbol->ast_node;
-    DataArea* data_area = ATTR(var_decl, data_area, data_area) = mem_push_struct(arena, DataArea);
-    data_area->size = ATTR(var_decl, type, type)->width;
+    Type* type = ITEM(list_item, symbol)->type;
+    DataArea* data_area = ITEM(list_item, symbol)->data_area = mem_push_struct(arena, DataArea);
+    data_area->kind = DataArea_var;
+    data_area->size = type->width;
+
     scope->data_area_size += data_area->size;
     append_list_elem(local_data_areas, data_area, List_data_area);
   }
 }
-
-#if 0
-void build_runtime2(AstNode* node)
-{
-  assert(node->gen == Ast_gen1);
-
-  if(node->kind == AstNode_module)
-  {
-    build_runtime2(ATTR(node, ast_node, body));
-  }
-  else if(node->kind == AstNode_proc_decl)
-  {
-    int data_area_size = 0;
-    List* pre_fp_areas = new_list(arena, List_data_area);
-    List* post_fp_areas = new_list(arena, List_data_area);
-
-    AstNode* ret_var = ATTR(node, ast_node, ret_var);
-    DataArea* ret_area = ATTR(ret_var, data_area, data_area) = mem_push_struct(arena, DataArea);
-    ret_area->kind = DataArea_object;
-    ret_area->size = ATTR(ret_var, type, type)->width;
-    data_area_size += ret_area->size;
-    append_list_elem(pre_fp_areas, ret_area, List_data_area);
-
-    for(ListItem* list_item = ATTR(node, list, formal_args)->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      AstNode* arg = ITEM(list_item, ast_node);
-      DataArea* arg_area = ATTR(arg, data_area, data_area) = mem_push_struct(arena, DataArea);
-      arg_area->kind = DataArea_object;
-      arg_area->size = ATTR(arg, type, type)->width;
-      data_area_size += arg_area->size;
-      append_list_elem(pre_fp_areas, arg_area, List_data_area);
-    }
-
-    DataArea* ctrl_links = mem_push_struct(arena, DataArea);
-    ctrl_links->kind = DataArea_object;
-    ctrl_links->size = 3*4; // fp, sp, ip
-    append_list_elem(pre_fp_areas, ctrl_links, List_data_area);
-
-    build_runtime2(ATTR(node, ast_node, body));
-    // data_area_size += ATTR(body, int, data_area_size);
-  }
-  else if(node->kind == AstNode_block)
-  {
-    List* pre_fp_areas = new_list(arena, List_data_area);
-    List* post_fp_areas = new_list(arena, List_data_area);
-    List* access_links = new_list(arena, List_data_area);
-    int access_links_size = 0;
-    int data_area_size = 0;
-
-    for(ListItem* list_item = ATTR(node, list, nodes)->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      build_runtime2(ITEM(list_item, ast_node));
-    }
-  }
-  else if(node->kind == AstNode_var_decl)
-  {
-    int data_area_size = 0;
-    List* post_fp_areas = new_list(arena, List_data_area);
-
-    DataArea* data_area = ATTR(node, data_area, data_area) = mem_push_struct(arena, DataArea);
-    data_area->size = ATTR(node, type, type)->width;
-    data_area_size += data_area->size;
-    append_list_elem(post_fp_areas, data_area, List_data_area);
-  }
-  else if(node->kind == AstNode_var_occur)
-  {
-    List* pre_fp_areas = new_list(arena, List_data_area);
-    List* access_links = new_list(arena, List_data_area);
-    int access_links_size = 0;
-
-    int decl_scope_offset = ATTR(node, int_val, decl_scope_offset);
-    if(decl_scope_offset > 0)
-    {
-      // non-local
-      DataArea* link = 0;
-      for(ListItem* list_item = access_links->first;
-          list_item;
-          list_item = list_item->next)
-      {
-        link = ITEM(list_item, data_area);
-        if(link->decl_scope_offset == decl_scope_offset)
-        {
-          break;
-        }
-        link = 0;
-      }
-      if(!link)
-      {
-        link = mem_push_struct(arena, DataArea);
-        link->kind = DataArea_link;
-        link->decl_scope_offset = decl_scope_offset;
-        link->size = 4; // size of an int
-        append_list_elem(access_links, link, List_data_area);
-        append_list_elem(pre_fp_areas, link, List_data_area);
-        access_links_size += link->size;
-      }
-      ATTR(node, data_area, data_area) = link;
-    }
-    else if(decl_scope_offset == 0)
-    {
-      // local
-      AstNode* var_decl = ATTR(node, ast_node, var_decl);
-      ATTR(node, data_area, data_area) = ATTR(var_decl, data_area, data_area);
-    }
-    else
-      assert(0);
-  }
-}
-#endif
 
 void build_runtime()
 {
@@ -488,31 +374,26 @@ void build_runtime()
     {
       List* pre_fp_areas = new_list(arena, List_data_area);
       List* post_fp_areas = new_list(arena, List_data_area);
+      scope->data_area_size = 0;
 
-      AstNode* proc = scope->ast_node; assert(proc->kind == AstNode_proc_decl);
-      AstNode* ret_var = ATTR(proc, ast_node, ret_var);
-      DataArea* ret_area = ATTR(ret_var, data_area, data_area) = mem_push_struct(arena, DataArea);
-      ret_area->kind = DataArea_object;
-      ret_area->size = ATTR(ret_var, type, type)->width;
+      Type* ret_type = ITEM(scope->decls[Symbol_ret_var]->first, symbol)->type;
+      DataArea* ret_area = ITEM(scope->decls[Symbol_ret_var]->first, symbol)->data_area = mem_push_struct(arena, DataArea);
+      ret_area->kind = DataArea_var;
+      ret_area->size = ret_type->width;
+
       scope->data_area_size += ret_area->size;
       append_list_elem(pre_fp_areas, ret_area, List_data_area);
 
-      for(ListItem* list_item = ATTR(proc, list, formal_args)->first;
+      for(ListItem* list_item = scope->decls[Symbol_formal_arg]->first;
           list_item;
           list_item = list_item->next)
       {
-        AstNode* arg = ITEM(list_item, ast_node);
-        DataArea* arg_area = ATTR(arg, data_area, data_area) = mem_push_struct(arena, DataArea);
-        arg_area->kind = DataArea_object;
-        arg_area->size = ATTR(arg, type, type)->width;
-        scope->data_area_size += arg_area->size;
+        Type* arg_type = ITEM(list_item, symbol)->type;
+        DataArea* arg_area = ITEM(list_item, symbol)->data_area = mem_push_struct(arena, DataArea);
+        arg_area->kind = DataArea_var;
+        arg_area->size = arg_type->width;
         append_list_elem(pre_fp_areas, arg_area, List_data_area);
       }
-
-      DataArea* ctrl_links = mem_push_struct(arena, DataArea);
-      ctrl_links->kind = DataArea_object;
-      ctrl_links->size = 3*4; // fp, sp, ip
-      append_list_elem(pre_fp_areas, ctrl_links, List_data_area);
 
       compute_locals_area_size(scope, post_fp_areas);
       compute_area_locations(pre_fp_areas, post_fp_areas);
@@ -522,54 +403,48 @@ void build_runtime()
       List* pre_fp_areas = new_list(arena, List_data_area);
       List* post_fp_areas = new_list(arena, List_data_area);
       List* access_links = new_list(arena, List_data_area);
-      int access_links_size = 0;
+      scope->access_links_size = 0;
 
-      for(ListItem* list_item = scope->occurs->first;
+      for(ListItem* list_item = scope->occurs[Symbol_var]->first;
           list_item;
           list_item = list_item->next)
       {
-        Symbol* symbol = ITEM(list_item, symbol);
-        if(symbol->kind == Symbol_var)
+        int decl_scope_offset = ITEM(list_item, symbol)->decl_scope_offset;
+        if(decl_scope_offset > 0)
         {
-          AstNode* var_occur = symbol->ast_node;
-          
-          int decl_scope_offset = ATTR(var_occur, int_val, decl_scope_offset);
-          if(decl_scope_offset > 0)
+          // non-local
+          DataArea* link = 0;
+          for(ListItem* list_item = access_links->first;
+              list_item;
+              list_item = list_item->next)
           {
-            // non-local
-            DataArea* link = 0;
-            for(ListItem* list_item = access_links->first;
-                list_item;
-                list_item = list_item->next)
+            link = ITEM(list_item, data_area);
+            if(link->decl_scope_offset == decl_scope_offset)
             {
-              link = ITEM(list_item, data_area);
-              if(link->decl_scope_offset == decl_scope_offset)
-              {
-                break;
-              }
-              link = 0;
+              break;
             }
-            if(!link)
-            {
-              link = mem_push_struct(arena, DataArea);
-              link->kind = DataArea_link;
-              link->decl_scope_offset = decl_scope_offset;
-              link->size = 4; // size of an int
-              append_list_elem(access_links, link, List_data_area);
-              append_list_elem(pre_fp_areas, link, List_data_area);
-              access_links_size += link->size;
-            }
-            ATTR(var_occur, data_area, data_area) = link;
+            link = 0;
           }
-          else if(decl_scope_offset == 0)
+          if(!link)
           {
-            // local
-            AstNode* var_decl = ATTR(var_occur, ast_node, var_decl);
-            ATTR(var_occur, data_area, data_area) = ATTR(var_decl, data_area, data_area);
+            link = mem_push_struct(arena, DataArea);
+            link->kind = DataArea_link;
+            link->decl_scope_offset = decl_scope_offset;
+            link->size = 4; // size of an int
+            append_list_elem(access_links, link, List_data_area);
+            append_list_elem(pre_fp_areas, link, List_data_area);
+            scope->access_links_size += link->size;
           }
-          else
-            assert(0);
+          ITEM(list_item, symbol)->data_area = link;
         }
+        else if(decl_scope_offset == 0)
+        {
+          // local
+          Symbol* decl_sym = ITEM(list_item, symbol)->decl;
+          ITEM(list_item, symbol)->data_area = decl_sym->data_area;
+        }
+        else
+          assert(0);
       }
 
       DataArea* old_fp = mem_push_struct(arena, DataArea);
@@ -579,9 +454,7 @@ void build_runtime()
       compute_locals_area_size(scope, post_fp_areas);
       compute_area_locations(pre_fp_areas, post_fp_areas);
     }
-    int x = 0; x++;
   }
-  int x = 0; x++;
 }
 
 

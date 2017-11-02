@@ -71,13 +71,13 @@ Symbol* lookup_symbol(char* name, List* symbols, SymbolKind kind)
   return result;
 }
 
-Symbol* lookup_decl_symbol(char* name, Scope* scope, SymbolKind* kinds)
+Symbol* lookup_decl_symbol(char* name, Scope* scope, SymbolKind* kind_set)
 {
   Symbol* result = 0;
 
   while(!result && scope)
   {
-    for(SymbolKind* kind = kinds;
+    for(SymbolKind* kind = kind_set;
         *kind != Symbol_None && !result;
         kind++)
     {
@@ -89,12 +89,18 @@ Symbol* lookup_decl_symbol(char* name, Scope* scope, SymbolKind* kinds)
   return result;
 }
 
-Symbol* lookup_occur_symbol(char* name, Scope* scope, SymbolKind kind)
+Symbol* lookup_occur_symbol(char* name, Scope* scope, SymbolKind* kind_set)
 {
   Symbol* result = 0;
+
   while(!result && scope)
   {
-    result = lookup_symbol(name, scope->occurs, kind);
+    for(SymbolKind* kind = kind_set;
+        *kind != Symbol_None && !result;
+        kind++)
+    {
+      result = lookup_symbol(name, scope->occurs[*kind], *kind);
+    }
     scope = scope->encl_scope;
   }
   return result;
@@ -120,7 +126,7 @@ Symbol* add_occur_symbol(char* name, SourceLoc* src_loc, SymbolKind kind)
   sym->src_loc = src_loc;
   sym->scope = symbol_table->active_scope;
   sym->nesting_depth = symbol_table->nesting_depth;
-  append_list_elem(symbol_table->active_scope->occurs, sym, List_symbol);
+  append_list_elem(symbol_table->active_scope->occurs[kind], sym, List_symbol);
   return sym;
 }
 
@@ -173,8 +179,8 @@ Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
   for(int i = 0; i < Symbol_Count; i++)
   {
     scope->decls[i] = new_list(arena, List_symbol);
+    scope->occurs[i] = new_list(arena, List_symbol);
   }
-  scope->occurs = new_list(arena, List_symbol);
   symbol_table->active_scope = scope;
   append_list_elem(symbol_table->scopes, scope, List_scope);
   return scope;
@@ -409,18 +415,18 @@ bool name_ident(AstNode* node)
     char* name = ATTR(&id_gen0, str, name);
     ATTR(var_occur_gen1, str, name) = name;
 
-    Symbol* occur_sym = add_occur_symbol(name, var_occur_gen1->src_loc, Symbol_var);
-    occur_sym->ast_node = var_occur_gen1;
-
     Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
         (SymbolKind[]){Symbol_var, Symbol_formal_arg, Symbol_ret_var, Symbol_None});
     if(decl_sym)
     {
+      Symbol* occur_sym = add_occur_symbol(name, var_occur_gen1->src_loc, Symbol_var);
+      occur_sym->ast_node = var_occur_gen1;
+      occur_sym->decl = decl_sym;
+      assert(decl_sym->nesting_depth <= occur_sym->nesting_depth);
+      occur_sym->decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
+
       ATTR(var_occur_gen1, symbol, occur_sym) = occur_sym;
       ATTR(var_occur_gen1, ast_node, var_decl) = decl_sym->ast_node;
-      ATTR(var_occur_gen1, int_val, decl_scope_offset) = decl_sym->nesting_depth - occur_sym->nesting_depth;
-
-      assert(decl_sym->nesting_depth <= occur_sym->nesting_depth);
     }
     else
       success = compile_error(var_occur_gen1->src_loc, "unknown var `%s`", name);
@@ -597,7 +603,7 @@ bool name_ident(AstNode* node)
       }
 
       begin_scope(Scope_block, if_stmt_gen1);
-      success = name_ident(body);
+      success = name_ident_block(body);
       end_scope();
 
       if(success)

@@ -1,6 +1,6 @@
-/*
 include "str.hoc";
 include "math.hoc";
+/*
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
@@ -21,12 +21,12 @@ proc int foo(char s)
 }
 */
 
-proc void bar()
+proc void bar(int a, int b, int i)
 {
-  var int i;
-  var int j;
-  var int k;
-  k = i + j;
+  if(a < b)
+  {
+    i = 2*a;
+  }
 }
 
 

@@ -161,7 +161,7 @@ TokenStream;
 typedef enum
 {
   DataArea_None,
-  DataArea_object,
+  DataArea_var,
   DataArea_link,
 }
 DataAreaKind;
@@ -360,9 +360,10 @@ typedef struct Scope
   AstNode* ast_node;
 
   List* decls[Symbol_Count];
-  List* occurs;
+  List* occurs[Symbol_Count];
   int data_area_size;
   List* access_links;
+  int access_links_size;
 }
 Scope;
 
@@ -659,6 +660,10 @@ typedef struct Symbol
   int nesting_depth;
   AstNode* ast_node;
   Type* type;
+  DataArea* data_area;
+
+  Symbol* decl;
+  int decl_scope_offset;
 }
 Symbol;
 

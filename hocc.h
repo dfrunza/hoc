@@ -439,6 +439,8 @@ typedef enum
   AstAttributeName_local_decls,
   AstAttributeName_non_local_occurs,
   AstAttributeName_data_area,
+  AstAttributeName_label_end,
+  AstAttributeName_label_else,
 }
 AstAttributeName;
 

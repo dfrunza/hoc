@@ -1144,8 +1144,43 @@ void gen_build_labels(AstNode* node)
   }
   else if(node->kind == AstNode_bin_expr)
   {
-    String* label_id = str_new(arena);
-    make_unique_label(label_id);
+    String* label = str_new(arena);
+    make_unique_label(label);
+    str_append(label, ".logic-end");
+    ATTR(node, str, label_end) = str_cap(label);
+
+    gen_build_labels(ATTR(node, ast_node, left_operand));
+    gen_build_labels(ATTR(node, ast_node, right_operand));
+  }
+  else if(node->kind == AstNode_un_expr)
+  {
+    gen_build_labels(ATTR(node, ast_node, operand));
+  }
+  else if(node->kind == AstNode_if_stmt)
+  {
+    gen_build_labels(ATTR(node, ast_node, cond_expr));
+
+    String* label = str_new(arena);
+    make_unique_label(label);
+    str_append(label, ".if-else");
+    ATTR(node, str, label_else) = str_cap(label);
+
+    label = str_new(arena);
+    make_unique_label(label);
+    str_append(label, ".if-end");
+    ATTR(node, str, label_end) = str_cap(label);
+
+    gen_build_labels(ATTR(node, ast_node, body));
+
+    AstNode* else_body = ATTR(node, ast_node, else_body);
+    if(else_body)
+    {
+      gen_build_labels(else_body);
+    }
+  }
+  else if(node->kind == AstNode_while_stmt)
+  {
+    
   }
 }
 

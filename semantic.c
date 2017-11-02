@@ -54,14 +54,14 @@ Scope* find_scope(ScopeKind kind)
   return scope;
 }
 
-Symbol* lookup_symbol(char* name, List* symbols, SymbolKind symbol_kind)
+Symbol* lookup_symbol(char* name, List* symbols, SymbolKind kind)
 {
   Symbol* result = 0;
   ListItem* list_item = symbols->last;
   while(list_item)
   {
     Symbol* symbol = ITEM(list_item, symbol);
-    if(symbol->kind == symbol_kind && cstr_match(symbol->name, name))
+    if(symbol->kind == kind && cstr_match(symbol->name, name))
     {
       result = symbol;
       break;
@@ -71,65 +71,33 @@ Symbol* lookup_symbol(char* name, List* symbols, SymbolKind symbol_kind)
   return result;
 }
 
-Symbol* lookup_decl_symbol(char* name, Scope* scope, SymbolKind symbol_kind)
+Symbol* lookup_decl_symbol(char* name, Scope* scope, SymbolKind* kinds)
 {
   Symbol* result = 0;
 
-  result = lookup_symbol(name, scope->decls[symbol_kind], symbol_kind);
-  if(!result && scope->kind == Scope_proc)
+  while(!result && scope)
   {
-    if(!(result = lookup_symbol(name, scope->formal_args, symbol_kind)))
+    for(SymbolKind* kind = kinds;
+        *kind != Symbol_None && !result;
+        kind++)
     {
-      Symbol* ret_var = scope->ret_var;
-      if(ret_var && ret_var->kind == symbol_kind && cstr_match(ret_var->name, name))
-      {
-        result = ret_var;
-      }
+      result = lookup_symbol(name, scope->decls[*kind], *kind);
     }
-  }
-
-  scope = scope->encl_scope;
-  while(!result && scope)
-  {
-    result = lookup_decl_symbol(name, scope, symbol_kind);
     scope = scope->encl_scope;
   }
+
   return result;
 }
 
-Symbol* lookup_occur_symbol(char* name, Scope* scope, SymbolKind symbol_kind)
+Symbol* lookup_occur_symbol(char* name, Scope* scope, SymbolKind kind)
 {
   Symbol* result = 0;
   while(!result && scope)
   {
-    result = lookup_symbol(name, scope->occurs, symbol_kind);
+    result = lookup_symbol(name, scope->occurs, kind);
     scope = scope->encl_scope;
   }
   return result;
-}
-
-Symbol* add_ret_var_symbol(char* name, SourceLoc* src_loc)
-{
-  Symbol* sym = mem_push_struct(symbol_table->arena, Symbol);
-  sym->kind = Symbol_var;
-  sym->name = name;
-  sym->src_loc = src_loc;
-  sym->scope = symbol_table->active_scope; assert(sym->scope->kind == Scope_proc);
-  sym->nesting_depth = symbol_table->nesting_depth;
-  symbol_table->active_scope->ret_var = sym;
-  return sym;
-}
-
-Symbol* add_formal_arg_symbol(char* name, SourceLoc* src_loc)
-{
-  Symbol* sym = mem_push_struct(symbol_table->arena, Symbol);
-  sym->kind = Symbol_var;
-  sym->name = name;
-  sym->src_loc = src_loc;
-  sym->scope = symbol_table->active_scope; assert(sym->scope->kind == Scope_proc);
-  sym->nesting_depth = symbol_table->nesting_depth;
-  append_list_elem(symbol_table->active_scope->formal_args, sym, List_symbol);
-  return sym;
 }
 
 Symbol* add_decl_symbol(char* name, SourceLoc* src_loc, SymbolKind kind)
@@ -206,10 +174,6 @@ Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
   {
     scope->decls[i] = new_list(arena, List_symbol);
   }
-  if(kind == Scope_proc)
-  {
-    scope->formal_args = new_list(arena, List_symbol);
-  }
   scope->occurs = new_list(arena, List_symbol);
   symbol_table->active_scope = scope;
   append_list_elem(symbol_table->scopes, scope, List_scope);
@@ -256,7 +220,8 @@ bool name_ident_type(AstNode* node)
     char* name = ATTR(&id_gen0, str, name);
     ATTR(type_occur_gen1, str, name) = name;
 
-    Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope, Symbol_type);
+    Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
+        (SymbolKind[]){Symbol_type, Symbol_None});
     if(decl_sym)
     {
       Symbol* occur_sym = add_occur_symbol(name, type_occur_gen1->src_loc, Symbol_type);
@@ -327,7 +292,8 @@ bool name_ident_ret_var(AstNode* node)
   char* name = ATTR(ATTR(&var_decl_gen0, ast_node, id), str, name);
   ATTR(var_decl_gen1, str, name) = name;
 
-  Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope, Symbol_var);
+  Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
+      (SymbolKind[]){Symbol_var, Symbol_None});
   if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
   {
     assert(0);
@@ -336,7 +302,7 @@ bool name_ident_ret_var(AstNode* node)
   }
   else
   {
-    decl_sym = add_ret_var_symbol(name, var_decl_gen1->src_loc);
+    decl_sym = add_decl_symbol(name, var_decl_gen1->src_loc, Symbol_ret_var);
     ATTR(var_decl_gen1, symbol, decl_sym) = decl_sym;
     decl_sym->ast_node = var_decl_gen1;
 
@@ -356,7 +322,8 @@ bool name_ident_formal_arg(AstNode* node)
   char* name = ATTR(ATTR(&var_decl_gen0, ast_node, id), str, name);
   ATTR(var_decl_gen1, str, name) = name;
 
-  Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope, Symbol_var);
+  Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
+      (SymbolKind[]){Symbol_var, Symbol_formal_arg, Symbol_None});
   if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
   {
     success = compile_error(var_decl_gen1->src_loc, "formal arg `%s` already declared", name);
@@ -364,7 +331,7 @@ bool name_ident_formal_arg(AstNode* node)
   }
   else
   {
-    decl_sym = add_formal_arg_symbol(name, var_decl_gen1->src_loc);
+    decl_sym = add_decl_symbol(name, var_decl_gen1->src_loc, Symbol_formal_arg);
     ATTR(var_decl_gen1, symbol, decl_sym) = decl_sym;
     decl_sym->ast_node = var_decl_gen1;
 
@@ -412,7 +379,8 @@ bool name_ident(AstNode* node)
     char* name = ATTR(ATTR(&var_decl_gen0, ast_node, id), str, name);
     ATTR(var_decl_gen1, str, name) = name;
 
-    Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope, Symbol_var);
+    Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
+        (SymbolKind[]){Symbol_var, Symbol_formal_arg, Symbol_ret_var, Symbol_None});
     if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
     {
       success = compile_error(var_decl_gen1->src_loc, "variable `%s` already declared", name);
@@ -444,7 +412,8 @@ bool name_ident(AstNode* node)
     Symbol* occur_sym = add_occur_symbol(name, var_occur_gen1->src_loc, Symbol_var);
     occur_sym->ast_node = var_occur_gen1;
 
-    Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope, Symbol_var);
+    Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
+        (SymbolKind[]){Symbol_var, Symbol_formal_arg, Symbol_ret_var, Symbol_None});
     if(decl_sym)
     {
       ATTR(var_occur_gen1, symbol, occur_sym) = occur_sym;
@@ -463,7 +432,8 @@ bool name_ident(AstNode* node)
     char* name = ATTR(ATTR(&proc_decl_gen0, ast_node, id), str, name);
     ATTR(proc_decl_gen1, str, name) = name;
 
-    Symbol* decl_sym = lookup_decl_symbol(name, find_scope(Scope_module), Symbol_proc);
+    Symbol* decl_sym = lookup_decl_symbol(name, find_scope(Scope_module),
+        (SymbolKind[]){Symbol_proc, Symbol_None});
     if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
     {
       success = compile_error(proc_decl_gen1->src_loc, "proc `%s` already declared", name);
@@ -507,7 +477,8 @@ bool name_ident(AstNode* node)
     occur_sym->ast_node = proc_occur_gen1;
     ATTR(proc_occur_gen1, symbol, occur_sym) = occur_sym;
 
-    Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope, Symbol_proc);
+    Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
+        (SymbolKind[]){Symbol_proc, Symbol_None});
     if(decl_sym)
     {
       ATTR(proc_occur_gen1, symbol, occur_sym) = occur_sym;
@@ -1149,7 +1120,8 @@ bool eval_types(AstNode* node)
       if(!proc_decl)
       {
         Symbol* occur_sym = ATTR(node, symbol, occur_sym);
-        Symbol* decl_sym = lookup_decl_symbol(occur_sym->name, occur_sym->scope, Symbol_proc);
+        Symbol* decl_sym = lookup_decl_symbol(occur_sym->name, occur_sym->scope,
+            (SymbolKind[]){Symbol_proc, Symbol_None});
         if(decl_sym)
         {
           proc_decl = ATTR(node, ast_node, proc_decl) = decl_sym->ast_node;

@@ -343,6 +343,8 @@ typedef enum
 {
   Symbol_None,
   Symbol_var,
+  Symbol_ret_var,
+  Symbol_formal_arg,
   Symbol_type,
   Symbol_proc,
   Symbol_Count,
@@ -359,8 +361,6 @@ typedef struct Scope
 
   List* decls[Symbol_Count];
   List* occurs;
-  Symbol* ret_var;
-  List* formal_args;
   int data_area_size;
   List* access_links;
 }

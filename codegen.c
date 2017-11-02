@@ -956,4 +956,174 @@ void print_code(VmProgram* vm_program)
   }
 }
 
+#if 0
+void rt_statement(AstNode* ast);
+void rt_block_stmts(List* stmt_list);
+
+void make_unique_label(String* label)
+{
+  sprintf(label->head, "L%d", last_label_id++);
+  int len = cstr_len(label->head);
+  label->end = label->head + len;
+  MemoryArena* arena = label->arena;
+  arena->free = (uint8*)label->end + 1;
+}
+
+void rt_call(AstCall* call)
+{
+  List* args_list = &call->args->list;
+  for(ListItem* list_item = args_list->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    rt_statement((AstNode*)list_item->elem);
+  }
+}
+
+void rt_while_stmt(AstWhileStmt* while_stmt)
+{
+  rt_statement(while_stmt->cond_expr);
+
+  {
+    String* label_id = str_new(arena);
+    make_unique_label(label_id);
+
+    String* label = str_new(arena);
+    str_append(label, label_id->head);
+    str_append(label, ".while-expr");
+    while_stmt->label_eval = str_cap(label);
+
+    label = str_new(arena);
+    str_append(label, label_id->head);
+    str_append(label, ".while-break");
+    while_stmt->label_break = str_cap(label);
+  }
+
+  if(while_stmt->body->kind == AstNodeKind_AstBlock)
+    rt_block((AstBlock*)while_stmt->body);
+  else
+    rt_statement(while_stmt->body);
+}
+
+void rt_if_stmt(AstIfStmt* if_stmt)
+{
+  rt_statement(if_stmt->cond_expr);
+
+  {
+    String* label_id = str_new(arena);
+    make_unique_label(label_id);
+
+    String* label = str_new(arena);
+    str_append(label, label_id->head);
+    str_append(label, ".if-else");
+    if_stmt->label_else = str_cap(label);
+
+    str_init(label, arena);
+    str_append(label, label_id->head);
+    str_append(label, ".if-end");
+    if_stmt->label_end = str_cap(label);
+  }
+
+  if(if_stmt->body->kind == AstNodeKind_AstBlock)
+    rt_block((AstBlock*)if_stmt->body);
+  else
+    rt_statement(if_stmt->body);
+
+  if(if_stmt->else_body)
+  {
+    AstNode* else_node = if_stmt->else_body;
+    if(else_node->kind == AstNodeKind_AstBlock)
+      rt_block((AstBlock*)else_node);
+    else if(else_node->kind == AstNodeKind_AstIfStmt)
+      rt_if_stmt((AstIfStmt*)else_node);
+    else
+      rt_statement(else_node);
+  }
+}
+
+void rt_bin_expr(AstBinExpr* bin_expr)
+{
+  String* label_id = str_new(arena);
+  make_unique_label(label_id);
+
+  String* label = str_new(arena);
+  str_append(label, label_id->head);
+  str_append(label, ".logic-end");
+  bin_expr->label_end = str_cap(label);
+
+  rt_statement(bin_expr->left_operand);
+  rt_statement(bin_expr->right_operand);
+}
+
+void rt_unr_expr(AstUnaryExpr* unr_expr)
+{
+  rt_statement(unr_expr->operand);
+}
+
+void rt_statement(AstNode* ast)
+{
+  if(ast->kind == AstNodeKind_AstBinExpr)
+    rt_bin_expr((AstBinExpr*)ast);
+  else if(ast->kind == AstNodeKind_AstUnaryExpr)
+    rt_unr_expr((AstUnaryExpr*)ast);
+  else if(ast->kind == AstNodeKind_AstCall)
+    rt_call((AstCall*)ast);
+  else if(ast->kind == AstNodeKind_AstIfStmt)
+    rt_if_stmt((AstIfStmt*)ast);
+  else if(ast->kind == AstNodeKind_AstWhileStmt)
+    rt_while_stmt((AstWhileStmt*)ast);
+  else if(ast->kind == AstNodeKind_AstReturnStmt)
+  {
+    AstReturnStmt* ret_stmt = (AstReturnStmt*)ast;
+    if(ret_stmt->assign_expr)
+      rt_statement((AstNode*)ret_stmt->assign_expr);
+  }
+  else if(ast->kind == AstNodeKind_AstCast)
+  {
+    AstCast* cast = (AstCast*)ast;
+    rt_statement(cast->expr);
+  }
+  else if(ast->kind == AstNodeKind_AstVarDecl)
+  {
+    AstVarDecl* var_decl = (AstVarDecl*)ast;
+    if(var_decl->assign_expr)
+      rt_statement((AstNode*)var_decl->assign_expr);
+  }
+  else if(ast->kind == AstNodeKind_AstPutc)
+  {
+    AstPutc* putc_ast = (AstPutc*)ast;
+    rt_statement(putc_ast->expr);
+  }
+  else if(ast->kind == AstNodeKind_AstBlock)
+  {
+    rt_block((AstBlock*)ast);
+  }
+  else if(ast->kind == AstNodeKind_AstVarOccur
+          || ast->kind == AstNodeKind_AstBreakStmt
+          || ast->kind == AstNodeKind_AstContinueStmt
+          || ast->kind == AstNodeKind_AstLiteral
+          || ast->kind == AstNodeKind_AstString
+          || ast->kind == AstNodeKind_AstNew
+          || ast->kind == AstNodeKind_AstEmptyStmt)
+    ;//OK
+  else
+    assert(0);
+}
+
+void rt_block_stmts(List* stmt_list)
+{
+  for(ListItem* list_item = stmt_list->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    rt_statement((AstNode*)list_item->elem);
+  }
+}
+#endif
+
+void gen_build_labels()
+{
+
+}
+
 

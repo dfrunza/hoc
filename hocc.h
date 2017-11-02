@@ -400,7 +400,6 @@ typedef enum
   AstAttributeName_elem_expr,
   AstAttributeName_proc,
   AstAttributeName_nesting_depth,
-  AstAttributeName_decl_scope_offset,
   AstAttributeName_loop,
   AstAttributeName_formal_args,
   AstAttributeName_ret_var,

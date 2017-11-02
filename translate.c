@@ -946,7 +946,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var_occur; // occurrence of var
-      kind->attr_count = 7;
+      kind->attr_count = 5;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -969,11 +969,6 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_int_val;
-      attr->name = AstAttributeName_decl_scope_offset;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_type;
       attr->name = AstAttributeName_type;
 
@@ -981,11 +976,6 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_type;
       attr->name = AstAttributeName_eval_type;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_data_area;
-      attr->name = AstAttributeName_data_area;
     }
     {
       assert(kind_index < ast->kind_count);

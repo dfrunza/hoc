@@ -24,6 +24,7 @@ void mem_zero_f(void* mem, int len);
 int h_sscanf(char*, char*, ...);
 int h_vsprintf(char *buffer, char *format, va_list args);
 int h_printf(char *format, ...);
+int h_sprintf(char* buffer, char* format, ...);
 int h_putc(int ch);
 char* path_find_leaf(char* file_path);
 char* path_make_stem(char* file_path);

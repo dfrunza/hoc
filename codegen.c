@@ -8,7 +8,7 @@ void print_instruction(VmProgram* vm_program, char* code, ...)
   va_list args;
 
   va_start(args, code);
-  vm_program->text_len += vsprintf(strbuf, code, args);
+  vm_program->text_len += h_vsprintf(strbuf, code, args);
   va_end(args);
 
   str_append(&vm_program->text, strbuf);
@@ -22,7 +22,7 @@ void emit_instr_reg(List* instr_list, Opcode opcode, RegName reg)
   instr->opcode = opcode;
   instr->param_type = ParamType_Reg;
   instr->param.reg = reg;
-  list_append(arena, instr_list, instr);
+  append_list_elem(instr_list, instr, List_vm_instr);
 }
 
 void emit_instr_int(List* instr_list, Opcode opcode, int32 int_val)
@@ -31,7 +31,7 @@ void emit_instr_int(List* instr_list, Opcode opcode, int32 int_val)
   instr->opcode = opcode;
   instr->param_type = ParamType_Int32;
   instr->param.int_val = int_val;
-  list_append(arena, instr_list, instr);
+  append_list_elem(instr_list, instr, List_vm_instr);
 }
 
 void emit_instr_float(List* instr_list, Opcode opcode, float32 float_val)
@@ -40,15 +40,15 @@ void emit_instr_float(List* instr_list, Opcode opcode, float32 float_val)
   instr->opcode = opcode;
   instr->param_type = ParamType_Float32;
   instr->param.float_val = float_val;
-  list_append(arena, instr_list, instr);
+  append_list_elem(instr_list, instr, List_vm_instr);
 }
 
 void emit_instr(List* instr_list, Opcode opcode)
 {
   Instruction* instr = mem_push_struct(arena, Instruction);
   instr->opcode = opcode;
-  instr->param_type = ParamType__Null;
-  list_append(arena, instr_list, instr);
+  instr->param_type = ParamType_None;
+  append_list_elem(instr_list, instr, List_vm_instr);
 }
 
 void emit_instr_str(List* instr_list, Opcode opcode, char* str)
@@ -58,9 +58,10 @@ void emit_instr_str(List* instr_list, Opcode opcode, char* str)
   instr->opcode = opcode;
   instr->param_type = ParamType_String;
   instr->param.str = str;
-  list_append(arena, instr_list, instr);
+  append_list_elem(instr_list, instr, List_vm_instr);
 }
 
+#if 0
 void gen_bin_expr(List* code, AstBinExpr* bin_expr)
 {
   AstNode* left_operand = bin_expr->left_operand;
@@ -642,6 +643,7 @@ void codegen(List* code, uint8** data, int* data_size, AstModule* module)
     gen_proc(code, proc);
   }
 }
+#endif
 
 char* get_regname_str(RegName reg)
 {
@@ -663,7 +665,7 @@ char* get_regname_str(RegName reg)
 
 void print_code(VmProgram* vm_program)
 {
-  for(ListItem* list_item = vm_program->instr_list.first;
+  for(ListItem* list_item = vm_program->instr_list->first;
       list_item;
       list_item = list_item->next)
   {
@@ -712,73 +714,73 @@ void print_code(VmProgram* vm_program)
 
       case Opcode_DUP:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "dup");
       } break;
 
       case Opcode_ADD_INT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "add_int");
       } break;
 
       case Opcode_SUB_INT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "sub_int");
       } break;
 
       case Opcode_MUL_INT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "mul_int");
       } break;
 
       case Opcode_DIV_INT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "div_int");
       } break;
 
       case Opcode_ADD_FLOAT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "add_float");
       } break;
 
       case Opcode_SUB_FLOAT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "sub_float");
       } break;
 
       case Opcode_MUL_FLOAT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "mul_float");
       } break;
 
       case Opcode_DIV_FLOAT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "div_float");
       } break;
 
       case Opcode_NEG_FLOAT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "neg_float");
       } break;
 
       case Opcode_MOD_INT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "mod_int");
       } break;
 
       case Opcode_NEG_INT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "neg_int");
       } break;
 
@@ -802,7 +804,7 @@ void print_code(VmProgram* vm_program)
 
       case Opcode_RETURN:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "return");
       } break;
 
@@ -814,7 +816,7 @@ void print_code(VmProgram* vm_program)
 
       case Opcode_NEW:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "new");
       } break;
 
@@ -826,7 +828,7 @@ void print_code(VmProgram* vm_program)
 
       case Opcode_HALT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "halt");
       } break;
 
@@ -850,25 +852,25 @@ void print_code(VmProgram* vm_program)
 
       case Opcode_DECR_INT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "decr_int");
       } break;
 
       case Opcode_ENTER:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "enter");
       } break;
 
       case Opcode_LEAVE:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "leave");
       } break;
 
       case Opcode_NOOP:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "noop");
       } break;
 
@@ -885,7 +887,7 @@ void print_code(VmProgram* vm_program)
       case Opcode_CMPLSS_FLOAT:
       case Opcode_CMPGRT_FLOAT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         if(instr->opcode == Opcode_CMPEQ_CHAR)
           print_instruction(vm_program, "cmpeq_char");
         else if(instr->opcode == Opcode_CMPNEQ_CHAR)
@@ -916,37 +918,37 @@ void print_code(VmProgram* vm_program)
 
       case Opcode_AND:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "and");
       } break;
 
       case Opcode_OR:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "or");
       } break;
 
       case Opcode_NOT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "not");
       } break;
 
       case Opcode_PUTC:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "putc");
       } break;
 
       case Opcode_FLOAT_TO_INT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "float_to_int");
       } break;
 
       case Opcode_INT_TO_FLOAT:
       {
-        assert(instr->param_type == ParamType__Null);
+        assert(instr->param_type == ParamType_None);
         print_instruction(vm_program, "int_to_float");
       } break;
 
@@ -1121,9 +1123,30 @@ void rt_block_stmts(List* stmt_list)
 }
 #endif
 
-void gen_build_labels()
+void gen_build_labels(AstNode* node)
 {
-
+  if(node->kind == AstNode_module)
+  {
+    gen_build_labels(ATTR(node, ast_node, body));
+  }
+  else if(node->kind == AstNode_block)
+  {
+    for(ListItem* list_item = ATTR(node, list, nodes)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      gen_build_labels(ITEM(list_item, ast_node));
+    }
+  }
+  else if(node->kind == AstNode_stmt)
+  {
+    gen_build_labels(ATTR(node, ast_node, stmt));
+  }
+  else if(node->kind == AstNode_bin_expr)
+  {
+    String* label_id = str_new(arena);
+    make_unique_label(label_id);
+  }
 }
 
 

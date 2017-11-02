@@ -14,6 +14,15 @@ int typevar_id = 1;
 
 int last_label_id;
 
+void make_unique_label(String* label)
+{
+  h_sprintf(label->head, "L%d", last_label_id++);
+  int len = cstr_len(label->head);
+  label->end = label->head + len;
+  MemoryArena* arena = label->arena;
+  arena->free = (uint8*)label->end + 1;
+}
+
 char* make_temp_name(char* label)
 {
   String* str = str_new(arena);
@@ -1617,8 +1626,8 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
 #include "type.c"
 #include "semantic.c"
 #include "runtime.c"
-/*
 #include "codegen.c"
+/*
 #include "hasm.c"
 */
 

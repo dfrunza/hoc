@@ -22,6 +22,15 @@ int h_vsprintf(char* buffer, char* format, va_list args)
   return vsprintf(buffer, format, args);
 }
 
+int h_sprintf(char* buffer, char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  int result = vsprintf(buffer, format, args);
+  va_end(args);
+  return result;
+}
+
 int h_printf(char* format, ...)
 {
   va_list args;

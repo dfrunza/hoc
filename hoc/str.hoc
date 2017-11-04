@@ -13,7 +13,7 @@ proc void print_str(char* str)
 {
   while(*str != '\0')
   {
-    putc(*str);
+    /*putc(*str);*/
     str = str + (type char*)1;
   }
 }

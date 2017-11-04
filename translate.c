@@ -14,13 +14,11 @@ int typevar_id = 1;
 
 int last_label_id;
 
-void make_unique_label(String* label)
+char* make_unique_label()
 {
-  h_sprintf(label->head, "L%d", last_label_id++);
-  int len = cstr_len(label->head);
-  label->end = label->head + len;
-  MemoryArena* arena = label->arena;
-  arena->free = (uint8*)label->end + 1;
+  static char buf[10];
+  h_sprintf(buf, "L%d", last_label_id++);
+  return buf;
 }
 
 char* make_temp_name(char* label)
@@ -620,7 +618,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_while_stmt;
-      kind->attr_count = 2;
+      kind->attr_count = 4;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -635,6 +633,16 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
       attr->name = AstAttributeName_body;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_label_eval;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_label_break;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -670,7 +678,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_if_stmt;
-      kind->attr_count = 3;
+      kind->attr_count = 5;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -690,6 +698,16 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
       attr->name = AstAttributeName_else_body;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_label_else;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_label_end;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -750,7 +768,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_proc_decl; // declaration of proc
-      kind->attr_count = 7;
+      kind->attr_count = 9;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -783,6 +801,11 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_scope;
+      attr->name = AstAttributeName_scope;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_type;
       attr->name = AstAttributeName_type;
 
@@ -790,6 +813,11 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_type;
       attr->name = AstAttributeName_eval_type;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_label_end;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -955,7 +983,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var_occur; // occurrence of var
-      kind->attr_count = 5;
+      kind->attr_count = 6;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -970,6 +998,11 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_symbol;
       attr->name = AstAttributeName_occur_sym;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_symbol;
+      attr->name = AstAttributeName_decl_sym;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -990,7 +1023,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_bin_expr;
-      kind->attr_count = 5;
+      kind->attr_count = 6;
       kind->attrs = mem_push_array(arena, AstAttributeMetaInfo, kind->attr_count);
 
       int attr_index = 0;
@@ -1020,6 +1053,11 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_type;
       attr->name = AstAttributeName_eval_type;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str;
+      attr->name = AstAttributeName_label_end;
     }
 #if 0
     {
@@ -1627,9 +1665,7 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
 #include "semantic.c"
 #include "runtime.c"
 #include "codegen.c"
-/*
 #include "hasm.c"
-*/
 
 VmProgram* translate(char* file_path, char* hoc_text)
 {
@@ -1721,20 +1757,21 @@ VmProgram* translate(char* file_path, char* hoc_text)
           DEBUG_print_arena_usage(arena, "arena");
         }/*<<<*/
 
-#if 0
-        codegen(vm_program->instr_list, &vm_program->data, &vm_program->data_size, module);
+        build_gen_labels(module);
+        gen_code(vm_program->instr_list, module);
         if(DEBUG_enabled)/*>>>*/
         {
-          DEBUG_print_arena_usage("Codegen");/*<<<*/
+          h_printf("--- Codegen ---\n");
+          DEBUG_print_arena_usage(arena, "arena");/*<<<*/
         }
 
         str_init(&vm_program->text, arena);
         print_code(vm_program);
         if(DEBUG_enabled)/*>>>*/
         {
-          DEBUG_print_arena_usage("Print code");/*<<<*/
+          h_printf("--- Print code ---\n");
+          DEBUG_print_arena_usage(arena, "arena");/*<<<*/
         }
-#endif
       }
     }
   }

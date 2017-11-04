@@ -1,6 +1,5 @@
-void gen_load_rvalue(List*, AstNode*);
 void gen_load_lvalue(List*, AstNode*);
-void gen_statement(List*, AstNode*);
+void gen_code(List* code, AstNode* node);
 
 void print_instruction(VmProgram* vm_program, char* code, ...)
 {
@@ -645,6 +644,609 @@ void codegen(List* code, uint8** data, int* data_size, AstModule* module)
 }
 #endif
 
+void gen_load_lvalue(List* code, AstNode* node)
+{
+  if(node->kind == AstNode_var_occur)
+  {
+    DataArea* link = ATTR(node, symbol, occur_sym)->data_area;
+    DataArea* data = ATTR(node, symbol, decl_sym)->data_area;
+
+    emit_instr_reg(code, Opcode_PUSH_REG, RegName_FP);
+
+    if(link && link->decl_scope_offset > 0)
+    {
+      // non-local
+      assert(link->loc < 0); // relative to FP
+      emit_instr_int(code, Opcode_PUSH_INT, link->loc);
+      emit_instr(code, Opcode_ADD_INT);
+      emit_instr_int(code, Opcode_LOAD, 4); // access link is on the stack now
+    }
+    emit_instr_int(code, Opcode_PUSH_INT, data->loc);
+    emit_instr(code, Opcode_ADD_INT);
+  }
+  else
+    assert(0);
+}
+
+void gen_load_rvalue(List* code, AstNode* node)
+{
+  if(node->kind == AstNode_var_occur)
+  {
+    gen_load_lvalue(code, node);
+    emit_instr_int(code, Opcode_LOAD, ATTR(node, type, eval_type)->width);
+  }
+  else if(node->kind == AstNode_proc_occur)
+  {
+    gen_code(code, node);
+  }
+  else if(node->kind == AstNode_lit)
+  {
+    LiteralKind kind = ATTR(node, lit_kind, lit_kind);
+    if(kind == Literal_int_val || kind == Literal_bool_val)
+    {
+      emit_instr_int(code, Opcode_PUSH_INT, ATTR(node, int_val, int_val));
+    }
+    else if(kind == Literal_float_val)
+    {
+      emit_instr_float(code, Opcode_PUSH_FLOAT, ATTR(node, float_val, float_val));
+    }
+    else if(kind == Literal_char_val)
+    {
+      //emit_instr_int(code, Opcode_PUSH_CHAR, ATTR(node, char_val, char_val));
+      //todo: emit_instr_int8();
+    }
+    else
+      assert(0);
+  }
+  else if(node->kind == AstNode_bin_expr)
+  {
+    gen_code(code, node);
+  }
+  else if(node->kind == AstNode_un_expr)
+  {
+    gen_code(code, node);
+  }
+  else
+    assert(0);
+}
+
+void gen_code(List* code, AstNode* node)
+{
+  if(node->kind == AstNode_module)
+  {
+    gen_code(code, ATTR(node, ast_node, body));
+  }
+  else if(node->kind == AstNode_block)
+  {
+    Scope* scope = ATTR(node, scope, scope);
+    for(ListItem* list_item = scope->access_links->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      DataArea* link = ITEM(list_item, data_area); assert(link->kind == DataArea_link);
+      emit_instr_reg(code, Opcode_PUSH_REG, RegName_FP);
+
+      int offset = link->decl_scope_offset - 1;
+      while(offset--)
+      {
+        emit_instr_int(code, Opcode_PUSH_INT, -4);
+        emit_instr(code, Opcode_ADD_INT); // ge the FP of the previous activation record
+        emit_instr_int(code, Opcode_LOAD, 4);
+      }
+    }
+
+    emit_instr(code, Opcode_ENTER);
+    emit_instr_int(code, Opcode_GROW, scope->local_area_size);
+
+    for(ListItem* list_item = ATTR(node, list, nodes)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      gen_code(code, ITEM(list_item, ast_node));
+    }
+
+    emit_instr(code, Opcode_LEAVE);
+    emit_instr_int(code, Opcode_GROW, -scope->link_area_size);
+  }
+  else if(node->kind == AstNode_proc_decl)
+  {
+    Scope* scope = ATTR(node, scope, scope);
+    emit_instr_str(code, Opcode_LABEL, ATTR(node, str, name));
+    emit_instr_int(code, Opcode_GROW, scope->local_area_size);
+
+    AstNode* body = ATTR(node, ast_node, body);
+    for(ListItem* list_item = ATTR(body, list, nodes)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      gen_code(code, ITEM(list_item, ast_node));
+    }
+
+    emit_instr_str(code, Opcode_LABEL, ATTR(node, str, label_end));
+    emit_instr(code, Opcode_RETURN);
+  }
+  else if(node->kind == AstNode_var_decl)
+  {
+    //todo: init_expr
+  }
+  else if(node->kind == AstNode_stmt)
+  {
+    gen_code(code, ATTR(node, ast_node, stmt));
+  }
+  else if(node->kind == AstNode_while_stmt)
+  {
+    emit_instr_str(code, Opcode_LABEL, ATTR(node, str, label_eval));
+    gen_load_rvalue(code, ATTR(node, ast_node, cond_expr));
+    emit_instr_str(code, Opcode_JUMPZ, ATTR(node, str, label_break));
+
+    AstNode* body = ATTR(node, ast_node, body);
+    if(body)
+    {
+      gen_code(code, body);
+    }
+
+    emit_instr_str(code, Opcode_GOTO, ATTR(node, str, label_eval));
+    emit_instr_str(code, Opcode_LABEL, ATTR(node, str, label_break));
+  }
+  else if(node->kind == AstNode_bin_expr)
+  {
+    AstNode* left_operand = ATTR(node, ast_node, left_operand);
+    AstNode* right_operand = ATTR(node, ast_node, right_operand);
+    Type* type = ATTR(node, type, eval_type);
+    Type* left_ty = ATTR(left_operand, type, eval_type);
+    Type* right_ty = ATTR(right_operand, type, eval_type);
+    OperatorKind bin_op = ATTR(node, op_kind, op_kind);
+
+    if(bin_op == Operator_assign)
+    {
+      gen_load_rvalue(code, right_operand);
+
+      if(left_operand->kind == AstNode_var_occur)
+      {
+        gen_load_lvalue(code, left_operand);
+      }
+      else if(left_operand->kind == AstNode_un_expr)
+      {
+        if(ATTR(left_operand, op_kind, op_kind) == Operator_deref)
+        {
+          gen_load_rvalue(code, ATTR(left_operand, ast_node, operand));
+        }
+        else
+          assert(0);
+      }
+
+      emit_instr_int(code, Opcode_STORE, type->width);
+    }
+    else if(bin_op == Operator_add)
+    {
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(types_are_equal(type, basic_type_int) || type->kind == Type_pointer)
+      {
+        emit_instr(code, Opcode_ADD_INT);
+      }
+      else if(types_are_equal(type, basic_type_float))
+      {
+        emit_instr(code, Opcode_ADD_FLOAT);
+      }
+      else
+        assert(0);
+    }
+    else if(bin_op == Operator_sub)
+    {
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(types_are_equal(type, basic_type_int) || type->kind == Type_pointer)
+      {
+        emit_instr(code, Opcode_SUB_INT);
+      }
+      else if(types_are_equal(type, basic_type_float))
+      {
+        emit_instr(code, Opcode_SUB_FLOAT);
+      }
+      else
+        assert(0);
+    }
+    else if(bin_op == Operator_mul)
+    {
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(types_are_equal(type, basic_type_int) || type->kind == Type_pointer)
+      {
+        emit_instr(code, Opcode_MUL_INT);
+      }
+      else if(types_are_equal(type, basic_type_float))
+      {
+        emit_instr(code, Opcode_MUL_FLOAT);
+      }
+      else
+        assert(0);
+    }
+    else if(bin_op == Operator_div)
+    {
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(types_are_equal(type, basic_type_int) || type->kind == Type_pointer)
+      {
+        emit_instr(code, Opcode_DIV_INT);
+      }
+      else if(types_are_equal(type, basic_type_float))
+      {
+        emit_instr(code, Opcode_DIV_FLOAT);
+      }
+      else
+        assert(0);
+    }
+    else if(bin_op == Operator_mod)
+    {
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(types_are_equal(type, basic_type_int) || type->kind == Type_pointer)
+      {
+        emit_instr(code, Opcode_MOD_INT);
+      }
+      else
+        assert(0);
+    }
+    else if(bin_op == Operator_eq)
+    {
+      assert(types_are_equal(left_ty, right_ty));
+
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(types_are_equal(left_ty, basic_type_char))
+      {
+        emit_instr(code, Opcode_CMPEQ_CHAR);
+      }
+      else if(types_are_equal(left_ty, basic_type_int))
+      {
+        emit_instr(code, Opcode_CMPEQ_INT);
+      }
+      else if(types_are_equal(left_ty, basic_type_float))
+      {
+        emit_instr(code, Opcode_CMPEQ_FLOAT);
+      }
+      else
+        assert(0);
+    }
+    else if(bin_op == Operator_not_eq)
+    {
+      assert(types_are_equal(left_ty, right_ty));
+
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(types_are_equal(left_ty, basic_type_char))
+      {
+        emit_instr(code, Opcode_CMPNEQ_CHAR);
+      }
+      else if(types_are_equal(left_ty, basic_type_int))
+      {
+        emit_instr(code, Opcode_CMPNEQ_INT);
+      }
+      else if(types_are_equal(left_ty, basic_type_float))
+      {
+        emit_instr(code, Opcode_CMPNEQ_FLOAT);
+      }
+      else
+        assert(0);
+    }
+    else if(bin_op == Operator_less)
+    {
+      assert(types_are_equal(left_ty, right_ty));
+
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(types_are_equal(left_ty, basic_type_char))
+      {
+        emit_instr(code, Opcode_CMPLSS_CHAR);
+      }
+      else if(types_are_equal(left_ty, basic_type_int))
+      {
+        emit_instr(code, Opcode_CMPLSS_INT);
+      }
+      else if(types_are_equal(left_ty, basic_type_float))
+      {
+        emit_instr(code, Opcode_CMPLSS_FLOAT);
+      }
+      else
+        assert(0);
+    }
+    else if(bin_op == Operator_greater)
+    {
+      assert(types_are_equal(left_ty, right_ty));
+
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(types_are_equal(left_ty, basic_type_char))
+      {
+        emit_instr(code, Opcode_CMPGRT_CHAR);
+      }
+      else if(types_are_equal(left_ty, basic_type_int))
+      {
+        emit_instr(code, Opcode_CMPGRT_INT);
+      }
+      else if(types_are_equal(left_ty, basic_type_float))
+      {
+        emit_instr(code, Opcode_CMPGRT_FLOAT);
+      }
+      else
+        assert(0);
+    }
+    else if(bin_op == Operator_logic_and || bin_op == Operator_logic_or)
+    {
+      assert(types_are_equal(left_ty, right_ty));
+
+      gen_load_rvalue(code, left_operand);
+      emit_instr(code, Opcode_DUP);
+
+      if(bin_op == Operator_logic_and)
+      {
+        emit_instr_str(code, Opcode_JUMPZ, ATTR(node, str, label_end));
+      }
+      else if(bin_op == Operator_logic_or)
+      {
+        emit_instr_str(code, Opcode_JUMPNZ, ATTR(node, str, label_end));
+      }
+      else
+        assert(0);
+
+      emit_instr_int(code, Opcode_GROW, -type->width);
+      gen_load_rvalue(code, right_operand);
+      emit_instr(code, Opcode_DUP);
+
+      if(bin_op == Operator_logic_and)
+      {
+        emit_instr_str(code, Opcode_JUMPZ, ATTR(node, str, label_end));
+      }
+      else if(bin_op == Operator_logic_or)
+      {
+        emit_instr_str(code, Opcode_JUMPNZ, ATTR(node, str, label_end));
+      }
+      else
+        assert(0);
+
+      emit_instr_str(code, Opcode_LABEL, ATTR(node, str, label_end));
+    }
+    else if(bin_op == Operator_less_eq || bin_op == Operator_greater_eq)
+    {
+      assert(types_are_equal(left_ty, right_ty));
+
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(bin_op == Operator_less_eq)
+      {
+        if(types_are_equal(left_ty, basic_type_char))
+        {
+          emit_instr(code, Opcode_CMPLSS_CHAR);
+        }
+        else if(types_are_equal(left_ty, basic_type_int))
+        {
+          emit_instr(code, Opcode_CMPLSS_INT);
+        }
+        else if(types_are_equal(left_ty, basic_type_float))
+        {
+          emit_instr(code, Opcode_CMPLSS_FLOAT);
+        }
+        else
+          assert(0);
+      }
+      else if(bin_op == Operator_greater_eq)
+      {
+        if(types_are_equal(left_ty, basic_type_char))
+        {
+          emit_instr(code, Opcode_CMPGRT_CHAR);
+        }
+        else if(types_are_equal(left_ty, basic_type_int))
+        {
+          emit_instr(code, Opcode_CMPGRT_INT);
+        }
+        else if(types_are_equal(left_ty, basic_type_float))
+        {
+          emit_instr(code, Opcode_CMPGRT_FLOAT);
+        }
+        else
+          assert(0);
+      }
+      else
+        assert(0);
+
+      emit_instr(code, Opcode_DUP);
+      emit_instr_int(code, Opcode_GROW, -type->width);
+
+      gen_load_rvalue(code, left_operand);
+      gen_load_rvalue(code, right_operand);
+
+      if(types_are_equal(left_ty, basic_type_char))
+      {
+        emit_instr(code, Opcode_CMPNEQ_CHAR);
+      }
+      else if(types_are_equal(left_ty, basic_type_int))
+      {
+        emit_instr(code, Opcode_CMPNEQ_INT);
+      }
+      else if(types_are_equal(left_ty, basic_type_float))
+      {
+        emit_instr(code, Opcode_CMPNEQ_FLOAT);
+      }
+      else
+        assert(0);
+
+      emit_instr_str(code, Opcode_LABEL, ATTR(node, str, label_end));
+    }
+    else if(bin_op == Operator_cast)
+    {
+      if(types_are_equal(left_ty, basic_type_int) && types_are_equal(right_ty, basic_type_float))
+      {
+        emit_instr(code, Opcode_FLOAT_TO_INT);
+      }
+      if(types_are_equal(left_ty, basic_type_float) && types_are_equal(right_ty, basic_type_int))
+      {
+        emit_instr(code, Opcode_INT_TO_FLOAT);
+      }
+    }
+    else if(bin_op == Operator_array_index)
+    {
+      //todo
+    }
+    else
+      assert(0);
+  }
+  else if(node->kind == AstNode_un_expr)
+  {
+    AstNode* operand = ATTR(node, ast_node, operand);
+    Type* type = ATTR(node, type, eval_type);
+    Type* operand_ty = ATTR(node, type, eval_type);
+    OperatorKind un_op = ATTR(node, op_kind, op_kind);
+
+    if(un_op == Operator_address_of)
+    {
+      if(operand->kind == AstNode_var_occur)
+      {
+        gen_load_lvalue(code, operand);
+      }
+      else
+        gen_load_rvalue(code, operand);
+    }
+    else if(un_op == Operator_neg)
+    {
+      gen_load_rvalue(code, operand);
+
+      if(types_are_equal(operand_ty, basic_type_int))
+      {
+        emit_instr(code, Opcode_NEG_INT);
+      }
+      else if(types_are_equal(operand_ty, basic_type_float))
+      {
+        emit_instr(code, Opcode_NEG_FLOAT);
+      }
+      else
+        assert(0);
+    }
+    else if(un_op == Operator_logic_not)
+    {
+      gen_load_rvalue(code, operand);
+      emit_instr_int(code, Opcode_PUSH_INT, 0);
+      emit_instr(code, Opcode_CMPEQ_INT);
+    }
+    else if(un_op == Operator_deref)
+    {
+      assert(ATTR(operand, type, type)->kind == Type_pointer);
+      emit_instr_int(code, Opcode_LOAD, type->width);
+    }
+    else
+      assert(0);
+  }
+  else if(node->kind == AstNode_proc_occur)
+  {
+    Type* type = ATTR(node, type, type); assert(type->kind == Type_proc);
+    Type* ret_type = type->proc.ret;
+    Type* args_type = type->proc.args;
+    AstNode* proc = ATTR(node, ast_node, proc_decl);
+    Scope* scope = ATTR(proc, scope, scope);
+
+    emit_instr_int(code, Opcode_GROW, ret_type->width);
+
+    for(ListItem* list_item = ATTR(node, list, actual_args)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      gen_load_rvalue(code, ITEM(list_item, ast_node));
+    }
+
+    emit_instr_str(code, Opcode_CALL, ATTR(node, str, name));
+    emit_instr_int(code, Opcode_GROW, -scope->link_area_size);
+    emit_instr_int(code, Opcode_GROW, -args_type->width);
+  }
+  else if(node->kind == AstNode_return_stmt)
+  {
+#if 0
+    AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
+    AstNode* proc = ATTR(node, ast_node, proc);
+
+    if(ret_expr)
+    {
+      AstNode* ret_var = ATTR(proc, ast_node, ret_var);
+      Type* ret_type = ATTR(ret_var, type, eval_type);
+
+      gen_load_rvalue(code, ret_expr);
+      gen_load_lvalue(code, ret_var);
+      emit_instr_int(code, Opcode_STORE, ret_type->width);
+    }
+
+    int depth = ATTR(node, int_val, nesting_depth);
+    while(depth-- > 0)
+    {
+      emit_instr(code, Opcode_LEAVE);
+    }
+
+    emit_instr_str(code, Opcode_GOTO, ATTR(proc, str, label_end));
+#endif
+  }
+  else if(node->kind == AstNode_if_stmt)
+  {
+    gen_load_rvalue(code, ATTR(node, ast_node, cond_expr));
+
+    AstNode* else_body = ATTR(node, ast_node, else_body);
+    if(else_body)
+    {
+      emit_instr_str(code, Opcode_JUMPZ, ATTR(node, str, label_else));
+    }
+    else
+    {
+      emit_instr_str(code, Opcode_JUMPZ, ATTR(node, str, label_end));
+    }
+
+    gen_code(code, ATTR(node, ast_node, body));
+    emit_instr_str(code, Opcode_GOTO, ATTR(node, str, label_end));
+
+    if(else_body)
+    {
+      emit_instr_str(code, Opcode_LABEL, ATTR(node, str, label_else));
+      gen_code(code, else_body);
+    }
+
+    emit_instr_str(code, Opcode_LABEL, ATTR(node, str, label_end));
+  }
+  else if(node->kind == AstNode_while_stmt)
+  {
+    emit_instr_str(code, Opcode_LABEL, ATTR(node, str, label_eval));
+    gen_load_rvalue(code, ATTR(node, ast_node, cond_expr));
+    emit_instr_str(code, Opcode_JUMPZ, ATTR(node, str, label_break));
+
+    AstNode* body = ATTR(node, ast_node, body);
+    if(body)
+    {
+      gen_code(code, body);
+    }
+
+    emit_instr_str(code, Opcode_GOTO, ATTR(node, str, label_eval));
+    emit_instr_str(code, Opcode_LABEL, ATTR(node, str, label_break));
+  }
+  else if(node->kind == AstNode_break_stmt)
+  {
+    AstNode* loop = ATTR(node, ast_node, loop);
+
+    int depth = ATTR(node, int_val, nesting_depth);
+    while(depth-- > 0)
+    {
+      emit_instr(code, Opcode_LEAVE);
+    }
+    emit_instr_str(code, Opcode_GOTO, ATTR(loop, str, label_break));
+  }
+  else
+    assert(0);
+}
+
 char* get_regname_str(RegName reg)
 {
   static char* reg_fp = "fp";
@@ -958,176 +1560,11 @@ void print_code(VmProgram* vm_program)
   }
 }
 
-#if 0
-void rt_statement(AstNode* ast);
-void rt_block_stmts(List* stmt_list);
-
-void make_unique_label(String* label)
-{
-  sprintf(label->head, "L%d", last_label_id++);
-  int len = cstr_len(label->head);
-  label->end = label->head + len;
-  MemoryArena* arena = label->arena;
-  arena->free = (uint8*)label->end + 1;
-}
-
-void rt_call(AstCall* call)
-{
-  List* args_list = &call->args->list;
-  for(ListItem* list_item = args_list->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    rt_statement((AstNode*)list_item->elem);
-  }
-}
-
-void rt_while_stmt(AstWhileStmt* while_stmt)
-{
-  rt_statement(while_stmt->cond_expr);
-
-  {
-    String* label_id = str_new(arena);
-    make_unique_label(label_id);
-
-    String* label = str_new(arena);
-    str_append(label, label_id->head);
-    str_append(label, ".while-expr");
-    while_stmt->label_eval = str_cap(label);
-
-    label = str_new(arena);
-    str_append(label, label_id->head);
-    str_append(label, ".while-break");
-    while_stmt->label_break = str_cap(label);
-  }
-
-  if(while_stmt->body->kind == AstNodeKind_AstBlock)
-    rt_block((AstBlock*)while_stmt->body);
-  else
-    rt_statement(while_stmt->body);
-}
-
-void rt_if_stmt(AstIfStmt* if_stmt)
-{
-  rt_statement(if_stmt->cond_expr);
-
-  {
-    String* label_id = str_new(arena);
-    make_unique_label(label_id);
-
-    String* label = str_new(arena);
-    str_append(label, label_id->head);
-    str_append(label, ".if-else");
-    if_stmt->label_else = str_cap(label);
-
-    str_init(label, arena);
-    str_append(label, label_id->head);
-    str_append(label, ".if-end");
-    if_stmt->label_end = str_cap(label);
-  }
-
-  if(if_stmt->body->kind == AstNodeKind_AstBlock)
-    rt_block((AstBlock*)if_stmt->body);
-  else
-    rt_statement(if_stmt->body);
-
-  if(if_stmt->else_body)
-  {
-    AstNode* else_node = if_stmt->else_body;
-    if(else_node->kind == AstNodeKind_AstBlock)
-      rt_block((AstBlock*)else_node);
-    else if(else_node->kind == AstNodeKind_AstIfStmt)
-      rt_if_stmt((AstIfStmt*)else_node);
-    else
-      rt_statement(else_node);
-  }
-}
-
-void rt_bin_expr(AstBinExpr* bin_expr)
-{
-  String* label_id = str_new(arena);
-  make_unique_label(label_id);
-
-  String* label = str_new(arena);
-  str_append(label, label_id->head);
-  str_append(label, ".logic-end");
-  bin_expr->label_end = str_cap(label);
-
-  rt_statement(bin_expr->left_operand);
-  rt_statement(bin_expr->right_operand);
-}
-
-void rt_unr_expr(AstUnaryExpr* unr_expr)
-{
-  rt_statement(unr_expr->operand);
-}
-
-void rt_statement(AstNode* ast)
-{
-  if(ast->kind == AstNodeKind_AstBinExpr)
-    rt_bin_expr((AstBinExpr*)ast);
-  else if(ast->kind == AstNodeKind_AstUnaryExpr)
-    rt_unr_expr((AstUnaryExpr*)ast);
-  else if(ast->kind == AstNodeKind_AstCall)
-    rt_call((AstCall*)ast);
-  else if(ast->kind == AstNodeKind_AstIfStmt)
-    rt_if_stmt((AstIfStmt*)ast);
-  else if(ast->kind == AstNodeKind_AstWhileStmt)
-    rt_while_stmt((AstWhileStmt*)ast);
-  else if(ast->kind == AstNodeKind_AstReturnStmt)
-  {
-    AstReturnStmt* ret_stmt = (AstReturnStmt*)ast;
-    if(ret_stmt->assign_expr)
-      rt_statement((AstNode*)ret_stmt->assign_expr);
-  }
-  else if(ast->kind == AstNodeKind_AstCast)
-  {
-    AstCast* cast = (AstCast*)ast;
-    rt_statement(cast->expr);
-  }
-  else if(ast->kind == AstNodeKind_AstVarDecl)
-  {
-    AstVarDecl* var_decl = (AstVarDecl*)ast;
-    if(var_decl->assign_expr)
-      rt_statement((AstNode*)var_decl->assign_expr);
-  }
-  else if(ast->kind == AstNodeKind_AstPutc)
-  {
-    AstPutc* putc_ast = (AstPutc*)ast;
-    rt_statement(putc_ast->expr);
-  }
-  else if(ast->kind == AstNodeKind_AstBlock)
-  {
-    rt_block((AstBlock*)ast);
-  }
-  else if(ast->kind == AstNodeKind_AstVarOccur
-          || ast->kind == AstNodeKind_AstBreakStmt
-          || ast->kind == AstNodeKind_AstContinueStmt
-          || ast->kind == AstNodeKind_AstLiteral
-          || ast->kind == AstNodeKind_AstString
-          || ast->kind == AstNodeKind_AstNew
-          || ast->kind == AstNodeKind_AstEmptyStmt)
-    ;//OK
-  else
-    assert(0);
-}
-
-void rt_block_stmts(List* stmt_list)
-{
-  for(ListItem* list_item = stmt_list->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    rt_statement((AstNode*)list_item->elem);
-  }
-}
-#endif
-
-void gen_build_labels(AstNode* node)
+void build_gen_labels(AstNode* node)
 {
   if(node->kind == AstNode_module)
   {
-    gen_build_labels(ATTR(node, ast_node, body));
+    build_gen_labels(ATTR(node, ast_node, body));
   }
   else if(node->kind == AstNode_block)
   {
@@ -1135,52 +1572,108 @@ void gen_build_labels(AstNode* node)
         list_item;
         list_item = list_item->next)
     {
-      gen_build_labels(ITEM(list_item, ast_node));
+      build_gen_labels(ITEM(list_item, ast_node));
     }
+  }
+  else if(node->kind == AstNode_proc_decl)
+  {
+    String* label = str_new(arena);
+    str_append(label, ATTR(node, str, name));
+    str_append(label, ".proc-end");
+    ATTR(node, str, label_end) = str_cap(label);
+
+    build_gen_labels(ATTR(node, ast_node, body));
   }
   else if(node->kind == AstNode_stmt)
   {
-    gen_build_labels(ATTR(node, ast_node, stmt));
+    build_gen_labels(ATTR(node, ast_node, stmt));
   }
   else if(node->kind == AstNode_bin_expr)
   {
+    char* label_id = make_unique_label();
+
     String* label = str_new(arena);
-    make_unique_label(label);
+    str_append(label, label_id);
     str_append(label, ".logic-end");
     ATTR(node, str, label_end) = str_cap(label);
 
-    gen_build_labels(ATTR(node, ast_node, left_operand));
-    gen_build_labels(ATTR(node, ast_node, right_operand));
+    build_gen_labels(ATTR(node, ast_node, left_operand));
+    build_gen_labels(ATTR(node, ast_node, right_operand));
   }
   else if(node->kind == AstNode_un_expr)
   {
-    gen_build_labels(ATTR(node, ast_node, operand));
+    build_gen_labels(ATTR(node, ast_node, operand));
   }
   else if(node->kind == AstNode_if_stmt)
   {
-    gen_build_labels(ATTR(node, ast_node, cond_expr));
+    build_gen_labels(ATTR(node, ast_node, cond_expr));
+
+    char* label_id = make_unique_label();
 
     String* label = str_new(arena);
-    make_unique_label(label);
+    str_append(label, label_id);
     str_append(label, ".if-else");
     ATTR(node, str, label_else) = str_cap(label);
 
     label = str_new(arena);
-    make_unique_label(label);
+    str_append(label, label_id);
     str_append(label, ".if-end");
     ATTR(node, str, label_end) = str_cap(label);
 
-    gen_build_labels(ATTR(node, ast_node, body));
+    build_gen_labels(ATTR(node, ast_node, body));
 
     AstNode* else_body = ATTR(node, ast_node, else_body);
     if(else_body)
     {
-      gen_build_labels(else_body);
+      build_gen_labels(else_body);
     }
   }
   else if(node->kind == AstNode_while_stmt)
   {
-    
+    build_gen_labels(ATTR(node, ast_node, cond_expr));
+
+    char* label_id = make_unique_label();
+
+    String* label = str_new(arena);
+    str_append(label, label_id);
+    str_append(label, ".while-eval");
+    ATTR(node, str, label_eval) = str_cap(label);
+
+    label = str_new(arena);
+    str_append(label, label_id);
+    str_append(label, ".while-break");
+    ATTR(node, str, label_break) = str_cap(label);
+
+    AstNode* body = ATTR(node, ast_node, body);
+    if(body)
+    {
+      build_gen_labels(body);
+    }
+  }
+  else if(node->kind == AstNode_proc_occur)
+  {
+    for(ListItem* list_item = ATTR(node, list, actual_args)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      build_gen_labels(ITEM(list_item, ast_node));
+    }
+  }
+  else if(node->kind == AstNode_return_stmt)
+  {
+    AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
+    if(ret_expr)
+    {
+      build_gen_labels(ret_expr);
+    }
+  }
+  else if(node->kind == AstNode_var_decl)
+  {
+    AstNode* init_expr = ATTR(node, ast_node, init_expr);
+    if(init_expr)
+    {
+      build_gen_labels(init_expr);
+    }
   }
 }
 

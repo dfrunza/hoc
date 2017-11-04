@@ -161,12 +161,12 @@ void add_builtin_types()
   add_builtin_type("char", basic_type_char);
   add_builtin_type("float", basic_type_float);
   add_builtin_type("void", basic_type_void);
-  add_builtin_type("type", basic_type_type);
+  /*add_builtin_type("type", basic_type_type);*/
 }
 
 void add_builtin_procs()
 {
-  add_builtin_proc("putc", new_proc_type(basic_type_char, basic_type_void));
+  /*add_builtin_proc("putc", new_proc_type(basic_type_char, basic_type_void));*/
 }
 
 Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
@@ -181,6 +181,7 @@ Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
     scope->decls[i] = new_list(arena, List_symbol);
     scope->occurs[i] = new_list(arena, List_symbol);
   }
+  scope->access_links = new_list(arena, List_data_area);
   symbol_table->active_scope = scope;
   append_list_elem(symbol_table->scopes, scope, List_scope);
   return scope;
@@ -426,6 +427,7 @@ bool name_ident(AstNode* node)
       occur_sym->decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
 
       ATTR(var_occur_gen1, symbol, occur_sym) = occur_sym;
+      ATTR(var_occur_gen1, symbol, decl_sym) = decl_sym;
       ATTR(var_occur_gen1, ast_node, var_decl) = decl_sym->ast_node;
     }
     else
@@ -456,6 +458,7 @@ bool name_ident(AstNode* node)
       ATTR(proc_decl_gen1, ast_node, body) = ATTR(&proc_decl_gen0, ast_node, body);
 
       begin_scope(Scope_proc, proc_decl_gen1);
+      ATTR(proc_decl_gen1, scope, scope) = symbol_table->active_scope;
 
       for(ListItem* list_item = ATTR(&proc_decl_gen0, list, formal_args)->first;
           list_item && success;

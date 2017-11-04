@@ -93,8 +93,8 @@ int main(int argc, char* argv[])
     if(DEBUG_enabled)/*>>>*/
     {
       printf("--- Read HoC text ---\n");
-      DEBUG_print_arena_usage(arena, "arena");/*<<<*/
-    }
+      DEBUG_print_arena_usage(arena, "arena");
+    }/*<<<*/
 
     if(success = (hoc_text != 0))
     {
@@ -104,7 +104,6 @@ int main(int argc, char* argv[])
         OutFileNames out_files = {0};
         if(success = make_out_file_names(&out_files, src_file_path))
         {
-#if 0
           BinCode* bin_image = mem_push_struct(arena, BinCode);
           cstr_copy(bin_image->sig, BINCODE_SIGNATURE);
 
@@ -148,7 +147,6 @@ int main(int argc, char* argv[])
             else
               success = error("could not read file `%s`", vm_exe_path);
           }
-#endif
         }
       }
       else

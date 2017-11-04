@@ -42,7 +42,7 @@ void compute_locals_area_size(Scope* scope, List* local_areas)
     area->kind = DataArea_var;
     area->size = type->width;
 
-    scope->data_area_size += area->size;
+    scope->local_area_size += area->size;
     append_list_elem(local_areas, area, List_data_area);
   }
 }
@@ -61,7 +61,7 @@ void build_runtime()
 
       DataArea* base_offset = mem_push_struct(arena, DataArea);
       base_offset->size = 1; // null ptr
-      scope->data_area_size = base_offset->size;
+      scope->local_area_size = base_offset->size;
       append_list_elem(post_fp_areas, base_offset, List_data_area);
 
       compute_area_locations(pre_fp_areas, post_fp_areas);
@@ -78,14 +78,14 @@ void build_runtime()
     {
       List* pre_fp_areas = new_list(arena, List_data_area);
       List* post_fp_areas = new_list(arena, List_data_area);
-      scope->data_area_size = 0;
+      scope->local_area_size = 0;
 
       Type* ret_type = ITEM(scope->decls[Symbol_ret_var]->first, symbol)->type;
       DataArea* ret_area = ITEM(scope->decls[Symbol_ret_var]->first, symbol)->data_area = mem_push_struct(arena, DataArea);
       ret_area->kind = DataArea_var;
       ret_area->size = ret_type->width;
 
-      scope->data_area_size += ret_area->size;
+      scope->local_area_size += ret_area->size;
       append_list_elem(pre_fp_areas, ret_area, List_data_area);
 
       for(ListItem* list_item = scope->decls[Symbol_formal_arg]->first;
@@ -102,12 +102,11 @@ void build_runtime()
       compute_locals_area_size(scope, post_fp_areas);
       compute_area_locations(pre_fp_areas, post_fp_areas);
     }
-    else if(scope->kind == Scope_block)
+    else if(scope->kind == Scope_block || scope->kind == Scope_loop)
     {
       List* pre_fp_areas = new_list(arena, List_data_area);
       List* post_fp_areas = new_list(arena, List_data_area);
-      List* access_links = new_list(arena, List_data_area);
-      scope->access_links_size = 0;
+      scope->link_area_size = 0;
 
       for(ListItem* list_item = scope->occurs[Symbol_var]->first;
           list_item;
@@ -118,7 +117,7 @@ void build_runtime()
         {
           // non-local
           DataArea* link = 0;
-          for(ListItem* list_item = access_links->first;
+          for(ListItem* list_item = scope->access_links->first;
               list_item;
               list_item = list_item->next)
           {
@@ -135,9 +134,9 @@ void build_runtime()
             link->kind = DataArea_link;
             link->decl_scope_offset = decl_scope_offset;
             link->size = 4; // size of an int
-            append_list_elem(access_links, link, List_data_area);
+            append_list_elem(scope->access_links, link, List_data_area);
             append_list_elem(pre_fp_areas, link, List_data_area);
-            scope->access_links_size += link->size;
+            scope->link_area_size += link->size;
           }
           ITEM(list_item, symbol)->data_area = link;
         }

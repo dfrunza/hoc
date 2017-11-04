@@ -361,9 +361,9 @@ typedef struct Scope
 
   List* decls[Symbol_Count];
   List* occurs[Symbol_Count];
-  int data_area_size;
+  int local_area_size;
   List* access_links;
-  int access_links_size;
+  int link_area_size;
 }
 Scope;
 
@@ -441,6 +441,8 @@ typedef enum
   AstAttributeName_data_area,
   AstAttributeName_label_end,
   AstAttributeName_label_else,
+  AstAttributeName_label_eval,
+  AstAttributeName_label_break,
 }
 AstAttributeName;
 
@@ -463,7 +465,6 @@ typedef struct
     Scope* scope;
     Type* type;
     Symbol* symbol;
-    DataArea* data_area;
   };
 }
 AstAttribute;

@@ -1,33 +1,10 @@
 include "str.hoc";
 include "math.hoc";
+include "sort.hoc";
 /*
 include "fibo.hoc";
 include "fizzbuzz.hoc";
-include "sort.hoc";
 */
-
-/*
-var int a;
-var int b;
-
-var [1]int* t;
-var char* c = "abc";
-*/
-
-/*
-proc int foo(char s)
-{
-  return 0;
-}
-*/
-
-proc void bar(int a, int b, int i)
-{
-  if(a < b)
-  {
-    i = 2*a;
-  }
-}
 
 
 

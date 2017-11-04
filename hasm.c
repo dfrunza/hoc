@@ -120,7 +120,8 @@ void process_source_lines(SourceProgram* source)
           char* next_char_ptr = char_ptr+1;
           if(*next_char_ptr != '\0' && *next_char_ptr != '\n' && *next_char_ptr != ';')
           {
-            memset(&instr_line, 0, sizeof(instr_line));
+            //memset(&instr_line, 0, sizeof(instr_line));
+            mem_zero_struct(&instr_line, InstructionLine);
             instr_line.source_line_nr = source_line_nr;
             instr_line.string = next_char_ptr;
             source->lines[source->line_count++] = instr_line;
@@ -136,7 +137,7 @@ void process_source_lines(SourceProgram* source)
 bool build_instructions(SourceProgram* source, VmProgram* vm_program)
 {
   vm_program->instr_count = source->line_count;
-  vm_program->instructions = mem_push_count_nz(arena, Instruction, vm_program->instr_count);
+  vm_program->instructions = mem_push_array_nz(arena, Instruction, vm_program->instr_count);
 
   for(int instr_address = 0; instr_address < vm_program->instr_count; instr_address++)
   {

@@ -152,116 +152,222 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
       char* mnemonic = components[0];
 
       if(cstr_match(mnemonic, "pop_reg"))
+      {
         instr.opcode = Opcode_POP_REG;
+      }
       else if(cstr_match(mnemonic, "push_char"))
-        instr.opcode = Opcode_PUSH_CHAR;
+      {
+        instr.opcode = Opcode_PUSH_INT8;
+      }
       else if(cstr_match(mnemonic, "push_int"))
-        instr.opcode = Opcode_PUSH_INT;
+      {
+        instr.opcode = Opcode_PUSH_INT32;
+      }
       else if(cstr_match(mnemonic, "push_float"))
-        instr.opcode = Opcode_PUSH_FLOAT;
+      {
+        instr.opcode = Opcode_PUSH_FLOAT32;
+      }
       else if(cstr_match(mnemonic, "push_reg"))
+      {
         instr.opcode = Opcode_PUSH_REG;
+      }
       else if(cstr_match(mnemonic, "store"))
+      {
         instr.opcode = Opcode_STORE;
+      }
       else if(cstr_match(mnemonic, "load"))
+      {
         instr.opcode = Opcode_LOAD;
+      }
       else if(cstr_match(mnemonic, "grow"))
+      {
         instr.opcode = Opcode_GROW;
+      }
+#if 0
       else if(cstr_match(mnemonic, "new"))
         instr.opcode = Opcode_NEW;
+#endif
 
       else if(cstr_match(mnemonic, "add_int"))
-        instr.opcode = Opcode_ADD_INT;
+      {
+        instr.opcode = Opcode_ADD_INT32;
+      }
       else if(cstr_match(mnemonic, "sub_int"))
-        instr.opcode = Opcode_SUB_INT;
+      {
+        instr.opcode = Opcode_SUB_INT32;
+      }
       else if(cstr_match(mnemonic, "mul_int"))
-        instr.opcode = Opcode_MUL_INT;
+      {
+        instr.opcode = Opcode_MUL_INT32;
+      }
       else if(cstr_match(mnemonic, "div_int"))
-        instr.opcode = Opcode_DIV_INT;
+      {
+        instr.opcode = Opcode_DIV_INT32;
+      }
       else if(cstr_match(mnemonic, "mod_int"))
-        instr.opcode = Opcode_MOD_INT;
+      {
+        instr.opcode = Opcode_MOD_INT32;
+      }
       else if(cstr_match(mnemonic, "add_float"))
-        instr.opcode = Opcode_ADD_FLOAT;
+      {
+        instr.opcode = Opcode_ADD_FLOAT32;
+      }
       else if(cstr_match(mnemonic, "sub_float"))
-        instr.opcode = Opcode_SUB_FLOAT;
+      {
+        instr.opcode = Opcode_SUB_FLOAT32;
+      }
       else if(cstr_match(mnemonic, "mul_float"))
-        instr.opcode = Opcode_MUL_FLOAT;
+      {
+        instr.opcode = Opcode_MUL_FLOAT32;
+      }
       else if(cstr_match(mnemonic, "div_float"))
-        instr.opcode = Opcode_DIV_FLOAT;
+      {
+        instr.opcode = Opcode_DIV_FLOAT32;
+      }
       else if(cstr_match(mnemonic, "neg_float"))
-        instr.opcode = Opcode_NEG_FLOAT;
+      {
+        instr.opcode = Opcode_NEG_FLOAT32;
+      }
       else if(cstr_match(mnemonic, "incr_int"))
-        instr.opcode = Opcode_INCR_INT;
+      {
+        instr.opcode = Opcode_INCR_INT32;
+      }
       else if(cstr_match(mnemonic, "decr_int"))
-        instr.opcode = Opcode_DECR_INT;
+      {
+        instr.opcode = Opcode_DECR_INT32;
+      }
 
       else if(cstr_match(mnemonic, "halt"))
+      {
         instr.opcode = Opcode_HALT;
+      }
+#if 0
       else if(cstr_match(mnemonic, "putc"))
+      {
         instr.opcode = Opcode_PUTC;
+      }
+#endif
       else if(cstr_match(mnemonic, "dup"))
+      {
         instr.opcode = Opcode_DUP;
+      }
       else if(cstr_match(mnemonic, "goto"))
+      {
         instr.opcode = Opcode_GOTO;
+      }
       else if(cstr_match(mnemonic, "jumpnz"))
+      {
         instr.opcode = Opcode_JUMPNZ;
+      }
       else if(cstr_match(mnemonic, "jumpz"))
+      {
         instr.opcode = Opcode_JUMPZ;
+      }
 
       else if(cstr_match(mnemonic, "cmpeq_char"))
-        instr.opcode = Opcode_CMPEQ_CHAR;
+      {
+        instr.opcode = Opcode_CMPEQ_INT8;
+      }
       else if(cstr_match(mnemonic, "cmpneq_char"))
-        instr.opcode = Opcode_CMPNEQ_CHAR;
+      {
+        instr.opcode = Opcode_CMPNEQ_INT8;
+      }
       else if(cstr_match(mnemonic, "cmplss_char"))
-        instr.opcode = Opcode_CMPLSS_CHAR;
+      {
+        instr.opcode = Opcode_CMPLSS_INT8;
+      }
       else if(cstr_match(mnemonic, "cmpgrt_char"))
-        instr.opcode = Opcode_CMPGRT_CHAR;
+      {
+        instr.opcode = Opcode_CMPGRT_INT8;
+      }
 
       else if(cstr_match(mnemonic, "cmpeq_int"))
-        instr.opcode = Opcode_CMPEQ_INT;
+      {
+        instr.opcode = Opcode_CMPEQ_INT32;
+      }
       else if(cstr_match(mnemonic, "cmpneq_int"))
-        instr.opcode = Opcode_CMPNEQ_INT;
+      {
+        instr.opcode = Opcode_CMPNEQ_INT32;
+      }
       else if(cstr_match(mnemonic, "cmplss_int"))
-        instr.opcode = Opcode_CMPLSS_INT;
+      {
+        instr.opcode = Opcode_CMPLSS_INT32;
+      }
       else if(cstr_match(mnemonic, "cmpgrt_int"))
-        instr.opcode = Opcode_CMPGRT_FLOAT;
+      {
+        instr.opcode = Opcode_CMPGRT_FLOAT32;
+      }
 
       else if(cstr_match(mnemonic, "cmpeq_float"))
-        instr.opcode = Opcode_CMPEQ_FLOAT;
+      {
+        instr.opcode = Opcode_CMPEQ_FLOAT32;
+      }
       else if(cstr_match(mnemonic, "cmpneq_float"))
-        instr.opcode = Opcode_CMPNEQ_FLOAT;
+      {
+        instr.opcode = Opcode_CMPNEQ_FLOAT32;
+      }
       else if(cstr_match(mnemonic, "cmplss_float"))
-        instr.opcode = Opcode_CMPLSS_FLOAT;
+      {
+        instr.opcode = Opcode_CMPLSS_FLOAT32;
+      }
       else if(cstr_match(mnemonic, "cmpgrt_float"))
-        instr.opcode = Opcode_CMPGRT_FLOAT;
+      {
+        instr.opcode = Opcode_CMPGRT_FLOAT32;
+      }
 
       else if(cstr_match(mnemonic, "and"))
+      {
         instr.opcode = Opcode_AND;
+      }
       else if(cstr_match(mnemonic, "or"))
+      {
         instr.opcode = Opcode_OR;
+      }
       else if(cstr_match(mnemonic, "not"))
+      {
         instr.opcode = Opcode_NOT;
+      }
       else if(cstr_match(mnemonic, "neg_int"))
-        instr.opcode = Opcode_NEG_INT;
+      {
+        instr.opcode = Opcode_NEG_INT32;
+      }
       else if(cstr_match(mnemonic, "neg_float"))
-        instr.opcode = Opcode_NEG_FLOAT;
+      {
+        instr.opcode = Opcode_NEG_FLOAT32;
+      }
       else if(cstr_match(mnemonic, "label"))
+      {
         instr.opcode = Opcode_LABEL;
+      }
       else if(cstr_match(mnemonic, "noop"))
+      {
         instr.opcode = Opcode_NOOP;
+      }
       else if(cstr_match(mnemonic, "call"))
+      {
         instr.opcode = Opcode_CALL;
+      }
       else if(cstr_match(mnemonic, "return"))
+      {
         instr.opcode = Opcode_RETURN;
+      }
       else if(cstr_match(mnemonic, "enter"))
+      {
         instr.opcode = Opcode_ENTER;
+      }
       else if(cstr_match(mnemonic, "leave"))
+      {
         instr.opcode = Opcode_LEAVE;
+      }
 
       else if(cstr_match(mnemonic, "float_to_int"))
-        instr.opcode = Opcode_FLOAT_TO_INT;
+      {
+        instr.opcode = Opcode_FLOAT32_TO_INT32;
+      }
       else if(cstr_match(mnemonic, "int_to_float"))
-        instr.opcode = Opcode_INT_TO_FLOAT;
+      {
+        instr.opcode = Opcode_INT32_TO_FLOAT32;
+      }
       else
       {
         error("invalid instruction: %s", mnemonic);
@@ -279,7 +385,7 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
           {
             if(is_valid_label(components[1]))
             {
-              instr.param_type = ParamType_String;
+              instr.param_type = ParamType_str;
               instr.param.str = components[1];
             }
             else
@@ -289,14 +395,12 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
             }
           } break;
 
-          case Opcode_PUSH_CHAR:
-          case Opcode_PUSH_INT:
-          case Opcode_STORE:
-          case Opcode_LOAD:
-          case Opcode_GROW:
+          case Opcode_PUSH_INT8:
           {
             if(cstr_to_int(components[1], &instr.param.int_val))
-              instr.param_type = ParamType_Int32;
+            {
+              instr.param_type = ParamType_int8;
+            }
             else
             {
               error("not an integer number `%s`", components[1]);
@@ -304,10 +408,28 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
             }
           } break;
 
-          case Opcode_PUSH_FLOAT:
+          case Opcode_PUSH_INT32:
+          case Opcode_STORE:
+          case Opcode_LOAD:
+          case Opcode_GROW:
+          {
+            if(cstr_to_int(components[1], &instr.param.int_val))
+            {
+              instr.param_type = ParamType_int32;
+            }
+            else
+            {
+              error("not an integer number `%s`", components[1]);
+              return false;
+            }
+          } break;
+
+          case Opcode_PUSH_FLOAT32:
           {
             if(cstr_to_float(components[1], &instr.param.float_val))
-              instr.param_type = ParamType_Float32;
+            {
+              instr.param_type = ParamType_float32;
+            }
             else
             {
               error("not a float number `%s`", components[1]);
@@ -318,7 +440,7 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
           case Opcode_PUSH_REG:
           case Opcode_POP_REG:
           {
-            instr.param_type = ParamType_Reg;
+            instr.param_type = ParamType_reg;
             char* reg = components[1];
 
             if(cstr_match(reg, "sp"))
@@ -334,22 +456,24 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
             }
           } break;
 
+#if 0
           case Opcode_NEW:
           {
             if(cstr_to_int(components[1], &instr.param.int_val))
-              instr.param_type = ParamType_Int32;
+              instr.param_type = ParamType_int32;
             else
             {
               error("not an integer number '%s'", components[1]);
               return false;
             }
           } break;
+#endif
 
           case Opcode_LABEL:
           {
             if(is_valid_label(components[1]))
             {
-              instr.param_type = ParamType_String;
+              instr.param_type = ParamType_str;
               instr.param.str = components[1];
 
               Label label = {0};
@@ -399,7 +523,7 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
     if(target_instr_address < vm_program->instr_count)
     {
       Instruction* label_instr = &vm_program->instructions[label->instr_address];
-      label_instr->param_type = ParamType_Int32;
+      label_instr->param_type = ParamType_int32;
       label_instr->param.int_val = target_instr_address;
       label->instr_address = target_instr_address;
     }
@@ -418,11 +542,11 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
        instr->opcode == Opcode_JUMPZ ||
        instr->opcode == Opcode_CALL)
     {
-      assert(instr->param_type == ParamType_String);
+      assert(instr->param_type == ParamType_str);
       Label* label = find_label(source, instr->param.str);
       if(label)
       {
-        instr->param_type = ParamType_Int32;
+        instr->param_type = ParamType_int32;
         instr->param.int_val = label->instr_address;
       }
       else

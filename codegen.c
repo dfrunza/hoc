@@ -72,7 +72,8 @@ void gen_load_lvalue(List* code, AstNode* node)
 {
   assert(node->gen == Ast_gen1);
 
-  if(node->kind == AstNode_var_occur || node->kind == AstNode_str)
+  if(node->kind == AstNode_var_occur || node->kind == AstNode_str
+      || node->kind == AstNode_return_stmt)
   {
     DataArea* link = ATTR(node, symbol, occur_sym)->data_area;
     DataArea* data = ATTR(node, symbol, decl_sym)->data_area;
@@ -595,12 +596,12 @@ void gen_code(List* code, AstNode* node)
   else if(node->kind == AstNode_proc_occur)
   {
     Type* type = ATTR(node, type, type); assert(type->kind == Type_proc);
-    Type* ret_type = type->proc.ret;
+    Type* return_type = type->proc.ret;
     Type* args_type = type->proc.args;
     AstNode* proc = ATTR(node, ast_node, proc_decl);
     Scope* scope = ATTR(proc, scope, scope);
 
-    emit_instr_int32(code, Opcode_GROW, ret_type->width);
+    emit_instr_int32(code, Opcode_GROW, return_type->width);
 
     for(ListItem* list_item = ATTR(node, list, actual_args)->first;
         list_item;
@@ -616,19 +617,17 @@ void gen_code(List* code, AstNode* node)
   else if(node->kind == AstNode_return_stmt)
   {
     AstNode* proc = ATTR(node, ast_node, proc);
-#if 0
-    AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
 
-    if(ret_expr)
+    AstNode* return_expr = ATTR(node, ast_node, return_expr);
+    if(return_expr)
     {
-      AstNode* ret_var = ATTR(proc, ast_node, ret_var);
-      Type* ret_type = ATTR(ret_var, type, eval_type);
+      AstNode* return_var = ATTR(proc, ast_node, return_var);
+      Type* return_type = ATTR(return_var, type, eval_type);
 
-      gen_load_rvalue(code, ret_expr);
-      gen_load_lvalue(code, ret_var);
-      emit_instr_int32(code, Opcode_STORE, ret_type->width);
+      gen_load_rvalue(code, return_expr);
+      gen_load_lvalue(code, node);
+      emit_instr_int32(code, Opcode_STORE, return_type->width);
     }
-#endif
 
     int depth = ATTR(node, int_val, nesting_depth);
     while(depth-- > 0)
@@ -1111,10 +1110,10 @@ void build_gen_labels(AstNode* node)
   }
   else if(node->kind == AstNode_return_stmt)
   {
-    AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
-    if(ret_expr)
+    AstNode* return_expr = ATTR(node, ast_node, return_expr);
+    if(return_expr)
     {
-      build_gen_labels(ret_expr);
+      build_gen_labels(return_expr);
     }
   }
   else if(node->kind == AstNode_var_decl)

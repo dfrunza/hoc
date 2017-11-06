@@ -6,8 +6,12 @@ include "fibo.hoc";
 include "fizzbuzz.hoc";
 */
 
-proc void main()
+proc int main()
 {
+  if(true)
+  {
+    return 123;
+  }
 }
 
 

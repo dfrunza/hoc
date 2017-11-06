@@ -135,7 +135,7 @@ void build_runtime()
       List* pre_fp_areas = new_list(arena, List_data_area);
       List* post_fp_areas = new_list(arena, List_data_area);
 
-      compute_decl_areas(scope, (SymbolKind[]){Symbol_ret_var, Symbol_formal_arg, Symbol_None}, pre_fp_areas);
+      compute_decl_areas(scope, (SymbolKind[]){Symbol_return_var, Symbol_formal_arg, Symbol_None}, pre_fp_areas);
       scope->link_area_size = compute_occur_areas(scope, (SymbolKind[]){Symbol_var, Symbol_str, Symbol_None}, pre_fp_areas);
 
       DataArea* ctrl_area = mem_push_struct(arena, DataArea);
@@ -150,7 +150,8 @@ void build_runtime()
       List* pre_fp_areas = new_list(arena, List_data_area);
       List* post_fp_areas = new_list(arena, List_data_area);
 
-      scope->link_area_size = compute_occur_areas(scope, (SymbolKind[]){Symbol_var, Symbol_str, Symbol_None}, pre_fp_areas);
+      scope->link_area_size = compute_occur_areas(scope, (SymbolKind[])
+          {Symbol_var, Symbol_str, Symbol_return_var, Symbol_None}, pre_fp_areas);
 
       DataArea* ctrl_area = mem_push_struct(arena, DataArea);
       ctrl_area->size = 4; // FP

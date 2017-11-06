@@ -343,7 +343,7 @@ typedef enum
 {
   Symbol_None,
   Symbol_var,
-  Symbol_ret_var,
+  Symbol_return_var,
   Symbol_formal_arg,
   Symbol_str,
   Symbol_type,
@@ -401,7 +401,8 @@ typedef enum
   AstAttributeName_nesting_depth,
   AstAttributeName_loop,
   AstAttributeName_formal_args,
-  AstAttributeName_ret_var,
+  AstAttributeName_return_type,
+  AstAttributeName_return_var,
   AstAttributeName_scope,
   AstAttributeName_decl_scope,
   AstAttributeName_occur_scope,
@@ -420,14 +421,13 @@ typedef enum
   AstAttributeName_stmt,
   AstAttributeName_id,
   AstAttributeName_init_expr,
-  AstAttributeName_ret_type,
   AstAttributeName_actual_args,
   AstAttributeName_int_val,
   AstAttributeName_float_val,
   AstAttributeName_bool_val,
   AstAttributeName_char_val,
   AstAttributeName_str_val,
-  AstAttributeName_ret_expr,
+  AstAttributeName_return_expr,
   AstAttributeName_expr,
   AstAttributeName_cond_expr,
   AstAttributeName_loop_expr,
@@ -495,6 +495,7 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_str),\
   ENUM_MEMBER(AstNode_lit),\
   ENUM_MEMBER(AstNode_return_stmt),\
+  ENUM_MEMBER(AstNode_return_var),\
   ENUM_MEMBER(AstNode_goto_stmt),\
   ENUM_MEMBER(AstNode_label),\
   ENUM_MEMBER(AstNode_if_stmt),\

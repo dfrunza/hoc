@@ -1,17 +1,16 @@
-/*
 include "str.hoc";
 include "math.hoc";
 include "sort.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
+/*
 */
 
 proc int main()
 {
-  if(true)
-  {
-    return 123;
-  }
+  var int i = 123;
+  var float f = 12.4;
+  return 0;
 }
 
 

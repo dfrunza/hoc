@@ -343,11 +343,9 @@ bool name_ident(AstNode* node)
 
     if(success = name_ident_type(type_expr))
     {
-#if 1
       Symbol* decl_sym = add_decl_symbol(make_temp_name("typ"), node->src_loc, symbol_table->active_scope, Symbol_type);
       ATTR(type_gen1, symbol, decl_sym) = decl_sym;
       decl_sym->ast_node = type_gen1;
-#endif
     }
   }
   else if(node->kind == AstNode_var_decl)
@@ -358,7 +356,7 @@ bool name_ident(AstNode* node)
     ATTR(var_decl_gen1, str_val, name) = name;
 
     Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
-        (SymbolKind[]){Symbol_var, Symbol_formal_arg, Symbol_return_var, Symbol_None});
+        (SymbolKind[]){Symbol_var, Symbol_formal_arg, Symbol_None});
     if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
     {
       success = compile_error(var_decl_gen1->src_loc, "variable `%s` already declared", name);
@@ -374,20 +372,14 @@ bool name_ident(AstNode* node)
       if(success = name_ident(type))
       {
         AstNode* init_expr = ATTR(var_decl_gen1, ast_node, init_expr) = ATTR(&var_decl_gen0, ast_node, init_expr);
-        if(init_expr)
+        if(init_expr && (success = name_ident(init_expr)))
         {
-#if 0
-          AstNode* id = new_ast_node(Ast_gen0, AstNode_id, node->src_loc);
-          ATTR(id, str_val, name) = name;
-          AstNode* assign_expr = new_ast_node(Ast_gen0, AstNode_bin_expr, node->src_loc);
-          ATTR(assign_expr, op_kind, op_kind) = Operator_assign;
-          ATTR(assign_expr, ast_node, left_operand) = id;
-          ATTR(assign_expr, ast_node, right_operand) = init_expr;
-          ATTR(node, ast_node, init_expr) = assign_expr;
-
-          success = name_ident(assign_expr);
-#endif
-          success = name_ident(init_expr);
+          Symbol* occur_sym = ATTR(init_expr, symbol, occur_sym)
+            = add_occur_symbol(name, node->src_loc, symbol_table->active_scope, Symbol_var);
+          occur_sym->ast_node = init_expr;
+          ATTR(init_expr, symbol, decl_sym) = occur_sym->decl = decl_sym;
+          assert(decl_sym->nesting_depth <= occur_sym->nesting_depth);
+          occur_sym->decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
         }
       }
     }
@@ -400,7 +392,7 @@ bool name_ident(AstNode* node)
     ATTR(var_occur_gen1, str_val, name) = name;
 
     Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
-        (SymbolKind[]){Symbol_var, Symbol_formal_arg, Symbol_return_var, Symbol_str, Symbol_None});
+        (SymbolKind[]){Symbol_var, Symbol_formal_arg, Symbol_str, Symbol_None});
     if(decl_sym)
     {
       Symbol* occur_sym = add_occur_symbol(name, var_occur_gen1->src_loc, symbol_table->active_scope, Symbol_var);
@@ -456,6 +448,14 @@ bool name_ident(AstNode* node)
       }
       end_scope();
     }
+  }
+  else if(node->kind == AstNode_assign)
+  {
+    AstNode assign_gen0 = *node;
+    AstNode* assign_gen1 = make_ast_node(Ast_gen1, node, AstNode_assign);
+
+    AstNode* expr = ATTR(assign_gen1, ast_node, expr) = ATTR(&assign_gen0, ast_node, expr);
+    success = name_ident(expr);
   }
   else if(node->kind == AstNode_return_var)
   {
@@ -767,6 +767,13 @@ void build_types(AstNode* node)
   {
     AstNode* var_decl = ATTR(node, ast_node, var_decl);
     ATTR(node, type, eval_type) = ATTR(node, type, type) = ATTR(var_decl, type, type);
+  }
+  else if(node->kind == AstNode_assign)
+  {
+    AstNode* expr = ATTR(node, ast_node, expr);
+    build_types(expr);
+    ATTR(node, type, type) = ATTR(expr, type, type);
+    ATTR(node, type, eval_type) = ATTR(expr, type, eval_type);
   }
   else if(node->kind == AstNode_bin_expr)
   {
@@ -1269,6 +1276,10 @@ bool eval_types(AstNode* node)
         compile_error(cond_expr->src_loc, "bool type expected");
     }
   }
+  else if(node->kind == AstNode_assign)
+  {
+    success = eval_types(ATTR(node, ast_node, expr));
+  }
   else if(node->kind == AstNode_lit)
   {
     ;//skip
@@ -1449,6 +1460,14 @@ bool resolve_types(AstNode* node)
     if(success = node_resolve_type(node))
     {
       ATTR(node, symbol, decl_sym)->type = ATTR(node, type, type);
+    }
+  }
+  else if(node->kind == AstNode_assign)
+  {
+    if(success = resolve_types(ATTR(node, ast_node, expr)))
+    {
+      ATTR(node, symbol, decl_sym)->type = ATTR(node, type, type);
+      ATTR(node, symbol, occur_sym)->type = ATTR(node, type, type);
     }
   }
   else if(node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt)
@@ -1671,6 +1690,10 @@ bool typecheck(AstNode* node)
     {
       success = typecheck(else_body);
     }
+  }
+  else if(node->kind == AstNode_assign)
+  {
+    success = typecheck(ATTR(node, ast_node, expr));
   }
   else if(node->kind == AstNode_lit)
   {

@@ -496,6 +496,7 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_lit),\
   ENUM_MEMBER(AstNode_return_stmt),\
   ENUM_MEMBER(AstNode_return_var),\
+  ENUM_MEMBER(AstNode_assign),\
   ENUM_MEMBER(AstNode_goto_stmt),\
   ENUM_MEMBER(AstNode_label),\
   ENUM_MEMBER(AstNode_if_stmt),\

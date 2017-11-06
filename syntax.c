@@ -850,18 +850,14 @@ bool parse_var(TokenStream* input, AstNode** node)
         if((success = get_next_token(input)) && input->token.kind == Token_eq
             && (success = get_next_token(input)))
         {
-#if 0
-          AstNode* init_expr = ATTR(var_decl, ast_node, init_expr) = new_ast_node(Ast_gen0, AstNode_bin_expr, clone_source_loc(&input->src_loc));
-          ATTR(init_expr, op_kind, op_kind) = Operator_assign;
-          ATTR(init_expr, ast_node, left_operand) = id;
-#endif
-
           AstNode* init_expr = 0;
           if(!init_expr && (success = parse_expr(input, &init_expr)))
           {
             if(init_expr)
             {
-              ATTR(var_decl, ast_node, init_expr) = init_expr;
+              AstNode* assign = ATTR(var_decl, ast_node, init_expr)
+                = new_ast_node(Ast_gen0, AstNode_assign, clone_source_loc(&input->src_loc));
+              ATTR(assign, ast_node, expr) = init_expr;
             }
             else
             {

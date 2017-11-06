@@ -1,10 +1,13 @@
+/*
 include "str.hoc";
 include "math.hoc";
 include "sort.hoc";
-/*
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 */
 
+proc void main()
+{
+}
 
 

@@ -161,7 +161,7 @@ TokenStream;
 typedef enum
 {
   DataArea_None,
-  DataArea_var,
+  DataArea_data,
   DataArea_link,
 }
 DataAreaKind;
@@ -282,7 +282,7 @@ char* get_operator_kind_printstr(OperatorKind op)
   ENUM_MEMBER(Literal_float_val),\
   ENUM_MEMBER(Literal_bool_val),\
   ENUM_MEMBER(Literal_char_val),\
-  ENUM_MEMBER(Literal_str),
+  ENUM_MEMBER(Literal_str_val),
 #endif
 
 typedef enum
@@ -345,6 +345,7 @@ typedef enum
   Symbol_var,
   Symbol_ret_var,
   Symbol_formal_arg,
+  Symbol_str,
   Symbol_type,
   Symbol_proc,
   Symbol_Count,
@@ -375,14 +376,13 @@ typedef enum
   AstAttribute_float_val,
   AstAttribute_char_val,
   AstAttribute_bool_val,
+  AstAttribute_str_val,
   AstAttribute_op_kind,
-  AstAttribute_str,
   AstAttribute_list,
   AstAttribute_lit_kind,
   AstAttribute_scope,
   AstAttribute_type,
   AstAttribute_symbol,
-  AstAttribute_data_area,
 }
 AstAttributeKind;
 
@@ -393,7 +393,6 @@ typedef enum
   AstAttributeName_decl_sym,
   AstAttributeName_occur_sym,
   AstAttributeName_type,
-  AstAttributeName_type_decl,
   AstAttributeName_eval_type,
   AstAttributeName_type_expr,
   AstAttributeName_pointee_expr,
@@ -408,6 +407,8 @@ typedef enum
   AstAttributeName_occur_scope,
   AstAttributeName_var_decl,
   AstAttributeName_proc_decl,
+  AstAttributeName_type_decl,
+  AstAttributeName_str_lit,
   AstAttributeName_operand,
   AstAttributeName_left_operand,
   AstAttributeName_right_operand,
@@ -425,7 +426,7 @@ typedef enum
   AstAttributeName_float_val,
   AstAttributeName_bool_val,
   AstAttributeName_char_val,
-  AstAttributeName_str,
+  AstAttributeName_str_val,
   AstAttributeName_ret_expr,
   AstAttributeName_expr,
   AstAttributeName_cond_expr,
@@ -436,8 +437,6 @@ typedef enum
   AstAttributeName_members,
   AstAttributeName_count_expr,
   AstAttributeName_lit_kind,
-  AstAttributeName_local_decls,
-  AstAttributeName_non_local_occurs,
   AstAttributeName_data_area,
   AstAttributeName_label_end,
   AstAttributeName_label_else,
@@ -458,7 +457,7 @@ typedef struct
     int int_val;
     float float_val;
     char char_val;
-    char* str;
+    char* str_val;
     List* list;
     OperatorKind op_kind;
     LiteralKind lit_kind;
@@ -479,7 +478,6 @@ AstAttributeMetaInfo;
 #ifndef AstKind_MEMBER_LIST
 #define AstKind_MEMBER_LIST()\
   ENUM_MEMBER(AstNode_None),\
-  ENUM_MEMBER(AstNode_string),\
   ENUM_MEMBER(AstNode_id),\
   ENUM_MEMBER(AstNode_array),\
   ENUM_MEMBER(AstNode_bin_expr),\
@@ -494,6 +492,7 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_proc_occur),\
   ENUM_MEMBER(AstNode_type_decl),\
   ENUM_MEMBER(AstNode_type_occur),\
+  ENUM_MEMBER(AstNode_str),\
   ENUM_MEMBER(AstNode_lit),\
   ENUM_MEMBER(AstNode_return_stmt),\
   ENUM_MEMBER(AstNode_goto_stmt),\
@@ -531,11 +530,13 @@ char* get_ast_kind_printstr(AstKind kind)
   return AstKind_strings[kind];
 }
 
+#define MAX_ATTRIBUTE_COUNT 12
+
 typedef struct
 {
   AstKind kind;
   int attr_count;
-  AstAttributeMetaInfo* attrs;
+  AstAttributeMetaInfo attrs[MAX_ATTRIBUTE_COUNT];
 }
 AstKindMetaInfo;
 
@@ -560,7 +561,7 @@ typedef struct AstNode
   AstKind kind;
   SourceLoc* src_loc;
 
-  AstAttribute attrs[10];
+  AstAttribute attrs[MAX_ATTRIBUTE_COUNT];
 }
 AstNode;
 
@@ -673,6 +674,7 @@ typedef struct
 {
   List* scopes;
   Scope* global_scope;
+  Scope* module_scope;
   Scope* active_scope;
   int nesting_depth;
   MemoryArena* arena;
@@ -775,6 +777,7 @@ typedef struct
   ParamType param_type;
 
   union {
+    int8 char_val; //todo
     int32 int_val;
     float32 float_val;
     RegName reg;

@@ -684,9 +684,13 @@ bool name_ident(AstNode* node)
     {
       char* keyword = "???";
       if(node->kind == AstNode_break_stmt)
+      {
         keyword = "break";
+      }
       else if(node->kind == AstNode_continue_stmt)
+      {
         keyword = "continue";
+      }
       else
         assert(0);
       success = compile_error(node->src_loc, "unexpected `%s` at this location", keyword);
@@ -703,18 +707,16 @@ bool name_ident(AstNode* node)
       AstNode* proc = ATTR(return_stmt_gen1, ast_node, proc) = scope->ast_node;
       AstNode* return_var = ATTR(proc, ast_node, return_var);
 
-      Symbol* occur_sym = ATTR(return_stmt_gen1, symbol, occur_sym)
-        = add_occur_symbol(0, node->src_loc, symbol_table->active_scope, Symbol_return_var);
-      occur_sym->ast_node = return_stmt_gen1;
-      Symbol* decl_sym = occur_sym->decl
-        = ATTR(return_stmt_gen1, symbol, decl_sym) = ATTR(return_var, symbol, decl_sym);
-      assert(decl_sym->nesting_depth <= occur_sym->nesting_depth);
-      occur_sym->decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
-
       AstNode* return_expr = ATTR(return_stmt_gen1, ast_node, return_expr) = ATTR(&return_stmt_gen0, ast_node, return_expr);
-      if(return_expr)
+      if(return_expr && (success = name_ident(return_expr)))
       {
-        success = name_ident(return_expr);
+        Symbol* decl_sym = ATTR(return_expr, symbol, decl_sym) = ATTR(return_var, symbol, decl_sym);
+        Symbol* occur_sym = ATTR(return_expr, symbol, occur_sym)
+          = add_occur_symbol(0, node->src_loc, symbol_table->active_scope, Symbol_return_var);
+        occur_sym->ast_node = return_expr;
+        occur_sym->decl = decl_sym;
+        assert(decl_sym->nesting_depth <= occur_sym->nesting_depth);
+        occur_sym->decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
       }
     }
     else
@@ -1023,7 +1025,9 @@ bool eval_types(AstNode* node)
         Type* init_expr_ty = ATTR(init_expr, type, eval_type);
         success = type_unif(var_ty, init_expr_ty);
         if(!success)
+        {
           compile_error(node->src_loc, "type error (var init expr)");
+        }
       }
     }
   }
@@ -1047,7 +1051,9 @@ bool eval_types(AstNode* node)
       {
         success = type_unif(expr_ty, left_operand_ty);
         if(!success)
+        {
           compile_error(node->src_loc, "type error (cast)");
+        }
       }
       else if(op_kind == Operator_array_index)
       {
@@ -1055,7 +1061,9 @@ bool eval_types(AstNode* node)
         {
           success = type_unif(left_operand_ty, new_array_type(-1, expr_ty));
           if(!success)
+          {
             compile_error(node->src_loc, "type error (array index)");
+          }
         }
         else
           compile_error(node->src_loc, "int type expected");
@@ -1068,13 +1076,17 @@ bool eval_types(AstNode* node)
           {
             success = type_unif(expr_ty, basic_type_bool);
             if(!success)
+            {
               compile_error(node->src_loc, "type error (bin expr)");
+            }
           }
           else
           {
             success = type_unif(expr_ty, left_operand_ty);
             if(!success)
+            {
               compile_error(node->src_loc, "type error (bin expr)");
+            }
           }
         }
         else
@@ -1087,7 +1099,9 @@ bool eval_types(AstNode* node)
         assert(type->kind == Type_proc);
         success = type_unif(type->proc.ret, expr_ty);
         if(!success)
+        {
           compile_error(node->src_loc, "type error (bin expr)");
+        }
       }
     }
   }
@@ -1105,7 +1119,9 @@ bool eval_types(AstNode* node)
       {
         success = type_unif(expr_ty, operand_ty);
         if(!success)
+        {
           compile_error(node->src_loc, "type error (un expr)");
+        }
       }
       else if(op_kind == Operator_deref)
       {
@@ -1114,7 +1130,9 @@ bool eval_types(AstNode* node)
         {
           success = type_unif(expr_ty, pointee_ty);
           if(!success)
+          {
             compile_error(node->src_loc, "type error (un expr)");
+          }
         }
         else
           success = compile_error(operand->src_loc, "pointer type expected");
@@ -1123,7 +1141,9 @@ bool eval_types(AstNode* node)
       {
         success = type_unif(expr_ty, new_pointer_type(operand_ty));
         if(!success)
+        {
           compile_error(node->src_loc, "type error (un expr)");
+        }
       }
       else
         assert(0);
@@ -1135,7 +1155,9 @@ bool eval_types(AstNode* node)
       assert(type->kind == Type_proc);
       success = type_unif(type->proc.ret, expr_ty);
       if(!success)
+      {
         compile_error(node->src_loc, "type error (un expr)");
+      }
     }
   }
   else if(node->kind == AstNode_proc_decl)
@@ -1207,7 +1229,9 @@ bool eval_types(AstNode* node)
         {
           success = type_unif(decl_ty, occur_ty);
           if(!success)
+          {
             compile_error(node->src_loc, "type error (proc occur)");
+          }
         }
         else
           compile_error(node->src_loc, "type error (proc occur)");
@@ -1238,7 +1262,9 @@ bool eval_types(AstNode* node)
           Type* body_ty = ATTR(ATTR(proc, ast_node, body), type, eval_type);
           success = type_unif(return_expr_ty, body_ty);
           if(!success)
+          {
             compile_error(node->src_loc, "type error (return stmt)");
+          }
         }
         else
           compile_error(node->src_loc, "type error (return stmt)");
@@ -1551,8 +1577,10 @@ bool typecheck(AstNode* node)
           assert(types_are_equal(return_ty, left_arg_ty) && types_are_equal(left_arg_ty, right_arg_ty));
         }
         else
+        {
           success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
               get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
+        }
       }
       else if(op_kind == Operator_mod)
       {
@@ -1562,8 +1590,10 @@ bool typecheck(AstNode* node)
           assert(types_are_equal(return_ty, left_arg_ty) && types_are_equal(left_arg_ty, right_arg_ty));
         }
         else
+        {
           success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
               get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
+        }
       }
       else if(is_logical_operator(op_kind))
       {
@@ -1587,8 +1617,10 @@ bool typecheck(AstNode* node)
           assert(types_are_equal(return_ty, basic_type_bool));
         }
         else
+        {
           success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
               get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
+        }
       }
       else if(op_kind == Operator_assign)
       {

@@ -73,7 +73,7 @@ void gen_load_lvalue(List* code, AstNode* node)
   assert(node->gen == Ast_gen1);
 
   if(node->kind == AstNode_var_occur || node->kind == AstNode_str
-      || node->kind == AstNode_return_stmt || node->kind == AstNode_assign)
+      || node->kind == AstNode_assign)
   {
     DataArea* link = ATTR(node, symbol, occur_sym)->data_area;
     DataArea* data = ATTR(node, symbol, decl_sym)->data_area;
@@ -626,9 +626,10 @@ void gen_code(List* code, AstNode* node)
     {
       AstNode* return_var = ATTR(proc, ast_node, return_var);
       Type* return_type = ATTR(return_var, type, eval_type);
+      AstNode* expr = ATTR(return_expr, ast_node, expr);
 
-      gen_load_rvalue(code, return_expr);
-      gen_load_lvalue(code, node);
+      gen_load_rvalue(code, expr);
+      gen_load_lvalue(code, return_expr);
       emit_instr_int32(code, Opcode_STORE, return_type->width);
     }
 

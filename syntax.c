@@ -16,7 +16,9 @@ bool consume_semicolon(TokenStream* input)
 {
   bool success = true;
   if(input->token.kind == Token_semicolon)
+  {
     success = get_next_token(input);
+  }
   else
     success = compile_error(&input->src_loc, "expected `;`, actual `%s`", get_token_printstr(&input->token));
   return success;
@@ -199,7 +201,9 @@ bool parse_actual_arg_list(TokenStream* input, List* args)
       if(input->token.kind == Token_comma)
       {
         if((success = get_next_token(input)) && input->token.kind == Token_close_parens)
+        {
           success = compile_error(&input->src_loc, "identifier expected, actual `%s`", get_token_printstr(&input->token));
+        }
       }
     }
   }
@@ -245,9 +249,7 @@ bool parse_block(TokenStream* input, AstNode** node)
         success = get_next_token(input);
       }
       else
-      {
         success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
-      }
     }
   }
   return success;
@@ -270,7 +272,9 @@ bool parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
       if(success = get_next_token(input) && parse_actual_arg_list(input, ATTR(proc_occur, list, actual_args)))
       {
         if(input->token.kind == Token_close_parens)
+        {
           success = get_next_token(input);
+        }
         else
           success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
       }
@@ -300,7 +304,9 @@ bool parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
         }
       }
       else
+      {
         success = compile_error(&input->src_loc, "expected `]`, actual `%s`", get_token_printstr(&input->token));
+      }
     }
   }
 
@@ -319,14 +325,20 @@ bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** no
     ATTR(bin_expr, ast_node, left_operand) = left_node;
 
     if(input->token.kind == Token_dot)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_member_select;
+    }
     else if(input->token.kind == Token_arrow_right)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_ptr_member_select;
+    }
 
     if(success = get_next_token(input) && parse_selector(input, &ATTR(bin_expr, ast_node, right_operand)))
     {
       if(ATTR(bin_expr, ast_node, right_operand))
+      {
         success = parse_rest_of_selector(input, *node, node);
+      }
       else
       {
         putback_token(input);
@@ -370,7 +382,9 @@ bool parse_factor(TokenStream* input, AstNode** node)
   bool success = true;
 
   if((success = parse_un_expr(input, node)) && *node)
+  {
     success = parse_rest_of_selector(input, *node, node);
+  }
   return success;
 }
 
@@ -387,11 +401,17 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
     ATTR(bin_expr, ast_node, left_operand) = left_node;
 
     if(input->token.kind == Token_star)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_mul;
+    }
     else if(input->token.kind == Token_fwd_slash)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_div;
+    }
     else if(input->token.kind == Token_percent)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_mod;
+    }
     else
       assert(0);
 
@@ -417,7 +437,9 @@ bool parse_term(TokenStream* input, AstNode** node)
   bool success = true;
 
   if((success = parse_factor(input, node)) && *node)
+  {
     success = parse_rest_of_factor(input, *node, node);
+  }
   return success;
 }
 
@@ -437,9 +459,13 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     ATTR(bin_expr, ast_node, left_operand) = left_node;
 
     if(input->token.kind == Token_plus)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_add;
+    }
     else if(input->token.kind == Token_minus)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_sub;
+    }
     else if(input->token.kind == Token_pipe)
     {
 #if 0
@@ -448,7 +474,9 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
       success = compile_error(&input->src_loc, "operator `%s` not supported", get_token_printstr(&input->token));
     }
     else if(input->token.kind == Token_pipe_pipe)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_logic_or;
+    }
     else if(input->token.kind == Token_ampersand)
     {
 #if 0
@@ -457,7 +485,9 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
       success = compile_error(&input->src_loc, "operator `%s` not supported", get_token_printstr(&input->token));
     }
     else if(input->token.kind == Token_ampersand_ampersand)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_logic_and;
+    }
     else
       assert(0);
 
@@ -483,7 +513,9 @@ bool parse_assignment(TokenStream* input, AstNode** node)
   bool success = true;
 
   if((success = parse_term(input, node)) && *node)
+  {
     success = parse_rest_of_term(input, *node, node);
+  }
   return success;
 }
 
@@ -504,19 +536,33 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
     ATTR(bin_expr, ast_node, left_operand) = left_node;
 
     if(input->token.kind == Token_eq)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_assign;
+    }
     else if(input->token.kind == Token_eq_eq)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_eq;
+    }
     else if(input->token.kind == Token_exclam_eq)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_not_eq;
+    }
     else if(input->token.kind == Token_angle_left)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_less;
+    }
     else if(input->token.kind == Token_angle_left_eq)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_less_eq;
+    }
     else if(input->token.kind == Token_angle_right)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_greater;
+    }
     else if(input->token.kind == Token_angle_right_eq)
+    {
       ATTR(bin_expr, op_kind, op_kind) = Operator_greater_eq;
+    }
 
     if(success = get_next_token(input) && parse_expr(input, &ATTR(bin_expr, ast_node, right_operand)))
     {
@@ -703,14 +749,20 @@ bool parse_selector(TokenStream* input, AstNode** node)
     if(success = get_next_token(input) && parse_type(input, node))
     {
       if(!*node)
+      {
         success = compile_error(&input->src_loc, "type expression required, at `%s`", get_token_printstr(&input->token));
+      }
     }
   }
 #if 0
   else if(input->token.kind == Token_new)
+  {
     success = parse_new(input, node);
+  }
   else if(input->token.kind == Token_putc)
+  {
     success = parse_putc(input, node);
+  }
 #endif
 
   return success;
@@ -779,13 +831,21 @@ bool parse_un_expr(TokenStream* input, AstNode** node)
     AstNode* un_expr = *node = new_ast_node(Ast_gen0, AstNode_un_expr, clone_source_loc(&input->src_loc));
 
     if(input->token.kind == Token_exclam)
+    {
       ATTR(un_expr, op_kind, op_kind) = Operator_logic_not;
+    }
     else if(input->token.kind == Token_star)
+    {
       ATTR(un_expr, op_kind, op_kind) = Operator_deref;
+    }
     else if(input->token.kind == Token_ampersand)
+    {
       ATTR(un_expr, op_kind, op_kind) = Operator_address_of;
+    }
     else if(input->token.kind == Token_minus)
+    {
       ATTR(un_expr, op_kind, op_kind) = Operator_neg;
+    }
     else if(input->token.kind == Token_minus_minus)
     {
 #if 0
@@ -815,7 +875,9 @@ bool parse_un_expr(TokenStream* input, AstNode** node)
     }
   }
   else
+  {
     success = parse_selector(input, node);
+  }
 
   return success;
 }
@@ -851,7 +913,7 @@ bool parse_var(TokenStream* input, AstNode** node)
             && (success = get_next_token(input)))
         {
           AstNode* init_expr = 0;
-          if(!init_expr && (success = parse_expr(input, &init_expr)))
+          if(success = parse_expr(input, &init_expr))
           {
             if(init_expr)
             {
@@ -1114,11 +1176,6 @@ bool parse_proc(TokenStream* input, AstNode** node)
     {
       AstNode* return_var = ATTR(proc, ast_node, return_var)
         = new_ast_node(Ast_gen0, AstNode_return_var, clone_source_loc(return_type->src_loc));
-#if 0
-      AstNode* return_id = new_ast_node(Ast_gen0, AstNode_id, clone_source_loc(return_type->src_loc));
-      ATTR(return_id, str_val, name) = make_temp_name("ret");
-      ATTR(return_var, ast_node, id) = return_id;
-#endif
       ATTR(return_var, ast_node, type) = return_type;
       ATTR(return_var, ast_node, proc) = proc;
 
@@ -1140,19 +1197,13 @@ bool parse_proc(TokenStream* input, AstNode** node)
           {
             if(input->token.kind == Token_close_parens)
             {
-#if 0
-              if(success = get_next_token(input) && parse_block(input, &proc->body))
-              {
-                if(!proc->body && (proc->is_decl = success = consume_semicolon(input)))
-                  proc->body = (AstNode1*)new_ast1_block(&(*node)->src_loc);
-              }
-#else
               if(success = get_next_token(input) && parse_block(input, &ATTR(proc, ast_node, body)))
               {
                 if(!ATTR(proc, ast_node, body))
+                {
                   success = consume_semicolon(input);
+                }
               }
-#endif
             }
             else
               success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
@@ -1401,7 +1452,19 @@ bool parse_return(TokenStream* input, AstNode** node)
   if(input->token.kind == Token_return)
   {
     AstNode* return_stmt = *node = new_ast_node(Ast_gen0, AstNode_return_stmt, clone_source_loc(&input->src_loc));
-    success = get_next_token(input) && parse_expr(input, &ATTR(return_stmt, ast_node, return_expr));
+    if(success = get_next_token(input))
+    {
+      AstNode* return_expr = 0;
+      if(success = parse_expr(input, &return_expr))
+      {
+        if(return_expr)
+        {
+          AstNode* assign = ATTR(return_stmt, ast_node, return_expr)
+            = new_ast_node(Ast_gen0, AstNode_assign, clone_source_loc(&input->src_loc));
+          ATTR(assign, ast_node, expr) = return_expr;
+        }
+      }
+    }
   }
 
   return success;

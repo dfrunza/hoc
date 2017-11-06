@@ -160,6 +160,8 @@ void build_runtime()
       scope->local_area_size = compute_decl_areas(scope, (SymbolKind[]){Symbol_var, Symbol_None}, post_fp_areas);
       compute_area_locations(pre_fp_areas, post_fp_areas);
     }
+    else
+      assert(0);
   }
 }
 

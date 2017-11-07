@@ -1,5 +1,5 @@
 #define ARENA_SIZE (3*MEGABYTE)
-#define BINCODE_SIGNATURE "HC"
+#define BINIMAGE_SIGNATURE "HC"
 
 typedef unsigned char uchar;
 typedef unsigned short ushort;
@@ -172,7 +172,10 @@ typedef struct
 
   int loc;
   int size;
+  List* subareas;
+
   int decl_scope_offset;
+  void* data;
 }
 DataArea;
 
@@ -362,9 +365,14 @@ typedef struct Scope
 
   List* decls[Symbol_Count];
   List* occurs[Symbol_Count];
-  int local_area_size;
+
+  DataArea pre_fp_area;
+  DataArea post_fp_area;
   List* access_links;
+#if 0
+  int local_area_size;
   int link_area_size;
+#endif
 }
 Scope;
 
@@ -666,6 +674,7 @@ typedef struct Symbol
   AstNode* ast_node;
   Type* type;
   DataArea* data_area;
+  void* data;
 
   Symbol* decl;
   int decl_scope_offset;
@@ -800,11 +809,11 @@ typedef struct
   int code_offset;
   int code_size;
 }
-BinCode;
+BinImage;
 
 typedef struct
 {
-  String text;
+  char* text;
   int text_len;
 
   List* instr_list;
@@ -813,8 +822,6 @@ typedef struct
 
   uint8* data;
   int data_size;
-
-  bool success;
 }
 VmProgram;
 

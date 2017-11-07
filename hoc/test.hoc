@@ -1,16 +1,14 @@
+/*
 include "str.hoc";
 include "math.hoc";
 include "sort.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
-/*
 */
 
-proc int main()
+proc void main()
 {
-  var int i = 123;
-  var float f = 12.4;
-  return 0;
+  var char* hi = "Hello World";
 }
 
 

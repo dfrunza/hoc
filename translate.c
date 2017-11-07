@@ -938,7 +938,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_str;
-      kind->attr_count = 6;
+      kind->attr_count = 7;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -947,6 +947,11 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
       attr->name = AstAttributeName_str_lit;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str_val;
+      attr->name = AstAttributeName_str_val;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -1750,11 +1755,10 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
 #include "codegen.c"
 #include "hasm.c"
 
-VmProgram* translate(char* file_path, char* hoc_text)
+bool translate(char* file_path, char* hoc_text, VmProgram** vm_program)
 {
-  VmProgram* vm_program = mem_push_struct(arena, VmProgram);
-  vm_program->instr_list = new_list(arena, List_vm_instr);
-  vm_program->success = false;
+  *vm_program = mem_push_struct(arena, VmProgram);
+  (*vm_program)->instr_list = new_list(arena, List_vm_instr);
 
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
@@ -1763,7 +1767,8 @@ VmProgram* translate(char* file_path, char* hoc_text)
   init_ast_meta_infos();
 
   AstNode* module = 0;
-  if(vm_program->success = parse(&token_stream, &module))
+  bool success = false;
+  if(success = parse(&token_stream, &module))
   {
     if(DEBUG_enabled)/*>>>*/
     {
@@ -1801,12 +1806,12 @@ VmProgram* translate(char* file_path, char* hoc_text)
     add_builtin_types();
     add_builtin_procs();
 
-    vm_program->success = name_ident(module);
+    success = name_ident(module);
     end_scope();
     assert(symbol_table->active_scope == 0);
     assert(symbol_table->nesting_depth == -1);
 
-    if(vm_program->success)
+    if(success)
     {
       if(DEBUG_enabled)/*>>>*/
       {
@@ -1822,11 +1827,10 @@ VmProgram* translate(char* file_path, char* hoc_text)
         end_temp_memory(&arena);
       }/*<<<*/
 
-      //ident_str(module);
       build_types(module);
-      vm_program->success = eval_types(module) && resolve_types(module) && typecheck(module);
+      success = eval_types(module) && resolve_types(module) && typecheck(module);
 
-      if(vm_program->success)
+      if(success)
       {
         if(DEBUG_enabled)/*>>>*/
         {
@@ -1842,15 +1846,14 @@ VmProgram* translate(char* file_path, char* hoc_text)
         }/*<<<*/
 
         build_gen_labels(module);
-        gen_code(vm_program->instr_list, module);
+        gen_program(*vm_program, module);
         if(DEBUG_enabled)/*>>>*/
         {
           h_printf("--- Codegen ---\n");
           DEBUG_print_arena_usage(arena, "arena");
         }/*<<<*/
 
-        str_init(&vm_program->text, arena);
-        print_code(vm_program);
+        print_code(*vm_program);
         if(DEBUG_enabled)/*>>>*/
         {
           h_printf("--- Print code ---\n");
@@ -1859,7 +1862,7 @@ VmProgram* translate(char* file_path, char* hoc_text)
       }
     }
   }
-  return vm_program;
+  return success;
 }
 
 

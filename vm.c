@@ -904,9 +904,9 @@ bool load_bin_image(char* exe_file_name, HocMachine* machine)
   if(exe_size > 0)
   {
     uint8* hoc_base = exe_bytes + exe_size;
-    BinCode* bin_image = (BinCode*)(hoc_base);
+    BinImage* bin_image = (BinImage*)(hoc_base);
 
-    if(cstr_match(bin_image->sig, BINCODE_SIGNATURE))
+    if(cstr_match(bin_image->sig, BINIMAGE_SIGNATURE))
     {
       machine->instructions = (Instruction*)(hoc_base + bin_image->code_offset);
       machine->instr_count = bin_image->code_size / (int)sizeof(Instruction);

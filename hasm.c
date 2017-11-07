@@ -560,10 +560,10 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
   return true;
 }
 
-bool convert_hasm_to_instructions(char* text, VmProgram* vm_program)
+bool convert_hasm_to_instructions(VmProgram* vm_program)
 {
   SourceProgram source = {0};
-  source.text = text;
+  source.text = vm_program->text;
   process_source_lines(&source);
 
   return build_instructions(&source, vm_program);

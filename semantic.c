@@ -560,10 +560,12 @@ bool name_ident(AstNode* node)
     AstNode* str_gen1 = make_ast_node(Ast_gen1, node, AstNode_str);
 
     AstNode* str_lit = ATTR(str_gen1, ast_node, str_lit) = ATTR(&str_gen0, ast_node, str_lit);
+    char* str_val = ATTR(str_gen1, str_val, str_val) = ATTR(str_lit, str_val, str_val);
     if(success = name_ident(str_lit))
     {
       Symbol* decl_sym = add_decl_symbol(0, node->src_loc, symbol_table->module_scope, Symbol_str);
       decl_sym->ast_node = str_gen1;
+      decl_sym->data = str_val;
 
       Symbol* occur_sym = add_occur_symbol(0, node->src_loc, symbol_table->active_scope, Symbol_str); 
       occur_sym->ast_node = str_gen1;

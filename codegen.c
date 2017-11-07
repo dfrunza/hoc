@@ -156,7 +156,8 @@ void gen_instr(List* instr_list, AstNode* node)
   else if(node->kind == AstNode_block)
   {
     Scope* scope = ATTR(node, scope, scope);
-    for(ListItem* list_item = scope->access_links->first;
+    DataArea* link_area = scope->link_area;
+    for(ListItem* list_item = link_area->subareas->first;
         list_item;
         list_item = list_item->next)
     {
@@ -601,13 +602,13 @@ void gen_instr(List* instr_list, AstNode* node)
   }
   else if(node->kind == AstNode_proc_occur)
   {
-    Type* type = ATTR(node, type, type); assert(type->kind == Type_proc);
-    Type* return_type = type->proc.ret;
-    Type* args_type = type->proc.args;
+    //Type* type = ATTR(node, type, type); assert(type->kind == Type_proc);
+    //Type* return_type = type->proc.ret;
+    //Type* args_type = type->proc.args;
     //AstNode* proc = ATTR(node, ast_node, proc_decl);
     //Scope* scope = ATTR(proc, scope, scope);
 
-    emit_instr_int32(instr_list, Opcode_GROW, return_type->width);
+    //emit_instr_int32(instr_list, Opcode_GROW, return_type->width); //todo
 
     for(ListItem* list_item = ATTR(node, list, actual_args)->first;
         list_item;
@@ -618,7 +619,7 @@ void gen_instr(List* instr_list, AstNode* node)
 
     emit_instr_str(instr_list, Opcode_CALL, ATTR(node, str_val, name));
     //emit_instr_int32(instr_list, Opcode_GROW, -scope->link_area_size); //todo
-    emit_instr_int32(instr_list, Opcode_GROW, -args_type->width);
+    //emit_instr_int32(instr_list, Opcode_GROW, -args_type->width); //todo
   }
   else if(node->kind == AstNode_return_stmt)
   {
@@ -627,13 +628,13 @@ void gen_instr(List* instr_list, AstNode* node)
     AstNode* return_expr = ATTR(node, ast_node, return_expr);
     if(return_expr)
     {
-      AstNode* return_var = ATTR(proc, ast_node, return_var);
-      Type* return_type = ATTR(return_var, type, eval_type);
+      //AstNode* return_var = ATTR(proc, ast_node, return_var);
+      //Type* return_type = ATTR(return_var, type, eval_type);
       AstNode* expr = ATTR(return_expr, ast_node, expr);
 
       gen_load_rvalue(instr_list, expr);
       gen_load_lvalue(instr_list, return_expr);
-      emit_instr_int32(instr_list, Opcode_STORE, return_type->width);
+      //emit_instr_int32(instr_list, Opcode_STORE, return_type->width); //todo
     }
 
     int depth = ATTR(node, int_val, nesting_depth);
@@ -708,7 +709,21 @@ void gen_program(VmProgram* vm_program, AstNode* module)
   AstNode* body = ATTR(module, ast_node, body);
   Scope* scope = ATTR(body, scope, scope);
 
-  vm_program->data = mem_push_array(arena, uint8, scope->pre_fp_area.size + scope->post_fp_area.size);
+  int data_size = 0;
+  for(ListItem* list_item = scope->pre_fp_areas->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    data_size += ITEM(list_item, data_area)->size;
+  }
+  for(ListItem* list_item = scope->post_fp_areas->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    data_size += ITEM(list_item, data_area)->size;
+  }
+
+  vm_program->data = mem_push_array(arena, uint8, data_size);
 
   for(ListItem* list_item = scope->decls[Symbol_str]->first;
       list_item;

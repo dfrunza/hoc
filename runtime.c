@@ -23,12 +23,12 @@ void fixup_area_loc(int fp, List* areas)
   }
 }
 
-void compute_area_locations(DataArea* pre_fp_area, DataArea* post_fp_area)
+void compute_area_locations(List* pre_fp_areas, List* post_fp_areas)
 {
-  int fp = compute_area_loc(0, pre_fp_area->subareas);
-  compute_area_loc(fp, post_fp_area->subareas);
-  fixup_area_loc(fp, pre_fp_area->subareas);
-  fixup_area_loc(fp, post_fp_area->subareas);
+  int fp = compute_area_loc(0, pre_fp_areas);
+  compute_area_loc(fp, post_fp_areas);
+  fixup_area_loc(fp, pre_fp_areas);
+  fixup_area_loc(fp, post_fp_areas);
 }
 
 void compute_decl_areas(Scope* scope, SymbolKind* kind_set, DataArea* decl_area)
@@ -54,7 +54,7 @@ void compute_decl_areas(Scope* scope, SymbolKind* kind_set, DataArea* decl_area)
 
 void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* occur_area)
 {
-  //List* access_links = new_list(arena, List_data_area);
+  List* access_links = scope->link_area->subareas = new_list(arena, List_data_area);
   for(SymbolKind* kind = kind_set;
       *kind != Symbol_None;
       kind++)
@@ -68,7 +68,7 @@ void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* occur_are
       {
         // non-local
         DataArea* link = 0;
-        for(ListItem* list_item = scope->access_links->first;
+        for(ListItem* list_item = access_links->first;
             list_item;
             list_item = list_item->next)
         {
@@ -85,7 +85,7 @@ void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* occur_are
           link->kind = DataArea_link;
           link->decl_scope_offset = decl_scope_offset;
           link->size = 4; // size of an int
-          append_list_elem(scope->access_links, link, List_data_area);
+          append_list_elem(access_links, link, List_data_area);
           append_list_elem(occur_area->subareas, link, List_data_area);
           occur_area->size += link->size;
         }
@@ -116,8 +116,12 @@ void build_runtime()
     }
     else if(scope->kind == Scope_module)
     {
+      scope->pre_fp_areas = new_list(arena, List_data_area);
+      scope->post_fp_areas = new_list(arena, List_data_area);
+#if 0
       scope->pre_fp_area.subareas = new_list(arena, List_data_area);
       scope->post_fp_area.subareas = new_list(arena, List_data_area);
+#endif
 
       DataArea* null_area = mem_push_struct(arena, DataArea);
       int32* null = null_area->data = mem_push_struct(arena, int32);
@@ -125,42 +129,62 @@ void build_runtime()
       null_area->size = sizeof(int32);
 
       //scope->local_area_size = null_area->size;
-      append_list_elem(scope->pre_fp_area.subareas, null_area, List_data_area);
-      scope->pre_fp_area.size += null_area->size;
+      append_list_elem(scope->pre_fp_areas, null_area, List_data_area);
+      //scope->pre_fp_area.size += null_area->size;
 
-      compute_decl_areas(scope, (SymbolKind[]){Symbol_var, Symbol_str, Symbol_None}, &scope->post_fp_area);
-      compute_area_locations(&scope->pre_fp_area, &scope->post_fp_area);
+      DataArea* decl_area = mem_push_struct(arena, DataArea);
+      append_list_elem(scope->post_fp_areas, decl_area, List_data_area);
+      compute_decl_areas(scope, (SymbolKind[]){Symbol_var, Symbol_str, Symbol_None}, decl_area);
+      compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);
     }
     else if(scope->kind == Scope_proc)
     {
-      scope->pre_fp_area.subareas = new_list(arena, List_data_area);
-      scope->post_fp_area.subareas = new_list(arena, List_data_area);
+      scope->pre_fp_areas = new_list(arena, List_data_area);
+      scope->post_fp_areas = new_list(arena, List_data_area);
 
-      compute_decl_areas(scope, (SymbolKind[]){Symbol_return_var, Symbol_formal_arg, Symbol_None}, &scope->pre_fp_area);
-      compute_occur_areas(scope, (SymbolKind[]){Symbol_var, Symbol_str, Symbol_None}, &scope->pre_fp_area);
+      DataArea* ret_area = mem_push_struct(arena, DataArea);
+      append_list_elem(scope->pre_fp_areas, ret_area, List_data_area);
+      compute_decl_areas(scope, (SymbolKind[]){Symbol_return_var, Symbol_None}, ret_area);
+
+      DataArea* args_area = mem_push_struct(arena, DataArea);
+      append_list_elem(scope->pre_fp_areas, args_area, List_data_area);
+      compute_decl_areas(scope, (SymbolKind[]){Symbol_formal_arg, Symbol_None}, args_area);
 
       DataArea* ctrl_area = mem_push_struct(arena, DataArea);
+      append_list_elem(scope->pre_fp_areas, ctrl_area, List_data_area);
       ctrl_area->size = 3*4; // FP, SP, IP
-      append_list_elem(scope->pre_fp_area.subareas, ctrl_area, List_data_area);
-      scope->pre_fp_area.size += ctrl_area->size;
+      //scope->pre_fp_area.size += ctrl_area->size;
 
-      compute_decl_areas(scope, (SymbolKind[]){Symbol_var, Symbol_None}, &scope->post_fp_area);
-      compute_area_locations(&scope->pre_fp_area, &scope->post_fp_area);
+      DataArea* link_area = mem_push_struct(arena, DataArea);
+      append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
+      compute_occur_areas(scope, (SymbolKind[]){Symbol_var, Symbol_str, Symbol_None}, link_area);
+
+      DataArea* local_area = mem_push_struct(arena, DataArea);
+      append_list_elem(scope->pre_fp_areas, local_area, List_data_area);
+      compute_decl_areas(scope, (SymbolKind[]){Symbol_var, Symbol_None}, local_area);
+
+      compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);
     }
     else if(scope->kind == Scope_block || scope->kind == Scope_loop)
     {
-      scope->pre_fp_area.subareas = new_list(arena, List_data_area);
-      scope->post_fp_area.subareas = new_list(arena, List_data_area);
+      scope->pre_fp_areas = new_list(arena, List_data_area);
+      scope->post_fp_areas = new_list(arena, List_data_area);
 
-      compute_occur_areas(scope, (SymbolKind[]){Symbol_var, Symbol_str, Symbol_return_var, Symbol_None}, &scope->pre_fp_area);
+      DataArea* link_area = mem_push_struct(arena, DataArea);
+      append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
+      compute_occur_areas(scope, (SymbolKind[])
+          {Symbol_var, Symbol_str, Symbol_return_var, Symbol_None}, link_area);
 
       DataArea* ctrl_area = mem_push_struct(arena, DataArea);
+      append_list_elem(scope->pre_fp_areas, ctrl_area, List_data_area);
       ctrl_area->size = 4; // FP
-      append_list_elem(scope->pre_fp_area.subareas, ctrl_area, List_data_area);
-      scope->pre_fp_area.size += ctrl_area->size;
+      //scope->pre_fp_area.size += ctrl_area->size;
 
-      compute_decl_areas(scope, (SymbolKind[]){Symbol_var, Symbol_None}, &scope->post_fp_area);
-      compute_area_locations(&scope->pre_fp_area, &scope->post_fp_area);
+      DataArea* local_area = mem_push_struct(arena, DataArea);
+      append_list_elem(scope->post_fp_areas, local_area, List_data_area);
+      compute_decl_areas(scope, (SymbolKind[]){Symbol_var, Symbol_None}, local_area);
+
+      compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);
     }
     else
       assert(0);

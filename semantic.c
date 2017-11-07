@@ -181,7 +181,7 @@ Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
     scope->decls[i] = new_list(arena, List_symbol);
     scope->occurs[i] = new_list(arena, List_symbol);
   }
-  scope->access_links = new_list(arena, List_data_area);
+  //scope->access_links = new_list(arena, List_data_area);
   symbol_table->active_scope = scope;
   append_list_elem(symbol_table->scopes, scope, List_scope);
   return scope;

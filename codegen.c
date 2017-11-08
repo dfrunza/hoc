@@ -104,8 +104,11 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
 
   if(node->kind == AstNode_var_occur)
   {
+    Symbol* decl_sym = ATTR(node, symbol, decl_sym);
+    DataArea* data_area = decl_sym->data_area;
+
     gen_load_lvalue(instr_list, node);
-    emit_instr_int32(instr_list, Opcode_LOAD, ATTR(node, type, eval_type)->width);
+    emit_instr_int32(instr_list, Opcode_LOAD, data_area->size);
   }
   else if(node->kind == AstNode_proc_occur)
   {
@@ -156,25 +159,30 @@ void gen_instr(List* instr_list, AstNode* node)
   else if(node->kind == AstNode_block)
   {
     Scope* scope = ATTR(node, scope, scope);
-    DataArea* link_area = scope->link_area;
-    for(ListItem* list_item = link_area->subareas->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      DataArea* link = ITEM(list_item, data_area); assert(link->kind == DataArea_link);
-      emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+    DataArea* link_area = &scope->link_area;
+    DataArea* local_area = &scope->local_area;
 
-      int offset = link->decl_scope_offset - 1;
-      while(offset--)
+    if(link_area->size > 0)
+    {
+      for(ListItem* list_item = link_area->subareas->first;
+          list_item;
+          list_item = list_item->next)
       {
-        emit_instr_int32(instr_list, Opcode_PUSH_INT32, -4);
-        emit_instr(instr_list, Opcode_ADD_INT32); // ge the FP of the previous activation record
-        emit_instr_int32(instr_list, Opcode_LOAD, 4);
+        DataArea* link = ITEM(list_item, data_area); assert(link->kind == DataArea_link);
+        emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+
+        int offset = link->decl_scope_offset - 1;
+        while(offset--)
+        {
+          emit_instr_int32(instr_list, Opcode_PUSH_INT32, -4);
+          emit_instr(instr_list, Opcode_ADD_INT32); // ge the FP of the previous activation record
+          emit_instr_int32(instr_list, Opcode_LOAD, 4);
+        }
       }
     }
 
     emit_instr(instr_list, Opcode_ENTER);
-    //emit_instr_int32(instr_list, Opcode_GROW, scope->local_area_size); //todo
+    emit_instr_int32(instr_list, Opcode_GROW, local_area->size);
 
     for(ListItem* list_item = ATTR(node, list, nodes)->first;
         list_item;
@@ -184,13 +192,15 @@ void gen_instr(List* instr_list, AstNode* node)
     }
 
     emit_instr(instr_list, Opcode_LEAVE);
-    //emit_instr_int32(instr_list, Opcode_GROW, -scope->link_area_size); //todo
+    emit_instr_int32(instr_list, Opcode_GROW, -link_area->size);
   }
   else if(node->kind == AstNode_proc_decl)
   {
-    //Scope* scope = ATTR(node, scope, scope);
+    Scope* scope = ATTR(node, scope, scope);
+    DataArea* local_area = &scope->local_area;
+
     emit_instr_str(instr_list, Opcode_LABEL, ATTR(node, str_val, name));
-    //emit_instr_int32(instr_list, Opcode_GROW, scope->local_area_size); //todo
+    emit_instr_int32(instr_list, Opcode_GROW, local_area->size);
 
     AstNode* body = ATTR(node, ast_node, body);
     for(ListItem* list_item = ATTR(body, list, nodes)->first;
@@ -602,13 +612,13 @@ void gen_instr(List* instr_list, AstNode* node)
   }
   else if(node->kind == AstNode_proc_occur)
   {
-    //Type* type = ATTR(node, type, type); assert(type->kind == Type_proc);
-    //Type* return_type = type->proc.ret;
-    //Type* args_type = type->proc.args;
-    //AstNode* proc = ATTR(node, ast_node, proc_decl);
-    //Scope* scope = ATTR(proc, scope, scope);
+    AstNode* proc = ATTR(node, ast_node, proc_decl);
+    Scope* scope = ATTR(proc, scope, scope);
+    DataArea* ret_area = &scope->ret_area;
+    DataArea* args_area = &scope->args_area;
+    DataArea* link_area = &scope->link_area;
 
-    //emit_instr_int32(instr_list, Opcode_GROW, return_type->width); //todo
+    emit_instr_int32(instr_list, Opcode_GROW, ret_area->size);
 
     for(ListItem* list_item = ATTR(node, list, actual_args)->first;
         list_item;
@@ -616,25 +626,26 @@ void gen_instr(List* instr_list, AstNode* node)
     {
       gen_load_rvalue(instr_list, ITEM(list_item, ast_node));
     }
+    //todo: assert that the 'data area size' == 'evaluated args size'
 
     emit_instr_str(instr_list, Opcode_CALL, ATTR(node, str_val, name));
-    //emit_instr_int32(instr_list, Opcode_GROW, -scope->link_area_size); //todo
-    //emit_instr_int32(instr_list, Opcode_GROW, -args_type->width); //todo
+    emit_instr_int32(instr_list, Opcode_GROW, -link_area->size);
+    emit_instr_int32(instr_list, Opcode_GROW, -args_area->size);
   }
   else if(node->kind == AstNode_return_stmt)
   {
-    AstNode* proc = ATTR(node, ast_node, proc);
+    AstNode* proc = ATTR(node, ast_node, proc_decl);
+    Scope* scope = ATTR(proc, scope, scope);
+    DataArea* ret_area = &scope->ret_area;
 
     AstNode* return_expr = ATTR(node, ast_node, return_expr);
     if(return_expr)
     {
-      //AstNode* return_var = ATTR(proc, ast_node, return_var);
-      //Type* return_type = ATTR(return_var, type, eval_type);
       AstNode* expr = ATTR(return_expr, ast_node, expr);
 
       gen_load_rvalue(instr_list, expr);
       gen_load_lvalue(instr_list, return_expr);
-      //emit_instr_int32(instr_list, Opcode_STORE, return_type->width); //todo
+      emit_instr_int32(instr_list, Opcode_STORE, ret_area->size);
     }
 
     int depth = ATTR(node, int_val, nesting_depth);
@@ -733,9 +744,9 @@ void gen_program(VmProgram* vm_program, AstNode* module)
     DataArea* area = str_sym->data_area;
     if(str_sym->data)
     {
-      for(int i = area->loc; i < area->size; i++)
+      for(int i = 0; i < area->size; i++)
       {
-        vm_program->data[i] = ((uint8*)str_sym->data)[i];
+        vm_program->data[i + area->loc] = ((uint8*)str_sym->data)[i];
       }
     }
     int x; x=0;

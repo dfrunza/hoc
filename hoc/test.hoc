@@ -5,10 +5,12 @@ include "sort.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 */
+var int i;
 
 proc void main()
 {
-  var char* hi = "Hello World";
+  i = 1;
 }
 
+main();
 

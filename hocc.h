@@ -369,20 +369,11 @@ typedef struct Scope
   List* pre_fp_areas;
   List* post_fp_areas;
 
-  DataArea* ret_area;
-  DataArea* args_area;
-  DataArea* link_area;
-  DataArea* ctrl_area;
-  DataArea* local_area;
-#if 0
-  DataArea pre_fp_area;
-  DataArea post_fp_area;
-  List* access_links;
-#endif
-#if 0
-  int local_area_size;
-  int link_area_size;
-#endif
+  DataArea ret_area;
+  DataArea args_area;
+  DataArea link_area;
+  DataArea ctrl_area;
+  DataArea local_area;
 }
 Scope;
 
@@ -415,7 +406,6 @@ typedef enum
   AstAttributeName_type_expr,
   AstAttributeName_pointee_expr,
   AstAttributeName_elem_expr,
-  AstAttributeName_proc,
   AstAttributeName_nesting_depth,
   AstAttributeName_loop,
   AstAttributeName_formal_args,

@@ -1177,7 +1177,7 @@ bool parse_proc(TokenStream* input, AstNode** node)
       AstNode* return_var = ATTR(proc, ast_node, return_var)
         = new_ast_node(Ast_gen0, AstNode_return_var, clone_source_loc(return_type->src_loc));
       ATTR(return_var, ast_node, type) = return_type;
-      ATTR(return_var, ast_node, proc) = proc;
+      ATTR(return_var, ast_node, proc_decl) = proc;
 
       if(input->token.kind == Token_id)
       {

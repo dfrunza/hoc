@@ -182,6 +182,11 @@ Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
     scope->occurs[i] = new_list(arena, List_symbol);
   }
   //scope->access_links = new_list(arena, List_data_area);
+  scope->ret_area.kind = DataArea_data;
+  scope->args_area.kind = DataArea_data;
+  scope->link_area.kind = DataArea_data;
+  scope->ctrl_area.kind = DataArea_data;
+  scope->local_area.kind = DataArea_data;
   symbol_table->active_scope = scope;
   append_list_elem(symbol_table->scopes, scope, List_scope);
   return scope;
@@ -463,7 +468,7 @@ bool name_ident(AstNode* node)
     AstNode* return_var_gen1 = make_ast_node(Ast_gen1, node, AstNode_return_var);
 
     AstNode* return_type = ATTR(return_var_gen1, ast_node, type) = ATTR(&return_var_gen0, ast_node, type);
-    AstNode* proc = ATTR(return_var_gen1, ast_node, proc) = ATTR(&return_var_gen0, ast_node, proc);
+    AstNode* proc = ATTR(return_var_gen1, ast_node, proc_decl) = ATTR(&return_var_gen0, ast_node, proc_decl);
     if(success = name_ident(return_type))
     {
       Symbol* decl_sym = add_decl_symbol(0, node->src_loc, ATTR(proc, scope, scope), Symbol_return_var);
@@ -706,7 +711,7 @@ bool name_ident(AstNode* node)
     Scope* scope = find_scope(Scope_proc);
     if(scope)
     {
-      AstNode* proc = ATTR(return_stmt_gen1, ast_node, proc) = scope->ast_node;
+      AstNode* proc = ATTR(return_stmt_gen1, ast_node, proc_decl) = scope->ast_node;
       AstNode* return_var = ATTR(proc, ast_node, return_var);
 
       AstNode* return_expr = ATTR(return_stmt_gen1, ast_node, return_expr) = ATTR(&return_stmt_gen0, ast_node, return_expr);
@@ -931,7 +936,7 @@ void build_types(AstNode* node)
     }
     else if(lit_kind == Literal_str_val)
     {
-      int size = cstr_len(ATTR(node, str_val, str_val));
+      int size = cstr_len(ATTR(node, str_val, str_val)) + 1; // +NULL
       type = new_array_type(size, basic_type_char);
     }
     else
@@ -1257,7 +1262,7 @@ bool eval_types(AstNode* node)
     {
       if(success = type_unif(return_ty, return_expr_ty))
       {
-        AstNode* proc = ATTR(node, ast_node, proc);
+        AstNode* proc = ATTR(node, ast_node, proc_decl);
         Type* proc_return_ty = ATTR(proc, type, type)->proc.ret;
         if(success = type_unif(return_expr_ty, proc_return_ty))
         {

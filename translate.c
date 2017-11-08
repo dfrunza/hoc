@@ -221,7 +221,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_proc;
+      attr->name = AstAttributeName_proc_decl;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -582,7 +582,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_proc;
+      attr->name = AstAttributeName_proc_decl;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -863,7 +863,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_proc;
+      attr->name = AstAttributeName_proc_decl;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];

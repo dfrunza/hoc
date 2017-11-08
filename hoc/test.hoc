@@ -5,12 +5,13 @@ include "sort.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 */
-var int i;
+var int i = 223;
+
+main();
 
 proc void main()
 {
   i = 1;
 }
 
-main();
 

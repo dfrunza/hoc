@@ -181,7 +181,6 @@ Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
     scope->decls[i] = new_list(arena, List_symbol);
     scope->occurs[i] = new_list(arena, List_symbol);
   }
-  //scope->access_links = new_list(arena, List_data_area);
   scope->ret_area.kind = DataArea_data;
   scope->args_area.kind = DataArea_data;
   scope->link_area.kind = DataArea_data;

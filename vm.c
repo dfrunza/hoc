@@ -938,10 +938,10 @@ int main(int argc, char* argv[])
 
   if(load_bin_image(argv[0], &machine))
   {
-    ((uint8*)machine.memory)[0] = 0; // null ptr cell
+    //((uint8*)machine.memory)[0] = 0; // null ptr cell
 
-    machine.sp = machine.data_size; // the null ptr cell is counted in
-    machine.fp = 0;
+    machine.sp = machine.data_size;
+    machine.fp = machine.sp;
     machine.hp = machine.memory_size;
 
     ret = (int)run_program(&machine);

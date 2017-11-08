@@ -155,6 +155,7 @@ void gen_instr(List* instr_list, AstNode* node)
   if(node->kind == AstNode_module)
   {
     gen_instr(instr_list, ATTR(node, ast_node, body));
+    emit_instr(instr_list, Opcode_HALT);
   }
   else if(node->kind == AstNode_block)
   {
@@ -175,7 +176,7 @@ void gen_instr(List* instr_list, AstNode* node)
         while(offset--)
         {
           emit_instr_int32(instr_list, Opcode_PUSH_INT32, -4);
-          emit_instr(instr_list, Opcode_ADD_INT32); // ge the FP of the previous activation record
+          emit_instr(instr_list, Opcode_ADD_INT32); // get the FP of the previous activation record
           emit_instr_int32(instr_list, Opcode_LOAD, 4);
         }
       }
@@ -224,6 +225,7 @@ void gen_instr(List* instr_list, AstNode* node)
       gen_load_rvalue(instr_list, expr);
       gen_load_lvalue(instr_list, init_expr);
       emit_instr_int32(instr_list, Opcode_STORE, type->width);
+      emit_instr_int32(instr_list, Opcode_GROW, -type->width);
     }
   }
   else if(node->kind == AstNode_stmt)
@@ -720,7 +722,7 @@ void gen_program(VmProgram* vm_program, AstNode* module)
   AstNode* body = ATTR(module, ast_node, body);
   Scope* scope = ATTR(body, scope, scope);
 
-  int data_size = 0;
+  int data_size = vm_program->data_size = 0;
   for(ListItem* list_item = scope->pre_fp_areas->first;
       list_item;
       list_item = list_item->next)
@@ -740,6 +742,16 @@ void gen_program(VmProgram* vm_program, AstNode* module)
       list_item;
       list_item = list_item->next)
   {
+    DataArea* area = ITEM(list_item, symbol)->data_area;
+    if(area->data)
+    {
+      uint8* p_data = (uint8*)area->data;
+      for(int i = 0; i < area->size; i++)
+      {
+        vm_program->data[i + area->loc] = p_data[i];
+      }
+    }
+#if 0
     Symbol* str_sym = ITEM(list_item, symbol);
     DataArea* area = str_sym->data_area;
     if(str_sym->data)
@@ -749,7 +761,7 @@ void gen_program(VmProgram* vm_program, AstNode* module)
         vm_program->data[i + area->loc] = ((uint8*)str_sym->data)[i];
       }
     }
-    int x; x=0;
+#endif
   }
 }
 

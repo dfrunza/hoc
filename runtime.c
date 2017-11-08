@@ -162,6 +162,14 @@ void build_runtime()
       *null = 0;
       null_area->size = sizeof(int32);
 
+#if 0
+      DataArea* link_area = &scope->link_area;
+      link_area->subareas = new_list(arena, List_data_area);
+      append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
+      compute_occur_areas(scope, (SymbolKind[])
+          {Symbol_var, Symbol_str, Symbol_return_var, Symbol_None}, link_area);
+#endif
+
       DataArea* ctrl_area = &scope->ctrl_area;
       append_list_elem(scope->pre_fp_areas, ctrl_area, List_data_area);
       ctrl_area->size = 4; // FP

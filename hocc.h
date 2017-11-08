@@ -365,6 +365,7 @@ typedef struct Scope
 
   List* decls[Symbol_Count];
   List* occurs[Symbol_Count];
+  //List* stmts;
 
   List* pre_fp_areas;
   List* post_fp_areas;
@@ -822,6 +823,7 @@ typedef struct
 
   uint8* data;
   int data_size;
+  /*int32 sp; todo*/
 }
 VmProgram;
 

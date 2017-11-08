@@ -913,9 +913,15 @@ bool load_bin_image(char* exe_file_name, HocMachine* machine)
 
       machine->data = (uint8*)(hoc_base + bin_image->data_offset);
       machine->data_size = bin_image->data_size / (int)sizeof(uint8);
+      machine->sp = bin_image->sp;
+      machine->fp = 0;
+      machine->hp = machine->memory_size;
+      machine->ip = 0;
 
       for(int i = 0; i < machine->data_size; i++)
+      {
         machine->memory[i] = machine->data[i];
+      }
     }
     else
       success = error("bincode signature mismatch");
@@ -938,12 +944,6 @@ int main(int argc, char* argv[])
 
   if(load_bin_image(argv[0], &machine))
   {
-    //((uint8*)machine.memory)[0] = 0; // null ptr cell
-
-    machine.sp = machine.data_size;
-    machine.fp = machine.sp;
-    machine.hp = machine.memory_size;
-
     ret = (int)run_program(&machine);
   }
   return ret;

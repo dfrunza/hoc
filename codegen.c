@@ -722,13 +722,18 @@ void gen_program(VmProgram* vm_program, AstNode* module)
   AstNode* body = ATTR(module, ast_node, body);
   Scope* scope = ATTR(body, scope, scope);
 
-  int data_size = vm_program->data_size = 0;
+  int data_size = 0;
   for(ListItem* list_item = scope->pre_fp_areas->first;
       list_item;
       list_item = list_item->next)
   {
     data_size += ITEM(list_item, data_area)->size;
   }
+  
+  int fp = data_size;
+  DataArea* ctrl_area = &scope->ctrl_area;
+  vm_program->sp = fp - ctrl_area->size;
+
   for(ListItem* list_item = scope->post_fp_areas->first;
       list_item;
       list_item = list_item->next)
@@ -737,7 +742,39 @@ void gen_program(VmProgram* vm_program, AstNode* module)
   }
 
   vm_program->data = mem_push_array(arena, uint8, data_size);
+  vm_program->data_size = data_size;
 
+  for(ListItem* list_item = scope->pre_fp_areas->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    DataArea* area = ITEM(list_item, data_area);
+    if(area->data)
+    {
+      uint8* p_data = (uint8*)area->data;
+      for(int i = 0; i < area->size; i++)
+      {
+        vm_program->data[i + fp + area->loc] = p_data[i];
+      }
+    }
+  }
+
+  for(ListItem* list_item = scope->post_fp_areas->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    DataArea* area = ITEM(list_item, data_area);
+    if(area->data)
+    {
+      uint8* p_data = (uint8*)area->data;
+      for(int i = 0; i < area->size; i++)
+      {
+        vm_program->data[i + fp + area->loc] = p_data[i];
+      }
+    }
+  }
+
+#if 0
   for(ListItem* list_item = scope->decls[Symbol_str]->first;
       list_item;
       list_item = list_item->next)
@@ -763,6 +800,7 @@ void gen_program(VmProgram* vm_program, AstNode* module)
     }
 #endif
   }
+#endif
 }
 
 char* get_regname_str(RegName reg)

@@ -804,11 +804,12 @@ typedef struct
 {
   char sig[4];
 
-  int data_offset;
-  int data_size;
-
   int code_offset;
   int code_size;
+
+  int data_offset;
+  int data_size;
+  int sp;
 }
 BinImage;
 
@@ -823,7 +824,7 @@ typedef struct
 
   uint8* data;
   int data_size;
-  /*int32 sp; todo*/
+  int32 sp;
 }
 VmProgram;
 

@@ -131,6 +131,7 @@ int main(int argc, char* argv[])
 
                 bin_image->data_offset = bin_image->code_offset + bin_image->code_size;
                 bin_image->data_size = sizeof(uint8) * vm_program->data_size;
+                bin_image->sp = vm_program->sp;
 
                 if((int)fwrite(vm_bytes, 1, vm_size, exe_file) == vm_size
                   && (int)fwrite(bin_image, sizeof(BinImage), 1, exe_file) == 1

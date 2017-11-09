@@ -154,6 +154,7 @@ void gen_instr(List* instr_list, AstNode* node)
 
   if(node->kind == AstNode_module)
   {
+    emit_instr_str(instr_list, Opcode_GOTO, "entry_point");
     gen_instr(instr_list, ATTR(node, ast_node, body));
     emit_instr(instr_list, Opcode_HALT);
   }

@@ -292,6 +292,7 @@ bool name_ident_block(AstNode* node)
   return success;
 }
 
+//todo: remove this
 bool name_ident_formal_arg(AstNode* node)
 {
   assert(node->kind == AstNode_var_decl);

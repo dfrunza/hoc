@@ -7,11 +7,11 @@ include "fizzbuzz.hoc";
 */
 var int i = 223;
 
-main();
-
 proc void main()
 {
   i = 1;
 }
 
+/*entry_point:*/
+main();
 

@@ -991,6 +991,13 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
       attr->name = AstAttributeName_body;
+
+#if 0
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_entry_point;
+#endif
     }
     {
       assert(kind_index < ast->kind_count);

@@ -425,6 +425,8 @@ typedef enum
   AstAttributeName_op_kind,
   AstAttributeName_name,
   AstAttributeName_nodes,
+  AstAttributeName_procs,
+  AstAttributeName_stmts,
   AstAttributeName_file_path,
   AstAttributeName_body,
   AstAttributeName_stmt,
@@ -494,7 +496,6 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_module),\
   ENUM_MEMBER(AstNode_include),\
   ENUM_MEMBER(AstNode_block),\
-  ENUM_MEMBER(AstNode_stmt),\
   ENUM_MEMBER(AstNode_var_decl),\
   ENUM_MEMBER(AstNode_var_occur),\
   ENUM_MEMBER(AstNode_proc_decl),\

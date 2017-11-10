@@ -154,7 +154,6 @@ void gen_instr(List* instr_list, AstNode* node)
 
   if(node->kind == AstNode_module)
   {
-    emit_instr_str(instr_list, Opcode_GOTO, "entry_point");
     gen_instr(instr_list, ATTR(node, ast_node, body));
     emit_instr(instr_list, Opcode_HALT);
   }
@@ -228,10 +227,6 @@ void gen_instr(List* instr_list, AstNode* node)
       emit_instr_int32(instr_list, Opcode_STORE, type->width);
       emit_instr_int32(instr_list, Opcode_GROW, -type->width);
     }
-  }
-  else if(node->kind == AstNode_stmt)
-  {
-    gen_instr(instr_list, ATTR(node, ast_node, stmt));
   }
   else if(node->kind == AstNode_while_stmt)
   {
@@ -1182,10 +1177,6 @@ void build_gen_labels(AstNode* node)
     ATTR(node, str_val, label_end) = str_cap(label);
 
     build_gen_labels(ATTR(node, ast_node, body));
-  }
-  else if(node->kind == AstNode_stmt)
-  {
-    build_gen_labels(ATTR(node, ast_node, stmt));
   }
   else if(node->kind == AstNode_bin_expr)
   {

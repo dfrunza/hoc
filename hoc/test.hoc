@@ -12,6 +12,5 @@ proc void main()
   i = 1;
 }
 
-/*entry_point:*/
 main();
 

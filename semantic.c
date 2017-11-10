@@ -588,17 +588,6 @@ bool name_ident(AstNode* node)
     success = name_ident_block(node);
     end_scope();
   }
-  else if(node->kind == AstNode_stmt)
-  {
-    AstNode stmt_gen0 = *node;
-    AstNode* stmt_gen1 = make_ast_node(Ast_gen1, node, AstNode_stmt);
-
-    AstNode* actual_stmt = ATTR(stmt_gen1, ast_node, stmt) = ATTR(&stmt_gen0, ast_node, stmt);
-    if(actual_stmt)
-    {
-      success = name_ident(actual_stmt);
-    }
-  }
   else if(node->kind == AstNode_if_stmt)
   {
     AstNode if_stmt_gen0 = *node;
@@ -750,14 +739,6 @@ void build_types(AstNode* node)
         list_item = list_item->next)
     {
       build_types(ITEM(list_item, ast_node));
-    }
-  }
-  else if(node->kind == AstNode_stmt)
-  {
-    AstNode* actual_stmt = ATTR(node, ast_node, stmt);
-    if(actual_stmt)
-    {
-      build_types(actual_stmt);
     }
   }
   else if(node->kind == AstNode_var_decl)
@@ -1011,14 +992,6 @@ bool eval_types(AstNode* node)
         list_item = list_item->next)
     {
       success = eval_types(ITEM(list_item, ast_node));
-    }
-  }
-  else if(node->kind == AstNode_stmt)
-  {
-    AstNode* actual_stmt = ATTR(node, ast_node, stmt);
-    if(actual_stmt)
-    {
-      success = eval_types(actual_stmt);
     }
   }
   else if(node->kind == AstNode_var_decl)
@@ -1376,14 +1349,6 @@ bool resolve_types(AstNode* node)
       success = resolve_types(ITEM(list_item, ast_node));
     }
   }
-  else if(node->kind == AstNode_stmt)
-  {
-    AstNode* actual_stmt = ATTR(node, ast_node, stmt);
-    if(actual_stmt)
-    {
-      success = resolve_types(actual_stmt);
-    }
-  }
   else if(node->kind == AstNode_var_decl)
   {
     if(success = node_resolve_type(node))
@@ -1528,14 +1493,6 @@ bool typecheck(AstNode* node)
         list_item = list_item->next)
     {
       success = typecheck(ITEM(list_item, ast_node));
-    }
-  }
-  else if(node->kind == AstNode_stmt)
-  {
-    AstNode* actual_stmt = ATTR(node, ast_node, stmt);
-    if(actual_stmt)
-    {
-      success = typecheck(actual_stmt);
     }
   }
   else if(node->kind == AstNode_var_decl)

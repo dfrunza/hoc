@@ -13,7 +13,12 @@ proc float foo(int a)
 
 proc void main()
 {
-  foo(123);
+  var int i = bar();
+
+  proc int bar()
+  {
+    return 11;
+  }
 }
 
 main();

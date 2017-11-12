@@ -1564,11 +1564,7 @@ bool parse_node(TokenStream* input, AstNode** node)
   }
   else if(input->token.kind == Token_if)
   {
-    if(success = parse_if(input, node))
-    {
-      AstNode* stmt = *node;
-      ATTR(*node = new_ast_node(Ast_gen0, AstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
-    }
+    success = parse_if(input, node);
   }
   else if(input->token.kind == Token_else)
   {
@@ -1576,11 +1572,7 @@ bool parse_node(TokenStream* input, AstNode** node)
   }
   else if(input->token.kind == Token_while)
   {
-    if(success = parse_while(input, node))
-    {
-      AstNode* stmt = *node;
-      ATTR(*node = new_ast_node(Ast_gen0, AstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
-    }
+    success = parse_while(input, node);
   }
 #if 0
   else if(input->token.kind == Token_for)
@@ -1598,19 +1590,11 @@ bool parse_node(TokenStream* input, AstNode** node)
   }
   else if(input->token.kind == Token_break)
   {
-    if(success = parse_break(input, node) && consume_semicolon(input))
-    {
-      AstNode* stmt = *node;
-      ATTR(*node = new_ast_node(Ast_gen0, AstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
-    }
+    success = parse_break(input, node) && consume_semicolon(input);
   }
   else if(input->token.kind == Token_continue)
   {
-    if(success = parse_continue(input, node) && consume_semicolon(input))
-    {
-      AstNode* stmt = *node;
-      ATTR(*node = new_ast_node(Ast_gen0, AstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
-    }
+    success = parse_continue(input, node) && consume_semicolon(input);
   }
 #if 0
   else if(input->token.kind == Token_goto)
@@ -1622,16 +1606,13 @@ bool parse_node(TokenStream* input, AstNode** node)
   {
     if(success = consume_semicolon(input))
     {
-      *node = new_ast_node(Ast_gen0, AstNode_stmt, clone_source_loc(&input->src_loc));
+      AstNode* stmt = new_ast_node(Ast_gen0, AstNode_empty, clone_source_loc(&input->src_loc));
+      ATTR(*node = new_ast_node(Ast_gen0, AstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
     }
   }
   else if(input->token.kind == Token_open_brace)
   {
-    if(success = parse_block(input, node))
-    {
-      AstNode* stmt = *node;
-      ATTR(*node = new_ast_node(Ast_gen0, AstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
-    }
+    success = parse_block(input, node);
   }
   else
   {

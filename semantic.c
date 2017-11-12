@@ -703,6 +703,10 @@ bool name_ident(AstNode* node)
       success = compile_error(node->src_loc, "unexpected `%s` at this location", keyword);
     }
   }
+  else if(node->kind == AstNode_empty)
+  {
+    make_ast_node(Ast_gen1, node, node->kind);
+  }
   else if(node->kind == AstNode_ret_stmt)
   {
     AstNode ret_stmt_gen0 = *node;
@@ -998,6 +1002,10 @@ void build_types(AstNode* node)
     ATTR(node, type, type) = ATTR(node, type, eval_type) = new_array_type(size, ATTR(elem_expr, type, type));
   }
   else if(node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt)
+  {
+    ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
+  }
+  else if(node->kind == AstNode_empty)
   {
     ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
   }
@@ -1330,6 +1338,10 @@ bool eval_types(AstNode* node)
   {
     ; // skip
   }
+  else if(node->kind == AstNode_empty)
+  {
+    ; // skip
+  }
   else
     assert(0);
   return success;
@@ -1505,6 +1517,10 @@ bool resolve_types(AstNode* node)
     }
   }
   else if(node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt)
+  {
+    ; // skip
+  }
+  else if(node->kind == AstNode_empty)
   {
     ; // skip
   }
@@ -1748,6 +1764,10 @@ bool check_types(AstNode* node)
     ;//ok
   }
   else if(node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt)
+  {
+    ;//ok
+  }
+  else if(node->kind == AstNode_empty)
   {
     ;//ok
   }

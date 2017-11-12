@@ -519,7 +519,8 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_enum_decl),\
   ENUM_MEMBER(AstNode_struct_decl),\
   ENUM_MEMBER(AstNode_union_decl),\
-  ENUM_MEMBER(AstNode_init_list),
+  ENUM_MEMBER(AstNode_init_list),\
+  ENUM_MEMBER(AstNode_empty),
 #endif
 
 typedef enum 

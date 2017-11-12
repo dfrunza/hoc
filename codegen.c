@@ -165,7 +165,6 @@ void gen_instr(List* instr_list, AstNode* node)
         list_item = list_item->next)
     {
       AstNode* stmt = ITEM(list_item, ast_node); 
-      assert(stmt->kind == AstNode_stmt);
       gen_instr(instr_list, stmt);
     }
 
@@ -229,15 +228,27 @@ void gen_instr(List* instr_list, AstNode* node)
     emit_instr_int32(instr_list, Opcode_GROW, local_area->size);
 
     AstNode* body = ATTR(node, ast_node, body);
-    for(ListItem* list_item = ATTR(body, list, nodes)->first;
-        list_item;
+    List* stmts_list = ATTR(body, list, stmts);
+    for(ListItem* list_item = stmts_list->first;
+        list_item && (list_item->prev != stmts_list->last);
         list_item = list_item->next)
     {
-      gen_instr(instr_list, ITEM(list_item, ast_node));
+      AstNode* stmt = ITEM(list_item, ast_node); 
+      gen_instr(instr_list, stmt);
     }
 
     emit_instr_str(instr_list, Opcode_LABEL, ATTR(node, str_val, label_end));
     emit_instr(instr_list, Opcode_RETURN);
+
+    List* procs_list = ATTR(body, list, procs);
+    for(ListItem* list_item = procs_list->first;
+        list_item && (list_item->prev != procs_list->last);
+        list_item = list_item->next)
+    {
+      AstNode* proc = ITEM(list_item, ast_node);
+      assert(proc->kind == AstNode_proc_decl);
+      gen_instr(instr_list, proc);
+    }
   }
   else if(node->kind == AstNode_var_decl)
   {
@@ -736,6 +747,10 @@ void gen_instr(List* instr_list, AstNode* node)
     }
     emit_instr_str(instr_list, Opcode_GOTO, ATTR(loop, str_val, label_break));
   }
+  else if(node->kind == AstNode_empty)
+  {
+    ;//skip
+  }
   else
     assert(0);
 }
@@ -772,14 +787,22 @@ void sort_block_nodes(AstNode* node)
     for(ListItem* list_item = nodes_list->first;
         list_item;)
     {
+      AstNode* stmt = ITEM(list_item, ast_node);
+      sort_block_nodes(stmt);
+
       ListItem* next_list_item = list_item->next;
       remove_list_item(nodes_list, list_item);
 
-      AstNode* stmt = ITEM(list_item, ast_node);
       if(stmt->kind == AstNode_proc_decl)
+      {
         append_list_item(procs_list, list_item);
-      else if(stmt->kind == AstNode_stmt)
+      }
+      else if(stmt->kind == AstNode_stmt
+          || stmt->kind == AstNode_while_stmt || stmt->kind == AstNode_if_stmt
+          || stmt->kind == AstNode_break_stmt || stmt->kind == AstNode_continue_stmt)
+      {
         append_list_item(stmts_list, list_item);
+      }
       else
         assert(0);
 

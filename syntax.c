@@ -925,7 +925,10 @@ bool parse_var(TokenStream* input, AstNode** node)
             if(init_expr)
             {
               ATTR(assign, ast_node, right_operand) = init_expr;
-              init_expr = ATTR(var_decl, ast_node, init_expr) = assign;
+
+              init_expr = new_ast_node(Ast_gen0, AstNode_stmt, assign->src_loc);
+              ATTR(init_expr, ast_node, stmt) = assign;
+              ATTR(var_decl, ast_node, init_expr) = init_expr;
             }
             else
             {
@@ -1552,12 +1555,7 @@ bool parse_node(TokenStream* input, AstNode** node)
 
   if(input->token.kind == Token_var)
   {
-    if(success = get_next_token(input) && parse_var(input, node) && consume_semicolon(input))
-    {
-      //todo
-      AstNode* stmt = *node;
-      ATTR(*node = new_ast_node(Ast_gen0, AstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
-    }
+    success = get_next_token(input) && parse_var(input, node) && consume_semicolon(input);
   }
   else if(input->token.kind == Token_include)
   {

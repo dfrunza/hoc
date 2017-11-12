@@ -253,7 +253,7 @@ void gen_instr(List* instr_list, AstNode* node)
     AstNode* init_expr = ATTR(node, ast_node, init_expr);
     if(init_expr)
     {
-      gen_load_rvalue(instr_list, init_expr);
+      gen_instr(instr_list, init_expr);
     }
   }
   else if(node->kind == AstNode_ret_stmt)
@@ -786,8 +786,8 @@ void sort_block_nodes(AstNode* node)
       }
       else if(stmt->kind == AstNode_stmt
           || stmt->kind == AstNode_while_stmt || stmt->kind == AstNode_if_stmt
-          || stmt->kind == AstNode_break_stmt || stmt->kind == AstNode_continue_stmt
-          || stmt->kind == AstNode_ret_stmt)
+          || stmt->kind == AstNode_ret_stmt || stmt->kind == AstNode_break_stmt || stmt->kind == AstNode_continue_stmt
+          || stmt->kind == AstNode_var_decl)
       {
         append_list_item(stmts_list, list_item);
       }

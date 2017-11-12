@@ -697,7 +697,7 @@ bool name_ident(AstNode* node)
         AstNode* id_copy = new_ast_node(Ast_gen0, AstNode_id, ret_var->src_loc);
         ATTR(id_copy, str_val, name) = ATTR(ret_var, str_val, name);
 
-        AstNode* assign = new_ast_node(Ast_gen0, AstNode_bin_expr, node->src_loc);
+        AstNode* assign = new_ast_node(Ast_gen0, AstNode_bin_expr, ret_expr->src_loc);
         ATTR(assign, op_kind, op_kind) = Operator_assign;
         ATTR(assign, ast_node, left_operand) = id_copy;
         ATTR(assign, ast_node, right_operand) = ret_expr;
@@ -1023,7 +1023,7 @@ bool eval_types(AstNode* node)
       if(success = eval_types(init_expr))
       {
         Type* var_ty = ATTR(node, type, type);
-        Type* init_expr_ty = ATTR(init_expr, type, eval_type);
+        Type* init_expr_ty = ATTR(init_expr, type, type);
         success = type_unif(var_ty, init_expr_ty);
         if(!success)
         {

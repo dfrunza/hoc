@@ -843,7 +843,8 @@ void build_types(AstNode* node)
     build_types(return_var);
     Type* ret_type = ATTR(return_var, type, eval_type);
 
-    ATTR(node, type, type) = ATTR(node, type, eval_type) = new_proc_type(args_type, ret_type);
+    ATTR(node, type, type) = new_proc_type(args_type, ret_type);
+    ATTR(node, type, eval_type) = basic_type_void;
 
     build_types(ATTR(node, ast_node, body));
   }
@@ -859,13 +860,8 @@ void build_types(AstNode* node)
     if(ret_expr)
     {
       build_types(ret_expr);
-      ATTR(node, type, type) = new_typevar();
     }
-    else
-    {
-      ATTR(node, type, type) = basic_type_void;
-    }
-    ATTR(node, type, eval_type) = ATTR(node, type, type);
+    ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
   }
   else if(node->kind == AstNode_proc_occur)
   {
@@ -1257,7 +1253,6 @@ bool eval_types(AstNode* node)
   else if(node->kind == AstNode_ret_stmt)
   {
     AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
-    Type* ret_ty = ATTR(node, type, eval_type);
     Type* ret_expr_ty = basic_type_void;
     if(ret_expr)
     {
@@ -1269,18 +1264,13 @@ bool eval_types(AstNode* node)
 
     if(success)
     {
-      if(success = type_unif(ret_ty, ret_expr_ty))
+      AstNode* proc = ATTR(node, ast_node, proc_decl);
+      Type* proc_ret_ty = ATTR(proc, type, type)->proc.ret;
+      success = type_unif(ret_expr_ty, proc_ret_ty);
+      if(!success)
       {
-        AstNode* proc = ATTR(node, ast_node, proc_decl);
-        Type* proc_ret_ty = ATTR(proc, type, type)->proc.ret;
-        success = type_unif(ret_expr_ty, proc_ret_ty);
-        if(!success)
-        {
-          compile_error(node->src_loc, "type error (return stmt)");
-        }
-      }
-      else
         compile_error(node->src_loc, "type error (return stmt)");
+      }
     }
   }
   else if(node->kind == AstNode_while_stmt)

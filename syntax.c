@@ -1560,11 +1560,7 @@ bool parse_node(TokenStream* input, AstNode** node)
   }
   else if(input->token.kind == Token_proc)
   {
-    if(success = get_next_token(input) && parse_proc(input, node))
-    {
-      AstNode* stmt = *node;
-      ATTR(*node = new_ast_node(Ast_gen0, AstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
-    }
+    success = get_next_token(input) && parse_proc(input, node);
   }
   else if(input->token.kind == Token_if)
   {

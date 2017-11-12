@@ -177,9 +177,9 @@ void gen_instr(List* instr_list, AstNode* node)
         list_item && (list_item->prev != procs_list->last);
         list_item = list_item->next)
     {
-      AstNode* stmt = ITEM(list_item, ast_node);
-      assert(ATTR(stmt, ast_node, stmt)->kind == AstNode_proc_decl);
-      gen_instr(instr_list, stmt);
+      AstNode* proc = ITEM(list_item, ast_node);
+      assert(proc->kind == AstNode_proc_decl);
+      gen_instr(instr_list, proc);
     }
   }
   else if(node->kind == AstNode_block)
@@ -252,6 +252,29 @@ void gen_instr(List* instr_list, AstNode* node)
       emit_instr_int32(instr_list, Opcode_STORE, type->width);
       emit_instr_int32(instr_list, Opcode_GROW, -type->width);
     }
+  }
+  else if(node->kind == AstNode_ret_stmt)
+  {
+    AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
+    if(ret_expr)
+    {
+      AstNode* expr = ATTR(ret_expr, ast_node, expr);
+      Type* type = ATTR(expr, type, eval_type);
+
+      gen_load_rvalue(instr_list, expr);
+      gen_load_lvalue(instr_list, ret_expr);
+      emit_instr_int32(instr_list, Opcode_STORE, type->width);
+      emit_instr_int32(instr_list, Opcode_GROW, -type->width);
+    }
+
+    int depth = ATTR(node, int_val, nesting_depth);
+    while(depth-- > 0)
+    {
+      emit_instr(instr_list, Opcode_LEAVE);
+    }
+
+    AstNode* proc = ATTR(node, ast_node, proc_decl);
+    emit_instr_str(instr_list, Opcode_GOTO, ATTR(proc, str_val, label_end));
   }
   else if(node->kind == AstNode_stmt)
   {
@@ -662,27 +685,6 @@ void gen_instr(List* instr_list, AstNode* node)
     emit_instr_int32(instr_list, Opcode_GROW, -link_area->size);
     emit_instr_int32(instr_list, Opcode_GROW, -args_area->size);
   }
-  else if(node->kind == AstNode_ret_stmt)
-  {
-    AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
-    if(ret_expr)
-    {
-      AstNode* expr = ATTR(ret_expr, ast_node, expr);
-      Type* type = ATTR(expr, type, eval_type);
-      gen_load_rvalue(instr_list, expr);
-      gen_load_lvalue(instr_list, ret_expr);
-      emit_instr_int32(instr_list, Opcode_STORE, type->width);
-    }
-
-    int depth = ATTR(node, int_val, nesting_depth);
-    while(depth-- > 0)
-    {
-      emit_instr(instr_list, Opcode_LEAVE);
-    }
-
-    AstNode* proc = ATTR(node, ast_node, proc_decl);
-    emit_instr_str(instr_list, Opcode_GOTO, ATTR(proc, str_val, label_end));
-  }
   else if(node->kind == AstNode_if_stmt)
   {
     gen_load_rvalue(instr_list, ATTR(node, ast_node, cond_expr));
@@ -773,11 +775,13 @@ void sort_block_nodes(AstNode* node)
       ListItem* next_list_item = list_item->next;
       remove_list_item(nodes_list, list_item);
 
-      AstNode* actual_stmt = ATTR(ITEM(list_item, ast_node), ast_node, stmt);
-      if(actual_stmt->kind == AstNode_proc_decl)
+      AstNode* stmt = ITEM(list_item, ast_node);
+      if(stmt->kind == AstNode_proc_decl)
         append_list_item(procs_list, list_item);
-      else
+      else if(stmt->kind == AstNode_stmt)
         append_list_item(stmts_list, list_item);
+      else
+        assert(0);
 
       list_item = next_list_item;
     }

@@ -237,7 +237,9 @@ void gen_instr(List* instr_list, AstNode* node)
       gen_instr(instr_list, stmt);
     }
 
+#if 0
     emit_instr_str(instr_list, Opcode_LABEL, ATTR(node, str_val, label_end));
+#endif
     emit_instr(instr_list, Opcode_RETURN);
 
     List* procs_list = ATTR(body, list, procs);
@@ -284,8 +286,11 @@ void gen_instr(List* instr_list, AstNode* node)
       emit_instr(instr_list, Opcode_LEAVE);
     }
 
+    emit_instr(instr_list, Opcode_RETURN);
+#if 0
     AstNode* proc = ATTR(node, ast_node, proc_decl);
     emit_instr_str(instr_list, Opcode_GOTO, ATTR(proc, str_val, label_end));
+#endif
   }
   else if(node->kind == AstNode_stmt)
   {
@@ -606,6 +611,8 @@ void gen_instr(List* instr_list, AstNode* node)
     }
     else if(bin_op == Operator_cast)
     {
+      gen_load_rvalue(instr_list, right_operand);
+
       if(types_are_equal(left_ty, basic_type_int) && types_are_equal(right_ty, basic_type_float))
       {
         emit_instr(instr_list, Opcode_FLOAT32_TO_INT32);

@@ -169,8 +169,9 @@ proc int floor_log_b(int b, float n)
 }
 
 /* Returns the number of significand 10-base digits */
-proc int fp_bin_to_dec(float v, int* significand, int* exponent)
+proc int fp_bin_to_dec(float v, int* p_significand, int* exponent)
 {
+  var []int significand = (type []int)p_significand;
   var float v_abs = fabs(v);
   var int x = floor_log_b(10, v_abs) + 1;
   *exponent = x;

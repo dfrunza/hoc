@@ -18,9 +18,10 @@ proc void print_str(char* str)
   }
 }
 
-proc void init_intbuf(int* buf, int len, int val)
+proc void init_intbuf(int* p_buf, int len, int val)
 {
   var int i = 0;
+  var []int buf = (type []int)p_buf;
   while(i < len)
   {
     buf[i] = val;
@@ -28,8 +29,9 @@ proc void init_intbuf(int* buf, int len, int val)
   }
 }
 
-proc void digit_to_char(char* buf, int pos, int digit)
+proc void digit_to_char(char* p_buf, int pos, int digit)
 {
+  var []char buf = (type []char)p_buf;
   if((digit >= 0) && (digit <= 9))
   {
     if(digit == 0)
@@ -55,8 +57,9 @@ proc void digit_to_char(char* buf, int pos, int digit)
   }
 }
 
-proc char* int_to_str(char* buf, int buf_len, int i)
+proc char* int_to_str(char* p_buf, int buf_len, int i)
 {
+  var []char buf = (type []char)p_buf;
   var int buf_i = buf_len - 1;
   buf[buf_i] = '\0';
 
@@ -69,14 +72,14 @@ proc char* int_to_str(char* buf, int buf_len, int i)
 
   buf_i = buf_i - 1;
   var int remainder = i % 10;
-  digit_to_char(buf, buf_i, remainder);
+  digit_to_char(p_buf, buf_i, remainder);
 
   while(i > remainder)
   {
     buf_i = buf_i - 1;
     i = (i - remainder) / 10;
     remainder = i % 10;
-    digit_to_char(buf, buf_i, remainder);
+    digit_to_char(p_buf, buf_i, remainder);
   }
 
   if(is_negative)
@@ -85,16 +88,17 @@ proc char* int_to_str(char* buf, int buf_len, int i)
     buf[buf_i] = '-';
   }
 
-  return (buf + (type char*)buf_i);
+  return (p_buf + (type char*)buf_i);
 }
 
-proc void float_to_str(char* buf, int buf_len, float f)
+proc void float_to_str(char* p_buf, int buf_len, float f)
 {
+  var []char buf = (type []char)p_buf;
   var [9]int significand; /* 0-th cell is not used */
-  init_intbuf(significand, 9, 0);
+  init_intbuf((type int*)significand, 9, 0);
   var int exponent = 0;
 
-  var int digit_count = fp_bin_to_dec(f, significand, &exponent);
+  var int digit_count = fp_bin_to_dec(f, (type int*)significand, &exponent);
 
   var int pos = 0;
 
@@ -116,7 +120,7 @@ proc void float_to_str(char* buf, int buf_len, float f)
   {
     while((i <= digit_count) && (exponent > 0))
     {
-      digit_to_char(buf, pos, significand[i]);
+      digit_to_char(p_buf, pos, significand[i]);
       i = i + 1;
       pos = pos + 1;
       exponent = exponent - 1;
@@ -133,7 +137,7 @@ proc void float_to_str(char* buf, int buf_len, float f)
 
   while(i <= digit_count)
   {
-    digit_to_char(buf, pos, significand[i]);
+    digit_to_char(p_buf, pos, significand[i]);
     i = i + 1;
     pos = pos + 1;
   }
@@ -144,8 +148,8 @@ proc void float_to_str(char* buf, int buf_len, float f)
     pos = pos + 1;
 
     var [20]char exponent_buf;
-    var char* exponent_str = "";
-    exponent_str = int_to_str(exponent_buf, 20, exponent);
+    var char* exponent_str = (type char*)"";
+    exponent_str = int_to_str((type char*)exponent_buf, 20, exponent);
     while(*exponent_str != '\0')
     {
       buf[pos] = *exponent_str;
@@ -160,13 +164,13 @@ proc void float_to_str(char* buf, int buf_len, float f)
 proc void print_int(int i)
 {
   var [20]char buf;
-  print_str(int_to_str(buf, 20, i));
+  print_str(int_to_str((type char*)buf, 20, i));
 }
 
 proc void print_float(float f)
 {
   var [20]char buf;
-  float_to_str(buf, 20, f);
-  print_str(buf);
+  float_to_str((type char*)buf, 20, f);
+  print_str((type char*)buf);
 }
 

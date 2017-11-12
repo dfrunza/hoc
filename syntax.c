@@ -912,14 +912,20 @@ bool parse_var(TokenStream* input, AstNode** node)
         if((success = get_next_token(input)) && input->token.kind == Token_eq
             && (success = get_next_token(input)))
         {
+          AstNode* id_copy = new_ast_node(Ast_gen0, AstNode_id, id->src_loc);
+          ATTR(id_copy, str_val, name) = ATTR(id, str_val, name);
+
+          AstNode* assign = new_ast_node(Ast_gen0, AstNode_bin_expr, clone_source_loc(&input->src_loc));
+          ATTR(assign, op_kind, op_kind) = Operator_assign;
+          ATTR(assign, ast_node, left_operand) = id_copy;
+
           AstNode* init_expr = 0;
           if(success = parse_expr(input, &init_expr))
           {
             if(init_expr)
             {
-              AstNode* assign = ATTR(var_decl, ast_node, init_expr)
-                = new_ast_node(Ast_gen0, AstNode_assign, clone_source_loc(&input->src_loc));
-              ATTR(assign, ast_node, expr) = init_expr;
+              ATTR(assign, ast_node, right_operand) = init_expr;
+              ATTR(var_decl, ast_node, init_expr) = assign;
             }
             else
             {

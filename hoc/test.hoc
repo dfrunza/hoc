@@ -9,7 +9,7 @@ include "fizzbuzz.hoc";
 proc void main()
 {
   var int i = 123;
-  var int j = i = 99;
+  var int j = i = 999;
 }
 
 main();

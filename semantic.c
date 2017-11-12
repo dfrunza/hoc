@@ -377,14 +377,9 @@ bool name_ident(AstNode* node)
       if(success = name_ident(type))
       {
         AstNode* init_expr = ATTR(var_decl_gen1, ast_node, init_expr) = ATTR(&var_decl_gen0, ast_node, init_expr);
-        if(init_expr && (success = name_ident(init_expr)))
+        if(init_expr)
         {
-          Symbol* occur_sym = ATTR(init_expr, symbol, occur_sym)
-            = add_occur_symbol(name, node->src_loc, symbol_table->active_scope, Symbol_var);
-          occur_sym->ast_node = init_expr;
-          ATTR(init_expr, symbol, decl_sym) = occur_sym->decl = decl_sym;
-          assert(decl_sym->nesting_depth <= occur_sym->nesting_depth);
-          occur_sym->decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
+          success = name_ident(init_expr);
         }
       }
     }

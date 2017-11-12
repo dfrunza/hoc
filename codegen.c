@@ -257,13 +257,7 @@ void gen_instr(List* instr_list, AstNode* node)
     AstNode* init_expr = ATTR(node, ast_node, init_expr);
     if(init_expr)
     {
-      AstNode* expr = ATTR(init_expr, ast_node, expr);
-      Type* type = ATTR(init_expr, type, eval_type);
-
-      gen_load_rvalue(instr_list, expr);
-      gen_load_lvalue(instr_list, init_expr);
-      emit_instr_int32(instr_list, Opcode_STORE, type->width);
-      emit_instr_int32(instr_list, Opcode_GROW, -type->width);
+      gen_load_rvalue(instr_list, init_expr);
     }
   }
   else if(node->kind == AstNode_ret_stmt)

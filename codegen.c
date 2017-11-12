@@ -75,8 +75,7 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
 {
   assert(node->gen == Ast_gen1);
 
-  if(node->kind == AstNode_var_occur || node->kind == AstNode_str
-      || node->kind == AstNode_assign)
+  if(node->kind == AstNode_var_occur || node->kind == AstNode_str)
   {
     DataArea* link = ATTR(node, symbol, occur_sym)->data_area;
     DataArea* data = ATTR(node, symbol, decl_sym)->data_area;
@@ -237,9 +236,6 @@ void gen_instr(List* instr_list, AstNode* node)
       gen_instr(instr_list, stmt);
     }
 
-#if 0
-    emit_instr_str(instr_list, Opcode_LABEL, ATTR(node, str_val, label_end));
-#endif
     emit_instr(instr_list, Opcode_RETURN);
 
     List* procs_list = ATTR(body, list, procs);
@@ -265,13 +261,7 @@ void gen_instr(List* instr_list, AstNode* node)
     AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
     if(ret_expr)
     {
-      AstNode* expr = ATTR(ret_expr, ast_node, expr);
-      Type* type = ATTR(expr, type, eval_type);
-
-      gen_load_rvalue(instr_list, expr);
-      gen_load_lvalue(instr_list, ret_expr);
-      emit_instr_int32(instr_list, Opcode_STORE, type->width);
-      emit_instr_int32(instr_list, Opcode_GROW, -type->width);
+      gen_instr(instr_list, ret_expr);
     }
 
     int depth = ATTR(node, int_val, nesting_depth);
@@ -281,10 +271,6 @@ void gen_instr(List* instr_list, AstNode* node)
     }
 
     emit_instr(instr_list, Opcode_RETURN);
-#if 0
-    AstNode* proc = ATTR(node, ast_node, proc_decl);
-    emit_instr_str(instr_list, Opcode_GOTO, ATTR(proc, str_val, label_end));
-#endif
   }
   else if(node->kind == AstNode_stmt)
   {
@@ -800,7 +786,8 @@ void sort_block_nodes(AstNode* node)
       }
       else if(stmt->kind == AstNode_stmt
           || stmt->kind == AstNode_while_stmt || stmt->kind == AstNode_if_stmt
-          || stmt->kind == AstNode_break_stmt || stmt->kind == AstNode_continue_stmt)
+          || stmt->kind == AstNode_break_stmt || stmt->kind == AstNode_continue_stmt
+          || stmt->kind == AstNode_ret_stmt)
       {
         append_list_item(stmts_list, list_item);
       }

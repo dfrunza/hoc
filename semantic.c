@@ -429,7 +429,7 @@ bool name_ident(AstNode* node)
       decl_sym->ast_node = proc_decl_gen1;
 
       List* formal_args = ATTR(proc_decl_gen1, list, formal_args) = ATTR(&proc_decl_gen0, list, formal_args);
-      AstNode* return_var = ATTR(proc_decl_gen1, ast_node, return_var) = ATTR(&proc_decl_gen0, ast_node, return_var);
+      AstNode* ret_var = ATTR(proc_decl_gen1, ast_node, ret_var) = ATTR(&proc_decl_gen0, ast_node, ret_var);
       AstNode* body = ATTR(proc_decl_gen1, ast_node, body) = ATTR(&proc_decl_gen0, ast_node, body);
 
       begin_scope(Scope_proc, proc_decl_gen1);
@@ -444,31 +444,9 @@ bool name_ident(AstNode* node)
 
       if(success)
       {
-        success = name_ident(return_var) && name_ident_block(body);
+        success = name_ident(ret_var) && name_ident_block(body);
       }
       end_scope();
-    }
-  }
-  else if(node->kind == AstNode_assign)
-  {
-    AstNode assign_gen0 = *node;
-    AstNode* assign_gen1 = make_ast_node(Ast_gen1, node, AstNode_assign);
-
-    AstNode* expr = ATTR(assign_gen1, ast_node, expr) = ATTR(&assign_gen0, ast_node, expr);
-    success = name_ident(expr);
-  }
-  else if(node->kind == AstNode_return_var)
-  {
-    AstNode return_var_gen0 = *node;
-    AstNode* return_var_gen1 = make_ast_node(Ast_gen1, node, AstNode_return_var);
-
-    AstNode* ret_type = ATTR(return_var_gen1, ast_node, type) = ATTR(&return_var_gen0, ast_node, type);
-    AstNode* proc = ATTR(return_var_gen1, ast_node, proc_decl) = ATTR(&return_var_gen0, ast_node, proc_decl);
-    if(success = name_ident(ret_type))
-    {
-      Symbol* decl_sym = add_decl_symbol(0, node->src_loc, ATTR(proc, scope, scope), Symbol_return_var);
-      decl_sym->ast_node = return_var_gen1;
-      ATTR(return_var_gen1, symbol, decl_sym) = decl_sym;
     }
   }
   else if(node->kind == AstNode_proc_occur)
@@ -711,18 +689,24 @@ bool name_ident(AstNode* node)
     if(scope)
     {
       AstNode* proc = ATTR(ret_stmt_gen1, ast_node, proc_decl) = scope->ast_node;
-      AstNode* return_var = ATTR(proc, ast_node, return_var);
 
       AstNode* ret_expr = ATTR(ret_stmt_gen1, ast_node, ret_expr) = ATTR(&ret_stmt_gen0, ast_node, ret_expr);
-      if(ret_expr && (success = name_ident(ret_expr)))
+      if(ret_expr)
       {
-        Symbol* decl_sym = ATTR(ret_expr, symbol, decl_sym) = ATTR(return_var, symbol, decl_sym);
-        Symbol* occur_sym = ATTR(ret_expr, symbol, occur_sym)
-          = add_occur_symbol(0, node->src_loc, symbol_table->active_scope, Symbol_return_var);
-        occur_sym->ast_node = ret_expr;
-        occur_sym->decl = decl_sym;
-        assert(decl_sym->nesting_depth <= occur_sym->nesting_depth);
-        occur_sym->decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
+        AstNode* ret_var = ATTR(proc, ast_node, ret_var);
+        AstNode* id_copy = new_ast_node(Ast_gen0, AstNode_id, ret_var->src_loc);
+        ATTR(id_copy, str_val, name) = ATTR(ret_var, str_val, name);
+
+        AstNode* assign = new_ast_node(Ast_gen0, AstNode_bin_expr, node->src_loc);
+        ATTR(assign, op_kind, op_kind) = Operator_assign;
+        ATTR(assign, ast_node, left_operand) = id_copy;
+        ATTR(assign, ast_node, right_operand) = ret_expr;
+
+        ret_expr = new_ast_node(Ast_gen0, AstNode_stmt, assign->src_loc);
+        ATTR(ret_expr, ast_node, stmt) = assign;
+        ATTR(ret_stmt_gen1, ast_node, ret_expr) = ret_expr;
+
+        success = name_ident(ret_expr);
       }
     }
     else
@@ -762,7 +746,7 @@ void build_types(AstNode* node)
     if(actual_stmt)
     {
       build_types(actual_stmt);
-      ATTR(node, type, type) = new_proc_type(ATTR(actual_stmt, type, eval_type), basic_type_void);
+      ATTR(node, type, type) = ATTR(actual_stmt, type, eval_type);//new_proc_type(ATTR(actual_stmt, type, eval_type), basic_type_void);
       ATTR(node, type, eval_type) = basic_type_void;
     }
   }
@@ -783,13 +767,6 @@ void build_types(AstNode* node)
   {
     AstNode* var_decl = ATTR(node, ast_node, var_decl);
     ATTR(node, type, eval_type) = ATTR(node, type, type) = ATTR(var_decl, type, type);
-  }
-  else if(node->kind == AstNode_assign)
-  {
-    AstNode* expr = ATTR(node, ast_node, expr);
-    build_types(expr);
-    ATTR(node, type, type) = ATTR(expr, type, type);
-    ATTR(node, type, eval_type) = ATTR(expr, type, eval_type);
   }
   else if(node->kind == AstNode_bin_expr)
   {
@@ -838,20 +815,14 @@ void build_types(AstNode* node)
       }
     }
 
-    AstNode* return_var = ATTR(node, ast_node, return_var);
-    build_types(return_var);
-    Type* ret_type = ATTR(return_var, type, eval_type);
+    AstNode* ret_var = ATTR(node, ast_node, ret_var);
+    build_types(ret_var);
+    Type* ret_type = ATTR(ret_var, type, type);
 
     ATTR(node, type, type) = new_proc_type(args_type, ret_type);
     ATTR(node, type, eval_type) = basic_type_void;
 
     build_types(ATTR(node, ast_node, body));
-  }
-  else if(node->kind == AstNode_return_var)
-  {
-    AstNode* type = ATTR(node, ast_node, type);
-    build_types(type);
-    ATTR(node, type, type) = ATTR(node, type, eval_type) = ATTR(type, type, type);
   }
   else if(node->kind == AstNode_ret_stmt)
   {
@@ -1261,7 +1232,7 @@ bool eval_types(AstNode* node)
     {
       if(success = eval_types(ret_expr))
       {
-        ret_expr_ty = ATTR(ret_expr, type, eval_type);
+        ret_expr_ty = ATTR(ret_expr, type, type);
       }
     }
 
@@ -1312,10 +1283,6 @@ bool eval_types(AstNode* node)
         compile_error(cond_expr->src_loc, "bool type expected");
       }
     }
-  }
-  else if(node->kind == AstNode_assign)
-  {
-    success = eval_types(ATTR(node, ast_node, expr));
   }
   else if(node->kind == AstNode_lit)
   {
@@ -1435,10 +1402,10 @@ bool resolve_types(AstNode* node)
     {
       ATTR(node, symbol, decl_sym)->type = ATTR(node, type, type);
 
-      AstNode* return_var = ATTR(node, ast_node, return_var);
-      if(success = node_resolve_type(return_var))
+      AstNode* ret_var = ATTR(node, ast_node, ret_var);
+      if(success = node_resolve_type(ret_var))
       {
-        ATTR(return_var, symbol, decl_sym)->type = ATTR(return_var, type, type);
+        ATTR(ret_var, symbol, decl_sym)->type = ATTR(ret_var, type, type);
 
         AstNode* body = ATTR(node, ast_node, body);
         success = resolve_types(body) && node_resolve_type(body);
@@ -1501,14 +1468,6 @@ bool resolve_types(AstNode* node)
     if(success = node_resolve_type(node))
     {
       ATTR(node, symbol, decl_sym)->type = ATTR(node, type, type);
-    }
-  }
-  else if(node->kind == AstNode_assign)
-  {
-    if(success = resolve_types(ATTR(node, ast_node, expr)))
-    {
-      ATTR(node, symbol, decl_sym)->type = ATTR(node, type, type);
-      ATTR(node, symbol, occur_sym)->type = ATTR(node, type, type);
     }
   }
   else if(node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt)
@@ -1741,10 +1700,6 @@ bool check_types(AstNode* node)
     {
       success = check_types(else_body);
     }
-  }
-  else if(node->kind == AstNode_assign)
-  {
-    success = check_types(ATTR(node, ast_node, expr));
   }
   else if(node->kind == AstNode_lit)
   {

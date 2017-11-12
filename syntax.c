@@ -925,7 +925,7 @@ bool parse_var(TokenStream* input, AstNode** node)
             if(init_expr)
             {
               ATTR(assign, ast_node, right_operand) = init_expr;
-              ATTR(var_decl, ast_node, init_expr) = assign;
+              init_expr = ATTR(var_decl, ast_node, init_expr) = assign;
             }
             else
             {
@@ -1175,15 +1175,15 @@ bool parse_proc(TokenStream* input, AstNode** node)
   bool success = true;
 
   AstNode* proc = *node = new_ast_node(Ast_gen0, AstNode_proc_decl, clone_source_loc(&input->src_loc));
-  AstNode* return_type = 0;
-  if(success = parse_type(input, &return_type))
+  AstNode* ret_type = 0;
+  if(success = parse_type(input, &ret_type))
   {
-    if(return_type)
+    if(ret_type)
     {
-      AstNode* return_var = ATTR(proc, ast_node, return_var)
-        = new_ast_node(Ast_gen0, AstNode_return_var, clone_source_loc(return_type->src_loc));
-      ATTR(return_var, ast_node, type) = return_type;
-      ATTR(return_var, ast_node, proc_decl) = proc;
+      AstNode* ret_var = ATTR(proc, ast_node, ret_var) = new_ast_node(Ast_gen0, AstNode_var_decl, ret_type->src_loc);
+      AstNode* ret_id = ATTR(ret_var, ast_node, id) = new_ast_node(Ast_gen0, AstNode_id, ret_type->src_loc);
+      ATTR(ret_id, str_val, name) = make_temp_name("ret");
+      ATTR(ret_var, ast_node, type) = ret_type;
 
       if(input->token.kind == Token_id)
       {
@@ -1465,9 +1465,7 @@ bool parse_return(TokenStream* input, AstNode** node)
       {
         if(ret_expr)
         {
-          AstNode* assign = ATTR(ret_stmt, ast_node, ret_expr)
-            = new_ast_node(Ast_gen0, AstNode_assign, clone_source_loc(&input->src_loc));
-          ATTR(assign, ast_node, expr) = ret_expr;
+          ATTR(ret_stmt, ast_node, ret_expr) = ret_expr;
         }
       }
     }
@@ -1556,6 +1554,7 @@ bool parse_node(TokenStream* input, AstNode** node)
   {
     if(success = get_next_token(input) && parse_var(input, node) && consume_semicolon(input))
     {
+      //todo
       AstNode* stmt = *node;
       ATTR(*node = new_ast_node(Ast_gen0, AstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
     }
@@ -1588,11 +1587,7 @@ bool parse_node(TokenStream* input, AstNode** node)
 #endif
   else if(input->token.kind == Token_return)
   {
-    if(success = parse_return(input, node) && consume_semicolon(input))
-    {
-      AstNode* stmt = *node;
-      ATTR(*node = new_ast_node(Ast_gen0, AstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
-    }
+    success = parse_return(input, node) && consume_semicolon(input);
   }
   else if(input->token.kind == Token_break)
   {

@@ -181,7 +181,7 @@ void build_runtime()
       DataArea* ret_area = &scope->ret_area;
       ret_area->subareas = new_list(arena, List_data_area);
       append_list_elem(scope->pre_fp_areas, ret_area, List_data_area);
-      compute_decl_areas(scope, (SymbolKind[]){Symbol_return_var, Symbol_None}, ret_area);
+      compute_decl_areas(scope, (SymbolKind[]){Symbol_ret_var, Symbol_None}, ret_area);
 
       DataArea* args_area = &scope->args_area;
       args_area->subareas = new_list(arena, List_data_area);
@@ -213,7 +213,7 @@ void build_runtime()
       link_area->subareas = new_list(arena, List_data_area);
       append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
       compute_occur_areas(scope, (SymbolKind[])
-          {Symbol_var, Symbol_str, Symbol_return_var, Symbol_None}, link_area);
+          {Symbol_var, Symbol_str, Symbol_ret_var, Symbol_None}, link_area);
 
       DataArea* ctrl_area = &scope->ctrl_area;
       append_list_elem(scope->pre_fp_areas, ctrl_area, List_data_area);

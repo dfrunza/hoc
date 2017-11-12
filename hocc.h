@@ -495,6 +495,7 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_module),\
   ENUM_MEMBER(AstNode_include),\
   ENUM_MEMBER(AstNode_block),\
+  ENUM_MEMBER(AstNode_stmt),\
   ENUM_MEMBER(AstNode_var_decl),\
   ENUM_MEMBER(AstNode_var_occur),\
   ENUM_MEMBER(AstNode_proc_decl),\

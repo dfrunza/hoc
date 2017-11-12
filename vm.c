@@ -622,6 +622,7 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       {
         machine->fp = memory_at(arg_sp, int32, 0);
         machine->sp = arg_sp;
+        clear_memory(machine, machine->sp, sizeof(int32));
         machine->ip++;
       }
       else

@@ -6,14 +6,11 @@ include "fibo.hoc";
 include "fizzbuzz.hoc";
 */
 
-proc int foo()
-{
-  return 123;
-}
-
 proc void main()
 {
-  var int i = 1;
+  var int b = 1;
+  var int c = 2;
 }
 
 main();
+

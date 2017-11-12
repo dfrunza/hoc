@@ -108,7 +108,7 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
     DataArea* data_area = decl_sym->data_area;
 
     gen_load_lvalue(instr_list, node);
-    emit_instr_int32(instr_list, Opcode_LOAD, data_area->size);
+    emit_instr_int32(instr_list, Opcode_LOAD, data_area->size); // todo: incorrect size?
   }
   else if(node->kind == AstNode_proc_occur)
   {
@@ -154,8 +154,35 @@ void gen_instr(List* instr_list, AstNode* node)
 
   if(node->kind == AstNode_module)
   {
-    gen_instr(instr_list, ATTR(node, ast_node, body));
+    AstNode* body = ATTR(node, ast_node, body);
+    Scope* scope = ATTR(body, scope, scope);
+    DataArea* local_area = &scope->local_area;
+
+    emit_instr(instr_list, Opcode_ENTER);
+    emit_instr_int32(instr_list, Opcode_GROW, local_area->size);
+
+    List* stmts_list = ATTR(body, list, stmts);
+    for(ListItem* list_item = stmts_list->first;
+        list_item && (list_item->prev != stmts_list->last);
+        list_item = list_item->next)
+    {
+      AstNode* stmt = ITEM(list_item, ast_node); 
+      assert(stmt->kind != AstNode_proc_decl);
+      gen_instr(instr_list, stmt);
+    }
+
+    emit_instr(instr_list, Opcode_LEAVE);
     emit_instr(instr_list, Opcode_HALT);
+
+    List* procs_list = ATTR(body, list, procs);
+    for(ListItem* list_item = procs_list->first;
+        list_item && (list_item->prev != procs_list->last);
+        list_item = list_item->next)
+    {
+      AstNode* proc = ITEM(list_item, ast_node);
+      assert(proc->kind == AstNode_proc_decl);
+      gen_instr(instr_list, proc);
+    }
   }
   else if(node->kind == AstNode_block)
   {
@@ -643,7 +670,7 @@ void gen_instr(List* instr_list, AstNode* node)
 
       gen_load_rvalue(instr_list, expr);
       gen_load_lvalue(instr_list, return_expr);
-      emit_instr_int32(instr_list, Opcode_STORE, ret_area->size);
+      emit_instr_int32(instr_list, Opcode_STORE, ret_area->size); //todo: incorrect size
     }
 
     int depth = ATTR(node, int_val, nesting_depth);
@@ -709,10 +736,65 @@ void gen_instr(List* instr_list, AstNode* node)
     assert(0);
 }
 
+void sort_block_nodes(AstNode* node)
+{
+  if(node->kind == AstNode_module)
+  {
+    sort_block_nodes(ATTR(node, ast_node, body));
+  }
+  else if(node->kind == AstNode_proc_decl)
+  {
+    sort_block_nodes(ATTR(node, ast_node, body));
+  }
+  else if(node->kind == AstNode_while_stmt)
+  {
+    sort_block_nodes(ATTR(node, ast_node, body));
+  }
+  else if(node->kind == AstNode_if_stmt)
+  {
+    sort_block_nodes(ATTR(node, ast_node, body));
+    AstNode* else_body = ATTR(node, ast_node, else_body);
+    if(else_body)
+    {
+      sort_block_nodes(ATTR(node, ast_node, else_body));
+    }
+  }
+  else if(node->kind == AstNode_block)
+  {
+    List* procs_list = ATTR(node, list, procs) = new_list(arena, List_ast_node);
+    List* stmts_list = ATTR(node, list, stmts) = new_list(arena, List_ast_node);
+
+    List* nodes_list = ATTR(node, list, nodes);
+    for(ListItem* list_item = nodes_list->first;
+        list_item;)
+    {
+      ListItem* next_list_item = list_item->next;
+      remove_list_item(nodes_list, list_item);
+
+      AstNode* stmt = ITEM(list_item, ast_node);
+      if(stmt->kind == AstNode_proc_decl)
+        append_list_item(procs_list, list_item);
+      else
+        append_list_item(stmts_list, list_item);
+
+      list_item = next_list_item;
+    }
+
+    concat_lists(stmts_list, procs_list);
+
+    *nodes_list = *stmts_list;
+    if(procs_list->last)
+    {
+      nodes_list->last = procs_list->last;
+    }
+  }
+}
+
 void gen_program(VmProgram* vm_program, AstNode* module)
 {
   assert(module->kind == AstNode_module);
 
+  sort_block_nodes(module);
   gen_instr(vm_program->instr_list, module);
 
   AstNode* body = ATTR(module, ast_node, body);
@@ -1154,11 +1236,11 @@ void print_code(VmProgram* vm_program)
   vm_program->text_len = text_len;
 }
 
-void build_gen_labels(AstNode* node)
+void gen_labels(AstNode* node)
 {
   if(node->kind == AstNode_module)
   {
-    build_gen_labels(ATTR(node, ast_node, body));
+    gen_labels(ATTR(node, ast_node, body));
   }
   else if(node->kind == AstNode_block)
   {
@@ -1166,17 +1248,17 @@ void build_gen_labels(AstNode* node)
         list_item;
         list_item = list_item->next)
     {
-      build_gen_labels(ITEM(list_item, ast_node));
+      gen_labels(ITEM(list_item, ast_node));
     }
   }
   else if(node->kind == AstNode_proc_decl)
   {
     String* label = str_new(arena);
     str_append(label, ATTR(node, str_val, name));
-    str_append(label, ".proc-end");
+    str_append(label, "$proc_end");
     ATTR(node, str_val, label_end) = str_cap(label);
 
-    build_gen_labels(ATTR(node, ast_node, body));
+    gen_labels(ATTR(node, ast_node, body));
   }
   else if(node->kind == AstNode_bin_expr)
   {
@@ -1184,60 +1266,60 @@ void build_gen_labels(AstNode* node)
 
     String* label = str_new(arena);
     str_append(label, label_id);
-    str_append(label, ".logic-end");
+    str_append(label, "$logic_end");
     ATTR(node, str_val, label_end) = str_cap(label);
 
-    build_gen_labels(ATTR(node, ast_node, left_operand));
-    build_gen_labels(ATTR(node, ast_node, right_operand));
+    gen_labels(ATTR(node, ast_node, left_operand));
+    gen_labels(ATTR(node, ast_node, right_operand));
   }
   else if(node->kind == AstNode_un_expr)
   {
-    build_gen_labels(ATTR(node, ast_node, operand));
+    gen_labels(ATTR(node, ast_node, operand));
   }
   else if(node->kind == AstNode_if_stmt)
   {
-    build_gen_labels(ATTR(node, ast_node, cond_expr));
+    gen_labels(ATTR(node, ast_node, cond_expr));
 
     char* label_id = make_unique_label();
 
     String* label = str_new(arena);
     str_append(label, label_id);
-    str_append(label, ".if-else");
+    str_append(label, "$if_else");
     ATTR(node, str_val, label_else) = str_cap(label);
 
     label = str_new(arena);
     str_append(label, label_id);
-    str_append(label, ".if-end");
+    str_append(label, "$if_end");
     ATTR(node, str_val, label_end) = str_cap(label);
 
-    build_gen_labels(ATTR(node, ast_node, body));
+    gen_labels(ATTR(node, ast_node, body));
 
     AstNode* else_body = ATTR(node, ast_node, else_body);
     if(else_body)
     {
-      build_gen_labels(else_body);
+      gen_labels(else_body);
     }
   }
   else if(node->kind == AstNode_while_stmt)
   {
-    build_gen_labels(ATTR(node, ast_node, cond_expr));
+    gen_labels(ATTR(node, ast_node, cond_expr));
 
     char* label_id = make_unique_label();
 
     String* label = str_new(arena);
     str_append(label, label_id);
-    str_append(label, ".while-eval");
+    str_append(label, "$while_eval");
     ATTR(node, str_val, label_eval) = str_cap(label);
 
     label = str_new(arena);
     str_append(label, label_id);
-    str_append(label, ".while-break");
+    str_append(label, "$while_break");
     ATTR(node, str_val, label_break) = str_cap(label);
 
     AstNode* body = ATTR(node, ast_node, body);
     if(body)
     {
-      build_gen_labels(body);
+      gen_labels(body);
     }
   }
   else if(node->kind == AstNode_proc_occur)
@@ -1246,7 +1328,7 @@ void build_gen_labels(AstNode* node)
         list_item;
         list_item = list_item->next)
     {
-      build_gen_labels(ITEM(list_item, ast_node));
+      gen_labels(ITEM(list_item, ast_node));
     }
   }
   else if(node->kind == AstNode_return_stmt)
@@ -1254,7 +1336,7 @@ void build_gen_labels(AstNode* node)
     AstNode* return_expr = ATTR(node, ast_node, return_expr);
     if(return_expr)
     {
-      build_gen_labels(return_expr);
+      gen_labels(return_expr);
     }
   }
   else if(node->kind == AstNode_var_decl)
@@ -1262,9 +1344,8 @@ void build_gen_labels(AstNode* node)
     AstNode* init_expr = ATTR(node, ast_node, init_expr);
     if(init_expr)
     {
-      build_gen_labels(init_expr);
+      gen_labels(init_expr);
     }
   }
 }
-
 

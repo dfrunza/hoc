@@ -199,7 +199,7 @@ void build_runtime()
 
       DataArea* local_area = &scope->local_area;
       local_area->subareas = new_list(arena, List_data_area);
-      append_list_elem(scope->pre_fp_areas, local_area, List_data_area);
+      append_list_elem(scope->post_fp_areas, local_area, List_data_area);
       compute_decl_areas(scope, (SymbolKind[]){Symbol_var, Symbol_None}, local_area);
 
       compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);

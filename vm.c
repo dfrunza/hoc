@@ -77,7 +77,9 @@ void clear_memory(HocMachine* machine, int base, int size)
     base = t;
   }
   for(int i = base; i < new_base; i++)
+  {
     machine->memory[i] = 0xcd;
+  }
 }
 
 int32 offset_register(int32 reg, int32 offset)
@@ -593,6 +595,7 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
         machine->ip = memory_at(arg_sp, int32, 0);
         machine->sp = memory_at(arg_sp, int32, 1);
         machine->fp = memory_at(arg_sp, int32, 2);
+        clear_memory(machine, machine->sp, 3*sizeof(int32));
       }
       else
         return Result_InvalidMemoryAccess;

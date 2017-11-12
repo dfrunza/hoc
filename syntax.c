@@ -211,7 +211,7 @@ bool parse_actual_arg_list(TokenStream* input, List* args)
   return success;
 }
 
-bool parse_node_list(TokenStream* input, List* nodes/*, List* procs, List* stmts*/)
+bool parse_node_list(TokenStream* input, List* nodes)
 {
   bool success = true;
 
@@ -241,8 +241,6 @@ bool parse_block(TokenStream* input, AstNode** node)
   {
     AstNode* block = *node = new_ast_node(Ast_gen0, AstNode_block, clone_source_loc(&input->src_loc));
     List* nodes = ATTR(block, list, nodes) = new_list(arena, List_ast_node);
-    List* procs = ATTR(block, list, procs) = new_list(arena, List_ast_node);
-    List* stmts = ATTR(block, list, stmts) = new_list(arena, List_ast_node);
 
     if(success = get_next_token(input) && parse_node_list(input, nodes))
     {
@@ -1543,7 +1541,7 @@ bool parse_break(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool parse_node(TokenStream* input, AstNode** node/*, List* procs, List* stmts*/)
+bool parse_node(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;

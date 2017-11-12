@@ -447,12 +447,19 @@ void remove_list_item(List* list, ListItem* item)
   if(item == list->first && item == list->last)
     list->first = list->last = 0;
   else if(item == list->first)
+  {
     list->first = item->next;
+    if(list->first)
+      list->first->prev = 0;
+  }
   else if(item == list->last)
+  {
     list->last = item->prev;
+    if(list->last)
+      list->last->next = 0;
+  }
 
-  /* NOTE(to myself): Don't nullify the item->next and item->prev pointers;
-   * they may be needed in an iteration loop */
+  item->next = item->prev = 0;
 }
 
 void append_list_item(List* list, ListItem* item)
@@ -509,5 +516,17 @@ void replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
   }
   else
     list_b->last = list_a->last;
+}
+
+void concat_lists(List* list_a, List* list_b)
+{
+  ListItem* last_a_item = list_a->last;
+  ListItem* first_b_item = list_b->first;
+
+  if(last_a_item)
+    last_a_item->next = list_b->first;
+
+  if(first_b_item)
+    first_b_item->prev = last_a_item;
 }
 

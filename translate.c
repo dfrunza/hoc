@@ -973,19 +973,12 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_ast_node;
       attr->name = AstAttributeName_body;
-
-#if 0
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_entry_point;
-#endif
     }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_block;
-      kind->attr_count = 4;
+      kind->attr_count = 6;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -994,6 +987,16 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_list;
       attr->name = AstAttributeName_nodes;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_list;
+      attr->name = AstAttributeName_stmts;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_list;
+      attr->name = AstAttributeName_procs;
       
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -1830,7 +1833,7 @@ bool translate(char* file_path, char* hoc_text, VmProgram** vm_program)
           DEBUG_print_arena_usage(arena, "arena");
         }/*<<<*/
 
-        build_gen_labels(module);
+        gen_labels(module);
         gen_program(*vm_program, module);
         if(DEBUG_enabled)/*>>>*/
         {

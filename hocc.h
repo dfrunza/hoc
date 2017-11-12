@@ -365,7 +365,6 @@ typedef struct Scope
 
   List* decls[Symbol_Count];
   List* occurs[Symbol_Count];
-  //List* stmts;
 
   List* pre_fp_areas;
   List* post_fp_areas;

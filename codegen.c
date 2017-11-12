@@ -177,9 +177,9 @@ void gen_instr(List* instr_list, AstNode* node)
         list_item && (list_item->prev != procs_list->last);
         list_item = list_item->next)
     {
-      AstNode* proc = ITEM(list_item, ast_node);
-      assert(proc->kind == AstNode_proc_decl);
-      gen_instr(instr_list, proc);
+      AstNode* stmt = ITEM(list_item, ast_node);
+      assert(ATTR(stmt, ast_node, stmt)->kind == AstNode_proc_decl);
+      gen_instr(instr_list, stmt);
     }
   }
   else if(node->kind == AstNode_block)
@@ -255,9 +255,9 @@ void gen_instr(List* instr_list, AstNode* node)
   }
   else if(node->kind == AstNode_stmt)
   {
-    AstNode* exe_stmt = ATTR(node, ast_node, stmt);
-    Type* type = ATTR(exe_stmt, type, eval_type);
-    gen_instr(instr_list, exe_stmt);
+    AstNode* actual_stmt = ATTR(node, ast_node, stmt);
+    Type* type = ATTR(actual_stmt, type, eval_type);
+    gen_instr(instr_list, actual_stmt);
     emit_instr_int32(instr_list, Opcode_GROW, -type->width);
   }
   else if(node->kind == AstNode_while_stmt)
@@ -662,15 +662,15 @@ void gen_instr(List* instr_list, AstNode* node)
     emit_instr_int32(instr_list, Opcode_GROW, -link_area->size);
     emit_instr_int32(instr_list, Opcode_GROW, -args_area->size);
   }
-  else if(node->kind == AstNode_return_stmt)
+  else if(node->kind == AstNode_ret_stmt)
   {
-    AstNode* return_expr = ATTR(node, ast_node, return_expr);
-    if(return_expr)
+    AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
+    if(ret_expr)
     {
-      AstNode* expr = ATTR(return_expr, ast_node, expr);
+      AstNode* expr = ATTR(ret_expr, ast_node, expr);
       Type* type = ATTR(expr, type, eval_type);
       gen_load_rvalue(instr_list, expr);
-      gen_load_lvalue(instr_list, return_expr);
+      gen_load_lvalue(instr_list, ret_expr);
       emit_instr_int32(instr_list, Opcode_STORE, type->width);
     }
 
@@ -773,10 +773,10 @@ void sort_block_nodes(AstNode* node)
       ListItem* next_list_item = list_item->next;
       remove_list_item(nodes_list, list_item);
 
-      AstNode* stmt = ITEM(list_item, ast_node);
-      if(stmt->kind == AstNode_proc_decl)
+      AstNode* actual_stmt = ATTR(ITEM(list_item, ast_node), ast_node, stmt);
+      if(actual_stmt->kind == AstNode_proc_decl)
         append_list_item(procs_list, list_item);
-      else if(stmt->kind == AstNode_stmt)
+      else
         append_list_item(stmts_list, list_item);
 
       list_item = next_list_item;
@@ -891,12 +891,12 @@ void gen_labels(AstNode* node)
       gen_labels(ITEM(list_item, ast_node));
     }
   }
-  else if(node->kind == AstNode_return_stmt)
+  else if(node->kind == AstNode_ret_stmt)
   {
-    AstNode* return_expr = ATTR(node, ast_node, return_expr);
-    if(return_expr)
+    AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
+    if(ret_expr)
     {
-      gen_labels(return_expr);
+      gen_labels(ret_expr);
     }
   }
   else if(node->kind == AstNode_var_decl)

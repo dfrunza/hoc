@@ -8,8 +8,10 @@ include "fizzbuzz.hoc";
 
 proc void main()
 {
-  var int b = 1;
-  var int c = 2;
+  var int a;
+  {
+    a = 123;
+  }
 }
 
 main();

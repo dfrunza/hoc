@@ -592,10 +592,11 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       int32 arg_sp = location_at(machine->fp, int32, -3);
       if(check_stack_bounds(machine, arg_sp))
       {
+        int32 old_sp = machine->sp;
         machine->ip = memory_at(arg_sp, int32, 0);
         machine->sp = memory_at(arg_sp, int32, 1);
         machine->fp = memory_at(arg_sp, int32, 2);
-        clear_memory(machine, machine->sp, 3*sizeof(int32));
+        clear_memory(machine, machine->sp, old_sp - machine->sp);
       }
       else
         return Result_InvalidMemoryAccess;
@@ -620,9 +621,10 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       int32 arg_sp = location_at(machine->fp, int32, -1);
       if(check_stack_bounds(machine, arg_sp))
       {
+        int32 old_sp = machine->sp;
         machine->fp = memory_at(arg_sp, int32, 0);
         machine->sp = arg_sp;
-        clear_memory(machine, machine->sp, sizeof(int32));
+        clear_memory(machine, machine->sp, old_sp - machine->sp);
         machine->ip++;
       }
       else

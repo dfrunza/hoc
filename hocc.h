@@ -437,7 +437,7 @@ typedef enum
   AstAttributeName_bool_val,
   AstAttributeName_char_val,
   AstAttributeName_str_val,
-  AstAttributeName_return_expr,
+  AstAttributeName_ret_expr,
   AstAttributeName_expr,
   AstAttributeName_cond_expr,
   AstAttributeName_loop_expr,
@@ -504,7 +504,7 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_type_occur),\
   ENUM_MEMBER(AstNode_str),\
   ENUM_MEMBER(AstNode_lit),\
-  ENUM_MEMBER(AstNode_return_stmt),\
+  ENUM_MEMBER(AstNode_ret_stmt),\
   ENUM_MEMBER(AstNode_return_var),\
   ENUM_MEMBER(AstNode_assign),\
   ENUM_MEMBER(AstNode_goto_stmt),\

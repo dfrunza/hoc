@@ -827,7 +827,7 @@ void sort_block_nodes(AstNode* node)
       else if(stmt->kind == AstNode_stmt
           || stmt->kind == AstNode_while_stmt || stmt->kind == AstNode_if_stmt
           || stmt->kind == AstNode_ret_stmt || stmt->kind == AstNode_break_stmt || stmt->kind == AstNode_continue_stmt
-          || stmt->kind == AstNode_var_decl)
+          || stmt->kind == AstNode_var_decl || stmt->kind == AstNode_block)
       {
         append_list_item(stmts_list, list_item);
       }

@@ -1010,7 +1010,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_var_decl;
-      kind->attr_count = 7;
+      kind->attr_count = 8;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;

@@ -293,10 +293,10 @@ bool name_ident_block(AstNode* node)
   return success;
 }
 
-//todo: remove this
-bool name_ident_formal_arg(AstNode* node)
+bool name_ident_formal_arg(AstNode* node, SymbolKind symkind)
 {
   assert(node->kind == AstNode_var_decl);
+  assert(symkind == Symbol_ret_var || symkind == Symbol_formal_arg);
   bool success = true;
 
   AstNode var_decl_gen0 = *node;
@@ -305,7 +305,7 @@ bool name_ident_formal_arg(AstNode* node)
   ATTR(var_decl_gen1, str_val, name) = name;
 
   Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
-      (SymbolKind[]){Symbol_var, Symbol_formal_arg, Symbol_None});
+      (SymbolKind[]){Symbol_var, Symbol_ret_var, Symbol_formal_arg, Symbol_None});
   if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
   {
     success = compile_error(var_decl_gen1->src_loc, "formal arg `%s` already declared", name);
@@ -313,7 +313,7 @@ bool name_ident_formal_arg(AstNode* node)
   }
   else
   {
-    decl_sym = add_decl_symbol(name, var_decl_gen1->src_loc, symbol_table->active_scope, Symbol_formal_arg);
+    decl_sym = add_decl_symbol(name, var_decl_gen1->src_loc, symbol_table->active_scope, symkind);
     ATTR(var_decl_gen1, symbol, decl_sym) = decl_sym;
     decl_sym->ast_node = var_decl_gen1;
 
@@ -440,7 +440,6 @@ bool name_ident(AstNode* node)
       decl_sym->ast_node = proc_decl_gen1;
 
       List* formal_args = ATTR(proc_decl_gen1, list, formal_args) = ATTR(&proc_decl_gen0, list, formal_args);
-      //todo
       AstNode* ret_var = ATTR(proc_decl_gen1, ast_node, ret_var) = ATTR(&proc_decl_gen0, ast_node, ret_var);
       AstNode* body = ATTR(proc_decl_gen1, ast_node, body) = ATTR(&proc_decl_gen0, ast_node, body);
 
@@ -451,12 +450,12 @@ bool name_ident(AstNode* node)
           list_item && success;
           list_item = list_item->next)
       {
-        success = name_ident_formal_arg(ITEM(list_item, ast_node));
+        success = name_ident_formal_arg(ITEM(list_item, ast_node), Symbol_formal_arg);
       }
 
       if(success)
       {
-        success = name_ident(ret_var) && name_ident_block(body);
+        success = name_ident_formal_arg(ret_var, Symbol_ret_var) && name_ident_block(body);
       }
       end_scope();
     }

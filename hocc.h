@@ -451,6 +451,7 @@ typedef enum
   AstAttributeName_label_else,
   AstAttributeName_label_eval,
   AstAttributeName_label_break,
+  AstAttributeName_data,
 }
 AstAttributeName;
 

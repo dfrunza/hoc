@@ -147,9 +147,13 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
   else if(node->kind == AstNode_lit)
   {
     LiteralKind kind = ATTR(node, lit_kind, lit_kind);
-    if(kind == Literal_int_val || kind == Literal_bool_val)
+    if(kind == Literal_int_val)
     {
       emit_instr_int32(instr_list, Opcode_PUSH_INT32, ATTR(node, int_val, int_val));
+    }
+    else if(kind == Literal_bool_val)
+    {
+      emit_instr_int32(instr_list, Opcode_PUSH_INT32, ATTR(node, bool_val, bool_val));
     }
     else if(kind == Literal_float_val)
     {

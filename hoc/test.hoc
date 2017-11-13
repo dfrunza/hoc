@@ -41,6 +41,7 @@ proc void print_str(char* str)
   }
 }
 
+/*
 proc void fizzbuzz(int n)
 {
   if(n > 0)
@@ -62,10 +63,16 @@ proc void fizzbuzz(int n)
     }
   }
 }
+*/
+
+proc void foo()
+{
+  print_str(&"HI");
+}
 
 proc void main()
 {
-  print_str(&"fizz");
+  foo();
 }
 
 main();

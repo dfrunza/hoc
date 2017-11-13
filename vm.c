@@ -782,7 +782,6 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
         return Result_InvalidMemoryAccess;
     } break;
 
-#if 0
     case Opcode_PUTC:
     {
       int32 arg_sp = location_at(machine->sp, int8, -1);
@@ -797,7 +796,6 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       else
         return Result_InvalidMemoryAccess;
     } break;
-#endif
 
     case Opcode_HALT:
         return Result_EndOfProgram;

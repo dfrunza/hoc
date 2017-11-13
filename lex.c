@@ -1,6 +1,7 @@
 Token keyword_list[] = 
 {
   {Token_var, "var"},
+  {Token_asm, "asm"},
   {Token_type, "type"},
   {Token_if, "if"},
   {Token_else, "else"},
@@ -296,6 +297,69 @@ Token* get_prev_token(TokenStream* input)
   return token;
 }
 
+bool filter_whitespace(TokenStream* input, char* whitechars)
+{
+  SourceLoc* src_loc = &input->src_loc;
+  char c = *input->cursor;
+  int initial_line_nr = src_loc->line_nr;
+
+  while(cstr_contains_char(whitechars, c))
+  {
+    if(c == '\n')
+    {
+      src_loc->line_nr++;
+      src_loc->src_line = input->cursor;
+    }
+    c = *(++input->cursor);
+  }
+  return src_loc->line_nr > initial_line_nr;
+}
+
+bool get_asm_text(TokenStream* input)
+{
+  bool success = true;
+  *input->prev_state = *input;
+  mem_zero_struct(&input->token, Token);
+  SourceLoc* src_loc = &input->src_loc;
+  src_loc->src_line = input->cursor;
+  char c;
+
+  Token* token = &input->token;
+
+  filter_whitespace(input, " \r\n\t");
+  char* begin_char = input->cursor;
+
+  c = *input->cursor;
+  while(c != '\0' && c != '}')
+  {
+    c = *(++input->cursor);
+    if(filter_whitespace(input, "\r\n"))
+    {
+      filter_whitespace(input, " \t");
+      c = *(input->cursor);
+    }
+  }
+
+  if(c == '}')
+  {
+    char* end_char = input->cursor - 1;
+    char* lexeme = install_lexeme(begin_char, end_char);
+
+    token->kind = Token_asm_text;
+    token->lexeme = lexeme;
+  }
+  else if(c == '\0')
+  {
+    token->kind = Token_end_of_input;
+  }
+  else
+  {
+    token->kind = Token_unknown_char;
+    token->char_val = c;
+  }
+  return success;
+}
+
 bool get_next_token(TokenStream* input)
 {
   bool success = true;
@@ -334,7 +398,9 @@ loop:
     token->lexeme = lexeme;
     Token* keyword = lookup_keyword(keyword_list, lexeme);
     if(keyword)
+    {
       token->kind = keyword->kind;
+    }
   }
   else if(char_is_numeric(c))
   {

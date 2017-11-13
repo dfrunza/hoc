@@ -239,6 +239,17 @@ bool cstr_to_float(char* str, float* result)
   return true;
 }
 
+bool cstr_contains_char(char* str, char c)
+{
+  bool result = false;
+  while(*str && !result)
+  {
+    result = (*str == c);
+    str++;
+  }
+  return result;
+}
+
 bool cstr_start_with(char* str, char* prefix)
 {
   while(*str == *prefix)

@@ -130,44 +130,49 @@ Symbol* add_occur_symbol(char* name, SourceLoc* src_loc, Scope* scope, SymbolKin
   return sym;
 }
 
-void add_builtin_type(char* name, Type* type)
+void add_builtin_type(Scope* scope, char* name, Type* type)
 {
   assert(type->kind == Type_basic);
   AstNode* type_decl = new_ast_node(Ast_gen1, AstNode_type_decl, 0);
   ATTR(type_decl, str_val, name) = name;
   ATTR(type_decl, type, type) = type;
-  Symbol* decl_sym = add_decl_symbol(name, 0, symbol_table->global_scope, Symbol_type);
+  Symbol* decl_sym = add_decl_symbol(name, 0, scope, Symbol_type);
   decl_sym->type = type;
   decl_sym->ast_node = type_decl;
   ATTR(type_decl, symbol, decl_sym) = decl_sym;
 }
 
-void add_builtin_proc(char* name, Type* type)
+#if 0
+void add_builtin_proc(Scope* scope, char* name, Type* type)
 {
   assert(type->kind == Type_proc);
   AstNode* proc_decl = new_ast_node(Ast_gen1, AstNode_proc_decl, 0);
   ATTR(proc_decl, str_val, name) = name;
   ATTR(proc_decl, type, type) = type;
-  Symbol* decl_sym = add_decl_symbol(name, 0, symbol_table->global_scope, Symbol_proc);
+  ATTR(proc_decl, scope, scope) = scope;
+  Symbol* decl_sym = add_decl_symbol(name, 0, scope, Symbol_proc);
   decl_sym->type = type;
   decl_sym->ast_node = proc_decl;
   ATTR(proc_decl, symbol, decl_sym) = decl_sym;
 }
+#endif
 
-void add_builtin_types()
+void add_builtin_types(Scope* scope)
 {
-  add_builtin_type("bool", basic_type_bool);
-  add_builtin_type("int", basic_type_int);
-  add_builtin_type("char", basic_type_char);
-  add_builtin_type("float", basic_type_float);
-  add_builtin_type("void", basic_type_void);
+  add_builtin_type(scope, "bool", basic_type_bool);
+  add_builtin_type(scope, "int", basic_type_int);
+  add_builtin_type(scope, "char", basic_type_char);
+  add_builtin_type(scope, "float", basic_type_float);
+  add_builtin_type(scope, "void", basic_type_void);
   /*add_builtin_type("type", basic_type_type);*/
 }
 
-void add_builtin_procs()
+#if 0
+void add_builtin_procs(Scope* scope)
 {
-  /*add_builtin_proc("putc", new_proc_type(basic_type_char, basic_type_void));*/
+  add_builtin_proc(scope, "putc", new_proc_type(basic_type_char, basic_type_void));
 }
+#endif
 
 Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
 {
@@ -374,6 +379,8 @@ bool name_ident(AstNode* node)
     AstNode* body = ATTR(module, ast_node, body) = ATTR(&module_copy, ast_node, body);
 
     symbol_table->module_scope = begin_scope(Scope_module, module);
+    add_builtin_types(symbol_table->module_scope);
+    //add_builtin_procs(symbol_table->module_scope);
     success = name_ident_block(body);
     end_scope();
   }
@@ -723,6 +730,12 @@ bool name_ident(AstNode* node)
     else
       success = compile_error(ret_stmt_gen1->src_loc, "unexpected `return` at this location");
   }
+  else if(node->kind == AstNode_asm_block)
+  {
+    AstNode asm_block_gen0 = *node;
+    AstNode* asm_block_gen1 = make_ast_node(Ast_gen1, node, AstNode_asm_block);
+    ATTR(asm_block_gen1, str_val, asm_text) = ATTR(&asm_block_gen0, str_val, asm_text);
+  }
   else
     assert(0);
 
@@ -976,6 +989,10 @@ bool build_types(AstNode* node)
     ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
   }
   else if(node->kind == AstNode_empty)
+  {
+    ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
+  }
+  else if(node->kind == AstNode_asm_block)
   {
     ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
   }
@@ -1324,6 +1341,10 @@ bool eval_types(AstNode* node)
   {
     ; // skip
   }
+  else if(node->kind == AstNode_asm_block)
+  {
+    ; // skip
+  }
   else
     assert(0);
   return success;
@@ -1487,6 +1508,10 @@ bool resolve_types(AstNode* node)
     ; // skip
   }
   else if(node->kind == AstNode_empty)
+  {
+    ; // skip
+  }
+  else if(node->kind == AstNode_asm_block)
   {
     ; // skip
   }
@@ -1731,6 +1756,10 @@ bool check_types(AstNode* node)
     ;//ok
   }
   else if(node->kind == AstNode_empty)
+  {
+    ;//ok
+  }
+  else if(node->kind == AstNode_asm_block)
   {
     ;//ok
   }

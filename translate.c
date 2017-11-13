@@ -32,12 +32,26 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 {
   if(gen == Ast_gen0)
   {/*>>> gen0*/
-    ast->kind_count = 23;
+    ast->kind_count = 24;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
     int kind_index = 0;
     AstKindMetaInfo* kind = 0;
 
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_asm_block;
+      kind->attr_count = 1;
+
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str_val;
+      attr->name = AstAttributeName_asm_text;
+    }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
@@ -407,12 +421,36 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
   }/*<<<*/
   else if(gen == Ast_gen1)
   {/*>>> gen1*/
-    ast->kind_count = 23;
+    ast->kind_count = 24;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
     int kind_index = 0;
     AstKindMetaInfo* kind = 0;
 
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = AstNode_asm_block;
+      kind->attr_count = 3;
+
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_str_val;
+      attr->name = AstAttributeName_asm_text;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_type;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_type;
+      attr->name = AstAttributeName_eval_type;
+    }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
@@ -1650,6 +1688,15 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     {
       ;//ok
     }
+    else if(node->kind == AstNode_asm_block)
+    {
+      if(node->gen == Ast_gen0 || node->gen == Ast_gen1)
+      {
+        DEBUG_print_line(str, indent_level, "asm_text: `%s`", ATTR(node, str_val, asm_text));
+      }
+      else
+        assert(0);
+    }
     else
       fail(get_ast_kind_printstr(node->kind));
   }
@@ -1731,8 +1778,6 @@ bool translate(char* file_path, char* hoc_text, VmProgram** vm_program)
 
     symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
     symbol_table->global_scope = begin_scope(Scope_global, 0);
-    add_builtin_types();
-    add_builtin_procs();
 
     success = name_ident(module);
     end_scope();

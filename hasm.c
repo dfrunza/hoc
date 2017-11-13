@@ -99,11 +99,11 @@ void process_source_lines(SourceProgram* source)
 {
   source->line_count = 0;
   char* char_ptr = &source->text[0];
-  if(*char_ptr != '\0')
+  if(*char_ptr)
   {
     int source_line_nr = 1;
 
-    if(*char_ptr != '\n' && *char_ptr != ';')
+    if(!cstr_contains_char("\r\n", *char_ptr))
     {
       InstructionLine instr_line = {0};
       instr_line.source_line_nr = source_line_nr;
@@ -111,22 +111,25 @@ void process_source_lines(SourceProgram* source)
       source->lines[source->line_count++] = instr_line;
 
       char_ptr++;
-      while(*char_ptr != '\0')
+      while(*char_ptr)
       {
-        if(*char_ptr == '\n')
+        if(cstr_contains_char("\r\n", *char_ptr))
         {
           source_line_nr++;
 
-          char* next_char_ptr = char_ptr+1;
-          if(*next_char_ptr != '\0' && *next_char_ptr != '\n' && *next_char_ptr != ';')
+          while(cstr_contains_char(" \r\n", *char_ptr))
           {
-            //memset(&instr_line, 0, sizeof(instr_line));
+            *char_ptr = '\0';
+            char_ptr++;
+          }
+
+          if(*char_ptr)
+          {
             mem_zero_struct(&instr_line, InstructionLine);
             instr_line.source_line_nr = source_line_nr;
-            instr_line.string = next_char_ptr;
+            instr_line.string = char_ptr;
             source->lines[source->line_count++] = instr_line;
           }
-          *char_ptr = '\0';
         }
         char_ptr++;
       }
@@ -187,11 +190,10 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
       {
         instr.opcode = Opcode_GROWNZ;
       }
-#if 0
       else if(cstr_match(mnemonic, "new"))
+      {
         instr.opcode = Opcode_NEW;
-#endif
-
+      }
       else if(cstr_match(mnemonic, "add_int"))
       {
         instr.opcode = Opcode_ADD_INT32;
@@ -245,12 +247,10 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
       {
         instr.opcode = Opcode_HALT;
       }
-#if 0
       else if(cstr_match(mnemonic, "putc"))
       {
         instr.opcode = Opcode_PUTC;
       }
-#endif
       else if(cstr_match(mnemonic, "dup"))
       {
         instr.opcode = Opcode_DUP;
@@ -461,7 +461,6 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
             }
           } break;
 
-#if 0
           case Opcode_NEW:
           {
             if(cstr_to_int(components[1], &instr.param.int_val))
@@ -472,7 +471,6 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
               return false;
             }
           } break;
-#endif
 
           case Opcode_LABEL:
           {

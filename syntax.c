@@ -1545,6 +1545,32 @@ bool parse_break(TokenStream* input, AstNode** node)
   return success;
 }
 
+bool parse_asm_block(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  if(input->token.kind == Token_open_brace)
+  {
+    AstNode* asm_block = *node = new_ast_node(Ast_gen0, AstNode_asm_block, clone_source_loc(&input->src_loc));
+
+    if(success = get_asm_text(input))
+    {
+      ATTR(asm_block, str_val, asm_text) = input->token.lexeme;
+      if(success = get_next_token(input))
+      {
+        if(input->token.kind == Token_close_brace)
+        {
+          success = get_next_token(input);
+        }
+        else
+          success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
+      }
+    }
+  }
+  return success;
+}
+
 bool parse_node(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1553,6 +1579,10 @@ bool parse_node(TokenStream* input, AstNode** node)
   if(input->token.kind == Token_var)
   {
     success = get_next_token(input) && parse_var(input, node) && consume_semicolon(input);
+  }
+  else if(input->token.kind == Token_asm)
+  {
+    success = get_next_token(input) && parse_asm_block(input, node);
   }
   else if(input->token.kind == Token_include)
   {

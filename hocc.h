@@ -107,6 +107,7 @@ typedef enum
   Token_end_of_input,
 
   Token_var,
+  Token_asm,
   Token_type,
   Token_if,
   Token_else,
@@ -129,6 +130,7 @@ typedef enum
   Token_float_num,
   Token_string,
   Token_char,
+  Token_asm_text,
 }
 TokenKind;
 
@@ -451,7 +453,7 @@ typedef enum
   AstAttributeName_label_else,
   AstAttributeName_label_eval,
   AstAttributeName_label_break,
-  AstAttributeName_data,
+  AstAttributeName_asm_text,
 }
 AstAttributeName;
 
@@ -489,6 +491,7 @@ AstAttributeMetaInfo;
 #define AstKind_MEMBER_LIST()\
   ENUM_MEMBER(AstNode_None),\
   ENUM_MEMBER(AstNode_id),\
+  ENUM_MEMBER(AstNode_asm_block),\
   ENUM_MEMBER(AstNode_array),\
   ENUM_MEMBER(AstNode_bin_expr),\
   ENUM_MEMBER(AstNode_un_expr),\
@@ -705,7 +708,7 @@ typedef enum
   Opcode_STORE,
   Opcode_GROW,
   Opcode_GROWNZ,
-  //Opcode_NEW,
+  Opcode_NEW,
 
   Opcode_ADD_INT32,
   Opcode_SUB_INT32,
@@ -749,7 +752,7 @@ typedef enum
   Opcode_HALT,
 
   Opcode_NOOP,
-  //Opcode_PUTC,
+  Opcode_PUTC,
 
   Opcode_FLOAT32_TO_INT32,
   Opcode_INT32_TO_FLOAT32,

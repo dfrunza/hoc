@@ -8,14 +8,8 @@ include "fizzbuzz.hoc";
 
 proc char main()
 {
-  var [4]char h = "abc";
-  var char c = h[0];
-  return c;
-  /*
   var char* p_h = &"abc";
-  var char c;
-  c = *p_h;
-  */
+  var char c = *(p_h + (type char*)1);
 }
 
 main();

@@ -616,7 +616,7 @@ void gen_instr(List* instr_list, AstNode* node)
   {
     AstNode* operand = ATTR(node, ast_node, operand);
     Type* type = ATTR(node, type, eval_type);
-    Type* operand_ty = ATTR(node, type, eval_type);
+    Type* operand_ty = ATTR(operand, type, eval_type);
     OperatorKind un_op = ATTR(node, op_kind, op_kind);
 
     if(un_op == Operator_address_of)
@@ -653,8 +653,8 @@ void gen_instr(List* instr_list, AstNode* node)
     }
     else if(un_op == Operator_deref)
     {
-      assert(ATTR(operand, type, type)->kind == Type_pointer);
-      gen_load_lvalue(instr_list, operand);
+      assert(operand_ty->kind == Type_pointer);
+      gen_load_rvalue(instr_list, operand);
       emit_instr_int32(instr_list, Opcode_LOAD, type->width);
     }
     else

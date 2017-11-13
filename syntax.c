@@ -281,7 +281,7 @@ bool parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
   {
     // array
     AstNode* index = *node = new_ast_node(Ast_gen0, AstNode_bin_expr, clone_source_loc(&input->src_loc));
-    ATTR(index, op_kind, op_kind) = Operator_array_index;
+    ATTR(index, op_kind, op_kind) = Operator_index;
     ATTR(index, ast_node, left_operand) = left_node;
 
     if(success = get_next_token(input) && parse_expr(input, &ATTR(index, ast_node, right_operand)))

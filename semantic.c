@@ -1063,7 +1063,7 @@ bool eval_types(AstNode* node)
           compile_error(node->src_loc, "type error (cast)");
         }
       }
-      else if(op_kind == Operator_array_index)
+      else if(op_kind == Operator_index)
       {
         if(success = type_unif(right_operand_ty, basic_type_int))
         {
@@ -1618,7 +1618,7 @@ bool check_types(AstNode* node)
         ;//ok
         assert(types_are_equal(left_arg_ty, right_arg_ty) && types_are_equal(ret_ty, left_arg_ty));
       }
-      else if(op_kind == Operator_array_index)
+      else if(op_kind == Operator_index)
       {
         if(ret_ty->width > 0)
         {

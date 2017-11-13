@@ -1,3 +1,4 @@
+void gen_load_rvalue(List* instr_list, AstNode* node);
 void gen_instr(List* instr_list, AstNode* node);
 
 int print_instruction(String* text, char* instr_list, ...)
@@ -93,6 +94,37 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
     emit_instr_int32(instr_list, Opcode_PUSH_INT32, data->loc);
     emit_instr(instr_list, Opcode_ADD_INT32);
   }
+  else if(node->kind == AstNode_un_expr)
+  {
+    AstNode* operand = ATTR(node, ast_node, operand);
+    OperatorKind un_op = ATTR(node, op_kind, op_kind);
+
+    if(un_op == Operator_deref)
+    {
+      assert(ATTR(operand, type, eval_type)->kind == Type_pointer);
+      gen_load_rvalue(instr_list, operand);
+    }
+    else
+      assert(0);
+  }
+  else if(node->kind == AstNode_bin_expr)
+  {
+    Type* type = ATTR(node, type, eval_type);
+    AstNode* left_operand = ATTR(node, ast_node, left_operand);
+    AstNode* right_operand = ATTR(node, ast_node, right_operand);
+    OperatorKind bin_op = ATTR(node, op_kind, op_kind);
+
+    if(bin_op == Operator_index)
+    {
+      gen_load_lvalue(instr_list, left_operand);
+      gen_load_rvalue(instr_list, right_operand);
+      emit_instr_int32(instr_list, Opcode_PUSH_INT32, type->width);
+      emit_instr(instr_list, Opcode_MUL_INT32);
+      emit_instr(instr_list, Opcode_ADD_INT32);
+    }
+    else
+      assert(0);
+  }
   else
     assert(0);
 }
@@ -131,11 +163,45 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
   }
   else if(node->kind == AstNode_bin_expr)
   {
-    gen_instr(instr_list, node);
+    Type* type = ATTR(node, type, eval_type);
+    OperatorKind bin_op = ATTR(node, op_kind, op_kind);
+
+    if(bin_op == Operator_index)
+    {
+      gen_load_lvalue(instr_list, node);
+      emit_instr_int32(instr_list, Opcode_LOAD, type->width);
+    }
+    else
+    {
+      gen_instr(instr_list, node);
+    }
   }
   else if(node->kind == AstNode_un_expr)
   {
-    gen_instr(instr_list, node);
+    Type* type = ATTR(node, type, eval_type);
+    AstNode* operand = ATTR(node, ast_node, operand);
+    OperatorKind un_op = ATTR(node, op_kind, op_kind);
+
+    if(un_op == Operator_address_of)
+    {
+      if(operand->kind == AstNode_var_occur)
+      {
+        gen_load_lvalue(instr_list, operand);
+      }
+      else
+      {
+        gen_load_rvalue(instr_list, operand);
+      }
+    }
+    else if(un_op == Operator_deref)
+    {
+      gen_load_lvalue(instr_list, node);
+      emit_instr_int32(instr_list, Opcode_LOAD, type->width);
+    }
+    else
+    {
+      gen_instr(instr_list, node);
+    }
   }
   else
     assert(0);
@@ -302,20 +368,7 @@ void gen_instr(List* instr_list, AstNode* node)
     if(bin_op == Operator_assign)
     {
       gen_load_rvalue(instr_list, right_operand);
-
-      if(left_operand->kind == AstNode_var_occur)
-      {
-        gen_load_lvalue(instr_list, left_operand);
-      }
-      else if(left_operand->kind == AstNode_un_expr)
-      {
-        if(ATTR(left_operand, op_kind, op_kind) == Operator_deref)
-        {
-          gen_load_rvalue(instr_list, ATTR(left_operand, ast_node, operand));
-        }
-        else
-          assert(0);
-      }
+      gen_load_lvalue(instr_list, left_operand);
 
       emit_instr_int32(instr_list, Opcode_STORE, type->width);
     }
@@ -598,16 +651,9 @@ void gen_instr(List* instr_list, AstNode* node)
         emit_instr(instr_list, Opcode_INT32_TO_FLOAT32);
       }
     }
-    else if(bin_op == Operator_array_index)
+    else if(bin_op == Operator_index)
     {
-      Type* type = ATTR(node, type, eval_type);
-
-      gen_load_lvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
-      emit_instr_int32(instr_list, Opcode_PUSH_INT32, type->width);
-      emit_instr(instr_list, Opcode_MUL_INT32);
-      emit_instr(instr_list, Opcode_ADD_INT32);
-      emit_instr_int32(instr_list, Opcode_LOAD, type->width);
+      gen_load_rvalue(instr_list, node);
     }
     else
       assert(0);
@@ -615,20 +661,12 @@ void gen_instr(List* instr_list, AstNode* node)
   else if(node->kind == AstNode_un_expr)
   {
     AstNode* operand = ATTR(node, ast_node, operand);
-    Type* type = ATTR(node, type, eval_type);
     Type* operand_ty = ATTR(operand, type, eval_type);
     OperatorKind un_op = ATTR(node, op_kind, op_kind);
 
     if(un_op == Operator_address_of)
     {
-      if(operand->kind == AstNode_var_occur)
-      {
-        gen_load_lvalue(instr_list, operand);
-      }
-      else
-      {
-        gen_load_rvalue(instr_list, operand);
-      }
+      gen_load_rvalue(instr_list, node);
     }
     else if(un_op == Operator_neg)
     {
@@ -653,9 +691,12 @@ void gen_instr(List* instr_list, AstNode* node)
     }
     else if(un_op == Operator_deref)
     {
+      gen_load_rvalue(instr_list, node);
+#if 0
       assert(operand_ty->kind == Type_pointer);
       gen_load_rvalue(instr_list, operand);
       emit_instr_int32(instr_list, Opcode_LOAD, type->width);
+#endif
     }
     else
       assert(0);

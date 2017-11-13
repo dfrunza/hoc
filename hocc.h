@@ -197,7 +197,7 @@ DataArea;
   ENUM_MEMBER(Operator_post_decr),\
   ENUM_MEMBER(Operator_pre_incr),\
   ENUM_MEMBER(Operator_post_incr),\
-  ENUM_MEMBER(Operator_array_index),\
+  ENUM_MEMBER(Operator_index),\
   ENUM_MEMBER(Operator_eq),\
   ENUM_MEMBER(Operator_not_eq),\
   ENUM_MEMBER(Operator_less),\
@@ -249,7 +249,7 @@ char* get_operator_kind_printstr(OperatorKind op)
     str = "--";
   else if(op == Operator_pre_incr || op == Operator_post_incr)
     str = "++";
-  else if(op == Operator_array_index)
+  else if(op == Operator_index)
     str = "[]";
   else if(op == Operator_eq)
     str = "==";

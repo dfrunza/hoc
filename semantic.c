@@ -1069,12 +1069,15 @@ bool eval_types(AstNode* node)
         {
           if(left_operand_ty->kind == Type_array)
           {
-            ;//ok
+            success = type_unif(left_operand_ty->array.elem, expr_ty);
           }
           else if(left_operand_ty->kind == Type_typevar)
           {
             success = type_unif(left_operand_ty, new_array_type(0, expr_ty));
           }
+          else
+            success = false;
+
           if(!success)
           {
             compile_error(node->src_loc, "type error (array index)");
@@ -1617,7 +1620,12 @@ bool check_types(AstNode* node)
       }
       else if(op_kind == Operator_array_index)
       {
-        ;//ok
+        if(ret_ty->width > 0)
+        {
+          ;//ok
+        }
+        else
+          success = compile_error(node->src_loc, "type error (array index): type size = 0");
       }
       else if(op_kind == Operator_cast)
       {

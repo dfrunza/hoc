@@ -252,20 +252,6 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_str;
-      kind->attr_count = 1;
-
-      int attr_index = 0;
-      AstAttributeMetaInfo* attr = 0;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_str_lit;
-    }
-    {
-      assert(kind_index < ast->kind_count);
-      kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_continue_stmt;
       kind->attr_count = 0;
     }
@@ -955,45 +941,6 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
-      kind->kind = AstNode_str;
-      kind->attr_count = 7;
-
-      int attr_index = 0;
-      AstAttributeMetaInfo* attr = 0;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_str_lit;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_str_val;
-      attr->name = AstAttributeName_str_val;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_symbol;
-      attr->name = AstAttributeName_decl_sym;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_symbol;
-      attr->name = AstAttributeName_occur_sym;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_type;
-      attr->name = AstAttributeName_type;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_type;
-      attr->name = AstAttributeName_eval_type;
-    }
-    {
-      assert(kind_index < ast->kind_count);
-      kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_module;
       kind->attr_count = 4;
 
@@ -1490,15 +1437,6 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       else
         assert(0);
     }
-    else if(node->kind == AstNode_str)
-    {
-      if(node->gen == Ast_gen0 || node->gen == Ast_gen1)
-      {
-        DEBUG_print_ast_node(str, indent_level, "str_lit", ATTR(node, ast_node, str_lit));
-      }
-      else
-        assert(0);
-    }
     else if(node->kind == AstNode_id)
     {
       if(node->gen == Ast_gen0)
@@ -1817,8 +1755,8 @@ bool translate(char* file_path, char* hoc_text, VmProgram** vm_program)
         end_temp_memory(&arena);
       }/*<<<*/
 
-      build_types(module);
-      if(success = eval_types(module) && resolve_types(module) && check_types(module))
+      if(success = build_types(module) && eval_types(module)
+          && resolve_types(module) && check_types(module))
       {
         if(DEBUG_enabled)/*>>>*/
         {

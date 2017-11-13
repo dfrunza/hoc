@@ -183,6 +183,10 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
       {
         instr.opcode = Opcode_GROW;
       }
+      else if(cstr_match(mnemonic, "grownz"))
+      {
+        instr.opcode = Opcode_GROWNZ;
+      }
 #if 0
       else if(cstr_match(mnemonic, "new"))
         instr.opcode = Opcode_NEW;
@@ -412,6 +416,7 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
           case Opcode_STORE:
           case Opcode_LOAD:
           case Opcode_GROW:
+          case Opcode_GROWNZ:
           {
             if(cstr_to_int(components[1], &instr.param.int_val))
             {

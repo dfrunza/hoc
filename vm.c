@@ -94,14 +94,17 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
   switch(opcode)
   {
     case Opcode_GROW:
+    case Opcode_GROWNZ:
     {
       if(instr->param_type == ParamType_int32)
       {
         int32 top_sp = location_at(machine->sp, int8, instr->param.int_val);
         if(check_stack_bounds(machine, top_sp))
         {
-          clear_memory(machine, machine->sp, instr->param.int_val);
-
+          if(opcode == Opcode_GROW)
+          {
+            clear_memory(machine, machine->sp, instr->param.int_val);
+          }
           machine->sp = top_sp;
           machine->ip++;
         } 
@@ -111,7 +114,6 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       else
         return Result_InvalidInstructionFormat;
     } break;
-
 #if 0
     case Opcode_NEW:
     {
@@ -624,8 +626,8 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
         int32 old_sp = machine->sp;
         machine->fp = memory_at(arg_sp, int32, 0);
         machine->sp = arg_sp;
-        clear_memory(machine, machine->sp, old_sp - machine->sp);
         machine->ip++;
+        clear_memory(machine, machine->sp, old_sp - machine->sp);
       }
       else
         return Result_InvalidMemoryAccess;

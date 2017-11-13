@@ -260,7 +260,7 @@ char* get_token_printstr(Token* token)
     result = token->lexeme;
   }
   else if(token->kind == Token_string)
-    result = token->str; // TODO: Substitute non-printable chars
+    result = token->str_val; // TODO: Substitute non-printable chars
   else if(token->kind == Token_char || token->kind == Token_unknown_char)
   {
     print_char(result = char_print_buf, token->char_val);
@@ -449,7 +449,7 @@ loop:
 
     if(success = escaped_string(__FILE__, __LINE__, input, &estr))
     {
-      token->str = install_escaped_str(&estr);;
+      token->str_val = install_escaped_str(&estr);;
       token->kind = Token_string;
       input->cursor = ++estr.end;
     }

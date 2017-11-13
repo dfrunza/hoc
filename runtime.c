@@ -169,7 +169,7 @@ void build_runtime()
       DataArea* local_area = &scope->local_area;
       local_area->subareas = new_list(arena, List_data_area);
       append_list_elem(scope->post_fp_areas, local_area, List_data_area);
-      compute_decl_areas(scope, (SymbolKind[]){Symbol_var, Symbol_str, Symbol_None}, local_area);
+      compute_decl_areas(scope, (SymbolKind[]){Symbol_var, Symbol_None}, local_area);
 
       compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);
     }
@@ -195,7 +195,7 @@ void build_runtime()
       DataArea* link_area = &scope->link_area;
       link_area->subareas = new_list(arena, List_data_area);
       append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
-      compute_occur_areas(scope, (SymbolKind[]){Symbol_var, Symbol_str, Symbol_None}, link_area);
+      compute_occur_areas(scope, (SymbolKind[]){Symbol_var, Symbol_None}, link_area);
 
       DataArea* local_area = &scope->local_area;
       local_area->subareas = new_list(arena, List_data_area);
@@ -213,7 +213,7 @@ void build_runtime()
       link_area->subareas = new_list(arena, List_data_area);
       append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
       compute_occur_areas(scope, (SymbolKind[])
-          {Symbol_var, Symbol_str, Symbol_ret_var, Symbol_None}, link_area);
+          {Symbol_var, Symbol_ret_var, Symbol_None}, link_area);
 
       DataArea* ctrl_area = &scope->ctrl_area;
       append_list_elem(scope->pre_fp_areas, ctrl_area, List_data_area);

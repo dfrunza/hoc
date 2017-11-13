@@ -142,7 +142,7 @@ typedef struct
     int* int_val;
     float* float_val;
     char char_val;
-    char* str;
+    char* str_val;
   };
 }
 Token;
@@ -348,7 +348,6 @@ typedef enum
   Symbol_var,
   Symbol_ret_var,
   Symbol_formal_arg,
-  Symbol_str,
   Symbol_type,
   Symbol_proc,
   Symbol_Count,
@@ -502,7 +501,6 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(AstNode_proc_occur),\
   ENUM_MEMBER(AstNode_type_decl),\
   ENUM_MEMBER(AstNode_type_occur),\
-  ENUM_MEMBER(AstNode_str),\
   ENUM_MEMBER(AstNode_lit),\
   ENUM_MEMBER(AstNode_ret_stmt),\
   ENUM_MEMBER(AstNode_goto_stmt),\
@@ -705,6 +703,7 @@ typedef enum
   Opcode_LOAD,
   Opcode_STORE,
   Opcode_GROW,
+  Opcode_GROWNZ,
   //Opcode_NEW,
 
   Opcode_ADD_INT32,

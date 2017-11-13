@@ -75,7 +75,7 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
 {
   assert(node->gen == Ast_gen1);
 
-  if(node->kind == AstNode_var_occur || node->kind == AstNode_str)
+  if(node->kind == AstNode_var_occur)
   {
     DataArea* link = ATTR(node, symbol, occur_sym)->data_area;
     DataArea* data = ATTR(node, symbol, decl_sym)->data_area;
@@ -129,10 +129,6 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
     else
       assert(0);
   }
-  else if(node->kind == AstNode_str)
-  {
-    gen_load_lvalue(instr_list, node);
-  }
   else if(node->kind == AstNode_bin_expr)
   {
     gen_instr(instr_list, node);
@@ -156,7 +152,7 @@ void gen_instr(List* instr_list, AstNode* node)
     DataArea* local_area = &scope->local_area;
 
     emit_instr(instr_list, Opcode_ENTER);
-    emit_instr_int32(instr_list, Opcode_GROW, local_area->size);
+    emit_instr_int32(instr_list, Opcode_GROWNZ, local_area->size);
 
     List* stmts_list = ATTR(body, list, stmts);
     for(ListItem* list_item = stmts_list->first;
@@ -630,7 +626,9 @@ void gen_instr(List* instr_list, AstNode* node)
         gen_load_lvalue(instr_list, operand);
       }
       else
+      {
         gen_load_rvalue(instr_list, operand);
+      }
     }
     else if(un_op == Operator_neg)
     {
@@ -656,6 +654,7 @@ void gen_instr(List* instr_list, AstNode* node)
     else if(un_op == Operator_deref)
     {
       assert(ATTR(operand, type, type)->kind == Type_pointer);
+      gen_load_lvalue(instr_list, operand);
       emit_instr_int32(instr_list, Opcode_LOAD, type->width);
     }
     else
@@ -924,6 +923,32 @@ void gen_labels(AstNode* node)
   }
 }
 
+void copy_program_data(VmProgram* vm_program, int fp, List* areas_list)
+{
+  for(ListItem* list_item = areas_list->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    DataArea* area = ITEM(list_item, data_area);
+    if(area->subareas)
+    {
+      assert(!area->data);
+      copy_program_data(vm_program, fp, area->subareas);
+    }
+    else
+    {
+      if(area->data)
+      {
+        uint8* p_data = (uint8*)area->data;
+        for(int i = 0; i < area->size; i++)
+        {
+          vm_program->data[i + fp + area->loc] = p_data[i];
+        }
+      }
+    }
+  }
+}
+
 void gen_program(VmProgram* vm_program, AstNode* module)
 {
   assert(module->kind == AstNode_module);
@@ -957,63 +982,8 @@ void gen_program(VmProgram* vm_program, AstNode* module)
   vm_program->data = mem_push_array(arena, uint8, data_size);
   vm_program->data_size = data_size;
 
-  for(ListItem* list_item = scope->pre_fp_areas->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    DataArea* area = ITEM(list_item, data_area);
-    if(area->data)
-    {
-      uint8* p_data = (uint8*)area->data;
-      for(int i = 0; i < area->size; i++)
-      {
-        vm_program->data[i + fp + area->loc] = p_data[i];
-      }
-    }
-  }
-
-  for(ListItem* list_item = scope->post_fp_areas->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    DataArea* area = ITEM(list_item, data_area);
-    if(area->data)
-    {
-      uint8* p_data = (uint8*)area->data;
-      for(int i = 0; i < area->size; i++)
-      {
-        vm_program->data[i + fp + area->loc] = p_data[i];
-      }
-    }
-  }
-
-#if 0
-  for(ListItem* list_item = scope->decls[Symbol_str]->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    DataArea* area = ITEM(list_item, symbol)->data_area;
-    if(area->data)
-    {
-      uint8* p_data = (uint8*)area->data;
-      for(int i = 0; i < area->size; i++)
-      {
-        vm_program->data[i + area->loc] = p_data[i];
-      }
-    }
-#if 0
-    Symbol* str_sym = ITEM(list_item, symbol);
-    DataArea* area = str_sym->data_area;
-    if(str_sym->data)
-    {
-      for(int i = 0; i < area->size; i++)
-      {
-        vm_program->data[i + area->loc] = ((uint8*)str_sym->data)[i];
-      }
-    }
-#endif
-  }
-#endif
+  copy_program_data(vm_program, fp, scope->pre_fp_areas);
+  copy_program_data(vm_program, fp, scope->post_fp_areas);
 }
 
 char* get_regname_str(RegName reg)
@@ -1196,6 +1166,12 @@ void print_code(VmProgram* vm_program)
       {
         assert(instr->param_type == ParamType_int32);
         text_len += print_instruction(text, "grow %d", instr->param.int_val);
+      } break;
+
+      case Opcode_GROWNZ:
+      {
+        assert(instr->param_type == ParamType_int32);
+        text_len += print_instruction(text, "grownz %d", instr->param.int_val);
       } break;
 
 #if 0

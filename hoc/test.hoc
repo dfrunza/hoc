@@ -6,8 +6,16 @@ include "fibo.hoc";
 include "fizzbuzz.hoc";
 */
 
-proc int main()
+proc char main()
 {
+  var [4]char h = "abc";
+  var char c = h[0];
+  return c;
+  /*
+  var char* p_h = &"abc";
+  var char c;
+  c = *p_h;
+  */
 }
 
 main();

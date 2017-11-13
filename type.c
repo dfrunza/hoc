@@ -86,8 +86,7 @@ bool types_are_equal(Type* type_a, Type* type_b)
     }
     else if(type_a->kind == Type_array)
     {
-      are_equal = types_are_equal(type_a->array.elem, type_b->array.elem)
-        && type_a->array.size == type_b->array.size;
+      are_equal = types_are_equal(type_a->array.elem, type_b->array.elem);
     }
     else
       assert(0);
@@ -154,9 +153,13 @@ Type* get_type_repr(Type* type)
 void set_union(Type* type_a, Type* type_b)
 {
   if(type_a->kind == Type_typevar)
+  {
     type_a->repr_type = type_b;
+  }
   else
+  {
     type_b->repr_type = type_a;
+  }
 }
 
 bool type_unif(Type* type_a, Type* type_b)
@@ -165,67 +168,56 @@ bool type_unif(Type* type_a, Type* type_b)
   Type* repr_type_a = get_type_repr(type_a);
   Type* repr_type_b = get_type_repr(type_b);
 
-  if(repr_type_a->kind == Type_typevar || repr_type_b->kind == Type_typevar)
+  if(repr_type_a == repr_type_b)
   {
-    set_union(repr_type_a, repr_type_b);
     success = true;
   }
-  else if(repr_type_a->kind == repr_type_b->kind)
-  {
-    if(repr_type_a == repr_type_b)
-    {
-      success = true;
-    }
-    else if(repr_type_a->kind == Type_basic)
-    {
-      success = (repr_type_a->basic.kind == repr_type_b->basic.kind);
-    }
-    else
-    {
-      set_union(repr_type_a, repr_type_b);
-      assert(repr_type_a->kind == repr_type_b->kind);
-
-      if(repr_type_a->kind == Type_proc)
-      {
-        success = type_unif(repr_type_a->proc.args, repr_type_b->proc.args)
-          && type_unif(repr_type_a->proc.ret, repr_type_b->proc.ret);
-      }
-      else if(repr_type_a->kind == Type_product)
-      {
-        success = type_unif(repr_type_a->product.left, repr_type_b->product.left)
-          && type_unif(repr_type_a->product.right, repr_type_b->product.right);
-      }
-      else if(repr_type_a->kind == Type_pointer)
-      {
-        success = type_unif(repr_type_a->pointer.pointee, repr_type_b->pointer.pointee);
-      }
-      else if(repr_type_a->kind == Type_array)
-      {
-#if 0
-        success = (repr_type_a->array.size == repr_type_b->array.size)
-          && type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
-#else
-        success = type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
-#endif
-      }
-      else
-        assert(0);
-    }
-  }
-#if 0
   else
   {
-    /* Arrays and pointer types are equivalent. */
-    if(repr_type_a->kind == Type_array && repr_type_b->kind == Type_pointer)
+    if(repr_type_a->kind == Type_typevar || repr_type_b->kind == Type_typevar)
     {
-      success = type_unif(repr_type_a->array.elem, repr_type_b->pointer.pointee);
+      set_union(repr_type_a, repr_type_b);
+      success = true;
     }
-    else if(repr_type_a->kind == Type_pointer && repr_type_b->kind == Type_array)
+    else if(repr_type_a->kind == repr_type_b->kind)
     {
-      success = type_unif(repr_type_a->pointer.pointee, repr_type_b->array.elem);
+      if(repr_type_a == repr_type_b)
+      {
+        success = true;
+      }
+      else if(repr_type_a->kind == Type_basic)
+      {
+        success = (repr_type_a->basic.kind == repr_type_b->basic.kind);
+      }
+      else
+      {
+        set_union(repr_type_a, repr_type_b);
+        assert(repr_type_a->kind == repr_type_b->kind);
+
+        if(repr_type_a->kind == Type_proc)
+        {
+          success = type_unif(repr_type_a->proc.args, repr_type_b->proc.args)
+            && type_unif(repr_type_a->proc.ret, repr_type_b->proc.ret);
+        }
+        else if(repr_type_a->kind == Type_product)
+        {
+          success = type_unif(repr_type_a->product.left, repr_type_b->product.left)
+            && type_unif(repr_type_a->product.right, repr_type_b->product.right);
+        }
+        else if(repr_type_a->kind == Type_pointer)
+        {
+          success = type_unif(repr_type_a->pointer.pointee, repr_type_b->pointer.pointee);
+        }
+        else if(repr_type_a->kind == Type_array)
+        {
+          success = (repr_type_a->array.size == repr_type_b->array.size)
+            && type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
+        }
+        else
+          assert(0);
+      }
     }
   }
-#endif
 
   return success;
 }

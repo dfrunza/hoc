@@ -488,6 +488,32 @@ void append_list_elem(List* list, void* elem, ListKind kind)
   append_list_item(list, item);
 }
 
+void prepend_list_item(List* list, ListItem* item)
+{
+  assert(list->kind == item->kind);
+
+  if(list->first)
+  {
+    item->next = list->first;
+    item->prev = 0;
+    list->first->prev = item;
+    list->first = item;
+  }
+  else
+  {
+    list->first = list->last = item;
+    item->next = item->prev = 0;
+  }
+}
+
+void prepend_list_elem(List* list, void* elem, ListKind kind)
+{
+  ListItem* item = mem_push_struct(arena, ListItem);
+  item->elem = elem;
+  item->kind = kind;
+  prepend_list_item(list, item);
+}
+
 void replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
 {
   ListItem* prev_b_item = at_b_item->prev;

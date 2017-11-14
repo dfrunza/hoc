@@ -297,11 +297,11 @@ Token* get_prev_token(TokenStream* input)
   return token;
 }
 
-bool filter_whitespace(TokenStream* input, char* whitechars)
+/* Returns the first non-whitepace char. */
+char skip_whitespace(TokenStream* input, char* whitechars)
 {
   SourceLoc* src_loc = &input->src_loc;
   char c = *input->cursor;
-  int initial_line_nr = src_loc->line_nr;
 
   while(cstr_contains_char(whitechars, c))
   {
@@ -312,7 +312,7 @@ bool filter_whitespace(TokenStream* input, char* whitechars)
     }
     c = *(++input->cursor);
   }
-  return src_loc->line_nr > initial_line_nr;
+  return c;
 }
 
 bool get_asm_text(TokenStream* input)
@@ -323,21 +323,16 @@ bool get_asm_text(TokenStream* input)
   SourceLoc* src_loc = &input->src_loc;
   src_loc->src_line = input->cursor;
   char c;
-
   Token* token = &input->token;
 
-  filter_whitespace(input, " \r\n\t");
+  skip_whitespace(input, " \r\n\t");
   char* begin_char = input->cursor;
 
-  c = *input->cursor;
+  c = *begin_char;
   while(c != '\0' && c != '}')
   {
     c = *(++input->cursor);
-    if(filter_whitespace(input, "\r\n"))
-    {
-      filter_whitespace(input, " \t");
-      c = *(input->cursor);
-    }
+    c = skip_whitespace(input, " \r\n\t");
   }
 
   if(c == '}')
@@ -371,17 +366,8 @@ bool get_next_token(TokenStream* input)
 
   Token* token = &input->token;
 loop:
+  skip_whitespace(input, " \r\n\t");
   c = *input->cursor;
-  while(c == ' ' || c == '\t' ||
-        c == '\r' || c == '\n')
-  {
-    if(c == '\n')
-    {
-      src_loc->line_nr++;
-      src_loc->src_line = input->cursor;
-    }
-    c = *(++input->cursor);
-  }
 
   if(char_is_letter(c) || c == '_')
   {
@@ -389,7 +375,9 @@ loop:
     c = *(++input->cursor);
 
     while(char_is_letter(c) || char_is_numeric(c) || c == '_')
+    {
       c = *(++input->cursor);
+    }
 
     char* end_char = input->cursor - 1;
     char* lexeme = install_lexeme(begin_char, end_char);

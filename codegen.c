@@ -87,10 +87,14 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
     if(link && link->decl_scope_offset > 0)
     {
       // non-local
-      assert(link->loc < 0); // relative to FP
-      emit_instr_int32(instr_list, Opcode_PUSH_INT32, link->loc);
-      emit_instr(instr_list, Opcode_ADD_INT32);
-      emit_instr_int32(instr_list, Opcode_LOAD, 4); // access link is on the stack now
+      int offset = link->decl_scope_offset;
+      while(offset-- > 0)
+      {
+        assert(link->loc < 0); // relative to FP
+        emit_instr_int32(instr_list, Opcode_PUSH_INT32, link->loc);
+        emit_instr(instr_list, Opcode_ADD_INT32);
+        emit_instr_int32(instr_list, Opcode_LOAD, 4); // access link is on the stack now
+      }
     }
     emit_instr_int32(instr_list, Opcode_PUSH_INT32, data->loc);
     emit_instr(instr_list, Opcode_ADD_INT32);
@@ -1086,7 +1090,7 @@ void print_code(VmProgram* vm_program)
       {
         if(instr->param_type == ParamType_int8)
         {
-          text_len += print_instruction(text, "push_char %d", instr->param.int_val);
+          text_len += print_instruction(text, "push_int8 %d", instr->param.int_val);
         }
         else
           assert(0);
@@ -1096,7 +1100,7 @@ void print_code(VmProgram* vm_program)
       {
         if(instr->param_type == ParamType_int32)
         {
-          text_len += print_instruction(text, "push_int %d", instr->param.int_val);
+          text_len += print_instruction(text, "push_int32 %d", instr->param.int_val);
         }
         else
           assert(0);
@@ -1116,7 +1120,7 @@ void print_code(VmProgram* vm_program)
       {
         if(instr->param_type == ParamType_float32)
         {
-          text_len += print_instruction(text, "push_float %f", instr->param.float_val);
+          text_len += print_instruction(text, "push_float32 %f", instr->param.float_val);
         }
         else
           assert(0);
@@ -1141,67 +1145,67 @@ void print_code(VmProgram* vm_program)
       case Opcode_ADD_INT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "add_int");
+        text_len += print_instruction(text, "add_int32");
       } break;
 
       case Opcode_SUB_INT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "sub_int");
+        text_len += print_instruction(text, "sub_int32");
       } break;
 
       case Opcode_MUL_INT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "mul_int");
+        text_len += print_instruction(text, "mul_int32");
       } break;
 
       case Opcode_DIV_INT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "div_int");
+        text_len += print_instruction(text, "div_int32");
       } break;
 
       case Opcode_ADD_FLOAT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "add_float");
+        text_len += print_instruction(text, "add_float32");
       } break;
 
       case Opcode_SUB_FLOAT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "sub_float");
+        text_len += print_instruction(text, "sub_float32");
       } break;
 
       case Opcode_MUL_FLOAT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "mul_float");
+        text_len += print_instruction(text, "mul_float32");
       } break;
 
       case Opcode_DIV_FLOAT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "div_float");
+        text_len += print_instruction(text, "div_float32");
       } break;
 
       case Opcode_NEG_FLOAT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "neg_float");
+        text_len += print_instruction(text, "neg_float32");
       } break;
 
       case Opcode_MOD_INT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "mod_int");
+        text_len += print_instruction(text, "mod_int32");
       } break;
 
       case Opcode_NEG_INT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "neg_int");
+        text_len += print_instruction(text, "neg_int32");
       } break;
 
       case Opcode_LOAD:
@@ -1276,11 +1280,13 @@ void print_code(VmProgram* vm_program)
         text_len += print_instruction(text, "jumpnz %s", instr->param.str);
       } break;
 
+#if 0
       case Opcode_DECR_INT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "decr_int");
+        text_len += print_instruction(text, "decr_int32");
       } break;
+#endif
 
       case Opcode_ENTER:
       {
@@ -1316,49 +1322,51 @@ void print_code(VmProgram* vm_program)
         assert(instr->param_type == ParamType_None);
         if(instr->opcode == Opcode_CMPEQ_INT8)
         {
-          text_len += print_instruction(text, "cmpeq_char");
+          text_len += print_instruction(text, "cmpeq_int8");
         }
         else if(instr->opcode == Opcode_CMPNEQ_INT8)
         {
-          text_len += print_instruction(text, "cmpneq_char");
+          text_len += print_instruction(text, "cmpneq_int8");
         }
         else if(instr->opcode == Opcode_CMPLSS_INT8)
         {
-          text_len += print_instruction(text, "cmplss_char");
+          text_len += print_instruction(text, "cmplss_int8");
         }
         else if(instr->opcode == Opcode_CMPGRT_INT8)
-          text_len += print_instruction(text, "cmpgrt_char");
+        {
+          text_len += print_instruction(text, "cmpgrt_int8");
+        }
         else if(instr->opcode == Opcode_CMPEQ_INT32)
         {
-          text_len += print_instruction(text, "cmpeq_int");
+          text_len += print_instruction(text, "cmpeq_int32");
         }
         else if(instr->opcode == Opcode_CMPNEQ_INT32)
         {
-          text_len += print_instruction(text, "cmpneq_int");
+          text_len += print_instruction(text, "cmpneq_int32");
         }
         else if(instr->opcode == Opcode_CMPLSS_INT32)
         {
-          text_len += print_instruction(text, "cmplss_int");
+          text_len += print_instruction(text, "cmplss_int32");
         }
         else if(instr->opcode == Opcode_CMPGRT_INT32)
         {
-          text_len += print_instruction(text, "cmpgrt_int");
+          text_len += print_instruction(text, "cmpgrt_int32");
         }
         else if(instr->opcode == Opcode_CMPEQ_FLOAT32)
         {
-          text_len += print_instruction(text, "cmpeq_float");
+          text_len += print_instruction(text, "cmpeq_float32");
         }
         else if(instr->opcode == Opcode_CMPNEQ_FLOAT32)
         {
-          text_len += print_instruction(text, "cmpneq_float");
+          text_len += print_instruction(text, "cmpneq_float32");
         }
         else if(instr->opcode == Opcode_CMPLSS_FLOAT32)
         {
-          text_len += print_instruction(text, "cmplss_float");
+          text_len += print_instruction(text, "cmplss_float32");
         }
         else if(instr->opcode == Opcode_CMPGRT_FLOAT32)
         {
-          text_len += print_instruction(text, "cmpgrt_float");
+          text_len += print_instruction(text, "cmpgrt_float32");
         }
         else
           assert(0);
@@ -1391,13 +1399,13 @@ void print_code(VmProgram* vm_program)
       case Opcode_FLOAT32_TO_INT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "float_to_int");
+        text_len += print_instruction(text, "float32_to_int32");
       } break;
 
       case Opcode_INT32_TO_FLOAT32:
       {
         assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "int_to_float");
+        text_len += print_instruction(text, "int32_to_float32");
       } break;
 
       default:

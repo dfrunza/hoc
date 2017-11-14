@@ -158,15 +158,15 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
       {
         instr.opcode = Opcode_POP_REG;
       }
-      else if(cstr_match(mnemonic, "push_char"))
+      else if(cstr_match(mnemonic, "push_int8"))
       {
         instr.opcode = Opcode_PUSH_INT8;
       }
-      else if(cstr_match(mnemonic, "push_int"))
+      else if(cstr_match(mnemonic, "push_int32"))
       {
         instr.opcode = Opcode_PUSH_INT32;
       }
-      else if(cstr_match(mnemonic, "push_float"))
+      else if(cstr_match(mnemonic, "push_float32"))
       {
         instr.opcode = Opcode_PUSH_FLOAT32;
       }
@@ -194,55 +194,54 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
       {
         instr.opcode = Opcode_NEW;
       }
-      else if(cstr_match(mnemonic, "add_int"))
+      else if(cstr_match(mnemonic, "add_int32"))
       {
         instr.opcode = Opcode_ADD_INT32;
       }
-      else if(cstr_match(mnemonic, "sub_int"))
+      else if(cstr_match(mnemonic, "sub_int32"))
       {
         instr.opcode = Opcode_SUB_INT32;
       }
-      else if(cstr_match(mnemonic, "mul_int"))
+      else if(cstr_match(mnemonic, "mul_int32"))
       {
         instr.opcode = Opcode_MUL_INT32;
       }
-      else if(cstr_match(mnemonic, "div_int"))
+      else if(cstr_match(mnemonic, "div_int32"))
       {
         instr.opcode = Opcode_DIV_INT32;
       }
-      else if(cstr_match(mnemonic, "mod_int"))
+      else if(cstr_match(mnemonic, "mod_int32"))
       {
         instr.opcode = Opcode_MOD_INT32;
       }
-      else if(cstr_match(mnemonic, "add_float"))
+      else if(cstr_match(mnemonic, "add_float32"))
       {
         instr.opcode = Opcode_ADD_FLOAT32;
       }
-      else if(cstr_match(mnemonic, "sub_float"))
+      else if(cstr_match(mnemonic, "sub_float32"))
       {
         instr.opcode = Opcode_SUB_FLOAT32;
       }
-      else if(cstr_match(mnemonic, "mul_float"))
+      else if(cstr_match(mnemonic, "mul_float32"))
       {
         instr.opcode = Opcode_MUL_FLOAT32;
       }
-      else if(cstr_match(mnemonic, "div_float"))
+      else if(cstr_match(mnemonic, "div_float32"))
       {
         instr.opcode = Opcode_DIV_FLOAT32;
       }
-      else if(cstr_match(mnemonic, "neg_float"))
+      else if(cstr_match(mnemonic, "neg_float32"))
       {
         instr.opcode = Opcode_NEG_FLOAT32;
       }
-      else if(cstr_match(mnemonic, "incr_int"))
+      else if(cstr_match(mnemonic, "incr_int32"))
       {
         instr.opcode = Opcode_INCR_INT32;
       }
-      else if(cstr_match(mnemonic, "decr_int"))
+      else if(cstr_match(mnemonic, "decr_int32"))
       {
         instr.opcode = Opcode_DECR_INT32;
       }
-
       else if(cstr_match(mnemonic, "halt"))
       {
         instr.opcode = Opcode_HALT;
@@ -267,58 +266,54 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
       {
         instr.opcode = Opcode_JUMPZ;
       }
-
-      else if(cstr_match(mnemonic, "cmpeq_char"))
+      else if(cstr_match(mnemonic, "cmpeq_int8"))
       {
         instr.opcode = Opcode_CMPEQ_INT8;
       }
-      else if(cstr_match(mnemonic, "cmpneq_char"))
+      else if(cstr_match(mnemonic, "cmpneq_int8"))
       {
         instr.opcode = Opcode_CMPNEQ_INT8;
       }
-      else if(cstr_match(mnemonic, "cmplss_char"))
+      else if(cstr_match(mnemonic, "cmplss_int8"))
       {
         instr.opcode = Opcode_CMPLSS_INT8;
       }
-      else if(cstr_match(mnemonic, "cmpgrt_char"))
+      else if(cstr_match(mnemonic, "cmpgrt_int8"))
       {
         instr.opcode = Opcode_CMPGRT_INT8;
       }
-
-      else if(cstr_match(mnemonic, "cmpeq_int"))
+      else if(cstr_match(mnemonic, "cmpeq_int32"))
       {
         instr.opcode = Opcode_CMPEQ_INT32;
       }
-      else if(cstr_match(mnemonic, "cmpneq_int"))
+      else if(cstr_match(mnemonic, "cmpneq_int32"))
       {
         instr.opcode = Opcode_CMPNEQ_INT32;
       }
-      else if(cstr_match(mnemonic, "cmplss_int"))
+      else if(cstr_match(mnemonic, "cmplss_int32"))
       {
         instr.opcode = Opcode_CMPLSS_INT32;
       }
-      else if(cstr_match(mnemonic, "cmpgrt_int"))
+      else if(cstr_match(mnemonic, "cmpgrt_int32"))
       {
         instr.opcode = Opcode_CMPGRT_FLOAT32;
       }
-
-      else if(cstr_match(mnemonic, "cmpeq_float"))
+      else if(cstr_match(mnemonic, "cmpeq_float32"))
       {
         instr.opcode = Opcode_CMPEQ_FLOAT32;
       }
-      else if(cstr_match(mnemonic, "cmpneq_float"))
+      else if(cstr_match(mnemonic, "cmpneq_float32"))
       {
         instr.opcode = Opcode_CMPNEQ_FLOAT32;
       }
-      else if(cstr_match(mnemonic, "cmplss_float"))
+      else if(cstr_match(mnemonic, "cmplss_float32"))
       {
         instr.opcode = Opcode_CMPLSS_FLOAT32;
       }
-      else if(cstr_match(mnemonic, "cmpgrt_float"))
+      else if(cstr_match(mnemonic, "cmpgrt_float32"))
       {
         instr.opcode = Opcode_CMPGRT_FLOAT32;
       }
-
       else if(cstr_match(mnemonic, "and"))
       {
         instr.opcode = Opcode_AND;
@@ -331,11 +326,11 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
       {
         instr.opcode = Opcode_NOT;
       }
-      else if(cstr_match(mnemonic, "neg_int"))
+      else if(cstr_match(mnemonic, "neg_int32"))
       {
         instr.opcode = Opcode_NEG_INT32;
       }
-      else if(cstr_match(mnemonic, "neg_float"))
+      else if(cstr_match(mnemonic, "neg_float32"))
       {
         instr.opcode = Opcode_NEG_FLOAT32;
       }
@@ -363,12 +358,11 @@ bool build_instructions(SourceProgram* source, VmProgram* vm_program)
       {
         instr.opcode = Opcode_LEAVE;
       }
-
-      else if(cstr_match(mnemonic, "float_to_int"))
+      else if(cstr_match(mnemonic, "float32_to_int32"))
       {
         instr.opcode = Opcode_FLOAT32_TO_INT32;
       }
-      else if(cstr_match(mnemonic, "int_to_float"))
+      else if(cstr_match(mnemonic, "int32_to_float32"))
       {
         instr.opcode = Opcode_INT32_TO_FLOAT32;
       }

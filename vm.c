@@ -9,6 +9,7 @@ MemoryArena* arena = 0;
 
 #include "lib.c"
 
+/* In bytes */
 #define VM_MEMORY_SIZE 2048
 
 #define memory_at(LOC, TYPE, OFFSET)\
@@ -78,7 +79,7 @@ void clear_memory(HocMachine* machine, int base, int size)
   }
   for(int i = base; i < new_base; i++)
   {
-    machine->memory[i] = 0xcd;
+    machine->memory[i] = 0xaa;
   }
 }
 
@@ -114,7 +115,7 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       else
         return Result_InvalidInstructionFormat;
     } break;
-#if 0
+
     case Opcode_NEW:
     {
       int32 arg_sp = location_at(machine->sp, int32, -1);
@@ -142,7 +143,6 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       else
         return Result_InvalidMemoryAccess;
     } break;
-#endif
 
     case Opcode_PUSH_INT8:
     {
@@ -930,7 +930,7 @@ bool load_bin_image(char* exe_file_name, HocMachine* machine)
       }
     }
     else
-      success = error("bincode signature mismatch");
+      success = error("BINIMAGE signature mismatch");
   }
   else
     success = error("could not read the EXE size of `%s`", exe_file_name);

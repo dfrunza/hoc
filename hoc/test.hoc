@@ -12,8 +12,8 @@ proc void new(int size)
   asm
   {
     push_reg fp
-    push_int -16
-    add_int
+    push_int32 -16
+    add_int32
     load 4
     new
   }
@@ -25,8 +25,8 @@ proc void putc(char c)
   asm
   {
     push_reg fp
-    push_int -13
-    add_int
+    push_int32 -13
+    add_int32
     load 1
     putc
   }
@@ -65,9 +65,10 @@ proc void fizzbuzz(int n)
 }
 */
 
+var int a = 9999;
 proc void foo()
 {
-  print_str(&"HI");
+  a = 1111;
 }
 
 proc void main()

@@ -142,21 +142,6 @@ void add_builtin_type(Scope* scope, char* name, Type* type)
   ATTR(type_decl, symbol, decl_sym) = decl_sym;
 }
 
-#if 0
-void add_builtin_proc(Scope* scope, char* name, Type* type)
-{
-  assert(type->kind == Type_proc);
-  AstNode* proc_decl = new_ast_node(Ast_gen1, AstNode_proc_decl, 0);
-  ATTR(proc_decl, str_val, name) = name;
-  ATTR(proc_decl, type, type) = type;
-  ATTR(proc_decl, scope, scope) = scope;
-  Symbol* decl_sym = add_decl_symbol(name, 0, scope, Symbol_proc);
-  decl_sym->type = type;
-  decl_sym->ast_node = proc_decl;
-  ATTR(proc_decl, symbol, decl_sym) = decl_sym;
-}
-#endif
-
 void add_builtin_types(Scope* scope)
 {
   add_builtin_type(scope, "bool", basic_type_bool);
@@ -164,15 +149,7 @@ void add_builtin_types(Scope* scope)
   add_builtin_type(scope, "char", basic_type_char);
   add_builtin_type(scope, "float", basic_type_float);
   add_builtin_type(scope, "void", basic_type_void);
-  /*add_builtin_type("type", basic_type_type);*/
 }
-
-#if 0
-void add_builtin_procs(Scope* scope)
-{
-  add_builtin_proc(scope, "putc", new_proc_type(basic_type_char, basic_type_void));
-}
-#endif
 
 Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
 {
@@ -380,7 +357,6 @@ bool name_ident(AstNode* node)
 
     symbol_table->module_scope = begin_scope(Scope_module, module);
     add_builtin_types(symbol_table->module_scope);
-    //add_builtin_procs(symbol_table->module_scope);
     success = name_ident_block(body);
     end_scope();
   }

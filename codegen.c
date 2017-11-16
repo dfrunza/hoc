@@ -87,17 +87,36 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
     if(link && link->decl_scope_offset > 0)
     {
       // non-local
+      assert(link->loc < 0);
+      emit_instr_int32(instr_list, Opcode_PUSH_INT32, link->loc);
+      emit_instr(instr_list, Opcode_ADD_INT32);
+      emit_instr_int32(instr_list, Opcode_LOAD, link->size);
+
       int offset = link->decl_scope_offset;
-      while(offset-- > 0)
+      while(--offset > 0)
       {
-        assert(link->loc < 0); // relative to FP
-        emit_instr_int32(instr_list, Opcode_PUSH_INT32, link->loc);
-        emit_instr(instr_list, Opcode_ADD_INT32);
-        emit_instr_int32(instr_list, Opcode_LOAD, 4); // access link is on the stack now
+        emit_instr_int32(instr_list, Opcode_LOAD, link->size);
       }
+
+//      emit_instr_int32(instr_list, Opcode_PUSH_INT32, link->loc);
+//      emit_instr(instr_list, Opcode_ADD_INT32);
+      emit_instr_int32(instr_list, Opcode_PUSH_INT32, data->loc);
+      emit_instr(instr_list, Opcode_ADD_INT32);
+    }
+#if 0
+    emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+
+    if(link && link->decl_scope_offset > 0)
+    {
+      // non-local
+      assert(link->loc < 0); // relative to FP
+      emit_instr_int32(instr_list, Opcode_PUSH_INT32, link->loc);
+      emit_instr(instr_list, Opcode_ADD_INT32);
+      emit_instr_int32(instr_list, Opcode_LOAD, 4); // access link is on the stack now
     }
     emit_instr_int32(instr_list, Opcode_PUSH_INT32, data->loc);
     emit_instr(instr_list, Opcode_ADD_INT32);
+#endif
   }
   else if(node->kind == AstNode_un_expr)
   {
@@ -251,44 +270,6 @@ bool gen_instr(List* instr_list, AstNode* node)
       assert(proc->kind == AstNode_proc_decl);
       gen_instr(instr_list, proc);
     }
-  }
-  else if(node->kind == AstNode_block)
-  {
-    Scope* scope = ATTR(node, scope, scope);
-    DataArea* link_area = &scope->link_area;
-    DataArea* local_area = &scope->local_area;
-
-    if(link_area->size > 0)
-    {
-      for(ListItem* list_item = link_area->subareas->first;
-          list_item;
-          list_item = list_item->next)
-      {
-        DataArea* link = ITEM(list_item, data_area); assert(link->kind == DataArea_link);
-        emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
-
-        int offset = link->decl_scope_offset - 1;
-        while(offset--)
-        {
-          emit_instr_int32(instr_list, Opcode_PUSH_INT32, -4);
-          emit_instr(instr_list, Opcode_ADD_INT32); // get the FP of the previous activation record
-          emit_instr_int32(instr_list, Opcode_LOAD, 4);
-        }
-      }
-    }
-
-    emit_instr(instr_list, Opcode_ENTER);
-    emit_instr_int32(instr_list, Opcode_GROW, local_area->size);
-
-    for(ListItem* list_item = ATTR(node, list, nodes)->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      gen_instr(instr_list, ITEM(list_item, ast_node));
-    }
-
-    emit_instr(instr_list, Opcode_LEAVE);
-    emit_instr_int32(instr_list, Opcode_GROW, -link_area->size);
   }
   else if(node->kind == AstNode_proc_decl)
   {
@@ -702,22 +683,97 @@ bool gen_instr(List* instr_list, AstNode* node)
     else if(un_op == Operator_deref)
     {
       gen_load_rvalue(instr_list, node);
-#if 0
-      assert(operand_ty->kind == Type_pointer);
-      gen_load_rvalue(instr_list, operand);
-      emit_instr_int32(instr_list, Opcode_LOAD, type->width);
-#endif
     }
     else
       assert(0);
   }
+  else if(node->kind == AstNode_block)
+  {
+    Scope* scope = ATTR(node, scope, scope);
+    DataArea* link_area = &scope->link_area;
+    DataArea* local_area = &scope->local_area;
+
+    emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+#if 0
+    if(link_area->size > 0)
+    {
+      for(ListItem* list_item = link_area->subareas->first;
+          list_item;
+          list_item = list_item->next)
+      {
+        DataArea* link = ITEM(list_item, data_area); assert(link->kind == DataArea_link);
+        emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+
+        int offset = link->decl_scope_offset - 1;
+        while(offset--)
+        {
+          emit_instr_int32(instr_list, Opcode_PUSH_INT32, -4);
+          emit_instr(instr_list, Opcode_ADD_INT32); // get the FP of the previous activation record
+          emit_instr_int32(instr_list, Opcode_LOAD, 4);
+        }
+      }
+    }
+#endif
+
+    emit_instr(instr_list, Opcode_ENTER);
+    emit_instr_int32(instr_list, Opcode_GROW, local_area->size);
+
+    for(ListItem* list_item = ATTR(node, list, nodes)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      gen_instr(instr_list, ITEM(list_item, ast_node));
+    }
+
+    emit_instr(instr_list, Opcode_LEAVE);
+    emit_instr_int32(instr_list, Opcode_GROW, -link_area->size);
+  }
   else if(node->kind == AstNode_proc_occur)
   {
-    AstNode* proc = ATTR(node, ast_node, proc_decl);
-    Scope* scope = ATTR(proc, scope, scope);
+    AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
+    Scope* scope = ATTR(proc_decl, scope, scope);
+    Symbol* occur_sym = ATTR(node, symbol, occur_sym);
     DataArea* ret_area = &scope->ret_area;
     DataArea* args_area = &scope->args_area;
     DataArea* link_area = &scope->link_area;
+
+    emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+    if(occur_sym->decl_scope_offset < 0)
+    {
+      emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
+
+      int offset = occur_sym->decl_scope_offset;
+      while(--offset > 0)
+      {
+        emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
+      }
+    }
+//    else
+//    {
+//      emit_instr_int32(instr_list, Opcode_PUSH_INT32, link_area->loc);
+//      emit_instr_int32(instr_list, Opcode_STORE, link_area->size);
+//    }
+
+#if 0
+    if(link_area->size > 0)
+    {
+      for(ListItem* list_item = link_area->subareas->first;
+          list_item;
+          list_item = list_item->next)
+      {
+        DataArea* link = ITEM(list_item, data_area); assert(link->kind == DataArea_link);
+        emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+
+        int offset = link->decl_scope_offset - 1;
+        while(offset--)
+        {
+          emit_instr_int32(instr_list, Opcode_PUSH_INT32, -4);
+          emit_instr(instr_list, Opcode_ADD_INT32); // get the FP of the previous activation record
+          emit_instr_int32(instr_list, Opcode_LOAD, 4);
+        }
+      }
+    }
+#endif
 
     emit_instr_int32(instr_list, Opcode_GROW, ret_area->size);
 
@@ -730,8 +786,9 @@ bool gen_instr(List* instr_list, AstNode* node)
     //todo: assert that the 'data area size' == 'evaluated args size'
 
     emit_instr_str(instr_list, Opcode_CALL, ATTR(node, str_val, name));
-    emit_instr_int32(instr_list, Opcode_GROW, -link_area->size);
+
     emit_instr_int32(instr_list, Opcode_GROW, -args_area->size);
+    emit_instr_int32(instr_list, Opcode_GROW, -link_area->size);
   }
   else if(node->kind == AstNode_if_stmt)
   {
@@ -1279,14 +1336,6 @@ void print_code(VmProgram* vm_program)
         assert(instr->param_type == ParamType_str);
         text_len += print_instruction(text, "jumpnz %s", instr->param.str);
       } break;
-
-#if 0
-      case Opcode_DECR_INT32:
-      {
-        assert(instr->param_type == ParamType_None);
-        text_len += print_instruction(text, "decr_int32");
-      } break;
-#endif
 
       case Opcode_ENTER:
       {

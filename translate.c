@@ -833,7 +833,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_proc_occur; // procedure call
-      kind->attr_count = 6;
+      kind->attr_count = 7;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -847,6 +847,11 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_symbol;
       attr->name = AstAttributeName_occur_sym;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_symbol;
+      attr->name = AstAttributeName_decl_sym;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];

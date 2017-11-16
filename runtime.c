@@ -91,9 +91,9 @@ void compute_decl_areas(Scope* scope, SymbolKind* kind_set, DataArea* decl_area)
   }
 }
 
-void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* link_area)
+void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* link)
 {
-  List* access_links = link_area->subareas;
+  //List* access_links = link_area->subareas;
   for(SymbolKind* kind = kind_set;
       *kind != Symbol_None;
       kind++)
@@ -102,7 +102,22 @@ void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* link_area
         list_item;
         list_item = list_item->next)
     {
-      int decl_scope_offset = ITEM(list_item, symbol)->decl_scope_offset;
+      Symbol* occur_sym = ITEM(list_item, symbol);
+      Symbol* decl_sym = occur_sym->decl;
+
+      int decl_scope_offset = occur_sym->decl_scope_offset;
+      if(decl_scope_offset > 0)
+      {
+        link->decl_scope_offset = decl_scope_offset;
+        link->size = 4; // size of an int
+        occur_sym->data_area = link;
+      }
+      else if(decl_scope_offset == 0)
+      {
+        occur_sym->data_area = decl_sym->data_area;
+      }
+#if 0
+      int decl_scope_offset = occur_sym->decl_scope_offset;
       if(decl_scope_offset > 0)
       {
         // non-local
@@ -126,16 +141,17 @@ void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* link_area
           append_list_elem(access_links, link, List_data_area);
           link_area->size += link->size;
         }
-        ITEM(list_item, symbol)->data_area = link;
+        occur_sym->data_area = link;
       }
       else if(decl_scope_offset == 0)
       {
         // local
-        Symbol* decl_sym = ITEM(list_item, symbol)->decl;
-        ITEM(list_item, symbol)->data_area = decl_sym->data_area;
+        Symbol* decl_sym = occur_sym->decl;
+        occur_sym->data_area = decl_sym->data_area;
       }
       else
         assert(0);
+#endif
     }
   }
 }
@@ -188,14 +204,15 @@ void build_runtime()
       append_list_elem(scope->pre_fp_areas, args_area, List_data_area);
       compute_decl_areas(scope, (SymbolKind[]){Symbol_formal_arg, Symbol_None}, args_area);
 
+      DataArea* link_area = &scope->link_area;
+      //link_area->subareas = new_list(arena, List_data_area);
+      append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
+      compute_occur_areas(scope, (SymbolKind[])
+          {Symbol_var, Symbol_ret_var, Symbol_formal_arg, Symbol_None}, link_area);
+
       DataArea* ctrl_area = &scope->ctrl_area;
       append_list_elem(scope->pre_fp_areas, ctrl_area, List_data_area);
       ctrl_area->size = 3*4; // FP, SP, IP
-
-      DataArea* link_area = &scope->link_area;
-      link_area->subareas = new_list(arena, List_data_area);
-      append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
-      compute_occur_areas(scope, (SymbolKind[]){Symbol_var, Symbol_None}, link_area);
 
       DataArea* local_area = &scope->local_area;
       local_area->subareas = new_list(arena, List_data_area);
@@ -210,10 +227,10 @@ void build_runtime()
       scope->post_fp_areas = new_list(arena, List_data_area);
 
       DataArea* link_area = &scope->link_area;
-      link_area->subareas = new_list(arena, List_data_area);
+      //link_area->subareas = new_list(arena, List_data_area);
       append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
       compute_occur_areas(scope, (SymbolKind[])
-          {Symbol_var, Symbol_ret_var, Symbol_None}, link_area);
+          {Symbol_var, Symbol_ret_var, Symbol_formal_arg, Symbol_None}, link_area);
 
       DataArea* ctrl_area = &scope->ctrl_area;
       append_list_elem(scope->pre_fp_areas, ctrl_area, List_data_area);

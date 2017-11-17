@@ -570,12 +570,11 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
     {
       if(instr->param_type == ParamType_int32)
       {
-        int32 top_sp = location_at(machine->sp, int32, 3);
+        int32 top_sp = location_at(machine->sp, int32, 2);
         if(check_stack_bounds(machine, top_sp))
         {
           memory_at(machine->sp, int32, 0) = machine->ip + 1;
-          memory_at(machine->sp, int32, 1) = machine->sp;
-          memory_at(machine->sp, int32, 2) = machine->fp;
+          memory_at(machine->sp, int32, 1) = machine->fp;
 
           int32 jump_address = instr->param.int_val;
           machine->ip = jump_address;
@@ -591,19 +590,34 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
 
     case Opcode_RETURN:
     {
-      int32 arg_sp = location_at(machine->fp, int32, -3);
+      int32 arg_sp = location_at(machine->fp, int32, -2);
       if(check_stack_bounds(machine, arg_sp))
       {
         int32 old_sp = machine->sp;
         machine->ip = memory_at(arg_sp, int32, 0);
-        machine->sp = memory_at(arg_sp, int32, 1);
-        machine->fp = memory_at(arg_sp, int32, 2);
+        machine->sp = arg_sp;
+        machine->fp = memory_at(arg_sp, int32, 1);
         clear_memory(machine, machine->sp, old_sp - machine->sp);
       }
       else
         return Result_InvalidMemoryAccess;
     } break;
 
+    case Opcode_ENTER:
+    {
+      int32 top_sp = location_at(machine->sp, int32, 2);
+      if(check_stack_bounds(machine, top_sp))
+      {
+        clear_memory(machine, machine->sp, sizeof(int32)); // ip
+        memory_at(machine->sp, int32, 1) = machine->fp;
+        machine->ip++;
+        machine->sp = top_sp;
+        machine->fp = top_sp;
+      }
+      else
+        return Result_InvalidMemoryAccess;
+    } break;
+#if 0
     case Opcode_ENTER:
     {
       int32 top_sp = location_at(machine->sp, int32, 1);
@@ -617,7 +631,22 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       else
         return Result_InvalidMemoryAccess;
     } break;
+#endif
 
+    case Opcode_LEAVE:
+    {
+      int32 arg_sp = location_at(machine->fp, int32, -2);
+      if(check_stack_bounds(machine, arg_sp))
+      {
+        int32 old_sp = machine->sp;
+        machine->sp = arg_sp;
+        machine->fp = memory_at(arg_sp, int32, 1);
+        clear_memory(machine, machine->sp, old_sp - machine->sp);
+      }
+      else
+        return Result_InvalidMemoryAccess;
+    } break;
+#if 0
     case Opcode_LEAVE:
     {
       int32 arg_sp = location_at(machine->fp, int32, -1);
@@ -632,6 +661,7 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       else
         return Result_InvalidMemoryAccess;
     } break;
+#endif
 
     case Opcode_JUMPZ:
     case Opcode_JUMPNZ:

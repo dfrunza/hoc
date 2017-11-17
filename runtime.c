@@ -178,9 +178,14 @@ void build_runtime()
       *null = 0;
       null_area->size = sizeof(*null);
 
+      DataArea* link_area = &scope->link_area;
+      append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
+
       DataArea* ctrl_area = &scope->ctrl_area;
       append_list_elem(scope->pre_fp_areas, ctrl_area, List_data_area);
-      ctrl_area->size = 4; // FP
+      ctrl_area->size = 2*4; // IP + FP
+
+      /*----------- FP --------------*/
 
       DataArea* local_area = &scope->local_area;
       local_area->subareas = new_list(arena, List_data_area);
@@ -212,7 +217,9 @@ void build_runtime()
 
       DataArea* ctrl_area = &scope->ctrl_area;
       append_list_elem(scope->pre_fp_areas, ctrl_area, List_data_area);
-      ctrl_area->size = 3*4; // FP, SP, IP
+      ctrl_area->size = 2*4; // IP + FP
+
+      /*----------- FP --------------*/
 
       DataArea* local_area = &scope->local_area;
       local_area->subareas = new_list(arena, List_data_area);
@@ -234,7 +241,9 @@ void build_runtime()
 
       DataArea* ctrl_area = &scope->ctrl_area;
       append_list_elem(scope->pre_fp_areas, ctrl_area, List_data_area);
-      ctrl_area->size = 4; // FP
+      ctrl_area->size = 2*4; // IP + FP
+
+      /*----------- FP --------------*/
 
       DataArea* local_area = &scope->local_area;
       local_area->subareas = new_list(arena, List_data_area);

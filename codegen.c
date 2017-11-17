@@ -79,15 +79,18 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
 
   if(node->kind == AstNode_var_occur)
   {
-    DataArea* link = ATTR(node, symbol, occur_sym)->data_area;
-    DataArea* data = ATTR(node, symbol, decl_sym)->data_area;
-
-    emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+    Symbol* occur_sym = ATTR(node, symbol, occur_sym);
+    Symbol* decl_sym = occur_sym->decl;
+    Scope* scope = occur_sym->scope;
+    DataArea* ctrl_area = &scope->ctrl_area;
+    DataArea* link = occur_sym->data_area;
+    DataArea* data = decl_sym->data_area;
 
     if(link && link->decl_scope_offset > 0)
     {
       // non-local
-      assert(link->loc < 0);
+      assert(link->kind == DataArea_link && link->loc < 0);
+      emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
       emit_instr_int32(instr_list, Opcode_PUSH_INT32, link->loc);
       emit_instr(instr_list, Opcode_ADD_INT32);
       emit_instr_int32(instr_list, Opcode_LOAD, link->size);
@@ -98,11 +101,17 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
         emit_instr_int32(instr_list, Opcode_LOAD, link->size);
       }
 
-//      emit_instr_int32(instr_list, Opcode_PUSH_INT32, link->loc);
-//      emit_instr(instr_list, Opcode_ADD_INT32);
-      emit_instr_int32(instr_list, Opcode_PUSH_INT32, data->loc);
+      // the FP is offset relative to the Access Link
+      emit_instr_int32(instr_list, Opcode_PUSH_INT32, ctrl_area->size);
       emit_instr(instr_list, Opcode_ADD_INT32);
     }
+    else
+    {
+      emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+    }
+
+    emit_instr_int32(instr_list, Opcode_PUSH_INT32, data->loc);
+    emit_instr(instr_list, Opcode_ADD_INT32);
 #if 0
     emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
 
@@ -246,6 +255,7 @@ bool gen_instr(List* instr_list, AstNode* node)
     Scope* scope = ATTR(body, scope, scope);
     DataArea* local_area = &scope->local_area;
 
+    emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_SP);
     emit_instr(instr_list, Opcode_ENTER);
     emit_instr_int32(instr_list, Opcode_GROWNZ, local_area->size);
 
@@ -694,6 +704,8 @@ bool gen_instr(List* instr_list, AstNode* node)
     DataArea* local_area = &scope->local_area;
 
     emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+    emit_instr_int32(instr_list, Opcode_PUSH_INT32, link_area->loc);
+    emit_instr(instr_list, Opcode_ADD_INT32);
 #if 0
     if(link_area->size > 0)
     {
@@ -737,17 +749,6 @@ bool gen_instr(List* instr_list, AstNode* node)
     DataArea* args_area = &scope->args_area;
     DataArea* link_area = &scope->link_area;
 
-    emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
-    if(occur_sym->decl_scope_offset < 0)
-    {
-      emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
-
-      int offset = occur_sym->decl_scope_offset;
-      while(--offset > 0)
-      {
-        emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
-      }
-    }
 //    else
 //    {
 //      emit_instr_int32(instr_list, Opcode_PUSH_INT32, link_area->loc);
@@ -784,6 +785,22 @@ bool gen_instr(List* instr_list, AstNode* node)
       gen_load_rvalue(instr_list, ITEM(list_item, ast_node));
     }
     //todo: assert that the 'data area size' == 'evaluated args size'
+
+    emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+    emit_instr_int32(instr_list, Opcode_PUSH_INT32, link_area->loc);
+    emit_instr(instr_list, Opcode_ADD_INT32);
+    emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
+
+    if(occur_sym->decl_scope_offset < 0)
+    {
+      emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
+
+      int offset = occur_sym->decl_scope_offset;
+      while(--offset > 0)
+      {
+        emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
+      }
+    }
 
     emit_instr_str(instr_list, Opcode_CALL, ATTR(node, str_val, name));
 

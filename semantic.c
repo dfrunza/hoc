@@ -165,7 +165,7 @@ Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
   }
   scope->ret_area.kind = DataArea_data;
   scope->args_area.kind = DataArea_data;
-  scope->link_area.kind = DataArea_data;
+  scope->link_area.kind = DataArea_link;
   scope->ctrl_area.kind = DataArea_data;
   scope->local_area.kind = DataArea_data;
   symbol_table->active_scope = scope;

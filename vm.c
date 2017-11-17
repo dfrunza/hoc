@@ -489,6 +489,7 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
     {
       if(instr->param_type == ParamType_int32)
       {
+        assert(instr->param.int_val > 0);
         int32 arg_sp = location_at(machine->sp, int32, -1);
         if(check_stack_bounds(machine, arg_sp))
         {
@@ -516,6 +517,7 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
     {
       if(instr->param_type == ParamType_int32)
       {
+        assert(instr->param.int_val > 0);
         int32 arg_sp = location_at(machine->sp, int32, -1);
         if(check_stack_bounds(machine, arg_sp))
         {
@@ -617,21 +619,6 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       else
         return Result_InvalidMemoryAccess;
     } break;
-#if 0
-    case Opcode_ENTER:
-    {
-      int32 top_sp = location_at(machine->sp, int32, 1);
-      if(check_stack_bounds(machine, top_sp))
-      {
-        memory_at(machine->sp, int32, 0) = machine->fp;
-        machine->fp = top_sp;
-        machine->sp = top_sp;
-        machine->ip++;
-      }
-      else
-        return Result_InvalidMemoryAccess;
-    } break;
-#endif
 
     case Opcode_LEAVE:
     {
@@ -639,6 +626,7 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       if(check_stack_bounds(machine, arg_sp))
       {
         int32 old_sp = machine->sp;
+        machine->ip++;
         machine->sp = arg_sp;
         machine->fp = memory_at(arg_sp, int32, 1);
         clear_memory(machine, machine->sp, old_sp - machine->sp);
@@ -646,22 +634,6 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
       else
         return Result_InvalidMemoryAccess;
     } break;
-#if 0
-    case Opcode_LEAVE:
-    {
-      int32 arg_sp = location_at(machine->fp, int32, -1);
-      if(check_stack_bounds(machine, arg_sp))
-      {
-        int32 old_sp = machine->sp;
-        machine->fp = memory_at(arg_sp, int32, 0);
-        machine->sp = arg_sp;
-        machine->ip++;
-        clear_memory(machine, machine->sp, old_sp - machine->sp);
-      }
-      else
-        return Result_InvalidMemoryAccess;
-    } break;
-#endif
 
     case Opcode_JUMPZ:
     case Opcode_JUMPNZ:
@@ -950,7 +922,7 @@ bool load_bin_image(char* exe_file_name, HocMachine* machine)
       machine->data = (uint8*)(hoc_base + bin_image->data_offset);
       machine->data_size = bin_image->data_size / (int)sizeof(uint8);
       machine->sp = bin_image->sp;
-      machine->fp = 0;
+      machine->fp = machine->sp;
       machine->hp = machine->memory_size;
       machine->ip = 0;
 

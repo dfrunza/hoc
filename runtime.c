@@ -109,7 +109,6 @@ void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* link)
       if(decl_scope_offset > 0)
       {
         link->decl_scope_offset = decl_scope_offset;
-        link->size = 4; // size of an int
         occur_sym->data_area = link;
       }
       else if(decl_scope_offset == 0)
@@ -175,7 +174,7 @@ void build_runtime()
       DataArea* null_area = new_data_area(arena, DataArea_data);
       append_list_elem(scope->pre_fp_areas, null_area, List_data_area);
       int32* null = null_area->data = mem_push_struct(arena, int32);
-      *null = 0;
+      *null = 0xffffffff;
       null_area->size = sizeof(*null);
 
       DataArea* link_area = &scope->link_area;

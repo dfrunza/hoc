@@ -64,10 +64,15 @@ proc void fizzbuzz(int n)
   }
 }
 */
-var int a;
 proc void main()
 {
-  a = 123;
+  var int a;
+
+  proc void foo()
+  {
+    a = 123;
+  }
+  foo();
 }
 
 main();

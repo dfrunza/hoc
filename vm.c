@@ -436,6 +436,8 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
 
         machine->ip++;
       }
+      else
+        return Result_InvalidMemoryAccess;
     }
     break;
 
@@ -483,13 +485,14 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
         memory_at(arg_sp, int32, 0) = result;
         machine->ip++;
       }
+      else
+        return Result_InvalidMemoryAccess;
     } break;
 
     case Opcode_LOAD:
     {
-      if(instr->param_type == ParamType_int32)
+      if(instr->param_type == ParamType_int32 && instr->param.int_val > 0)
       {
-        assert(instr->param.int_val > 0);
         int32 arg_sp = location_at(machine->sp, int32, -1);
         if(check_stack_bounds(machine, arg_sp))
         {
@@ -508,6 +511,8 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
           else
             return Result_InvalidMemoryAccess;
         }
+        else
+          return Result_InvalidMemoryAccess;
       }
       else
         return Result_InvalidInstructionFormat;
@@ -515,9 +520,8 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
 
     case Opcode_STORE:
     {
-      if(instr->param_type == ParamType_int32)
+      if(instr->param_type == ParamType_int32 && instr->param.int_val > 0)
       {
-        assert(instr->param.int_val > 0);
         int32 arg_sp = location_at(machine->sp, int32, -1);
         if(check_stack_bounds(machine, arg_sp))
         {
@@ -537,6 +541,8 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
           else
             return Result_InvalidMemoryAccess;
         }
+        else
+          return Result_InvalidMemoryAccess;
       }
       else
         return Result_InvalidInstructionFormat;

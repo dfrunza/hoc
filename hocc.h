@@ -163,7 +163,7 @@ TokenStream;
 typedef enum
 {
   DataArea_None,
-  DataArea_data,
+  DataArea_var,
   DataArea_link,
 }
 DataAreaKind;
@@ -176,7 +176,6 @@ typedef struct
   int size;
   List* subareas;
 
-  //int decl_scope_offset;
   void* data;
 }
 DataArea;
@@ -678,9 +677,7 @@ typedef struct Symbol
   Type* type;
   DataArea* data_area;
   void* data;
-
   Symbol* decl;
-  int decl_scope_offset;
 }
 Symbol;
 

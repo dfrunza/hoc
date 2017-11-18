@@ -13,15 +13,15 @@ proc void fizzbuzz(int n)
     while(i <= n)
     {
       if((i % 15) == 0)
-        print_str((type char*)"fizzbuzz");
+        print_str(&"fizzbuzz");
       else if((i % 3) == 0)
-        print_str((type char*)"buzz");
+        print_str(&"buzz");
       else if((i % 5) == 0)
-        print_str((type char*)"fizz");
+        print_str(&"fizz");
       else
         print_int(i);
 
-      print_str((type char*)"\n");
+      print_str(&"\n");
       i = i + 1;
     }
   }

@@ -163,12 +163,13 @@ Scope* begin_scope(ScopeKind kind, AstNode* ast_node)
     scope->decls[i] = new_list(arena, List_symbol);
     scope->occurs[i] = new_list(arena, List_symbol);
   }
-  scope->ret_area.kind = DataArea_data;
-  scope->args_area.kind = DataArea_data;
-  scope->link_area.kind = DataArea_link;
+  scope->ret_area.kind = DataArea_var;
+  scope->args_area.kind = DataArea_var;
+  scope->link_area.kind = DataArea_var;
   scope->link_area.size = 4; // size of an int
-  scope->ctrl_area.kind = DataArea_data;
-  scope->local_area.kind = DataArea_data;
+  scope->ctrl_area.kind = DataArea_var;
+  scope->local_area.kind = DataArea_var;
+
   symbol_table->active_scope = scope;
   append_list_elem(symbol_table->scopes, scope, List_scope);
   return scope;
@@ -393,8 +394,6 @@ bool name_ident(AstNode* node)
       Symbol* occur_sym = add_occur_symbol(name, var_occur_gen1->src_loc, symbol_table->active_scope, Symbol_var);
       occur_sym->ast_node = var_occur_gen1;
       occur_sym->decl = decl_sym;
-      assert(decl_sym->nesting_depth <= occur_sym->nesting_depth);
-      occur_sym->decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
 
       ATTR(var_occur_gen1, symbol, occur_sym) = occur_sym;
       ATTR(var_occur_gen1, symbol, decl_sym) = decl_sym;
@@ -451,17 +450,15 @@ bool name_ident(AstNode* node)
     char* name = ATTR(ATTR(&proc_occur_gen0, ast_node, id), str_val, name);
     ATTR(proc_occur_gen1, str_val, name) = name;
 
+    Symbol* occur_sym = add_occur_symbol(name, proc_occur_gen1->src_loc, symbol_table->active_scope, Symbol_proc);
+    occur_sym->ast_node = proc_occur_gen1;
+    ATTR(proc_occur_gen1, symbol, occur_sym) = occur_sym;
+
     Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
         (SymbolKind[]){Symbol_proc, Symbol_None});
     if(decl_sym)
     {
-      Symbol* occur_sym = add_occur_symbol(name, proc_occur_gen1->src_loc, symbol_table->active_scope, Symbol_proc);
-      occur_sym->ast_node = proc_occur_gen1;
       occur_sym->decl = decl_sym;
-      assert(decl_sym->nesting_depth <= occur_sym->nesting_depth);
-      occur_sym->decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
-
-      ATTR(proc_occur_gen1, symbol, occur_sym) = occur_sym;
       ATTR(proc_occur_gen1, symbol, decl_sym) = decl_sym;
       ATTR(proc_occur_gen1, ast_node, proc_decl) = decl_sym->ast_node;
     }

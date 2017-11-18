@@ -81,7 +81,7 @@ void compute_decl_areas(Scope* scope, SymbolKind* kind_set, DataArea* decl_area)
         list_item = list_item->next)
     {
       Symbol* symbol = ITEM(list_item, symbol);
-      DataArea* area = symbol->data_area = new_data_area(arena, DataArea_data);
+      DataArea* area = symbol->data_area = new_data_area(arena, DataArea_var);
       area->size = symbol->type->width;
       area->data = symbol->data;
 
@@ -93,7 +93,6 @@ void compute_decl_areas(Scope* scope, SymbolKind* kind_set, DataArea* decl_area)
 
 void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* link)
 {
-  //List* access_links = link_area->subareas;
   for(SymbolKind* kind = kind_set;
       *kind != Symbol_None;
       kind++)
@@ -105,52 +104,15 @@ void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* link)
       Symbol* occur_sym = ITEM(list_item, symbol);
       Symbol* decl_sym = occur_sym->decl;
 
-      int decl_scope_offset = occur_sym->decl_scope_offset;
+      int decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
       if(decl_scope_offset > 0)
       {
-        //link->decl_scope_offset = decl_scope_offset;
         occur_sym->data_area = link;
       }
       else if(decl_scope_offset == 0)
       {
         occur_sym->data_area = decl_sym->data_area;
       }
-#if 0
-      int decl_scope_offset = occur_sym->decl_scope_offset;
-      if(decl_scope_offset > 0)
-      {
-        // non-local
-        DataArea* link = 0;
-        for(ListItem* list_item = access_links->first;
-            list_item;
-            list_item = list_item->next)
-        {
-          link = ITEM(list_item, data_area);
-          if(link->decl_scope_offset == decl_scope_offset)
-          {
-            break;
-          }
-          link = 0;
-        }
-        if(!link)
-        {
-          link = new_data_area(arena, DataArea_link);
-          link->decl_scope_offset = decl_scope_offset;
-          link->size = 4; // size of an int
-          append_list_elem(access_links, link, List_data_area);
-          link_area->size += link->size;
-        }
-        occur_sym->data_area = link;
-      }
-      else if(decl_scope_offset == 0)
-      {
-        // local
-        Symbol* decl_sym = occur_sym->decl;
-        occur_sym->data_area = decl_sym->data_area;
-      }
-      else
-        assert(0);
-#endif
     }
   }
 }
@@ -171,7 +133,7 @@ void build_runtime()
       scope->pre_fp_areas = new_list(arena, List_data_area);
       scope->post_fp_areas = new_list(arena, List_data_area);
 
-      DataArea* null_area = new_data_area(arena, DataArea_data);
+      DataArea* null_area = new_data_area(arena, DataArea_var);
       append_list_elem(scope->pre_fp_areas, null_area, List_data_area);
       int32* null = null_area->data = mem_push_struct(arena, int32);
       *null = 0xffffffff;
@@ -209,7 +171,6 @@ void build_runtime()
       compute_decl_areas(scope, (SymbolKind[]){Symbol_formal_arg, Symbol_None}, args_area);
 
       DataArea* link_area = &scope->link_area;
-      //link_area->subareas = new_list(arena, List_data_area);
       append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
       compute_occur_areas(scope, (SymbolKind[])
           {Symbol_var, Symbol_ret_var, Symbol_formal_arg, Symbol_None}, link_area);
@@ -233,7 +194,6 @@ void build_runtime()
       scope->post_fp_areas = new_list(arena, List_data_area);
 
       DataArea* link_area = &scope->link_area;
-      //link_area->subareas = new_list(arena, List_data_area);
       append_list_elem(scope->pre_fp_areas, link_area, List_data_area);
       compute_occur_areas(scope, (SymbolKind[])
           {Symbol_var, Symbol_ret_var, Symbol_formal_arg, Symbol_None}, link_area);

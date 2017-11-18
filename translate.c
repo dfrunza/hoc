@@ -1442,10 +1442,8 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       {
         //todo: print the symbol
         DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str_val, name));
-        //DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
         DEBUG_print_ast_node_list(str, indent_level, "formal_args", ATTR(node, list, formal_args));
         DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-        //DEBUG_print_ast_node(str, indent_level, "ret_var", ATTR(node, ast_node, ret_var));
       }
       else
         assert(0);
@@ -1697,8 +1695,8 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       else
         assert(0);
     }
-    else
-      fail(get_ast_kind_printstr(node->kind));
+    //else
+    //  fail(get_ast_kind_printstr(node->kind));
   }
 }
 

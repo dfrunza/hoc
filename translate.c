@@ -1726,7 +1726,7 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
 #include "semantic.c"
 #include "runtime.c"
 #include "codegen.c"
-#include "hasm.c"
+#include "asm.c"
 
 bool translate(char* file_path, char* hoc_text, VmProgram** vm_program)
 {

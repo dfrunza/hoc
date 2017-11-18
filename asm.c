@@ -1,5 +1,3 @@
-#define COMMENT_CHAR ';'
-
 typedef struct
 {
   char* string;
@@ -30,7 +28,7 @@ int instr_to_components(char* str, char* components[], int max_component_count)
 
   do
   {
-    while(*char_ptr != '\0' && *char_ptr != ' ' && *char_ptr != COMMENT_CHAR)
+    while(*char_ptr != '\0' && *char_ptr != ' ' && *char_ptr != ';')
       char_ptr++;
 
     if(component_count < max_component_count)
@@ -53,7 +51,7 @@ int instr_to_components(char* str, char* components[], int max_component_count)
       }
     }
   }
-  while(*char_ptr != '\0' && *char_ptr != COMMENT_CHAR);
+  while(*char_ptr != '\0' && *char_ptr != ';');
 
   return component_count;
 }

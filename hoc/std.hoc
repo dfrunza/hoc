@@ -5,13 +5,16 @@ proc void* new(int size)
     push_reg fp
     push_int32 -16
     add_int32
-    load 4
-    new
+    load 4 ; load the argument
+
+    new ; the pointer to the allocated memory is pushed on the stack
+
     push_reg fp
     push_int32 -20
     add_int32
-    store 4
-    grow -4
+    store 4 ; store the result
+
+    grow -4 ; pop the local
   }
 }
 
@@ -22,7 +25,8 @@ proc void putc(char c)
     push_reg fp
     push_int32 -13
     add_int32
-    load 1
-    putc
+    load 1 ; load the argument
+
+    putc ; print the char and pop the local
   }
 }

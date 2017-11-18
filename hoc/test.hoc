@@ -34,7 +34,7 @@ proc void putc(char c)
 
 proc void main()
 {
-  fizzbuzz(150);
+  print_float(sqrt(99.0));
 }
 
 main();

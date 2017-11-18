@@ -44,38 +44,38 @@ proc float fabs(float a)
   return a;
 }
 
-proc int gcd_recurs(int a, int b)
-{
-  var int result = a;
-  if(b != 0)
-  {
-    result = b;
-    var int r = a % b;
-    if(r == 0)
-      result = b;
-    else
-      result = gcd_recurs(b, r);
-  }
-  return result;
-}
-
-proc int gcd_iter(int a, int b)
-{
-  while(a != b)
-  {
-    if(a > b)
-      a = a - b;
-    else
-      b = b - a;
-  }
-  return a;
-}
-
 /*
    Greatest Common Divisor
  */
 proc int gcd(int a, int b)
 {
+  proc int gcd_recurs(int a, int b)
+  {
+    var int result = a;
+    if(b != 0)
+    {
+      result = b;
+      var int r = a % b;
+      if(r == 0)
+        result = b;
+      else
+        result = gcd_recurs(b, r);
+    }
+    return result;
+  }
+
+  proc int gcd_iter(int a, int b)
+  {
+    while(a != b)
+    {
+      if(a > b)
+        a = a - b;
+      else
+        b = b - a;
+    }
+    return a;
+  }
+
   /*
   return gcd_recurs(abs(a), abs(b)); */
   return gcd_iter(abs(a), abs(b));
@@ -108,24 +108,25 @@ proc float ipow(float a, int p)
   return result;
 }
 
-proc float sqrt_iter(float x, float g)
-{
-  var float r = x/g;
-
-  if(r != g)
-  {
-    r = (r+g)/2.0;
-    if(fabs(r-g) == 1.0)
-      r = fmin(r, g);
-  }
-  return r;
-}
-
 /*
    Computes the largest number 'r' such that 'r*r <= x'
+TODO: sqrt(100.0) gives a funky result.
  */
 proc float sqrt(float x)
 {
+  proc float sqrt_iter(float x, float g)
+  {
+    var float r = x/g;
+
+    if(r != g)
+    {
+      r = (r+g)/2.0;
+      if(fabs(r-g) == 1.0)
+        r = fmin(r, g);
+    }
+    return r;
+  }
+
   var float g = x;
   var float r = 1.0;
 

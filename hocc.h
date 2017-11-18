@@ -176,7 +176,7 @@ typedef struct
   int size;
   List* subareas;
 
-  int decl_scope_offset;
+  //int decl_scope_offset;
   void* data;
 }
 DataArea;

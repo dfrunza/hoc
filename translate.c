@@ -833,7 +833,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_proc_occur; // procedure call
-      kind->attr_count = 7;
+      kind->attr_count = 8;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -904,13 +904,13 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_ast_node;
-      attr->name = AstAttributeName_body;
+      attr->kind = AstAttribute_scope;
+      attr->name = AstAttributeName_scope;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_scope;
-      attr->name = AstAttributeName_scope;
+      attr->kind = AstAttribute_ast_node;
+      attr->name = AstAttributeName_body;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -931,7 +931,7 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_lit;
-      kind->attr_count = 10;
+      kind->attr_count = 9;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -940,11 +940,6 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_lit_kind;
       attr->name = AstAttributeName_lit_kind;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_scope;
-      attr->name = AstAttributeName_scope;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];

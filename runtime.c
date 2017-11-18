@@ -108,7 +108,7 @@ void compute_occur_areas(Scope* scope, SymbolKind* kind_set, DataArea* link)
       int decl_scope_offset = occur_sym->decl_scope_offset;
       if(decl_scope_offset > 0)
       {
-        link->decl_scope_offset = decl_scope_offset;
+        //link->decl_scope_offset = decl_scope_offset;
         occur_sym->data_area = link;
       }
       else if(decl_scope_offset == 0)

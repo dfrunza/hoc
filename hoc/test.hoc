@@ -20,7 +20,6 @@ proc void new(int size)
 }
 */
 
-/*
 proc void putc(char c)
 {
   asm
@@ -42,6 +41,7 @@ proc void print_str(char* str)
   }
 }
 
+/*
 proc void fizzbuzz(int n)
 {
   if(n > 0)
@@ -64,13 +64,15 @@ proc void fizzbuzz(int n)
   }
 }
 */
+
+var char* a = &"ABC";
 proc void main()
 {
-  var int a;
-
+  var char* b = &"DEF";
   proc void foo()
   {
-    a = 123;
+    print_str(a);
+    print_str(b);
   }
   foo();
 }

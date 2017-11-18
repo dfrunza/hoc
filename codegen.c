@@ -86,17 +86,19 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
     DataArea* link = occur_sym->data_area;
     DataArea* data = decl_sym->data_area;
 
-    if(link && link->decl_scope_offset > 0)
+    
+    //if(link && link->decl_scope_offset > 0)
+    int decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
+    if(decl_scope_offset > 0)
     {
       // non-local
       assert(link->kind == DataArea_link && link->loc < 0);
       emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
       emit_instr_int32(instr_list, Opcode_PUSH_INT32, link->loc);
       emit_instr(instr_list, Opcode_ADD_INT32);
-      emit_instr_int32(instr_list, Opcode_LOAD, link->size);
+      //emit_instr_int32(instr_list, Opcode_LOAD, link->size);
 
-      int offset = link->decl_scope_offset;
-      while(--offset > 0)
+      for(int i = decl_scope_offset; i > 0; i--)
       {
         emit_instr_int32(instr_list, Opcode_LOAD, link->size);
       }
@@ -748,12 +750,6 @@ bool gen_instr(List* instr_list, AstNode* node)
     DataArea* args_area = &callee_scope->args_area;
     DataArea* link_area = &callee_scope->link_area;
 
-//    else
-//    {
-//      emit_instr_int32(instr_list, Opcode_PUSH_INT32, link_area->loc);
-//      emit_instr_int32(instr_list, Opcode_STORE, link_area->size);
-//    }
-
 #if 0
     if(link_area->size > 0)
     {
@@ -785,20 +781,23 @@ bool gen_instr(List* instr_list, AstNode* node)
     }
     //todo: assert that the 'data area size' == 'evaluated args size'
 
-    Scope* caller_scope = ATTR(node, scope, scope);
-    int proc_decl_offset = caller_scope->nesting_depth - callee_scope->nesting_depth;
-    if(proc_decl_offset < 0)
+    Symbol* occur_sym = ATTR(node, symbol, occur_sym);
+    Scope* caller_scope = occur_sym->scope;
+    int callee_depth_offset = caller_scope->nesting_depth - callee_scope->nesting_depth;
+    if(callee_depth_offset < 0)
     {
       emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+      emit_instr_int32(instr_list, Opcode_PUSH_INT32, link_area->loc);
+      emit_instr(instr_list, Opcode_ADD_INT32);
     }
     else
     {
       emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
       emit_instr_int32(instr_list, Opcode_PUSH_INT32, link_area->loc);
       emit_instr(instr_list, Opcode_ADD_INT32);
-      emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
+      //emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
 
-      while(--proc_decl_offset > 0)
+      while(callee_depth_offset-- >= 0)
       {
         emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
       }

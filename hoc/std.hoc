@@ -1,0 +1,28 @@
+proc void* new(int size)
+{
+  asm
+  {
+    push_reg fp
+    push_int32 -16
+    add_int32
+    load 4
+    new
+    push_reg fp
+    push_int32 -20
+    add_int32
+    store 4
+    grow -4
+  }
+}
+
+proc void putc(char c)
+{
+  asm
+  {
+    push_reg fp
+    push_int32 -13
+    add_int32
+    load 1
+    putc
+  }
+}

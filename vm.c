@@ -136,7 +136,7 @@ ExecResult execute_instr(HocMachine* machine, Instruction* instr)
             return Result_InvalidMemoryAccess;
         }
         else
-          memory_at(arg_sp, int32, 0) = 0; // null ptr
+          return Result_InvalidInstructionFormat;
 
         machine->ip++;
       }

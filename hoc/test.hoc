@@ -1,40 +1,14 @@
+include "std.hoc";
 include "str.hoc";
 include "math.hoc";
 /*
 include "sort.hoc";
-*/
 include "fibo.hoc";
 include "fizzbuzz.hoc";
-
-/*
-proc void new(int size)
-{
-  asm
-  {
-    push_reg fp
-    push_int32 -16
-    add_int32
-    load 4
-    new
-  }
-}
 */
-
-proc void putc(char c)
-{
-  asm
-  {
-    push_reg fp
-    push_int32 -13
-    add_int32
-    load 1
-    putc
-  }
-}
 
 proc void main()
 {
-  print_float(sqrt(99.0));
 }
 
 main();

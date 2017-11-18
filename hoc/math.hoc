@@ -76,9 +76,9 @@ proc int gcd(int a, int b)
     return a;
   }
 
+  return gcd_recurs(abs(a), abs(b));
   /*
-  return gcd_recurs(abs(a), abs(b)); */
-  return gcd_iter(abs(a), abs(b));
+  return gcd_iter(abs(a), abs(b)); */
 }
 
 /*

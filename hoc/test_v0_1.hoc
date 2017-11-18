@@ -1,78 +1,85 @@
+include "std.hoc";
 include "math.hoc";
 include "str.hoc";
+/*
 include "sort.hoc";
+*/
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 
-proc void print_numbers([]int numbers, int len)
+proc void print_numbers(int* numbers, int len)
 {
   var int i = 0;
   while(i < len)
   {
-    print_int(numbers[i]);
-    print_str("\n");
+    print_int(*(numbers + (type int*)(i*4)));
+    print_str(&"\n");
 
     i = i+1;
   }
 }
 
-proc []int make_numbers(int how_many)
+proc int* make_numbers(int how_many)
 {
   var int i = 0;
   var int c1 = 17;
   var int c2 = 31;
-  var int* numbers = (type int*)0; /* = new(type int, how_many);*/
+  var int* numbers = (type int*)new(how_many*4);
 
   while(i < how_many)
   {
     if((i % 2) == 0)
-      numbers[i] = c1 * i;
+      *(numbers + (type int*)(i*4)) = c1 * i;
     else
-      numbers[i] = c2 * i;
+      *(numbers + (type int*)(i*4)) = c2 * i;
 
     i = i+1;
   }
   return numbers;
 }
 
-proc int main()
+proc void main()
 {
   var float f1 = -12.0;
   var float f2 = 0.058;
   var float result = f1 + f2;
   print_float(f1);
-  print_str(" + ");
+  print_str(&" + ");
   print_float(f2);
-  print_str(" = ");
+  print_str(&" = ");
   print_float(result);
-  print_str("\n---------\n");
+  print_str(&"\n---------\n");
 
   var int i_a = 7*7*5*3;
   var int i_b = 7*3*11;
   var int i_r = gcd(i_a, i_b);
-  print_str("gcd(");
+  print_str(&"gcd(");
   print_int(i_a);
-  print_str(",");
+  print_str(&",");
   print_int(i_b);
-  print_str(")=");
+  print_str(&")=");
   print_int(i_r);
 
   var int nr_count = 30;
-  var []int numbers = make_numbers(nr_count);
-  print_str("\n--- SHUFFLED ---\n");
+  var int* numbers = make_numbers(nr_count);
+  print_str(&"\n--- SHUFFLED ---\n");
   print_numbers(numbers, nr_count);
+  /*
+  */
 
+  /*
   quick_sort(numbers, nr_count);
-  print_str("\n--- SORTED ---\n");
+  print_str(&"\n--- SORTED ---\n");
   print_numbers(numbers, nr_count);
+  */
 
-  print_str("\n--- FIBONACCI ---\n");
+  print_str(&"\n--- FIBONACCI ---\n");
   fibo(40);
 
-  print_str("\n--- FIZZBUZZ ---\n");
+  print_str(&"\n--- FIZZBUZZ ---\n");
   fizzbuzz(50);
   /*
   */
-  return 0;
 }
 
+main();

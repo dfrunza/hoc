@@ -741,7 +741,7 @@ bool gen_instr(List* instr_list, AstNode* node)
       emit_instr_int32(instr_list, Opcode_PUSH_INT32, link_area->loc);
       emit_instr(instr_list, Opcode_ADD_INT32);
 
-      while(callee_depth_offset-- >= 0)
+      for(int i = callee_depth_offset; i >= 0; i--)
       {
         emit_instr_int32(instr_list, Opcode_LOAD, link_area->size);
       }

@@ -39,7 +39,7 @@ rem cl %C_flags% ..\fp3.c /link %L_flags%
 goto :end
 
 :hocc_error
-echo hocc.exe error
+echo %cd%(0) : hocc.exe error
 goto :end
 
 :end

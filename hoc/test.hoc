@@ -1,12 +1,13 @@
+/*
 include "std.hoc";
 include "str.hoc";
 include "math.hoc";
-/*
-   include "sort.hoc";
- */
 include "fibo.hoc";
 include "fizzbuzz.hoc";
+include "sort.hoc";
+*/
 
+/*
 proc void test()
 {
   var float f1 = -12.0;
@@ -35,6 +36,7 @@ proc void test()
   print_str(&"\n--- FIZZBUZZ ---\n");
   fizzbuzz(50);
 }
+*/
 
 /* FIXME
    var [4]void data;
@@ -44,20 +46,20 @@ proc void test()
    proc void printf(char* s, ..args)
    { }
  */
+var int a;
 
-var int f = 123;
-
-proc int foo(int f)
+proc int foo(int i)
 {
-  return 2*f;
+  return 2*i;
 }
 
 proc void main()
 {
-  test();
-  var int f1 = foo(f);
-  print_int(f);
-  print_int(f1);
+  foo();
+  proc void foo()
+  {
+    a = 123;
+  }
 }
 
 main();

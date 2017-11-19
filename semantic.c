@@ -268,14 +268,14 @@ bool name_ident_block(AstNode* node)
 
   //TODO: Reuse the gen0 list, for that we need to implement the insert_list_elem() function.
   // The var_decl->init_expr node has to be inserted into the gen0 list, in the position after the var_decl node.
-  List* nodes_list_gen1 = ATTR(block_gen1, list, nodes);
+  List* nodes_list_gen1 = ATTR(block_gen1, list, nodes) = new_list(arena, eList_ast_node);;
   List* procs_list = ATTR(block_gen1, list, procs) = new_list(arena, eList_ast_node);
   List* stmts_list = ATTR(block_gen1, list, stmts) = new_list(arena, eList_ast_node);
   List* vars_list = ATTR(block_gen1, list, vars) = new_list(arena, eList_ast_node);
 
   List* nodes_list_gen0 = ATTR(&block_gen0, list, nodes);
   for(ListItem* list_item = nodes_list_gen0->first;
-      list_item && success;
+      list_item;
       list_item = list_item->next)
   {
     AstNode* stmt = ITEM(list_item, ast_node);
@@ -293,6 +293,7 @@ bool name_ident_block(AstNode* node)
       if(init_expr)
       {
         append_list_elem(stmts_list, init_expr, eList_ast_node);
+        append_list_elem(nodes_list_gen1, init_expr, eList_ast_node);
         ATTR(stmt, ast_node, init_expr) = 0;
       }
     }
@@ -305,8 +306,13 @@ bool name_ident_block(AstNode* node)
     }
     else
       assert(0);
+  }
 
-    success = name_ident(stmt);
+  for(ListItem* list_item = nodes_list_gen1->first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    success = name_ident(ITEM(list_item, ast_node));
   }
   return success;
 }
@@ -567,6 +573,7 @@ bool name_ident(AstNode* node)
       {
         AstNode* module_body = ATTR(symbol_table->module_scope->ast_node, ast_node, body);
         prepend_list_elem(ATTR(module_body, list, vars), var_decl, eList_ast_node);
+        prepend_list_elem(ATTR(module_body, list, nodes), var_decl, eList_ast_node);
 
         AstNode* occur_id = make_ast_node(eAstGen_gen0, node, eAstNode_id);
         ATTR(occur_id, str_val, name) = var_name;

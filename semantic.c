@@ -266,20 +266,18 @@ bool name_ident_block(AstNode* node)
   AstNode* block_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_block);
   ATTR(block_gen1, scope, scope) = symbol_table->active_scope;
 
-  //TODO: Reuse the gen0 list, for that we need to implement the insert_list_elem() function.
-  // The var_decl->init_expr node has to be inserted into the gen0 list, in the position after the var_decl node.
-  List* nodes_list_gen1 = ATTR(block_gen1, list, nodes) = new_list(arena, eList_ast_node);;
   List* procs_list = ATTR(block_gen1, list, procs) = new_list(arena, eList_ast_node);
   List* stmts_list = ATTR(block_gen1, list, stmts) = new_list(arena, eList_ast_node);
   List* vars_list = ATTR(block_gen1, list, vars) = new_list(arena, eList_ast_node);
 
-  List* nodes_list_gen0 = ATTR(&block_gen0, list, nodes);
-  for(ListItem* list_item = nodes_list_gen0->first;
-      list_item;
-      list_item = list_item->next)
+  List* nodes_list = ATTR(&block_gen0, list, nodes);
+  for(ListItem* list_item = nodes_list->first;
+      list_item;)
   {
     AstNode* stmt = ITEM(list_item, ast_node);
-    append_list_elem(nodes_list_gen1, stmt, eList_ast_node);
+
+    ListItem* next_list_item = list_item->next;
+    remove_list_item(nodes_list, list_item);
 
     if(stmt->kind == eAstNode_proc_decl)
     {
@@ -293,7 +291,6 @@ bool name_ident_block(AstNode* node)
       if(init_expr)
       {
         append_list_elem(stmts_list, init_expr, eList_ast_node);
-        append_list_elem(nodes_list_gen1, init_expr, eList_ast_node);
         ATTR(stmt, ast_node, init_expr) = 0;
       }
     }
@@ -306,13 +303,35 @@ bool name_ident_block(AstNode* node)
     }
     else
       assert(0);
-  }
 
-  for(ListItem* list_item = nodes_list_gen1->first;
+    list_item = next_list_item;
+  }
+  assert(nodes_list->first == nodes_list->last && nodes_list->last == 0); // list should be empty
+
+  nodes_list = ATTR(block_gen1, list, nodes) = new_list(arena, eList_ast_node);
+  for(ListItem* list_item = vars_list->first;
       list_item && success;
       list_item = list_item->next)
   {
-    success = name_ident(ITEM(list_item, ast_node));
+    AstNode* stmt = ITEM(list_item, ast_node);
+    append_list_elem(nodes_list, stmt, eList_ast_node);
+    success = name_ident(stmt);
+  }
+  for(ListItem* list_item = procs_list->first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    AstNode* stmt = ITEM(list_item, ast_node);
+    append_list_elem(nodes_list, stmt, eList_ast_node);
+    success = name_ident(stmt);
+  }
+  for(ListItem* list_item = stmts_list->first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    AstNode* stmt = ITEM(list_item, ast_node);
+    append_list_elem(nodes_list, stmt, eList_ast_node);
+    success = name_ident(stmt);
   }
   return success;
 }

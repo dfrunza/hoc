@@ -1,24 +1,24 @@
 Token keyword_list[] = 
 {
-  {Token_var, "var"},
-  {Token_asm, "asm"},
-  {Token_type, "type"},
-  {Token_if, "if"},
-  {Token_else, "else"},
-  {Token_while, "while"},
-  {Token_for, "for"},
-  {Token_return, "return"},
-  {Token_break, "break"},
-  {Token_continue, "continue"},
-  {Token_goto, "goto"},
-  {Token_include, "include"},
-  {Token_true, "true"},
-  {Token_false, "false"},
-  {Token_proc, "proc"},
-  {Token_struct, "struct"},
-  {Token_union, "union"},
-  {Token_enum, "enum"},
-  {Token_None, 0}, /* terminator */
+  {eToken_var, "var"},
+  {eToken_asm, "asm"},
+  {eToken_type, "type"},
+  {eToken_if, "if"},
+  {eToken_else, "else"},
+  {eToken_while, "while"},
+  {eToken_for, "for"},
+  {eToken_return, "return"},
+  {eToken_break, "break"},
+  {eToken_continue, "continue"},
+  {eToken_goto, "goto"},
+  {eToken_include, "include"},
+  {eToken_true, "true"},
+  {eToken_false, "false"},
+  {eToken_proc, "proc"},
+  {eToken_struct, "struct"},
+  {eToken_union, "union"},
+  {eToken_enum, "enum"},
+  {eToken_None, 0}, /* terminator */
 };
 
 Token* lookup_keyword(Token* list, char* lexeme)
@@ -39,14 +39,14 @@ Token* lookup_keyword(Token* list, char* lexeme)
   return result;
 }
 
-bool is_keyword_token(TokenKind kind)
+bool is_keyword_token(eToken kind)
 {
-  return (kind >= Token_if) && (kind <= Token_false);
+  return (kind >= eToken_if) && (kind <= eToken_false);
 }
 
-bool is_literal_token(TokenKind kind)
+bool is_literal_token(eToken kind)
 {
-  return (kind >= Token_int_num) && (kind <= Token_char);
+  return (kind >= eToken_int_num) && (kind <= eToken_char);
 }
 
 char* install_lexeme(char* begin_char, char* end_char)
@@ -156,113 +156,113 @@ char* get_token_printstr(Token* token)
   static char char_print_buf[3] = {0};
   char* result = 0;
 
-  if(token->kind == Token_dot)
+  if(token->kind == eToken_dot)
     result = ".";
-  else if(token->kind == Token_arrow_right)
+  else if(token->kind == eToken_arrow_right)
     result = "->";
-  else if(token->kind == Token_open_bracket)
+  else if(token->kind == eToken_open_bracket)
     result = "[";
-  else if(token->kind == Token_close_bracket)
+  else if(token->kind == eToken_close_bracket)
     result = "]";
-  else if(token->kind == Token_open_parens)
+  else if(token->kind == eToken_open_parens)
     result = "(";
-  else if(token->kind == Token_close_parens)
+  else if(token->kind == eToken_close_parens)
     result = ")";
-  else if(token->kind == Token_open_brace)
+  else if(token->kind == eToken_open_brace)
     result = "{";
-  else if(token->kind == Token_close_brace)
+  else if(token->kind == eToken_close_brace)
     result = "}";
-  else if(token->kind == Token_semicolon)
+  else if(token->kind == eToken_semicolon)
     result = ";";
-  else if(token->kind == Token_colon)
+  else if(token->kind == eToken_colon)
     result = ":";
-  else if(token->kind == Token_comma)
+  else if(token->kind == eToken_comma)
     result = ",";
-  else if(token->kind == Token_percent)
+  else if(token->kind == eToken_percent)
     result = "%";
-  else if(token->kind == Token_star)
+  else if(token->kind == eToken_star)
     result = "*";
-  else if(token->kind == Token_fwd_slash)
+  else if(token->kind == eToken_fwd_slash)
     result = "/";
-  else if(token->kind == Token_back_slash)
+  else if(token->kind == eToken_back_slash)
     result = "\\";
-  else if(token->kind == Token_plus)
+  else if(token->kind == eToken_plus)
     result = "+";
-  else if(token->kind == Token_plus_plus)
+  else if(token->kind == eToken_plus_plus)
     result = "++";
-  else if(token->kind == Token_minus)
+  else if(token->kind == eToken_minus)
     result = "-";
-  else if(token->kind == Token_minus_minus)
+  else if(token->kind == eToken_minus_minus)
     result = "--";
-  else if(token->kind == Token_exclam)
+  else if(token->kind == eToken_exclam)
     result = "!";
-  else if(token->kind == Token_exclam_eq)
+  else if(token->kind == eToken_exclam_eq)
     result = "!=";
-  else if(token->kind == Token_eq)
+  else if(token->kind == eToken_eq)
     result = "=";
-  else if(token->kind == Token_eq_eq)
+  else if(token->kind == eToken_eq_eq)
     result = "==";
-  else if(token->kind == Token_angle_right)
+  else if(token->kind == eToken_angle_right)
     result = ">";
-  else if(token->kind == Token_angle_right_eq)
+  else if(token->kind == eToken_angle_right_eq)
     result = ">=";
-  else if(token->kind == Token_angle_left)
+  else if(token->kind == eToken_angle_left)
     result = "<";
-  else if(token->kind == Token_angle_left_eq)
+  else if(token->kind == eToken_angle_left_eq)
     result = "<=";
-  else if(token->kind == Token_ampersand)
+  else if(token->kind == eToken_ampersand)
     result = "&";
-  else if(token->kind == Token_ampersand_ampersand)
+  else if(token->kind == eToken_ampersand_ampersand)
     result = "&&";
-  else if(token->kind == Token_pipe)
+  else if(token->kind == eToken_pipe)
     result = "|";
-  else if(token->kind == Token_pipe_pipe)
+  else if(token->kind == eToken_pipe_pipe)
     result = "||";
-  else if(token->kind == Token_end_of_input)
+  else if(token->kind == eToken_end_of_input)
     result = "end-of-input";
-  else if(token->kind == Token_var)
+  else if(token->kind == eToken_var)
     result = "var";
-  else if(token->kind == Token_if)
+  else if(token->kind == eToken_if)
     result = "if";
-  else if(token->kind == Token_else)
+  else if(token->kind == eToken_else)
     result = "else";
-  else if(token->kind == Token_while)
+  else if(token->kind == eToken_while)
     result = "while";
-  else if(token->kind == Token_for)
+  else if(token->kind == eToken_for)
     result = "for";
-  else if(token->kind == Token_proc)
+  else if(token->kind == eToken_proc)
     result = "proc";
-  else if(token->kind == Token_struct)
+  else if(token->kind == eToken_struct)
     result = "struct";
-  else if(token->kind == Token_union)
+  else if(token->kind == eToken_union)
     result = "union";
-  else if(token->kind == Token_return)
+  else if(token->kind == eToken_return)
     result = "return";
-  else if(token->kind == Token_break)
+  else if(token->kind == eToken_break)
     result = "break";
-  else if(token->kind == Token_continue)
+  else if(token->kind == eToken_continue)
     result = "continue";
-  else if(token->kind == Token_include)
+  else if(token->kind == eToken_include)
     result = "include";
-  else if(token->kind == Token_enum)
+  else if(token->kind == eToken_enum)
     result = "enum";
-  else if(token->kind == Token_type)
+  else if(token->kind == eToken_type)
     result = "type";
-  else if(token->kind == Token_goto)
+  else if(token->kind == eToken_goto)
     result = "goto";
-  else if(token->kind == Token_true)
+  else if(token->kind == eToken_true)
     result = "true";
-  else if(token->kind == Token_false)
+  else if(token->kind == eToken_false)
     result = "false";
-  else if(token->kind == Token_id ||
-          token->kind == Token_int_num ||
-          token->kind == Token_float_num)
+  else if(token->kind == eToken_id ||
+          token->kind == eToken_int_num ||
+          token->kind == eToken_float_num)
   {
     result = token->lexeme;
   }
-  else if(token->kind == Token_string)
+  else if(token->kind == eToken_string)
     result = token->str_val; // TODO: Substitute non-printable chars
-  else if(token->kind == Token_char || token->kind == Token_unknown_char)
+  else if(token->kind == eToken_char || token->kind == eToken_unknown_char)
   {
     print_char(result = char_print_buf, token->char_val);
   }
@@ -340,16 +340,16 @@ bool get_asm_text(TokenStream* input)
     char* end_char = input->cursor - 1;
     char* lexeme = install_lexeme(begin_char, end_char);
 
-    token->kind = Token_asm_text;
+    token->kind = eToken_asm_text;
     token->lexeme = lexeme;
   }
   else if(c == '\0')
   {
-    token->kind = Token_end_of_input;
+    token->kind = eToken_end_of_input;
   }
   else
   {
-    token->kind = Token_unknown_char;
+    token->kind = eToken_unknown_char;
     token->char_val = c;
   }
   return success;
@@ -382,7 +382,7 @@ loop:
     char* end_char = input->cursor - 1;
     char* lexeme = install_lexeme(begin_char, end_char);
 
-    token->kind = Token_id;
+    token->kind = eToken_id;
     token->lexeme = lexeme;
     Token* keyword = lookup_keyword(keyword_list, lexeme);
     if(keyword)
@@ -411,49 +411,49 @@ loop:
 
     if(is_float)
     {
-      token->kind = Token_float_num;
+      token->kind = eToken_float_num;
       token->float_val = mem_push_struct(arena, float);
       h_sscanf(digit_buf, "%f", token->float_val);
     }
     else
     {
-      token->kind = Token_int_num;
+      token->kind = eToken_int_num;
       token->int_val = mem_push_struct(arena, int);
       h_sscanf(digit_buf, "%d", token->int_val);
     }
   }
   else if(c == '-')
   {
-    token->kind = Token_minus;
+    token->kind = eToken_minus;
     c = *(++input->cursor);
     if(c == '-')
     {
-      token->kind = Token_minus_minus;
+      token->kind = eToken_minus_minus;
       ++input->cursor;
     }
     else if(c == '>')
     {
-      token->kind = Token_arrow_right;
+      token->kind = eToken_arrow_right;
       ++input->cursor;
     }
   }
   else if(c == '<')
   {
-    token->kind = Token_angle_left;
+    token->kind = eToken_angle_left;
     c = *(++input->cursor);
     if(c == '=')
     {
-      token->kind = Token_angle_left_eq;
+      token->kind = eToken_angle_left_eq;
       ++input->cursor;
     }
   }
   else if(c == '&')
   {
-    token->kind = Token_ampersand;
+    token->kind = eToken_ampersand;
     c = *(++input->cursor);
     if(c == '&')
     {
-      token->kind = Token_ampersand_ampersand;
+      token->kind = eToken_ampersand_ampersand;
       ++input->cursor;
     }
   }
@@ -491,7 +491,7 @@ loop:
     }
     else
     {
-      token->kind = Token_fwd_slash;
+      token->kind = eToken_fwd_slash;
       ++input->cursor;
     }
   }
@@ -504,7 +504,7 @@ loop:
     if(success = escaped_string(__FILE__, __LINE__, input, &estr))
     {
       token->str_val = install_escaped_str(&estr);;
-      token->kind = Token_string;
+      token->kind = eToken_string;
       input->cursor = ++estr.end;
     }
   }
@@ -523,133 +523,133 @@ loop:
       else
       {
         token->char_val = *lexeme;
-        token->kind = Token_char;
+        token->kind = eToken_char;
         input->cursor = ++estr.end;
       }
     }
   }
   else if(c == '=')
   {
-    token->kind = Token_eq;
+    token->kind = eToken_eq;
     c = *(++input->cursor);
     if(c == '=')
     {
-      token->kind = Token_eq_eq;
+      token->kind = eToken_eq_eq;
       ++input->cursor;
     }
   }
   else if(c == '>')
   {
-    token->kind = Token_angle_right;
+    token->kind = eToken_angle_right;
     c = *(++input->cursor);
     if(c == '=')
     {
-      token->kind = Token_angle_right_eq;
+      token->kind = eToken_angle_right_eq;
       ++input->cursor;
     }
   }
   else if(c == '|')
   {
-    token->kind = Token_pipe;
+    token->kind = eToken_pipe;
     c = *(++input->cursor);
     if(c == '|')
     {
-      token->kind = Token_pipe_pipe;
+      token->kind = eToken_pipe_pipe;
       ++input->cursor;
     }
   }
   else if(c == '!')
   {
-    token->kind = Token_exclam;
+    token->kind = eToken_exclam;
     c = *(++input->cursor);
     if(c == '=')
     {
-      token->kind = Token_exclam_eq;
+      token->kind = eToken_exclam_eq;
       ++input->cursor;
     }
   }
   else if(c == '+')
   {
-    token->kind = Token_plus;
+    token->kind = eToken_plus;
     c = *(++input->cursor);
     if(c == '+')
     {
-      token->kind = Token_plus_plus;
+      token->kind = eToken_plus_plus;
       ++input->cursor;
     }
   }
   else if(c == '*')
   {
-    token->kind = Token_star;
+    token->kind = eToken_star;
     ++input->cursor;
   }
   else if(c == '%')
   {
-    token->kind = Token_percent;
+    token->kind = eToken_percent;
     ++input->cursor;
   }
   else if(c == '\\')
   {
-    token->kind = Token_back_slash;
+    token->kind = eToken_back_slash;
     ++input->cursor;
   }
   else if(c == '.')
   {
-    token->kind = Token_dot;
+    token->kind = eToken_dot;
     ++input->cursor;
   }
   else if(c == '}')
   {
-    token->kind = Token_close_brace;
+    token->kind = eToken_close_brace;
     ++input->cursor;
   }
   else if(c == '{')
   {
-    token->kind = Token_open_brace;
+    token->kind = eToken_open_brace;
     ++input->cursor;
   }
   else if(c == '(')
   {
-    token->kind = Token_open_parens;
+    token->kind = eToken_open_parens;
     ++input->cursor;
   }
   else if(c == ')')
   {
-    token->kind = Token_close_parens;
+    token->kind = eToken_close_parens;
     ++input->cursor;
   }
   else if(c == ';')
   {
-    token->kind = Token_semicolon;
+    token->kind = eToken_semicolon;
     ++input->cursor;
   }
   else if(c == ',')
   {
-    token->kind = Token_comma;
+    token->kind = eToken_comma;
     ++input->cursor;
   }
   else if(c == ':')
   {
-    token->kind = Token_colon;
+    token->kind = eToken_colon;
     ++input->cursor;
   }
   else if(c == '[')
   {
-    token->kind = Token_open_bracket;
+    token->kind = eToken_open_bracket;
     ++input->cursor;
   }
   else if(c == ']')
   {
-    token->kind = Token_close_bracket;
+    token->kind = eToken_close_bracket;
     ++input->cursor;
   }
   else if(c == '\0')
   {
-    token->kind = Token_end_of_input;
+    token->kind = eToken_end_of_input;
   }
   else
   {
-    token->kind = Token_unknown_char;
+    token->kind = eToken_unknown_char;
     token->char_val = c;
   }
   return success;

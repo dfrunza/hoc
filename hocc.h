@@ -70,73 +70,73 @@ SourceLoc;
 
 typedef enum
 {
-  Token_None,
+  eToken_None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
-  Token_dot,
-  Token_arrow_right,
-  Token_open_bracket,
-  Token_close_bracket,
-  Token_open_parens,
-  Token_close_parens,
-  Token_open_brace,
-  Token_close_brace,
-  Token_semicolon,
-  Token_colon,
-  Token_comma,
-  Token_percent,
-  Token_star,
-  Token_fwd_slash,
-  Token_back_slash,
-  Token_plus,
-  Token_plus_plus,
-  Token_minus,
-  Token_minus_minus,
-  Token_exclam,
-  Token_exclam_eq,
-  Token_eq,
-  Token_eq_eq,
-  Token_angle_right,
-  Token_angle_right_eq,
-  Token_angle_left,
-  Token_angle_left_eq,
-  Token_ampersand,
-  Token_ampersand_ampersand,
-  Token_pipe,
-  Token_pipe_pipe,
-  Token_unknown_char,
-  Token_end_of_input,
+  eToken_dot,
+  eToken_arrow_right,
+  eToken_open_bracket,
+  eToken_close_bracket,
+  eToken_open_parens,
+  eToken_close_parens,
+  eToken_open_brace,
+  eToken_close_brace,
+  eToken_semicolon,
+  eToken_colon,
+  eToken_comma,
+  eToken_percent,
+  eToken_star,
+  eToken_fwd_slash,
+  eToken_back_slash,
+  eToken_plus,
+  eToken_plus_plus,
+  eToken_minus,
+  eToken_minus_minus,
+  eToken_exclam,
+  eToken_exclam_eq,
+  eToken_eq,
+  eToken_eq_eq,
+  eToken_angle_right,
+  eToken_angle_right_eq,
+  eToken_angle_left,
+  eToken_angle_left_eq,
+  eToken_ampersand,
+  eToken_ampersand_ampersand,
+  eToken_pipe,
+  eToken_pipe_pipe,
+  eToken_unknown_char,
+  eToken_end_of_input,
 
-  Token_var,
-  Token_asm,
-  Token_type,
-  Token_if,
-  Token_else,
-  Token_while,
-  Token_for,
-  Token_proc,
-  Token_struct,
-  Token_union,
-  Token_return,
-  Token_break,
-  Token_continue,
-  Token_goto,
-  Token_include,
-  Token_enum,
-  Token_true,
-  Token_false,
+  eToken_var,
+  eToken_asm,
+  eToken_type,
+  eToken_if,
+  eToken_else,
+  eToken_while,
+  eToken_for,
+  eToken_proc,
+  eToken_struct,
+  eToken_union,
+  eToken_return,
+  eToken_break,
+  eToken_continue,
+  eToken_goto,
+  eToken_include,
+  eToken_enum,
+  eToken_true,
+  eToken_false,
 
-  Token_id,
-  Token_int_num,
-  Token_float_num,
-  Token_string,
-  Token_char,
-  Token_asm_text,
+  eToken_id,
+  eToken_int_num,
+  eToken_float_num,
+  eToken_string,
+  eToken_char,
+  eToken_asm_text,
 }
-TokenKind;
+eToken;
 
 typedef struct
 {
-  TokenKind kind;
+  eToken kind;
   char* lexeme;
 
   union
@@ -162,15 +162,15 @@ TokenStream;
 
 typedef enum
 {
-  DataArea_None,
-  DataArea_var,
-  DataArea_link,
+  eDataArea_None,
+  eDataArea_var,
+  eDataArea_link,
 }
-DataAreaKind;
+eDataArea;
 
 typedef struct
 {
-  DataAreaKind kind;
+  eDataArea kind;
 
   int loc;
   int size;
@@ -180,191 +180,192 @@ typedef struct
 }
 DataArea;
 
-#ifndef OperatorKind_MEMBER_LIST
-#define OperatorKind_MEMBER_LIST()\
-  ENUM_MEMBER(Operator_None),\
-  ENUM_MEMBER(Operator_add),\
-  ENUM_MEMBER(Operator_sub),\
-  ENUM_MEMBER(Operator_mul),\
-  ENUM_MEMBER(Operator_div),\
-  ENUM_MEMBER(Operator_mod),\
-  ENUM_MEMBER(Operator_neg),\
-  ENUM_MEMBER(Operator_assign),\
-  ENUM_MEMBER(Operator_deref),\
-  ENUM_MEMBER(Operator_address_of),\
-  ENUM_MEMBER(Operator_member_select),\
-  ENUM_MEMBER(Operator_ptr_member_select),\
-  ENUM_MEMBER(Operator_pre_decr),\
-  ENUM_MEMBER(Operator_post_decr),\
-  ENUM_MEMBER(Operator_pre_incr),\
-  ENUM_MEMBER(Operator_post_incr),\
-  ENUM_MEMBER(Operator_index),\
-  ENUM_MEMBER(Operator_eq),\
-  ENUM_MEMBER(Operator_not_eq),\
-  ENUM_MEMBER(Operator_less),\
-  ENUM_MEMBER(Operator_less_eq),\
-  ENUM_MEMBER(Operator_greater),\
-  ENUM_MEMBER(Operator_greater_eq),\
-  ENUM_MEMBER(Operator_logic_and),\
-  ENUM_MEMBER(Operator_logic_or),\
-  ENUM_MEMBER(Operator_logic_not),\
-  ENUM_MEMBER(Operator_bit_and),\
-  ENUM_MEMBER(Operator_bit_or),\
-  ENUM_MEMBER(Operator_cast),
+#ifndef eOperator_MEMBER_LIST
+#define eOperator_MEMBER_LIST()\
+  ENUM_MEMBER(eOperator_None),\
+  ENUM_MEMBER(eOperator_add),\
+  ENUM_MEMBER(eOperator_sub),\
+  ENUM_MEMBER(eOperator_mul),\
+  ENUM_MEMBER(eOperator_div),\
+  ENUM_MEMBER(eOperator_mod),\
+  ENUM_MEMBER(eOperator_neg),\
+  ENUM_MEMBER(eOperator_assign),\
+  ENUM_MEMBER(eOperator_deref),\
+  ENUM_MEMBER(eOperator_address_of),\
+  ENUM_MEMBER(eOperator_member_select),\
+  ENUM_MEMBER(eOperator_ptr_member_select),\
+  ENUM_MEMBER(eOperator_pre_decr),\
+  ENUM_MEMBER(eOperator_post_decr),\
+  ENUM_MEMBER(eOperator_pre_incr),\
+  ENUM_MEMBER(eOperator_post_incr),\
+  ENUM_MEMBER(eOperator_index),\
+  ENUM_MEMBER(eOperator_eq),\
+  ENUM_MEMBER(eOperator_not_eq),\
+  ENUM_MEMBER(eOperator_less),\
+  ENUM_MEMBER(eOperator_less_eq),\
+  ENUM_MEMBER(eOperator_greater),\
+  ENUM_MEMBER(eOperator_greater_eq),\
+  ENUM_MEMBER(eOperator_logic_and),\
+  ENUM_MEMBER(eOperator_logic_or),\
+  ENUM_MEMBER(eOperator_logic_not),\
+  ENUM_MEMBER(eOperator_bit_and),\
+  ENUM_MEMBER(eOperator_bit_or),\
+  ENUM_MEMBER(eOperator_cast),\
+  ENUM_MEMBER(eOperator_Count),
 #endif
 
 typedef enum
 {
 #define ENUM_MEMBER(NAME) NAME
-  OperatorKind_MEMBER_LIST()
+  eOperator_MEMBER_LIST()
 #undef ENUM_MEMBER
 }
-OperatorKind;
+eOperator;
 
-char* get_operator_kind_printstr(OperatorKind op)
+char* get_operator_kind_printstr(eOperator op)
 {
   char* str = "???";
-  if(op == Operator_add)
+  if(op == eOperator_add)
     str = "+";
-  else if(op == Operator_sub)
+  else if(op == eOperator_sub)
     str = "-";
-  else if(op == Operator_mul)
+  else if(op == eOperator_mul)
     str = "*";
-  else if(op == Operator_div)
+  else if(op == eOperator_div)
     str = "/";
-  else if(op == Operator_mod)
+  else if(op == eOperator_mod)
     str = "%";
-  else if(op == Operator_neg)
+  else if(op == eOperator_neg)
     str = "-";
-  else if (op == Operator_assign)
+  else if (op == eOperator_assign)
     str = "=";
-  else if(op == Operator_deref)
+  else if(op == eOperator_deref)
     str = "*";
-  else if(op == Operator_address_of)
+  else if(op == eOperator_address_of)
     str = "&";
-  else if(op == Operator_member_select)
+  else if(op == eOperator_member_select)
     str = ".";
-  else if(op == Operator_ptr_member_select)
+  else if(op == eOperator_ptr_member_select)
     str = "->";
-  else if(op == Operator_pre_decr || op == Operator_post_decr)
+  else if(op == eOperator_pre_decr || op == eOperator_post_decr)
     str = "--";
-  else if(op == Operator_pre_incr || op == Operator_post_incr)
+  else if(op == eOperator_pre_incr || op == eOperator_post_incr)
     str = "++";
-  else if(op == Operator_index)
+  else if(op == eOperator_index)
     str = "[]";
-  else if(op == Operator_eq)
+  else if(op == eOperator_eq)
     str = "==";
-  else if(op == Operator_not_eq)
+  else if(op == eOperator_not_eq)
     str = "!=";
-  else if(op == Operator_less)
+  else if(op == eOperator_less)
     str = "<";
-  else if(op == Operator_less_eq)
+  else if(op == eOperator_less_eq)
     str = "<=";
-  else if(op == Operator_greater)
+  else if(op == eOperator_greater)
     str = ">";
-  else if(op == Operator_greater_eq)
+  else if(op == eOperator_greater_eq)
     str = ">=";
-  else if(op == Operator_logic_and)
+  else if(op == eOperator_logic_and)
     str = "&&";
-  else if(op == Operator_logic_or)
+  else if(op == eOperator_logic_or)
     str = "||";
-  else if(op == Operator_logic_not)
+  else if(op == eOperator_logic_not)
     str = "!";
-  else if(op == Operator_bit_and)
+  else if(op == eOperator_bit_and)
     str = "&";
-  else if(op == Operator_bit_or)
+  else if(op == eOperator_bit_or)
     str = "|";
-  else if(op == Operator_cast)
+  else if(op == eOperator_cast)
     str = "(cast)";
   return str;
 }
 
-#ifndef LiteralKind_MEMBER_LIST
-#define LiteralKind_MEMBER_LIST()\
-  ENUM_MEMBER(Literal_None),\
-  ENUM_MEMBER(Literal_int_val),\
-  ENUM_MEMBER(Literal_float_val),\
-  ENUM_MEMBER(Literal_bool_val),\
-  ENUM_MEMBER(Literal_char_val),\
-  ENUM_MEMBER(Literal_str_val),
+#ifndef eLiteral_MEMBER_LIST
+#define eLiteral_MEMBER_LIST()\
+  ENUM_MEMBER(eLiteral_None),\
+  ENUM_MEMBER(eLiteral_int_val),\
+  ENUM_MEMBER(eLiteral_float_val),\
+  ENUM_MEMBER(eLiteral_bool_val),\
+  ENUM_MEMBER(eLiteral_char_val),\
+  ENUM_MEMBER(eLiteral_str_val),
 #endif
 
 typedef enum
 {
 #define ENUM_MEMBER(NAME) NAME
-  LiteralKind_MEMBER_LIST()
+  eLiteral_MEMBER_LIST()
 #undef ENUM_MEMBER
 }
-LiteralKind;
+eLiteral;
 
-char* LiteralKind_strings[] =
+char* eLiteral_strings[] =
 {
 #define ENUM_MEMBER(NAME) #NAME
-  LiteralKind_MEMBER_LIST()
+  eLiteral_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
 
-char* get_literal_kind_printstr(LiteralKind kind)
+char* get_literal_kind_printstr(eLiteral kind)
 {
-  return LiteralKind_strings[kind];
+  return eLiteral_strings[kind];
 }
 
 typedef struct Type Type;
 typedef struct AstNode AstNode;
 typedef struct Symbol Symbol;
 
-#ifndef ScopeKind_MEMBER_LIST
-#define ScopeKind_MEMBER_LIST()\
-  ENUM_MEMBER(Scope_None),\
-  ENUM_MEMBER(Scope_global),\
-  ENUM_MEMBER(Scope_module),\
-  ENUM_MEMBER(Scope_proc),\
-  ENUM_MEMBER(Scope_loop),\
-  ENUM_MEMBER(Scope_block),
+#ifndef eScope_MEMBER_LIST
+#define eScope_MEMBER_LIST()\
+  ENUM_MEMBER(eScope_None),\
+  ENUM_MEMBER(eScope_global),\
+  ENUM_MEMBER(eScope_module),\
+  ENUM_MEMBER(eScope_proc),\
+  ENUM_MEMBER(eScope_loop),\
+  ENUM_MEMBER(eScope_block),
 #endif
 
 typedef enum
 {
 #define ENUM_MEMBER(NAME) NAME
-  ScopeKind_MEMBER_LIST()
+  eScope_MEMBER_LIST()
 #undef ENUM_MEMBER
 }
-ScopeKind;
+eScope;
 
-char* ScopeKind_strings[] =
+char* eScope_strings[] =
 {
 #define ENUM_MEMBER(NAME) #NAME
-  ScopeKind_MEMBER_LIST()
+  eScope_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
 
-char* get_scope_kind_printstr(ScopeKind kind)
+char* get_scope_kind_printstr(eScope kind)
 {
-  return ScopeKind_strings[kind];
+  return eScope_strings[kind];
 }
 
 typedef enum
 {
-  Symbol_None,
-  Symbol_var,
-  Symbol_ret_var,
-  Symbol_formal_arg,
-  Symbol_type,
-  Symbol_proc,
-  Symbol_Count,
+  eSymbol_None,
+  eSymbol_var,
+  eSymbol_ret_var,
+  eSymbol_formal_arg,
+  eSymbol_type,
+  eSymbol_proc,
+  eSymbol_Count,
 }
-SymbolKind;
+eSymbol;
 
 typedef struct Scope
 {
-  ScopeKind kind;
+  eScope kind;
 
   int nesting_depth;
   struct Scope* encl_scope;
   AstNode* ast_node;
 
-  List* decls[Symbol_Count];
-  List* occurs[Symbol_Count];
+  List* decls[eSymbol_Count];
+  List* occurs[eSymbol_Count];
 
   List* pre_fp_areas;
   List* post_fp_areas;
@@ -379,88 +380,88 @@ Scope;
 
 typedef enum 
 {
-  AstAttribute_None,
-  AstAttribute_ast_node,
-  AstAttribute_int_val,
-  AstAttribute_float_val,
-  AstAttribute_char_val,
-  AstAttribute_bool_val,
-  AstAttribute_str_val,
-  AstAttribute_op_kind,
-  AstAttribute_list,
-  AstAttribute_lit_kind,
-  AstAttribute_scope,
-  AstAttribute_type,
-  AstAttribute_symbol,
+  eAstAttribute_None,
+  eAstAttribute_ast_node,
+  eAstAttribute_int_val,
+  eAstAttribute_float_val,
+  eAstAttribute_char_val,
+  eAstAttribute_bool_val,
+  eAstAttribute_str_val,
+  eAstAttribute_op_kind,
+  eAstAttribute_list,
+  eAstAttribute_lit_kind,
+  eAstAttribute_scope,
+  eAstAttribute_type,
+  eAstAttribute_symbol,
 }
-AstAttributeKind;
+eAstAttribute;
 
 typedef enum
 {
-  AstAttributeName_None,
-  AstAttributeName_symbol,
-  AstAttributeName_decl_sym,
-  AstAttributeName_occur_sym,
-  AstAttributeName_type,
-  AstAttributeName_eval_type,
-  AstAttributeName_type_expr,
-  AstAttributeName_pointee_expr,
-  AstAttributeName_elem_expr,
-  AstAttributeName_nesting_depth,
-  AstAttributeName_loop,
-  AstAttributeName_formal_args,
-  AstAttributeName_ret_type,
-  AstAttributeName_ret_var,
-  AstAttributeName_scope,
-  AstAttributeName_decl_scope,
-  AstAttributeName_occur_scope,
-  AstAttributeName_var_decl,
-  AstAttributeName_proc_decl,
-  AstAttributeName_type_decl,
-  AstAttributeName_str_lit,
-  AstAttributeName_operand,
-  AstAttributeName_left_operand,
-  AstAttributeName_right_operand,
-  AstAttributeName_op_kind,
-  AstAttributeName_name,
-  AstAttributeName_nodes,
-  AstAttributeName_procs,
-  AstAttributeName_vars,
-  AstAttributeName_stmts,
-  AstAttributeName_file_path,
-  AstAttributeName_body,
-  AstAttributeName_stmt,
-  AstAttributeName_id,
-  AstAttributeName_init_expr,
-  AstAttributeName_actual_args,
-  AstAttributeName_int_val,
-  AstAttributeName_float_val,
-  AstAttributeName_bool_val,
-  AstAttributeName_char_val,
-  AstAttributeName_str_val,
-  AstAttributeName_ret_expr,
-  AstAttributeName_expr,
-  AstAttributeName_cond_expr,
-  AstAttributeName_loop_expr,
-  AstAttributeName_else_body,
-  AstAttributeName_decl_expr,
-  AstAttributeName_size_expr,
-  AstAttributeName_members,
-  AstAttributeName_count_expr,
-  AstAttributeName_lit_kind,
-  AstAttributeName_data_area,
-  AstAttributeName_label_end,
-  AstAttributeName_label_else,
-  AstAttributeName_label_eval,
-  AstAttributeName_label_break,
-  AstAttributeName_asm_text,
+  eAstAttributeName_None,
+  eAstAttributeName_symbol,
+  eAstAttributeName_decl_sym,
+  eAstAttributeName_occur_sym,
+  eAstAttributeName_type,
+  eAstAttributeName_eval_type,
+  eAstAttributeName_type_expr,
+  eAstAttributeName_pointee_expr,
+  eAstAttributeName_elem_expr,
+  eAstAttributeName_nesting_depth,
+  eAstAttributeName_loop,
+  eAstAttributeName_formal_args,
+  eAstAttributeName_ret_type,
+  eAstAttributeName_ret_var,
+  eAstAttributeName_scope,
+  eAstAttributeName_decl_scope,
+  eAstAttributeName_occur_scope,
+  eAstAttributeName_var_decl,
+  eAstAttributeName_proc_decl,
+  eAstAttributeName_type_decl,
+  eAstAttributeName_str_lit,
+  eAstAttributeName_operand,
+  eAstAttributeName_left_operand,
+  eAstAttributeName_right_operand,
+  eAstAttributeName_op_kind,
+  eAstAttributeName_name,
+  eAstAttributeName_nodes,
+  eAstAttributeName_procs,
+  eAstAttributeName_vars,
+  eAstAttributeName_stmts,
+  eAstAttributeName_file_path,
+  eAstAttributeName_body,
+  eAstAttributeName_stmt,
+  eAstAttributeName_id,
+  eAstAttributeName_init_expr,
+  eAstAttributeName_actual_args,
+  eAstAttributeName_int_val,
+  eAstAttributeName_float_val,
+  eAstAttributeName_bool_val,
+  eAstAttributeName_char_val,
+  eAstAttributeName_str_val,
+  eAstAttributeName_ret_expr,
+  eAstAttributeName_expr,
+  eAstAttributeName_cond_expr,
+  eAstAttributeName_loop_expr,
+  eAstAttributeName_else_body,
+  eAstAttributeName_decl_expr,
+  eAstAttributeName_size_expr,
+  eAstAttributeName_members,
+  eAstAttributeName_count_expr,
+  eAstAttributeName_lit_kind,
+  eAstAttributeName_data_area,
+  eAstAttributeName_label_end,
+  eAstAttributeName_label_else,
+  eAstAttributeName_label_eval,
+  eAstAttributeName_label_break,
+  eAstAttributeName_asm_text,
 }
-AstAttributeName;
+eAstAttributeName;
 
 typedef struct
 {
-  AstAttributeKind kind;
-  AstAttributeName name;
+  eAstAttribute kind;
+  eAstAttributeName name;
 
   union
   {
@@ -471,8 +472,8 @@ typedef struct
     char char_val;
     char* str_val;
     List* list;
-    OperatorKind op_kind;
-    LiteralKind lit_kind;
+    eOperator op_kind;
+    eLiteral lit_kind;
     Scope* scope;
     Type* type;
     Symbol* symbol;
@@ -482,72 +483,72 @@ AstAttribute;
 
 typedef struct
 {
-  AstAttributeKind kind;
-  AstAttributeName name;
+  eAstAttribute kind;
+  eAstAttributeName name;
 }
 AstAttributeMetaInfo;
 
-#ifndef AstKind_MEMBER_LIST
-#define AstKind_MEMBER_LIST()\
-  ENUM_MEMBER(AstNode_None),\
-  ENUM_MEMBER(AstNode_id),\
-  ENUM_MEMBER(AstNode_asm_block),\
-  ENUM_MEMBER(AstNode_array),\
-  ENUM_MEMBER(AstNode_bin_expr),\
-  ENUM_MEMBER(AstNode_un_expr),\
-  ENUM_MEMBER(AstNode_module),\
-  ENUM_MEMBER(AstNode_include),\
-  ENUM_MEMBER(AstNode_block),\
-  ENUM_MEMBER(AstNode_stmt),\
-  ENUM_MEMBER(AstNode_var_decl),\
-  ENUM_MEMBER(AstNode_var_occur),\
-  ENUM_MEMBER(AstNode_proc_decl),\
-  ENUM_MEMBER(AstNode_proc_occur),\
-  ENUM_MEMBER(AstNode_type_decl),\
-  ENUM_MEMBER(AstNode_type_occur),\
-  ENUM_MEMBER(AstNode_lit),\
-  ENUM_MEMBER(AstNode_ret_stmt),\
-  ENUM_MEMBER(AstNode_goto_stmt),\
-  ENUM_MEMBER(AstNode_label),\
-  ENUM_MEMBER(AstNode_if_stmt),\
-  ENUM_MEMBER(AstNode_while_stmt),\
-  ENUM_MEMBER(AstNode_do_while_stmt),\
-  ENUM_MEMBER(AstNode_for_stmt),\
-  ENUM_MEMBER(AstNode_break_stmt),\
-  ENUM_MEMBER(AstNode_continue_stmt),\
-  ENUM_MEMBER(AstNode_pointer),\
-  ENUM_MEMBER(AstNode_enum_decl),\
-  ENUM_MEMBER(AstNode_struct_decl),\
-  ENUM_MEMBER(AstNode_union_decl),\
-  ENUM_MEMBER(AstNode_init_list),\
-  ENUM_MEMBER(AstNode_empty),
+#ifndef eAstNode_MEMBER_LIST
+#define eAstNode_MEMBER_LIST()\
+  ENUM_MEMBER(eAstNode_None),\
+  ENUM_MEMBER(eAstNode_id),\
+  ENUM_MEMBER(eAstNode_asm_block),\
+  ENUM_MEMBER(eAstNode_array),\
+  ENUM_MEMBER(eAstNode_bin_expr),\
+  ENUM_MEMBER(eAstNode_un_expr),\
+  ENUM_MEMBER(eAstNode_module),\
+  ENUM_MEMBER(eAstNode_include),\
+  ENUM_MEMBER(eAstNode_block),\
+  ENUM_MEMBER(eAstNode_stmt),\
+  ENUM_MEMBER(eAstNode_var_decl),\
+  ENUM_MEMBER(eAstNode_var_occur),\
+  ENUM_MEMBER(eAstNode_proc_decl),\
+  ENUM_MEMBER(eAstNode_proc_occur),\
+  ENUM_MEMBER(eAstNode_type_decl),\
+  ENUM_MEMBER(eAstNode_type_occur),\
+  ENUM_MEMBER(eAstNode_lit),\
+  ENUM_MEMBER(eAstNode_ret_stmt),\
+  ENUM_MEMBER(eAstNode_goto_stmt),\
+  ENUM_MEMBER(eAstNode_label),\
+  ENUM_MEMBER(eAstNode_if_stmt),\
+  ENUM_MEMBER(eAstNode_while_stmt),\
+  ENUM_MEMBER(eAstNode_do_while_stmt),\
+  ENUM_MEMBER(eAstNode_for_stmt),\
+  ENUM_MEMBER(eAstNode_break_stmt),\
+  ENUM_MEMBER(eAstNode_continue_stmt),\
+  ENUM_MEMBER(eAstNode_pointer),\
+  ENUM_MEMBER(eAstNode_enum_decl),\
+  ENUM_MEMBER(eAstNode_struct_decl),\
+  ENUM_MEMBER(eAstNode_union_decl),\
+  ENUM_MEMBER(eAstNode_init_list),\
+  ENUM_MEMBER(eAstNode_empty),
 #endif
 
 typedef enum 
 {
 #define ENUM_MEMBER(NAME) NAME
-  AstKind_MEMBER_LIST()
+  eAstNode_MEMBER_LIST()
 #undef ENUM_MEMBER
 }
-AstKind;
+eAstNode;
 
-char* AstKind_strings[] =
+char* eAstNode_strings[] =
 {
 #define ENUM_MEMBER(NAME) #NAME
-  AstKind_MEMBER_LIST()
+  eAstNode_MEMBER_LIST()
 #undef ENUM_MEMBER
 };
 
-char* get_ast_kind_printstr(AstKind kind)
+char* get_ast_kind_printstr(eAstNode kind)
 {
-  return AstKind_strings[kind];
+  return eAstNode_strings[kind];
 }
 
 #define MAX_ATTRIBUTE_COUNT 12
 
 typedef struct
 {
-  AstKind kind;
+  eAstNode kind;
   int attr_count;
   AstAttributeMetaInfo attrs[MAX_ATTRIBUTE_COUNT];
 }
@@ -562,16 +563,16 @@ AstMetaInfo;
 
 typedef enum
 {
-  Ast_gen0,
-  Ast_gen1,
-  Ast_gen_Count,
+  eAstGen_gen0,
+  eAstGen_gen1,
+  eAstGen_Count,
 }
-Ast_Gen;
+eAstGen;
 
 typedef struct AstNode
 {
-  Ast_Gen gen;
-  AstKind kind;
+  eAstGen gen;
+  eAstNode kind;
   SourceLoc* src_loc;
 
   AstAttribute attrs[MAX_ATTRIBUTE_COUNT];
@@ -582,31 +583,31 @@ AstMetaInfo ast_meta_infos[2];
 
 typedef enum
 {
-  Type_None,
-  Type_typevar,
-  Type_basic,
-  Type_proc,
-  Type_product,
-  Type_pointer,
-  Type_array,
+  eType_None,
+  eType_typevar,
+  eType_basic,
+  eType_proc,
+  eType_product,
+  eType_pointer,
+  eType_array,
 }
-TypeKind;
+eType;
 
 typedef enum
 {
-  BasicType_None,
-  BasicType_void,
-  BasicType_int,
-  BasicType_float,
-  BasicType_char,
-  BasicType_bool,
-  BasicType_type,
+  eBasicType_None,
+  eBasicType_void,
+  eBasicType_int,
+  eBasicType_float,
+  eBasicType_char,
+  eBasicType_bool,
+  eBasicType_type,
 }
-BasicTypeKind;
+eBasicType;
 
 typedef struct Type
 {
-  TypeKind kind;
+  eType kind;
   Type* repr_type; // representative member of the set of equivalent types
   int width;
 
@@ -614,7 +615,7 @@ typedef struct Type
   {
     struct
     {
-      BasicTypeKind kind;
+      eBasicType kind;
     }
     basic;
 
@@ -668,7 +669,7 @@ TypePair;
 
 typedef struct Symbol
 {
-  SymbolKind kind;
+  eSymbol kind;
 
   char* name;
   SourceLoc* src_loc;
@@ -695,67 +696,67 @@ SymbolTable;
 
 typedef enum
 {
-  Opcode_None,
-  Opcode_PUSH_INT8,
-  Opcode_PUSH_INT32,
-  Opcode_PUSH_FLOAT32,
-  Opcode_PUSH_REG,
-  Opcode_POP_REG,
-  Opcode_DUP,
-  Opcode_LOAD,
-  Opcode_STORE,
-  Opcode_GROW,
-  Opcode_GROWNZ,
-  Opcode_NEW,
+  eOpcode_None,
+  eOpcode_PUSH_INT8,
+  eOpcode_PUSH_INT32,
+  eOpcode_PUSH_FLOAT32,
+  eOpcode_PUSH_REG,
+  eOpcode_POP_REG,
+  eOpcode_DUP,
+  eOpcode_LOAD,
+  eOpcode_STORE,
+  eOpcode_GROW,
+  eOpcode_GROWNZ,
+  eOpcode_NEW,
 
-  Opcode_ADD_INT32,
-  Opcode_SUB_INT32,
-  Opcode_MUL_INT32,
-  Opcode_DIV_INT32,
-  Opcode_MOD_INT32,
-  Opcode_NEG_INT32,
-  Opcode_INCR_INT32,
-  Opcode_DECR_INT32,
+  eOpcode_ADD_INT32,
+  eOpcode_SUB_INT32,
+  eOpcode_MUL_INT32,
+  eOpcode_DIV_INT32,
+  eOpcode_MOD_INT32,
+  eOpcode_NEG_INT32,
+  eOpcode_INCR_INT32,
+  eOpcode_DECR_INT32,
 
-  Opcode_ADD_FLOAT32,
-  Opcode_SUB_FLOAT32,
-  Opcode_MUL_FLOAT32,
-  Opcode_DIV_FLOAT32,
-  Opcode_NEG_FLOAT32,
+  eOpcode_ADD_FLOAT32,
+  eOpcode_SUB_FLOAT32,
+  eOpcode_MUL_FLOAT32,
+  eOpcode_DIV_FLOAT32,
+  eOpcode_NEG_FLOAT32,
 
-  Opcode_CMPEQ_INT8,
-  Opcode_CMPNEQ_INT8,
-  Opcode_CMPLSS_INT8,
-  Opcode_CMPGRT_INT8,
-  Opcode_CMPEQ_INT32,
-  Opcode_CMPNEQ_INT32,
-  Opcode_CMPLSS_INT32,
-  Opcode_CMPGRT_INT32,
-  Opcode_CMPEQ_FLOAT32,
-  Opcode_CMPNEQ_FLOAT32,
-  Opcode_CMPLSS_FLOAT32,
-  Opcode_CMPGRT_FLOAT32,
-  Opcode_AND,
-  Opcode_OR,
-  Opcode_NOT,
+  eOpcode_CMPEQ_INT8,
+  eOpcode_CMPNEQ_INT8,
+  eOpcode_CMPLSS_INT8,
+  eOpcode_CMPGRT_INT8,
+  eOpcode_CMPEQ_INT32,
+  eOpcode_CMPNEQ_INT32,
+  eOpcode_CMPLSS_INT32,
+  eOpcode_CMPGRT_INT32,
+  eOpcode_CMPEQ_FLOAT32,
+  eOpcode_CMPNEQ_FLOAT32,
+  eOpcode_CMPLSS_FLOAT32,
+  eOpcode_CMPGRT_FLOAT32,
+  eOpcode_AND,
+  eOpcode_OR,
+  eOpcode_NOT,
 
-  Opcode_LABEL,
-  Opcode_JUMPZ,
-  Opcode_JUMPNZ,
-  Opcode_GOTO,
-  Opcode_CALL,
-  Opcode_RETURN,
-  Opcode_ENTER,
-  Opcode_LEAVE,
-  Opcode_HALT,
+  eOpcode_LABEL,
+  eOpcode_JUMPZ,
+  eOpcode_JUMPNZ,
+  eOpcode_GOTO,
+  eOpcode_CALL,
+  eOpcode_RETURN,
+  eOpcode_ENTER,
+  eOpcode_LEAVE,
+  eOpcode_HALT,
 
-  Opcode_NOOP,
-  Opcode_PUTC,
+  eOpcode_NOOP,
+  eOpcode_PUTC,
 
-  Opcode_FLOAT32_TO_INT32,
-  Opcode_INT32_TO_FLOAT32,
+  eOpcode_FLOAT32_TO_INT32,
+  eOpcode_INT32_TO_FLOAT32,
 }
-Opcode;
+eOpcode;
 
 typedef struct
 {
@@ -766,34 +767,34 @@ InstructionLine;
 
 typedef enum
 {
-  ParamType_None,
-  ParamType_int32,
-  ParamType_int8,
-  ParamType_float32,
-  ParamType_str,
-  ParamType_reg,
+  eParamType_None,
+  eParamType_int32,
+  eParamType_int8,
+  eParamType_float32,
+  eParamType_str,
+  eParamType_reg,
 }
-ParamType;
+eParamType;
 
 typedef enum
 {
-  RegName_None,
-  RegName_IP,
-  RegName_SP,
-  RegName_FP
+  eRegName_None,
+  eRegName_IP,
+  eRegName_SP,
+  eRegName_FP
 }
-RegName;
+eRegName;
 
 typedef struct
 {
-  Opcode opcode;
-  ParamType param_type;
+  eOpcode opcode;
+  eParamType param_type;
 
   union {
     int8 char_val; //todo
     int32 int_val;
     float32 float_val;
-    RegName reg;
+    eRegName reg;
     char* str;
   } param;
 
@@ -831,22 +832,22 @@ VmProgram;
 
 typedef enum
 {
-  List_None,
-  List_ast_node,
-  List_symbol,
-  List_scope,
-  List_vm_instr,
-  List_type_pair,
-  List_data_area,
+  eList_None,
+  eList_ast_node,
+  eList_symbol,
+  eList_scope,
+  eList_vm_instr,
+  eList_type_pair,
+  eList_data_area,
 }
-ListKind;
+eList;
 
 #define ITEM(VAR, NAME)\
-  (((VAR)->kind == List_##NAME) ? (VAR)->NAME : 0)
+  (((VAR)->kind == eList_##NAME) ? (VAR)->NAME : 0)
 
 typedef struct ListItem
 {
-  ListKind kind;
+  eList kind;
   union
   {
     void* elem;
@@ -864,7 +865,7 @@ ListItem;
 
 typedef struct List
 {
-  ListKind kind;
+  eList kind;
   ListItem* first;
   ListItem* last;
   MemoryArena* arena;

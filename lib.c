@@ -438,7 +438,7 @@ void print_char(char buf[3], char raw_char)
     *buf = raw_char;
 }
 
-List* new_list(MemoryArena* arena, ListKind kind)
+List* new_list(MemoryArena* arena, eList kind)
 {
   List* list = mem_push_struct(arena, List);
   list->kind = kind;
@@ -491,7 +491,7 @@ void append_list_item(List* list, ListItem* item)
   }
 }
 
-void append_list_elem(List* list, void* elem, ListKind kind)
+void append_list_elem(List* list, void* elem, eList kind)
 {
   ListItem* item = mem_push_struct(arena, ListItem);
   item->elem = elem;
@@ -517,7 +517,7 @@ void prepend_list_item(List* list, ListItem* item)
   }
 }
 
-void prepend_list_elem(List* list, void* elem, ListKind kind)
+void prepend_list_elem(List* list, void* elem, eList kind)
 {
   ListItem* item = mem_push_struct(arena, ListItem);
   item->elem = elem;
@@ -555,7 +555,7 @@ void replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
     list_b->last = list_a->last;
 }
 
-void concat_lists(List* list_a, List* list_b)
+void join_lists(List* list_a, List* list_b)
 {
   ListItem* last_a_item = list_a->last;
   ListItem* first_b_item = list_b->first;

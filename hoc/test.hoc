@@ -2,8 +2,8 @@ include "std.hoc";
 include "str.hoc";
 include "math.hoc";
 /*
-include "sort.hoc";
-*/
+   include "sort.hoc";
+ */
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 
@@ -36,23 +36,28 @@ proc void test()
   fizzbuzz(50);
 }
 
-/* todo: fix this
-var [4]void data;
-*/
+/* FIXME
+   var [4]void data;
+ */
 
 /*
-proc void printf(char* s, ..args)
-{ }
-*/
+   proc void printf(char* s, ..args)
+   { }
+ */
 
-var int f;
+var int f = 123;
+
+proc int foo(int f)
+{
+  return 2*f;
+}
 
 proc void main()
 {
   test();
-  {
-    f = 123;
-  }
+  var int f1 = foo(f);
+  print_int(f);
+  print_int(f1);
 }
 
 main();

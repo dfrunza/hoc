@@ -555,7 +555,7 @@ void replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
     list_b->last = list_a->last;
 }
 
-void join_lists(List* list_a, List* list_b)
+void join_list_pair(List* list_a, List* list_b)
 {
   ListItem* last_a_item = list_a->last;
   ListItem* first_b_item = list_b->first;
@@ -566,4 +566,3 @@ void join_lists(List* list_a, List* list_b)
   if(first_b_item)
     first_b_item->prev = last_a_item;
 }
-

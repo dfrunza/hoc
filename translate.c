@@ -28,15 +28,6 @@ char* make_temp_name(char* label)
   return str_cap(str);
 }
 
-typedef enum
-{
-  eBlockNodeList_None,
-  eBlockNodeList_var,
-  eBlockNodeList_proc,
-  eBlockNodeList_stmt,
-}
-eBlockNodeList;
-
 void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
 {
   if(gen == eAstGen_gen0)
@@ -1013,12 +1004,11 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
 
-#if 0
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_list;
       attr->name = eAstAttributeName_nodes;
-#else
+
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_list;
@@ -1033,7 +1023,6 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_list;
       attr->name = eAstAttributeName_vars;
-#endif
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];

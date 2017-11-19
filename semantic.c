@@ -265,26 +265,29 @@ bool name_ident_block(AstNode* node)
   AstNode block_gen0 = *node;
   AstNode* block_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_block);
   ATTR(block_gen1, scope, scope) = symbol_table->active_scope;
+
+  //TODO: Reuse the gen0 list, for that we need to implement the insert_list_elem() function.
+  // The var_decl->init_expr node has to be inserted into the gen0 list, in the position after the var_decl node.
+  List* nodes_list_gen1 = ATTR(block_gen1, list, nodes);
   List* procs_list = ATTR(block_gen1, list, procs) = new_list(arena, eList_ast_node);
   List* stmts_list = ATTR(block_gen1, list, stmts) = new_list(arena, eList_ast_node);
   List* vars_list = ATTR(block_gen1, list, vars) = new_list(arena, eList_ast_node);
 
-  List* nodes_list = ATTR(&block_gen0, list, nodes);
-  for(ListItem* list_item = nodes_list->first;
-      list_item;)
+  List* nodes_list_gen0 = ATTR(&block_gen0, list, nodes);
+  for(ListItem* list_item = nodes_list_gen0->first;
+      list_item && success;
+      list_item = list_item->next)
   {
     AstNode* stmt = ITEM(list_item, ast_node);
-
-    ListItem* next_list_item = list_item->next;
-    remove_list_item(nodes_list, list_item);
+    append_list_elem(nodes_list_gen1, stmt, eList_ast_node);
 
     if(stmt->kind == eAstNode_proc_decl)
     {
-      append_list_item(procs_list, list_item);
+      append_list_elem(procs_list, stmt, eList_ast_node);
     }
     else if(stmt->kind == eAstNode_var_decl)
     {
-      append_list_item(vars_list, list_item);
+      append_list_elem(vars_list, stmt, eList_ast_node);
 
       AstNode* init_expr = ATTR(stmt, ast_node, init_expr);
       if(init_expr)
@@ -298,36 +301,13 @@ bool name_ident_block(AstNode* node)
         || stmt->kind == eAstNode_ret_stmt || stmt->kind == eAstNode_break_stmt || stmt->kind == eAstNode_continue_stmt
         || stmt->kind == eAstNode_block || stmt->kind == eAstNode_asm_block)
     {
-      append_list_item(stmts_list, list_item);
+      append_list_elem(stmts_list, stmt, eList_ast_node);
     }
     else
       assert(0);
 
-    list_item = next_list_item;
+    success = name_ident(stmt);
   }
-
-  //FIXME:
-  for(ListItem* list_item = vars_list->first;
-      list_item && success;
-      list_item = list_item->next)
-  {
-    success = name_ident(ITEM(list_item, ast_node));
-  }
-
-  for(ListItem* list_item = procs_list->first;
-      list_item && success;
-      list_item = list_item->next)
-  {
-    success = name_ident(ITEM(list_item, ast_node));
-  }
-
-  for(ListItem* list_item = stmts_list->first;
-      list_item && success;
-      list_item = list_item->next)
-  {
-    success = name_ident(ITEM(list_item, ast_node));
-  }
-
   return success;
 }
 
@@ -782,20 +762,7 @@ bool build_types(AstNode* node)
   }
   else if(node->kind == eAstNode_block)
   {
-    //FIXME:
-    for(ListItem* list_item = ATTR(node, list, vars)->first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      success = build_types(ITEM(list_item, ast_node));
-    }
-    for(ListItem* list_item = ATTR(node, list, procs)->first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      success = build_types(ITEM(list_item, ast_node));
-    }
-    for(ListItem* list_item = ATTR(node, list, stmts)->first;
+    for(ListItem* list_item = ATTR(node, list, nodes)->first;
         list_item && success;
         list_item = list_item->next)
     {
@@ -1070,38 +1037,7 @@ bool eval_types(AstNode* node)
   }
   else if(node->kind == eAstNode_block)
   {
-    //FIXME:
-    for(ListItem* list_item = ATTR(node, list, vars)->first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      AstNode* stmt = ITEM(list_item, ast_node);
-      if(success = eval_types(stmt))
-      {
-        Type* stmt_ty = ATTR(stmt, type, eval_type);
-        Type* block_ty = ATTR(node, type, eval_type);
-        if(!type_unif(stmt_ty, block_ty))
-        {
-          success = compile_error(stmt->src_loc, "type error (block stmt)");
-        }
-      }
-    }
-    for(ListItem* list_item = ATTR(node, list, procs)->first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      AstNode* stmt = ITEM(list_item, ast_node);
-      if(success = eval_types(stmt))
-      {
-        Type* stmt_ty = ATTR(stmt, type, eval_type);
-        Type* block_ty = ATTR(node, type, eval_type);
-        if(!type_unif(stmt_ty, block_ty))
-        {
-          success = compile_error(stmt->src_loc, "type error (block stmt)");
-        }
-      }
-    }
-    for(ListItem* list_item = ATTR(node, list, stmts)->first;
+    for(ListItem* list_item = ATTR(node, list, nodes)->first;
         list_item && success;
         list_item = list_item->next)
     {
@@ -1440,20 +1376,7 @@ bool resolve_types(AstNode* node)
   }
   else if(node->kind == eAstNode_block)
   {
-    //FIXME:
-    for(ListItem* list_item = ATTR(node, list, vars)->first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      success = resolve_types(ITEM(list_item, ast_node));
-    }
-    for(ListItem* list_item = ATTR(node, list, procs)->first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      success = resolve_types(ITEM(list_item, ast_node));
-    }
-    for(ListItem* list_item = ATTR(node, list, stmts)->first;
+    for(ListItem* list_item = ATTR(node, list, nodes)->first;
         list_item && success;
         list_item = list_item->next)
     {
@@ -1593,20 +1516,7 @@ bool check_types(AstNode* node)
   }
   else if(node->kind == eAstNode_block)
   {
-    //FIXME:
-    for(ListItem* list_item = ATTR(node, list, vars)->first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      success = check_types(ITEM(list_item, ast_node));
-    }
-    for(ListItem* list_item = ATTR(node, list, procs)->first;
-        list_item && success;
-        list_item = list_item->next)
-    {
-      success = check_types(ITEM(list_item, ast_node));
-    }
-    for(ListItem* list_item = ATTR(node, list, stmts)->first;
+    for(ListItem* list_item = ATTR(node, list, nodes)->first;
         list_item && success;
         list_item = list_item->next)
     {

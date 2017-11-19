@@ -831,20 +831,7 @@ void gen_labels(AstNode* node)
   }
   else if(node->kind == eAstNode_block)
   {
-    //FIXME:
-    for(ListItem* list_item = ATTR(node, list, vars)->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      gen_labels(ITEM(list_item, ast_node));
-    }
-    for(ListItem* list_item = ATTR(node, list, procs)->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      gen_labels(ITEM(list_item, ast_node));
-    }
-    for(ListItem* list_item = ATTR(node, list, stmts)->first;
+    for(ListItem* list_item = ATTR(node, list, nodes)->first;
         list_item;
         list_item = list_item->next)
     {

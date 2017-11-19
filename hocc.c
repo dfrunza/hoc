@@ -22,7 +22,7 @@ FileName;
 typedef struct
 {
   char strings[4*80 + 4*10];
-  FileName hasm;
+  FileName h_asm;
   FileName bincode;
   FileName exe;
 }
@@ -42,10 +42,10 @@ bool make_out_file_names(OutFileNames* out_files, char* src_file_path)
   {
     char* str = out_files->strings;
 
-    sprintf(str, "%s.hasm", stem);
-    out_files->hasm.name = str;
-    out_files->hasm.len = cstr_len(out_files->hasm.name);
-    str = out_files->hasm.name + out_files->hasm.len + 1;
+    sprintf(str, "%s.asm", stem);
+    out_files->h_asm.name = str;
+    out_files->h_asm.len = cstr_len(out_files->h_asm.name);
+    str = out_files->h_asm.name + out_files->h_asm.len + 1;
 
     sprintf(str, "%s.bincode", stem);
     out_files->bincode.name = str;
@@ -72,11 +72,11 @@ char* make_vm_exe_path(char* hocc_exe_path)
 
 bool write_hasm_file(OutFileNames* out_files, VmProgram* vm_program)
 {
-  int bytes_written = file_write_bytes(out_files->hasm.name, (uint8*)vm_program->text, vm_program->text_len);
+  int bytes_written = file_write_bytes(out_files->h_asm.name, (uint8*)vm_program->text, vm_program->text_len);
   bool success = (bytes_written == vm_program->text_len);
   if(!success)
   {
-    error("not all bytes were written to file `%s`", out_files->hasm.name);
+    error("not all bytes were written to file `%s`", out_files->h_asm.name);
   }
   return success;
 }

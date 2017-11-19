@@ -89,7 +89,7 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
     int decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
     if(decl_scope_offset > 0)
     {
-      // non-local
+      // Non-local
       assert(link->loc < 0);
       emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
       emit_instr_int32(instr_list, Opcode_PUSH_INT32, link->loc);
@@ -100,7 +100,7 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
         emit_instr_int32(instr_list, Opcode_LOAD, link->size);
       }
 
-      // the FP is offset relative to the Access Link
+      // The FP is offset relative to the Access Link
       emit_instr_int32(instr_list, Opcode_PUSH_INT32, ctrl_area->size + link->size);
       emit_instr(instr_list, Opcode_ADD_INT32);
     }
@@ -244,21 +244,19 @@ bool gen_instr(List* instr_list, AstNode* node)
     emit_instr(instr_list, Opcode_ENTER);
     emit_instr_int32(instr_list, Opcode_GROWNZ, local_area->size);
 
-    List* stmts_list = ATTR(body, list, stmts);
-    for(ListItem* list_item = stmts_list->first;
-        list_item && (list_item->prev != stmts_list->last);
+    for(ListItem* list_item = ATTR(body, list, stmts)->first;
+        list_item;
         list_item = list_item->next)
     {
-      AstNode* stmt = ITEM(list_item, ast_node); 
+      AstNode* stmt = ITEM(list_item, ast_node); assert(stmt->kind == AstNode_stmt);
       gen_instr(instr_list, stmt);
     }
 
     emit_instr(instr_list, Opcode_LEAVE);
     emit_instr(instr_list, Opcode_HALT);
 
-    List* procs_list = ATTR(body, list, procs);
-    for(ListItem* list_item = procs_list->first;
-        list_item && (list_item->prev != procs_list->last);
+    for(ListItem* list_item = ATTR(body, list, procs)->first;
+        list_item;
         list_item = list_item->next)
     {
       AstNode* proc = ITEM(list_item, ast_node);
@@ -275,24 +273,55 @@ bool gen_instr(List* instr_list, AstNode* node)
     emit_instr_int32(instr_list, Opcode_GROW, local_area->size);
 
     AstNode* body = ATTR(node, ast_node, body);
-    List* stmts_list = ATTR(body, list, stmts);
-    for(ListItem* list_item = stmts_list->first;
-        list_item && (list_item->prev != stmts_list->last);
+
+    for(ListItem* list_item = ATTR(body, list, stmts)->first;
+        list_item;
         list_item = list_item->next)
     {
-      AstNode* stmt = ITEM(list_item, ast_node); 
+      AstNode* stmt = ITEM(list_item, ast_node); assert(stmt->kind == AstNode_stmt);
       gen_instr(instr_list, stmt);
     }
 
     emit_instr(instr_list, Opcode_RETURN);
 
-    List* procs_list = ATTR(body, list, procs);
-    for(ListItem* list_item = procs_list->first;
-        list_item && (list_item->prev != procs_list->last);
+    for(ListItem* list_item = ATTR(body, list, procs)->first;
+        list_item;
         list_item = list_item->next)
     {
-      AstNode* proc = ITEM(list_item, ast_node);
-      assert(proc->kind == AstNode_proc_decl);
+      AstNode* proc = ITEM(list_item, ast_node); assert(proc->kind == AstNode_proc_decl);
+      gen_instr(instr_list, proc);
+    }
+  }
+  else if(node->kind == AstNode_block)
+  {
+    Scope* scope = ATTR(node, scope, scope);
+    DataArea* link_area = &scope->link_area;
+    DataArea* local_area = &scope->local_area;
+
+    // Setup the Access Link
+    emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
+    emit_instr_int32(instr_list, Opcode_PUSH_INT32, link_area->loc);
+    emit_instr(instr_list, Opcode_ADD_INT32);
+
+    emit_instr(instr_list, Opcode_ENTER);
+    emit_instr_int32(instr_list, Opcode_GROW, local_area->size);
+
+    for(ListItem* list_item = ATTR(node, list, stmts)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      AstNode* stmt = ITEM(list_item, ast_node); assert(stmt->kind == AstNode_stmt);
+      gen_instr(instr_list, stmt);
+    }
+
+    emit_instr(instr_list, Opcode_LEAVE);
+    emit_instr_int32(instr_list, Opcode_GROW, -link_area->size);
+
+    for(ListItem* list_item = ATTR(node, list, procs)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      AstNode* proc = ITEM(list_item, ast_node); assert(proc->kind == AstNode_proc_decl);
       gen_instr(instr_list, proc);
     }
   }
@@ -683,30 +712,6 @@ bool gen_instr(List* instr_list, AstNode* node)
     else
       assert(0);
   }
-  else if(node->kind == AstNode_block)
-  {
-    Scope* scope = ATTR(node, scope, scope);
-    DataArea* link_area = &scope->link_area;
-    DataArea* local_area = &scope->local_area;
-
-    // setup the Access Link
-    emit_instr_reg(instr_list, Opcode_PUSH_REG, RegName_FP);
-    emit_instr_int32(instr_list, Opcode_PUSH_INT32, link_area->loc);
-    emit_instr(instr_list, Opcode_ADD_INT32);
-
-    emit_instr(instr_list, Opcode_ENTER);
-    emit_instr_int32(instr_list, Opcode_GROW, local_area->size);
-
-    for(ListItem* list_item = ATTR(node, list, nodes)->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      gen_instr(instr_list, ITEM(list_item, ast_node));
-    }
-
-    emit_instr(instr_list, Opcode_LEAVE);
-    emit_instr_int32(instr_list, Opcode_GROW, -link_area->size);
-  }
   else if(node->kind == AstNode_proc_occur)
   {
     AstNode* callee_decl = ATTR(node, ast_node, proc_decl);
@@ -723,9 +728,9 @@ bool gen_instr(List* instr_list, AstNode* node)
     {
       gen_load_rvalue(instr_list, ITEM(list_item, ast_node));
     }
-    //todo: assert that the 'data area size' == 'evaluated args size'
+    // TODO: Assert that the 'data area size' == 'evaluated args size'
 
-    // setup the Access Link
+    // Setup the Access Link
     Symbol* occur_sym = ATTR(node, symbol, occur_sym);
     Scope* caller_scope = occur_sym->scope;
     int callee_depth_offset = caller_scope->nesting_depth - callee_scope->nesting_depth;
@@ -826,72 +831,6 @@ bool gen_instr(List* instr_list, AstNode* node)
   return success;
 }
 
-void sort_block_nodes(AstNode* node)
-{
-  if(node->kind == AstNode_module)
-  {
-    sort_block_nodes(ATTR(node, ast_node, body));
-  }
-  else if(node->kind == AstNode_proc_decl)
-  {
-    sort_block_nodes(ATTR(node, ast_node, body));
-  }
-  else if(node->kind == AstNode_while_stmt)
-  {
-    sort_block_nodes(ATTR(node, ast_node, body));
-  }
-  else if(node->kind == AstNode_if_stmt)
-  {
-    sort_block_nodes(ATTR(node, ast_node, body));
-    AstNode* else_body = ATTR(node, ast_node, else_body);
-    if(else_body)
-    {
-      sort_block_nodes(ATTR(node, ast_node, else_body));
-    }
-  }
-  else if(node->kind == AstNode_block)
-  {
-    List* procs_list = ATTR(node, list, procs) = new_list(arena, List_ast_node);
-    List* stmts_list = ATTR(node, list, stmts) = new_list(arena, List_ast_node);
-
-    List* nodes_list = ATTR(node, list, nodes);
-    for(ListItem* list_item = nodes_list->first;
-        list_item;)
-    {
-      AstNode* stmt = ITEM(list_item, ast_node);
-      sort_block_nodes(stmt);
-
-      ListItem* next_list_item = list_item->next;
-      remove_list_item(nodes_list, list_item);
-
-      if(stmt->kind == AstNode_proc_decl)
-      {
-        append_list_item(procs_list, list_item);
-      }
-      else if(stmt->kind == AstNode_stmt
-          || stmt->kind == AstNode_while_stmt || stmt->kind == AstNode_if_stmt
-          || stmt->kind == AstNode_ret_stmt || stmt->kind == AstNode_break_stmt || stmt->kind == AstNode_continue_stmt
-          || stmt->kind == AstNode_var_decl
-          || stmt->kind == AstNode_block || stmt->kind == AstNode_asm_block)
-      {
-        append_list_item(stmts_list, list_item);
-      }
-      else
-        assert(0);
-
-      list_item = next_list_item;
-    }
-
-    concat_lists(stmts_list, procs_list);
-
-    *nodes_list = *stmts_list;
-    if(procs_list->last)
-    {
-      nodes_list->last = procs_list->last;
-    }
-  }
-}
-
 void gen_labels(AstNode* node)
 {
   if(node->kind == AstNode_module)
@@ -900,7 +839,20 @@ void gen_labels(AstNode* node)
   }
   else if(node->kind == AstNode_block)
   {
-    for(ListItem* list_item = ATTR(node, list, nodes)->first;
+    //FIXME:
+    for(ListItem* list_item = ATTR(node, list, vars)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      gen_labels(ITEM(list_item, ast_node));
+    }
+    for(ListItem* list_item = ATTR(node, list, procs)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      gen_labels(ITEM(list_item, ast_node));
+    }
+    for(ListItem* list_item = ATTR(node, list, stmts)->first;
         list_item;
         list_item = list_item->next)
     {
@@ -1041,7 +993,7 @@ bool gen_program(VmProgram* vm_program, AstNode* module)
   bool success = true;
 
   gen_labels(module);
-  sort_block_nodes(module);
+
   if(success = gen_instr(vm_program->instr_list, module))
   {
     AstNode* body = ATTR(module, ast_node, body);

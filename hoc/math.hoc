@@ -110,7 +110,7 @@ proc float ipow(float a, int p)
 
 /*
    Computes the largest number 'r' such that 'r*r <= x'
-TODO: sqrt(100.0) gives a funky result.
+FIXME: sqrt(100.0) gives a funky result.
  */
 proc float sqrt(float x)
 {

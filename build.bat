@@ -19,7 +19,7 @@ set L_flags=-incremental:no -opt:ref -subsystem:console
 if not exist .\bin mkdir .\bin
 pushd .\bin
 
-set hoc_src=%cd%\..\hoc\test_v0_1.hoc
+set hoc_src=%cd%\..\hoc\test.hoc
 
 ..\ctime.exe ^
 cl %C_flags% ..\hocc.c /link %L_flags%
@@ -30,7 +30,7 @@ cl %C_flags% ..\vm.c /link %L_flags%
 if %errorlevel% neq 0 goto :end
 
 rem NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
-echo Compiling HoC Code...
+echo compiling HoC code...
 hocc %hoc_src% > debug.txt
 if %errorlevel% neq 0 goto :hocc_error
 

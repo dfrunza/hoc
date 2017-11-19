@@ -262,12 +262,66 @@ bool name_ident_block(AstNode* node)
   assert(node->kind == AstNode_block);
   bool success = true;
 
-  AstNode block_copy = *node;
-  AstNode* block = make_ast_node(Ast_gen1, node, AstNode_block);
-  ATTR(block, scope, scope) = symbol_table->active_scope;
-  ATTR(block, list, nodes) = ATTR(&block_copy, list, nodes);
+  AstNode block_gen0 = *node;
+  AstNode* block_gen1 = make_ast_node(Ast_gen1, node, AstNode_block);
+  ATTR(block_gen1, scope, scope) = symbol_table->active_scope;
+  List* procs_list = ATTR(block_gen1, list, procs) = new_list(arena, List_ast_node);
+  List* stmts_list = ATTR(block_gen1, list, stmts) = new_list(arena, List_ast_node);
+  List* vars_list = ATTR(block_gen1, list, vars) = new_list(arena, List_ast_node);
 
-  for(ListItem* list_item = ATTR(&block_copy, list, nodes)->first;
+  List* nodes_list = ATTR(&block_gen0, list, nodes);
+  for(ListItem* list_item = nodes_list->first;
+      list_item;)
+  {
+    AstNode* stmt = ITEM(list_item, ast_node);
+
+    ListItem* next_list_item = list_item->next;
+    remove_list_item(nodes_list, list_item);
+
+    if(stmt->kind == AstNode_proc_decl)
+    {
+      append_list_item(procs_list, list_item);
+    }
+    else if(stmt->kind == AstNode_var_decl)
+    {
+      append_list_item(vars_list, list_item);
+
+      AstNode* init_expr = ATTR(stmt, ast_node, init_expr);
+      if(init_expr)
+      {
+        append_list_elem(stmts_list, init_expr, List_ast_node);
+        ATTR(stmt, ast_node, init_expr) = 0;
+      }
+    }
+    else if(stmt->kind == AstNode_stmt
+        || stmt->kind == AstNode_while_stmt || stmt->kind == AstNode_if_stmt
+        || stmt->kind == AstNode_ret_stmt || stmt->kind == AstNode_break_stmt || stmt->kind == AstNode_continue_stmt
+        || stmt->kind == AstNode_block || stmt->kind == AstNode_asm_block)
+    {
+      append_list_item(stmts_list, list_item);
+    }
+    else
+      assert(0);
+
+    list_item = next_list_item;
+  }
+
+  //FIXME:
+  for(ListItem* list_item = vars_list->first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    success = name_ident(ITEM(list_item, ast_node));
+  }
+
+  for(ListItem* list_item = procs_list->first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    success = name_ident(ITEM(list_item, ast_node));
+  }
+
+  for(ListItem* list_item = stmts_list->first;
       list_item && success;
       list_item = list_item->next)
   {
@@ -539,7 +593,7 @@ bool name_ident(AstNode* node)
       if(success = name_ident_var_decl(var_decl, symbol_table->module_scope, str_val))
       {
         AstNode* module_body = ATTR(symbol_table->module_scope->ast_node, ast_node, body);
-        prepend_list_elem(ATTR(module_body, list, nodes), var_decl, List_ast_node);
+        prepend_list_elem(ATTR(module_body, list, vars), var_decl, List_ast_node);
 
         AstNode* occur_id = make_ast_node(Ast_gen0, node, AstNode_id);
         ATTR(occur_id, str_val, name) = var_name;
@@ -727,18 +781,34 @@ bool build_types(AstNode* node)
   if(node->kind == AstNode_module)
   {
     AstNode* body = ATTR(node, ast_node, body);
-    build_types(body);
-    ATTR(node, type, type) = ATTR(body, type, type);
-    ATTR(node, type, eval_type) = ATTR(body, type, eval_type);
+    if(success = build_types(body))
+    {
+      ATTR(node, type, type) = ATTR(body, type, type);
+      ATTR(node, type, eval_type) = ATTR(body, type, eval_type);
+    }
   }
   else if(node->kind == AstNode_block)
   {
-    for(ListItem* list_item = ATTR(node, list, nodes)->first;
-        list_item;
+    //FIXME:
+    for(ListItem* list_item = ATTR(node, list, vars)->first;
+        list_item && success;
         list_item = list_item->next)
     {
-      build_types(ITEM(list_item, ast_node));
+      success = build_types(ITEM(list_item, ast_node));
     }
+    for(ListItem* list_item = ATTR(node, list, procs)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      success = build_types(ITEM(list_item, ast_node));
+    }
+    for(ListItem* list_item = ATTR(node, list, stmts)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      success = build_types(ITEM(list_item, ast_node));
+    }
+
     ATTR(node, type, type) = new_proc_type(basic_type_void, basic_type_void);
     ATTR(node, type, eval_type) = basic_type_void;
   }
@@ -747,7 +817,7 @@ bool build_types(AstNode* node)
     AstNode* actual_stmt = ATTR(node, ast_node, stmt);
     if(actual_stmt)
     {
-      build_types(actual_stmt);
+      success = build_types(actual_stmt);
       ATTR(node, type, type) = ATTR(actual_stmt, type, eval_type);//new_proc_type(ATTR(actual_stmt, type, eval_type), basic_type_void);
       ATTR(node, type, eval_type) = basic_type_void;
     }
@@ -755,14 +825,16 @@ bool build_types(AstNode* node)
   else if(node->kind == AstNode_var_decl)
   {
     AstNode* type = ATTR(node, ast_node, type);
-    build_types(type);
-    ATTR(node, type, type) = ATTR(type, type, type);
-    ATTR(node, type, eval_type) = basic_type_void;
-
-    AstNode* init_expr = ATTR(node, ast_node, init_expr);
-    if(init_expr)
+    if(success = build_types(type))
     {
-      build_types(init_expr);
+      ATTR(node, type, type) = ATTR(type, type, type);
+      ATTR(node, type, eval_type) = basic_type_void;
+
+      AstNode* init_expr = ATTR(node, ast_node, init_expr);
+      if(init_expr)
+      {
+        success = build_types(init_expr);
+      }
     }
   }
   else if(node->kind == AstNode_var_occur)
@@ -773,65 +845,74 @@ bool build_types(AstNode* node)
   else if(node->kind == AstNode_bin_expr)
   {
     AstNode* left_operand = ATTR(node, ast_node, left_operand);
-    build_types(left_operand);
-    AstNode* right_operand = ATTR(node, ast_node, right_operand);
-    build_types(right_operand);
-
-    Type* eval_type =  new_typevar();
-    ATTR(node, type, type) = new_proc_type(new_product_type(ATTR(left_operand, type, eval_type),
-          ATTR(right_operand, type, eval_type)), eval_type);
-    ATTR(node, type, eval_type) = eval_type;
+    if(success = build_types(left_operand))
+    {
+      AstNode* right_operand = ATTR(node, ast_node, right_operand);
+      if(success = build_types(right_operand))
+      {
+        Type* eval_type =  new_typevar();
+        ATTR(node, type, type) = new_proc_type(new_product_type(ATTR(left_operand, type, eval_type),
+              ATTR(right_operand, type, eval_type)), eval_type);
+        ATTR(node, type, eval_type) = eval_type;
+      }
+    }
   }
   else if(node->kind == AstNode_un_expr)
   {
     AstNode* operand = ATTR(node, ast_node, operand);
-    build_types(operand);
-
-    Type* eval_type = new_typevar();
-    ATTR(node, type, type) = new_proc_type(ATTR(operand, type, eval_type), eval_type);
-    ATTR(node, type, eval_type) = eval_type;
+    if(success = build_types(operand))
+    {
+      Type* eval_type = new_typevar();
+      ATTR(node, type, type) = new_proc_type(ATTR(operand, type, eval_type), eval_type);
+      ATTR(node, type, eval_type) = eval_type;
+    }
   }
   else if(node->kind == AstNode_proc_decl)
   {
     List* args = ATTR(node, list, formal_args);
     for(ListItem* list_item = args->first;
-        list_item;
+        list_item && success;
         list_item = list_item->next)
     {
-      build_types(ITEM(list_item, ast_node));
+      success = build_types(ITEM(list_item, ast_node));
     }
 
-    Type* args_type = basic_type_void;
-    ListItem* list_item = args->first;
-    if(list_item)
+    if(success)
     {
-      AstNode* arg = ITEM(list_item, ast_node);
-      args_type = ATTR(arg, type, type);
-
-      for(list_item = list_item->next;
-          list_item;
-          list_item = list_item->next)
+      Type* args_type = basic_type_void;
+      ListItem* list_item = args->first;
+      if(list_item)
       {
         AstNode* arg = ITEM(list_item, ast_node);
-        args_type = new_product_type(args_type, ATTR(arg, type, type));
+        args_type = ATTR(arg, type, type);
+
+        for(list_item = list_item->next;
+            list_item;
+            list_item = list_item->next)
+        {
+          AstNode* arg = ITEM(list_item, ast_node);
+          args_type = new_product_type(args_type, ATTR(arg, type, type));
+        }
+      }
+
+      AstNode* ret_var = ATTR(node, ast_node, ret_var);
+      if(success = build_types(ret_var))
+      {
+        Type* ret_type = ATTR(ret_var, type, type);
+
+        ATTR(node, type, type) = new_proc_type(args_type, ret_type);
+        ATTR(node, type, eval_type) = basic_type_void;
+
+        success = build_types(ATTR(node, ast_node, body));
       }
     }
-
-    AstNode* ret_var = ATTR(node, ast_node, ret_var);
-    build_types(ret_var);
-    Type* ret_type = ATTR(ret_var, type, type);
-
-    ATTR(node, type, type) = new_proc_type(args_type, ret_type);
-    ATTR(node, type, eval_type) = basic_type_void;
-
-    build_types(ATTR(node, ast_node, body));
   }
   else if(node->kind == AstNode_ret_stmt)
   {
     AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
     if(ret_expr)
     {
-      build_types(ret_expr);
+      success = build_types(ret_expr);
     }
     ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
   }
@@ -839,10 +920,10 @@ bool build_types(AstNode* node)
   {
     List* args = ATTR(node, list, actual_args);
     for(ListItem* list_item = args->first;
-        list_item;
+        list_item && success;
         list_item = list_item->next)
     {
-      build_types(ITEM(list_item, ast_node));
+      success = build_types(ITEM(list_item, ast_node));
     }
 
     Type* args_type = basic_type_void;
@@ -873,26 +954,32 @@ bool build_types(AstNode* node)
   }
   else if(node->kind == AstNode_while_stmt)
   {
-    build_types(ATTR(node, ast_node, cond_expr));
-
-    AstNode* body = ATTR(node, ast_node, body);
-    build_types(body);
-    ATTR(node, type, type) = ATTR(body, type, type);
-    ATTR(node, type, eval_type) = ATTR(body, type, eval_type);
+    if(success = build_types(ATTR(node, ast_node, cond_expr)))
+    {
+      AstNode* body = ATTR(node, ast_node, body);
+      if(success = build_types(body))
+      {
+        ATTR(node, type, type) = ATTR(body, type, type);
+        ATTR(node, type, eval_type) = ATTR(body, type, eval_type);
+      }
+    }
   }
   else if(node->kind == AstNode_if_stmt)
   {
-    build_types(ATTR(node, ast_node, cond_expr));
-
-    AstNode* body = ATTR(node, ast_node, body);
-    build_types(body);
-    ATTR(node, type, type) = ATTR(body, type, type);
-    ATTR(node, type, eval_type) = ATTR(body, type, eval_type);
-
-    AstNode* else_body = ATTR(node, ast_node, else_body);
-    if(else_body)
+    if(success = build_types(ATTR(node, ast_node, cond_expr)))
     {
-      build_types(ATTR(node, ast_node, else_body));
+      AstNode* body = ATTR(node, ast_node, body);
+      if(success = build_types(body))
+      {
+        ATTR(node, type, type) = ATTR(body, type, type);
+        ATTR(node, type, eval_type) = ATTR(body, type, eval_type);
+
+        AstNode* else_body = ATTR(node, ast_node, else_body);
+        if(else_body)
+        {
+          success = build_types(ATTR(node, ast_node, else_body));
+        }
+      }
     }
   }
   else if(node->kind == AstNode_lit)
@@ -929,8 +1016,10 @@ bool build_types(AstNode* node)
   else if(node->kind == AstNode_type_decl)
   {
     AstNode* type_expr = ATTR(node, ast_node, type_expr);
-    build_types(type_expr);
-    ATTR(node, type, type) = ATTR(node, type, eval_type) = ATTR(type_expr, type, type);
+    if(success = build_types(type_expr))
+    {
+      ATTR(node, type, type) = ATTR(node, type, eval_type) = ATTR(type_expr, type, type);
+    }
   }
   else if(node->kind == AstNode_type_occur)
   {
@@ -941,8 +1030,10 @@ bool build_types(AstNode* node)
   else if(node->kind == AstNode_pointer)
   {
     AstNode* pointee_expr = ATTR(node, ast_node, pointee_expr);
-    build_types(pointee_expr);
-    ATTR(node, type, type) = new_pointer_type(ATTR(pointee_expr, type, type));
+    if(success = build_types(pointee_expr))
+    {
+      ATTR(node, type, type) = new_pointer_type(ATTR(pointee_expr, type, type));
+    }
   }
   else if(node->kind == AstNode_array)
   {
@@ -958,8 +1049,10 @@ bool build_types(AstNode* node)
         success = compile_error(size_expr->src_loc, "array size must be an int literal");
     }
     AstNode* elem_expr = ATTR(node, ast_node, elem_expr);
-    build_types(elem_expr);
-    ATTR(node, type, type) = ATTR(node, type, eval_type) = new_array_type(size_val, ATTR(elem_expr, type, type));
+    if(success = build_types(elem_expr))
+    {
+      ATTR(node, type, type) = ATTR(node, type, eval_type) = new_array_type(size_val, ATTR(elem_expr, type, type));
+    }
   }
   else if(node->kind == AstNode_break_stmt || node->kind == AstNode_continue_stmt)
   {
@@ -990,7 +1083,8 @@ bool eval_types(AstNode* node)
   }
   else if(node->kind == AstNode_block)
   {
-    for(ListItem* list_item = ATTR(node, list, nodes)->first;
+    //FIXME:
+    for(ListItem* list_item = ATTR(node, list, vars)->first;
         list_item && success;
         list_item = list_item->next)
     {
@@ -999,10 +1093,39 @@ bool eval_types(AstNode* node)
       {
         Type* stmt_ty = ATTR(stmt, type, eval_type);
         Type* block_ty = ATTR(node, type, eval_type);
-        success = type_unif(stmt_ty, block_ty);
-        if(!success)
+        if(!type_unif(stmt_ty, block_ty))
         {
-          compile_error(stmt->src_loc, "type error (block stmt)");
+          success = compile_error(stmt->src_loc, "type error (block stmt)");
+        }
+      }
+    }
+    for(ListItem* list_item = ATTR(node, list, procs)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      AstNode* stmt = ITEM(list_item, ast_node);
+      if(success = eval_types(stmt))
+      {
+        Type* stmt_ty = ATTR(stmt, type, eval_type);
+        Type* block_ty = ATTR(node, type, eval_type);
+        if(!type_unif(stmt_ty, block_ty))
+        {
+          success = compile_error(stmt->src_loc, "type error (block stmt)");
+        }
+      }
+    }
+    for(ListItem* list_item = ATTR(node, list, stmts)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      AstNode* stmt = ITEM(list_item, ast_node);
+      if(success = eval_types(stmt))
+      {
+        Type* stmt_ty = ATTR(stmt, type, eval_type);
+        Type* block_ty = ATTR(node, type, eval_type);
+        if(!type_unif(stmt_ty, block_ty))
+        {
+          success = compile_error(stmt->src_loc, "type error (block stmt)");
         }
       }
     }
@@ -1024,10 +1147,9 @@ bool eval_types(AstNode* node)
       {
         Type* var_ty = ATTR(node, type, type);
         Type* init_expr_ty = ATTR(init_expr, type, type);
-        success = type_unif(var_ty, init_expr_ty);
-        if(!success)
+        if(!type_unif(var_ty, init_expr_ty))
         {
-          compile_error(node->src_loc, "type error (var init expr)");
+          success = compile_error(node->src_loc, "type error (var init expr)");
         }
       }
     }
@@ -1050,15 +1172,14 @@ bool eval_types(AstNode* node)
       OperatorKind op_kind = ATTR(node, op_kind, op_kind);
       if(op_kind == Operator_cast)
       {
-        success = type_unif(expr_ty, left_operand_ty);
-        if(!success)
+        if(!type_unif(expr_ty, left_operand_ty))
         {
-          compile_error(node->src_loc, "type error (cast)");
+          success = compile_error(node->src_loc, "type error (cast)");
         }
       }
       else if(op_kind == Operator_index)
       {
-        if(success = type_unif(right_operand_ty, basic_type_int))
+        if(type_unif(right_operand_ty, basic_type_int))
         {
           if(left_operand_ty->kind == Type_array)
           {
@@ -1069,49 +1190,41 @@ bool eval_types(AstNode* node)
             success = type_unif(left_operand_ty, new_array_type(0, expr_ty));
           }
           else
-            success = false;
-
-          if(!success)
-          {
-            compile_error(node->src_loc, "type error (array index)");
-          }
+            success = compile_error(node->src_loc, "type error (array index)");
         }
         else
-          compile_error(node->src_loc, "int type expected");
+          success = compile_error(node->src_loc, "int type expected");
       }
       else
       {
-        if(success = type_unif(left_operand_ty, right_operand_ty))
+        if(type_unif(left_operand_ty, right_operand_ty))
         {
           if(is_relational_operator(op_kind) || is_logical_operator(op_kind))
           {
-            success = type_unif(expr_ty, basic_type_bool);
-            if(!success)
+            if(!type_unif(expr_ty, basic_type_bool))
             {
-              compile_error(node->src_loc, "type error (bin expr)");
+              success = compile_error(node->src_loc, "type error (bin expr)");
             }
           }
           else
           {
-            success = type_unif(expr_ty, left_operand_ty);
-            if(!success)
+            if(!type_unif(expr_ty, left_operand_ty))
             {
-              compile_error(node->src_loc, "type error (bin expr)");
+              success = compile_error(node->src_loc, "type error (bin expr)");
             }
           }
         }
         else
-          compile_error(node->src_loc, "type error (bin expr)");
+          success = compile_error(node->src_loc, "type error (bin expr)");
       }
 
       if(success)
       {
         Type* type = ATTR(node, type, type);
         assert(type->kind == Type_proc);
-        success = type_unif(type->proc.ret, expr_ty);
-        if(!success)
+        if(!type_unif(type->proc.ret, expr_ty))
         {
-          compile_error(node->src_loc, "type error (bin expr)");
+          success = compile_error(node->src_loc, "type error (bin expr)");
         }
       }
     }
@@ -1128,21 +1241,19 @@ bool eval_types(AstNode* node)
       OperatorKind op_kind = ATTR(node, op_kind, op_kind);
       if(op_kind == Operator_neg || op_kind == Operator_logic_not)
       {
-        success = type_unif(expr_ty, operand_ty);
-        if(!success)
+        if(!type_unif(expr_ty, operand_ty))
         {
-          compile_error(node->src_loc, "type error (un expr)");
+          success = compile_error(node->src_loc, "type error (un expr)");
         }
       }
       else if(op_kind == Operator_deref)
       {
         Type* pointee_ty = new_typevar();
-        if(success = type_unif(operand_ty, new_pointer_type(pointee_ty)))
+        if(type_unif(operand_ty, new_pointer_type(pointee_ty)))
         {
-          success = type_unif(expr_ty, pointee_ty);
-          if(!success)
+          if(!type_unif(expr_ty, pointee_ty))
           {
-            compile_error(node->src_loc, "type error (un expr)");
+            success = compile_error(node->src_loc, "type error (un expr)");
           }
         }
         else
@@ -1166,16 +1277,12 @@ bool eval_types(AstNode* node)
       }
       else
         assert(0);
-    }
 
-    if(success)
-    {
       Type* type = ATTR(node, type, type);
       assert(type->kind == Type_proc);
-      success = type_unif(type->proc.ret, expr_ty);
-      if(!success)
+      if(!type_unif(type->proc.ret, expr_ty))
       {
-        compile_error(node->src_loc, "type error (un expr)");
+        success = compile_error(node->src_loc, "type error (un expr)");
       }
     }
   }
@@ -1229,16 +1336,15 @@ bool eval_types(AstNode* node)
         Type* ret_ty = ATTR(proc_decl, type, type)->proc.ret;
         Type* occur_ty = ATTR(node, type, type); assert(occur_ty->kind == Type_proc);
         Type* decl_ty = ATTR(proc_decl, type, type); assert(decl_ty->kind == Type_proc);
-        if(success = type_unif(occur_ty->proc.args, args_ty) && type_unif(occur_ty->proc.ret, ret_ty))
+        if(type_unif(occur_ty->proc.args, args_ty) && type_unif(occur_ty->proc.ret, ret_ty))
         {
-          success = type_unif(decl_ty, occur_ty);
-          if(!success)
+          if(!type_unif(decl_ty, occur_ty))
           {
             compile_error(node->src_loc, "type error (proc occur)");
           }
         }
         else
-          compile_error(node->src_loc, "type error (proc occur)");
+          success = compile_error(node->src_loc, "type error (proc occur)");
       }
     }
   }
@@ -1258,10 +1364,9 @@ bool eval_types(AstNode* node)
     {
       AstNode* proc = ATTR(node, ast_node, proc_decl);
       Type* proc_ret_ty = ATTR(proc, type, type)->proc.ret;
-      success = type_unif(ret_expr_ty, proc_ret_ty);
-      if(!success)
+      if(!type_unif(ret_expr_ty, proc_ret_ty))
       {
-        compile_error(node->src_loc, "type error (return stmt)");
+        success = compile_error(node->src_loc, "type error (return stmt)");
       }
     }
   }
@@ -1271,10 +1376,9 @@ bool eval_types(AstNode* node)
     if(success = eval_types(cond_expr) && eval_types(ATTR(node, ast_node, body)))
     {
       Type* cond_ty = ATTR(cond_expr, type, eval_type);
-      success = type_unif(cond_ty, basic_type_bool);
-      if(!success)
+      if(!type_unif(cond_ty, basic_type_bool))
       {
-        compile_error(cond_expr->src_loc, "bool type expected");
+        success = compile_error(cond_expr->src_loc, "bool type expected");
       }
     }
   }
@@ -1295,10 +1399,9 @@ bool eval_types(AstNode* node)
     if(success && (success = eval_types(cond_expr)))
     {
       Type* cond_ty = ATTR(cond_expr, type, eval_type);
-      success = type_unif(cond_ty, basic_type_bool);
-      if(!success)
+      if(!type_unif(cond_ty, basic_type_bool))
       {
-        compile_error(cond_expr->src_loc, "bool type expected");
+        success = compile_error(cond_expr->src_loc, "bool type expected");
       }
     }
   }
@@ -1362,7 +1465,20 @@ bool resolve_types(AstNode* node)
   }
   else if(node->kind == AstNode_block)
   {
-    for(ListItem* list_item = ATTR(node, list, nodes)->first;
+    //FIXME:
+    for(ListItem* list_item = ATTR(node, list, vars)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      success = resolve_types(ITEM(list_item, ast_node));
+    }
+    for(ListItem* list_item = ATTR(node, list, procs)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      success = resolve_types(ITEM(list_item, ast_node));
+    }
+    for(ListItem* list_item = ATTR(node, list, stmts)->first;
         list_item && success;
         list_item = list_item->next)
     {
@@ -1508,7 +1624,20 @@ bool check_types(AstNode* node)
   }
   else if(node->kind == AstNode_block)
   {
-    for(ListItem* list_item = ATTR(node, list, nodes)->first;
+    //FIXME:
+    for(ListItem* list_item = ATTR(node, list, vars)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      success = check_types(ITEM(list_item, ast_node));
+    }
+    for(ListItem* list_item = ATTR(node, list, procs)->first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      success = check_types(ITEM(list_item, ast_node));
+    }
+    for(ListItem* list_item = ATTR(node, list, stmts)->first;
         list_item && success;
         list_item = list_item->next)
     {

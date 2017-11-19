@@ -425,6 +425,7 @@ typedef enum
   AstAttributeName_name,
   AstAttributeName_nodes,
   AstAttributeName_procs,
+  AstAttributeName_vars,
   AstAttributeName_stmts,
   AstAttributeName_file_path,
   AstAttributeName_body,

@@ -1671,11 +1671,10 @@ bool parse(TokenStream* input, AstNode** node)
 
   AstNode* module = *node = new_ast_node(Ast_gen0, AstNode_module, clone_source_loc(&input->src_loc));
   ATTR(module, str_val, file_path) = input->src_loc.file_path;
-  AstNode* block = ATTR(module, ast_node, body) = new_ast_node(Ast_gen0, AstNode_block, clone_source_loc(&input->src_loc));
-  ATTR(block, list, nodes) = new_list(arena, List_ast_node);
+  AstNode* body = ATTR(module, ast_node, body) = new_ast_node(Ast_gen0, AstNode_block, clone_source_loc(&input->src_loc));
+  ATTR(body, list, nodes) = new_list(arena, List_ast_node);
 
-  if((success = parse_node_list(input, ATTR(block, list, nodes)))
-      && input->token.kind != Token_end_of_input)
+  if((success = parse_node_list(input, ATTR(body, list, nodes))) && input->token.kind != Token_end_of_input)
   {
     success = compile_error(&input->src_loc, "expected `end-of-input`, at `%s`", get_token_printstr(&input->token));
   }

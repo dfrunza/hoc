@@ -350,16 +350,6 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_list;
       attr->name = AstAttributeName_nodes;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_list;
-      attr->name = AstAttributeName_procs;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_list;
-      attr->name = AstAttributeName_stmts;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -1009,15 +999,10 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = AstNode_block;
-      kind->attr_count = 6;
+      kind->attr_count = 7;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = AstAttribute_list;
-      attr->name = AstAttributeName_nodes;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -1028,6 +1013,11 @@ void init_ast_meta_info(AstMetaInfo* ast, Ast_Gen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = AstAttribute_list;
       attr->name = AstAttributeName_procs;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = AstAttribute_list;
+      attr->name = AstAttributeName_vars;
       
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -1339,7 +1329,7 @@ void make_type_printstr(String* str, Type* type)
 }
 
 void DEBUG_print_line(String* str, int indent_level, char* message, ...)
-{
+{/*>>>*/
   for(int i = 0; i < indent_level; i++)
   {
     str_append(str, "  ");
@@ -1351,10 +1341,10 @@ void DEBUG_print_line(String* str, int indent_level, char* message, ...)
   va_end(varargs);
 
   str_append(str, "\n");
-}
+}/*<<<*/
 
 void DEBUG_print_type(String* str, int indent_level, char* tag, Type* type)
-{
+{/*>>>*/
   for(int i = 0; i < indent_level; i++)
   {
     str_append(str, "  ");
@@ -1368,10 +1358,10 @@ void DEBUG_print_type(String* str, int indent_level, char* tag, Type* type)
 
   make_type_printstr(str, type);
   str_append(str, "\n");
-}
+}/*<<<*/
 
 void DEBUG_print_scope(String* str, int indent_level, char* tag, Scope* scope)
-{
+{/*>>>*/
   if(scope)
   {
     if(tag)
@@ -1395,10 +1385,10 @@ void DEBUG_print_scope(String* str, int indent_level, char* tag, Scope* scope)
                        scope->ast_node, get_ast_kind_printstr(scope->ast_node->kind));
     }
   }
-}
+}/*<<<*/
 
 void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
-{
+{/*>>>*/
   if(node)
   {
     if(tag)
@@ -1484,11 +1474,16 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     }
     else if(node->kind == AstNode_block)
     {
-      if(node->gen == Ast_gen1)
+      if(node->gen == Ast_gen0)
+      {
+        DEBUG_print_ast_node_list(str, indent_level, "nodes", ATTR(node, list, nodes));
+      }
+      else if(node->gen == Ast_gen1)
       {
         DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
       }
-      DEBUG_print_ast_node_list(str, indent_level, "nodes", ATTR(node, list, nodes));
+      else
+        assert(0);
     }
     else if(node->kind == AstNode_bin_expr)
     {
@@ -1698,10 +1693,10 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     //else
     //  fail(get_ast_kind_printstr(node->kind));
   }
-}
+}/*<<<*/
 
 void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* node_list)
-{
+{/*>>>*/
   if(node_list->first)
   {
     if(tag)
@@ -1718,7 +1713,7 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
       DEBUG_print_ast_node(str, indent_level, 0, node);
     }
   }
-}
+}/*<<<*/
 
 #include "lex.c"
 #include "syntax.c"
@@ -1755,22 +1750,20 @@ bool translate(char* file_path, char* hoc_text, VmProgram** vm_program)
       end_temp_memory(&arena);
     }/*<<<*/
 
-    /*>>> process the includes*/
+    AstNode* module_body = ATTR(module, ast_node, body);
+    List* module_nodes_list = ATTR(module_body, list, nodes);
+    for(ListItem* list_item = module_nodes_list->first;
+        list_item;
+        list_item = list_item->next)
     {
-      AstNode* module_body = ATTR(module, ast_node, body);
-      for(ListItem* list_item = ATTR(module_body, list, nodes)->first;
-          list_item;
-          list_item = list_item->next)
-      {
-        AstNode* stmt = ITEM(list_item, ast_node);
+      AstNode* stmt = ITEM(list_item, ast_node);
 
-        if(stmt->kind == AstNode_include)
-        {
-          AstNode* include_body = ATTR(stmt, ast_node, body);
-          process_includes(ATTR(include_body, list, nodes), ATTR(module_body, list, nodes), list_item);
-        }
+      if(stmt->kind == AstNode_include)
+      {
+        AstNode* include_body = ATTR(stmt, ast_node, body);
+        process_includes(ATTR(include_body, list, nodes), module_nodes_list, list_item);
       }
-    }/*<<<*/
+    }
 
     init_types();
 

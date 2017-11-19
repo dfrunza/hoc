@@ -339,12 +339,14 @@ void str_stdout(String* str)
 }
 #endif
 
+#if 0
 String* str_new(MemoryArena* arena)
 {
   String* str = mem_push_struct(arena, String);
   str_init(str, arena);
   return str;
 }
+#endif
 
 void str_append(String* str, char* cstr)
 {

@@ -23,9 +23,9 @@ char* make_unique_label()
 
 char* make_temp_name(char* label)
 {
-  String* str = str_new(arena);
-  str_printf(str, "$%s%d", label, tempvar_id++);
-  return str_cap(str);
+  String str; str_init(&str, arena);
+  str_printf(&str, "$%s%d", label, tempvar_id++);
+  return str_cap(&str);
 }
 
 void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
@@ -1743,9 +1743,10 @@ bool translate(char* file_path, char* hoc_text, VmProgram** vm_program)
       DEBUG_print_arena_usage(arena, "arena");
 
       begin_temp_memory(&arena);
-      String* str = str_new(arena);
-      DEBUG_print_ast_node(str, 0, "module", module);
-      str_dump_to_file(str, "debug_parse.txt");
+      String str; str_init(&str, arena);
+      DEBUG_print_ast_node(&str, 0, "module", module);
+      str_dump_to_file(&str, "debug_parse.txt");
+      str_cap(&str);
       end_temp_memory(&arena);
     }/*<<<*/
 
@@ -1783,10 +1784,11 @@ bool translate(char* file_path, char* hoc_text, VmProgram** vm_program)
         DEBUG_print_arena_usage(symbol_table->arena, "symbol_table");
 
         begin_temp_memory(&arena);
-        String* str = str_new(arena);
-        DEBUG_print_scope(str, 0, "global_scope", symbol_table->global_scope);
-        DEBUG_print_ast_node(str, 0, "module", module);
-        str_dump_to_file(str, "debug_name_ident.txt");
+        String str; str_init(&str, arena);
+        DEBUG_print_scope(&str, 0, "global_scope", symbol_table->global_scope);
+        DEBUG_print_ast_node(&str, 0, "module", module);
+        str_dump_to_file(&str, "debug_name_ident.txt");
+        str_cap(&str);
         end_temp_memory(&arena);
       }/*<<<*/
 

@@ -1237,12 +1237,12 @@ bool parse_include(TokenStream* input, AstNode** node)
   if(input->token.kind == eToken_string)
   {
 
-    String* str = str_new(arena);
-    str_append(str, input->src_loc.file_path);
-    path_make_dir(str->head);
-    str_tidyup(str);
-    str_append(str, input->token.str_val);
-    ATTR(include, str_val, file_path) = str_cap(str);
+    String str; str_init(&str, arena);
+    str_append(&str, input->src_loc.file_path);
+    path_make_dir(str.head);
+    str_tidyup(&str);
+    str_append(&str, input->token.str_val);
+    ATTR(include, str_val, file_path) = str_cap(&str);
 
     if(!(success = get_next_token(input)))
       return success;

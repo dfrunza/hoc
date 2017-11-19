@@ -840,12 +840,30 @@ void gen_labels(AstNode* node)
   }
   else if(node->kind == eAstNode_proc_decl)
   {
-    String* label = str_new(arena);
-    str_append(label, ATTR(node, str_val, name));
-    str_append(label, "$proc_end");
-    ATTR(node, str_val, label_end) = str_cap(label);
-
+    Scope* proc_scope = ATTR(node, scope, scope);
+    Scope* encl_proc_scope = find_scope(proc_scope->encl_scope, eScope_proc);
+    if(encl_proc_scope)
+    {
+      AstNode* encl_proc = encl_proc_scope->ast_node; assert(encl_proc->kind == eAstNode_proc_decl);
+      String qual_name; str_init(&qual_name, arena);
+      str_append(&qual_name, ATTR(encl_proc, str_val, name));
+      str_append(&qual_name, ".");
+      str_append(&qual_name, ATTR(node, str_val, name));
+      ATTR(node, str_val, name) = str_cap(&qual_name);
+    }
     gen_labels(ATTR(node, ast_node, body));
+  }
+  else if(node->kind == eAstNode_proc_occur)
+  {
+    for(ListItem* list_item = ATTR(node, list, actual_args)->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      gen_labels(ITEM(list_item, ast_node));
+    }
+
+    AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
+    ATTR(node, str_val, name) = ATTR(proc_decl, str_val, name);
   }
   else if(node->kind == eAstNode_stmt)
   {
@@ -855,10 +873,10 @@ void gen_labels(AstNode* node)
   {
     char* label_id = make_unique_label();
 
-    String* label = str_new(arena);
-    str_append(label, label_id);
-    str_append(label, "$logic_end");
-    ATTR(node, str_val, label_end) = str_cap(label);
+    String label; str_init(&label, arena);
+    str_append(&label, label_id);
+    str_append(&label, "$logic_end");
+    ATTR(node, str_val, label_end) = str_cap(&label);
 
     gen_labels(ATTR(node, ast_node, left_operand));
     gen_labels(ATTR(node, ast_node, right_operand));
@@ -873,15 +891,15 @@ void gen_labels(AstNode* node)
 
     char* label_id = make_unique_label();
 
-    String* label = str_new(arena);
-    str_append(label, label_id);
-    str_append(label, "$if_else");
-    ATTR(node, str_val, label_else) = str_cap(label);
+    String label; str_init(&label, arena);
+    str_append(&label, label_id);
+    str_append(&label, "$if_else");
+    ATTR(node, str_val, label_else) = str_cap(&label);
 
-    label = str_new(arena);
-    str_append(label, label_id);
-    str_append(label, "$if_end");
-    ATTR(node, str_val, label_end) = str_cap(label);
+    str_init(&label, arena);
+    str_append(&label, label_id);
+    str_append(&label, "$if_end");
+    ATTR(node, str_val, label_end) = str_cap(&label);
 
     gen_labels(ATTR(node, ast_node, body));
 
@@ -897,29 +915,20 @@ void gen_labels(AstNode* node)
 
     char* label_id = make_unique_label();
 
-    String* label = str_new(arena);
-    str_append(label, label_id);
-    str_append(label, "$while_eval");
-    ATTR(node, str_val, label_eval) = str_cap(label);
+    String label; str_init(&label, arena);
+    str_append(&label, label_id);
+    str_append(&label, "$while_eval");
+    ATTR(node, str_val, label_eval) = str_cap(&label);
 
-    label = str_new(arena);
-    str_append(label, label_id);
-    str_append(label, "$while_break");
-    ATTR(node, str_val, label_break) = str_cap(label);
+    str_init(&label, arena);
+    str_append(&label, label_id);
+    str_append(&label, "$while_break");
+    ATTR(node, str_val, label_break) = str_cap(&label);
 
     AstNode* body = ATTR(node, ast_node, body);
     if(body)
     {
       gen_labels(body);
-    }
-  }
-  else if(node->kind == eAstNode_proc_occur)
-  {
-    for(ListItem* list_item = ATTR(node, list, actual_args)->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      gen_labels(ITEM(list_item, ast_node));
     }
   }
   else if(node->kind == eAstNode_ret_stmt)
@@ -1021,7 +1030,7 @@ char* get_regname_str(eRegName reg)
 
 void print_code(VmProgram* vm_program)
 {
-  String* text = str_new(arena);
+  String text; str_init(&text, arena);
   int text_len = 0;
 
   for(ListItem* list_item = vm_program->instr_list->first;
@@ -1035,7 +1044,7 @@ void print_code(VmProgram* vm_program)
         {
           if(instr->param_type == eParamType_int8)
           {
-            text_len += print_instruction(text, "push_int8 %d", instr->param.int_val);
+            text_len += print_instruction(&text, "push_int8 %d", instr->param.int_val);
           }
           else
             assert(0);
@@ -1045,7 +1054,7 @@ void print_code(VmProgram* vm_program)
         {
           if(instr->param_type == eParamType_int32)
           {
-            text_len += print_instruction(text, "push_int32 %d", instr->param.int_val);
+            text_len += print_instruction(&text, "push_int32 %d", instr->param.int_val);
           }
           else
             assert(0);
@@ -1055,7 +1064,7 @@ void print_code(VmProgram* vm_program)
         {
           if(instr->param_type == eParamType_reg)
           {
-            text_len += print_instruction(text, "push_reg %s", get_regname_str(instr->param.reg));
+            text_len += print_instruction(&text, "push_reg %s", get_regname_str(instr->param.reg));
           }
           else
             assert(0);
@@ -1065,7 +1074,7 @@ void print_code(VmProgram* vm_program)
         {
           if(instr->param_type == eParamType_float32)
           {
-            text_len += print_instruction(text, "push_float32 %f", instr->param.float_val);
+            text_len += print_instruction(&text, "push_float32 %f", instr->param.float_val);
           }
           else
             assert(0);
@@ -1075,7 +1084,7 @@ void print_code(VmProgram* vm_program)
         {
           if(instr->param_type == eParamType_reg)
           {
-            text_len += print_instruction(text, "pop_reg %s", get_regname_str(instr->param.reg));
+            text_len += print_instruction(&text, "pop_reg %s", get_regname_str(instr->param.reg));
           }
           else
             assert(0);
@@ -1084,163 +1093,163 @@ void print_code(VmProgram* vm_program)
       case eOpcode_DUP:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "dup");
+          text_len += print_instruction(&text, "dup");
         } break;
 
       case eOpcode_ADD_INT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "add_int32");
+          text_len += print_instruction(&text, "add_int32");
         } break;
 
       case eOpcode_SUB_INT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "sub_int32");
+          text_len += print_instruction(&text, "sub_int32");
         } break;
 
       case eOpcode_MUL_INT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "mul_int32");
+          text_len += print_instruction(&text, "mul_int32");
         } break;
 
       case eOpcode_DIV_INT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "div_int32");
+          text_len += print_instruction(&text, "div_int32");
         } break;
 
       case eOpcode_ADD_FLOAT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "add_float32");
+          text_len += print_instruction(&text, "add_float32");
         } break;
 
       case eOpcode_SUB_FLOAT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "sub_float32");
+          text_len += print_instruction(&text, "sub_float32");
         } break;
 
       case eOpcode_MUL_FLOAT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "mul_float32");
+          text_len += print_instruction(&text, "mul_float32");
         } break;
 
       case eOpcode_DIV_FLOAT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "div_float32");
+          text_len += print_instruction(&text, "div_float32");
         } break;
 
       case eOpcode_NEG_FLOAT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "neg_float32");
+          text_len += print_instruction(&text, "neg_float32");
         } break;
 
       case eOpcode_MOD_INT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "mod_int32");
+          text_len += print_instruction(&text, "mod_int32");
         } break;
 
       case eOpcode_NEG_INT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "neg_int32");
+          text_len += print_instruction(&text, "neg_int32");
         } break;
 
       case eOpcode_LOAD:
         {
           assert(instr->param_type == eParamType_int32);
-          text_len += print_instruction(text, "load %d", instr->param.int_val);
+          text_len += print_instruction(&text, "load %d", instr->param.int_val);
         } break;
 
       case eOpcode_STORE:
         {
           assert(instr->param_type == eParamType_int32);
-          text_len += print_instruction(text, "store %d", instr->param.int_val);
+          text_len += print_instruction(&text, "store %d", instr->param.int_val);
         } break;
 
       case eOpcode_LABEL:
         {
           assert(instr->param_type == eParamType_str);
-          text_len += print_instruction(text, "label %s", instr->param.str);
+          text_len += print_instruction(&text, "label %s", instr->param.str);
         } break;
 
       case eOpcode_RETURN:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "return");
+          text_len += print_instruction(&text, "return");
         } break;
 
       case eOpcode_GROW:
         {
           assert(instr->param_type == eParamType_int32);
-          text_len += print_instruction(text, "grow %d", instr->param.int_val);
+          text_len += print_instruction(&text, "grow %d", instr->param.int_val);
         } break;
 
       case eOpcode_GROWNZ:
         {
           assert(instr->param_type == eParamType_int32);
-          text_len += print_instruction(text, "grownz %d", instr->param.int_val);
+          text_len += print_instruction(&text, "grownz %d", instr->param.int_val);
         } break;
 
       case eOpcode_NEW:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "new");
+          text_len += print_instruction(&text, "new");
         } break;
 
       case eOpcode_CALL:
         {
           assert(instr->param_type == eParamType_str);
-          text_len += print_instruction(text, "call %s", instr->param.str);
+          text_len += print_instruction(&text, "call %s", instr->param.str);
         } break;
 
       case eOpcode_HALT:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "halt");
+          text_len += print_instruction(&text, "halt");
         } break;
 
       case eOpcode_GOTO:
         {
           assert(instr->param_type == eParamType_str);
-          text_len += print_instruction(text, "goto %s", instr->param.str);
+          text_len += print_instruction(&text, "goto %s", instr->param.str);
         } break;
 
       case eOpcode_JUMPZ:
         {
           assert(instr->param_type == eParamType_str);
-          text_len += print_instruction(text, "jumpz %s", instr->param.str);
+          text_len += print_instruction(&text, "jumpz %s", instr->param.str);
         } break;
 
       case eOpcode_JUMPNZ:
         {
           assert(instr->param_type == eParamType_str);
-          text_len += print_instruction(text, "jumpnz %s", instr->param.str);
+          text_len += print_instruction(&text, "jumpnz %s", instr->param.str);
         } break;
 
       case eOpcode_ENTER:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "enter");
+          text_len += print_instruction(&text, "enter");
         } break;
 
       case eOpcode_LEAVE:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "leave");
+          text_len += print_instruction(&text, "leave");
         } break;
 
       case eOpcode_NOOP:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "noop");
+          text_len += print_instruction(&text, "noop");
         } break;
 
       case eOpcode_CMPEQ_INT8:
@@ -1259,51 +1268,51 @@ void print_code(VmProgram* vm_program)
           assert(instr->param_type == eParamType_None);
           if(instr->opcode == eOpcode_CMPEQ_INT8)
           {
-            text_len += print_instruction(text, "cmpeq_int8");
+            text_len += print_instruction(&text, "cmpeq_int8");
           }
           else if(instr->opcode == eOpcode_CMPNEQ_INT8)
           {
-            text_len += print_instruction(text, "cmpneq_int8");
+            text_len += print_instruction(&text, "cmpneq_int8");
           }
           else if(instr->opcode == eOpcode_CMPLSS_INT8)
           {
-            text_len += print_instruction(text, "cmplss_int8");
+            text_len += print_instruction(&text, "cmplss_int8");
           }
           else if(instr->opcode == eOpcode_CMPGRT_INT8)
           {
-            text_len += print_instruction(text, "cmpgrt_int8");
+            text_len += print_instruction(&text, "cmpgrt_int8");
           }
           else if(instr->opcode == eOpcode_CMPEQ_INT32)
           {
-            text_len += print_instruction(text, "cmpeq_int32");
+            text_len += print_instruction(&text, "cmpeq_int32");
           }
           else if(instr->opcode == eOpcode_CMPNEQ_INT32)
           {
-            text_len += print_instruction(text, "cmpneq_int32");
+            text_len += print_instruction(&text, "cmpneq_int32");
           }
           else if(instr->opcode == eOpcode_CMPLSS_INT32)
           {
-            text_len += print_instruction(text, "cmplss_int32");
+            text_len += print_instruction(&text, "cmplss_int32");
           }
           else if(instr->opcode == eOpcode_CMPGRT_INT32)
           {
-            text_len += print_instruction(text, "cmpgrt_int32");
+            text_len += print_instruction(&text, "cmpgrt_int32");
           }
           else if(instr->opcode == eOpcode_CMPEQ_FLOAT32)
           {
-            text_len += print_instruction(text, "cmpeq_float32");
+            text_len += print_instruction(&text, "cmpeq_float32");
           }
           else if(instr->opcode == eOpcode_CMPNEQ_FLOAT32)
           {
-            text_len += print_instruction(text, "cmpneq_float32");
+            text_len += print_instruction(&text, "cmpneq_float32");
           }
           else if(instr->opcode == eOpcode_CMPLSS_FLOAT32)
           {
-            text_len += print_instruction(text, "cmplss_float32");
+            text_len += print_instruction(&text, "cmplss_float32");
           }
           else if(instr->opcode == eOpcode_CMPGRT_FLOAT32)
           {
-            text_len += print_instruction(text, "cmpgrt_float32");
+            text_len += print_instruction(&text, "cmpgrt_float32");
           }
           else
             assert(0);
@@ -1312,37 +1321,37 @@ void print_code(VmProgram* vm_program)
       case eOpcode_AND:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "and");
+          text_len += print_instruction(&text, "and");
         } break;
 
       case eOpcode_OR:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "or");
+          text_len += print_instruction(&text, "or");
         } break;
 
       case eOpcode_NOT:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "not");
+          text_len += print_instruction(&text, "not");
         } break;
 
       case eOpcode_PUTC:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "putc");
+          text_len += print_instruction(&text, "putc");
         } break;
 
       case eOpcode_FLOAT32_TO_INT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "float32_to_int32");
+          text_len += print_instruction(&text, "float32_to_int32");
         } break;
 
       case eOpcode_INT32_TO_FLOAT32:
         {
           assert(instr->param_type == eParamType_None);
-          text_len += print_instruction(text, "int32_to_float32");
+          text_len += print_instruction(&text, "int32_to_float32");
         } break;
 
       default:
@@ -1350,7 +1359,7 @@ void print_code(VmProgram* vm_program)
     }
   }
 
-  vm_program->text = str_cap(text);
+  vm_program->text = str_cap(&text);
   vm_program->text_len = text_len;
 }
 

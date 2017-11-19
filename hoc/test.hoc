@@ -1,7 +1,7 @@
-/*
 include "std.hoc";
 include "str.hoc";
 include "math.hoc";
+/*
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
@@ -60,6 +60,9 @@ proc void main()
   {
     a = 123;
   }
+  /*
+  */
+  print_int(a);
 }
 
 main();

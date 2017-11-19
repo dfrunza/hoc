@@ -1,8 +1,8 @@
 char* get_type_printstr(Type* type)
 {
-  String* str = str_new(arena);
-  make_type_printstr(str, type);
-  return str_cap(str);
+  String str; str_init(&str, arena);
+  make_type_printstr(&str, type);
+  return str_cap(&str);
 }
 
 bool is_relational_operator(eOperator op_kind)
@@ -33,18 +33,9 @@ SymbolTable* new_symbol_table(MemoryArena** arena, int size)
   return symbol_table;
 }
 
-typedef enum
+Scope* find_scope(Scope* active_scope, eScope kind)
 {
-  SymbolLookup__None,
-  SymbolLookup_active,
-  SymbolLookup_module,
-  SymbolLookup_global,
-}
-SymbolLookup;
-
-Scope* find_scope(eScope kind)
-{
-  Scope* scope = symbol_table->active_scope;
+  Scope* scope = active_scope;
   while(scope)
   {
     if(scope->kind == kind)
@@ -458,8 +449,7 @@ bool name_ident(AstNode* node)
   {
     AstNode proc_decl_gen0 = *node;
     AstNode* proc_decl_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_proc_decl);
-    char* name = ATTR(ATTR(&proc_decl_gen0, ast_node, id), str_val, name);
-    ATTR(proc_decl_gen1, str_val, name) = name;
+    char* name = ATTR(proc_decl_gen1, str_val, name) = ATTR(ATTR(&proc_decl_gen0, ast_node, id), str_val, name);
 
     Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
         (eSymbol[]){eSymbol_proc, eSymbol_None});
@@ -703,7 +693,7 @@ bool name_ident(AstNode* node)
   {
     make_ast_node(eAstGen_gen1, node, node->kind);
 
-    Scope* loop_scope = find_scope(eScope_loop);
+    Scope* loop_scope = find_scope(symbol_table->active_scope, eScope_loop);
     if(loop_scope)
     {
       ATTR(node, ast_node, loop) = loop_scope->ast_node;
@@ -733,7 +723,7 @@ bool name_ident(AstNode* node)
     AstNode ret_stmt_gen0 = *node;
     AstNode* ret_stmt_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_ret_stmt);
 
-    Scope* scope = find_scope(eScope_proc);
+    Scope* scope = find_scope(symbol_table->active_scope, eScope_proc);
     if(scope)
     {
       AstNode* proc = ATTR(ret_stmt_gen1, ast_node, proc_decl) = scope->ast_node;
@@ -1277,7 +1267,7 @@ bool eval_types(AstNode* node)
         {
           if(!type_unif(decl_ty, occur_ty))
           {
-            compile_error(node->src_loc, "type error (proc occur)");
+            success = compile_error(node->src_loc, "type error (proc occur)");
           }
         }
         else

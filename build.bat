@@ -46,6 +46,7 @@ goto :end
 popd
 
 cloc.exe hocc.h hocc.c lib.c platform.h platform.c translate.c lex.c syntax.c semantic.c type.c runtime.c ^
-  codegen.c hasm.c vm.c
+  codegen_x86.c
+rem  codegen.c asm.c vm.c
 
 

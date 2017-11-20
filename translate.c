@@ -1719,13 +1719,17 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
 #include "type.c"
 #include "semantic.c"
 #include "runtime.c"
-#include "codegen.c"
-#include "asm.c"
+#if 0
+  #include "codegen.c"
+  #include "asm.c"
+#else
+  #include "codegen_x86.c"
+#endif
 
-bool translate(char* file_path, char* hoc_text, VmProgram** vm_program)
+bool translate(char* file_path, char* hoc_text, TargetCode** target_code)
 {
-  *vm_program = mem_push_struct(arena, VmProgram);
-  (*vm_program)->instr_list = new_list(arena, eList_vm_instr);
+  *target_code = mem_push_struct(arena, TargetCode);
+  (*target_code)->instr_list = new_list(arena, eList_vm_instr);
 
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
@@ -1801,26 +1805,21 @@ bool translate(char* file_path, char* hoc_text, VmProgram** vm_program)
           DEBUG_print_arena_usage(arena, "arena");
         }/*<<<*/
 
-        build_runtime();
-        if(DEBUG_enabled)/*>>>*/
-        {
-          h_printf("--- Runtime ---\n");
-          DEBUG_print_arena_usage(arena, "arena");
-        }/*<<<*/
-
-        gen_program(*vm_program, module);
+        gen_target_code(*target_code, symbol_table->scopes, module);
         if(DEBUG_enabled)/*>>>*/
         {
           h_printf("--- Codegen ---\n");
           DEBUG_print_arena_usage(arena, "arena");
         }/*<<<*/
 
-        print_code(*vm_program);
+#if 0
+        print_code(*target_code);
         if(DEBUG_enabled)/*>>>*/
         {
           h_printf("--- Print code ---\n");
           DEBUG_print_arena_usage(arena, "arena");
         }/*<<<*/
+#endif
       }
     }
   }

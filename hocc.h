@@ -828,7 +828,7 @@ typedef struct
   int data_size;
   int32 sp;
 }
-VmProgram;
+TargetCode;
 
 typedef enum
 {

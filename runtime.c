@@ -117,9 +117,9 @@ void compute_occur_areas(Scope* scope, eSymbol* kind_set, DataArea* link)
   }
 }
 
-void build_runtime()
+void build_runtime(List* scopes_list)
 {
-  for(ListItem* list_item = symbol_table->scopes->first;
+  for(ListItem* list_item = scopes_list->first;
       list_item;
       list_item = list_item->next)
   {

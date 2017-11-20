@@ -1,4 +1,4 @@
-bool convert_hasm_to_instructions(VmProgram* vm_program);
+bool convert_hasm_to_instructions(TargetCode* target_code);
 void gen_load_rvalue(List* instr_list, AstNode* node);
 bool gen_instr(List* instr_list, AstNode* node);
 
@@ -806,14 +806,14 @@ bool gen_instr(List* instr_list, AstNode* node)
   }
   else if(node->kind == eAstNode_asm_block)
   {
-    VmProgram vm_program = {0};
-    vm_program.text = ATTR(node, str_val, asm_text);
+    TargetCode target_code = {0};
+    target_code.text = ATTR(node, str_val, asm_text);
 
-    if(success = convert_hasm_to_instructions(&vm_program))
+    if(success = convert_hasm_to_instructions(&target_code))
     {
-      for(int i = 0; i < vm_program.instr_count; i++)
+      for(int i = 0; i < target_code.instr_count; i++)
       {
-        append_list_elem(instr_list, &vm_program.instructions[i], eList_vm_instr);
+        append_list_elem(instr_list, &target_code.instructions[i], eList_vm_instr);
       }
     }
   }
@@ -943,7 +943,7 @@ void gen_labels(AstNode* node)
     ;//skip
 }
 
-void copy_program_data(VmProgram* vm_program, int fp, List* areas_list)
+void copy_program_data(TargetCode* target_code, int fp, List* areas_list)
 {
   for(ListItem* list_item = areas_list->first;
       list_item;
@@ -953,7 +953,7 @@ void copy_program_data(VmProgram* vm_program, int fp, List* areas_list)
     if(area->subareas)
     {
       assert(!area->data);
-      copy_program_data(vm_program, fp, area->subareas);
+      copy_program_data(target_code, fp, area->subareas);
     }
     else
     {
@@ -962,21 +962,21 @@ void copy_program_data(VmProgram* vm_program, int fp, List* areas_list)
         uint8* p_data = (uint8*)area->data;
         for(int i = 0; i < area->size; i++)
         {
-          vm_program->data[i + fp + area->loc] = p_data[i];
+          target_code->data[i + fp + area->loc] = p_data[i];
         }
       }
     }
   }
 }
 
-bool gen_program(VmProgram* vm_program, AstNode* module)
+bool gen_program(TargetCode* target_code, AstNode* module)
 {
   assert(module->kind == eAstNode_module);
   bool success = true;
 
   gen_labels(module);
 
-  if(success = gen_instr(vm_program->instr_list, module))
+  if(success = gen_instr(target_code->instr_list, module))
   {
     AstNode* body = ATTR(module, ast_node, body);
     Scope* scope = ATTR(body, scope, scope);
@@ -992,7 +992,7 @@ bool gen_program(VmProgram* vm_program, AstNode* module)
     int fp = data_size;
     DataArea* ctrl_area = &scope->ctrl_area;
     DataArea* link_area = &scope->link_area;
-    vm_program->sp = fp - ctrl_area->size - link_area->size;
+    target_code->sp = fp - ctrl_area->size - link_area->size;
 
     for(ListItem* list_item = scope->post_fp_areas->first;
         list_item;
@@ -1001,11 +1001,11 @@ bool gen_program(VmProgram* vm_program, AstNode* module)
       data_size += ITEM(list_item, data_area)->size;
     }
 
-    vm_program->data = mem_push_array(arena, uint8, data_size);
-    vm_program->data_size = data_size;
+    target_code->data = mem_push_array(arena, uint8, data_size);
+    target_code->data_size = data_size;
 
-    copy_program_data(vm_program, fp, scope->pre_fp_areas);
-    copy_program_data(vm_program, fp, scope->post_fp_areas);
+    copy_program_data(target_code, fp, scope->pre_fp_areas);
+    copy_program_data(target_code, fp, scope->post_fp_areas);
   }
   return success;
 }
@@ -1028,12 +1028,12 @@ char* get_regname_str(eRegName reg)
   return regname;
 }
 
-void print_code(VmProgram* vm_program)
+void print_code(TargetCode* target_code)
 {
   String text; str_init(&text, arena);
   int text_len = 0;
 
-  for(ListItem* list_item = vm_program->instr_list->first;
+  for(ListItem* list_item = target_code->instr_list->first;
       list_item;
       list_item = list_item->next)
   {
@@ -1359,7 +1359,7 @@ void print_code(VmProgram* vm_program)
     }
   }
 
-  vm_program->text = str_cap(&text);
-  vm_program->text_len = text_len;
+  target_code->text = str_cap(&text);
+  target_code->text_len = text_len;
 }
 

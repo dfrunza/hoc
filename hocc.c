@@ -70,10 +70,10 @@ char* make_vm_exe_path(char* hocc_exe_path)
   return vm_exe_path;
 }
 
-bool write_hasm_file(OutFileNames* out_files, VmProgram* vm_program)
+bool write_hasm_file(OutFileNames* out_files, TargetCode* target_code)
 {
-  int bytes_written = file_write_bytes(out_files->h_asm.name, (uint8*)vm_program->text, vm_program->text_len);
-  bool success = (bytes_written == vm_program->text_len);
+  int bytes_written = file_write_bytes(out_files->h_asm.name, (uint8*)target_code->text, target_code->text_len);
+  bool success = (bytes_written == target_code->text_len);
   if(!success)
   {
     error("not all bytes were written to file `%s`", out_files->h_asm.name);
@@ -100,18 +100,19 @@ int main(int argc, char* argv[])
 
     if(success = (hoc_text != 0))
     {
-      VmProgram* vm_program = 0;
-      if(success = translate(src_file_path, hoc_text, &vm_program))
+      TargetCode* target_code = 0;
+      if(success = translate(src_file_path, hoc_text, &target_code))
       {
+#if 0
         OutFileNames out_files = {0};
         if(success = make_out_file_names(&out_files, src_file_path))
         {
           if(DEBUG_enabled)/*>>>*/
           {
-            write_hasm_file(&out_files, vm_program);
+            write_hasm_file(&out_files, target_code);
           }/*<<<*/
 
-          if(success = convert_hasm_to_instructions(vm_program))
+          if(success = convert_hasm_to_instructions(target_code))
           {
             char* hocc_exe_path = argv[0];
             char* vm_exe_path = make_vm_exe_path(hocc_exe_path);
@@ -127,16 +128,16 @@ int main(int argc, char* argv[])
                 cstr_copy(bin_image->sig, BINIMAGE_SIGNATURE);
 
                 bin_image->code_offset = sizeof(BinImage);
-                bin_image->code_size = sizeof(Instruction) * vm_program->instr_count;
+                bin_image->code_size = sizeof(Instruction) * target_code->instr_count;
 
                 bin_image->data_offset = bin_image->code_offset + bin_image->code_size;
-                bin_image->data_size = sizeof(uint8) * vm_program->data_size;
-                bin_image->sp = vm_program->sp;
+                bin_image->data_size = sizeof(uint8) * target_code->data_size;
+                bin_image->sp = target_code->sp;
 
                 if((int)fwrite(vm_bytes, 1, vm_size, exe_file) == vm_size
                   && (int)fwrite(bin_image, sizeof(BinImage), 1, exe_file) == 1
-                  && (int)fwrite(vm_program->instructions, sizeof(Instruction), vm_program->instr_count, exe_file) == vm_program->instr_count
-                  && (int)fwrite(vm_program->data, sizeof(uint8), vm_program->data_size, exe_file) == vm_program->data_size)
+                  && (int)fwrite(target_code->instructions, sizeof(Instruction), target_code->instr_count, exe_file) == target_code->instr_count
+                  && (int)fwrite(target_code->data, sizeof(uint8), target_code->data_size, exe_file) == target_code->data_size)
                 {
                   ;/*OK*/
                 }
@@ -152,6 +153,7 @@ int main(int argc, char* argv[])
               success = error("could not read file `%s`", vm_exe_path);
           }
         }
+#endif
       }
       else
         success = error("program could not be translated");

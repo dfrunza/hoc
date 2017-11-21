@@ -46,11 +46,10 @@ proc void test()
    proc void printf(char* s, ..args)
    { }
  */
-var int a;
 
+var int a = 123;
 proc void main()
 {
-  a = 123;
 }
 
 main();

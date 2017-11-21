@@ -191,6 +191,9 @@ void gen_load_lvalue(String* text, AstNode* node)
   }
 }
 
+// REP STOSB
+// REP MOVSB
+// REP SCASB
 void gen_load_rvalue(String* text, AstNode* node)
 {
   assert(node->gen == eAstGen_gen1);
@@ -199,7 +202,36 @@ void gen_load_rvalue(String* text, AstNode* node)
   {
     Type* type = ATTR(node, type, eval_type);
     gen_load_lvalue(text, node);
-    //emit_instr_int32(instr_list, eOpcode_LOAD, type->width);
+
+    // LOAD
+    printf_line(text, "mov ecx, %d", type->width);
+    printf_line(text, "mov esi, [esp]");
+    printf_line(text, "mov edi, esp");
+    printf_line(text, "rep movsb");
+  }
+  else if(node->kind == eAstNode_lit)
+  {
+    eLiteral kind = ATTR(node, lit_kind, lit_kind);
+    if(kind == eLiteral_int_val)
+    {
+      printf_line(text, "push %d", ATTR(node, int_val, int_val));
+    }
+    else if(kind == eLiteral_bool_val)
+    {
+      printf_line(text, "push %d", ATTR(node, bool_val, bool_val));
+    }
+    else if(kind == eLiteral_float_val)
+    {
+      //FIXME
+      printf_line(text, "push %d", ATTR(node, float_val, float_val));
+    }
+    else if(kind == eLiteral_char_val)
+    {
+      //FIXME
+      printf_line(text, "push %d", ATTR(node, char_val, char_val));
+    }
+    else
+      assert(0);
   }
 }
 
@@ -308,7 +340,12 @@ bool gen_code(String* text, AstNode* node)
       gen_load_rvalue(text, right_operand);
       gen_load_lvalue(text, left_operand);
 
-      //emit_instr_int32(instr_list, eOpcode_STORE, type->width);
+      // STORE
+      printf_line(text, "mov ecx, %d", type->width);
+      printf_line(text, "mov esi, esp");
+      printf_line(text, "add esi, 4");
+      printf_line(text, "mov edi, [esp]");
+      printf_line(text, "rep movsb");
     }
   }
   return success;

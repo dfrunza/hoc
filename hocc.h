@@ -1,4 +1,6 @@
 #define ARENA_SIZE (3*MEGABYTE)
+#define SYMBOL_ARENA_SIZE (ARENA_SIZE / 8)
+#define TARGET_CODE_ARENA_SIZE (ARENA_SIZE / 4)
 #define BINIMAGE_SIGNATURE "HC"
 
 typedef unsigned char uchar;
@@ -817,8 +819,7 @@ BinImage;
 
 typedef struct
 {
-  char* text;
-  int text_len;
+  String text;
 
   List* instr_list;
   Instruction* instructions;

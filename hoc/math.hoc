@@ -14,7 +14,7 @@ proc int min(int a, int b)
   return result;
 }
 
-proc float fmax(float a, float b)
+proc float maxf(float a, float b)
 {
   var float result = a;
   if(a < b)
@@ -22,7 +22,7 @@ proc float fmax(float a, float b)
   return result;
 }
 
-proc float fmin(float a, float b)
+proc float minf(float a, float b)
 {
   var float result = a;
   if(a > b)
@@ -37,7 +37,7 @@ proc int abs(int a)
   return a;
 }
 
-proc float fabs(float a)
+proc float absf(float a)
 {
   if(a < 0.0)
     a = -a;
@@ -121,8 +121,8 @@ proc float sqrt(float x)
     if(r != g)
     {
       r = (r+g)/2.0;
-      if(fabs(r-g) == 1.0)
-        r = fmin(r, g);
+      if(absf(r-g) == 1.0)
+        r = minf(r, g);
     }
     return r;
   }
@@ -172,7 +172,7 @@ proc int floor_log_b(int b, float n)
 /* Returns the number of significand 10-base digits */
 proc int fp_bin_to_dec(float v, int* significand, int* exponent)
 {
-  var float v_abs = fabs(v);
+  var float v_abs = absf(v);
   var int x = floor_log_b(10, v_abs) + 1;
   *exponent = x;
 

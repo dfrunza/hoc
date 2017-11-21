@@ -38,7 +38,7 @@ bool make_out_file_names(OutFileNames* out_files, char* src_file_path)
   assert(stem_len > 0);
   bool success = true;
 
-  if(success = (stem_len > 0 && stem_len < 81))
+  if(stem_len > 0 && stem_len < 81)
   {
     char* str = out_files->strings;
 
@@ -57,7 +57,7 @@ bool make_out_file_names(OutFileNames* out_files, char* src_file_path)
     out_files->exe.len = cstr_len(out_files->exe.name);
   }
   else
-    error("length of file name must be between 1..80 : '%s'", stem);
+    success = error("length of file name must be between 1..80 : '%s'", stem);
   return success;
 }
 
@@ -70,6 +70,7 @@ char* make_vm_exe_path(char* hocc_exe_path)
   return vm_exe_path;
 }
 
+#if 0
 bool write_hasm_file(OutFileNames* out_files, TargetCode* target_code)
 {
   int bytes_written = file_write_bytes(out_files->h_asm.name, (uint8*)target_code->text, target_code->text_len);
@@ -80,6 +81,7 @@ bool write_hasm_file(OutFileNames* out_files, TargetCode* target_code)
   }
   return success;
 }
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -100,9 +102,19 @@ int main(int argc, char* argv[])
 
     if(success = (hoc_text != 0))
     {
-      TargetCode* target_code = 0;
+      TargetCode target_code = {0};
       if(success = translate(src_file_path, hoc_text, &target_code))
       {
+        OutFileNames out_files = {0};
+        if(!make_out_file_names(&out_files, src_file_path))
+          return success = false;
+
+        int text_len = str_len(&target_code.text);
+        int bytes_written = file_write_bytes(out_files.h_asm.name, (uint8*)target_code.text.head, text_len);
+        if(bytes_written != text_len)
+        {
+          return success = error("not all bytes were written to file `%s`", out_files.h_asm.name);
+        }
 #if 0
         OutFileNames out_files = {0};
         if(success = make_out_file_names(&out_files, src_file_path))

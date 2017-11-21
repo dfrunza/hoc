@@ -1,5 +1,3 @@
-#define SYMBOL_ARENA_SIZE (ARENA_SIZE / 8)
-
 SymbolTable* symbol_table = 0;
 int tempvar_id = 0;
 
@@ -1726,11 +1724,8 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
   #include "codegen_x86.c"
 #endif
 
-bool translate(char* file_path, char* hoc_text, TargetCode** target_code)
+bool translate(char* file_path, char* hoc_text, TargetCode* target_code)
 {
-  *target_code = mem_push_struct(arena, TargetCode);
-  (*target_code)->instr_list = new_list(arena, eList_vm_instr);
-
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
   get_next_token(&token_stream);
@@ -1738,92 +1733,117 @@ bool translate(char* file_path, char* hoc_text, TargetCode** target_code)
   init_ast_meta_infos();
 
   AstNode* module = 0;
-  bool success = false;
-  if(success = parse(&token_stream, &module))
+  if(!parse(&token_stream, &module))
   {
-    if(DEBUG_enabled)/*>>>*/
+    return false;
+  }
+  if(DEBUG_enabled)/*>>>*/
+  {
+    h_printf("--- Parse ---\n");
+    DEBUG_print_arena_usage(arena, "arena");
+
+    begin_temp_memory(&arena);
+    String str; str_init(&str, arena);
+    DEBUG_print_ast_node(&str, 0, "module", module);
+    str_dump_to_file(&str, "debug_parse.txt");
+    str_cap(&str);
+    end_temp_memory(&arena);
+  }/*<<<*/
+
+  AstNode* module_body = ATTR(module, ast_node, body);
+  List* module_nodes_list = ATTR(module_body, list, nodes);
+  for(ListItem* list_item = module_nodes_list->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    AstNode* stmt = ITEM(list_item, ast_node);
+
+    if(stmt->kind == eAstNode_include)
     {
-      h_printf("--- Parse ---\n");
-      DEBUG_print_arena_usage(arena, "arena");
-
-      begin_temp_memory(&arena);
-      String str; str_init(&str, arena);
-      DEBUG_print_ast_node(&str, 0, "module", module);
-      str_dump_to_file(&str, "debug_parse.txt");
-      str_cap(&str);
-      end_temp_memory(&arena);
-    }/*<<<*/
-
-    AstNode* module_body = ATTR(module, ast_node, body);
-    List* module_nodes_list = ATTR(module_body, list, nodes);
-    for(ListItem* list_item = module_nodes_list->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      AstNode* stmt = ITEM(list_item, ast_node);
-
-      if(stmt->kind == eAstNode_include)
-      {
-        AstNode* include_body = ATTR(stmt, ast_node, body);
-        process_includes(ATTR(include_body, list, nodes), module_nodes_list, list_item);
-      }
-    }
-
-    init_types();
-
-    symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
-    symbol_table->global_scope = begin_scope(eScope_global, 0);
-
-    success = name_ident(module);
-    end_scope();
-    assert(symbol_table->active_scope == 0);
-    assert(symbol_table->nesting_depth == -1);
-
-    if(success)
-    {
-      if(DEBUG_enabled)/*>>>*/
-      {
-        h_printf("--- Name ID ---\n");
-        DEBUG_print_arena_usage(arena, "arena");
-        DEBUG_print_arena_usage(symbol_table->arena, "symbol_table");
-
-        begin_temp_memory(&arena);
-        String str; str_init(&str, arena);
-        DEBUG_print_scope(&str, 0, "global_scope", symbol_table->global_scope);
-        DEBUG_print_ast_node(&str, 0, "module", module);
-        str_dump_to_file(&str, "debug_name_ident.txt");
-        str_cap(&str);
-        end_temp_memory(&arena);
-      }/*<<<*/
-
-      if(success = build_types(module) && eval_types(module)
-          && resolve_types(module) && check_types(module))
-      {
-        if(DEBUG_enabled)/*>>>*/
-        {
-          h_printf("--- Semantic ---\n");
-          DEBUG_print_arena_usage(arena, "arena");
-        }/*<<<*/
-
-        gen_target_code(*target_code, symbol_table->scopes, module);
-        if(DEBUG_enabled)/*>>>*/
-        {
-          h_printf("--- Codegen ---\n");
-          DEBUG_print_arena_usage(arena, "arena");
-        }/*<<<*/
-
-#if 0
-        print_code(*target_code);
-        if(DEBUG_enabled)/*>>>*/
-        {
-          h_printf("--- Print code ---\n");
-          DEBUG_print_arena_usage(arena, "arena");
-        }/*<<<*/
-#endif
-      }
+      AstNode* include_body = ATTR(stmt, ast_node, body);
+      process_includes(ATTR(include_body, list, nodes), module_nodes_list, list_item);
     }
   }
-  return success;
+
+  init_types();
+  symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
+  symbol_table->global_scope = begin_scope(eScope_global, 0);
+  if(!name_ident(module))
+  {
+    return false;
+  }
+  end_scope();
+  assert(symbol_table->active_scope == 0);
+  assert(symbol_table->nesting_depth == -1);
+
+  if(DEBUG_enabled)/*>>>*/
+  {
+    h_printf("--- Name ID ---\n");
+    DEBUG_print_arena_usage(arena, "arena");
+    DEBUG_print_arena_usage(symbol_table->arena, "symbol_table");
+
+    begin_temp_memory(&arena);
+    String str; str_init(&str, arena);
+    DEBUG_print_scope(&str, 0, "global_scope", symbol_table->global_scope);
+    DEBUG_print_ast_node(&str, 0, "module", module);
+    str_dump_to_file(&str, "debug_name_ident.txt");
+    str_cap(&str);
+    end_temp_memory(&arena);
+  }/*<<<*/
+
+  if(!(build_types(module) && eval_types(module)
+      && resolve_types(module) && check_types(module)))
+  {
+    return false;
+  }
+  if(DEBUG_enabled)/*>>>*/
+  {
+    h_printf("--- Semantic ---\n");
+    DEBUG_print_arena_usage(arena, "arena");
+  }/*<<<*/
+
+#if 0
+  *target_code = mem_push_struct(arena, TargetCode);
+  (*target_code)->instr_list = new_list(arena, eList_vm_instr);
+  gen_target_code(*target_code, symbol_table->scopes, module);
+  if(DEBUG_enabled)/*>>>*/
+  {
+    h_printf("--- Codegen ---\n");
+    DEBUG_print_arena_usage(arena, "arena");
+  }/*<<<*/
+#else
+  build_runtime(symbol_table->scopes);
+  if(DEBUG_enabled)/*>>>*/
+  {
+    h_printf("--- Runtime ---\n");
+    DEBUG_print_arena_usage(arena, "arena");
+  }/*<<<*/
+  gen_labels(module);
+
+  str_init(&target_code->text, push_arena(&arena, TARGET_CODE_ARENA_SIZE));
+  printf_line(&target_code->text, ".686");
+  printf_line(&target_code->text, ".MODEL flat");
+  printf_line(&target_code->text, ".STACK 1024");
+  printf_line(&target_code->text, "ExitProcess PROTO NEAR32 stdcall, dwExitCode:DWORD");
+  printf_line(&target_code->text, ".DATA");
+  printf_line(&target_code->text, ".CODE");
+  printf_line(&target_code->text, "_start:");
+  if(!gen_code(&target_code->text, module))
+  {
+    return false;
+  }
+  printf_line(&target_code->text, "END _start");
+#endif
+
+#if 0
+  print_code(*target_code);
+  if(DEBUG_enabled)/*>>>*/
+  {
+    h_printf("--- Print code ---\n");
+    DEBUG_print_arena_usage(arena, "arena");
+  }/*<<<*/
+#endif
+  return true;
 }
 
 

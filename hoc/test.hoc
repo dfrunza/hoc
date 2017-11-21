@@ -1,7 +1,7 @@
+/*
 include "std.hoc";
 include "str.hoc";
 include "math.hoc";
-/*
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
@@ -48,21 +48,9 @@ proc void test()
  */
 var int a;
 
-proc int foo(int i)
-{
-  return 2*i;
-}
-
 proc void main()
 {
-  foo();
-  proc void foo()
-  {
-    a = 123;
-  }
-  /*
-  */
-  print_int(a);
+  a = 123;
 }
 
 main();

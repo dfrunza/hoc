@@ -1,6 +1,6 @@
 //bool convert_hasm_to_instructions(IrProgram* ir_program);
-void gen_load_rvalue(List* instr_list, AstNode* node);
-bool build_ir(List* instr_list, AstNode* node);
+void gen_ir_load_rvalue(List* instr_list, AstNode* node);
+bool gen_ir(List* instr_list, AstNode* node);
 
 bool is_valid_label(char *label)
 {
@@ -625,7 +625,7 @@ void make_ir_labels(AstNode* node)
     ;//skip
 }
 
-void gen_load_lvalue(List* instr_list, AstNode* node)
+void gen_ir_load_lvalue(List* instr_list, AstNode* node)
 {
   assert(node->gen == eAstGen_gen1);
 
@@ -672,7 +672,7 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
     if(un_op == eOperator_deref)
     {
       assert(ATTR(operand, type, eval_type)->kind == eType_pointer);
-      gen_load_rvalue(instr_list, operand);
+      gen_ir_load_rvalue(instr_list, operand);
     }
     else
       assert(0);
@@ -686,8 +686,8 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
 
     if(bin_op == eOperator_index)
     {
-      gen_load_lvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_lvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
       emit_ir_instr(instr_list, eOpcode_PUSH_INT32, type->width);
       emit_ir_instr(instr_list, eOpcode_MUL_INT32);
       emit_ir_instr(instr_list, eOpcode_ADD_INT32);
@@ -699,19 +699,19 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
     assert(0);
 }
 
-void gen_load_rvalue(List* instr_list, AstNode* node)
+void gen_ir_load_rvalue(List* instr_list, AstNode* node)
 {
   assert(node->gen == eAstGen_gen1);
 
   if(node->kind == eAstNode_var_occur)
   {
     Type* type = ATTR(node, type, eval_type);
-    gen_load_lvalue(instr_list, node);
+    gen_ir_load_lvalue(instr_list, node);
     emit_ir_instr(instr_list, eOpcode_LOAD, type->width);
   }
   else if(node->kind == eAstNode_proc_occur)
   {
-    build_ir(instr_list, node);
+    gen_ir(instr_list, node);
   }
   else if(node->kind == eAstNode_lit)
   {
@@ -742,12 +742,12 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
 
     if(bin_op == eOperator_index)
     {
-      gen_load_lvalue(instr_list, node);
+      gen_ir_load_lvalue(instr_list, node);
       emit_ir_instr(instr_list, eOpcode_LOAD, type->width);
     }
     else
     {
-      build_ir(instr_list, node);
+      gen_ir(instr_list, node);
     }
   }
   else if(node->kind == eAstNode_un_expr)
@@ -760,28 +760,28 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
     {
       if(operand->kind == eAstNode_var_occur)
       {
-        gen_load_lvalue(instr_list, operand);
+        gen_ir_load_lvalue(instr_list, operand);
       }
       else
       {
-        gen_load_rvalue(instr_list, operand);
+        gen_ir_load_rvalue(instr_list, operand);
       }
     }
     else if(un_op == eOperator_deref)
     {
-      gen_load_lvalue(instr_list, node);
+      gen_ir_load_lvalue(instr_list, node);
       emit_ir_instr(instr_list, eOpcode_LOAD, type->width);
     }
     else
     {
-      build_ir(instr_list, node);
+      gen_ir(instr_list, node);
     }
   }
   else
     assert(0);
 }
 
-bool build_ir(List* instr_list, AstNode* node)
+bool gen_ir(List* instr_list, AstNode* node)
 {
   assert(node->gen == eAstGen_gen1);
   bool success = true;
@@ -801,7 +801,7 @@ bool build_ir(List* instr_list, AstNode* node)
         list_item = list_item->next)
     {
       AstNode* stmt = ITEM(list_item, ast_node); assert(stmt->kind == eAstNode_stmt);
-      build_ir(instr_list, stmt);
+      gen_ir(instr_list, stmt);
     }
 
     emit_ir_instr(instr_list, eOpcode_LEAVE);
@@ -813,7 +813,7 @@ bool build_ir(List* instr_list, AstNode* node)
     {
       AstNode* proc = ITEM(list_item, ast_node);
       assert(proc->kind == eAstNode_proc_decl);
-      build_ir(instr_list, proc);
+      gen_ir(instr_list, proc);
     }
   }
   else if(node->kind == eAstNode_proc_decl)
@@ -831,7 +831,7 @@ bool build_ir(List* instr_list, AstNode* node)
         list_item = list_item->next)
     {
       AstNode* stmt = ITEM(list_item, ast_node);
-      build_ir(instr_list, stmt);
+      gen_ir(instr_list, stmt);
     }
 
     emit_ir_instr(instr_list, eOpcode_RETURN);
@@ -841,7 +841,7 @@ bool build_ir(List* instr_list, AstNode* node)
         list_item = list_item->next)
     {
       AstNode* proc = ITEM(list_item, ast_node); assert(proc->kind == eAstNode_proc_decl);
-      build_ir(instr_list, proc);
+      gen_ir(instr_list, proc);
     }
   }
   else if(node->kind == eAstNode_block)
@@ -863,7 +863,7 @@ bool build_ir(List* instr_list, AstNode* node)
         list_item = list_item->next)
     {
       AstNode* stmt = ITEM(list_item, ast_node);
-      build_ir(instr_list, stmt);
+      gen_ir(instr_list, stmt);
     }
 
     emit_ir_instr(instr_list, eOpcode_LEAVE);
@@ -874,7 +874,7 @@ bool build_ir(List* instr_list, AstNode* node)
         list_item = list_item->next)
     {
       AstNode* proc = ITEM(list_item, ast_node); assert(proc->kind == eAstNode_proc_decl);
-      build_ir(instr_list, proc);
+      gen_ir(instr_list, proc);
     }
   }
   else if(node->kind == eAstNode_ret_stmt)
@@ -882,7 +882,7 @@ bool build_ir(List* instr_list, AstNode* node)
     AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
     if(ret_expr)
     {
-      build_ir(instr_list, ret_expr);
+      gen_ir(instr_list, ret_expr);
     }
 
     int depth = ATTR(node, int_val, nesting_depth);
@@ -897,19 +897,19 @@ bool build_ir(List* instr_list, AstNode* node)
   {
     AstNode* actual_stmt = ATTR(node, ast_node, stmt);
     Type* type = ATTR(actual_stmt, type, eval_type);
-    build_ir(instr_list, actual_stmt);
+    gen_ir(instr_list, actual_stmt);
     emit_ir_instr(instr_list, eOpcode_GROW, -type->width);
   }
   else if(node->kind == eAstNode_while_stmt)
   {
     emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_eval));
-    gen_load_rvalue(instr_list, ATTR(node, ast_node, cond_expr));
+    gen_ir_load_rvalue(instr_list, ATTR(node, ast_node, cond_expr));
     emit_ir_instr(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_break));
 
     AstNode* body = ATTR(node, ast_node, body);
     if(body)
     {
-      build_ir(instr_list, body);
+      gen_ir(instr_list, body);
     }
 
     emit_ir_instr(instr_list, eOpcode_GOTO, ATTR(node, str_val, label_eval));
@@ -926,15 +926,15 @@ bool build_ir(List* instr_list, AstNode* node)
 
     if(bin_op == eOperator_assign)
     {
-      gen_load_rvalue(instr_list, right_operand);
-      gen_load_lvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
+      gen_ir_load_lvalue(instr_list, left_operand);
 
       emit_ir_instr(instr_list, eOpcode_STORE, type->width);
     }
     else if(bin_op == eOperator_add)
     {
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
       {
@@ -949,8 +949,8 @@ bool build_ir(List* instr_list, AstNode* node)
     }
     else if(bin_op == eOperator_sub)
     {
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
       {
@@ -965,8 +965,8 @@ bool build_ir(List* instr_list, AstNode* node)
     }
     else if(bin_op == eOperator_mul)
     {
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
       {
@@ -981,8 +981,8 @@ bool build_ir(List* instr_list, AstNode* node)
     }
     else if(bin_op == eOperator_div)
     {
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
       {
@@ -997,8 +997,8 @@ bool build_ir(List* instr_list, AstNode* node)
     }
     else if(bin_op == eOperator_mod)
     {
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
       {
@@ -1011,8 +1011,8 @@ bool build_ir(List* instr_list, AstNode* node)
     {
       assert(types_are_equal(left_ty, right_ty));
 
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(left_ty, basic_type_char))
       {
@@ -1033,8 +1033,8 @@ bool build_ir(List* instr_list, AstNode* node)
     {
       assert(types_are_equal(left_ty, right_ty));
 
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(left_ty, basic_type_char))
       {
@@ -1055,8 +1055,8 @@ bool build_ir(List* instr_list, AstNode* node)
     {
       assert(types_are_equal(left_ty, right_ty));
 
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(left_ty, basic_type_char))
       {
@@ -1077,8 +1077,8 @@ bool build_ir(List* instr_list, AstNode* node)
     {
       assert(types_are_equal(left_ty, right_ty));
 
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(left_ty, basic_type_char))
       {
@@ -1099,7 +1099,7 @@ bool build_ir(List* instr_list, AstNode* node)
     {
       assert(types_are_equal(left_ty, right_ty));
 
-      gen_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
       emit_ir_instr(instr_list, eOpcode_DUP);
 
       if(bin_op == eOperator_logic_and)
@@ -1114,7 +1114,7 @@ bool build_ir(List* instr_list, AstNode* node)
         assert(0);
 
       emit_ir_instr(instr_list, eOpcode_GROW, -type->width);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
       emit_ir_instr(instr_list, eOpcode_DUP);
 
       if(bin_op == eOperator_logic_and)
@@ -1134,8 +1134,8 @@ bool build_ir(List* instr_list, AstNode* node)
     {
       assert(types_are_equal(left_ty, right_ty));
 
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(bin_op == eOperator_less_eq)
       {
@@ -1178,8 +1178,8 @@ bool build_ir(List* instr_list, AstNode* node)
       emit_ir_instr(instr_list, eOpcode_JUMPNZ, ATTR(node, str_val, label_end));
       emit_ir_instr(instr_list, eOpcode_GROW, -type->width);
 
-      gen_load_rvalue(instr_list, left_operand);
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, left_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(left_ty, basic_type_char))
       {
@@ -1200,7 +1200,7 @@ bool build_ir(List* instr_list, AstNode* node)
     }
     else if(bin_op == eOperator_cast)
     {
-      gen_load_rvalue(instr_list, right_operand);
+      gen_ir_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(left_ty, basic_type_int) && types_are_equal(right_ty, basic_type_float))
       {
@@ -1213,7 +1213,7 @@ bool build_ir(List* instr_list, AstNode* node)
     }
     else if(bin_op == eOperator_index)
     {
-      gen_load_rvalue(instr_list, node);
+      gen_ir_load_rvalue(instr_list, node);
     }
     else
       assert(0);
@@ -1226,11 +1226,11 @@ bool build_ir(List* instr_list, AstNode* node)
 
     if(un_op == eOperator_address_of)
     {
-      gen_load_rvalue(instr_list, node);
+      gen_ir_load_rvalue(instr_list, node);
     }
     else if(un_op == eOperator_neg)
     {
-      gen_load_rvalue(instr_list, operand);
+      gen_ir_load_rvalue(instr_list, operand);
 
       if(types_are_equal(operand_ty, basic_type_int))
       {
@@ -1245,13 +1245,13 @@ bool build_ir(List* instr_list, AstNode* node)
     }
     else if(un_op == eOperator_logic_not)
     {
-      gen_load_rvalue(instr_list, operand);
+      gen_ir_load_rvalue(instr_list, operand);
       emit_ir_instr(instr_list, eOpcode_PUSH_INT32, 0);
       emit_ir_instr(instr_list, eOpcode_CMPEQ_INT32);
     }
     else if(un_op == eOperator_deref)
     {
-      gen_load_rvalue(instr_list, node);
+      gen_ir_load_rvalue(instr_list, node);
     }
     else
       assert(0);
@@ -1270,7 +1270,7 @@ bool build_ir(List* instr_list, AstNode* node)
         list_item;
         list_item = list_item->next)
     {
-      gen_load_rvalue(instr_list, ITEM(list_item, ast_node));
+      gen_ir_load_rvalue(instr_list, ITEM(list_item, ast_node));
     }
     // TODO: Assert that the 'data area size' == 'evaluated args size'
 
@@ -1303,7 +1303,7 @@ bool build_ir(List* instr_list, AstNode* node)
   }
   else if(node->kind == eAstNode_if_stmt)
   {
-    gen_load_rvalue(instr_list, ATTR(node, ast_node, cond_expr));
+    gen_ir_load_rvalue(instr_list, ATTR(node, ast_node, cond_expr));
 
     AstNode* else_body = ATTR(node, ast_node, else_body);
     if(else_body)
@@ -1315,13 +1315,13 @@ bool build_ir(List* instr_list, AstNode* node)
       emit_ir_instr(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_end));
     }
 
-    build_ir(instr_list, ATTR(node, ast_node, body));
+    gen_ir(instr_list, ATTR(node, ast_node, body));
     emit_ir_instr(instr_list, eOpcode_GOTO, ATTR(node, str_val, label_end));
 
     if(else_body)
     {
       emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_else));
-      build_ir(instr_list, else_body);
+      gen_ir(instr_list, else_body);
     }
 
     emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_end));
@@ -1329,13 +1329,13 @@ bool build_ir(List* instr_list, AstNode* node)
   else if(node->kind == eAstNode_while_stmt)
   {
     emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_eval));
-    gen_load_rvalue(instr_list, ATTR(node, ast_node, cond_expr));
+    gen_ir_load_rvalue(instr_list, ATTR(node, ast_node, cond_expr));
     emit_ir_instr(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_break));
 
     AstNode* body = ATTR(node, ast_node, body);
     if(body)
     {
-      build_ir(instr_list, body);
+      gen_ir(instr_list, body);
     }
 
     emit_ir_instr(instr_list, eOpcode_GOTO, ATTR(node, str_val, label_eval));

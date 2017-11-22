@@ -1842,7 +1842,7 @@ bool translate(char* file_path, char* hoc_text/*, IrProgram* ir_program*/)
 
     IrProgram ir_program = {0};
     ir_program.instr_list = new_list(arena, eList_ir_instr);
-    if(!build_ir(ir_program.instr_list, module))
+    if(!gen_ir(ir_program.instr_list, module))
     {
       return false;
     }

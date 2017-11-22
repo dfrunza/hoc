@@ -1840,12 +1840,12 @@ bool translate(char* file_path, char* hoc_text/*, IrProgram* ir_program*/)
     build_runtime(symbol_table->scopes);
     make_ir_labels(module);
 
-    /*TODO
-    if(!build_ir(ir_program->instr_list, module))
+    IrProgram ir_program = {0};
+    ir_program.instr_list = new_list(arena, eList_ir_instr);
+    if(!build_ir(ir_program.instr_list, module))
     {
       return false;
     }
-    */
     AstNode* body = ATTR(module, ast_node, body);
     Scope* scope = ATTR(body, scope, scope);
 

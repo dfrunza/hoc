@@ -447,67 +447,62 @@ int print_instruction(String* text, char* instr_list, ...)
   return text_len;
 }
 
-void emit_ir_instr(List* instr_list, eOpcode opcode, IrInstrParam param)
+void emit_ir_instr(List* instr_list, eOpcode opcode, ...)
 {
-  IrInstruction* instr = mem_push_struct(arena, IrInstruction);
-  instr->opcode = opcode;
-  instr->param = param;
-  append_list_elem(instr_list, instr, eList_vm_instr);
-}
+  va_list args;
+  va_start(args, opcode);
 
-#if 0
-void emit_instr_reg(List* instr_list, eOpcode opcode, eRegName reg)
-{
   IrInstruction* instr = mem_push_struct(arena, IrInstruction);
+  append_list_elem(instr_list, instr, eList_ir_instr);
   instr->opcode = opcode;
-  instr->param.kind = eInstrParam_reg;
-  instr->param.reg = reg;
-  append_list_elem(instr_list, instr, eList_vm_instr);
-}
-#endif
+  IrInstrParam* param = &instr->param;
+  if(opcode == eOpcode_PUSH_REG)
+  {
+    param->kind = eInstrParam_reg;
+    param->reg = va_arg(args, eRegName);
+  }
+  else if(opcode == eOpcode_PUSH_INT8)
+  {
+    param->kind = eInstrParam_int8;
+    param->int8_val = va_arg(args, int8);
+  }
+  else if(opcode == eOpcode_PUSH_INT32 || opcode == eOpcode_GROW || opcode == eOpcode_GROWNZ
+      || opcode == eOpcode_LOAD || opcode == eOpcode_STORE)
+  {
+    param->kind = eInstrParam_int32;
+    param->int32_val = va_arg(args, int32);
+  }
+  else if(opcode == eOpcode_PUSH_FLOAT32)
+  {
+    param->kind = eInstrParam_float32;
+    param->float32_val = va_arg(args, float32);
+  }
+  else if(opcode == eOpcode_LABEL || opcode == eOpcode_CALL
+      || opcode == eOpcode_JUMPZ || opcode == eOpcode_JUMPNZ
+      || opcode == eOpcode_GOTO)
+  {
+    param->kind = eInstrParam_id;
+    param->id = va_arg(args, char*);
+  }
+  else if(opcode == eOpcode_ADD_INT32 || opcode == eOpcode_MUL_INT32
+      || opcode == eOpcode_SUB_INT32 || opcode == eOpcode_DIV_INT32 || opcode == eOpcode_MOD_INT32
+      || opcode == eOpcode_ADD_FLOAT32 || opcode == eOpcode_MUL_FLOAT32
+      || opcode == eOpcode_SUB_FLOAT32 || opcode == eOpcode_DIV_FLOAT32
+      || opcode == eOpcode_ENTER || opcode == eOpcode_LEAVE || opcode == eOpcode_HALT
+      || opcode == eOpcode_RETURN
+      || opcode == eOpcode_CMPEQ_INT8 || opcode == eOpcode_CMPEQ_INT32 || opcode == eOpcode_CMPEQ_FLOAT32
+      || opcode == eOpcode_CMPNEQ_INT8 || opcode == eOpcode_CMPNEQ_INT32 || opcode == eOpcode_CMPNEQ_FLOAT32
+      || opcode == eOpcode_CMPGRT_INT8 || opcode == eOpcode_CMPGRT_INT32 || opcode == eOpcode_CMPGRT_FLOAT32
+      || opcode == eOpcode_CMPLSS_INT8 || opcode == eOpcode_CMPLSS_INT32 || opcode == eOpcode_CMPLSS_FLOAT32
+      || opcode == eOpcode_DUP || opcode == eOpcode_INT32_TO_FLOAT32 || opcode == eOpcode_FLOAT32_TO_INT32
+      || opcode == eOpcode_NEG_INT32 || opcode == eOpcode_NEG_FLOAT32)
+  {
+    ; //skip
+  }
+  else
+    assert(0);
 
-void emit_instr_int8(List* instr_list, eOpcode opcode, int8 int_val)
-{
-  IrInstruction* instr = mem_push_struct(arena, IrInstruction);
-  instr->opcode = opcode;
-  instr->param.kind = eInstrParam_int8;
-  instr->param.int8_val = int_val;
-  append_list_elem(instr_list, instr, eList_vm_instr);
-}
-
-void emit_instr_int32(List* instr_list, eOpcode opcode, int32 int_val)
-{
-  IrInstruction* instr = mem_push_struct(arena, IrInstruction);
-  instr->opcode = opcode;
-  instr->param.kind = eInstrParam_int32;
-  instr->param.int32_val = int_val;
-  append_list_elem(instr_list, instr, eList_vm_instr);
-}
-
-void emit_instr_float32(List* instr_list, eOpcode opcode, float32 float_val)
-{
-  IrInstruction* instr = mem_push_struct(arena, IrInstruction);
-  instr->opcode = opcode;
-  instr->param.kind = eInstrParam_float32;
-  instr->param.float32_val = float_val;
-  append_list_elem(instr_list, instr, eList_vm_instr);
-}
-
-void emit_instr(List* instr_list, eOpcode opcode)
-{
-  IrInstruction* instr = mem_push_struct(arena, IrInstruction);
-  instr->opcode = opcode;
-  instr->param.kind = eInstrParam_None;
-  append_list_elem(instr_list, instr, eList_vm_instr);
-}
-
-void emit_instr_id(List* instr_list, eOpcode opcode, char* id)
-{
-  IrInstruction* instr = mem_push_struct(arena, IrInstruction);
-  instr->opcode = opcode;
-  instr->param.kind = eInstrParam_id;
-  instr->param.id = id;
-  append_list_elem(instr_list, instr, eList_vm_instr);
+  va_end(args);
 }
 
 void make_ir_labels(AstNode* node)
@@ -648,33 +643,26 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
     {
       // Non-local
       assert(link->loc < 0);
-      //emit_instr_reg(instr_list, eOpcode_PUSH_REG, eRegName_FP);
-      IrInstrParam param = {0};
-      param.kind = eInstrParam_reg;
-      param.reg = eRegName_FP;
-      emit_ir_instr(instr_list, eOpcode_PUSH_REG, param);
-      emit_instr_int32(instr_list, eOpcode_PUSH_INT32, link->loc);
-      emit_instr(instr_list, eOpcode_ADD_INT32);
+      emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
+      emit_ir_instr(instr_list, eOpcode_PUSH_INT32, link->loc);
+      emit_ir_instr(instr_list, eOpcode_ADD_INT32);
 
       for(int i = decl_scope_offset; i > 0; i--)
       {
-        emit_instr_int32(instr_list, eOpcode_LOAD, link->size);
+        emit_ir_instr(instr_list, eOpcode_LOAD, link->size);
       }
 
       // The FP is offset relative to the Access Link
-      emit_instr_int32(instr_list, eOpcode_PUSH_INT32, ctrl_area->size + link->size);
-      emit_instr(instr_list, eOpcode_ADD_INT32);
+      emit_ir_instr(instr_list, eOpcode_PUSH_INT32, ctrl_area->size + link->size);
+      emit_ir_instr(instr_list, eOpcode_ADD_INT32);
     }
     else
     {
-      IrInstrParam param = {0};
-      param.kind = eInstrParam_reg;
-      param.reg = eRegName_FP;
-      emit_ir_instr(instr_list, eOpcode_PUSH_REG, param);
+      emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
     }
 
-    emit_instr_int32(instr_list, eOpcode_PUSH_INT32, data->loc);
-    emit_instr(instr_list, eOpcode_ADD_INT32);
+    emit_ir_instr(instr_list, eOpcode_PUSH_INT32, data->loc);
+    emit_ir_instr(instr_list, eOpcode_ADD_INT32);
   }
   else if(node->kind == eAstNode_un_expr)
   {
@@ -700,9 +688,9 @@ void gen_load_lvalue(List* instr_list, AstNode* node)
     {
       gen_load_lvalue(instr_list, left_operand);
       gen_load_rvalue(instr_list, right_operand);
-      emit_instr_int32(instr_list, eOpcode_PUSH_INT32, type->width);
-      emit_instr(instr_list, eOpcode_MUL_INT32);
-      emit_instr(instr_list, eOpcode_ADD_INT32);
+      emit_ir_instr(instr_list, eOpcode_PUSH_INT32, type->width);
+      emit_ir_instr(instr_list, eOpcode_MUL_INT32);
+      emit_ir_instr(instr_list, eOpcode_ADD_INT32);
     }
     else
       assert(0);
@@ -719,7 +707,7 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
   {
     Type* type = ATTR(node, type, eval_type);
     gen_load_lvalue(instr_list, node);
-    emit_instr_int32(instr_list, eOpcode_LOAD, type->width);
+    emit_ir_instr(instr_list, eOpcode_LOAD, type->width);
   }
   else if(node->kind == eAstNode_proc_occur)
   {
@@ -730,19 +718,19 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
     eLiteral kind = ATTR(node, lit_kind, lit_kind);
     if(kind == eLiteral_int_val)
     {
-      emit_instr_int32(instr_list, eOpcode_PUSH_INT32, ATTR(node, int_val, int_val));
+      emit_ir_instr(instr_list, eOpcode_PUSH_INT32, ATTR(node, int_val, int_val));
     }
     else if(kind == eLiteral_bool_val)
     {
-      emit_instr_int32(instr_list, eOpcode_PUSH_INT32, ATTR(node, bool_val, bool_val));
+      emit_ir_instr(instr_list, eOpcode_PUSH_INT32, ATTR(node, bool_val, bool_val));
     }
     else if(kind == eLiteral_float_val)
     {
-      emit_instr_float32(instr_list, eOpcode_PUSH_FLOAT32, ATTR(node, float_val, float_val));
+      emit_ir_instr(instr_list, eOpcode_PUSH_FLOAT32, ATTR(node, float_val, float_val));
     }
     else if(kind == eLiteral_char_val)
     {
-      emit_instr_int8(instr_list, eOpcode_PUSH_INT8, ATTR(node, char_val, char_val));
+      emit_ir_instr(instr_list, eOpcode_PUSH_INT8, ATTR(node, char_val, char_val));
     }
     else
       assert(0);
@@ -755,7 +743,7 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
     if(bin_op == eOperator_index)
     {
       gen_load_lvalue(instr_list, node);
-      emit_instr_int32(instr_list, eOpcode_LOAD, type->width);
+      emit_ir_instr(instr_list, eOpcode_LOAD, type->width);
     }
     else
     {
@@ -782,7 +770,7 @@ void gen_load_rvalue(List* instr_list, AstNode* node)
     else if(un_op == eOperator_deref)
     {
       gen_load_lvalue(instr_list, node);
-      emit_instr_int32(instr_list, eOpcode_LOAD, type->width);
+      emit_ir_instr(instr_list, eOpcode_LOAD, type->width);
     }
     else
     {
@@ -804,12 +792,9 @@ bool build_ir(List* instr_list, AstNode* node)
     Scope* scope = ATTR(body, scope, scope);
     DataArea* local_area = &scope->local_area;
 
-    IrInstrParam param = {0};
-    param.kind = eInstrParam_reg;
-    param.reg = eRegName_FP;
-    emit_ir_instr(instr_list, eOpcode_PUSH_REG, param);
-    emit_instr(instr_list, eOpcode_ENTER);
-    emit_instr_int32(instr_list, eOpcode_GROWNZ, local_area->size);
+    emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
+    emit_ir_instr(instr_list, eOpcode_ENTER);
+    emit_ir_instr(instr_list, eOpcode_GROWNZ, local_area->size);
 
     for(ListItem* list_item = ATTR(body, list, stmts)->first;
         list_item;
@@ -819,8 +804,8 @@ bool build_ir(List* instr_list, AstNode* node)
       build_ir(instr_list, stmt);
     }
 
-    emit_instr(instr_list, eOpcode_LEAVE);
-    emit_instr(instr_list, eOpcode_HALT);
+    emit_ir_instr(instr_list, eOpcode_LEAVE);
+    emit_ir_instr(instr_list, eOpcode_HALT);
 
     for(ListItem* list_item = ATTR(body, list, procs)->first;
         list_item;
@@ -836,8 +821,8 @@ bool build_ir(List* instr_list, AstNode* node)
     Scope* scope = ATTR(node, scope, scope);
     DataArea* local_area = &scope->local_area;
 
-    emit_instr_id(instr_list, eOpcode_LABEL, ATTR(node, str_val, name));
-    emit_instr_int32(instr_list, eOpcode_GROW, local_area->size);
+    emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, name));
+    emit_ir_instr(instr_list, eOpcode_GROW, local_area->size);
 
     AstNode* body = ATTR(node, ast_node, body);
 
@@ -849,7 +834,7 @@ bool build_ir(List* instr_list, AstNode* node)
       build_ir(instr_list, stmt);
     }
 
-    emit_instr(instr_list, eOpcode_RETURN);
+    emit_ir_instr(instr_list, eOpcode_RETURN);
 
     for(ListItem* list_item = ATTR(body, list, procs)->first;
         list_item;
@@ -866,15 +851,12 @@ bool build_ir(List* instr_list, AstNode* node)
     DataArea* local_area = &scope->local_area;
 
     // Setup the Access Link
-    IrInstrParam param = {0};
-    param.kind = eInstrParam_reg;
-    param.reg = eRegName_FP;
-    emit_ir_instr(instr_list, eOpcode_PUSH_REG, param);
-    emit_instr_int32(instr_list, eOpcode_PUSH_INT32, link_area->loc);
-    emit_instr(instr_list, eOpcode_ADD_INT32);
+    emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
+    emit_ir_instr(instr_list, eOpcode_PUSH_INT32, link_area->loc);
+    emit_ir_instr(instr_list, eOpcode_ADD_INT32);
 
-    emit_instr(instr_list, eOpcode_ENTER);
-    emit_instr_int32(instr_list, eOpcode_GROW, local_area->size);
+    emit_ir_instr(instr_list, eOpcode_ENTER);
+    emit_ir_instr(instr_list, eOpcode_GROW, local_area->size);
 
     for(ListItem* list_item = ATTR(node, list, stmts)->first;
         list_item;
@@ -884,8 +866,8 @@ bool build_ir(List* instr_list, AstNode* node)
       build_ir(instr_list, stmt);
     }
 
-    emit_instr(instr_list, eOpcode_LEAVE);
-    emit_instr_int32(instr_list, eOpcode_GROW, -link_area->size);
+    emit_ir_instr(instr_list, eOpcode_LEAVE);
+    emit_ir_instr(instr_list, eOpcode_GROW, -link_area->size);
 
     for(ListItem* list_item = ATTR(node, list, procs)->first;
         list_item;
@@ -906,23 +888,23 @@ bool build_ir(List* instr_list, AstNode* node)
     int depth = ATTR(node, int_val, nesting_depth);
     while(depth-- > 0)
     {
-      emit_instr(instr_list, eOpcode_LEAVE);
+      emit_ir_instr(instr_list, eOpcode_LEAVE);
     }
 
-    emit_instr(instr_list, eOpcode_RETURN);
+    emit_ir_instr(instr_list, eOpcode_RETURN);
   }
   else if(node->kind == eAstNode_stmt)
   {
     AstNode* actual_stmt = ATTR(node, ast_node, stmt);
     Type* type = ATTR(actual_stmt, type, eval_type);
     build_ir(instr_list, actual_stmt);
-    emit_instr_int32(instr_list, eOpcode_GROW, -type->width);
+    emit_ir_instr(instr_list, eOpcode_GROW, -type->width);
   }
   else if(node->kind == eAstNode_while_stmt)
   {
-    emit_instr_id(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_eval));
+    emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_eval));
     gen_load_rvalue(instr_list, ATTR(node, ast_node, cond_expr));
-    emit_instr_id(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_break));
+    emit_ir_instr(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_break));
 
     AstNode* body = ATTR(node, ast_node, body);
     if(body)
@@ -930,8 +912,8 @@ bool build_ir(List* instr_list, AstNode* node)
       build_ir(instr_list, body);
     }
 
-    emit_instr_id(instr_list, eOpcode_GOTO, ATTR(node, str_val, label_eval));
-    emit_instr_id(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_break));
+    emit_ir_instr(instr_list, eOpcode_GOTO, ATTR(node, str_val, label_eval));
+    emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_break));
   }
   else if(node->kind == eAstNode_bin_expr)
   {
@@ -947,7 +929,7 @@ bool build_ir(List* instr_list, AstNode* node)
       gen_load_rvalue(instr_list, right_operand);
       gen_load_lvalue(instr_list, left_operand);
 
-      emit_instr_int32(instr_list, eOpcode_STORE, type->width);
+      emit_ir_instr(instr_list, eOpcode_STORE, type->width);
     }
     else if(bin_op == eOperator_add)
     {
@@ -956,11 +938,11 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
       {
-        emit_instr(instr_list, eOpcode_ADD_INT32);
+        emit_ir_instr(instr_list, eOpcode_ADD_INT32);
       }
       else if(types_are_equal(type, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_ADD_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_ADD_FLOAT32);
       }
       else
         assert(0);
@@ -972,11 +954,11 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
       {
-        emit_instr(instr_list, eOpcode_SUB_INT32);
+        emit_ir_instr(instr_list, eOpcode_SUB_INT32);
       }
       else if(types_are_equal(type, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_SUB_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_SUB_FLOAT32);
       }
       else
         assert(0);
@@ -988,11 +970,11 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
       {
-        emit_instr(instr_list, eOpcode_MUL_INT32);
+        emit_ir_instr(instr_list, eOpcode_MUL_INT32);
       }
       else if(types_are_equal(type, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_MUL_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_MUL_FLOAT32);
       }
       else
         assert(0);
@@ -1004,11 +986,11 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
       {
-        emit_instr(instr_list, eOpcode_DIV_INT32);
+        emit_ir_instr(instr_list, eOpcode_DIV_INT32);
       }
       else if(types_are_equal(type, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_DIV_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_DIV_FLOAT32);
       }
       else
         assert(0);
@@ -1020,7 +1002,7 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
       {
-        emit_instr(instr_list, eOpcode_MOD_INT32);
+        emit_ir_instr(instr_list, eOpcode_MOD_INT32);
       }
       else
         assert(0);
@@ -1034,15 +1016,15 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(left_ty, basic_type_char))
       {
-        emit_instr(instr_list, eOpcode_CMPEQ_INT8);
+        emit_ir_instr(instr_list, eOpcode_CMPEQ_INT8);
       }
       else if(types_are_equal(left_ty, basic_type_int))
       {
-        emit_instr(instr_list, eOpcode_CMPEQ_INT32);
+        emit_ir_instr(instr_list, eOpcode_CMPEQ_INT32);
       }
       else if(types_are_equal(left_ty, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_CMPEQ_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_CMPEQ_FLOAT32);
       }
       else
         assert(0);
@@ -1056,15 +1038,15 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(left_ty, basic_type_char))
       {
-        emit_instr(instr_list, eOpcode_CMPNEQ_INT8);
+        emit_ir_instr(instr_list, eOpcode_CMPNEQ_INT8);
       }
       else if(types_are_equal(left_ty, basic_type_int))
       {
-        emit_instr(instr_list, eOpcode_CMPNEQ_INT32);
+        emit_ir_instr(instr_list, eOpcode_CMPNEQ_INT32);
       }
       else if(types_are_equal(left_ty, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_CMPNEQ_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_CMPNEQ_FLOAT32);
       }
       else
         assert(0);
@@ -1078,15 +1060,15 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(left_ty, basic_type_char))
       {
-        emit_instr(instr_list, eOpcode_CMPLSS_INT8);
+        emit_ir_instr(instr_list, eOpcode_CMPLSS_INT8);
       }
       else if(types_are_equal(left_ty, basic_type_int))
       {
-        emit_instr(instr_list, eOpcode_CMPLSS_INT32);
+        emit_ir_instr(instr_list, eOpcode_CMPLSS_INT32);
       }
       else if(types_are_equal(left_ty, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_CMPLSS_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_CMPLSS_FLOAT32);
       }
       else
         assert(0);
@@ -1100,15 +1082,15 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(left_ty, basic_type_char))
       {
-        emit_instr(instr_list, eOpcode_CMPGRT_INT8);
+        emit_ir_instr(instr_list, eOpcode_CMPGRT_INT8);
       }
       else if(types_are_equal(left_ty, basic_type_int))
       {
-        emit_instr(instr_list, eOpcode_CMPGRT_INT32);
+        emit_ir_instr(instr_list, eOpcode_CMPGRT_INT32);
       }
       else if(types_are_equal(left_ty, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_CMPGRT_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_CMPGRT_FLOAT32);
       }
       else
         assert(0);
@@ -1118,35 +1100,35 @@ bool build_ir(List* instr_list, AstNode* node)
       assert(types_are_equal(left_ty, right_ty));
 
       gen_load_rvalue(instr_list, left_operand);
-      emit_instr(instr_list, eOpcode_DUP);
+      emit_ir_instr(instr_list, eOpcode_DUP);
 
       if(bin_op == eOperator_logic_and)
       {
-        emit_instr_id(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_end));
+        emit_ir_instr(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_end));
       }
       else if(bin_op == eOperator_logic_or)
       {
-        emit_instr_id(instr_list, eOpcode_JUMPNZ, ATTR(node, str_val, label_end));
+        emit_ir_instr(instr_list, eOpcode_JUMPNZ, ATTR(node, str_val, label_end));
       }
       else
         assert(0);
 
-      emit_instr_int32(instr_list, eOpcode_GROW, -type->width);
+      emit_ir_instr(instr_list, eOpcode_GROW, -type->width);
       gen_load_rvalue(instr_list, right_operand);
-      emit_instr(instr_list, eOpcode_DUP);
+      emit_ir_instr(instr_list, eOpcode_DUP);
 
       if(bin_op == eOperator_logic_and)
       {
-        emit_instr_id(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_end));
+        emit_ir_instr(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_end));
       }
       else if(bin_op == eOperator_logic_or)
       {
-        emit_instr_id(instr_list, eOpcode_JUMPNZ, ATTR(node, str_val, label_end));
+        emit_ir_instr(instr_list, eOpcode_JUMPNZ, ATTR(node, str_val, label_end));
       }
       else
         assert(0);
 
-      emit_instr_id(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_end));
+      emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_end));
     }
     else if(bin_op == eOperator_less_eq || bin_op == eOperator_greater_eq)
     {
@@ -1159,15 +1141,15 @@ bool build_ir(List* instr_list, AstNode* node)
       {
         if(types_are_equal(left_ty, basic_type_char))
         {
-          emit_instr(instr_list, eOpcode_CMPLSS_INT8);
+          emit_ir_instr(instr_list, eOpcode_CMPLSS_INT8);
         }
         else if(types_are_equal(left_ty, basic_type_int))
         {
-          emit_instr(instr_list, eOpcode_CMPLSS_INT32);
+          emit_ir_instr(instr_list, eOpcode_CMPLSS_INT32);
         }
         else if(types_are_equal(left_ty, basic_type_float))
         {
-          emit_instr(instr_list, eOpcode_CMPLSS_FLOAT32);
+          emit_ir_instr(instr_list, eOpcode_CMPLSS_FLOAT32);
         }
         else
           assert(0);
@@ -1176,15 +1158,15 @@ bool build_ir(List* instr_list, AstNode* node)
       {
         if(types_are_equal(left_ty, basic_type_char))
         {
-          emit_instr(instr_list, eOpcode_CMPGRT_INT8);
+          emit_ir_instr(instr_list, eOpcode_CMPGRT_INT8);
         }
         else if(types_are_equal(left_ty, basic_type_int))
         {
-          emit_instr(instr_list, eOpcode_CMPGRT_INT32);
+          emit_ir_instr(instr_list, eOpcode_CMPGRT_INT32);
         }
         else if(types_are_equal(left_ty, basic_type_float))
         {
-          emit_instr(instr_list, eOpcode_CMPGRT_FLOAT32);
+          emit_ir_instr(instr_list, eOpcode_CMPGRT_FLOAT32);
         }
         else
           assert(0);
@@ -1192,29 +1174,29 @@ bool build_ir(List* instr_list, AstNode* node)
       else
         assert(0);
 
-      emit_instr(instr_list, eOpcode_DUP);
-      emit_instr_id(instr_list, eOpcode_JUMPNZ, ATTR(node, str_val, label_end));
-      emit_instr_int32(instr_list, eOpcode_GROW, -type->width);
+      emit_ir_instr(instr_list, eOpcode_DUP);
+      emit_ir_instr(instr_list, eOpcode_JUMPNZ, ATTR(node, str_val, label_end));
+      emit_ir_instr(instr_list, eOpcode_GROW, -type->width);
 
       gen_load_rvalue(instr_list, left_operand);
       gen_load_rvalue(instr_list, right_operand);
 
       if(types_are_equal(left_ty, basic_type_char))
       {
-        emit_instr(instr_list, eOpcode_CMPEQ_INT8);
+        emit_ir_instr(instr_list, eOpcode_CMPEQ_INT8);
       }
       else if(types_are_equal(left_ty, basic_type_int))
       {
-        emit_instr(instr_list, eOpcode_CMPEQ_INT32);
+        emit_ir_instr(instr_list, eOpcode_CMPEQ_INT32);
       }
       else if(types_are_equal(left_ty, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_CMPEQ_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_CMPEQ_FLOAT32);
       }
       else
         assert(0);
 
-      emit_instr_id(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_end));
+      emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_end));
     }
     else if(bin_op == eOperator_cast)
     {
@@ -1222,11 +1204,11 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(left_ty, basic_type_int) && types_are_equal(right_ty, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_FLOAT32_TO_INT32);
+        emit_ir_instr(instr_list, eOpcode_FLOAT32_TO_INT32);
       }
       if(types_are_equal(left_ty, basic_type_float) && types_are_equal(right_ty, basic_type_int))
       {
-        emit_instr(instr_list, eOpcode_INT32_TO_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_INT32_TO_FLOAT32);
       }
     }
     else if(bin_op == eOperator_index)
@@ -1252,11 +1234,11 @@ bool build_ir(List* instr_list, AstNode* node)
 
       if(types_are_equal(operand_ty, basic_type_int))
       {
-        emit_instr(instr_list, eOpcode_NEG_INT32);
+        emit_ir_instr(instr_list, eOpcode_NEG_INT32);
       }
       else if(types_are_equal(operand_ty, basic_type_float))
       {
-        emit_instr(instr_list, eOpcode_NEG_FLOAT32);
+        emit_ir_instr(instr_list, eOpcode_NEG_FLOAT32);
       }
       else
         assert(0);
@@ -1264,8 +1246,8 @@ bool build_ir(List* instr_list, AstNode* node)
     else if(un_op == eOperator_logic_not)
     {
       gen_load_rvalue(instr_list, operand);
-      emit_instr_int32(instr_list, eOpcode_PUSH_INT32, 0);
-      emit_instr(instr_list, eOpcode_CMPEQ_INT32);
+      emit_ir_instr(instr_list, eOpcode_PUSH_INT32, 0);
+      emit_ir_instr(instr_list, eOpcode_CMPEQ_INT32);
     }
     else if(un_op == eOperator_deref)
     {
@@ -1282,7 +1264,7 @@ bool build_ir(List* instr_list, AstNode* node)
     DataArea* args_area = &callee_scope->args_area;
     DataArea* link_area = &callee_scope->link_area;
 
-    emit_instr_int32(instr_list, eOpcode_GROW, ret_area->size);
+    emit_ir_instr(instr_list, eOpcode_GROW, ret_area->size);
 
     for(ListItem* list_item = ATTR(node, list, actual_args)->first;
         list_item;
@@ -1298,32 +1280,26 @@ bool build_ir(List* instr_list, AstNode* node)
     int callee_depth_offset = caller_scope->nesting_depth - callee_scope->nesting_depth;
     if(callee_depth_offset < 0)
     {
-      IrInstrParam param = {0};
-      param.kind = eInstrParam_reg;
-      param.reg = eRegName_FP;
-      emit_ir_instr(instr_list, eOpcode_PUSH_REG, param);
-      emit_instr_int32(instr_list, eOpcode_PUSH_INT32, link_area->loc);
-      emit_instr(instr_list, eOpcode_ADD_INT32);
+      emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
+      emit_ir_instr(instr_list, eOpcode_PUSH_INT32, link_area->loc);
+      emit_ir_instr(instr_list, eOpcode_ADD_INT32);
     }
     else
     {
-      IrInstrParam param = {0};
-      param.kind = eInstrParam_reg;
-      param.reg = eRegName_FP;
-      emit_ir_instr(instr_list, eOpcode_PUSH_REG, param);
-      emit_instr_int32(instr_list, eOpcode_PUSH_INT32, link_area->loc);
-      emit_instr(instr_list, eOpcode_ADD_INT32);
+      emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
+      emit_ir_instr(instr_list, eOpcode_PUSH_INT32, link_area->loc);
+      emit_ir_instr(instr_list, eOpcode_ADD_INT32);
 
       for(int i = callee_depth_offset; i >= 0; i--)
       {
-        emit_instr_int32(instr_list, eOpcode_LOAD, link_area->size);
+        emit_ir_instr(instr_list, eOpcode_LOAD, link_area->size);
       }
     }
 
-    emit_instr_id(instr_list, eOpcode_CALL, ATTR(node, str_val, name));
+    emit_ir_instr(instr_list, eOpcode_CALL, ATTR(node, str_val, name));
 
-    emit_instr_int32(instr_list, eOpcode_GROW, -args_area->size);
-    emit_instr_int32(instr_list, eOpcode_GROW, -link_area->size);
+    emit_ir_instr(instr_list, eOpcode_GROW, -args_area->size);
+    emit_ir_instr(instr_list, eOpcode_GROW, -link_area->size);
   }
   else if(node->kind == eAstNode_if_stmt)
   {
@@ -1332,29 +1308,29 @@ bool build_ir(List* instr_list, AstNode* node)
     AstNode* else_body = ATTR(node, ast_node, else_body);
     if(else_body)
     {
-      emit_instr_id(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_else));
+      emit_ir_instr(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_else));
     }
     else
     {
-      emit_instr_id(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_end));
+      emit_ir_instr(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_end));
     }
 
     build_ir(instr_list, ATTR(node, ast_node, body));
-    emit_instr_id(instr_list, eOpcode_GOTO, ATTR(node, str_val, label_end));
+    emit_ir_instr(instr_list, eOpcode_GOTO, ATTR(node, str_val, label_end));
 
     if(else_body)
     {
-      emit_instr_id(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_else));
+      emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_else));
       build_ir(instr_list, else_body);
     }
 
-    emit_instr_id(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_end));
+    emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_end));
   }
   else if(node->kind == eAstNode_while_stmt)
   {
-    emit_instr_id(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_eval));
+    emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_eval));
     gen_load_rvalue(instr_list, ATTR(node, ast_node, cond_expr));
-    emit_instr_id(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_break));
+    emit_ir_instr(instr_list, eOpcode_JUMPZ, ATTR(node, str_val, label_break));
 
     AstNode* body = ATTR(node, ast_node, body);
     if(body)
@@ -1362,8 +1338,8 @@ bool build_ir(List* instr_list, AstNode* node)
       build_ir(instr_list, body);
     }
 
-    emit_instr_id(instr_list, eOpcode_GOTO, ATTR(node, str_val, label_eval));
-    emit_instr_id(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_break));
+    emit_ir_instr(instr_list, eOpcode_GOTO, ATTR(node, str_val, label_eval));
+    emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, label_break));
   }
   else if(node->kind == eAstNode_break_stmt)
   {
@@ -1372,9 +1348,9 @@ bool build_ir(List* instr_list, AstNode* node)
     int depth = ATTR(node, int_val, nesting_depth);
     while(depth-- > 0)
     {
-      emit_instr(instr_list, eOpcode_LEAVE);
+      emit_ir_instr(instr_list, eOpcode_LEAVE);
     }
-    emit_instr_id(instr_list, eOpcode_GOTO, ATTR(loop, str_val, label_break));
+    emit_ir_instr(instr_list, eOpcode_GOTO, ATTR(loop, str_val, label_break));
   }
   else if(node->kind == eAstNode_empty)
   {
@@ -1390,7 +1366,7 @@ bool build_ir(List* instr_list, AstNode* node)
     {
       for(int i = 0; i < ir_program.instr_count; i++)
       {
-        append_list_elem(instr_list, &ir_program.instructions[i], eList_vm_instr);
+        append_list_elem(instr_list, &ir_program.instructions[i], eList_ir_instr);
       }
     }
 #endif

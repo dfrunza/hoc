@@ -845,7 +845,7 @@ typedef enum
   eList_ast_node,
   eList_symbol,
   eList_scope,
-  eList_vm_instr,
+  eList_ir_instr,
   eList_type_pair,
   eList_data_area,
 }

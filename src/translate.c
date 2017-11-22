@@ -1726,7 +1726,7 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
   #include "ir.c"
 #endif
 
-bool translate(char* file_path, char* hoc_text, TargetCode* target_code)
+bool translate(char* file_path, char* hoc_text/*, IrProgram* ir_program*/)
 {
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
@@ -1805,9 +1805,9 @@ bool translate(char* file_path, char* hoc_text, TargetCode* target_code)
   }/*<<<*/
 
 #if 0
-  *target_code = mem_push_struct(arena, TargetCode);
-  (*target_code)->instr_list = new_list(arena, eList_vm_instr);
-  gen_target_code(*target_code, symbol_table->scopes, module);
+  *ir_program = mem_push_struct(arena, IrProgram);
+  (*ir_program)->instr_list = new_list(arena, eList_vm_instr);
+  gen_ir_program(*ir_program, symbol_table->scopes, module);
   if(DEBUG_enabled)/*>>>*/
   {
     h_printf("--- Codegen ---\n");
@@ -1822,20 +1822,59 @@ bool translate(char* file_path, char* hoc_text, TargetCode* target_code)
   }/*<<<*/
   gen_labels(module);
 
-  str_init(&target_code->text, push_arena(&arena, TARGET_CODE_ARENA_SIZE));
-  printf_line(&target_code->text, ".686");
-  printf_line(&target_code->text, ".MODEL flat");
-  printf_line(&target_code->text, ".STACK 1024");
-  printf_line(&target_code->text, "ExitProcess PROTO NEAR32 stdcall, dwExitCode:DWORD");
-  printf_line(&target_code->text, ".DATA");
-  printf_line(&target_code->text, ".CODE");
-  printf_line(&target_code->text, "_start:");
-  if(!gen_code(&target_code->text, module))
+  str_init(&ir_program->text, push_arena(&arena, ir_program_ARENA_SIZE));
+  printf_line(&ir_program->text, ".686");
+  printf_line(&ir_program->text, ".MODEL flat");
+  printf_line(&ir_program->text, ".STACK 1024");
+  printf_line(&ir_program->text, "ExitProcess PROTO NEAR32 stdcall, dwExitCode:DWORD");
+  printf_line(&ir_program->text, ".DATA");
+  printf_line(&ir_program->text, ".CODE");
+  printf_line(&ir_program->text, "_start:");
+  if(!gen_code(&ir_program->text, module))
   {
     return false;
   }
-  printf_line(&target_code->text, "END _start");
+  printf_line(&ir_program->text, "END _start");
 #endif
+  {
+    build_runtime(symbol_table->scopes);
+    make_ir_labels(module);
+
+    /*TODO
+    if(!build_ir(ir_program->instr_list, module))
+    {
+      return false;
+    }
+    */
+    AstNode* body = ATTR(module, ast_node, body);
+    Scope* scope = ATTR(body, scope, scope);
+
+    int data_size = 0;
+    for(ListItem* list_item = scope->pre_fp_areas->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      data_size += ITEM(list_item, data_area)->size;
+    }
+
+    int fp = data_size;
+    DataArea* ctrl_area = &scope->ctrl_area;
+    DataArea* link_area = &scope->link_area;
+    //ir_program->sp = fp - ctrl_area->size - link_area->size;
+
+    for(ListItem* list_item = scope->post_fp_areas->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      data_size += ITEM(list_item, data_area)->size;
+    }
+
+    //ir_program->data = mem_push_array(arena, uint8, data_size);
+    //ir_program->data_size = data_size;
+
+    //copy_program_data(ir_program, fp, scope->pre_fp_areas);
+    //copy_program_data(ir_program, fp, scope->post_fp_areas);
+  }
   return true;
 }
 

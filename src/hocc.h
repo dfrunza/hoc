@@ -760,23 +760,14 @@ typedef enum
 }
 eOpcode;
 
+#if 0
 typedef struct
 {
   int source_line_nr;
   char* string;
 }
-InstructionLine;
-
-typedef enum
-{
-  eParamType_None,
-  eParamType_int32,
-  eParamType_int8,
-  eParamType_float32,
-  eParamType_str,
-  eParamType_reg,
-}
-eParamType;
+IrInstructionLine;
+#endif
 
 typedef enum
 {
@@ -787,22 +778,39 @@ typedef enum
 }
 eRegName;
 
+typedef enum
+{
+  eInstrParam_None,
+  eInstrParam_int8,
+  eInstrParam_int32,
+  eInstrParam_float32,
+  eInstrParam_id,
+  eInstrParam_reg,
+}
+eIrInstrParam;
+
+typedef struct
+{
+  eIrInstrParam kind;
+
+  union
+  {
+    int8 int8_val;
+    int32 int32_val;
+    float32 float32_val;
+    eRegName reg;
+    char* id;
+  };
+}
+IrInstrParam;
+
 typedef struct
 {
   eOpcode opcode;
-  eParamType param_type;
-
-  union {
-    int8 char_val; //todo
-    int32 int_val;
-    float32 float_val;
-    eRegName reg;
-    char* str;
-  } param;
-
+  IrInstrParam param;
   int source_line_nr;
 }
-Instruction;
+IrInstruction;
 
 typedef struct
 {
@@ -819,17 +827,17 @@ BinImage;
 
 typedef struct
 {
-  String text;
+//  String text;
 
   List* instr_list;
-  Instruction* instructions;
+//  IrInstruction* instructions;
   int instr_count;
 
   uint8* data;
   int data_size;
   int32 sp;
 }
-TargetCode;
+IrProgram;
 
 typedef enum
 {
@@ -855,7 +863,7 @@ typedef struct ListItem
     AstNode* ast_node;
     Symbol* symbol;
     Scope* scope;
-    Instruction* instr;
+    IrInstruction* instr;
     TypePair* type_pair;
     DataArea* data_area;
   };

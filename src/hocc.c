@@ -71,10 +71,10 @@ char* make_vm_exe_path(char* hocc_exe_path)
 }
 
 #if 0
-bool write_hasm_file(OutFileNames* out_files, TargetCode* target_code)
+bool write_hasm_file(OutFileNames* out_files, IrProgram* ir_program)
 {
-  int bytes_written = file_write_bytes(out_files->h_asm.name, (uint8*)target_code->text, target_code->text_len);
-  bool success = (bytes_written == target_code->text_len);
+  int bytes_written = file_write_bytes(out_files->h_asm.name, (uint8*)ir_program->text, ir_program->text_len);
+  bool success = (bytes_written == ir_program->text_len);
   if(!success)
   {
     error("not all bytes were written to file `%s`", out_files->h_asm.name);
@@ -87,94 +87,80 @@ int main(int argc, char* argv[])
 {
   bool success = true;
 
-  if(success = (argc >= 2))
+  if(argc < 2)
   {
-    arena = new_arena(ARENA_SIZE);
+    return success = error("missing argument : input source file");
+  }
+  char* src_file_path = argv[1];
+  arena = new_arena(ARENA_SIZE);
 
-    char* src_file_path = argv[1];
+  char* hoc_text = file_read_text(arena, src_file_path);
+  if(DEBUG_enabled)/*>>>*/
+  {
+    printf("--- Read HoC text ---\n");
+    DEBUG_print_arena_usage(arena, "arena");
+  }/*<<<*/
 
-    char* hoc_text = file_read_text(arena, src_file_path);
+  if(hoc_text == 0)
+  {
+    return success = error("could not read source file `%s`", src_file_path);
+  }
+  //IrProgram ir_program = {0};
+  if(!translate(src_file_path, hoc_text/*, &ir_program*/))
+  {
+    return success = error("program could not be translated");
+  }
+#if 0
+  OutFileNames out_files = {0};
+  if(success = make_out_file_names(&out_files, src_file_path))
+  {
     if(DEBUG_enabled)/*>>>*/
     {
-      printf("--- Read HoC text ---\n");
-      DEBUG_print_arena_usage(arena, "arena");
+      write_hasm_file(&out_files, ir_program);
     }/*<<<*/
 
-    if(success = (hoc_text != 0))
+    if(success = convert_hasm_to_instructions(ir_program))
     {
-      TargetCode target_code = {0};
-      if(success = translate(src_file_path, hoc_text, &target_code))
+      char* hocc_exe_path = argv[0];
+      char* vm_exe_path = make_vm_exe_path(hocc_exe_path);
+
+      uint8* vm_bytes = 0;
+      int vm_size = 0;
+      if(vm_size = file_read_bytes(arena, &vm_bytes, vm_exe_path))
       {
-        OutFileNames out_files = {0};
-        if(!make_out_file_names(&out_files, src_file_path))
-          return success = false;
-
-        int text_len = str_len(&target_code.text);
-        int bytes_written = file_write_bytes(out_files.h_asm.name, (uint8*)target_code.text.head, text_len);
-        if(bytes_written != text_len)
+        FILE* exe_file = fopen(out_files.exe.name, "wb");
+        if(exe_file)
         {
-          return success = error("not all bytes were written to file `%s`", out_files.h_asm.name);
-        }
-#if 0
-        OutFileNames out_files = {0};
-        if(success = make_out_file_names(&out_files, src_file_path))
-        {
-          if(DEBUG_enabled)/*>>>*/
+          BinImage* bin_image = mem_push_struct(arena, BinImage);
+          cstr_copy(bin_image->sig, BINIMAGE_SIGNATURE);
+
+          bin_image->code_offset = sizeof(BinImage);
+          bin_image->code_size = sizeof(Instruction) * ir_program->instr_count;
+
+          bin_image->data_offset = bin_image->code_offset + bin_image->code_size;
+          bin_image->data_size = sizeof(uint8) * ir_program->data_size;
+          bin_image->sp = ir_program->sp;
+
+          if((int)fwrite(vm_bytes, 1, vm_size, exe_file) == vm_size
+            && (int)fwrite(bin_image, sizeof(BinImage), 1, exe_file) == 1
+            && (int)fwrite(ir_program->instructions, sizeof(Instruction), ir_program->instr_count, exe_file) == ir_program->instr_count
+            && (int)fwrite(ir_program->data, sizeof(uint8), ir_program->data_size, exe_file) == ir_program->data_size)
           {
-            write_hasm_file(&out_files, target_code);
-          }/*<<<*/
-
-          if(success = convert_hasm_to_instructions(target_code))
-          {
-            char* hocc_exe_path = argv[0];
-            char* vm_exe_path = make_vm_exe_path(hocc_exe_path);
-
-            uint8* vm_bytes = 0;
-            int vm_size = 0;
-            if(vm_size = file_read_bytes(arena, &vm_bytes, vm_exe_path))
-            {
-              FILE* exe_file = fopen(out_files.exe.name, "wb");
-              if(exe_file)
-              {
-                BinImage* bin_image = mem_push_struct(arena, BinImage);
-                cstr_copy(bin_image->sig, BINIMAGE_SIGNATURE);
-
-                bin_image->code_offset = sizeof(BinImage);
-                bin_image->code_size = sizeof(Instruction) * target_code->instr_count;
-
-                bin_image->data_offset = bin_image->code_offset + bin_image->code_size;
-                bin_image->data_size = sizeof(uint8) * target_code->data_size;
-                bin_image->sp = target_code->sp;
-
-                if((int)fwrite(vm_bytes, 1, vm_size, exe_file) == vm_size
-                  && (int)fwrite(bin_image, sizeof(BinImage), 1, exe_file) == 1
-                  && (int)fwrite(target_code->instructions, sizeof(Instruction), target_code->instr_count, exe_file) == target_code->instr_count
-                  && (int)fwrite(target_code->data, sizeof(uint8), target_code->data_size, exe_file) == target_code->data_size)
-                {
-                  ;/*OK*/
-                }
-                else
-                  success = error("could not write to file `%s`", out_files.exe.name);
-
-                fclose(exe_file);
-              }
-              else
-                success = error("could not write to file `%s`", out_files.exe.name);
-            }
-            else
-              success = error("could not read file `%s`", vm_exe_path);
+            ;/*OK*/
           }
+          else
+            success = error("could not write to file `%s`", out_files.exe.name);
+
+          fclose(exe_file);
         }
-#endif
+        else
+          success = error("could not write to file `%s`", out_files.exe.name);
       }
       else
-        success = error("program could not be translated");
+        success = error("could not read file `%s`", vm_exe_path);
     }
-    else
-      success = error("could not read source file `%s`", src_file_path);
   }
-  else
-    success = error("missing argument : input source file");
+#endif
 
 #if 0
   getc(stdin);

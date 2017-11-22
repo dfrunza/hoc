@@ -1720,8 +1720,10 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
 #if 0
   #include "codegen.c"
   #include "asm.c"
-#else
+#elif 0
   #include "codegen_x86.c"
+#else
+  #include "ir.c"
 #endif
 
 bool translate(char* file_path, char* hoc_text, TargetCode* target_code)
@@ -1811,7 +1813,7 @@ bool translate(char* file_path, char* hoc_text, TargetCode* target_code)
     h_printf("--- Codegen ---\n");
     DEBUG_print_arena_usage(arena, "arena");
   }/*<<<*/
-#else
+#elif 0
   build_runtime(symbol_table->scopes);
   if(DEBUG_enabled)/*>>>*/
   {
@@ -1834,16 +1836,6 @@ bool translate(char* file_path, char* hoc_text, TargetCode* target_code)
   }
   printf_line(&target_code->text, "END _start");
 #endif
-
-#if 0
-  print_code(*target_code);
-  if(DEBUG_enabled)/*>>>*/
-  {
-    h_printf("--- Print code ---\n");
-    DEBUG_print_arena_usage(arena, "arena");
-  }/*<<<*/
-#endif
   return true;
 }
-
 

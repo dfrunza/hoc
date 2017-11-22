@@ -14,16 +14,17 @@ rem /Wall         - display all warnings
 
 set C_flags=/Od /W4 /nologo /MTd /Zo /Zi /Gm- /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
                   /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306
-set L_flags=-incremental:no -opt:ref -subsystem:console
+set L_flags=/incremental:no /opt:ref /subsystem:console
 
 if not exist .\bin mkdir .\bin
 pushd .\bin
 
 set hoc_file=test
 set hoc_src_dir=%cd%\..\hoc
+set src_dir=%cd%\..\src
 
 ..\ctime.exe ^
-cl %C_flags% ..\hocc.c /link %L_flags%
+cl %C_flags% %src_dir%\hocc.c /link %L_flags%
 if %errorlevel% neq 0 goto :end
 
 rem ..\ctime.exe ^
@@ -35,8 +36,11 @@ echo  Compiling: %hoc_file%.hoc
 hocc %hoc_src_dir%\%hoc_file%.hoc > debug.txt
 if %errorlevel% neq 0 goto :hocc_error
 
-ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
-/link /nologo /subsystem:console /entry:start kernel32.lib
+rem /Cx     - preserve case in publics, externs
+rem /Zi     - add symbolic debug info
+rem /Fl     - generate listing
+rem ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
+rem /link /nologo /subsystem:console /entry:start kernel32.lib
 
 rem cl %C_flags% ..\fp3.c /link %L_flags%
 
@@ -49,8 +53,9 @@ goto :end
 :end
 popd
 
-cloc.exe hocc.h hocc.c lib.c platform.h platform.c translate.c lex.c syntax.c semantic.c type.c runtime.c ^
-  codegen_x86.c
+cloc.exe %src_dir%\hocc.h %src_dir%\hocc.c %src_dir%\lib.c %src_dir%\platform.h %src_dir%\platform.c %src_dir%\translate.c ^
+  %src_dir%\lex.c %src_dir%\syntax.c %src_dir%\semantic.c %src_dir%\type.c %src_dir%\runtime.c %src_dir%\ir.c
 rem  codegen.c asm.c vm.c
+rem  codegen_x86.c
 
 

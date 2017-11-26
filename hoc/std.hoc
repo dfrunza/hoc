@@ -1,5 +1,6 @@
 proc void* new(int size)
 {
+  /* FIXME
   asm
   {
     push_reg fp
@@ -16,10 +17,13 @@ proc void* new(int size)
 
     grow -4 ; pop the local
   }
+  */
+  return (type void*)0;
 }
 
 proc void putc(char c)
 {
+  /* FIXME
   asm
   {
     push_reg fp
@@ -29,4 +33,5 @@ proc void putc(char c)
 
     putc ; print the char and pop the local
   }
+  */
 }

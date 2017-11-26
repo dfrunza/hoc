@@ -67,68 +67,91 @@ bool types_are_equal(Type* type_a, Type* type_b)
 
   if((type_a->kind != eType_typevar) && (type_b->kind == type_a->kind))
   {
-    if(type_a->kind == eType_basic)
+    switch(type_a->kind)
     {
-      are_equal = (type_a->basic.kind == type_b->basic.kind);
+      case eType_basic:
+        are_equal = (type_a->basic.kind == type_b->basic.kind);
+        break;
+
+      case eType_proc:
+        are_equal = types_are_equal(type_a->proc.args, type_b->proc.args)
+          && types_are_equal(type_a->proc.ret, type_b->proc.ret);
+        break;
+
+      case eType_pointer:
+        are_equal = types_are_equal(type_a->pointer.pointee, type_b->pointer.pointee);
+        break;
+
+      case eType_product:
+        are_equal = types_are_equal(type_a->product.left, type_b->product.right);
+        break;
+
+      case eType_array:
+        are_equal = types_are_equal(type_a->array.elem, type_b->array.elem);
+        break;
+
+      default:
+        assert(0);
     }
-    else if(type_a->kind == eType_proc)
-    {
-      are_equal = types_are_equal(type_a->proc.args, type_b->proc.args)
-        && types_are_equal(type_a->proc.ret, type_b->proc.ret);
-    }
-    else if(type_a->kind == eType_pointer)
-    {
-      are_equal = types_are_equal(type_a->pointer.pointee, type_b->pointer.pointee);
-    }
-    else if(type_a->kind == eType_product)
-    {
-      are_equal = types_are_equal(type_a->product.left, type_b->product.right);
-    }
-    else if(type_a->kind == eType_array)
-    {
-      are_equal = types_are_equal(type_a->array.elem, type_b->array.elem);
-    }
-    else
-      assert(0);
   }
   return are_equal;
 }
 
 int compute_type_width(Type* type)
 {
-  if(type->kind == eType_array)
+  switch(type->kind)
   {
-    type->width = type->array.size * compute_type_width(type->array.elem);
-  }
-  else if(type->kind == eType_product)
-  {
-    type->width = compute_type_width(type->product.left) + compute_type_width(type->product.right);
-  }
-  else if(type->kind == eType_proc)
-  {
-    type->width = compute_type_width(type->proc.ret) + compute_type_width(type->proc.args);
-  }
-  else if(type->kind == eType_basic)
-  {
-    if(type->basic.kind == eBasicType_int
-       || type->basic.kind == eBasicType_float
-       || type->basic.kind == eBasicType_bool)
-    {
-      type->width = 4;
-    }
-    else if(type->basic.kind == eBasicType_char)
-      type->width = 1;
-    else if(type->basic.kind == eBasicType_void)
-      type->width = 0;
-    else
+    case eType_array:
+      {
+        type->width = type->array.size * compute_type_width(type->array.elem);
+      }
+      break;
+
+    case eType_product:
+      {
+        type->width = compute_type_width(type->product.left) + compute_type_width(type->product.right);
+      }
+      break;
+
+    case eType_proc:
+      {
+        type->width = compute_type_width(type->proc.ret) + compute_type_width(type->proc.args);
+      }
+      break;
+
+    case eType_basic:
+      {
+        switch(type->basic.kind)
+        {
+          case eBasicType_int:
+          case eBasicType_float:
+          case eBasicType_bool:
+            type->width = 4;
+            break;
+
+          case eBasicType_char:
+            type->width = 1;
+            break;
+
+          case eBasicType_void:
+            type->width = 0;
+            break;
+
+          default:
+            assert(0);
+        }
+      }
+      break;
+
+    case eType_pointer:
+      {
+        type->width = 4;
+      }
+      break;
+
+    default:
       assert(0);
   }
-  else if(type->kind == eType_pointer)
-  {
-    type->width = 4;
-  }
-  else
-    assert(0);
   return type->width;
 }
 
@@ -194,27 +217,30 @@ bool type_unif(Type* type_a, Type* type_b)
         set_union(repr_type_a, repr_type_b);
         assert(repr_type_a->kind == repr_type_b->kind);
 
-        if(repr_type_a->kind == eType_proc)
+        switch(repr_type_a->kind)
         {
-          success = type_unif(repr_type_a->proc.args, repr_type_b->proc.args)
-            && type_unif(repr_type_a->proc.ret, repr_type_b->proc.ret);
+          case eType_proc:
+            success = type_unif(repr_type_a->proc.args, repr_type_b->proc.args)
+              && type_unif(repr_type_a->proc.ret, repr_type_b->proc.ret);
+            break;
+
+          case eType_product:
+            success = type_unif(repr_type_a->product.left, repr_type_b->product.left)
+              && type_unif(repr_type_a->product.right, repr_type_b->product.right);
+            break;
+
+          case eType_pointer:
+            success = type_unif(repr_type_a->pointer.pointee, repr_type_b->pointer.pointee);
+            break;
+
+          case eType_array:
+            success = (repr_type_a->array.size == repr_type_b->array.size)
+              && type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
+            break;
+
+          default:
+            assert(0);
         }
-        else if(repr_type_a->kind == eType_product)
-        {
-          success = type_unif(repr_type_a->product.left, repr_type_b->product.left)
-            && type_unif(repr_type_a->product.right, repr_type_b->product.right);
-        }
-        else if(repr_type_a->kind == eType_pointer)
-        {
-          success = type_unif(repr_type_a->pointer.pointee, repr_type_b->pointer.pointee);
-        }
-        else if(repr_type_a->kind == eType_array)
-        {
-          success = (repr_type_a->array.size == repr_type_b->array.size)
-            && type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
-        }
-        else
-          assert(0);
       }
     }
   }
@@ -264,30 +290,33 @@ Type* type_subst(List* subst_list, Type* type)
     pair = new_type_pair(type, subst);
     append_list_elem(subst_list, pair, eList_type_pair);
 
-    if(subst->kind == eType_typevar)
+    switch(subst->kind)
     {
-      subst->typevar.id = typevar_id++;
+      case eType_typevar:
+        subst->typevar.id = typevar_id++;
+        break;
+
+      case eType_proc:
+        subst->proc.args = type_subst(subst_list, subst->proc.args);
+        subst->proc.ret = type_subst(subst_list, subst->proc.ret);
+        break;
+
+      case eType_product:
+        subst->product.left = type_subst(subst_list, subst->product.left);
+        subst->product.right = type_subst(subst_list, subst->product.right);
+        break;
+
+      case eType_pointer:
+        subst->pointer.pointee = type_subst(subst_list, subst->pointer.pointee);
+        break;
+
+      case eType_array:
+        subst->array.elem = type_subst(subst_list, subst->array.elem);
+        break;
+
+      default:
+        assert(0);
     }
-    else if(subst->kind == eType_proc)
-    {
-      subst->proc.args = type_subst(subst_list, subst->proc.args);
-      subst->proc.ret = type_subst(subst_list, subst->proc.ret);
-    }
-    else if(subst->kind == eType_product)
-    {
-      subst->product.left = type_subst(subst_list, subst->product.left);
-      subst->product.right = type_subst(subst_list, subst->product.right);
-    }
-    else if(subst->kind == eType_pointer)
-    {
-      subst->pointer.pointee = type_subst(subst_list, subst->pointer.pointee);
-    }
-    else if(subst->kind == eType_array)
-    {
-      subst->array.elem = type_subst(subst_list, subst->array.elem);
-    }
-    else
-      assert(0);
   }
   return subst;
 }
@@ -296,44 +325,45 @@ bool resolve_type(Type* type, Type** resolved_type)
 {
   bool success = true;
 
-  if(type->kind == eType_typevar)
+  switch(type->kind)
   {
-    type = get_type_repr(type);
-    if(type->kind == eType_typevar)
-    {
-      success = false;
-    }
+    case eType_typevar:
+      type = get_type_repr(type);
+      if(type->kind == eType_typevar)
+      {
+        success = false;
+      }
+      break;
+
+    case eType_basic:
+      break; // ok
+
+    case eType_proc:
+      success = resolve_type(type->proc.args, &type->proc.args)
+        && resolve_type(type->proc.ret, &type->proc.ret);
+      break;
+
+    case eType_product:
+      success = resolve_type(type->product.left, &type->product.left)
+        && resolve_type(type->product.right, &type->product.right);
+      break;
+
+    case eType_pointer:
+      success = resolve_type(type->pointer.pointee, &type->pointer.pointee);
+      break;
+      
+    case eType_array:
+      success = resolve_type(type->array.elem, &type->array.elem);
+      break;
+
+    default:
+      assert(0);
   }
-  else if(type->kind == eType_basic)
-  {
-    ; // ok
-  }
-  else if(type->kind == eType_proc)
-  {
-    success = resolve_type(type->proc.args, &type->proc.args)
-      && resolve_type(type->proc.ret, &type->proc.ret);
-  }
-  else if(type->kind == eType_product)
-  {
-    success = resolve_type(type->product.left, &type->product.left)
-      && resolve_type(type->product.right, &type->product.right);
-  }
-  else if(type->kind == eType_pointer)
-  {
-    success = resolve_type(type->pointer.pointee, &type->pointer.pointee);
-  }
-  else if(type->kind == eType_array)
-  {
-    success = resolve_type(type->array.elem, &type->array.elem);
-  }
-  else
-    assert(0);
 
   if(success)
   {
     *resolved_type = type;
   }
-
   return success;
 }
 

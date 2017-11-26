@@ -333,13 +333,6 @@ int str_len(String* str)
 }
 
 #if 0
-void str_stdout(String* str)
-{
-  fputs(str->head, stdout);
-}
-#endif
-
-#if 0
 String* str_new(MemoryArena* arena)
 {
   String* str = mem_push_struct(arena, String);
@@ -385,6 +378,23 @@ void str_printf(String* str, char* fmessage, ...)
   va_end(varargs);
 }
 
+int str_printfln(String* text, char* fline, ...)
+{
+  int text_len = 0;
+  static char strbuf[128] = {0};
+  va_list args;
+
+  va_start(args, fline);
+  text_len = h_vsprintf(strbuf, fline, args);
+  va_end(args);
+
+  str_append(text, strbuf);
+  str_append(text, "\n");
+  text_len++;
+
+  return text_len;
+}
+
 void str_tidyup(String* str)
 {
   assert(str->head <= str->end);
@@ -392,7 +402,9 @@ void str_tidyup(String* str)
   {
     char* p_end = str->end - 1;
     while(p_end >= str->head && *p_end)
+    {
       p_end--;
+    }
     str->end = p_end;
     MemoryArena* arena = str->arena;
     arena->free = (uint8*)str->end+1;

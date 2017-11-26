@@ -1717,16 +1717,9 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
 #include "type.c"
 #include "semantic.c"
 #include "runtime.c"
-#if 0
-  #include "codegen.c"
-  #include "asm.c"
-#elif 0
-  #include "codegen_x86.c"
-#else
-  #include "ir.c"
-#endif
+#include "x86.c"
 
-bool translate(char* file_path, char* hoc_text/*, IrProgram* ir_program*/)
+bool translate(char* file_path, char* hoc_text, String* x86_text)
 {
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
@@ -1804,48 +1797,24 @@ bool translate(char* file_path, char* hoc_text/*, IrProgram* ir_program*/)
     DEBUG_print_arena_usage(arena, "arena");
   }/*<<<*/
 
-#if 0
-  *ir_program = mem_push_struct(arena, IrProgram);
-  (*ir_program)->instr_list = new_list(arena, eList_vm_instr);
-  gen_ir_program(*ir_program, symbol_table->scopes, module);
-  if(DEBUG_enabled)/*>>>*/
-  {
-    h_printf("--- Codegen ---\n");
-    DEBUG_print_arena_usage(arena, "arena");
-  }/*<<<*/
-#elif 0
-  build_runtime(symbol_table->scopes);
-  if(DEBUG_enabled)/*>>>*/
-  {
-    h_printf("--- Runtime ---\n");
-    DEBUG_print_arena_usage(arena, "arena");
-  }/*<<<*/
-  gen_labels(module);
-
-  str_init(&ir_program->text, push_arena(&arena, ir_program_ARENA_SIZE));
-  printf_line(&ir_program->text, ".686");
-  printf_line(&ir_program->text, ".MODEL flat");
-  printf_line(&ir_program->text, ".STACK 1024");
-  printf_line(&ir_program->text, "ExitProcess PROTO NEAR32 stdcall, dwExitCode:DWORD");
-  printf_line(&ir_program->text, ".DATA");
-  printf_line(&ir_program->text, ".CODE");
-  printf_line(&ir_program->text, "_start:");
-  if(!gen_code(&ir_program->text, module))
-  {
-    return false;
-  }
-  printf_line(&ir_program->text, "END _start");
-#endif
   {
     build_runtime(symbol_table->scopes);
-    make_ir_labels(module);
+    make_x86_labels(module);
 
-    IrProgram ir_program = {0};
-    ir_program.instr_list = new_list(arena, eList_ir_instr);
-    if(!gen_ir(ir_program.instr_list, module))
+    str_init(x86_text, push_arena(&arena, X86_CODE_ARENA_SIZE));
+    str_printfln(x86_text, ".686");
+    str_printfln(x86_text, ".MODEL flat");
+    str_printfln(x86_text, ".STACK 1024");
+    str_printfln(x86_text, ".CODE");
+    str_printfln(x86_text, "_start:");
+    str_printfln(x86_text, "finit ; FPU");
+    if(!gen_x86(x86_text, module))
     {
       return false;
     }
+    str_printfln(x86_text, "END _start");
+
+#if 0
     AstNode* body = ATTR(module, ast_node, body);
     Scope* scope = ATTR(body, scope, scope);
 
@@ -1874,6 +1843,7 @@ bool translate(char* file_path, char* hoc_text/*, IrProgram* ir_program*/)
 
     //copy_program_data(ir_program, fp, scope->pre_fp_areas);
     //copy_program_data(ir_program, fp, scope->post_fp_areas);
+#endif
   }
   return true;
 }

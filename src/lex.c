@@ -39,16 +39,6 @@ Token* lookup_keyword(Token* list, char* lexeme)
   return result;
 }
 
-bool is_keyword_token(eToken kind)
-{
-  return (kind >= eToken_if) && (kind <= eToken_false);
-}
-
-bool is_literal_token(eToken kind)
-{
-  return (kind >= eToken_int_num) && (kind <= eToken_char);
-}
-
 char* install_lexeme(char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
@@ -156,119 +146,170 @@ char* get_token_printstr(Token* token)
   static char char_print_buf[3] = {0};
   char* result = 0;
 
-  if(token->kind == eToken_dot)
-    result = ".";
-  else if(token->kind == eToken_arrow_right)
-    result = "->";
-  else if(token->kind == eToken_open_bracket)
-    result = "[";
-  else if(token->kind == eToken_close_bracket)
-    result = "]";
-  else if(token->kind == eToken_open_parens)
-    result = "(";
-  else if(token->kind == eToken_close_parens)
-    result = ")";
-  else if(token->kind == eToken_open_brace)
-    result = "{";
-  else if(token->kind == eToken_close_brace)
-    result = "}";
-  else if(token->kind == eToken_semicolon)
-    result = ";";
-  else if(token->kind == eToken_colon)
-    result = ":";
-  else if(token->kind == eToken_comma)
-    result = ",";
-  else if(token->kind == eToken_percent)
-    result = "%";
-  else if(token->kind == eToken_star)
-    result = "*";
-  else if(token->kind == eToken_fwd_slash)
-    result = "/";
-  else if(token->kind == eToken_back_slash)
-    result = "\\";
-  else if(token->kind == eToken_plus)
-    result = "+";
-  else if(token->kind == eToken_plus_plus)
-    result = "++";
-  else if(token->kind == eToken_minus)
-    result = "-";
-  else if(token->kind == eToken_minus_minus)
-    result = "--";
-  else if(token->kind == eToken_exclam)
-    result = "!";
-  else if(token->kind == eToken_exclam_eq)
-    result = "!=";
-  else if(token->kind == eToken_eq)
-    result = "=";
-  else if(token->kind == eToken_eq_eq)
-    result = "==";
-  else if(token->kind == eToken_angle_right)
-    result = ">";
-  else if(token->kind == eToken_angle_right_eq)
-    result = ">=";
-  else if(token->kind == eToken_angle_left)
-    result = "<";
-  else if(token->kind == eToken_angle_left_eq)
-    result = "<=";
-  else if(token->kind == eToken_ampersand)
-    result = "&";
-  else if(token->kind == eToken_ampersand_ampersand)
-    result = "&&";
-  else if(token->kind == eToken_pipe)
-    result = "|";
-  else if(token->kind == eToken_pipe_pipe)
-    result = "||";
-  else if(token->kind == eToken_end_of_input)
-    result = "end-of-input";
-  else if(token->kind == eToken_var)
-    result = "var";
-  else if(token->kind == eToken_if)
-    result = "if";
-  else if(token->kind == eToken_else)
-    result = "else";
-  else if(token->kind == eToken_while)
-    result = "while";
-  else if(token->kind == eToken_for)
-    result = "for";
-  else if(token->kind == eToken_proc)
-    result = "proc";
-  else if(token->kind == eToken_struct)
-    result = "struct";
-  else if(token->kind == eToken_union)
-    result = "union";
-  else if(token->kind == eToken_return)
-    result = "return";
-  else if(token->kind == eToken_break)
-    result = "break";
-  else if(token->kind == eToken_continue)
-    result = "continue";
-  else if(token->kind == eToken_include)
-    result = "include";
-  else if(token->kind == eToken_enum)
-    result = "enum";
-  else if(token->kind == eToken_type)
-    result = "type";
-  else if(token->kind == eToken_goto)
-    result = "goto";
-  else if(token->kind == eToken_true)
-    result = "true";
-  else if(token->kind == eToken_false)
-    result = "false";
-  else if(token->kind == eToken_id ||
-          token->kind == eToken_int_num ||
-          token->kind == eToken_float_num)
+  switch(token->kind)
   {
-    result = token->lexeme;
+    case eToken_dot:
+      result = ".";
+      break;
+    case eToken_arrow_right:
+      result = "->";
+      break;
+    case eToken_open_bracket:
+      result = "[";
+      break;
+    case eToken_close_bracket:
+      result = "]";
+      break;
+    case eToken_open_parens:
+      result = "(";
+      break;
+    case eToken_close_parens:
+      result = ")";
+      break;
+    case eToken_open_brace:
+      result = "{";
+      break;
+    case eToken_close_brace:
+      result = "}";
+      break;
+    case eToken_semicolon:
+      result = ";";
+      break;
+    case eToken_colon:
+      result = ":";
+      break;
+    case eToken_comma:
+      result = ",";
+      break;
+    case eToken_percent:
+      result = "%";
+      break;
+    case eToken_star:
+      result = "*";
+      break;
+    case eToken_fwd_slash:
+      result = "/";
+      break;
+    case eToken_back_slash:
+      result = "\\";
+      break;
+    case eToken_plus:
+      result = "+";
+      break;
+    case eToken_plus_plus:
+      result = "++";
+      break;
+    case eToken_minus:
+      result = "-";
+      break;
+    case eToken_minus_minus:
+      result = "--";
+      break;
+    case eToken_exclam:
+      result = "!";
+      break;
+    case eToken_exclam_eq:
+      result = "!=";
+      break;
+    case eToken_eq:
+      result = "=";
+      break;
+    case eToken_eq_eq:
+      result = "==";
+      break;
+    case eToken_angle_right:
+      result = ">";
+      break;
+    case eToken_angle_right_eq:
+      result = ">=";
+      break;
+    case eToken_angle_left:
+      result = "<";
+      break;
+    case eToken_angle_left_eq:
+      result = "<=";
+      break;
+    case eToken_ampersand:
+      result = "&";
+      break;
+    case eToken_ampersand_ampersand:
+      result = "&&";
+      break;
+    case eToken_pipe:
+      result = "|";
+      break;
+    case eToken_pipe_pipe:
+      result = "||";
+      break;
+    case eToken_end_of_input:
+      result = "end-of-input";
+      break;
+    case eToken_var:
+      result = "var";
+      break;
+    case eToken_if:
+      result = "if";
+      break;
+    case eToken_else:
+      result = "else";
+      break;
+    case eToken_while:
+      result = "while";
+      break;
+    case eToken_for:
+      result = "for";
+      break;
+    case eToken_proc:
+      result = "proc";
+      break;
+    case eToken_struct:
+      result = "struct";
+      break;
+    case eToken_union:
+      result = "union";
+      break;
+    case eToken_return:
+      result = "return";
+      break;
+    case eToken_break:
+      result = "break";
+      break;
+    case eToken_continue:
+      result = "continue";
+      break;
+    case eToken_include:
+      result = "include";
+      break;
+    case eToken_enum:
+      result = "enum";
+      break;
+    case eToken_type:
+      result = "type";
+      break;
+    case eToken_goto:
+      result = "goto";
+      break;
+    case eToken_true:
+      result = "true";
+      break;
+    case eToken_false:
+      result = "false";
+      break;
+    case eToken_id:
+    case eToken_int_num:
+    case eToken_float_num:
+      result = token->lexeme;
+      break;
+    case eToken_string:
+      result = token->str_val; // TODO: Substitute non-printable chars
+      break;
+    case eToken_char:
+    case eToken_unknown_char:
+      print_char(result = char_print_buf, token->char_val);
+      break;
+    default:
+      result = "???";
   }
-  else if(token->kind == eToken_string)
-    result = token->str_val; // TODO: Substitute non-printable chars
-  else if(token->kind == eToken_char || token->kind == eToken_unknown_char)
-  {
-    print_char(result = char_print_buf, token->char_val);
-  }
-  else
-    result = "???";
-
   return result;
 }
 

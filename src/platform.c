@@ -1,3 +1,5 @@
+#undef UNICODE
+#undef _UNICODE
 #include <stdio.h>
 #define VC_EXTRALEAN
 #define WIN32_LEAN_AND_MEAN

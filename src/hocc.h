@@ -1,6 +1,6 @@
 #define ARENA_SIZE (3*MEGABYTE)
 #define SYMBOL_ARENA_SIZE (ARENA_SIZE / 8)
-#define TARGET_CODE_ARENA_SIZE (ARENA_SIZE / 4)
+#define X86_CODE_ARENA_SIZE (ARENA_SIZE / 4)
 #define BINIMAGE_SIGNATURE "HC"
 
 typedef unsigned char uchar;
@@ -24,7 +24,6 @@ typedef double float64;
 #define false (bool)0
 #define true  (bool)1
 #define inline __inline
-#define internal static
 
 typedef struct String String;
 
@@ -376,7 +375,7 @@ typedef struct Scope
   DataArea args_area;
   DataArea link_area;
   DataArea ctrl_area;
-  DataArea local_area;
+  DataArea locals_area;
 }
 Scope;
 
@@ -757,17 +756,10 @@ typedef enum
 
   eOpcode_FLOAT32_TO_INT32,
   eOpcode_INT32_TO_FLOAT32,
+
+  eOpcode_ACLINK,
 }
 eOpcode;
-
-#if 0
-typedef struct
-{
-  int source_line_nr;
-  char* string;
-}
-IrInstructionLine;
-#endif
 
 typedef enum
 {
@@ -780,12 +772,12 @@ eRegName;
 
 typedef enum
 {
-  eInstrParam_None,
-  eInstrParam_int8,
-  eInstrParam_int32,
-  eInstrParam_float32,
-  eInstrParam_id,
-  eInstrParam_reg,
+  eIrInstrParam_None,
+  eIrInstrParam_int8,
+  eIrInstrParam_int32,
+  eIrInstrParam_float32,
+  eIrInstrParam_id,
+  eIrInstrParam_reg,
 }
 eIrInstrParam;
 
@@ -863,7 +855,7 @@ typedef struct ListItem
     AstNode* ast_node;
     Symbol* symbol;
     Scope* scope;
-    IrInstruction* instr;
+    IrInstruction* ir_instr;
     TypePair* type_pair;
     DataArea* data_area;
   };

@@ -20,7 +20,7 @@ if not exist .\bin mkdir .\bin
 pushd .\bin
 
 set hoc_file=test
-set hoc_src_dir=%cd%\..\hoc
+set hoc_dir=%cd%\..\hoc
 set src_dir=%cd%\..\src
 
 ..\ctime.exe ^
@@ -33,14 +33,14 @@ rem if %errorlevel% neq 0 goto :end
 
 rem NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
 echo  Compiling: %hoc_file%.hoc
-hocc %hoc_src_dir%\%hoc_file%.hoc > debug.txt
+hocc %hoc_dir%\%hoc_file%.hoc > debug.txt
 if %errorlevel% neq 0 goto :hocc_error
 
 rem /Cx     - preserve case in publics, externs
 rem /Zi     - add symbolic debug info
 rem /Fl     - generate listing
-rem ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
-rem /link /nologo /subsystem:console /entry:start kernel32.lib
+ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
+/link /nologo /subsystem:console /incremental:no /entry:start kernel32.lib
 
 rem cl %C_flags% ..\fp3.c /link %L_flags%
 
@@ -54,8 +54,6 @@ goto :end
 popd
 
 cloc.exe %src_dir%\hocc.h %src_dir%\hocc.c %src_dir%\lib.c %src_dir%\platform.h %src_dir%\platform.c %src_dir%\translate.c ^
-  %src_dir%\lex.c %src_dir%\syntax.c %src_dir%\semantic.c %src_dir%\type.c %src_dir%\runtime.c %src_dir%\ir.c
-rem  codegen.c asm.c vm.c
-rem  codegen_x86.c
+  %src_dir%\lex.c %src_dir%\syntax.c %src_dir%\semantic.c %src_dir%\type.c %src_dir%\runtime.c %src_dir%\x86.c
 
 

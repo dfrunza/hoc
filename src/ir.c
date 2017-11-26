@@ -1,4 +1,3 @@
-//bool convert_hasm_to_instructions(IrProgram* ir_program);
 void gen_ir_load_rvalue(List* instr_list, AstNode* node);
 bool gen_ir(List* instr_list, AstNode* node);
 
@@ -6,445 +5,6 @@ bool is_valid_label(char *label)
 {
   char start_char = *label;
   return ('A' <= start_char && start_char <= 'Z') || ('a' <= start_char && start_char <= 'z') || start_char == '.';
-}
-
-#if 0
-bool build_instructions(SourceProgram* source, IrProgram* ir_program)
-{
-  ir_program->instr_count = source->line_count;
-  ir_program->instructions = mem_push_array_nz(arena, IrInstruction, ir_program->instr_count);
-
-  for(int instr_address = 0; instr_address < ir_program->instr_count; instr_address++)
-  {
-    IrInstruction instr = {0};
-    IrInstructionLine* instr_line = &source->lines[instr_address];
-    instr.source_line_nr = instr_line->source_line_nr;
-
-    char* components[2] = {0};
-    int component_count = instr_to_components(instr_line->string, components, sizeof_array(components));
-    if(component_count >= 1 && component_count <= sizeof_array(components))
-    {
-      char* mnemonic = components[0];
-
-      if(cstr_match(mnemonic, "pop_reg"))
-      {
-        instr.opcode = eOpcode_POP_REG;
-      }
-      else if(cstr_match(mnemonic, "push_int8"))
-      {
-        instr.opcode = eOpcode_PUSH_INT8;
-      }
-      else if(cstr_match(mnemonic, "push_int32"))
-      {
-        instr.opcode = eOpcode_PUSH_INT32;
-      }
-      else if(cstr_match(mnemonic, "push_float32"))
-      {
-        instr.opcode = eOpcode_PUSH_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "push_reg"))
-      {
-        instr.opcode = eOpcode_PUSH_REG;
-      }
-      else if(cstr_match(mnemonic, "store"))
-      {
-        instr.opcode = eOpcode_STORE;
-      }
-      else if(cstr_match(mnemonic, "load"))
-      {
-        instr.opcode = eOpcode_LOAD;
-      }
-      else if(cstr_match(mnemonic, "grow"))
-      {
-        instr.opcode = eOpcode_GROW;
-      }
-      else if(cstr_match(mnemonic, "grownz"))
-      {
-        instr.opcode = eOpcode_GROWNZ;
-      }
-      else if(cstr_match(mnemonic, "new"))
-      {
-        instr.opcode = eOpcode_NEW;
-      }
-      else if(cstr_match(mnemonic, "add_int32"))
-      {
-        instr.opcode = eOpcode_ADD_INT32;
-      }
-      else if(cstr_match(mnemonic, "sub_int32"))
-      {
-        instr.opcode = eOpcode_SUB_INT32;
-      }
-      else if(cstr_match(mnemonic, "mul_int32"))
-      {
-        instr.opcode = eOpcode_MUL_INT32;
-      }
-      else if(cstr_match(mnemonic, "div_int32"))
-      {
-        instr.opcode = eOpcode_DIV_INT32;
-      }
-      else if(cstr_match(mnemonic, "mod_int32"))
-      {
-        instr.opcode = eOpcode_MOD_INT32;
-      }
-      else if(cstr_match(mnemonic, "add_float32"))
-      {
-        instr.opcode = eOpcode_ADD_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "sub_float32"))
-      {
-        instr.opcode = eOpcode_SUB_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "mul_float32"))
-      {
-        instr.opcode = eOpcode_MUL_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "div_float32"))
-      {
-        instr.opcode = eOpcode_DIV_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "neg_float32"))
-      {
-        instr.opcode = eOpcode_NEG_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "incr_int32"))
-      {
-        instr.opcode = eOpcode_INCR_INT32;
-      }
-      else if(cstr_match(mnemonic, "decr_int32"))
-      {
-        instr.opcode = eOpcode_DECR_INT32;
-      }
-      else if(cstr_match(mnemonic, "halt"))
-      {
-        instr.opcode = eOpcode_HALT;
-      }
-      else if(cstr_match(mnemonic, "putc"))
-      {
-        instr.opcode = eOpcode_PUTC;
-      }
-      else if(cstr_match(mnemonic, "dup"))
-      {
-        instr.opcode = eOpcode_DUP;
-      }
-      else if(cstr_match(mnemonic, "goto"))
-      {
-        instr.opcode = eOpcode_GOTO;
-      }
-      else if(cstr_match(mnemonic, "jumpnz"))
-      {
-        instr.opcode = eOpcode_JUMPNZ;
-      }
-      else if(cstr_match(mnemonic, "jumpz"))
-      {
-        instr.opcode = eOpcode_JUMPZ;
-      }
-      else if(cstr_match(mnemonic, "cmpeq_int8"))
-      {
-        instr.opcode = eOpcode_CMPEQ_INT8;
-      }
-      else if(cstr_match(mnemonic, "cmpneq_int8"))
-      {
-        instr.opcode = eOpcode_CMPNEQ_INT8;
-      }
-      else if(cstr_match(mnemonic, "cmplss_int8"))
-      {
-        instr.opcode = eOpcode_CMPLSS_INT8;
-      }
-      else if(cstr_match(mnemonic, "cmpgrt_int8"))
-      {
-        instr.opcode = eOpcode_CMPGRT_INT8;
-      }
-      else if(cstr_match(mnemonic, "cmpeq_int32"))
-      {
-        instr.opcode = eOpcode_CMPEQ_INT32;
-      }
-      else if(cstr_match(mnemonic, "cmpneq_int32"))
-      {
-        instr.opcode = eOpcode_CMPNEQ_INT32;
-      }
-      else if(cstr_match(mnemonic, "cmplss_int32"))
-      {
-        instr.opcode = eOpcode_CMPLSS_INT32;
-      }
-      else if(cstr_match(mnemonic, "cmpgrt_int32"))
-      {
-        instr.opcode = eOpcode_CMPGRT_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "cmpeq_float32"))
-      {
-        instr.opcode = eOpcode_CMPEQ_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "cmpneq_float32"))
-      {
-        instr.opcode = eOpcode_CMPNEQ_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "cmplss_float32"))
-      {
-        instr.opcode = eOpcode_CMPLSS_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "cmpgrt_float32"))
-      {
-        instr.opcode = eOpcode_CMPGRT_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "and"))
-      {
-        instr.opcode = eOpcode_AND;
-      }
-      else if(cstr_match(mnemonic, "or"))
-      {
-        instr.opcode = eOpcode_OR;
-      }
-      else if(cstr_match(mnemonic, "not"))
-      {
-        instr.opcode = eOpcode_NOT;
-      }
-      else if(cstr_match(mnemonic, "neg_int32"))
-      {
-        instr.opcode = eOpcode_NEG_INT32;
-      }
-      else if(cstr_match(mnemonic, "neg_float32"))
-      {
-        instr.opcode = eOpcode_NEG_FLOAT32;
-      }
-      else if(cstr_match(mnemonic, "label"))
-      {
-        instr.opcode = eOpcode_LABEL;
-      }
-      else if(cstr_match(mnemonic, "noop"))
-      {
-        instr.opcode = eOpcode_NOOP;
-      }
-      else if(cstr_match(mnemonic, "call"))
-      {
-        instr.opcode = eOpcode_CALL;
-      }
-      else if(cstr_match(mnemonic, "return"))
-      {
-        instr.opcode = eOpcode_RETURN;
-      }
-      else if(cstr_match(mnemonic, "enter"))
-      {
-        instr.opcode = eOpcode_ENTER;
-      }
-      else if(cstr_match(mnemonic, "leave"))
-      {
-        instr.opcode = eOpcode_LEAVE;
-      }
-      else if(cstr_match(mnemonic, "float32_to_int32"))
-      {
-        instr.opcode = eOpcode_FLOAT32_TO_INT32;
-      }
-      else if(cstr_match(mnemonic, "int32_to_float32"))
-      {
-        instr.opcode = eOpcode_INT32_TO_FLOAT32;
-      }
-      else
-      {
-        error("invalid instruction: %s", mnemonic);
-        return false;
-      }
-
-      if(component_count == 2)
-      {
-        switch(instr.opcode)
-        {
-          case eOpcode_GOTO:
-          case eOpcode_JUMPNZ:
-          case eOpcode_JUMPZ:
-          case eOpcode_CALL:
-          {
-            if(is_valid_label(components[1]))
-            {
-              instr.param_kind = eInstrParam_id;
-              instr.param.str = components[1];
-            }
-            else
-            {
-              error("label must begin with a letter : %s", components[1]);
-              return false;
-            }
-          } break;
-
-          case eOpcode_PUSH_INT8:
-          {
-            if(cstr_to_int(components[1], &instr.param.int_val))
-            {
-              instr.param_kind = eInstrParam_int8;
-            }
-            else
-            {
-              error("not an integer number `%s`", components[1]);
-              return false;
-            }
-          } break;
-
-          case eOpcode_PUSH_INT32:
-          case eOpcode_STORE:
-          case eOpcode_LOAD:
-          case eOpcode_GROW:
-          case eOpcode_GROWNZ:
-          {
-            if(cstr_to_int(components[1], &instr.param.int_val))
-            {
-              instr.param_kind = eInstrParam_int32;
-            }
-            else
-            {
-              error("not an integer number `%s`", components[1]);
-              return false;
-            }
-          } break;
-
-          case eOpcode_PUSH_FLOAT32:
-          {
-            if(cstr_to_float(components[1], &instr.param.float_val))
-            {
-              instr.param_kind = eInstrParam_float32;
-            }
-            else
-            {
-              error("not a float number `%s`", components[1]);
-              return false;
-            }
-          } break;
-
-          case eOpcode_PUSH_REG:
-          case eOpcode_POP_REG:
-          {
-            instr.param_kind = eInstrParam_reg;
-            char* reg = components[1];
-
-            if(cstr_match(reg, "sp"))
-              instr.param.reg = eRegName_SP;
-            else if(cstr_match(reg, "fp"))
-              instr.param.reg = eRegName_FP;
-            else if(cstr_match(reg, "ip"))
-              instr.param.reg = eRegName_IP;
-            else
-            {
-              error("invalid register '%s'", components[1]);
-              return false;
-            }
-          } break;
-
-          case eOpcode_NEW:
-          {
-            if(cstr_to_int(components[1], &instr.param.int_val))
-              instr.param_kind = eInstrParam_int32;
-            else
-            {
-              error("not an integer number '%s'", components[1]);
-              return false;
-            }
-          } break;
-
-          case eOpcode_LABEL:
-          {
-            if(is_valid_label(components[1]))
-            {
-              instr.param_kind = eInstrParam_id;
-              instr.param.str = components[1];
-
-              Label label = {0};
-              label.string = components[1];
-              label.instr_address = instr_address;
-
-              if(!find_label(source, label.string))
-                source->labels[source->labesl_count++] = label;
-              else
-              {
-                error("duplicate label declaration '%s'", label.string);
-                return false;
-              }
-            }
-            else
-            {
-              error("label '%s' does not begin with a letter", components[1]);
-              return false;
-            }
-          } break;
-
-          default:
-            error("incorrect number of parameters to instruction '%s'", mnemonic);
-            return false;
-        }
-      }
-
-      ir_program->instructions[instr_address] = instr;
-    }
-    else
-    {
-      error("illegal number of instruction components");
-      return false;
-    }
-  }
-
-  for(int labelIndex = 0; labelIndex < source->labesl_count; labelIndex++)
-  {
-    Label* label = &source->labels[labelIndex];
-    int target_instr_address = label->instr_address+1;
-    for(; target_instr_address < ir_program->instr_count; target_instr_address++)
-    {
-      IrInstruction* instr = &ir_program->instructions[target_instr_address];
-      if(instr->opcode != eOpcode_LABEL)
-        break;
-    }
-    if(target_instr_address < ir_program->instr_count)
-    {
-      IrInstruction* label_instr = &ir_program->instructions[label->instr_address];
-      label_instr->param_kind = eInstrParam_int32;
-      label_instr->param.int_val = target_instr_address;
-      label->instr_address = target_instr_address;
-    }
-    else
-    {
-      error("could not find a non-label instruction following the label %s", label->string);
-      return false;
-    }
-  }
-
-  for(int instr_address = 0; instr_address < ir_program->instr_count; instr_address++)
-  {
-    IrInstruction* instr = &ir_program->instructions[instr_address];
-    if(instr->opcode == eOpcode_GOTO ||
-       instr->opcode == eOpcode_JUMPNZ ||
-       instr->opcode == eOpcode_JUMPZ ||
-       instr->opcode == eOpcode_CALL)
-    {
-      assert(instr->param_kind == eInstrParam_id);
-      Label* label = find_label(source, instr->param.str);
-      if(label)
-      {
-        instr->param_kind = eInstrParam_int32;
-        instr->param.int_val = label->instr_address;
-      }
-      else
-      {
-        error("label '%s' not found", instr->param.str);
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-#endif
-
-int print_instruction(String* text, char* instr_list, ...)
-{
-  int text_len = 0;
-  static char strbuf[128] = {0};
-  va_list args;
-
-  va_start(args, instr_list);
-  text_len = h_vsprintf(strbuf, instr_list, args);
-  va_end(args);
-
-  str_append(text, strbuf);
-  str_append(text, "\n");
-  text_len++;
-
-  return text_len;
 }
 
 void emit_ir_instr(List* instr_list, eOpcode opcode, ...)
@@ -456,52 +16,83 @@ void emit_ir_instr(List* instr_list, eOpcode opcode, ...)
   append_list_elem(instr_list, instr, eList_ir_instr);
   instr->opcode = opcode;
   IrInstrParam* param = &instr->param;
-  if(opcode == eOpcode_PUSH_REG)
+  switch(opcode)
   {
-    param->kind = eInstrParam_reg;
-    param->reg = va_arg(args, eRegName);
+    case eOpcode_PUSH_REG:
+      {
+        param->kind = eIrInstrParam_reg;
+        param->reg = va_arg(args, eRegName);
+      }
+      break;
+    case eOpcode_PUSH_INT8:
+      {
+        param->kind = eIrInstrParam_int8;
+        param->int8_val = (int8)va_arg(args, int);
+      }
+      break;
+    case eOpcode_PUSH_INT32:
+    case eOpcode_GROW:
+    case eOpcode_LOAD:
+    case eOpcode_STORE:
+    case eOpcode_ACLINK:
+      {
+        param->kind = eIrInstrParam_int32;
+        param->int32_val = (int32)va_arg(args, int);
+      }
+      break;
+    case eOpcode_PUSH_FLOAT32:
+      {
+        param->kind = eIrInstrParam_float32;
+        param->float32_val = (float32)va_arg(args, double);
+      }
+      break;
+    case eOpcode_LABEL:
+    case eOpcode_CALL:
+    case eOpcode_JUMPZ:
+    case eOpcode_JUMPNZ:
+    case eOpcode_GOTO:
+      {
+        param->kind = eIrInstrParam_id;
+        param->id = va_arg(args, char*);
+      }
+      break;
+    case eOpcode_ADD_INT32:
+    case eOpcode_MUL_INT32:
+    case eOpcode_SUB_INT32:
+    case eOpcode_DIV_INT32:
+    case eOpcode_MOD_INT32:
+    case eOpcode_ADD_FLOAT32:
+    case eOpcode_MUL_FLOAT32:
+    case eOpcode_SUB_FLOAT32:
+    case eOpcode_DIV_FLOAT32:
+    case eOpcode_ENTER:
+    case eOpcode_LEAVE:
+    case eOpcode_HALT:
+    case eOpcode_RETURN:
+    case eOpcode_CMPEQ_INT8:
+    case eOpcode_CMPEQ_INT32:
+    case eOpcode_CMPEQ_FLOAT32:
+    case eOpcode_CMPNEQ_INT8:
+    case eOpcode_CMPNEQ_INT32:
+    case eOpcode_CMPNEQ_FLOAT32:
+    case eOpcode_CMPGRT_INT8:
+    case eOpcode_CMPGRT_INT32:
+    case eOpcode_CMPGRT_FLOAT32:
+    case eOpcode_CMPLSS_INT8:
+    case eOpcode_CMPLSS_INT32:
+    case eOpcode_CMPLSS_FLOAT32:
+    case eOpcode_DUP:
+    case eOpcode_INT32_TO_FLOAT32:
+    case eOpcode_FLOAT32_TO_INT32:
+    case eOpcode_NEG_INT32:
+    case eOpcode_NEG_FLOAT32:
+      {
+        ; //skip
+      }
+      break;
+    default:
+      assert(0);
   }
-  else if(opcode == eOpcode_PUSH_INT8)
-  {
-    param->kind = eInstrParam_int8;
-    param->int8_val = va_arg(args, int8);
-  }
-  else if(opcode == eOpcode_PUSH_INT32 || opcode == eOpcode_GROW || opcode == eOpcode_GROWNZ
-      || opcode == eOpcode_LOAD || opcode == eOpcode_STORE)
-  {
-    param->kind = eInstrParam_int32;
-    param->int32_val = va_arg(args, int32);
-  }
-  else if(opcode == eOpcode_PUSH_FLOAT32)
-  {
-    param->kind = eInstrParam_float32;
-    param->float32_val = va_arg(args, float32);
-  }
-  else if(opcode == eOpcode_LABEL || opcode == eOpcode_CALL
-      || opcode == eOpcode_JUMPZ || opcode == eOpcode_JUMPNZ
-      || opcode == eOpcode_GOTO)
-  {
-    param->kind = eInstrParam_id;
-    param->id = va_arg(args, char*);
-  }
-  else if(opcode == eOpcode_ADD_INT32 || opcode == eOpcode_MUL_INT32
-      || opcode == eOpcode_SUB_INT32 || opcode == eOpcode_DIV_INT32 || opcode == eOpcode_MOD_INT32
-      || opcode == eOpcode_ADD_FLOAT32 || opcode == eOpcode_MUL_FLOAT32
-      || opcode == eOpcode_SUB_FLOAT32 || opcode == eOpcode_DIV_FLOAT32
-      || opcode == eOpcode_ENTER || opcode == eOpcode_LEAVE || opcode == eOpcode_HALT
-      || opcode == eOpcode_RETURN
-      || opcode == eOpcode_CMPEQ_INT8 || opcode == eOpcode_CMPEQ_INT32 || opcode == eOpcode_CMPEQ_FLOAT32
-      || opcode == eOpcode_CMPNEQ_INT8 || opcode == eOpcode_CMPNEQ_INT32 || opcode == eOpcode_CMPNEQ_FLOAT32
-      || opcode == eOpcode_CMPGRT_INT8 || opcode == eOpcode_CMPGRT_INT32 || opcode == eOpcode_CMPGRT_FLOAT32
-      || opcode == eOpcode_CMPLSS_INT8 || opcode == eOpcode_CMPLSS_INT32 || opcode == eOpcode_CMPLSS_FLOAT32
-      || opcode == eOpcode_DUP || opcode == eOpcode_INT32_TO_FLOAT32 || opcode == eOpcode_FLOAT32_TO_INT32
-      || opcode == eOpcode_NEG_INT32 || opcode == eOpcode_NEG_FLOAT32)
-  {
-    ; //skip
-  }
-  else
-    assert(0);
-
   va_end(args);
 }
 
@@ -643,6 +234,8 @@ void gen_ir_load_lvalue(List* instr_list, AstNode* node)
     {
       // Non-local
       assert(link->loc < 0);
+      emit_ir_instr(instr_list, eOpcode_ACLINK, decl_scope_offset);
+#if 0
       emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
       emit_ir_instr(instr_list, eOpcode_PUSH_INT32, link->loc);
       emit_ir_instr(instr_list, eOpcode_ADD_INT32);
@@ -651,6 +244,7 @@ void gen_ir_load_lvalue(List* instr_list, AstNode* node)
       {
         emit_ir_instr(instr_list, eOpcode_LOAD, link->size);
       }
+#endif
 
       // The FP is offset relative to the Access Link
       emit_ir_instr(instr_list, eOpcode_PUSH_INT32, ctrl_area->size + link->size);
@@ -790,11 +384,13 @@ bool gen_ir(List* instr_list, AstNode* node)
   {
     AstNode* body = ATTR(node, ast_node, body);
     Scope* scope = ATTR(body, scope, scope);
-    DataArea* local_area = &scope->local_area;
+    DataArea* locals_area = &scope->locals_area;
 
     emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
+
+    emit_ir_instr(instr_list, eOpcode_GROW, 4); // dummy IP
     emit_ir_instr(instr_list, eOpcode_ENTER);
-    emit_ir_instr(instr_list, eOpcode_GROWNZ, local_area->size);
+    emit_ir_instr(instr_list, eOpcode_GROW, locals_area->size);
 
     for(ListItem* list_item = ATTR(body, list, stmts)->first;
         list_item;
@@ -805,6 +401,7 @@ bool gen_ir(List* instr_list, AstNode* node)
     }
 
     emit_ir_instr(instr_list, eOpcode_LEAVE);
+    emit_ir_instr(instr_list, eOpcode_GROW, -4); // dummy IP
     emit_ir_instr(instr_list, eOpcode_HALT);
 
     for(ListItem* list_item = ATTR(body, list, procs)->first;
@@ -819,13 +416,13 @@ bool gen_ir(List* instr_list, AstNode* node)
   else if(node->kind == eAstNode_proc_decl)
   {
     Scope* scope = ATTR(node, scope, scope);
-    DataArea* local_area = &scope->local_area;
+    DataArea* locals_area = &scope->locals_area;
 
     emit_ir_instr(instr_list, eOpcode_LABEL, ATTR(node, str_val, name));
-    emit_ir_instr(instr_list, eOpcode_GROW, local_area->size);
+    emit_ir_instr(instr_list, eOpcode_ENTER);
+    emit_ir_instr(instr_list, eOpcode_GROW, locals_area->size);
 
     AstNode* body = ATTR(node, ast_node, body);
-
     for(ListItem* list_item = ATTR(body, list, stmts)->first;
         list_item;
         list_item = list_item->next)
@@ -834,6 +431,7 @@ bool gen_ir(List* instr_list, AstNode* node)
       gen_ir(instr_list, stmt);
     }
 
+    emit_ir_instr(instr_list, eOpcode_LEAVE);
     emit_ir_instr(instr_list, eOpcode_RETURN);
 
     for(ListItem* list_item = ATTR(body, list, procs)->first;
@@ -848,15 +446,16 @@ bool gen_ir(List* instr_list, AstNode* node)
   {
     Scope* scope = ATTR(node, scope, scope);
     DataArea* link_area = &scope->link_area;
-    DataArea* local_area = &scope->local_area;
+    DataArea* locals_area = &scope->locals_area;
 
     // Setup the Access Link
     emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
     emit_ir_instr(instr_list, eOpcode_PUSH_INT32, link_area->loc);
     emit_ir_instr(instr_list, eOpcode_ADD_INT32);
 
+    emit_ir_instr(instr_list, eOpcode_GROW, 4); // dummy IP
     emit_ir_instr(instr_list, eOpcode_ENTER);
-    emit_ir_instr(instr_list, eOpcode_GROW, local_area->size);
+    emit_ir_instr(instr_list, eOpcode_GROW, locals_area->size);
 
     for(ListItem* list_item = ATTR(node, list, stmts)->first;
         list_item;
@@ -867,6 +466,7 @@ bool gen_ir(List* instr_list, AstNode* node)
     }
 
     emit_ir_instr(instr_list, eOpcode_LEAVE);
+    emit_ir_instr(instr_list, eOpcode_GROW, -4); // dummy IP
     emit_ir_instr(instr_list, eOpcode_GROW, -link_area->size);
 
     for(ListItem* list_item = ATTR(node, list, procs)->first;
@@ -1280,12 +880,17 @@ bool gen_ir(List* instr_list, AstNode* node)
     int callee_depth_offset = caller_scope->nesting_depth - callee_scope->nesting_depth;
     if(callee_depth_offset < 0)
     {
+      emit_ir_instr(instr_list, eOpcode_ACLINK, 0);
+#if 0
       emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
       emit_ir_instr(instr_list, eOpcode_PUSH_INT32, link_area->loc);
       emit_ir_instr(instr_list, eOpcode_ADD_INT32);
+#endif
     }
     else
     {
+      emit_ir_instr(instr_list, eOpcode_ACLINK, 1 + callee_depth_offset);
+#if 0
       emit_ir_instr(instr_list, eOpcode_PUSH_REG, eRegName_FP);
       emit_ir_instr(instr_list, eOpcode_PUSH_INT32, link_area->loc);
       emit_ir_instr(instr_list, eOpcode_ADD_INT32);
@@ -1294,6 +899,7 @@ bool gen_ir(List* instr_list, AstNode* node)
       {
         emit_ir_instr(instr_list, eOpcode_LOAD, link_area->size);
       }
+#endif
     }
 
     emit_ir_instr(instr_list, eOpcode_CALL, ATTR(node, str_val, name));
@@ -1401,24 +1007,6 @@ void copy_program_data(IrProgram* ir_program, int fp, List* areas_list)
       }
     }
   }
-}
-
-char* get_regname_str(eRegName reg)
-{
-  static char* reg_fp = "fp";
-  static char* reg_sp = "sp";
-  static char* reg_ip = "ip";
-  char* regname = 0;
-
-  if(reg == eRegName_FP)
-    regname = reg_fp;
-  else if(reg == eRegName_SP)
-    regname = reg_sp;
-  else if(reg == eRegName_IP)
-    regname = reg_ip;
-  else
-    assert(0);
-  return regname;
 }
 
 

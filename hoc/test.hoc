@@ -1,7 +1,7 @@
+/*
 include "std.hoc";
 include "str.hoc";
 include "math.hoc";
-/*
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
@@ -39,17 +39,49 @@ proc void test()
 */
 
 /* FIXME
-   var [4]void data;
- */
+var [4]void data;
+*/
 
 /*
-   proc void printf(char* s, ..args)
-   { }
- */
+proc void printf(char* s, ...)
+{
+}
+*/
 
-var int a = 123;
+/*
+proc int strlen(char* str)
+{
+  var int len = 0;
+  while(*str != '\0')
+  {
+    str = str + (type char*)1;
+    len = len + 1;
+  }
+  return len;
+}
+*/
+
 proc void main()
 {
+  var char* cmd = GetCommandLine();
+}
+
+asm
+{
+GetStdHandle PROTO NEAR32 stdcall, std_handle:DWORD
+GetCommandLineA PROTO NEAR32 stdcall
+}
+
+proc char* GetCommandLine()
+{
+  asm
+  {
+INVOKE GetCommandLineA
+push ebp
+add dword ptr [esp], 12
+pop edi
+mov [edi], eax
+  }
 }
 
 main();

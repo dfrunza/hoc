@@ -71,7 +71,7 @@ char* make_vm_exe_path(char* hocc_exe_path)
 }
 
 #if 0
-bool write_hasm_file(OutFileNames* out_files, IrProgram* ir_program)
+bool write_asm_file(OutFileNames* out_files, IrProgram* ir_program)
 {
   int bytes_written = file_write_bytes(out_files->h_asm.name, (uint8*)ir_program->text, ir_program->text_len);
   bool success = (bytes_written == ir_program->text_len);
@@ -89,7 +89,8 @@ int main(int argc, char* argv[])
 
   if(argc < 2)
   {
-    return success = error("missing argument : input source file");
+    success = error("missing argument : input source file");
+    goto end;
   }
   char* src_file_path = argv[1];
   arena = new_arena(ARENA_SIZE);
@@ -103,13 +104,29 @@ int main(int argc, char* argv[])
 
   if(hoc_text == 0)
   {
-    return success = error("could not read source file `%s`", src_file_path);
+    success = error("could not read source file `%s`", src_file_path);
+    goto end;
   }
-  //IrProgram ir_program = {0};
-  if(!translate(src_file_path, hoc_text/*, &ir_program*/))
+  String x86_text = {0};
+  if(!translate(src_file_path, hoc_text, &x86_text))
   {
-    return success = error("program could not be translated");
+    success = error("program could not be translated");
+    goto end;
   }
+  OutFileNames out_files = {0};
+  if(!make_out_file_names(&out_files, src_file_path))
+  {
+    success = false;
+    goto end;
+  }
+  int x86_text_len = str_len(&x86_text);
+  int bytes_written = file_write_bytes(out_files.h_asm.name, (uint8*)x86_text.head, x86_text_len);
+  if(bytes_written != x86_text_len)
+  {
+    success = error("not all bytes were written to file `%s`", out_files.h_asm.name);
+    goto end;
+  }
+
 #if 0
   OutFileNames out_files = {0};
   if(success = make_out_file_names(&out_files, src_file_path))
@@ -165,6 +182,7 @@ int main(int argc, char* argv[])
 #if 0
   getc(stdin);
 #endif
+end:
   return success ? 0 : -1;
 }
 

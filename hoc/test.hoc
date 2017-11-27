@@ -48,7 +48,6 @@ proc void printf(char* s, ...)
 }
 */
 
-/*
 proc int strlen(char* str)
 {
   var int len = 0;
@@ -59,6 +58,7 @@ proc int strlen(char* str)
   }
   return len;
 }
+/*
 */
 
 proc int foo(int a)
@@ -69,25 +69,28 @@ proc int foo(int a)
 var int len;
 proc void main()
 {
-  /*
   var char* cmd = GetCommandLine();
   len = strlen(cmd);
-  */
+  /*
   Sleep(1234);
+  */
 }
+
+main();
 
 asm
 {
 GetStdHandle PROTO NEAR32 stdcall, std_handle:DWORD
 GetCommandLineA PROTO NEAR32 stdcall
 Sleep PROTO NEAR32 stdcall, milliseconds:DWORD
+GetCurrentThreadId PROTO NEAR32 stdcall
 }
 
 proc char* GetCommandLine()
 {
   asm
   {
-INVOKE GetCommandLineA
+call GetCommandLineA
 push ebp
 add dword ptr [esp], 12
 pop edi
@@ -107,5 +110,15 @@ call Sleep
   }
 }
 
-main();
+proc int GetCurrentThreadId()
+{
+  asm
+  {
+call GetCurrentThreadId
+push ebp
+add dword ptr [esp], 12
+pop edi
+mov [edi], eax
+  }
+}
 

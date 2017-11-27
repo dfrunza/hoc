@@ -49,18 +49,6 @@ Type* new_pointer_type(Type* pointee)
   return type;
 }
 
-void init_types()
-{
-  basic_type_bool = new_basic_type(eBasicType_bool);
-  basic_type_int = new_basic_type(eBasicType_int);
-  basic_type_char = new_basic_type(eBasicType_char);
-  basic_type_float = new_basic_type(eBasicType_float);
-  basic_type_void = new_basic_type(eBasicType_void);
-  basic_type_type = new_basic_type(eBasicType_type);
-
-  subst_list = new_list(arena, eList_type_pair);
-}
-
 bool types_are_equal(Type* type_a, Type* type_b)
 {
   bool are_equal = false;

@@ -29,16 +29,12 @@ bool parse_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
   *node = expr;
   bool success = true;
   
-  switch(input->token.kind)
+  if(input->token.kind == eToken_star)
   {
-    case eToken_star:
-      {
-        AstNode* ptr = *node = new_ast_node(eAstGen_gen0, eAstNode_pointer, clone_source_loc(&input->src_loc));
-        ATTR(ptr, ast_node, pointee_expr) = expr;
+    AstNode* ptr = *node = new_ast_node(eAstGen_gen0, eAstNode_pointer, clone_source_loc(&input->src_loc));
+    ATTR(ptr, ast_node, pointee_expr) = expr;
 
-        success = get_next_token(input) && parse_rest_of_type_expr(input, *node, node);
-      }
-      break;
+    success = get_next_token(input) && parse_rest_of_type_expr(input, *node, node);
   }
   return success;
 }
@@ -602,87 +598,6 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
   return success;
 }
 
-#if 0
-bool
-parse_new(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = false;
-
-  if(input->token.kind == eToken_new && (success = get_next_token(input)))
-  {
-    if(input->token.kind == eToken_open_parens)
-    {
-      AstNode* new_proc = *node = new_ast_node(eAstGen_gen0, eAstNode_new_proc, clone_source_loc(&input->src_loc));
-
-      if(success = get_next_token(input) && parse_type(input, &ATTR(new_proc, ast_node, type)))
-      {
-        if(input->token.kind == eToken_comma)
-        {
-          if(success = get_next_token(input) && parse_expr(input, &ATTR(new_proc, ast_node, count_expr)))
-          {
-            if(input->token.kind == eToken_close_parens)
-            {
-              if(ATTR(new_proc, ast_node, count_expr))
-              {
-                success = get_next_token(input);
-              }
-              else
-              {
-                putback_token(input);
-                success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
-              }
-            }
-            else
-              success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
-          }
-        }
-        else
-          success = compile_error(&input->src_loc, "expected `,`, actual `%s`", get_token_printstr(&input->token));
-      }
-    }
-    else
-      success = compile_error(&input->src_loc, "expected `(`, actual `%s`", get_token_printstr(&input->token));
-  }
-  return success;
-}
-
-bool parse_putc(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = false;
-
-  if(input->token.kind == eToken_putc && (success = get_next_token(input)))
-  {
-    if(input->token.kind == eToken_open_parens)
-    {
-      AstNode* putc_proc = *node = new_ast_node(eAstGen_gen0, eAstNode_putc_proc, clone_source_loc(&input->src_loc));
-
-      if(success = get_next_token(input) && parse_expr(input, &ATTR(putc_proc, ast_node, expr)))
-      {
-        if(input->token.kind == eToken_close_parens)
-        {
-          if(ATTR(putc_proc, ast_node, expr))
-          {
-            success = get_next_token(input);
-          }
-          else
-          {
-            putback_token(input);
-            success = compile_error(&input->src_loc, "expression required, at `%s`", get_token_printstr(&input->token));
-          }
-        }
-        else
-          success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
-      }
-    }
-    else
-      success = compile_error(&input->src_loc, "expected `(`, actual `%s`", get_token_printstr(&input->token));
-  }
-  return success;
-}
-#endif
-
 bool parse_selector(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1000,7 +915,9 @@ bool parse_for(TokenStream* input, AstNode1** node)
         && consume_semicolon(input)
         && parse_expr(input, &for_stmt->loop_expr);
       if(!success)
+      {
         return success;
+      }
 
       if(input->token.kind == eToken_CloseParens)
       {

@@ -1735,7 +1735,14 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     }
   }
 
-  init_types();
+  basic_type_bool = new_basic_type(eBasicType_bool);
+  basic_type_int = new_basic_type(eBasicType_int);
+  basic_type_char = new_basic_type(eBasicType_char);
+  basic_type_float = new_basic_type(eBasicType_float);
+  basic_type_void = new_basic_type(eBasicType_void);
+  basic_type_type = new_basic_type(eBasicType_type);
+  subst_list = new_list(arena, eList_type_pair);
+
   symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
   symbol_table->global_scope = begin_scope(eScope_global, 0);
   if(!name_ident(module))
@@ -1772,53 +1779,170 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     DEBUG_print_arena_usage(arena, "arena");
   }/*<<<*/
 
+  for(ListItem* list_item = symbol_table->scopes->first;
+      list_item;
+      list_item = list_item->next)
   {
-    build_runtime(symbol_table->scopes);
-
-    str_init(x86_text, push_arena(&arena, X86_CODE_ARENA_SIZE));
-    str_printfln(x86_text, "TITLE %s", title);
-    str_printfln(x86_text, ".686");
-    str_printfln(x86_text, ".MODEL flat");
-    str_printfln(x86_text, ".STACK 1024");
-    str_printfln(x86_text, ".CODE");
-    str_printfln(x86_text, "_start:");
-    if(!gen_x86(x86_text, module))
+    Scope* scope = ITEM(list_item, scope);
+    switch(scope->kind)
     {
-      return false;
+      case eScope_global:
+        break; //skip
+
+      case eScope_module:
+        {
+          scope->pre_fp_areas = new_list(arena, eList_data_area);
+          scope->post_fp_areas = new_list(arena, eList_data_area);
+
+          DataArea* null_area = new_data_area(arena, eDataArea_var);
+          append_list_elem(scope->pre_fp_areas, null_area, eList_data_area);
+          int32* null = null_area->data = mem_push_struct(arena, int32);
+          *null = 0xffffffff;
+          null_area->size = sizeof(*null);
+
+          DataArea* link_area = &scope->link_area;
+          append_list_elem(scope->pre_fp_areas, link_area, eList_data_area);
+
+          DataArea* ctrl_area = &scope->ctrl_area;
+          append_list_elem(scope->pre_fp_areas, ctrl_area, eList_data_area);
+          ctrl_area->size = 2*4; // IP + FP
+
+          /*----------- FP --------------*/
+
+          DataArea* locals_area = &scope->locals_area;
+          locals_area->subareas = new_list(arena, eList_data_area);
+          append_list_elem(scope->post_fp_areas, locals_area, eList_data_area);
+          compute_decl_areas(scope, (eSymbol[]){eSymbol_var, eSymbol_None}, locals_area);
+
+          compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);
+        }
+        break;
+
+      case eScope_proc:
+        {
+          scope->pre_fp_areas = new_list(arena, eList_data_area);
+          scope->post_fp_areas = new_list(arena, eList_data_area);
+
+          DataArea* ret_area = &scope->ret_area;
+          ret_area->subareas = new_list(arena, eList_data_area);
+          append_list_elem(scope->pre_fp_areas, ret_area, eList_data_area);
+          compute_decl_areas(scope, (eSymbol[]){eSymbol_ret_var, eSymbol_None}, ret_area);
+
+          DataArea* args_area = &scope->args_area;
+          args_area->subareas = new_list(arena, eList_data_area);
+          append_list_elem(scope->pre_fp_areas, args_area, eList_data_area);
+          compute_decl_areas(scope, (eSymbol[]){eSymbol_formal_arg, eSymbol_None}, args_area);
+
+          DataArea* link_area = &scope->link_area;
+          append_list_elem(scope->pre_fp_areas, link_area, eList_data_area);
+          compute_occur_areas(scope, (eSymbol[])
+              {eSymbol_var, eSymbol_ret_var, eSymbol_formal_arg, eSymbol_None}, link_area);
+
+          DataArea* ctrl_area = &scope->ctrl_area;
+          append_list_elem(scope->pre_fp_areas, ctrl_area, eList_data_area);
+          ctrl_area->size = 2*4; // IP + FP
+
+          /*----------- FP --------------*/
+
+          DataArea* locals_area = &scope->locals_area;
+          locals_area->subareas = new_list(arena, eList_data_area);
+          append_list_elem(scope->post_fp_areas, locals_area, eList_data_area);
+          compute_decl_areas(scope, (eSymbol[]){eSymbol_var, eSymbol_None}, locals_area);
+
+          compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);
+        }
+        break;
+
+      case eScope_block:
+      case eScope_loop:
+        {
+          scope->pre_fp_areas = new_list(arena, eList_data_area);
+          scope->post_fp_areas = new_list(arena, eList_data_area);
+
+          DataArea* link_area = &scope->link_area;
+          append_list_elem(scope->pre_fp_areas, link_area, eList_data_area);
+          compute_occur_areas(scope, (eSymbol[])
+              {eSymbol_var, eSymbol_ret_var, eSymbol_formal_arg, eSymbol_None}, link_area);
+
+          DataArea* ctrl_area = &scope->ctrl_area;
+          append_list_elem(scope->pre_fp_areas, ctrl_area, eList_data_area);
+          ctrl_area->size = 2*4; // IP + FP
+
+          /*----------- FP --------------*/
+
+          DataArea* locals_area = &scope->locals_area;
+          locals_area->subareas = new_list(arena, eList_data_area);
+          append_list_elem(scope->post_fp_areas, locals_area, eList_data_area);
+          compute_decl_areas(scope, (eSymbol[]){eSymbol_var, eSymbol_None}, locals_area);
+
+          compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);
+        }
+        break;
+
+      default:
+        assert(0);
     }
-    str_printfln(x86_text, "END _start");
+  }
 
 #if 0
-    AstNode* body = ATTR(module, ast_node, body);
-    Scope* scope = ATTR(body, scope, scope);
+  Scope* module_scope = ATTR(module_body, scope, scope);
 
-    int data_size = 0;
-    for(ListItem* list_item = scope->pre_fp_areas->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      data_size += ITEM(list_item, data_area)->size;
-    }
-
-    int fp = data_size;
-    DataArea* ctrl_area = &scope->ctrl_area;
-    DataArea* link_area = &scope->link_area;
-    //ir_program->sp = fp - ctrl_area->size - link_area->size;
-
-    for(ListItem* list_item = scope->post_fp_areas->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      data_size += ITEM(list_item, data_area)->size;
-    }
-
-    //ir_program->data = mem_push_array(arena, uint8, data_size);
-    //ir_program->data_size = data_size;
-
-    //copy_program_data(ir_program, fp, scope->pre_fp_areas);
-    //copy_program_data(ir_program, fp, scope->post_fp_areas);
-#endif
+  int data_size = 0;
+  for(ListItem* list_item = module_scope->pre_fp_areas->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    data_size += ITEM(list_item, data_area)->size;
   }
+
+  //int frame_pointer = data_size;
+  //DataArea* ctrl_area = &module_scope->ctrl_area;
+  //DataArea* link_area = &module_scope->link_area;
+  //int stack_pointer = frame_pointer - (ctrl_area->size + link_area->size);
+
+  for(ListItem* list_item = module_scope->post_fp_areas->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    data_size += ITEM(list_item, data_area)->size;
+  }
+#endif
+
+  str_init(x86_text, push_arena(&arena, X86_CODE_ARENA_SIZE));
+  str_printfln(x86_text, "TITLE %s", title);
+  str_printfln(x86_text, ".686");
+  str_printfln(x86_text, ".MODEL flat");
+  str_printfln(x86_text, ".STACK 1024");
+
+#if 0
+  str_printfln(x86_text, ".DATA");
+  str_printf(x86_text, "module_data DB ");
+  copy_module_data(x86_text, module_scope->pre_fp_areas);
+  str_printfln(x86_text, "");
+#endif
+  str_printfln(x86_text, ".DATA");
+  Scope* module_scope = ATTR(module_body, scope, scope);
+  for(ListItem* list_item = module_scope->decls[eSymbol_var]->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    Symbol* var_sym = ITEM(list_item, symbol);
+    Type* var_type = var_sym->type;
+    if(var_sym->name)
+    {
+      str_printfln(x86_text, "%s DB %d DUP (?)", var_sym->name, var_type->width);
+    }
+    // else FIXME
+  }
+
+  str_printfln(x86_text, ".CODE");
+  str_printfln(x86_text, "_start:");
+  if(!gen_x86(x86_text, module))
+  {
+    return false;
+  }
+  str_printfln(x86_text, "END _start");
+
   return true;
 }
 

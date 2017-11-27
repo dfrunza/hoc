@@ -867,3 +867,31 @@ bool gen_x86(String* code, AstNode* node)
   return success;
 }
 
+void copy_module_data(String* code, List* data_areas)
+{
+  for(ListItem* list_item = data_areas->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    DataArea* area = ITEM(list_item, data_area);
+    if(area->subareas)
+    {
+      assert(!area->data);
+      copy_module_data(code, area->subareas);
+    }
+    else
+    {
+      if(area->data)
+      {
+        uint8* p_data = (uint8*)area->data;
+        for(int i = 0; i < area->size; i++)
+        {
+          str_printf(code, "0%xh", p_data[i]);
+          if(i < area->size-1)
+            str_printf(code, ",");
+        }
+      }
+    }
+  }
+}
+

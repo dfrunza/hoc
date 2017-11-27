@@ -357,7 +357,7 @@ void str_append(String* str, char* cstr)
   }
 }
 
-void str_printf_va(String* str, char* fmessage, va_list varargs)
+int str_printf_va(String* str, char* fmessage, va_list varargs)
 {
   assert(str->head && str->end && str->arena);
   MemoryArena* arena = str->arena;
@@ -368,28 +368,27 @@ void str_printf_va(String* str, char* fmessage, va_list varargs)
   str->end += len;
   assert(str->end < (char*)arena->cap);
   arena->free = (uint8*)str->end+1;
+
+  return len;
 }
 
-void str_printf(String* str, char* fmessage, ...)
+int str_printf(String* str, char* ftext, ...)
 {
   va_list varargs;
-  va_start(varargs, fmessage);
-  str_printf_va(str, fmessage, varargs);
+  va_start(varargs, ftext);
+  int text_len = str_printf_va(str, ftext, varargs);
   va_end(varargs);
+  return text_len;
 }
 
-int str_printfln(String* text, char* fline, ...)
+int str_printfln(String* str, char* fline, ...)
 {
-  int text_len = 0;
-  static char strbuf[128] = {0};
-  va_list args;
+  va_list varargs;
+  va_start(varargs, fline);
+  int text_len  = str_printf_va(str, fline, varargs);
+  va_end(varargs);
 
-  va_start(args, fline);
-  text_len = h_vsprintf(strbuf, fline, args);
-  va_end(args);
-
-  str_append(text, strbuf);
-  str_append(text, "\n");
+  str_append(str, "\n");
   text_len++;
 
   return text_len;

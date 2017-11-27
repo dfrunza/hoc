@@ -1,10 +1,10 @@
+/*
 include "std.hoc";
 include "str.hoc";
 include "math.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
-/*
 */
 
 /*
@@ -69,14 +69,18 @@ proc int foo(int a)
 var int len;
 proc void main()
 {
+  /*
   var char* cmd = GetCommandLine();
   len = strlen(cmd);
+  */
+  Sleep(1234);
 }
 
 asm
 {
 GetStdHandle PROTO NEAR32 stdcall, std_handle:DWORD
 GetCommandLineA PROTO NEAR32 stdcall
+Sleep PROTO NEAR32 stdcall, milliseconds:DWORD
 }
 
 proc char* GetCommandLine()
@@ -88,6 +92,18 @@ push ebp
 add dword ptr [esp], 12
 pop edi
 mov [edi], eax
+  }
+}
+
+proc void Sleep(int milliseconds)
+{
+  asm
+  {
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi]
+call Sleep
   }
 }
 

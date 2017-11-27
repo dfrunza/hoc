@@ -23,65 +23,38 @@ typedef struct
 {
   char strings[4*80 + 4*10];
   FileName h_asm;
-  FileName bincode;
-  FileName exe;
+  FileName source;
 }
 OutFileNames;
 
 bool make_out_file_names(OutFileNames* out_files, char* src_file_path)
 {
-  char* stem = mem_push_array_nz(arena, char, cstr_len(src_file_path));
-  cstr_copy(stem, src_file_path);
-  stem = path_make_stem(stem);
+  char* leaf = mem_push_array_nz(arena, char, cstr_len(src_file_path));
+  cstr_copy(leaf, src_file_path);
+  leaf = path_make_leaf(leaf, false);
 
-  int stem_len = cstr_len(stem);
-  assert(stem_len > 0);
+  int leaf_len = cstr_len(leaf);
+  assert(leaf_len > 0);
   bool success = true;
 
-  if(stem_len > 0 && stem_len < 81)
+  if(leaf_len <= 0 || leaf_len >= 81)
   {
-    char* str = out_files->strings;
-
-    sprintf(str, "%s.asm", stem);
-    out_files->h_asm.name = str;
-    out_files->h_asm.len = cstr_len(out_files->h_asm.name);
-    str = out_files->h_asm.name + out_files->h_asm.len + 1;
-
-    sprintf(str, "%s.bincode", stem);
-    out_files->bincode.name = str;
-    out_files->bincode.len = cstr_len(out_files->bincode.name);
-    str = out_files->bincode.name + out_files->bincode.len + 1;
-
-    sprintf(str, "%s.exe", stem);
-    out_files->exe.name = str;
-    out_files->exe.len = cstr_len(out_files->exe.name);
+    return success = error("length of file name must be between 1..80 : '%s'", leaf);
   }
-  else
-    success = error("length of file name must be between 1..80 : '%s'", stem);
+  char* str = out_files->strings;
+
+  sprintf(str, "%s.asm", leaf);
+  out_files->h_asm.name = str;
+  out_files->h_asm.len = cstr_len(out_files->h_asm.name);
+  str = out_files->h_asm.name + out_files->h_asm.len + 1;
+
+  sprintf(str, "%s", leaf);
+  out_files->source.name = str;
+  out_files->source.len = cstr_len(out_files->source.name);
+  str = out_files->source.name + out_files->source.len + 1;
+
   return success;
 }
-
-char* make_vm_exe_path(char* hocc_exe_path)
-{
-  char* vm_exe_path = mem_push_array_nz(arena, char, cstr_len(hocc_exe_path) + cstr_len("vm.exe"));
-  cstr_copy(vm_exe_path, hocc_exe_path);
-  path_make_dir(vm_exe_path);
-  cstr_append(vm_exe_path, "vm.exe");
-  return vm_exe_path;
-}
-
-#if 0
-bool write_asm_file(OutFileNames* out_files, IrProgram* ir_program)
-{
-  int bytes_written = file_write_bytes(out_files->h_asm.name, (uint8*)ir_program->text, ir_program->text_len);
-  bool success = (bytes_written == ir_program->text_len);
-  if(!success)
-  {
-    error("not all bytes were written to file `%s`", out_files->h_asm.name);
-  }
-  return success;
-}
-#endif
 
 int main(int argc, char* argv[])
 {
@@ -107,16 +80,16 @@ int main(int argc, char* argv[])
     success = error("could not read source file `%s`", src_file_path);
     goto end;
   }
-  String x86_text = {0};
-  if(!translate(src_file_path, hoc_text, &x86_text))
-  {
-    success = error("program could not be translated");
-    goto end;
-  }
   OutFileNames out_files = {0};
   if(!make_out_file_names(&out_files, src_file_path))
   {
     success = false;
+    goto end;
+  }
+  String x86_text = {0};
+  if(!translate(out_files.source.name, src_file_path, hoc_text, &x86_text))
+  {
+    success = error("program could not be translated");
     goto end;
   }
   int x86_text_len = str_len(&x86_text);

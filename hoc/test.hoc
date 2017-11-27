@@ -1,10 +1,10 @@
-/*
 include "std.hoc";
 include "str.hoc";
 include "math.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
+/*
 */
 
 /*
@@ -61,9 +61,16 @@ proc int strlen(char* str)
 }
 */
 
+proc int foo(int a)
+{
+  return 2*a;
+}
+
+var int len;
 proc void main()
 {
   var char* cmd = GetCommandLine();
+  len = strlen(cmd);
 }
 
 asm

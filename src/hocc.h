@@ -69,6 +69,12 @@ typedef struct
 }
 SourceLoc;
 
+typedef struct
+{
+  char id[12];
+}
+Label;
+
 typedef enum
 {
   eToken_None,
@@ -226,58 +232,89 @@ eOperator;
 char* get_operator_kind_printstr(eOperator op)
 {
   char* str = "???";
-  if(op == eOperator_add)
-    str = "+";
-  else if(op == eOperator_sub)
-    str = "-";
-  else if(op == eOperator_mul)
-    str = "*";
-  else if(op == eOperator_div)
-    str = "/";
-  else if(op == eOperator_mod)
-    str = "%";
-  else if(op == eOperator_neg)
-    str = "-";
-  else if (op == eOperator_assign)
-    str = "=";
-  else if(op == eOperator_deref)
-    str = "*";
-  else if(op == eOperator_address_of)
-    str = "&";
-  else if(op == eOperator_member_select)
-    str = ".";
-  else if(op == eOperator_ptr_member_select)
-    str = "->";
-  else if(op == eOperator_pre_decr || op == eOperator_post_decr)
-    str = "--";
-  else if(op == eOperator_pre_incr || op == eOperator_post_incr)
-    str = "++";
-  else if(op == eOperator_index)
-    str = "[]";
-  else if(op == eOperator_eq)
-    str = "==";
-  else if(op == eOperator_not_eq)
-    str = "!=";
-  else if(op == eOperator_less)
-    str = "<";
-  else if(op == eOperator_less_eq)
-    str = "<=";
-  else if(op == eOperator_greater)
-    str = ">";
-  else if(op == eOperator_greater_eq)
-    str = ">=";
-  else if(op == eOperator_logic_and)
-    str = "&&";
-  else if(op == eOperator_logic_or)
-    str = "||";
-  else if(op == eOperator_logic_not)
-    str = "!";
-  else if(op == eOperator_bit_and)
-    str = "&";
-  else if(op == eOperator_bit_or)
-    str = "|";
-  else if(op == eOperator_cast)
-    str = "(cast)";
+  switch(op)
+  {
+    case eOperator_add:
+      str = "+";
+      break;
+    case eOperator_sub:
+      str = "-";
+      break;
+    case eOperator_mul:
+      str = "*";
+      break;
+    case eOperator_div:
+      str = "/";
+      break;
+    case eOperator_mod:
+      str = "%";
+      break;
+    case eOperator_neg:
+      str = "-";
+      break;
+    case eOperator_assign:
+      str = "=";
+      break;
+    case eOperator_deref:
+      str = "*";
+      break;
+    case eOperator_address_of:
+      str = "&";
+      break;
+    case eOperator_member_select:
+      str = ".";
+      break;
+    case eOperator_ptr_member_select:
+      str = "->";
+      break;
+    case eOperator_pre_decr:
+    case eOperator_post_decr:
+      str = "--";
+      break;
+    case eOperator_pre_incr:
+    case eOperator_post_incr:
+      str = "++";
+      break;
+    case eOperator_index:
+      str = "[]";
+      break;
+    case eOperator_eq:
+      str = "==";
+      break;
+    case eOperator_not_eq:
+      str = "!=";
+      break;
+    case eOperator_less:
+      str = "<";
+      break;
+    case eOperator_less_eq:
+      str = "<=";
+      break;
+    case eOperator_greater:
+      str = ">";
+      break;
+    case eOperator_greater_eq:
+      str = ">=";
+      break;
+    case eOperator_logic_and:
+      str = "&&";
+      break;
+    case eOperator_logic_or:
+      str = "||";
+      break;
+    case eOperator_logic_not:
+      str = "!";
+      break;
+    case eOperator_bit_and:
+      str = "&";
+      break;
+    case eOperator_bit_or:
+      str = "|";
+      break;
+    case eOperator_cast:
+      str = "(cast)";
+      break;
+  }
   return str;
 }
 
@@ -394,6 +431,7 @@ typedef enum
   eAstAttribute_scope,
   eAstAttribute_type,
   eAstAttribute_symbol,
+  eAstAttribute_label,
 }
 eAstAttribute;
 
@@ -451,10 +489,7 @@ typedef enum
   eAstAttributeName_count_expr,
   eAstAttributeName_lit_kind,
   eAstAttributeName_data_area,
-  eAstAttributeName_label_end,
-  eAstAttributeName_label_else,
-  eAstAttributeName_label_eval,
-  eAstAttributeName_label_break,
+  eAstAttributeName_label,
   eAstAttributeName_asm_text,
 }
 eAstAttributeName;
@@ -478,6 +513,7 @@ typedef struct
     Scope* scope;
     Type* type;
     Symbol* symbol;
+    Label label;
   };
 }
 AstAttribute;
@@ -663,11 +699,6 @@ typedef struct
 }
 TypePair;
 
-#if 0
-#define SYM(VAR, NAME)\
-  (((VAR)->kind == Symbol_##NAME) ? &(VAR)->NAME : 0)
-#endif
-
 typedef struct Symbol
 {
   eSymbol kind;
@@ -697,142 +728,6 @@ SymbolTable;
 
 typedef enum
 {
-  eOpcode_None,
-  eOpcode_PUSH_INT8,
-  eOpcode_PUSH_INT32,
-  eOpcode_PUSH_FLOAT32,
-  eOpcode_PUSH_REG,
-  eOpcode_POP_REG,
-  eOpcode_DUP,
-  eOpcode_LOAD,
-  eOpcode_STORE,
-  eOpcode_GROW,
-  eOpcode_GROWNZ,
-  eOpcode_NEW,
-
-  eOpcode_ADD_INT32,
-  eOpcode_SUB_INT32,
-  eOpcode_MUL_INT32,
-  eOpcode_DIV_INT32,
-  eOpcode_MOD_INT32,
-  eOpcode_NEG_INT32,
-  eOpcode_INCR_INT32,
-  eOpcode_DECR_INT32,
-
-  eOpcode_ADD_FLOAT32,
-  eOpcode_SUB_FLOAT32,
-  eOpcode_MUL_FLOAT32,
-  eOpcode_DIV_FLOAT32,
-  eOpcode_NEG_FLOAT32,
-
-  eOpcode_CMPEQ_INT8,
-  eOpcode_CMPNEQ_INT8,
-  eOpcode_CMPLSS_INT8,
-  eOpcode_CMPGRT_INT8,
-  eOpcode_CMPEQ_INT32,
-  eOpcode_CMPNEQ_INT32,
-  eOpcode_CMPLSS_INT32,
-  eOpcode_CMPGRT_INT32,
-  eOpcode_CMPEQ_FLOAT32,
-  eOpcode_CMPNEQ_FLOAT32,
-  eOpcode_CMPLSS_FLOAT32,
-  eOpcode_CMPGRT_FLOAT32,
-  eOpcode_AND,
-  eOpcode_OR,
-  eOpcode_NOT,
-
-  eOpcode_LABEL,
-  eOpcode_JUMPZ,
-  eOpcode_JUMPNZ,
-  eOpcode_GOTO,
-  eOpcode_CALL,
-  eOpcode_RETURN,
-  eOpcode_ENTER,
-  eOpcode_LEAVE,
-  eOpcode_HALT,
-
-  eOpcode_NOOP,
-  eOpcode_PUTC,
-
-  eOpcode_FLOAT32_TO_INT32,
-  eOpcode_INT32_TO_FLOAT32,
-
-  eOpcode_ACLINK,
-}
-eOpcode;
-
-typedef enum
-{
-  eRegName_None,
-  eRegName_IP,
-  eRegName_SP,
-  eRegName_FP
-}
-eRegName;
-
-typedef enum
-{
-  eIrInstrParam_None,
-  eIrInstrParam_int8,
-  eIrInstrParam_int32,
-  eIrInstrParam_float32,
-  eIrInstrParam_id,
-  eIrInstrParam_reg,
-}
-eIrInstrParam;
-
-typedef struct
-{
-  eIrInstrParam kind;
-
-  union
-  {
-    int8 int8_val;
-    int32 int32_val;
-    float32 float32_val;
-    eRegName reg;
-    char* id;
-  };
-}
-IrInstrParam;
-
-typedef struct
-{
-  eOpcode opcode;
-  IrInstrParam param;
-  int source_line_nr;
-}
-IrInstruction;
-
-typedef struct
-{
-  char sig[4];
-
-  int code_offset;
-  int code_size;
-
-  int data_offset;
-  int data_size;
-  int sp;
-}
-BinImage;
-
-typedef struct
-{
-//  String text;
-
-  List* instr_list;
-//  IrInstruction* instructions;
-  int instr_count;
-
-  uint8* data;
-  int data_size;
-  int32 sp;
-}
-IrProgram;
-
-typedef enum
-{
   eList_None,
   eList_ast_node,
   eList_symbol,
@@ -855,7 +750,6 @@ typedef struct ListItem
     AstNode* ast_node;
     Symbol* symbol;
     Scope* scope;
-    IrInstruction* ir_instr;
     TypePair* type_pair;
     DataArea* data_area;
   };

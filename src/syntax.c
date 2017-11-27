@@ -243,24 +243,20 @@ bool parse_block(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
-  switch(input->token.kind)
+  if(input->token.kind == eToken_open_brace)
   {
-    case eToken_open_brace:
-      {
-        AstNode* block = *node = new_ast_node(eAstGen_gen0, eAstNode_block, clone_source_loc(&input->src_loc));
-        List* nodes = ATTR(block, list, nodes) = new_list(arena, eList_ast_node);
+    AstNode* block = *node = new_ast_node(eAstGen_gen0, eAstNode_block, clone_source_loc(&input->src_loc));
+    List* nodes = ATTR(block, list, nodes) = new_list(arena, eList_ast_node);
 
-        if(success = get_next_token(input) && parse_node_list(input, nodes))
-        {
-          if(input->token.kind == eToken_close_brace)
-          {
-            success = get_next_token(input);
-          }
-          else
-            success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
-        }
+    if(success = get_next_token(input) && parse_node_list(input, nodes))
+    {
+      if(input->token.kind == eToken_close_brace)
+      {
+        success = get_next_token(input);
       }
-      break;
+      else
+        success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
+    }
   }
   return success;
 }
@@ -1049,7 +1045,9 @@ bool parse_while(TokenStream* input, AstNode** node)
     AstNode* while_stmt = *node = new_ast_node(eAstGen_gen0, eAstNode_while_stmt, clone_source_loc(&input->src_loc));
 
     if(!(success = get_next_token(input)))
+    {
       return success;
+    }
 
     if(input->token.kind == eToken_open_parens)
     {
@@ -1064,7 +1062,9 @@ bool parse_while(TokenStream* input, AstNode** node)
           AstNode* body = 0;
           success = get_next_token(input) && parse_block(input, &body);
           if(!success)
+          {
             return success;
+          }
 
           if(body)
           {

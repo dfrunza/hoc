@@ -54,7 +54,7 @@ bool compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ..
 
   if(src_loc && src_loc->line_nr >= 0)
     fprintf(stderr, "%s(%d) : (%s:%d) ", src_loc->file_path, src_loc->line_nr,
-            path_make_stem(filename_buf), line);
+            path_make_leaf(filename_buf, false), line);
   else
     fprintf(stderr, "%s(%d) : ", file, line);
 
@@ -166,12 +166,12 @@ char* path_find_leaf(char* file_path)
   return leaf;
 }
 
-char* path_make_stem(char* file_path)
+char* path_make_leaf(char* file_path, bool with_extension)
 {
   char* leaf = path_find_leaf(file_path);
 
   /* remove the filename extension */
-  if(leaf)
+  if(leaf && !with_extension)
   {
     char* p_char = leaf;
     while(*p_char && *p_char != '.')

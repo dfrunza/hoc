@@ -12,11 +12,11 @@ int typevar_id = 1;
 
 int last_label_id;
 
-char* make_unique_label()
+Label make_unique_label()
 {
-  static char buf[10];
-  h_sprintf(buf, "L%d", last_label_id++);
-  return buf;
+  Label label = {0};
+  h_sprintf(label.id, "L%d", last_label_id++);
+  return label;
 }
 
 char* make_temp_name(char* label)
@@ -709,7 +709,7 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = eAstNode_while_stmt;
-      kind->attr_count = 6;
+      kind->attr_count = 5;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -736,13 +736,8 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
-      attr->kind = eAstAttribute_str_val;
-      attr->name = eAstAttributeName_label_eval;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = eAstAttribute_str_val;
-      attr->name = eAstAttributeName_label_break;
+      attr->kind = eAstAttribute_label;
+      attr->name = eAstAttributeName_label;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -777,7 +772,7 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = eAstNode_if_stmt;
-      kind->attr_count = 7;
+      kind->attr_count = 5;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -806,16 +801,6 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_type;
       attr->name = eAstAttributeName_eval_type;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = eAstAttribute_str_val;
-      attr->name = eAstAttributeName_label_else;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = eAstAttribute_str_val;
-      attr->name = eAstAttributeName_label_end;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -865,7 +850,7 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = eAstNode_proc_decl;
-      kind->attr_count = 9;
+      kind->attr_count = 8;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -909,11 +894,6 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_type;
       attr->name = eAstAttributeName_eval_type;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = eAstAttribute_str_val;
-      attr->name = eAstAttributeName_label_end;
     }
     {
       assert(kind_index < ast->kind_count);
@@ -1114,7 +1094,7 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = eAstNode_bin_expr;
-      kind->attr_count = 6;
+      kind->attr_count = 5;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -1143,11 +1123,6 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_type;
       attr->name = eAstAttributeName_eval_type;
-
-      assert(attr_index < kind->attr_count);
-      attr = &kind->attrs[attr_index++];
-      attr->kind = eAstAttribute_str_val;
-      attr->name = eAstAttributeName_label_end;
     }
   }/*<<<*/
   else
@@ -1719,7 +1694,7 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
 #include "runtime.c"
 #include "x86.c"
 
-bool translate(char* file_path, char* hoc_text, String* x86_text)
+bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 {
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
@@ -1799,15 +1774,14 @@ bool translate(char* file_path, char* hoc_text, String* x86_text)
 
   {
     build_runtime(symbol_table->scopes);
-    make_x86_labels(module);
 
     str_init(x86_text, push_arena(&arena, X86_CODE_ARENA_SIZE));
+    str_printfln(x86_text, "TITLE %s", title);
     str_printfln(x86_text, ".686");
     str_printfln(x86_text, ".MODEL flat");
     str_printfln(x86_text, ".STACK 1024");
     str_printfln(x86_text, ".CODE");
     str_printfln(x86_text, "_start:");
-    str_printfln(x86_text, "finit ; FPU");
     if(!gen_x86(x86_text, module))
     {
       return false;

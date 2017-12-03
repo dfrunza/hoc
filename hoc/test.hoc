@@ -61,24 +61,10 @@ proc int strlen(char* str)
 /*
 */
 
-proc int foo(int a)
-{
-  return 2*a;
-}
-
-var int len;
+var int x = 123;
 proc void main()
 {
-  /*
-  var char* cmd = GetCommandLine();
-  len = strlen(cmd);
-  Sleep(1234);
-  */
-  asm
-  {
-mov dword ptr [module_data], 0cdcdcdcdh
-mov dword ptr [module_data+4], 0dfdfdfdfh
-  }
+  var int len = strlen(&"ABC");
 }
 
 main();

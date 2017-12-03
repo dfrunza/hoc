@@ -35,8 +35,8 @@ void gen_x86_load(String* code, int int8_count)
   str_printfln(code, "mov edi, esp");
   str_printfln(code, "rep movsb");
 #if 0
-  int int32_count = int8_count / 4;
-  int int8_remainder = int8_count % 4;
+  int int32_count = int8_count / MACHINE_WORD_SIZE;
+  int int8_remainder = int8_count % MACHINE_WORD_SIZE;
 
   if(int32_count > 0)
   {
@@ -73,37 +73,43 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
       {
         Symbol* occur_sym = ATTR(node, symbol, occur_sym);
         Symbol* decl_sym = occur_sym->decl;
-        Scope* scope = occur_sym->scope;
-        DataArea* ctrl_area = &scope->ctrl_area;
-        DataArea* data_area = decl_sym->data_area;
 
-        int decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
-        if(decl_scope_offset > 0)
+        if(decl_sym->is_global)
         {
-          // Non-local
-          //assert(link->loc < 0 && (link->loc % 4) == 0);
-          str_printfln(code, "push ebp");
-          str_printfln(code, "add dword ptr [esp], %d", 8);
-
-          str_printfln(code, "mov ecx, %d", decl_scope_offset);
-          str_printfln(code, "mov esi, dword ptr [esp]");
-          Label label = make_unique_label();
-          str_printfln(code, "%s$loop:", label.id);
-          str_printfln(code, "mov esi, dword ptr[esi]");
-          str_printfln(code, "loop %s$loop", label.id);
-          str_printfln(code, "mov dword ptr [esp], esi");
-
-          // Load the FP by taking the offset relative to the Access Link
-          str_printfln(code, "sub dword ptr [esp], %d", ctrl_area->size);
-        }
-        else if(decl_scope_offset == 0)
-        {
-          str_printfln(code, "push ebp");
+          str_printfln(code, "push OFFSET global_area");
         }
         else
-          assert(0);
+        {
+          str_printfln(code, "push ebp");
+          int decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
+          if(decl_scope_offset > 0)
+          {
+            // Non-local
+            str_printfln(code, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
 
-        str_printfln(code, "sub dword ptr [esp], %d", data_area->loc + data_area->size);
+            str_printfln(code, "mov ecx, %d", decl_scope_offset);
+            str_printfln(code, "mov esi, dword ptr [esp]");
+            Label label = make_unique_label();
+            str_printfln(code, "%s$loop:", label.id);
+            str_printfln(code, "mov esi, dword ptr[esi]");
+            str_printfln(code, "loop %s$loop", label.id);
+            str_printfln(code, "mov dword ptr [esp], esi");
+
+            // Load the FP by taking the offset relative to the Access Link
+            str_printfln(code, "sub dword ptr [esp], %d", 3*MACHINE_WORD_SIZE);
+          }
+          else if(decl_scope_offset < 0)
+            assert(0);
+        }
+
+        if(decl_sym->data_loc >= 0)
+        {
+          str_printfln(code, "add dword ptr [esp], %d", decl_sym->data_loc);
+        }
+        else if(decl_sym->data_loc < 0)
+        {
+          str_printfln(code, "sub dword ptr [esp], %d", -decl_sym->data_loc);
+        }
       }
       break;
 
@@ -261,12 +267,11 @@ bool gen_x86(String* code, AstNode* node)
       {
         AstNode* body = ATTR(node, ast_node, body);
         Scope* scope = ATTR(body, scope, scope);
-        DataArea* locals_area = &scope->locals_area;
 
         str_printfln(code, "push ebp");
-        str_printfln(code, "sub esp, 4"); // dummy IP
+        str_printfln(code, "sub esp, %d", MACHINE_WORD_SIZE); // dummy IP
         str_printfln(code, "; {");
-        gen_x86_enter_frame(code, locals_area->size);
+        gen_x86_enter_frame(code, scope->locals_area_size);
 
         for(ListItem* list_item = ATTR(body, list, stmts)->first;
             list_item;
@@ -277,7 +282,7 @@ bool gen_x86(String* code, AstNode* node)
         }
 
         gen_x86_leave_frame(code, 0);
-        str_printfln(code, "add esp, 4"); // dummy IP
+        str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
         str_printfln(code, "pop ebp");
         str_printfln(code, "ret");
         str_printfln(code, "; }");
@@ -296,7 +301,6 @@ bool gen_x86(String* code, AstNode* node)
     case eAstNode_proc_decl:
       {
         Scope* scope = ATTR(node, scope, scope);
-        DataArea* locals_area = &scope->locals_area;
 
         char* name = ATTR(node, str_val, name);
         Scope* encl_proc_scope = find_scope(scope->encl_scope, eScope_proc);
@@ -321,7 +325,7 @@ bool gen_x86(String* code, AstNode* node)
 
         str_printfln(code,"%s PROC PUBLIC", name);
         str_printfln(code, "; {");
-        gen_x86_enter_frame(code, locals_area->size);
+        gen_x86_enter_frame(code, scope->locals_area_size);
 
         for(ListItem* list_item = ATTR(body, list, stmts)->first;
             list_item;
@@ -341,8 +345,6 @@ bool gen_x86(String* code, AstNode* node)
     case eAstNode_block:
       {
         Scope* scope = ATTR(node, scope, scope);
-        //DataArea* link_area = &scope->link_area;
-        DataArea* locals_area = &scope->locals_area;
 
         for(ListItem* list_item = ATTR(node, list, procs)->first;
             list_item;
@@ -352,12 +354,10 @@ bool gen_x86(String* code, AstNode* node)
           gen_x86(code, proc);
         }
 
-        //assert(link_area->loc < 0 && (link_area->loc % 4) == 0);
         str_printfln(code, "; {");
         str_printfln(code, "push ebp");
-        str_printfln(code, "add dword ptr [esp], %d", 8);
-        str_printfln(code, "sub esp, 4"); // dummy IP
-        gen_x86_enter_frame(code, locals_area->size);
+        str_printfln(code, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
+        gen_x86_enter_frame(code, scope->locals_area_size);
 
         for(ListItem* list_item = ATTR(node, list, stmts)->first;
             list_item;
@@ -368,8 +368,7 @@ bool gen_x86(String* code, AstNode* node)
         }
 
         gen_x86_leave_frame(code, 0);
-        str_printfln(code, "add esp, 4"); // dummy IP
-        str_printfln(code, "add esp, %d", 4);
+        str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE);
         str_printfln(code, "; }");
       }
       break;
@@ -378,11 +377,8 @@ bool gen_x86(String* code, AstNode* node)
       {
         AstNode* callee_decl = ATTR(node, ast_node, proc_decl);
         Scope* callee_scope = ATTR(callee_decl, scope, scope);
-        DataArea* ret_area = &callee_scope->ret_area;
-        DataArea* args_area = &callee_scope->args_area;
-        //DataArea* link_area = &callee_scope->link_area;
 
-        str_printfln(code, "sub esp, %d", ret_area->size);
+        str_printfln(code, "sub esp, %d", callee_scope->ret_area_size);
 
         for(ListItem* list_item = ATTR(node, list, actual_args)->first;
             list_item;
@@ -395,9 +391,8 @@ bool gen_x86(String* code, AstNode* node)
         Symbol* occur_sym = ATTR(node, symbol, occur_sym);
         Scope* caller_scope = occur_sym->scope;
         
-        //assert(link_area->loc < 0 && (link_area->loc % 4) == 0);
         str_printfln(code, "push ebp");
-        str_printfln(code, "add dword ptr [esp], %d", 8);
+        str_printfln(code, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
 
         int callee_depth_offset = caller_scope->nesting_depth - callee_scope->nesting_depth;
         if(callee_depth_offset >= 0)
@@ -414,7 +409,7 @@ bool gen_x86(String* code, AstNode* node)
         AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
         char* name = ATTR(node, str_val, name) = ATTR(proc_decl, str_val, name);
         str_printfln(code, "call %s", name);
-        str_printfln(code, "add esp, %d", 4 + args_area->size);
+        str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE + callee_scope->args_area_size);
       }
       break;
 
@@ -564,8 +559,8 @@ bool gen_x86(String* code, AstNode* node)
                 else if(types_are_equal(left_ty, basic_type_char))
                 {
                   str_printfln(code, "movzx eax, byte ptr [esp]");
-                  str_printfln(code, "movzx ebx, byte ptr [esp+4]");
-                  str_printfln(code, "add esp, 8");
+                  str_printfln(code, "movzx ebx, byte ptr [esp+%d]", MACHINE_WORD_SIZE);
+                  str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE);
                 }
                 str_printfln(code, "cmp ebx, eax");
 
@@ -614,8 +609,8 @@ bool gen_x86(String* code, AstNode* node)
                 else if(types_are_equal(left_ty, basic_type_char))
                 {
                   str_printfln(code, "movzx eax, byte ptr [esp]");
-                  str_printfln(code, "movzx ebx, byte ptr [esp+4]");
-                  str_printfln(code, "add esp, 8");
+                  str_printfln(code, "movzx ebx, byte ptr [esp+%d]", MACHINE_WORD_SIZE);
+                  str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE);
                 }
 
                 Label label = make_unique_label();

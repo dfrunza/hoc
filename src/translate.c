@@ -1691,7 +1691,6 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
 #include "syntax.c"
 #include "type.c"
 #include "semantic.c"
-#include "runtime.c"
 #include "x86.c"
 
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
@@ -1784,97 +1783,48 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
       list_item = list_item->next)
   {
     Scope* scope = ITEM(list_item, scope);
-    switch(scope->kind)
+    int offset = 0;
+    for(ListItem* list_item = scope->decls[eSymbol_var]->first;
+        list_item;
+        list_item = list_item->next)
     {
-      case eScope_global:
-        break; //skip
+      Symbol* symbol = ITEM(list_item, symbol);
+      symbol->data_loc = -offset;
+      offset += symbol->type->width;
+      scope->locals_area_size += symbol->type->width;
+    }
 
-      case eScope_module:
-        {
-          scope->pre_fp_areas = new_list(arena, eList_data_area);
-          scope->post_fp_areas = new_list(arena, eList_data_area);
+    offset = 0;
+    for(ListItem* list_item = scope->decls[eSymbol_global_var]->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      Symbol* symbol = ITEM(list_item, symbol);
+      symbol->is_global = true;
+      symbol->data_loc = offset;
+      offset += symbol->type->width;
+      scope->global_area_size += symbol->type->width;
+    }
 
-          DataArea* link_area = &scope->link_area;
-          append_list_elem(scope->pre_fp_areas, link_area, eList_data_area);
+    offset = 3*MACHINE_WORD_SIZE;
+    for(ListItem* list_item = scope->decls[eSymbol_formal_arg]->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      Symbol* symbol = ITEM(list_item, symbol);
+      symbol->data_loc = offset;
+      offset += symbol->type->width;
+      scope->args_area_size += symbol->type->width;
+    }
 
-          DataArea* ctrl_area = &scope->ctrl_area;
-          append_list_elem(scope->pre_fp_areas, ctrl_area, eList_data_area);
-          ctrl_area->size = 2*4; // IP + FP
-
-          /*----------- FP --------------*/
-
-          DataArea* locals_area = &scope->locals_area;
-          locals_area->subareas = new_list(arena, eList_data_area);
-          append_list_elem(scope->post_fp_areas, locals_area, eList_data_area);
-          compute_decl_areas(scope, (eSymbol[]){eSymbol_var, eSymbol_None}, locals_area);
-
-          compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);
-        }
-        break;
-
-      case eScope_proc:
-        {
-          scope->pre_fp_areas = new_list(arena, eList_data_area);
-          scope->post_fp_areas = new_list(arena, eList_data_area);
-
-          DataArea* ret_area = &scope->ret_area;
-          ret_area->subareas = new_list(arena, eList_data_area);
-          append_list_elem(scope->pre_fp_areas, ret_area, eList_data_area);
-          compute_decl_areas(scope, (eSymbol[]){eSymbol_ret_var, eSymbol_None}, ret_area);
-
-          DataArea* args_area = &scope->args_area;
-          args_area->subareas = new_list(arena, eList_data_area);
-          append_list_elem(scope->pre_fp_areas, args_area, eList_data_area);
-          compute_decl_areas(scope, (eSymbol[]){eSymbol_formal_arg, eSymbol_None}, args_area);
-
-          DataArea* link_area = &scope->link_area;
-          append_list_elem(scope->pre_fp_areas, link_area, eList_data_area);
-          compute_occur_areas(scope, (eSymbol[])
-              {eSymbol_var, eSymbol_ret_var, eSymbol_formal_arg, eSymbol_None}, link_area);
-
-          DataArea* ctrl_area = &scope->ctrl_area;
-          append_list_elem(scope->pre_fp_areas, ctrl_area, eList_data_area);
-          ctrl_area->size = 2*4; // IP + FP
-
-          /*----------- FP --------------*/
-
-          DataArea* locals_area = &scope->locals_area;
-          locals_area->subareas = new_list(arena, eList_data_area);
-          append_list_elem(scope->post_fp_areas, locals_area, eList_data_area);
-          compute_decl_areas(scope, (eSymbol[]){eSymbol_var, eSymbol_None}, locals_area);
-
-          compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);
-        }
-        break;
-
-      case eScope_block:
-      case eScope_loop:
-        {
-          scope->pre_fp_areas = new_list(arena, eList_data_area);
-          scope->post_fp_areas = new_list(arena, eList_data_area);
-
-          DataArea* link_area = &scope->link_area;
-          append_list_elem(scope->pre_fp_areas, link_area, eList_data_area);
-          compute_occur_areas(scope, (eSymbol[])
-              {eSymbol_var, eSymbol_ret_var, eSymbol_formal_arg, eSymbol_None}, link_area);
-
-          DataArea* ctrl_area = &scope->ctrl_area;
-          append_list_elem(scope->pre_fp_areas, ctrl_area, eList_data_area);
-          ctrl_area->size = 2*4; // IP + FP
-
-          /*----------- FP --------------*/
-
-          DataArea* locals_area = &scope->locals_area;
-          locals_area->subareas = new_list(arena, eList_data_area);
-          append_list_elem(scope->post_fp_areas, locals_area, eList_data_area);
-          compute_decl_areas(scope, (eSymbol[]){eSymbol_var, eSymbol_None}, locals_area);
-
-          compute_area_locations(scope->pre_fp_areas, scope->post_fp_areas);
-        }
-        break;
-
-      default:
-        assert(0);
+    for(ListItem* list_item = scope->decls[eSymbol_ret_var]->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      Symbol* symbol = ITEM(list_item, symbol);
+      symbol->data_loc = offset;
+      offset += symbol->type->width;
+      scope->ret_area_size += symbol->type->width;
     }
   }
 
@@ -1882,9 +1832,35 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   str_printfln(x86_text, "TITLE %s", title);
   str_printfln(x86_text, ".686");
   str_printfln(x86_text, ".MODEL flat");
+
   str_printfln(x86_text, ".DATA");
-  str_printfln(x86_text, "module_data LABEL BYTE");
-  str_printfln(x86_text, "BYTE 8 DUP(?)");
+  str_printfln(x86_text, "global_area LABEL BYTE");
+  Scope* module_scope = symbol_table->module_scope;
+  for(ListItem* list_item = module_scope->decls[eSymbol_global_var]->first;
+      list_item;
+      list_item = list_item->next)
+  {
+    Symbol* symbol = ITEM(list_item, symbol);
+    int data_size = symbol->type->width;
+    if(symbol->data)
+    {
+      str_printf(x86_text, "BYTE ");
+      uint8* p_data = (uint8*)symbol->data;
+      for(int i = 0; i < data_size; i++)
+      {
+        str_printf(x86_text, "0%xh", p_data[i]);
+        if(i < data_size-1)
+        {
+          str_printf(x86_text, ",");
+        }
+      }
+      str_printfln(x86_text, "");
+    }
+    else
+    {
+      str_printfln(x86_text, "BYTE %d DUP(?)", data_size);
+    }
+  }
 
   str_printfln(x86_text, ".STACK 1024");
   str_printfln(x86_text, ".CODE");

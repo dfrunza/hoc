@@ -154,14 +154,6 @@ Scope* begin_scope(eScope kind, AstNode* ast_node)
     scope->decls[i] = new_list(arena, eList_symbol);
     scope->occurs[i] = new_list(arena, eList_symbol);
   }
-#if 0
-  scope->ret_area.kind = eDataArea_var;
-  scope->args_area.kind = eDataArea_var;
-  scope->link_area.kind = eDataArea_var;
-  scope->link_area.size = 4; // size of an int
-  scope->ctrl_area.kind = eDataArea_var;
-  scope->locals_area.kind = eDataArea_var;
-#endif
 
   symbol_table->active_scope = scope;
   append_list_elem(symbol_table->scopes, scope, eList_scope);
@@ -424,10 +416,11 @@ bool name_ident(AstNode* node)
 
         AstNode* body = ATTR(module, ast_node, body) = ATTR(&module_copy, ast_node, body);
 
-        symbol_table->module_scope = begin_scope(eScope_module, module);
+        Scope* module_scope = symbol_table->module_scope = begin_scope(eScope_module, module);
         add_builtin_types(symbol_table->module_scope);
         success = name_ident_block(body);
         end_scope();
+        module_scope->decls[eSymbol_global_var] = module_scope->decls[eSymbol_var];
       }
       break;
 

@@ -2,6 +2,7 @@
 #define SYMBOL_ARENA_SIZE (ARENA_SIZE / 8)
 #define X86_CODE_ARENA_SIZE (ARENA_SIZE / 4)
 #define BINIMAGE_SIGNATURE "HC"
+#define MACHINE_WORD_SIZE 4
 
 typedef unsigned char uchar;
 typedef unsigned short ushort;
@@ -167,6 +168,7 @@ typedef struct TokenStream
 }
 TokenStream;
 
+#if 0
 typedef enum
 {
   eDataArea_None,
@@ -181,10 +183,9 @@ typedef struct
 
   int loc;
   int size;
-  void* value;
-  List* subareas;
 }
 DataArea;
+#endif
 
 #ifndef eOperator_MEMBER_LIST
 #define eOperator_MEMBER_LIST()\
@@ -387,6 +388,7 @@ typedef enum
   eSymbol_var,
   eSymbol_ret_var,
   eSymbol_formal_arg,
+  eSymbol_global_var,
   eSymbol_type,
   eSymbol_proc,
   eSymbol_Count,
@@ -404,14 +406,10 @@ typedef struct Scope
   List* decls[eSymbol_Count];
   List* occurs[eSymbol_Count];
 
-  List* pre_fp_areas;
-  List* post_fp_areas;
-
-  DataArea ret_area;
-  DataArea args_area;
-  DataArea link_area;
-  DataArea ctrl_area;
-  DataArea locals_area;
+  int global_area_size;
+  int locals_area_size;
+  int ret_area_size;
+  int args_area_size;
 }
 Scope;
 
@@ -708,9 +706,10 @@ typedef struct Symbol
   int nesting_depth;
   AstNode* ast_node;
   Type* type;
-  DataArea* data_area;
-  void* data;
   Symbol* decl;
+  int data_loc;
+  void* data;
+  bool is_global;
 }
 Symbol;
 
@@ -750,7 +749,7 @@ typedef struct ListItem
     Symbol* symbol;
     Scope* scope;
     TypePair* type_pair;
-    DataArea* data_area;
+    //DataArea* data_area;
   };
   struct ListItem* next;
   struct ListItem* prev;

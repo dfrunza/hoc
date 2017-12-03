@@ -1794,12 +1794,6 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
           scope->pre_fp_areas = new_list(arena, eList_data_area);
           scope->post_fp_areas = new_list(arena, eList_data_area);
 
-          DataArea* null_area = new_data_area(arena, eDataArea_var);
-          append_list_elem(scope->pre_fp_areas, null_area, eList_data_area);
-          int32* null = null_area->data = mem_push_struct(arena, int32);
-          *null = 0xffffffff;
-          null_area->size = sizeof(*null);
-
           DataArea* link_area = &scope->link_area;
           append_list_elem(scope->pre_fp_areas, link_area, eList_data_area);
 
@@ -1884,64 +1878,23 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     }
   }
 
-#if 0
-  Scope* module_scope = ATTR(module_body, scope, scope);
-
-  int data_size = 0;
-  for(ListItem* list_item = module_scope->pre_fp_areas->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    data_size += ITEM(list_item, data_area)->size;
-  }
-
-  //int frame_pointer = data_size;
-  //DataArea* ctrl_area = &module_scope->ctrl_area;
-  //DataArea* link_area = &module_scope->link_area;
-  //int stack_pointer = frame_pointer - (ctrl_area->size + link_area->size);
-
-  for(ListItem* list_item = module_scope->post_fp_areas->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    data_size += ITEM(list_item, data_area)->size;
-  }
-#endif
-
   str_init(x86_text, push_arena(&arena, X86_CODE_ARENA_SIZE));
   str_printfln(x86_text, "TITLE %s", title);
   str_printfln(x86_text, ".686");
   str_printfln(x86_text, ".MODEL flat");
+  str_printfln(x86_text, ".DATA");
+  str_printfln(x86_text, "module_data LABEL BYTE");
+  str_printfln(x86_text, "BYTE 8 DUP(?)");
+
   str_printfln(x86_text, ".STACK 1024");
-
-#if 0
-  str_printfln(x86_text, ".DATA");
-  str_printf(x86_text, "module_data DB ");
-  copy_module_data(x86_text, module_scope->pre_fp_areas);
-  str_printfln(x86_text, "");
-#endif
-  str_printfln(x86_text, ".DATA");
-  Scope* module_scope = ATTR(module_body, scope, scope);
-  for(ListItem* list_item = module_scope->decls[eSymbol_var]->first;
-      list_item;
-      list_item = list_item->next)
-  {
-    Symbol* var_sym = ITEM(list_item, symbol);
-    Type* var_type = var_sym->type;
-    if(var_sym->name)
-    {
-      str_printfln(x86_text, "%s DB %d DUP (?)", var_sym->name, var_type->width);
-    }
-    // else FIXME
-  }
-
   str_printfln(x86_text, ".CODE");
-  str_printfln(x86_text, "_start:");
+  str_printfln(x86_text, "startup PROC PUBLIC");
   if(!gen_x86(x86_text, module))
   {
     return false;
   }
-  str_printfln(x86_text, "END _start");
+  str_printfln(x86_text, "startup ENDP");
+  str_printfln(x86_text, "END");
 
   return true;
 }

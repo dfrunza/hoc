@@ -75,8 +75,7 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
         Symbol* decl_sym = occur_sym->decl;
         Scope* scope = occur_sym->scope;
         DataArea* ctrl_area = &scope->ctrl_area;
-        //DataArea* link = occur_sym->data_area;
-        DataArea* data = decl_sym->data_area;
+        DataArea* data_area = decl_sym->data_area;
 
         int decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
         if(decl_scope_offset > 0)
@@ -104,7 +103,7 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
         else
           assert(0);
 
-        str_printfln(code, "sub dword ptr [esp], %d", data->loc + data->size);
+        str_printfln(code, "sub dword ptr [esp], %d", data_area->loc + data_area->size);
       }
       break;
 
@@ -320,7 +319,7 @@ bool gen_x86(String* code, AstNode* node)
           gen_x86(code, proc);
         }
 
-        str_printfln(code,"_%s:", name);
+        str_printfln(code,"%s PROC PUBLIC", name);
         str_printfln(code, "; {");
         gen_x86_enter_frame(code, locals_area->size);
 
@@ -333,6 +332,7 @@ bool gen_x86(String* code, AstNode* node)
         }
 
         gen_x86_leave_frame(code, 0);
+        str_printfln(code, "%s ENDP", name);
         str_printfln(code, "ret");
         str_printfln(code, "; }");
       }
@@ -413,7 +413,7 @@ bool gen_x86(String* code, AstNode* node)
 
         AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
         char* name = ATTR(node, str_val, name) = ATTR(proc_decl, str_val, name);
-        str_printfln(code, "call _%s", name);
+        str_printfln(code, "call %s", name);
         str_printfln(code, "add esp, %d", 4 + args_area->size);
       }
       break;
@@ -867,6 +867,7 @@ bool gen_x86(String* code, AstNode* node)
   return success;
 }
 
+#if 0
 void copy_module_data(String* code, List* data_areas)
 {
   for(ListItem* list_item = data_areas->first;
@@ -894,4 +895,5 @@ void copy_module_data(String* code, List* data_areas)
     }
   }
 }
+#endif
 

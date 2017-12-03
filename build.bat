@@ -40,7 +40,7 @@ rem /Cx     - preserve case in publics, externs
 rem /Zi     - add symbolic debug info
 rem /Fl     - generate listing
 ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
-/link /nologo /subsystem:console /incremental:no /entry:start kernel32.lib
+/link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
 
 rem cl %C_flags% ..\fp3.c /link %L_flags%
 

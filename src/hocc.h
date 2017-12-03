@@ -181,9 +181,8 @@ typedef struct
 
   int loc;
   int size;
+  void* value;
   List* subareas;
-
-  void* data;
 }
 DataArea;
 

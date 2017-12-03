@@ -69,24 +69,29 @@ proc int foo(int a)
 var int len;
 proc void main()
 {
+  /*
   var char* cmd = GetCommandLine();
   len = strlen(cmd);
-  /*
   Sleep(1234);
   */
+  asm
+  {
+mov dword ptr [module_data], 0cdcdcdcdh
+mov dword ptr [module_data+4], 0dfdfdfdfh
+  }
 }
 
 main();
 
 asm
 {
-GetStdHandle PROTO NEAR32 stdcall, std_handle:DWORD
-GetCommandLineA PROTO NEAR32 stdcall
-Sleep PROTO NEAR32 stdcall, milliseconds:DWORD
-GetCurrentThreadId PROTO NEAR32 stdcall
+GetStdHandle PROTO stdcall, std_handle:DWORD
+GetCommandLineA PROTO stdcall
+Sleep PROTO stdcall, milliseconds:DWORD
+GetCurrentThreadId PROTO stdcall
 }
 
-proc char* GetCommandLine()
+proc char* hGetCommandLine()
 {
   asm
   {
@@ -98,7 +103,7 @@ mov [edi], eax
   }
 }
 
-proc void Sleep(int milliseconds)
+proc void hSleep(int milliseconds)
 {
   asm
   {
@@ -110,7 +115,7 @@ call Sleep
   }
 }
 
-proc int GetCurrentThreadId()
+proc int hGetCurrentThreadId()
 {
   asm
   {

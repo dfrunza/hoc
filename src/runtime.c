@@ -83,7 +83,7 @@ void compute_decl_areas(Scope* scope, eSymbol* kind_set, DataArea* decl_area)
       Symbol* symbol = ITEM(list_item, symbol);
       DataArea* area = symbol->data_area = new_data_area(arena, eDataArea_var);
       area->size = symbol->type->width;
-      area->data = symbol->data;
+      area->value = symbol->data;
 
       decl_area->size += area->size;
       append_list_elem(decl_area->subareas, area, eList_data_area);

@@ -154,12 +154,14 @@ Scope* begin_scope(eScope kind, AstNode* ast_node)
     scope->decls[i] = new_list(arena, eList_symbol);
     scope->occurs[i] = new_list(arena, eList_symbol);
   }
+#if 0
   scope->ret_area.kind = eDataArea_var;
   scope->args_area.kind = eDataArea_var;
   scope->link_area.kind = eDataArea_var;
   scope->link_area.size = 4; // size of an int
   scope->ctrl_area.kind = eDataArea_var;
   scope->locals_area.kind = eDataArea_var;
+#endif
 
   symbol_table->active_scope = scope;
   append_list_elem(symbol_table->scopes, scope, eList_scope);

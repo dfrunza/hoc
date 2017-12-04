@@ -1831,7 +1831,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   str_init(x86_text, push_arena(&arena, X86_CODE_ARENA_SIZE));
   str_printfln(x86_text, "TITLE %s", title);
   str_printfln(x86_text, ".686");
-  str_printfln(x86_text, ".MODEL flat, stdcall");
+  str_printfln(x86_text, ".MODEL flat, C");
 
   str_printfln(x86_text, ".DATA");
   str_printfln(x86_text, "global_area LABEL BYTE");
@@ -1863,14 +1863,12 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     }
   }
 
-  str_printfln(x86_text, ".STACK 1024");
+  str_printfln(x86_text, ".STACK 4096");
   str_printfln(x86_text, ".CODE");
-  str_printfln(x86_text, "startup PROC PUBLIC");
   if(!gen_x86(x86_text, module))
   {
     return false;
   }
-  str_printfln(x86_text, "startup ENDP");
   str_printfln(x86_text, "END");
 
   return true;

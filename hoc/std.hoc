@@ -4,11 +4,11 @@ var int heap_ptr = 0;
 
 asm
 {
-GetStdHandle PROTO std_handle:DWORD
-WriteConsoleA PROTO console_handle:DWORD, buf:DWORD, chars_to_write_count:DWORD, chars_written_count:DWORD, reserved:DWORD
-GetCommandLineA PROTO
-GetCurrentThreadId PROTO
-VirtualAlloc PROTO address:DWORD, alloc_size:DWORD, alloc_type:DWORD, protect_flags:DWORD
+GetStdHandle PROTO,stdcall std_handle:DWORD
+WriteConsoleA PROTO,stdcall console_handle:DWORD, buf:DWORD, chars_to_write_count:DWORD, chars_written_count:DWORD, reserved:DWORD
+GetCommandLineA PROTO,stdcall
+GetCurrentThreadId PROTO,stdcall
+VirtualAlloc PROTO,stdcall address:DWORD, alloc_size:DWORD, alloc_type:DWORD, protect_flags:DWORD
 }
 
 proc void* hVirtualAlloc(

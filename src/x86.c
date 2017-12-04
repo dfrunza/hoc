@@ -268,7 +268,7 @@ bool gen_x86(String* code, AstNode* node)
         AstNode* body = ATTR(node, ast_node, body);
         Scope* scope = ATTR(body, scope, scope);
 
-        str_printfln(code, "push ebp");
+        str_printfln(code, "startup PROC");
         str_printfln(code, "sub esp, %d", MACHINE_WORD_SIZE); // dummy IP
         str_printfln(code, "; {");
         gen_x86_enter_frame(code, scope->locals_area_size);
@@ -283,8 +283,8 @@ bool gen_x86(String* code, AstNode* node)
 
         gen_x86_leave_frame(code, 0);
         str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE); // dummy IP
-        str_printfln(code, "pop ebp");
         str_printfln(code, "ret");
+        str_printfln(code, "startup ENDP");
         str_printfln(code, "; }");
 
         for(ListItem* list_item = ATTR(body, list, procs)->first;
@@ -323,7 +323,7 @@ bool gen_x86(String* code, AstNode* node)
           gen_x86(code, proc);
         }
 
-        str_printfln(code,"%s PROC PUBLIC", name);
+        str_printfln(code,"%s PROC", name);
         str_printfln(code, "; {");
         gen_x86_enter_frame(code, scope->locals_area_size);
 
@@ -336,8 +336,8 @@ bool gen_x86(String* code, AstNode* node)
         }
 
         gen_x86_leave_frame(code, 0);
-        str_printfln(code, "%s ENDP", name);
         str_printfln(code, "ret");
+        str_printfln(code, "%s ENDP", name);
         str_printfln(code, "; }");
       }
       break;
@@ -387,7 +387,6 @@ bool gen_x86(String* code, AstNode* node)
         {
           gen_x86_load_rvalue(code, ITEM(list_item, ast_node));
         }
-        // TODO: Assert that the 'data area size' == 'evaluated args size'
 
         Symbol* occur_sym = ATTR(node, symbol, occur_sym);
         Scope* caller_scope = occur_sym->scope;
@@ -408,7 +407,7 @@ bool gen_x86(String* code, AstNode* node)
         }
 
         AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
-        char* name = ATTR(node, str_val, name) = ATTR(proc_decl, str_val, name);
+        char* name = ATTR(node, str_val, name) = ATTR(proc_decl, str_val, name); // <-- HACK
         str_printfln(code, "call %s", name);
         str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE + callee_scope->args_area_size);
       }

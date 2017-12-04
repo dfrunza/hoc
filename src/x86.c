@@ -453,8 +453,10 @@ bool gen_x86(String* code, AstNode* node)
               }
               else if(types_are_equal(type, basic_type_float))
               {
-                //FIXME
-                //assert(0);
+                str_printfln(code, "movss xmm0, dword ptr [esp]");
+                str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+                str_printfln(code, "addss xmm0, dword ptr [esp]");
+                str_printfln(code, "movss dword ptr [esp], xmm0");
               }
               else
                 assert(0);
@@ -463,18 +465,23 @@ bool gen_x86(String* code, AstNode* node)
 
           case eOperator_sub:
             {
-              gen_x86_load_rvalue(code, left_operand);
-              gen_x86_load_rvalue(code, right_operand);
-
               if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
               {
+                gen_x86_load_rvalue(code, left_operand);
+                gen_x86_load_rvalue(code, right_operand);
+
                 str_printfln(code, "pop eax");
                 str_printfln(code, "sub dword ptr [esp], eax");
               }
               else if(types_are_equal(type, basic_type_float))
               {
-                //FIXME
-                //assert(0);
+                gen_x86_load_rvalue(code, right_operand);
+                gen_x86_load_rvalue(code, left_operand);
+
+                str_printfln(code, "movss xmm0, dword ptr [esp]");
+                str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+                str_printfln(code, "subss xmm0, dword ptr [esp]");
+                str_printfln(code, "movss dword ptr [esp], xmm0");
               }
               else
                 assert(0);
@@ -494,8 +501,10 @@ bool gen_x86(String* code, AstNode* node)
               }
               else if(types_are_equal(type, basic_type_float))
               {
-                //FIXME
-                //assert(0);
+                str_printfln(code, "movss xmm0, dword ptr [esp]");
+                str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+                str_printfln(code, "mulss xmm0, dword ptr [esp]");
+                str_printfln(code, "movss dword ptr [esp], xmm0");
               }
               else
                 assert(0);
@@ -516,8 +525,10 @@ bool gen_x86(String* code, AstNode* node)
               }
               else if(types_are_equal(type, basic_type_float))
               {
-                //FIXME
-                //assert(0);
+                str_printfln(code, "movss xmm0, dword ptr [esp]");
+                str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+                str_printfln(code, "divss xmm0, dword ptr [esp]");
+                str_printfln(code, "movss dword ptr [esp], xmm0");
               }
               else
                 assert(0);
@@ -544,8 +555,6 @@ bool gen_x86(String* code, AstNode* node)
           case eOperator_eq:
           case eOperator_not_eq:
             {
-              assert(types_are_equal(left_ty, right_ty));
-
               gen_x86_load_rvalue(code, left_operand);
               gen_x86_load_rvalue(code, right_operand);
 
@@ -564,29 +573,34 @@ bool gen_x86(String* code, AstNode* node)
                 }
 
                 str_printfln(code, "cmp ebx, eax");
-
-                Label label = make_unique_label();
-                str_printfln(code, "push 1");
-                if(bin_op == eOperator_eq)
-                {
-                  str_printfln(code, "jz %s$cmp_eq", label.id);
-                  str_printfln(code, "xor dword ptr [esp], 1");
-                  str_printfln(code, "%s$cmp_eq:", label.id);
-                }
-                else if(bin_op == eOperator_not_eq)
-                {
-                  str_printfln(code, "jnz %s$cmp_not_eq", label.id);
-                  str_printfln(code, "xor dword ptr [esp], 1");
-                  str_printfln(code, "%s$cmp_not_eq:", label.id);
-                }
               }
               else if(types_are_equal(left_ty, basic_type_float))
               {
-                //FIXME
-                //assert(0);
+                str_printfln(code, "movss xmm0, dword ptr [esp]");
+                str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+                str_printfln(code, "comiss xmm0, dword ptr [esp]");
               }
               else
                 assert(0);
+
+              Label label = make_unique_label();
+              str_printfln(code, "push 1");
+              if(bin_op == eOperator_eq)
+              {
+                str_printfln(code, "jz %s$cmp_eq", label.id);
+                str_printfln(code, "xor dword ptr [esp], 1");
+                str_printfln(code, "%s$cmp_eq:", label.id);
+              }
+              else if(bin_op == eOperator_not_eq)
+              {
+                str_printfln(code, "jnz %s$cmp_not_eq", label.id);
+                str_printfln(code, "xor dword ptr [esp], 1");
+                str_printfln(code, "%s$cmp_not_eq:", label.id);
+              }
+              else
+                assert(0);
+              //TODO: Do we need to explicitly handle the case when at least one of floating point operands is NaN,
+              //or is there going to be some kind of CPU exception that will halt the program?
             }
             break;
 
@@ -595,13 +609,11 @@ bool gen_x86(String* code, AstNode* node)
           case eOperator_less_eq:
           case eOperator_greater_eq:
             {
-              assert(types_are_equal(left_ty, right_ty));
-
-              gen_x86_load_rvalue(code, left_operand);
-              gen_x86_load_rvalue(code, right_operand);
-
               if(types_are_equal(left_ty, basic_type_char) || types_are_equal(left_ty, basic_type_int))
               {
+                gen_x86_load_rvalue(code, left_operand);
+                gen_x86_load_rvalue(code, right_operand);
+
                 if(types_are_equal(left_ty, basic_type_int))
                 {
                   str_printfln(code, "pop eax");
@@ -647,8 +659,44 @@ bool gen_x86(String* code, AstNode* node)
               }
               else if(types_are_equal(left_ty, basic_type_float))
               {
-                //FIXME
-                //assert(0);
+                if(bin_op == eOperator_less)
+                {
+                  gen_x86_load_rvalue(code, right_operand);
+                  gen_x86_load_rvalue(code, left_operand);
+                  str_printfln(code, "movss xmm0, dword ptr [esp]");
+                  str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+                  str_printfln(code, "cmpss xmm0, dword ptr [esp], 1");
+                }
+                else if(bin_op == eOperator_less_eq)
+                {
+                  gen_x86_load_rvalue(code, right_operand);
+                  gen_x86_load_rvalue(code, left_operand);
+                  str_printfln(code, "movss xmm0, dword ptr [esp]");
+                  str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+                  str_printfln(code, "cmpss xmm0, dword ptr [esp], 2");
+                }
+                else if(bin_op == eOperator_greater)
+                {
+                  gen_x86_load_rvalue(code, left_operand);
+                  gen_x86_load_rvalue(code, right_operand);
+                  str_printfln(code, "movss xmm0, dword ptr [esp]");
+                  str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+                  str_printfln(code, "cmpss xmm0, dword ptr [esp], 1");
+                }
+                else if(bin_op == eOperator_greater_eq)
+                {
+                  gen_x86_load_rvalue(code, left_operand);
+                  gen_x86_load_rvalue(code, right_operand);
+                  str_printfln(code, "movss xmm0, dword ptr [esp]");
+                  str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+                  str_printfln(code, "cmpss xmm0, dword ptr [esp], 2");
+                }
+                else
+                  assert(0);
+                //TODO: Do we need to explicitly handle the case when at least one of floating point operands is NaN,
+                //or is there going to be some kind of CPU exception that will halt the program?
+
+                str_printfln(code, "movss dword ptr [esp], xmm0");
               }
               else
                 assert(0);
@@ -658,8 +706,6 @@ bool gen_x86(String* code, AstNode* node)
           case eOperator_logic_and:
           case eOperator_logic_or:
             {
-              assert(types_are_equal(left_ty, right_ty));
-
               gen_x86_load_rvalue(code, left_operand);
 
               Label label = make_unique_label();
@@ -704,13 +750,15 @@ bool gen_x86(String* code, AstNode* node)
 
               if(types_are_equal(left_ty, basic_type_int) && types_are_equal(right_ty, basic_type_float))
               {
-                //FIXME
-                //assert(0);
+                // int <- float
+                str_printfln(code, "cvttss2si eax, dword ptr [esp]");
+                str_printfln(code, "mov dword ptr [esp], eax");
               }
               if(types_are_equal(left_ty, basic_type_float) && types_are_equal(right_ty, basic_type_int))
               {
-                //FIXME
-                //assert(0);
+                // float <- int
+                str_printfln(code, "cvtsi2ss xmm0, dword ptr [esp]");
+                str_printfln(code, "movss dword ptr [esp], xmm0");
               }
             }
             break;
@@ -747,8 +795,7 @@ bool gen_x86(String* code, AstNode* node)
           }
           else if(types_are_equal(operand_ty, basic_type_float))
           {
-            //FIXME
-            //assert(0);
+            str_printfln(code, "xor dword ptr [esp], %xh", 0x80000000);
           }
           else
             assert(0);

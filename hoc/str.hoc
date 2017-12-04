@@ -167,3 +167,11 @@ proc void print_float(float f)
   print_str(&buf);
 }
 
+proc void print_bool(bool b)
+{
+  if(b)
+    print_str(&"true");
+  else
+    print_str(&"false");
+}
+

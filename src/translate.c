@@ -1829,8 +1829,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   }
 
   str_init(x86_text, push_arena(&arena, X86_CODE_ARENA_SIZE));
-  str_printfln(x86_text, "TITLE %s", title);
   str_printfln(x86_text, ".686");
+  str_printfln(x86_text, ".XMM");
   str_printfln(x86_text, ".MODEL flat, C");
 
   str_printfln(x86_text, ".DATA");

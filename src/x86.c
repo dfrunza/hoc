@@ -96,7 +96,7 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
             str_printfln(code, "mov dword ptr [esp], esi");
 
             // Load the FP by taking the offset relative to the Access Link
-            str_printfln(code, "sub dword ptr [esp], %d", 3*MACHINE_WORD_SIZE);
+            str_printfln(code, "sub dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
           }
           else if(decl_scope_offset < 0)
             assert(0);
@@ -282,7 +282,7 @@ bool gen_x86(String* code, AstNode* node)
         }
 
         gen_x86_leave_frame(code, 0);
-        str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+        str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE); // dummy IP
         str_printfln(code, "pop ebp");
         str_printfln(code, "ret");
         str_printfln(code, "; }");
@@ -357,6 +357,7 @@ bool gen_x86(String* code, AstNode* node)
         str_printfln(code, "; {");
         str_printfln(code, "push ebp");
         str_printfln(code, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
+        str_printfln(code, "sub esp, %d", MACHINE_WORD_SIZE); // dummy IP
         gen_x86_enter_frame(code, scope->locals_area_size);
 
         for(ListItem* list_item = ATTR(node, list, stmts)->first;
@@ -380,9 +381,9 @@ bool gen_x86(String* code, AstNode* node)
 
         str_printfln(code, "sub esp, %d", callee_scope->ret_area_size);
 
-        for(ListItem* list_item = ATTR(node, list, actual_args)->first;
+        for(ListItem* list_item = ATTR(node, list, actual_args)->last;
             list_item;
-            list_item = list_item->next)
+            list_item = list_item->prev)
         {
           gen_x86_load_rvalue(code, ITEM(list_item, ast_node));
         }
@@ -562,6 +563,7 @@ bool gen_x86(String* code, AstNode* node)
                   str_printfln(code, "movzx ebx, byte ptr [esp+%d]", MACHINE_WORD_SIZE);
                   str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE);
                 }
+
                 str_printfln(code, "cmp ebx, eax");
 
                 Label label = make_unique_label();
@@ -612,6 +614,8 @@ bool gen_x86(String* code, AstNode* node)
                   str_printfln(code, "movzx ebx, byte ptr [esp+%d]", MACHINE_WORD_SIZE);
                   str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE);
                 }
+
+                str_printfln(code, "cmp ebx, eax");
 
                 Label label = make_unique_label();
                 str_printfln(code, "push 1");

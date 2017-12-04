@@ -168,25 +168,6 @@ typedef struct TokenStream
 }
 TokenStream;
 
-#if 0
-typedef enum
-{
-  eDataArea_None,
-  eDataArea_var,
-  eDataArea_link,
-}
-eDataArea;
-
-typedef struct
-{
-  eDataArea kind;
-
-  int loc;
-  int size;
-}
-DataArea;
-#endif
-
 #ifndef eOperator_MEMBER_LIST
 #define eOperator_MEMBER_LIST()\
   ENUM_MEMBER(eOperator_None),\
@@ -749,7 +730,6 @@ typedef struct ListItem
     Symbol* symbol;
     Scope* scope;
     TypePair* type_pair;
-    //DataArea* data_area;
   };
   struct ListItem* next;
   struct ListItem* prev;

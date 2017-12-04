@@ -54,6 +54,6 @@ goto :end
 popd
 
 cloc.exe %src_dir%\hocc.h %src_dir%\hocc.c %src_dir%\lib.c %src_dir%\platform.h %src_dir%\platform.c %src_dir%\translate.c ^
-  %src_dir%\lex.c %src_dir%\syntax.c %src_dir%\semantic.c %src_dir%\type.c %src_dir%\runtime.c %src_dir%\x86.c
+  %src_dir%\lex.c %src_dir%\syntax.c %src_dir%\semantic.c %src_dir%\type.c %src_dir%\x86.c
 
 

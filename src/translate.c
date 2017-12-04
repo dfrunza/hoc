@@ -1789,8 +1789,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         list_item = list_item->next)
     {
       Symbol* symbol = ITEM(list_item, symbol);
-      symbol->data_loc = -offset;
       offset += symbol->type->width;
+      symbol->data_loc = -offset;
       scope->locals_area_size += symbol->type->width;
     }
 
@@ -1831,7 +1831,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   str_init(x86_text, push_arena(&arena, X86_CODE_ARENA_SIZE));
   str_printfln(x86_text, "TITLE %s", title);
   str_printfln(x86_text, ".686");
-  str_printfln(x86_text, ".MODEL flat");
+  str_printfln(x86_text, ".MODEL flat, stdcall");
 
   str_printfln(x86_text, ".DATA");
   str_printfln(x86_text, "global_area LABEL BYTE");
@@ -1846,13 +1846,14 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     {
       str_printf(x86_text, "BYTE ");
       uint8* p_data = (uint8*)symbol->data;
-      for(int i = 0; i < data_size; i++)
+      int i;
+      for(i = 0; i < data_size - 1; i++)
+      {
+        str_printf(x86_text, "0%xh,", p_data[i]);
+      }
+      if(i < data_size)
       {
         str_printf(x86_text, "0%xh", p_data[i]);
-        if(i < data_size-1)
-        {
-          str_printf(x86_text, ",");
-        }
       }
       str_printfln(x86_text, "");
     }

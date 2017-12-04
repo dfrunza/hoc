@@ -1,37 +1,138 @@
+var int stdout_handle = hGetStdHandle(-11); /*STD_OUTPUT_HANDLE*/
+var void* heap = hVirtualAlloc((type void*)0, 4096, 12288/*MEM_COMMIT|MEM_RESERVE*/, 4/*PAGE_READWRITE*/);
+var int heap_ptr = 0;
+
+asm
+{
+GetStdHandle PROTO std_handle:DWORD
+WriteConsoleA PROTO console_handle:DWORD, buf:DWORD, chars_to_write_count:DWORD, chars_written_count:DWORD, reserved:DWORD
+GetCommandLineA PROTO
+GetCurrentThreadId PROTO
+VirtualAlloc PROTO address:DWORD, alloc_size:DWORD, alloc_type:DWORD, protect_flags:DWORD
+}
+
+proc void* hVirtualAlloc(
+    void* address,
+    int alloc_size,
+    int alloc_type,
+    int protect_flags)
+{
+  asm
+  {
+; protect_flags
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi+12]
+; alloc_type
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi+8]
+; alloc_size
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi+4]
+; address
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi]
+call VirtualAlloc
+push ebp
+add dword ptr [esp], 28
+pop edi
+mov [edi], eax
+  }
+}
+
+proc void hWriteConsole(
+    int console_handle,
+    char* buf,
+    int chars_to_write_count,
+    int* chars_written_count,
+    void* reserved)
+{
+  asm
+  {
+; reserved
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi+16]
+; chars_written_count
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi+12]
+; chars_to_write_count
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi+8]
+; buf
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi+4]
+; console_handle
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi]
+call WriteConsoleA
+  }
+}
+
+proc int hGetStdHandle(int device_id)
+{
+  asm
+  {
+; device_id
+push ebp
+add dword ptr [esp], 12
+pop esi
+push dword ptr [esi]
+call GetStdHandle
+; get the result
+push ebp
+add dword ptr [esp], 16
+pop edi
+mov [edi], eax
+  }
+}
+
+proc char* hGetCommandLine()
+{
+  asm
+  {
+call GetCommandLineA
+push ebp
+add dword ptr [esp], 12
+pop edi
+mov [edi], eax
+  }
+}
+
+proc int hGetCurrentThreadId()
+{
+  asm
+  {
+call GetCurrentThreadId
+push ebp
+add dword ptr [esp], 12
+pop edi
+mov [edi], eax
+  }
+}
+
 proc void* new(int size)
 {
-  /* FIXME
-  asm
-  {
-    push_reg fp
-    push_int32 -16
-    add_int32
-    load 4 ; load the argument
-
-    new ; the pointer to the allocated memory is pushed on the stack
-
-    push_reg fp
-    push_int32 -20
-    add_int32
-    store 4 ; store the result
-
-    grow -4 ; pop the local
-  }
-  */
-  return (type void*)0;
+  var void* mem = heap + (type void*)heap_ptr;
+  heap_ptr = heap_ptr + size;
+  return mem;
 }
 
-proc void putc(char c)
-{
-  /* FIXME
-  asm
-  {
-    push_reg fp
-    push_int32 -13
-    add_int32
-    load 1 ; load the argument
+main();
 
-    putc ; print the char and pop the local
-  }
-  */
-}

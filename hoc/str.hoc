@@ -11,11 +11,9 @@ proc int strlen(char* str)
 
 proc void print_str(char* str)
 {
-  while(*str != '\0')
-  {
-    putc(*str);
-    str = str + (type char*)1;
-  }
+  var int len = strlen(str);
+  var int chars_written_count = 0;
+  hWriteConsole(stdout_handle, str, len, &chars_written_count, (type void*)0);
 }
 
 proc void digit_to_char(char* buf, int pos, int digit)

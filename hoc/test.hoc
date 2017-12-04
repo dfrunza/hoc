@@ -1,11 +1,46 @@
-/*
 include "std.hoc";
 include "str.hoc";
 include "math.hoc";
-include "fibo.hoc";
 include "fizzbuzz.hoc";
+include "fibo.hoc";
 include "sort.hoc";
+/*
 */
+
+proc void print_numbers(int* numbers, int len)
+{
+  var int i = 0;
+  while(i < len)
+  {
+    print_int(*(numbers + (type int*)(i*4)));
+    print_str(&"\n");
+
+    i = i+1;
+  }
+}
+
+proc int* make_numbers(int how_many)
+{
+  var int i = 0;
+  var int c1 = 17;
+  var int c2 = 31;
+  var int* numbers = (type int*)new(how_many*4);
+
+  while(i < how_many)
+  {
+    if((i % 2) == 0)
+    {
+      *(numbers + (type int*)(i*4)) = c1 * i;
+    }
+    else
+    {
+      *(numbers + (type int*)(i*4)) = c2 * i;
+    }
+
+    i = i+1;
+  }
+  return numbers;
+}
 
 /*
 proc void test()
@@ -48,6 +83,7 @@ proc void printf(char* s, ...)
 }
 */
 
+/*
 proc int strlen(char* str)
 {
   var int len = 0;
@@ -58,58 +94,29 @@ proc int strlen(char* str)
   }
   return len;
 }
-/*
 */
 
-var int x = 123;
 proc void main()
 {
-  var int len = strlen(&"ABC");
-}
+  var int i_a = 7*7*5*3;
+  var int i_b = 7*3*11;
+  var int i_r = gcd(i_a, i_b);
+  print_str(&"gcd(");
+  print_int(i_a);
+  print_str(&",");
+  print_int(i_b);
+  print_str(&")=");
+  print_int(i_r);
 
-main();
+  var int nr_count = 30;
+  var int* numbers = make_numbers(nr_count);
+  print_str(&"\n--- SHUFFLED ---\n");
+  print_numbers(numbers, nr_count);
 
-asm
-{
-GetStdHandle PROTO stdcall, std_handle:DWORD
-GetCommandLineA PROTO stdcall
-Sleep PROTO stdcall, milliseconds:DWORD
-GetCurrentThreadId PROTO stdcall
-}
+  print_str(&"\n--- FIBONACCI ---\n");
+  fibo(40);
 
-proc char* hGetCommandLine()
-{
-  asm
-  {
-call GetCommandLineA
-push ebp
-add dword ptr [esp], 12
-pop edi
-mov [edi], eax
-  }
-}
-
-proc void hSleep(int milliseconds)
-{
-  asm
-  {
-push ebp
-add dword ptr [esp], 12
-pop esi
-push dword ptr [esi]
-call Sleep
-  }
-}
-
-proc int hGetCurrentThreadId()
-{
-  asm
-  {
-call GetCurrentThreadId
-push ebp
-add dword ptr [esp], 12
-pop edi
-mov [edi], eax
-  }
+  print_str(&"\n--- FIZZBUZZ ---\n");
+  fizzbuzz(50);
 }
 

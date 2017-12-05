@@ -33,7 +33,7 @@ void gen_x86_load(String* code, int int8_count)
   str_printfln(code, "mov ecx, %d", int8_count);
   str_printfln(code, "mov esi, dword ptr [esp]");
   str_printfln(code, "mov edi, esp");
-  str_printfln(code, "rep movsb");
+  str_printfln(code, "rep movs byte ptr [edi], byte ptr [esi]");
 #if 0
   int int32_count = int8_count / MACHINE_WORD_SIZE;
   int int8_remainder = int8_count % MACHINE_WORD_SIZE;
@@ -60,7 +60,7 @@ void gen_x86_store(String* code, int int8_count)
   str_printfln(code, "mov ecx, %d", int8_count);
   str_printfln(code, "pop edi");
   str_printfln(code, "mov esi, esp");
-  str_printfln(code, "rep movsb");
+  str_printfln(code, "rep movs byte ptr [edi], byte ptr [esi]");
 }
 
 void gen_x86_load_lvalue(String* code, AstNode* node)
@@ -76,7 +76,8 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
 
         if(decl_sym->is_global)
         {
-          str_printfln(code, "push OFFSET global_area");
+          assert(decl_sym->data_loc >= 0);
+          str_printfln(code, "push OFFSET(global_area) + %d", decl_sym->data_loc);
         }
         else
         {
@@ -100,15 +101,15 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
           }
           else if(decl_scope_offset < 0)
             assert(0);
-        }
 
-        if(decl_sym->data_loc >= 0)
-        {
-          str_printfln(code, "add dword ptr [esp], %d", decl_sym->data_loc);
-        }
-        else if(decl_sym->data_loc < 0)
-        {
-          str_printfln(code, "sub dword ptr [esp], %d", -decl_sym->data_loc);
+          if(decl_sym->data_loc >= 0)
+          {
+            str_printfln(code, "add dword ptr [esp], %d", decl_sym->data_loc);
+          }
+          else
+          {
+            str_printfln(code, "sub dword ptr [esp], %d", -decl_sym->data_loc);
+          }
         }
       }
       break;

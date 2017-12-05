@@ -13,7 +13,7 @@ proc void print_str(char* str)
 {
   var int len = strlen(str);
   var int chars_written_count = 0;
-  WriteConsoleA(stdout_handle, str, len, &chars_written_count, (type void*)0);
+  WriteConsoleA(stdout, str, len, &chars_written_count, (type void*)0);
 }
 
 proc void digit_to_char(char* buf, int pos, int digit)

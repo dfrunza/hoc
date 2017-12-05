@@ -1,9 +1,9 @@
 include "std.hoc";
 include "str.hoc";
 include "math.hoc";
+/*
 include "fizzbuzz.hoc";
 include "fibo.hoc";
-/*
 include "sort.hoc";
 */
 
@@ -90,5 +90,8 @@ proc void printf(char* s, ...)
 
 proc void main()
 {
+  var [100]char buf;
+  var int bytes_read_count = stdin_read(&buf, 100);
+  print_str(&buf);
 }
 

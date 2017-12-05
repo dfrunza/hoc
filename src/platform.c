@@ -133,13 +133,12 @@ int stdin_read(char buf[], int buf_size)
 
   if(h_std && ReadFile(h_std, buf, (DWORD)buf_size, &bytes_read, 0))
   {
-    if(bytes_read)
+    if(bytes_read >= 0 && bytes_read < (uint)buf_size)
     {
-      if(bytes_read < (uint)buf_size)
-        buf[bytes_read] = '\0';
-      else
-        assert(!"bytes_read = buf_size");
+      buf[bytes_read] = '\0';
     }
+    else
+      assert(!"bytes_read < 0 || bytes_read >= buf_size");
   }
   else
   {

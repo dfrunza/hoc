@@ -393,10 +393,10 @@ bool gen_x86(String* code, AstNode* node)
 
     case eAstNode_proc_occur:
       {
-        Scope* callee_scope = ATTR(ATTR(node, ast_node, proc_decl), scope, scope);
+        AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
+        Scope* callee_scope = ATTR(proc_decl, scope, scope);
 
         str_printfln(code, "sub esp, %d", callee_scope->ret_area_size);
-
         for(ListItem* list_item = ATTR(node, list, actual_args)->last;
             list_item;
             list_item = list_item->prev)
@@ -404,28 +404,43 @@ bool gen_x86(String* code, AstNode* node)
           gen_x86_load_rvalue(code, ITEM(list_item, ast_node));
         }
 
-        Symbol* occur_sym = ATTR(node, symbol, occur_sym);
-        Scope* caller_scope = occur_sym->scope;
-        
-        str_printfln(code, "push ebp");
-        str_printfln(code, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
-
-        int callee_depth_offset = caller_scope->nesting_depth - callee_scope->nesting_depth;
-        if(callee_depth_offset >= 0)
-        {
-          str_printfln(code, "mov ecx, %d", callee_depth_offset + 1);
-          str_printfln(code, "mov esi, dword ptr [esp]");
-          Label label = make_unique_label();
-          str_printfln(code, "%s$loop:", label.id);
-          str_printfln(code, "mov esi, dword ptr[esi]");
-          str_printfln(code, "loop %s$loop", label.id);
-          str_printfln(code, "mov dword ptr [esp], esi");
-        }
-
-        AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
         char* label = ATTR(proc_decl, str_val, label);
-        str_printfln(code, "call %s", label);
-        str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE + callee_scope->args_area_size);
+        bool is_extern = ATTR(proc_decl, bool_val, is_extern);
+        if(is_extern)
+        {
+
+          str_printfln(code, "call %s", label);
+
+          if(callee_scope->ret_area_size == MACHINE_WORD_SIZE)
+          {
+            str_printfln(code, "mov dword ptr [esp], eax ; save the return value");
+          }
+          else if(callee_scope->ret_area_size != 0)
+            assert(0); // don't know what to do
+        }
+        else
+        {
+          Symbol* occur_sym = ATTR(node, symbol, occur_sym);
+          Scope* caller_scope = occur_sym->scope;
+
+          str_printfln(code, "push ebp");
+          str_printfln(code, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
+
+          int callee_depth_offset = caller_scope->nesting_depth - callee_scope->nesting_depth;
+          if(callee_depth_offset >= 0)
+          {
+            str_printfln(code, "mov ecx, %d", callee_depth_offset + 1);
+            str_printfln(code, "mov esi, dword ptr [esp]");
+            Label label = make_unique_label();
+            str_printfln(code, "%s$loop:", label.id);
+            str_printfln(code, "mov esi, dword ptr[esi]");
+            str_printfln(code, "loop %s$loop", label.id);
+            str_printfln(code, "mov dword ptr [esp], esi");
+          }
+
+          str_printfln(code, "call %s", label);
+          str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE + callee_scope->args_area_size);
+        }
       }
       break;
 

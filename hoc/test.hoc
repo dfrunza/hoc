@@ -7,6 +7,7 @@ include "fibo.hoc";
 include "sort.hoc";
 */
 
+/*
 proc void hoc_test()
 {
   proc void print_numbers(int* numbers, int len)
@@ -75,7 +76,6 @@ proc void hoc_test()
   print_str(&"\n--- SHUFFLED ---\n");
   print_numbers(numbers, nr_count);
 }
-/*
 */
 
 /* FIXME
@@ -88,15 +88,7 @@ proc void printf(char* s, ...)
 }
 */
 
-extern proc char* GetCommandLineA();
-extern proc void* VirtualAlloc(void* address, int alloc_size, int alloc_type, int protect_flags);
-extern proc void WriteConsoleA(int console_handle, char* buf, int chars_to_write_count, int* chars_written_count, void* reserved);
-extern proc int GetStdHandle(int device_id);
-/*
-*/
-
 proc void main()
 {
-
 }
 

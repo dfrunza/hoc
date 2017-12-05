@@ -197,7 +197,7 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = eAstNode_proc_decl;
-      kind->attr_count = 4;
+      kind->attr_count = 5;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -206,6 +206,11 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_ast_node;
       attr->name = eAstAttributeName_id;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_bool_val;
+      attr->name = eAstAttributeName_is_extern;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -850,7 +855,7 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = eAstNode_proc_decl;
-      kind->attr_count = 8;
+      kind->attr_count = 10;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -859,6 +864,16 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_str_val;
       attr->name = eAstAttributeName_name;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_bool_val;
+      attr->name = eAstAttributeName_is_extern;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_str_val;
+      attr->name = eAstAttributeName_label;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -1826,12 +1841,26 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
       offset += symbol->type->width;
       scope->ret_area_size += symbol->type->width;
     }
+
+    for(ListItem* list_item = scope->decls[eSymbol_extern_proc]->first;
+        list_item;
+        list_item = list_item->next)
+    {
+      Symbol* decl_sym = ITEM(list_item, symbol);
+      Type* proc_type = decl_sym->type;
+      int args_size = compute_type_width(proc_type->proc.args);
+      char* label = ATTR(decl_sym->ast_node, str_val, label);
+      String decorated_label; str_init(&decorated_label, arena);
+      str_printf(&decorated_label, "%s@%d", label, args_size);
+      ATTR(decl_sym->ast_node, str_val, label) = str_cap(&decorated_label);
+    }
   }
 
   str_init(x86_text, push_arena(&arena, X86_CODE_ARENA_SIZE));
   str_printfln(x86_text, ".686");
   str_printfln(x86_text, ".XMM");
   str_printfln(x86_text, ".MODEL flat, C");
+  str_printfln(x86_text, ".STACK 4096");
 
   str_printfln(x86_text, ".DATA");
   str_printfln(x86_text, "global_area LABEL BYTE");
@@ -1859,11 +1888,10 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     }
     else
     {
-      str_printfln(x86_text, "BYTE %d DUP(?)", data_size);
+      str_printfln(x86_text, "BYTE %d DUP(?) ; %s", data_size, symbol->name);
     }
   }
 
-  str_printfln(x86_text, ".STACK 4096");
   str_printfln(x86_text, ".CODE");
   if(!gen_x86(x86_text, module))
   {

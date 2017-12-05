@@ -1550,6 +1550,18 @@ bool parse_node(TokenStream* input, AstNode** node)
       success = get_next_token(input) && parse_proc(input, node);
       break;
 
+    case eToken_extern:
+      success = get_next_token(input) && parse_node(input, node);
+      if(!success)
+        break;
+      if((*node)->kind == eAstNode_proc_decl)
+      {
+        ATTR(*node, bool_val, is_extern) = true;
+      }
+      else
+        success = compile_error((*node)->src_loc, "`extern` can only be applied to procs");
+      break;
+
     case eToken_if:
       success = parse_if(input, node);
       break;

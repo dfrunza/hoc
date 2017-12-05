@@ -18,6 +18,7 @@ Token keyword_list[] =
   {eToken_struct, "struct"},
   {eToken_union, "union"},
   {eToken_enum, "enum"},
+  {eToken_extern, "extern"},
   {eToken_None, 0}, /* terminator */
 };
 
@@ -294,6 +295,9 @@ char* get_token_printstr(Token* token)
       break;
     case eToken_false:
       result = "false";
+      break;
+    case eToken_extern:
+      result = "extern";
       break;
     case eToken_id:
     case eToken_int_num:

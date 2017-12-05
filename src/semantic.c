@@ -476,8 +476,21 @@ bool name_ident(AstNode* node)
         AstNode* proc_decl_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_proc_decl);
         char* name = ATTR(proc_decl_gen1, str_val, name) = ATTR(ATTR(&proc_decl_gen0, ast_node, id), str_val, name);
 
+        char* label = ATTR(node, str_val, label) = name;
+        Scope* encl_proc_scope = find_scope(symbol_table->active_scope, eScope_proc);
+        if(encl_proc_scope)
+        {
+          AstNode* encl_proc = encl_proc_scope->ast_node;
+          assert(encl_proc->kind == eAstNode_proc_decl);
+          String qual_label; str_init(&qual_label, arena);
+          str_append(&qual_label, ATTR(encl_proc, str_val, label));
+          str_append(&qual_label, "$");
+          str_append(&qual_label, label);
+          label = ATTR(node, str_val, label) = str_cap(&qual_label);
+        }
+
         Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
-            (eSymbol[]){eSymbol_proc, eSymbol_None});
+            (eSymbol[]){eSymbol_proc, eSymbol_extern_proc, eSymbol_None});
         if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
         {
           success = compile_error(proc_decl_gen1->src_loc, "proc `%s` already declared", name);
@@ -485,8 +498,10 @@ bool name_ident(AstNode* node)
         }
         else
         {
+          bool is_extern = ATTR(proc_decl_gen1, bool_val, is_extern) = ATTR(&proc_decl_gen0, bool_val, is_extern);
           decl_sym = ATTR(proc_decl_gen1, symbol, decl_sym)
-            = add_decl_symbol(name, proc_decl_gen1->src_loc, symbol_table->active_scope, eSymbol_proc);
+            = add_decl_symbol(name, proc_decl_gen1->src_loc, symbol_table->active_scope,
+               is_extern ? eSymbol_extern_proc : eSymbol_proc);
           decl_sym->ast_node = proc_decl_gen1;
 
           List* formal_args = ATTR(proc_decl_gen1, list, formal_args) = ATTR(&proc_decl_gen0, list, formal_args);
@@ -502,10 +517,22 @@ bool name_ident(AstNode* node)
           {
             success = name_ident_formal_arg(ITEM(list_item, ast_node), eSymbol_formal_arg);
           }
+          if(!success)
+            break;
 
-          if(success)
+          if(success = name_ident_formal_arg(ret_var, eSymbol_ret_var))
           {
-            success = name_ident_formal_arg(ret_var, eSymbol_ret_var) && name_ident_block(body);
+            if(!is_extern)
+            {
+              if(body)
+              {
+                success = name_ident_block(body);
+              }
+              else
+                success = compile_error(proc_decl_gen1->src_loc, "proc `%s` must have a body", name);
+            }
+            else if(body)
+              success = compile_error(proc_decl_gen1->src_loc, "`extern` proc `%s` must not have a body", name);
           }
           end_scope();
         }
@@ -524,7 +551,7 @@ bool name_ident(AstNode* node)
         ATTR(proc_occur_gen1, symbol, occur_sym) = occur_sym;
 
         Symbol* decl_sym = lookup_decl_symbol(name, symbol_table->active_scope,
-            (eSymbol[]){eSymbol_proc, eSymbol_None});
+            (eSymbol[]){eSymbol_proc, eSymbol_extern_proc, eSymbol_None});
         if(decl_sym)
         {
           occur_sym->decl = decl_sym;
@@ -941,7 +968,11 @@ bool build_types(AstNode* node)
             ATTR(node, type, type) = new_proc_type(args_type, ret_type);
             ATTR(node, type, eval_type) = basic_type_void;
 
-            success = build_types(ATTR(node, ast_node, body));
+            bool is_extern = ATTR(node, bool_val, is_extern);
+            if(!is_extern)
+            {
+              success = build_types(ATTR(node, ast_node, body));
+            }
           }
         }
       }
@@ -1313,7 +1344,11 @@ bool eval_types(AstNode* node)
 
     case eAstNode_proc_decl:
       {
-        success = eval_types(ATTR(node, ast_node, body));
+        bool is_extern = ATTR(node, bool_val, is_extern);
+        if(!is_extern)
+        {
+          success = eval_types(ATTR(node, ast_node, body));
+        }
       }
       break;
 
@@ -1325,55 +1360,53 @@ bool eval_types(AstNode* node)
         {
           success = eval_types(ITEM(list_item, ast_node));
         }
+        if(!success)
+          break;
 
-        if(success)
+        AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
+        if(!proc_decl)
         {
-          AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
-          if(!proc_decl)
+          Symbol* occur_sym = ATTR(node, symbol, occur_sym);
+          Symbol* decl_sym = lookup_decl_symbol(occur_sym->name, occur_sym->scope,
+              (eSymbol[]){eSymbol_proc, eSymbol_extern_proc, eSymbol_None});
+          if(decl_sym)
           {
-            Symbol* occur_sym = ATTR(node, symbol, occur_sym);
-            Symbol* decl_sym = lookup_decl_symbol(occur_sym->name, occur_sym->scope,
-                (eSymbol[]){eSymbol_proc, eSymbol_None});
-            if(decl_sym)
-            {
-              proc_decl = ATTR(node, ast_node, proc_decl) = decl_sym->ast_node;
-            }
-            else
-              success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
+            proc_decl = ATTR(node, ast_node, proc_decl) = decl_sym->ast_node;
           }
+          else
+            success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
+        }
+        if(!success)
+          break;
 
-          if(success)
+        Type* args_ty = basic_type_void;
+        ListItem* list_item = ATTR(node, list, actual_args)->first;
+        if(list_item)
+        {
+          AstNode* arg = ITEM(list_item, ast_node);
+          args_ty = ATTR(arg, type, eval_type);
+
+          for(list_item = list_item->next;
+              list_item;
+              list_item = list_item->next)
           {
-            Type* args_ty = basic_type_void;
-            ListItem* list_item = ATTR(node, list, actual_args)->first;
-            if(list_item)
-            {
-              AstNode* arg = ITEM(list_item, ast_node);
-              args_ty = ATTR(arg, type, eval_type);
-
-              for(list_item = list_item->next;
-                  list_item;
-                  list_item = list_item->next)
-              {
-                AstNode* arg = ITEM(list_item, ast_node);
-                args_ty = new_product_type(args_ty, ATTR(arg, type, eval_type));
-              }
-            }
-
-            Type* ret_ty = ATTR(proc_decl, type, type)->proc.ret;
-            Type* occur_ty = ATTR(node, type, type); assert(occur_ty->kind == eType_proc);
-            Type* decl_ty = ATTR(proc_decl, type, type); assert(decl_ty->kind == eType_proc);
-            if(type_unif(occur_ty->proc.args, args_ty) && type_unif(occur_ty->proc.ret, ret_ty))
-            {
-              if(!type_unif(decl_ty, occur_ty))
-              {
-                success = compile_error(node->src_loc, "type error (proc occur)");
-              }
-            }
-            else
-              success = compile_error(node->src_loc, "type error (proc occur)");
+            AstNode* arg = ITEM(list_item, ast_node);
+            args_ty = new_product_type(args_ty, ATTR(arg, type, eval_type));
           }
         }
+
+        Type* ret_ty = ATTR(proc_decl, type, type)->proc.ret;
+        Type* occur_ty = ATTR(node, type, type); assert(occur_ty->kind == eType_proc);
+        Type* decl_ty = ATTR(proc_decl, type, type); assert(decl_ty->kind == eType_proc);
+        if(type_unif(occur_ty->proc.args, args_ty) && type_unif(occur_ty->proc.ret, ret_ty))
+        {
+          if(!type_unif(decl_ty, occur_ty))
+          {
+            success = compile_error(node->src_loc, "type error (proc occur)");
+          }
+        }
+        else
+          success = compile_error(node->src_loc, "type error (proc occur)");
       }
       break;
 
@@ -1555,7 +1588,10 @@ bool resolve_types(AstNode* node)
         {
           success = resolve_types(ITEM(list_item, ast_node));
         }
-        if(success && (success = node_resolve_type(node)))
+        if(!success)
+          break;
+
+        if(success = node_resolve_type(node))
         {
           ATTR(node, symbol, decl_sym)->type = ATTR(node, type, type);
 
@@ -1565,7 +1601,11 @@ bool resolve_types(AstNode* node)
             ATTR(ret_var, symbol, decl_sym)->type = ATTR(ret_var, type, type);
 
             AstNode* body = ATTR(node, ast_node, body);
-            success = resolve_types(body) && node_resolve_type(body);
+            bool is_extern = ATTR(node, bool_val, is_extern);
+            if(!is_extern)
+            {
+              success = resolve_types(body) && node_resolve_type(body);
+            }
           }
         }
       }
@@ -1684,7 +1724,6 @@ bool check_types(AstNode* node)
         Type* var_ty = ATTR(node, type, type);
         if(var_ty == basic_type_void)
         {
-          //TODO
           success = compile_error(node->src_loc, "variable type cannot be `void`");
         }
       }
@@ -1834,7 +1873,11 @@ bool check_types(AstNode* node)
         {
           success = check_types(ITEM(list_item, ast_node));
         }
-        if(success)
+        if(!success)
+          break;
+
+        bool is_extern = ATTR(node, bool_val, is_extern);
+        if(!is_extern)
         {
           success = check_types(ATTR(node, ast_node, body));
         }

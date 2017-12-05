@@ -132,6 +132,7 @@ typedef enum
   eToken_enum,
   eToken_true,
   eToken_false,
+  eToken_extern,
 
   eToken_id,
   eToken_int_num,
@@ -372,6 +373,7 @@ typedef enum
   eSymbol_global_var,
   eSymbol_type,
   eSymbol_proc,
+  eSymbol_extern_proc,
   eSymbol_Count,
 }
 eSymbol;
@@ -469,6 +471,7 @@ typedef enum
   eAstAttributeName_data_area,
   eAstAttributeName_label,
   eAstAttributeName_asm_text,
+  eAstAttributeName_is_extern,
 }
 eAstAttributeName;
 
@@ -559,7 +562,7 @@ char* get_ast_kind_printstr(eAstNode kind)
   return eAstNode_strings[kind];
 }
 
-#define MAX_ATTRIBUTE_COUNT 12
+#define MAX_ATTRIBUTE_COUNT 16
 
 typedef struct
 {

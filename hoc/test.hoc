@@ -88,8 +88,15 @@ proc void printf(char* s, ...)
 }
 */
 
+extern proc char* GetCommandLineA();
+extern proc void* VirtualAlloc(void* address, int alloc_size, int alloc_type, int protect_flags);
+extern proc void WriteConsoleA(int console_handle, char* buf, int chars_to_write_count, int* chars_written_count, void* reserved);
+extern proc int GetStdHandle(int device_id);
+/*
+*/
+
 proc void main()
 {
-  hoc_test();
+
 }
 

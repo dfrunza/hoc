@@ -1,16 +1,8 @@
-var int stdout_handle = hGetStdHandle(-11); /*STD_OUTPUT_HANDLE*/
-var void* heap = hVirtualAlloc((type void*)0, 4096, 12288/*MEM_COMMIT|MEM_RESERVE*/, 4/*PAGE_READWRITE*/);
+var int stdout_handle = GetStdHandle(-11); /*STD_OUTPUT_HANDLE*/
+var void* heap = VirtualAlloc((type void*)0, 4096, 12288/*MEM_COMMIT|MEM_RESERVE*/, 4/*PAGE_READWRITE*/);
 var int heap_ptr = 0;
 
-asm
-{
-GetStdHandle PROTO,stdcall std_handle:DWORD
-WriteConsoleA PROTO,stdcall console_handle:DWORD, buf:DWORD, chars_to_write_count:DWORD, chars_written_count:DWORD, reserved:DWORD
-GetCommandLineA PROTO,stdcall
-GetCurrentThreadId PROTO,stdcall
-VirtualAlloc PROTO,stdcall address:DWORD, alloc_size:DWORD, alloc_type:DWORD, protect_flags:DWORD
-}
-
+/*
 proc void* hVirtualAlloc(
     void* address,
     int alloc_size,
@@ -46,7 +38,9 @@ pop edi
 mov [edi], eax
   }
 }
+*/
 
+/*
 proc void hWriteConsole(
     int console_handle,
     char* buf,
@@ -84,7 +78,9 @@ push dword ptr [esi]
 call WriteConsoleA
   }
 }
+*/
 
+/*
 proc int hGetStdHandle(int device_id)
 {
   asm
@@ -102,7 +98,9 @@ pop edi
 mov [edi], eax
   }
 }
+*/
 
+/*
 proc char* hGetCommandLine()
 {
   asm
@@ -114,18 +112,7 @@ pop edi
 mov [edi], eax
   }
 }
-
-proc int hGetCurrentThreadId()
-{
-  asm
-  {
-call GetCurrentThreadId
-push ebp
-add dword ptr [esp], 12
-pop edi
-mov [edi], eax
-  }
-}
+*/
 
 proc void* new(int size)
 {

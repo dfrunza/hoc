@@ -90,8 +90,8 @@ proc void printf(char* s, ...)
 
 proc void main()
 {
-  var int a = 1 ^ 3;
-  print_int(a);
+  var int i = 0xf;
+  print_int(i);
 }
 
 main();

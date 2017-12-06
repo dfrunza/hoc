@@ -428,7 +428,7 @@ loop:
     char* begin_char = input->cursor;
     c = *(++input->cursor);
 
-    while(char_is_letter(c) || char_is_numeric(c) || c == '_')
+    while(char_is_letter(c) || char_is_dec_digit(c) || c == '_')
     {
       c = *(++input->cursor);
     }
@@ -444,21 +444,42 @@ loop:
       token->kind = keyword->kind;
     }
   }
-  else if(char_is_numeric(c))
+  else if(char_is_dec_digit(c))
   {
     char digit_buf[32] = {0};
     bool is_float = false;
+    bool is_hex = false;
+
     int i = 0;
-    for(; i < sizeof_array(digit_buf)-1 && (char_is_numeric(c) || c == '.'); i++)
+    digit_buf[i++] = c;
+    c = *(++input->cursor);
+
+    if(c == 'x') // hexadecimal
     {
-      digit_buf[i] = c;
-      if(c == '.')
-      {
-        if(is_float)
-          break;
-        is_float = true;
-      }
+      is_hex = true;
       c = *(++input->cursor);
+
+      for(; i < sizeof_array(digit_buf)-1 && char_is_hex_digit(c);
+          i++)
+      {
+        digit_buf[i] = c;
+        c = *(++input->cursor);
+      }
+    }
+    else if(char_is_dec_digit(c) || c == '.')
+    {
+      for(; i < sizeof_array(digit_buf)-1 && ((char_is_dec_digit(c) || c == '.'));
+          i++)
+      {
+        digit_buf[i] = c;
+        if(c == '.')
+        {
+          if(is_float)
+            break;
+          is_float = true;
+        }
+        c = *(++input->cursor);
+      }
     }
     digit_buf[i] = '\0';
     token->lexeme = install_lexeme(digit_buf, digit_buf + i-1);
@@ -473,7 +494,10 @@ loop:
     {
       token->kind = eToken_int_num;
       token->int_val = mem_push_struct(arena, int);
-      h_sscanf(digit_buf, "%d", token->int_val);
+      if(is_hex)
+        h_sscanf(digit_buf, "%x", token->int_val);
+      else
+        h_sscanf(digit_buf, "%d", token->int_val);
     }
   }
   else if(c == '-')

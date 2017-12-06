@@ -145,7 +145,7 @@ proc float sqrt(float x)
 proc int floor_log_b(int b, float n)
 {
   var int x = 0;
-  var float b_pow_x = 1.;
+  var float b_pow_x = 1.0;
 
   if(n > 1.0)
   {

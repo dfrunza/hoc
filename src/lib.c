@@ -3,9 +3,14 @@ bool char_is_letter(char ch)
   return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z');
 }
 
-bool char_is_numeric(char c)
+bool char_is_dec_digit(char c)
 {
   return '0' <= c && c <= '9';
+}
+
+bool char_is_hex_digit(char c)
+{
+  return ('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
 }
 
 #define struct_check_bounds(ARENA, TYPE, STRUCT)\
@@ -157,13 +162,13 @@ bool cstr_to_int(char* str, int* integer)
   }
 
   char c = *str++;
-  if(char_is_numeric(c))
+  if(char_is_dec_digit(c))
   {
     int result = (int)(c - '0');
 
     for(c = *str++; c != '\0'; c = *str++)
     {
-      if(char_is_numeric(c))
+      if(char_is_dec_digit(c))
       {
         int digit = (int)(c - '0');
         result = result*10 + digit;
@@ -193,12 +198,12 @@ bool cstr_to_float(char* str, float* result)
   }
 
   char c = *str++;
-  if(char_is_numeric(c))
+  if(char_is_dec_digit(c))
   {
     int int_part = (c - '0');
     for(c = *str++; c != '\0' && c != '.'; c = *str++)
     {
-      if(char_is_numeric(c))
+      if(char_is_dec_digit(c))
       {
         int_part = int_part*10 + (c - '0');
       }
@@ -215,7 +220,7 @@ bool cstr_to_float(char* str, float* result)
       c = *str++;
       for(c = *str++; c != '\0'; c = *str++)
       {
-        if(char_is_numeric(c))
+        if(char_is_dec_digit(c))
         {
           fract_part = fract_part + ((c - '0') / 10.0f);
         }

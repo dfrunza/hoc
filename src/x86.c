@@ -1,23 +1,12 @@
 void gen_x86_load_rvalue(String* code, AstNode* node);
 bool gen_x86(String* code, AstNode* node);
 
-void gen_x86_enter_frame(String* code, int locals_size)
-{
-  str_printfln(code, "push ebp");
-  str_printfln(code, "mov ebp, esp");
-  str_printfln(code, "sub esp, %d", locals_size);
-}
-
 void gen_x86_leave_frame(String* code, int depth)
 {
   if(depth > 0)
   {
-    Label label = make_unique_label();
-    str_printfln(code, "mov ecx, %d", depth);
-    str_printfln(code, "%s$loop:", label.id);
-    str_printfln(code, "mov esp, ebp");
-    str_printfln(code, "pop ebp");
-    str_printfln(code, "loop %s$loop", label.id);
+    str_printfln(code, "push %d", depth);
+    str_printfln(code, "call _rt_leave_frame");
   }
   else if(depth == 0)
   {
@@ -26,41 +15,6 @@ void gen_x86_leave_frame(String* code, int depth)
   }
   else
     assert(0);
-}
-
-void gen_x86_load(String* code, int int8_count)
-{
-  str_printfln(code, "mov ecx, %d", int8_count);
-  str_printfln(code, "mov esi, dword ptr [esp]");
-  str_printfln(code, "mov edi, esp");
-  str_printfln(code, "rep movs byte ptr [edi], byte ptr [esi]");
-#if 0
-  int int32_count = int8_count / MACHINE_WORD_SIZE;
-  int int8_remainder = int8_count % MACHINE_WORD_SIZE;
-
-  if(int32_count > 0)
-  {
-    str_printfln(code, "mov ecx, %d", int32_count);
-    str_printfln(code, "mov esi, dword ptr [esp]");
-    str_printfln(code, "mov edi, esp");
-    str_printfln(code, "rep movsd");
-  }
-  if(int8_remainder > 0)
-  {
-    str_printfln(code, "mov ecx, %d", int8_remainder);
-    str_printfln(code, "mov esi, dword ptr [esp]");
-    str_printfln(code, "mov edi, esp");
-    str_printfln(code, "rep movsb");
-  }
-#endif
-}
-
-void gen_x86_store(String* code, int int8_count)
-{
-  str_printfln(code, "mov ecx, %d", int8_count);
-  str_printfln(code, "pop edi");
-  str_printfln(code, "mov esi, esp");
-  str_printfln(code, "rep movs byte ptr [edi], byte ptr [esi]");
 }
 
 void gen_x86_load_lvalue(String* code, AstNode* node)
@@ -87,14 +41,8 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
           {
             // Non-local
             str_printfln(code, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
-
-            str_printfln(code, "mov ecx, %d", decl_scope_offset);
-            str_printfln(code, "mov esi, dword ptr [esp]");
-            Label label = make_unique_label();
-            str_printfln(code, "%s$loop:", label.id);
-            str_printfln(code, "mov esi, dword ptr[esi]");
-            str_printfln(code, "loop %s$loop", label.id);
-            str_printfln(code, "mov dword ptr [esp], esi");
+            str_printfln(code, "push %d", decl_scope_offset);
+            str_printfln(code, "call _rt_load_access_link");
 
             // Load the FP by taking the offset relative to the Access Link
             str_printfln(code, "sub dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
@@ -167,7 +115,8 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
       {
         Type* type = ATTR(node, type, eval_type);
         gen_x86_load_lvalue(code, node);
-        gen_x86_load(code, type->width);
+        str_printfln(code, "push %d", type->width);
+        str_printfln(code, "call _rt_load");
       }
       break;
 
@@ -217,7 +166,8 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
         if(bin_op == eOperator_index)
         {
           gen_x86_load_lvalue(code, node);
-          gen_x86_load(code, type->width);
+          str_printfln(code, "push %d", type->width);
+          str_printfln(code, "call _rt_load");
         }
         else
         {
@@ -246,7 +196,8 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
         else if(un_op == eOperator_deref)
         {
           gen_x86_load_lvalue(code, node);
-          gen_x86_load(code, type->width);
+          str_printfln(code, "push %d", type->width);
+          str_printfln(code, "call _rt_load");
         }
         else
         {
@@ -285,9 +236,8 @@ bool gen_x86(String* code, AstNode* node)
         }
 
         str_printfln(code, "startup PROC");
-        str_printfln(code, "sub esp, %d", MACHINE_WORD_SIZE); // dummy IP
-        str_printfln(code, "; {");
-        gen_x86_enter_frame(code, scope->locals_area_size);
+        str_printfln(code, "call _rt_module_prologue");
+        str_printfln(code, "sub esp, %d", scope->locals_area_size);
 
         for(ListItem* list_item = ATTR(body, list, stmts)->first;
             list_item;
@@ -301,7 +251,6 @@ bool gen_x86(String* code, AstNode* node)
         str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE); // dummy IP
         str_printfln(code, "ret");
         str_printfln(code, "startup ENDP");
-        str_printfln(code, "; }");
       }
       break;
 
@@ -332,9 +281,10 @@ bool gen_x86(String* code, AstNode* node)
             gen_x86(code, decl_sym->ast_node);
           }
 
-          str_printfln(code,"%s PROC", label);
-          str_printfln(code, "; {");
-          gen_x86_enter_frame(code, scope->locals_area_size);
+          str_printfln(code, "%s PROC", label);
+          str_printfln(code, "push ebp");
+          str_printfln(code, "mov ebp, esp");
+          str_printfln(code, "sub esp, %d", scope->locals_area_size);
 
           AstNode* body = ATTR(node, ast_node, body);
           for(ListItem* list_item = ATTR(body, list, stmts)->first;
@@ -348,7 +298,6 @@ bool gen_x86(String* code, AstNode* node)
           gen_x86_leave_frame(code, 0);
           str_printfln(code, "ret");
           str_printfln(code, "%s ENDP", label);
-          str_printfln(code, "; }");
         }
       }
       break;
@@ -372,11 +321,8 @@ bool gen_x86(String* code, AstNode* node)
           gen_x86(code, decl_sym->ast_node);
         }
 
-        str_printfln(code, "; {");
-        str_printfln(code, "push ebp");
-        str_printfln(code, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
-        str_printfln(code, "sub esp, %d", MACHINE_WORD_SIZE); // dummy IP
-        gen_x86_enter_frame(code, scope->locals_area_size);
+        str_printfln(code, "call _rt_block_prologue");
+        str_printfln(code, "sub esp, %d", scope->locals_area_size);
 
         for(ListItem* list_item = ATTR(node, list, stmts)->first;
             list_item;
@@ -387,8 +333,7 @@ bool gen_x86(String* code, AstNode* node)
         }
 
         gen_x86_leave_frame(code, 0);
-        str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE);
-        str_printfln(code, "; }");
+        str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE); // access link + dummy IP
       }
       break;
 
@@ -409,7 +354,6 @@ bool gen_x86(String* code, AstNode* node)
         bool is_extern = ATTR(proc_decl, bool_val, is_extern);
         if(is_extern)
         {
-
           str_printfln(code, "call %s", label);
 
           if(callee_scope->ret_area_size == MACHINE_WORD_SIZE)
@@ -417,7 +361,7 @@ bool gen_x86(String* code, AstNode* node)
             str_printfln(code, "mov dword ptr [esp], eax ; save the return value");
           }
           else if(callee_scope->ret_area_size != 0)
-            assert(0); // don't know what to do
+            assert(0); //FIXME: don't know what to do
         }
         else
         {
@@ -430,13 +374,8 @@ bool gen_x86(String* code, AstNode* node)
           int callee_depth_offset = caller_scope->nesting_depth - callee_scope->nesting_depth;
           if(callee_depth_offset >= 0)
           {
-            str_printfln(code, "mov ecx, %d", callee_depth_offset + 1);
-            str_printfln(code, "mov esi, dword ptr [esp]");
-            Label label = make_unique_label();
-            str_printfln(code, "%s$loop:", label.id);
-            str_printfln(code, "mov esi, dword ptr[esi]");
-            str_printfln(code, "loop %s$loop", label.id);
-            str_printfln(code, "mov dword ptr [esp], esi");
+            str_printfln(code, "push %d", callee_depth_offset + 1);
+            str_printfln(code, "call _rt_load_access_link");
           }
 
           str_printfln(code, "call %s", label);
@@ -469,7 +408,8 @@ bool gen_x86(String* code, AstNode* node)
             {
               gen_x86_load_rvalue(code, right_operand);
               gen_x86_load_lvalue(code, left_operand);
-              gen_x86_store(code, type->width);
+              str_printfln(code, "push %d", type->width);
+              str_printfln(code, "call _rt_store");
             }
             break;
 

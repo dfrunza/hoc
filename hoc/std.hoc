@@ -7,7 +7,7 @@ extern proc bool ReadFile(int file_handle, char* buf, int bytes_to_read_count, i
 
 var int stdout = GetStdHandle(-11); /*STD_OUTPUT_HANDLE*/
 var int stdin = GetStdHandle(-10); /*STD_INPUT_HANDLE*/
-var void* heap = VirtualAlloc((type void*)0, 4096, 0x1000/*MEM_COMMIT*/|0x2000/*MEM_RESERVE*/, 4/*PAGE_READWRITE*/);
+var void* heap = VirtualAlloc((type void*)0, 4096, 0x1000/*MEM_COMMIT*/|0x2000/*MEM_RESERVE*/, 0x4/*PAGE_READWRITE*/);
 var int heap_ptr = 0;
 
 proc void* new(int size)

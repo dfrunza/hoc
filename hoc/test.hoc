@@ -1,14 +1,13 @@
 include "std.hoc";
 include "str.hoc";
 include "math.hoc";
-/*
 include "fizzbuzz.hoc";
 include "fibo.hoc";
+/*
 include "sort.hoc";
 */
 
-/*
-proc void hoc_test()
+proc void test_hoc()
 {
   proc void print_numbers(int* numbers, int len)
   {
@@ -76,6 +75,7 @@ proc void hoc_test()
   print_str(&"\n--- SHUFFLED ---\n");
   print_numbers(numbers, nr_count);
 }
+/*
 */
 
 /* FIXME
@@ -88,10 +88,11 @@ proc void printf(char* s, ...)
 }
 */
 
+var int a = 123;
 proc void main()
 {
-  var int i = 0xf;
-  print_int(i);
+  a = a+123;
+  test_hoc();
 }
 
 main();

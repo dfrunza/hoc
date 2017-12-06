@@ -687,7 +687,6 @@ bool parse_selector(TokenStream* input, AstNode** node)
         {
           ATTR(lit, lit_kind, lit_kind) = eLiteral_str_val;
           ATTR(lit, str_val, str_val) = input->token.str_val;
-
 #if 0
           AstNode* str = *node = new_ast_node(eAstGen_gen0, eAstNode_str, clone_source_loc(&input->src_loc));
           ATTR(str, ast_node, str_lit) = lit;
@@ -1211,8 +1210,8 @@ bool parse_include(TokenStream* input, AstNode** node)
     str_append(&str, input->token.str_val);
     ATTR(include, str_val, file_path) = str_cap(&str);
 
-    if(!(success = get_next_token(input)))
-      return success;
+    if(!get_next_token(input))
+      return success = false;
 
     char* hoc_text = file_read_text(arena, ATTR(include, str_val, file_path));
     if(hoc_text)
@@ -1244,22 +1243,22 @@ bool parse_enum(TokenStream* input, AstNode** node)
   {
     AstNode* enum_decl = *node = new_ast_node(eAstGen_gen0, eAstNode_enum_decl, clone_source_loc(&input->src_loc));
 
-    if(!(success = get_next_token(input)))
-      return success;
+    if(!get_next_token(input))
+      return success = false;
 
     if(input->token.kind == eToken_id)
     {
       AstNode* id = ATTR(enum_decl, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
       ATTR(id, str_val, name) = input->token.lexeme;
 
-      if(!(success = get_next_token(input)))
-        return success;
+      if(!get_next_token(input))
+        return success = false;
 
       if(input->token.kind == eToken_open_brace)
       {
 
-        if(!(success = get_next_token(input)))
-          return success;
+        if(!get_next_token(input))
+          return success = false;
 
         ATTR(enum_decl, list, members) = new_list(arena, eList_ast_node);
         AstNode* member = 0;
@@ -1352,8 +1351,8 @@ bool parse_struct_member_list(TokenStream* input, List* member_list)
 
   if(input->token.kind == eToken_open_brace)
   {
-    if(!(success = get_next_token(input)))
-      return success;
+    if(!get_next_token(input))
+      return success = false;
 
     AstNode* member = 0;
     do

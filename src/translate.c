@@ -1893,6 +1893,73 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   }
 
   str_printfln(x86_text, ".CODE");
+
+  Label label;
+  str_printfln(x86_text, "_rt_module_prologue PROC PRIVATE");
+  str_printfln(x86_text, "pop ebx"); // return address
+  str_printfln(x86_text, "sub esp, %d", MACHINE_WORD_SIZE); // dummy IP
+  str_printfln(x86_text, "push ebp");
+  str_printfln(x86_text, "mov ebp, esp");
+  str_printfln(x86_text, "push ebx");
+  str_printfln(x86_text, "ret");
+  str_printfln(x86_text, "_rt_module_prologue ENDP");
+  
+  str_printfln(x86_text, "_rt_block_prologue PROC PRIVATE");
+  str_printfln(x86_text, "pop ebx"); // return address
+  str_printfln(x86_text, "push ebp");
+  str_printfln(x86_text, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
+  str_printfln(x86_text, "sub esp, %d", MACHINE_WORD_SIZE); // dummy IP
+  str_printfln(x86_text, "push ebp");
+  str_printfln(x86_text, "mov ebp, esp");
+  str_printfln(x86_text, "push ebx");
+  str_printfln(x86_text, "ret");
+  str_printfln(x86_text, "_rt_block_prologue ENDP");
+
+  str_printfln(x86_text, "_rt_load PROC PRIVATE");
+  str_printfln(x86_text, "pop ebx"); // return address
+  str_printfln(x86_text, "pop ecx"); // byte count
+  str_printfln(x86_text, "mov esi, dword ptr [esp]");
+  str_printfln(x86_text, "mov edi, esp");
+  str_printfln(x86_text, "rep movs byte ptr [edi], byte ptr [esi]");
+  str_printfln(x86_text, "push ebx");
+  str_printfln(x86_text, "ret");
+  str_printfln(x86_text, "_rt_load ENDP");
+
+  str_printfln(x86_text, "_rt_store PROC PRIVATE");
+  str_printfln(x86_text, "pop ebx"); // return address;
+  str_printfln(x86_text, "pop ecx");
+  str_printfln(x86_text, "pop edi");
+  str_printfln(x86_text, "mov esi, esp");
+  str_printfln(x86_text, "rep movs byte ptr [edi], byte ptr [esi]");
+  str_printfln(x86_text, "push ebx");
+  str_printfln(x86_text, "ret");
+  str_printfln(x86_text, "_rt_store ENDP");
+
+  str_printfln(x86_text, "_rt_leave_frame PROC PRIVATE");
+  str_printfln(x86_text, "pop ebx"); // return address;
+  label = make_unique_label();
+  str_printfln(x86_text, "pop ecx"); // depth
+  str_printfln(x86_text, "%s$loop:", label.id);
+  str_printfln(x86_text, "mov esp, ebp");
+  str_printfln(x86_text, "pop ebp");
+  str_printfln(x86_text, "loop %s$loop", label.id);
+  str_printfln(x86_text, "push ebx");
+  str_printfln(x86_text, "ret");
+  str_printfln(x86_text, "_rt_leave_frame ENDP");
+
+  str_printfln(x86_text, "_rt_load_access_link PROC PRIVATE");
+  str_printfln(x86_text, "pop ebx"); // return address;
+  str_printfln(x86_text, "pop ecx"); // declaration scope offset
+  str_printfln(x86_text, "mov esi, dword ptr [esp]");
+  label = make_unique_label();
+  str_printfln(x86_text, "%s$loop:", label.id);
+  str_printfln(x86_text, "mov esi, dword ptr[esi]");
+  str_printfln(x86_text, "loop %s$loop", label.id);
+  str_printfln(x86_text, "mov dword ptr [esp], esi");
+  str_printfln(x86_text, "push ebx");
+  str_printfln(x86_text, "ret");
+  str_printfln(x86_text, "_rt_load_access_link ENDP");
+
   if(!gen_x86(x86_text, module))
   {
     return false;

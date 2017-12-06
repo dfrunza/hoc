@@ -90,8 +90,9 @@ proc void printf(char* s, ...)
 
 proc void main()
 {
-  var [100]char buf;
-  var int bytes_read_count = stdin_read(&buf, 100);
-  print_str(&buf);
+  var int a = 1 ^ 3;
+  print_int(a);
 }
+
+main();
 

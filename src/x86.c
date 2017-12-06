@@ -776,6 +776,53 @@ bool gen_x86(String* code, AstNode* node)
             }
             break;
 
+          case eOperator_bit_and:
+          case eOperator_bit_or:
+          case eOperator_bit_xor:
+            {
+              gen_x86_load_rvalue(code, left_operand);
+              gen_x86_load_rvalue(code, right_operand);
+
+              str_printfln(code, "pop eax");
+              if(bin_op == eOperator_bit_and)
+              {
+                str_printfln(code, "and dword ptr [esp], eax");
+              }
+              else if(bin_op == eOperator_bit_or)
+              {
+                str_printfln(code, "or dword ptr [esp], eax");
+              }
+              else if(bin_op == eOperator_bit_xor)
+              {
+                str_printfln(code, "xor dword ptr [esp], eax");
+              }
+              else
+                assert(0);
+            }
+            break;
+
+          case eOperator_bit_shift_left:
+          case eOperator_bit_shift_right:
+            {
+              gen_x86_load_rvalue(code, left_operand);
+              gen_x86_load_rvalue(code, right_operand);
+
+              str_printfln(code, "mov cl, byte ptr [esp]");
+              str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
+
+              if(bin_op == eOperator_bit_shift_left)
+              {
+                str_printfln(code, "shl dword ptr [esp], cl");
+              }
+              else if(bin_op == eOperator_bit_shift_right)
+              {
+                str_printfln(code, "shr dword ptr [esp], cl");
+              }
+              else
+                assert(0);
+            }
+            break;
+
           case eOperator_cast:
             {
               gen_x86_load_rvalue(code, right_operand);

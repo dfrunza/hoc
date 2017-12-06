@@ -224,11 +224,17 @@ char* get_token_printstr(Token* token)
     case eToken_angle_right_eq:
       result = ">=";
       break;
+    case eToken_angle_right_right:
+      result = ">>";
+      break;
     case eToken_angle_left:
       result = "<";
       break;
     case eToken_angle_left_eq:
       result = "<=";
+      break;
+    case eToken_angle_left_left:
+      result = "<<";
       break;
     case eToken_ampersand:
       result = "&";
@@ -241,6 +247,9 @@ char* get_token_printstr(Token* token)
       break;
     case eToken_pipe_pipe:
       result = "||";
+      break;
+    case eToken_circumflex:
+      result = "^";
       break;
     case eToken_end_of_input:
       result = "end-of-input";
@@ -491,6 +500,11 @@ loop:
       token->kind = eToken_angle_left_eq;
       ++input->cursor;
     }
+    else if(c == '<')
+    {
+      token->kind = eToken_angle_left_left;
+      ++input->cursor;
+    }
   }
   else if(c == '&')
   {
@@ -592,6 +606,11 @@ loop:
       token->kind = eToken_angle_right_eq;
       ++input->cursor;
     }
+    else if(c == '>')
+    {
+      token->kind = eToken_angle_right_right;
+      ++input->cursor;
+    }
   }
   else if(c == '|')
   {
@@ -631,6 +650,11 @@ loop:
   else if(c == '%')
   {
     token->kind = eToken_percent;
+    ++input->cursor;
+  }
+  else if(c == '^')
+  {
+    token->kind = eToken_circumflex;
     ++input->cursor;
   }
   else if(c == '\\')

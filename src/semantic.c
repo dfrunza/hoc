@@ -12,17 +12,6 @@ bool is_relational_operator(eOperator op_kind)
     || op_kind == eOperator_eq || op_kind == eOperator_not_eq;
 }
 
-bool is_logical_operator(eOperator op_kind)
-{
-  return op_kind == eOperator_logic_and || op_kind == eOperator_logic_or || op_kind == eOperator_logic_not;
-}
-
-bool is_arithmetic_operator(eOperator op_kind)
-{
-  return op_kind == eOperator_add || op_kind == eOperator_sub
-    || op_kind == eOperator_mul || op_kind == eOperator_div;
-}
-
 SymbolTable* new_symbol_table(MemoryArena** arena, int size)
 {
   MemoryArena* symbol_arena = push_arena(arena, size);
@@ -1222,62 +1211,94 @@ bool eval_types(AstNode* node)
           Type* left_operand_ty = ATTR(left_operand, type, eval_type);
 
           eOperator op_kind = ATTR(node, op_kind, op_kind);
-          if(op_kind == eOperator_cast)
+          switch(op_kind)
           {
-            if(!type_unif(expr_ty, left_operand_ty))
-            {
-              success = compile_error(node->src_loc, "type error (cast)");
-            }
-          }
-          else if(op_kind == eOperator_index)
-          {
-            if(type_unif(right_operand_ty, basic_type_int))
-            {
-              if(left_operand_ty->kind == eType_array)
+            case eOperator_cast:
+              if(!type_unif(expr_ty, left_operand_ty))
               {
-                success = type_unif(left_operand_ty->array.elem, expr_ty);
+                success = compile_error(node->src_loc, "type error (cast)");
               }
-              else if(left_operand_ty->kind == eType_typevar)
-              {
-                success = type_unif(left_operand_ty, new_array_type(0, expr_ty));
-              }
-              else
-                success = compile_error(node->src_loc, "type error (array index)");
-            }
-            else
-              success = compile_error(node->src_loc, "int type expected");
-          }
-          else
-          {
-            if(type_unif(left_operand_ty, right_operand_ty))
-            {
-              if(is_relational_operator(op_kind) || is_logical_operator(op_kind))
-              {
-                if(!type_unif(expr_ty, basic_type_bool))
-                {
-                  success = compile_error(node->src_loc, "type error (bin expr)");
-                }
-              }
-              else
-              {
-                if(!type_unif(expr_ty, left_operand_ty))
-                {
-                  success = compile_error(node->src_loc, "type error (bin expr)");
-                }
-              }
-            }
-            else
-              success = compile_error(node->src_loc, "type error (bin expr)");
-          }
+              break;
 
-          if(success)
+            case eOperator_index:
+              if(type_unif(right_operand_ty, basic_type_int))
+              {
+                if(left_operand_ty->kind == eType_array)
+                {
+                  success = type_unif(left_operand_ty->array.elem, expr_ty);
+                }
+                else if(left_operand_ty->kind == eType_typevar)
+                {
+                  success = type_unif(left_operand_ty, new_array_type(0, expr_ty));
+                }
+                else
+                  success = compile_error(node->src_loc, "type error (array index)");
+              }
+              else
+                success = compile_error(node->src_loc, "int type expected");
+              break;
+
+            case eOperator_bit_and:
+            case eOperator_bit_or:
+            case eOperator_bit_xor:
+              if(type_unif(left_operand_ty, right_operand_ty))
+              {
+                ;//ok
+              }
+              else
+                success = compile_error(node->src_loc, "type error (bitwise op)");
+              break;
+
+            case eOperator_bit_shift_left:
+            case eOperator_bit_shift_right:
+              if(type_unif(left_operand_ty, basic_type_int) && type_unif(right_operand_ty, basic_type_char))
+              {
+                ;//ok
+              }
+              else
+                success = compile_error(node->src_loc, "type error (bitwise op)");
+              break;
+
+            default:
+              if(type_unif(left_operand_ty, right_operand_ty))
+              {
+                switch(op_kind)
+                {
+                  case eOperator_less:
+                  case eOperator_less_eq:
+                  case eOperator_greater:
+                  case eOperator_greater_eq:
+                  case eOperator_eq:
+                  case eOperator_not_eq:
+                  case eOperator_logic_and:
+                  case eOperator_logic_or:
+                  case eOperator_logic_not:
+                    if(!type_unif(expr_ty, basic_type_bool))
+                    {
+                      success = compile_error(node->src_loc, "type error (bin expr)");
+                    }
+                    break;
+
+                  default:
+                    if(!type_unif(expr_ty, left_operand_ty))
+                    {
+                      success = compile_error(node->src_loc, "type error (bin expr)");
+                    }
+                    break;
+                }
+              }
+              else
+                success = compile_error(node->src_loc, "type error (bin expr)");
+              break;
+          }
+          if(!success)
+            break;
+
+          Type* type = ATTR(node, type, type);
+          assert(type->kind == eType_proc);
+          if(!type_unif(type->proc.ret, expr_ty))
           {
-            Type* type = ATTR(node, type, type);
-            assert(type->kind == eType_proc);
-            if(!type_unif(type->proc.ret, expr_ty))
-            {
-              success = compile_error(node->src_loc, "type error (bin expr)");
-            }
+            success = compile_error(node->src_loc, "type error (bin expr)");
           }
         }
       }
@@ -1744,117 +1765,170 @@ bool check_types(AstNode* node)
           Type* right_arg_ty = args_ty->product.right;
 
           eOperator op_kind = ATTR(node, op_kind, op_kind);
-          if(is_arithmetic_operator(op_kind))
+          switch(op_kind)
           {
-            if(types_are_equal(ret_ty, basic_type_int)
-                || types_are_equal(ret_ty, basic_type_float)
-                || (types_are_equal(ret_ty, basic_type_char))
-                || (ret_ty->kind == eType_pointer))
-            {
-              ;//ok
-              assert(types_are_equal(ret_ty, left_arg_ty) && types_are_equal(left_arg_ty, right_arg_ty));
-            }
-            else
-            {
-              success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                  get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
-            }
-          }
-          else if(op_kind == eOperator_mod)
-          {
-            if(types_are_equal(ret_ty, basic_type_int))
-            {
-              ;//ok
-              assert(types_are_equal(ret_ty, left_arg_ty) && types_are_equal(left_arg_ty, right_arg_ty));
-            }
-            else
-            {
-              success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                  get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
-            }
-          }
-          else if(is_logical_operator(op_kind))
-          {
-            if(types_are_equal(left_arg_ty, basic_type_bool) && types_are_equal(left_arg_ty, right_arg_ty))
-            {
-              ;//ok
-              assert(ret_ty == basic_type_bool);
-            }
-            else
-              success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                  get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
-          }
-          else if(is_relational_operator(op_kind))
-          {
-            if(types_are_equal(left_arg_ty, basic_type_int)
-                || types_are_equal(left_arg_ty, basic_type_char)
-                || types_are_equal(left_arg_ty, basic_type_float)
-                && types_are_equal(left_arg_ty, right_arg_ty))
-            {
-              ;//ok
-              assert(types_are_equal(ret_ty, basic_type_bool));
-            }
-            else
-            {
-              success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                  get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
-            }
-          }
-          else if(op_kind == eOperator_assign)
-          {
-            ;//ok
-            assert(types_are_equal(left_arg_ty, right_arg_ty) && types_are_equal(ret_ty, left_arg_ty));
-          }
-          else if(op_kind == eOperator_index)
-          {
-            if(ret_ty->width > 0)
-            {
-              ;//ok
-            }
-            else
-              success = compile_error(node->src_loc, "type error (array index): type size = 0");
-          }
-          else if(op_kind == eOperator_cast)
-          {
-            if(!types_are_equal(left_arg_ty, right_arg_ty))
-            {
-              success = false;
+            case eOperator_add:
+            case eOperator_sub:
+            case eOperator_mul:
+            case eOperator_div:
+              {
+                if(types_are_equal(ret_ty, basic_type_int)
+                    || types_are_equal(ret_ty, basic_type_float)
+                    || (types_are_equal(ret_ty, basic_type_char))
+                    || (ret_ty->kind == eType_pointer))
+                {
+                  ;//ok
+                  assert(types_are_equal(ret_ty, left_arg_ty) && types_are_equal(left_arg_ty, right_arg_ty));
+                }
+                else
+                {
+                  success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
+                      get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
+                }
+              }
+              break;
 
-              if(types_are_equal(left_arg_ty, basic_type_int))
+            case eOperator_mod:
               {
-                // int <- float | bool | pointer | char
-                success = types_are_equal(right_arg_ty, basic_type_float)
-                  || types_are_equal(right_arg_ty, basic_type_bool)
-                  || types_are_equal(right_arg_ty, basic_type_char)
-                  || (right_arg_ty->kind == eType_pointer);
+                if(types_are_equal(ret_ty, basic_type_int))
+                {
+                  ;//ok
+                  assert(types_are_equal(ret_ty, left_arg_ty) && types_are_equal(left_arg_ty, right_arg_ty));
+                }
+                else
+                {
+                  success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
+                      get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
+                }
               }
-              else if(types_are_equal(left_arg_ty, basic_type_float))
-              {
-                // float <- int
-                success = types_are_equal(right_arg_ty, basic_type_int);
-              }
-              else if(left_arg_ty->kind == eType_pointer)
-              {
-                // pointer <- pointer | array | int
-                success = (right_arg_ty->kind == eType_pointer)
-                  || (right_arg_ty->kind == eType_array)
-                  || types_are_equal(right_arg_ty, basic_type_int);
-              }
-              else if(left_arg_ty->kind == eType_array)
-              {
-                // array <- pointer | array
-                success = (right_arg_ty->kind == eType_pointer) || (right_arg_ty->kind == eType_array);
-              }
+              break;
 
-              if(!success)
+            case eOperator_logic_and:
+            case eOperator_logic_or:
+            case eOperator_logic_not:
               {
-                compile_error(node->src_loc, "type error: invalid cast `%s` -> `%s`",
-                    get_type_printstr(right_arg_ty), get_type_printstr(left_arg_ty));
+                if(types_are_equal(left_arg_ty, basic_type_bool) && types_are_equal(left_arg_ty, right_arg_ty))
+                {
+                  ;//ok
+                  assert(ret_ty == basic_type_bool);
+                }
+                else
+                  success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
+                      get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
               }
-            }
+              break;
+
+            case eOperator_bit_and:
+            case eOperator_bit_or:
+            case eOperator_bit_xor:
+              if(types_are_equal(left_arg_ty, basic_type_int) && types_are_equal(right_arg_ty, basic_type_int))
+              {
+                ;//ok
+              }
+              else
+                success = compile_error(node->src_loc, "type error (bitwise op)");
+              break;
+
+            case eOperator_bit_shift_left:
+            case eOperator_bit_shift_right:
+              if(types_are_equal(left_arg_ty, basic_type_int) && types_are_equal(right_arg_ty, basic_type_char))
+              {
+                ;//ok
+              }
+              else
+                success = compile_error(node->src_loc, "type error (bitwise op)");
+              break;
+
+            case eOperator_less:
+            case eOperator_less_eq:
+            case eOperator_greater:
+            case eOperator_greater_eq:
+            case eOperator_eq:
+            case eOperator_not_eq:
+              {
+                if(types_are_equal(left_arg_ty, basic_type_int)
+                    || types_are_equal(left_arg_ty, basic_type_char)
+                    || types_are_equal(left_arg_ty, basic_type_float)
+                    && types_are_equal(left_arg_ty, right_arg_ty))
+                {
+                  ;//ok
+                  assert(types_are_equal(ret_ty, basic_type_bool));
+                }
+                else
+                {
+                  success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
+                      get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
+                }
+              }
+              break;
+
+            case eOperator_assign:
+              {
+                ;//ok
+                assert(types_are_equal(left_arg_ty, right_arg_ty) && types_are_equal(ret_ty, left_arg_ty));
+              }
+              break;
+
+            case eOperator_index:
+              {
+                if(ret_ty->width > 0)
+                {
+                  ;//ok
+                }
+                else
+                  success = compile_error(node->src_loc, "type error (array index): type size = 0");
+              }
+              break;
+
+            case eOperator_cast:
+              {
+                if(!types_are_equal(left_arg_ty, right_arg_ty))
+                {
+                  success = false;
+
+                  if(types_are_equal(left_arg_ty, basic_type_int))
+                  {
+                    // int <- float | bool | pointer | char
+                    success = types_are_equal(right_arg_ty, basic_type_float)
+                      || types_are_equal(right_arg_ty, basic_type_bool)
+                      || types_are_equal(right_arg_ty, basic_type_char)
+                      || (right_arg_ty->kind == eType_pointer);
+                  }
+                  else if(types_are_equal(left_arg_ty, basic_type_char))
+                  {
+                    // char <- int
+                    success = types_are_equal(right_arg_ty, basic_type_int);
+                  }
+                  else if(types_are_equal(left_arg_ty, basic_type_float))
+                  {
+                    // float <- int
+                    success = types_are_equal(right_arg_ty, basic_type_int);
+                  }
+                  else if(left_arg_ty->kind == eType_pointer)
+                  {
+                    // pointer <- pointer | array | int
+                    success = (right_arg_ty->kind == eType_pointer)
+                      || (right_arg_ty->kind == eType_array)
+                      || types_are_equal(right_arg_ty, basic_type_int);
+                  }
+                  else if(left_arg_ty->kind == eType_array)
+                  {
+                    // array <- pointer | array
+                    success = (right_arg_ty->kind == eType_pointer) || (right_arg_ty->kind == eType_array);
+                  }
+
+                  if(!success)
+                  {
+                    compile_error(node->src_loc, "invalid cast `%s` <- `%s`",
+                        get_type_printstr(left_arg_ty), get_type_printstr(right_arg_ty));
+                  }
+                }
+              }
+              break;
+
+            default:
+              assert(0);
           }
-          else
-            assert(0);
         }
       }
       break;

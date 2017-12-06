@@ -471,6 +471,9 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     case eToken_pipe_pipe:
     case eToken_ampersand:
     case eToken_ampersand_ampersand:
+    case eToken_angle_right_right:
+    case eToken_angle_left_left:
+    case eToken_circumflex:
       {
         AstNode* bin_expr = *node = new_ast_node(eAstGen_gen0, eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         ATTR(bin_expr, ast_node, left_operand) = left_node;
@@ -485,10 +488,7 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
         }
         else if(input->token.kind == eToken_pipe)
         {
-#if 0
           ATTR(bin_expr, op_kind, op_kind) = eOperator_bit_or;
-#endif
-          success = compile_error(&input->src_loc, "operator `%s` not supported", get_token_printstr(&input->token));
         }
         else if(input->token.kind == eToken_pipe_pipe)
         {
@@ -496,14 +496,23 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
         }
         else if(input->token.kind == eToken_ampersand)
         {
-#if 0
           ATTR(bin_expr, op_kind, op_kind) = eOperator_bit_and;
-#endif
-          success = compile_error(&input->src_loc, "operator `%s` not supported", get_token_printstr(&input->token));
         }
         else if(input->token.kind == eToken_ampersand_ampersand)
         {
           ATTR(bin_expr, op_kind, op_kind) = eOperator_logic_and;
+        }
+        else if(input->token.kind == eToken_angle_left_left)
+        {
+          ATTR(bin_expr, op_kind, op_kind) = eOperator_bit_shift_left;
+        }
+        else if(input->token.kind == eToken_angle_right_right)
+        {
+          ATTR(bin_expr, op_kind, op_kind) = eOperator_bit_shift_right;
+        }
+        else if(input->token.kind == eToken_circumflex)
+        {
+          ATTR(bin_expr, op_kind, op_kind) = eOperator_bit_xor;
         }
         else
           assert(0);
@@ -583,6 +592,8 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
         {
           ATTR(bin_expr, op_kind, op_kind) = eOperator_greater_eq;
         }
+        else
+          assert(0);
 
         if(success = get_next_token(input) && parse_expr(input, &ATTR(bin_expr, ast_node, right_operand)))
         {

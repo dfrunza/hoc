@@ -105,12 +105,15 @@ typedef enum
   eToken_eq_eq,
   eToken_angle_right,
   eToken_angle_right_eq,
+  eToken_angle_right_right,
   eToken_angle_left,
   eToken_angle_left_eq,
+  eToken_angle_left_left,
   eToken_ampersand,
   eToken_ampersand_ampersand,
   eToken_pipe,
   eToken_pipe_pipe,
+  eToken_circumflex,
   eToken_unknown_char,
   eToken_end_of_input,
 
@@ -199,6 +202,9 @@ TokenStream;
   ENUM_MEMBER(eOperator_logic_not),\
   ENUM_MEMBER(eOperator_bit_and),\
   ENUM_MEMBER(eOperator_bit_or),\
+  ENUM_MEMBER(eOperator_bit_xor),\
+  ENUM_MEMBER(eOperator_bit_shift_left),\
+  ENUM_MEMBER(eOperator_bit_shift_right),\
   ENUM_MEMBER(eOperator_cast),\
   ENUM_MEMBER(eOperator_Count),
 #endif

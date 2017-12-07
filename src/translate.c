@@ -30,12 +30,31 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
 {
   if(gen == eAstGen_gen0)
   {/*>>> gen0*/
-    ast->kind_count = 24;
+    ast->kind_count = 25;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
     int kind_index = 0;
     AstKindMetaInfo* kind = 0;
 
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = eAstNode_struct_decl;
+      kind->attr_count = 2;
+
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_ast_node;
+      attr->name = eAstAttributeName_id;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_list;
+      attr->name = eAstAttributeName_members;
+    }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
@@ -414,12 +433,41 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
   }/*<<<*/
   else if(gen == eAstGen_gen1)
   {/*>>> gen1*/
-    ast->kind_count = 24;
+    ast->kind_count = 25;
     ast->kinds = mem_push_array(arena, AstKindMetaInfo, ast->kind_count);
 
     int kind_index = 0;
     AstKindMetaInfo* kind = 0;
 
+    {
+      assert(kind_index < ast->kind_count);
+      kind = &ast->kinds[kind_index++];
+      kind->kind = eAstNode_struct_decl;
+      kind->attr_count = 4;
+
+      int attr_index = 0;
+      AstAttributeMetaInfo* attr = 0;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_str_val;
+      attr->name = eAstAttributeName_name;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_list;
+      attr->name = eAstAttributeName_members;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_symbol;
+      attr->name = eAstAttributeName_decl_sym;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_scope;
+      attr->name = eAstAttributeName_scope;
+    }
     {
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
@@ -714,7 +762,7 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = eAstNode_while_stmt;
-      kind->attr_count = 5;
+      kind->attr_count = 6;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -728,6 +776,11 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_ast_node;
       attr->name = eAstAttributeName_body;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_scope;
+      attr->name = eAstAttributeName_scope;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -963,7 +1016,7 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = eAstNode_module;
-      kind->attr_count = 4;
+      kind->attr_count = 5;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -972,6 +1025,11 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_str_val;
       attr->name = eAstAttributeName_file_path;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_scope;
+      attr->name = eAstAttributeName_scope;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -992,7 +1050,7 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       assert(kind_index < ast->kind_count);
       kind = &ast->kinds[kind_index++];
       kind->kind = eAstNode_block;
-      kind->attr_count = 7;
+      kind->attr_count = 8;
 
       int attr_index = 0;
       AstAttributeMetaInfo* attr = 0;
@@ -1016,6 +1074,11 @@ void init_ast_meta_info(AstMetaInfo* ast, eAstGen gen)
       attr = &kind->attrs[attr_index++];
       attr->kind = eAstAttribute_list;
       attr->name = eAstAttributeName_vars;
+
+      assert(attr_index < kind->attr_count);
+      attr = &kind->attrs[attr_index++];
+      attr->kind = eAstAttribute_list;
+      attr->name = eAstAttributeName_structs;
 
       assert(attr_index < kind->attr_count);
       attr = &kind->attrs[attr_index++];
@@ -1758,7 +1821,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   subst_list = new_list(arena, eList_type_pair);
 
   symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
-  symbol_table->global_scope = begin_scope(eScope_global, 0);
+  begin_scope(eScope_global, 0);
   if(!name_ident(module))
   {
     return false;
@@ -1775,7 +1838,6 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 
     begin_temp_memory(&arena);
     String str; str_init(&str, arena);
-    DEBUG_print_scope(&str, 0, "global_scope", symbol_table->global_scope);
     DEBUG_print_ast_node(&str, 0, "module", module);
     str_dump_to_file(&str, "debug_name_ident.txt");
     str_cap(&str);
@@ -1804,21 +1866,18 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         list_item = list_item->next)
     {
       Symbol* symbol = ITEM(list_item, symbol);
-      offset += symbol->type->width;
-      symbol->data_loc = -offset;
-      scope->locals_area_size += symbol->type->width;
-    }
-
-    offset = 0;
-    for(ListItem* list_item = scope->decls[eSymbol_global_var]->first;
-        list_item;
-        list_item = list_item->next)
-    {
-      Symbol* symbol = ITEM(list_item, symbol);
-      symbol->is_global = true;
-      symbol->data_loc = offset;
-      offset += symbol->type->width;
-      scope->global_area_size += symbol->type->width;
+      if(symbol->is_static_alloc)
+      {
+        symbol->data_loc = offset;
+        offset += symbol->type->width;
+        scope->static_area_size += symbol->type->width;
+      }
+      else
+      {
+        offset += symbol->type->width;
+        symbol->data_loc = -offset;
+        scope->locals_area_size += symbol->type->width;
+      }
     }
 
     offset = 3*MACHINE_WORD_SIZE;
@@ -1863,9 +1922,9 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   str_printfln(x86_text, ".STACK 4096");
 
   str_printfln(x86_text, ".DATA");
-  str_printfln(x86_text, "global_area LABEL BYTE");
-  Scope* module_scope = symbol_table->module_scope;
-  for(ListItem* list_item = module_scope->decls[eSymbol_global_var]->first;
+  str_printfln(x86_text, "static_area LABEL BYTE");
+  Scope* module_scope = ATTR(module, scope, scope);
+  for(ListItem* list_item = module_scope->decls[eSymbol_var]->first;
       list_item;
       list_item = list_item->next)
   {
@@ -1895,29 +1954,30 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   str_printfln(x86_text, ".CODE");
 
   Label label;
-  str_printfln(x86_text, "_rt_module_prologue PROC PRIVATE");
-  str_printfln(x86_text, "pop ebx"); // return address
-  str_printfln(x86_text, "sub esp, %d", MACHINE_WORD_SIZE); // dummy IP
+  str_printfln(x86_text, "_rt_module_prologue PROC");
+  str_printfln(x86_text, "pop ebx ;return address");
+  str_printfln(x86_text, "push esp ;access link");
+  str_printfln(x86_text, "sub esp, %d ;dummy IP", MACHINE_WORD_SIZE);
   str_printfln(x86_text, "push ebp");
   str_printfln(x86_text, "mov ebp, esp");
   str_printfln(x86_text, "push ebx");
   str_printfln(x86_text, "ret");
   str_printfln(x86_text, "_rt_module_prologue ENDP");
   
-  str_printfln(x86_text, "_rt_block_prologue PROC PRIVATE");
-  str_printfln(x86_text, "pop ebx"); // return address
+  str_printfln(x86_text, "_rt_block_prologue PROC");
+  str_printfln(x86_text, "pop ebx ;return address");
   str_printfln(x86_text, "push ebp");
-  str_printfln(x86_text, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
-  str_printfln(x86_text, "sub esp, %d", MACHINE_WORD_SIZE); // dummy IP
+  str_printfln(x86_text, "add dword ptr [esp], %d ;access link", 2*MACHINE_WORD_SIZE);
+  str_printfln(x86_text, "sub esp, %d ;dummy IP", MACHINE_WORD_SIZE);
   str_printfln(x86_text, "push ebp");
   str_printfln(x86_text, "mov ebp, esp");
   str_printfln(x86_text, "push ebx");
   str_printfln(x86_text, "ret");
   str_printfln(x86_text, "_rt_block_prologue ENDP");
 
-  str_printfln(x86_text, "_rt_load PROC PRIVATE");
-  str_printfln(x86_text, "pop ebx"); // return address
-  str_printfln(x86_text, "pop ecx"); // byte count
+  str_printfln(x86_text, "_rt_load PROC");
+  str_printfln(x86_text, "pop ebx ;return address");
+  str_printfln(x86_text, "pop ecx ;byte count");
   str_printfln(x86_text, "mov esi, dword ptr [esp]");
   str_printfln(x86_text, "mov edi, esp");
   str_printfln(x86_text, "rep movs byte ptr [edi], byte ptr [esi]");
@@ -1925,8 +1985,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   str_printfln(x86_text, "ret");
   str_printfln(x86_text, "_rt_load ENDP");
 
-  str_printfln(x86_text, "_rt_store PROC PRIVATE");
-  str_printfln(x86_text, "pop ebx"); // return address;
+  str_printfln(x86_text, "_rt_store PROC");
+  str_printfln(x86_text, "pop ebx ;return address;");
   str_printfln(x86_text, "pop ecx");
   str_printfln(x86_text, "pop edi");
   str_printfln(x86_text, "mov esi, esp");
@@ -1935,10 +1995,10 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   str_printfln(x86_text, "ret");
   str_printfln(x86_text, "_rt_store ENDP");
 
-  str_printfln(x86_text, "_rt_leave_frame PROC PRIVATE");
-  str_printfln(x86_text, "pop ebx"); // return address;
+  str_printfln(x86_text, "_rt_leave_frame PROC");
+  str_printfln(x86_text, "pop ebx ;return address;");
   label = make_unique_label();
-  str_printfln(x86_text, "pop ecx"); // depth
+  str_printfln(x86_text, "pop ecx ;depth");
   str_printfln(x86_text, "%s$loop:", label.id);
   str_printfln(x86_text, "mov esp, ebp");
   str_printfln(x86_text, "pop ebp");
@@ -1947,9 +2007,9 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   str_printfln(x86_text, "ret");
   str_printfln(x86_text, "_rt_leave_frame ENDP");
 
-  str_printfln(x86_text, "_rt_load_access_link PROC PRIVATE");
-  str_printfln(x86_text, "pop ebx"); // return address;
-  str_printfln(x86_text, "pop ecx"); // declaration scope offset
+  str_printfln(x86_text, "_rt_load_access_link PROC");
+  str_printfln(x86_text, "pop ebx ;return address;");
+  str_printfln(x86_text, "pop ecx ;declaration scope offset");
   str_printfln(x86_text, "mov esi, dword ptr [esp]");
   label = make_unique_label();
   str_printfln(x86_text, "%s$loop:", label.id);

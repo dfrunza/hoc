@@ -88,12 +88,11 @@ proc void printf(char* s, ...)
 }
 */
 
-var int a = 123;
 proc void main()
 {
-  a = a+123;
   test_hoc();
 }
+
 
 main();
 

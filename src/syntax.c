@@ -1402,14 +1402,13 @@ bool parse_struct_member_list(TokenStream* input, List* member_list)
       }
     }
     while(member && success);
+    if(!success)
+      return success;
 
-    if(success)
-    {
-      if(input->token.kind == eToken_close_brace)
-        success = get_next_token(input);
-      else
-        success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
-    }
+    if(input->token.kind == eToken_close_brace)
+      success = get_next_token(input);
+    else
+      success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
   }
   else
     success = compile_error(&input->src_loc, "expected `{`, actual `%s`", get_token_printstr(&input->token));
@@ -1604,6 +1603,10 @@ bool parse_node(TokenStream* input, AstNode** node)
       success = parse_goto(input, &node) && consume_semicolon(input);
       break;
 #endif
+    case eToken_struct:
+      success = parse_struct(input, node) && consume_semicolon(input);
+      break;
+
     case eToken_semicolon:
       if(success = consume_semicolon(input))
       {

@@ -28,15 +28,16 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
         Symbol* occur_sym = ATTR(node, symbol, occur_sym);
         Symbol* decl_sym = occur_sym->decl;
 
-        if(decl_sym->is_global)
+        if(decl_sym->is_static_alloc)
         {
-          assert(decl_sym->data_loc >= 0);
-          str_printfln(code, "push OFFSET(global_area) + %d", decl_sym->data_loc);
+          assert(decl_sym->data_loc >=0 );
+          str_printfln(code, "push OFFSET(static_area) + %d", decl_sym->data_loc);
         }
         else
         {
           str_printfln(code, "push ebp");
-          int decl_scope_offset = occur_sym->nesting_depth - decl_sym->nesting_depth;
+
+          int decl_scope_offset = occur_sym->scope->nesting_depth - decl_sym->scope->nesting_depth;
           if(decl_scope_offset > 0)
           {
             // Non-local
@@ -87,8 +88,8 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
         if(bin_op == eOperator_index)
         {
           gen_x86_load_lvalue(code, left_operand);
-
           gen_x86_load_rvalue(code, right_operand);
+
           str_printfln(code, "pop eax");
           str_printfln(code, "mov ebx, %d", type->width);
           str_printfln(code, "imul ebx");
@@ -217,28 +218,28 @@ bool gen_x86(String* code, AstNode* node)
   {
     case eAstNode_module:
       {
-        AstNode* body = ATTR(node, ast_node, body);
-        Scope* scope = ATTR(body, scope, scope);
+        Scope* module_scope = ATTR(node, scope, scope);
+        for(ListItem* list_item = module_scope->decls[eSymbol_extern_proc]->first;
+            list_item;
+            list_item = list_item->next)
+        {
+          Symbol* decl_sym = ITEM(list_item, symbol);
+          gen_x86(code, decl_sym->ast_node);
+        }
+        for(ListItem* list_item = module_scope->decls[eSymbol_proc]->first;
+            list_item;
+            list_item = list_item->next)
+        {
+          Symbol* decl_sym = ITEM(list_item, symbol);
+          gen_x86(code, decl_sym->ast_node);
+        }
 
-        for(ListItem* list_item = scope->decls[eSymbol_extern_proc]->first;
-            list_item;
-            list_item = list_item->next)
-        {
-          Symbol* decl_sym = ITEM(list_item, symbol);
-          gen_x86(code, decl_sym->ast_node);
-        }
-        for(ListItem* list_item = scope->decls[eSymbol_proc]->first;
-            list_item;
-            list_item = list_item->next)
-        {
-          Symbol* decl_sym = ITEM(list_item, symbol);
-          gen_x86(code, decl_sym->ast_node);
-        }
+        AstNode* body = ATTR(node, ast_node, body);
+        Scope* body_scope = ATTR(body, scope, scope);
 
         str_printfln(code, "startup PROC");
         str_printfln(code, "call _rt_module_prologue");
-        str_printfln(code, "sub esp, %d", scope->locals_area_size);
-
+        str_printfln(code, "sub esp, %d ;alloc locals", body_scope->locals_area_size);
         for(ListItem* list_item = ATTR(body, list, stmts)->first;
             list_item;
             list_item = list_item->next)
@@ -246,9 +247,8 @@ bool gen_x86(String* code, AstNode* node)
           AstNode* stmt = ITEM(list_item, ast_node);
           gen_x86(code, stmt);
         }
-
         gen_x86_leave_frame(code, 0);
-        str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE); // dummy IP
+        str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE); // access link + dummy IP
         str_printfln(code, "ret");
         str_printfln(code, "startup ENDP");
       }
@@ -256,7 +256,7 @@ bool gen_x86(String* code, AstNode* node)
 
     case eAstNode_proc_decl:
       {
-        Scope* scope = ATTR(node, scope, scope);
+        Scope* proc_scope = ATTR(node, scope, scope);
 
         char* label = ATTR(node, str_val, label);
         bool is_extern = ATTR(node, bool_val, is_extern);
@@ -266,14 +266,14 @@ bool gen_x86(String* code, AstNode* node)
         }
         else
         {
-          for(ListItem* list_item = scope->decls[eSymbol_extern_proc]->first;
+          for(ListItem* list_item = proc_scope->decls[eSymbol_extern_proc]->first;
               list_item;
               list_item = list_item->next)
           {
             Symbol* decl_sym = ITEM(list_item, symbol);
             gen_x86(code, decl_sym->ast_node);
           }
-          for(ListItem* list_item = scope->decls[eSymbol_proc]->first;
+          for(ListItem* list_item = proc_scope->decls[eSymbol_proc]->first;
               list_item;
               list_item = list_item->next)
           {
@@ -281,12 +281,12 @@ bool gen_x86(String* code, AstNode* node)
             gen_x86(code, decl_sym->ast_node);
           }
 
+          AstNode* body = ATTR(node, ast_node, body);
+          Scope* body_scope = ATTR(body, scope, scope);
           str_printfln(code, "%s PROC", label);
           str_printfln(code, "push ebp");
           str_printfln(code, "mov ebp, esp");
-          str_printfln(code, "sub esp, %d", scope->locals_area_size);
-
-          AstNode* body = ATTR(node, ast_node, body);
+          str_printfln(code, "sub esp, %d ;alloc locals", body_scope->locals_area_size);
           for(ListItem* list_item = ATTR(body, list, stmts)->first;
               list_item;
               list_item = list_item->next)
@@ -294,7 +294,6 @@ bool gen_x86(String* code, AstNode* node)
             AstNode* stmt = ITEM(list_item, ast_node);
             gen_x86(code, stmt);
           }
-
           gen_x86_leave_frame(code, 0);
           str_printfln(code, "ret");
           str_printfln(code, "%s ENDP", label);
@@ -306,24 +305,8 @@ bool gen_x86(String* code, AstNode* node)
       {
         Scope* scope = ATTR(node, scope, scope);
 
-        for(ListItem* list_item = scope->decls[eSymbol_extern_proc]->first;
-            list_item;
-            list_item = list_item->next)
-        {
-          Symbol* decl_sym = ITEM(list_item, symbol);
-          gen_x86(code, decl_sym->ast_node);
-        }
-        for(ListItem* list_item = scope->decls[eSymbol_proc]->first;
-            list_item;
-            list_item = list_item->next)
-        {
-          Symbol* decl_sym = ITEM(list_item, symbol);
-          gen_x86(code, decl_sym->ast_node);
-        }
-
         str_printfln(code, "call _rt_block_prologue");
         str_printfln(code, "sub esp, %d", scope->locals_area_size);
-
         for(ListItem* list_item = ATTR(node, list, stmts)->first;
             list_item;
             list_item = list_item->next)
@@ -331,7 +314,6 @@ bool gen_x86(String* code, AstNode* node)
           AstNode* stmt = ITEM(list_item, ast_node);
           gen_x86(code, stmt);
         }
-
         gen_x86_leave_frame(code, 0);
         str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE); // access link + dummy IP
       }
@@ -341,8 +323,11 @@ bool gen_x86(String* code, AstNode* node)
       {
         AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
         Scope* callee_scope = ATTR(proc_decl, scope, scope);
+        char* label = ATTR(proc_decl, str_val, label);
+        bool is_extern = ATTR(proc_decl, bool_val, is_extern);
 
-        str_printfln(code, "sub esp, %d", callee_scope->ret_area_size);
+        str_printfln(code, ";%s()", label);
+        str_printfln(code, "sub esp, %d ;alloc ret", callee_scope->ret_area_size);
         for(ListItem* list_item = ATTR(node, list, actual_args)->last;
             list_item;
             list_item = list_item->prev)
@@ -350,8 +335,6 @@ bool gen_x86(String* code, AstNode* node)
           gen_x86_load_rvalue(code, ITEM(list_item, ast_node));
         }
 
-        char* label = ATTR(proc_decl, str_val, label);
-        bool is_extern = ATTR(proc_decl, bool_val, is_extern);
         if(is_extern)
         {
           str_printfln(code, "call %s", label);
@@ -379,7 +362,7 @@ bool gen_x86(String* code, AstNode* node)
           }
 
           str_printfln(code, "call %s", label);
-          str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE + callee_scope->args_area_size);
+          str_printfln(code, "add esp, %d ;dealloc args", MACHINE_WORD_SIZE + callee_scope->args_area_size);
         }
       }
       break;

@@ -346,8 +346,9 @@ typedef struct Symbol Symbol;
   ENUM_MEMBER(eScope_global),\
   ENUM_MEMBER(eScope_module),\
   ENUM_MEMBER(eScope_proc),\
-  ENUM_MEMBER(eScope_loop),\
-  ENUM_MEMBER(eScope_block),
+  ENUM_MEMBER(eScope_while),\
+  ENUM_MEMBER(eScope_block),\
+  ENUM_MEMBER(eScope_struct),
 #endif
 
 typedef enum
@@ -376,7 +377,6 @@ typedef enum
   eSymbol_var,
   eSymbol_ret_var,
   eSymbol_formal_arg,
-  eSymbol_global_var,
   eSymbol_type,
   eSymbol_proc,
   eSymbol_extern_proc,
@@ -395,7 +395,7 @@ typedef struct Scope
   List* decls[eSymbol_Count];
   List* occurs[eSymbol_Count];
 
-  int global_area_size;
+  int static_area_size;
   int locals_area_size;
   int ret_area_size;
   int args_area_size;
@@ -478,6 +478,7 @@ typedef enum
   eAstAttributeName_label,
   eAstAttributeName_asm_text,
   eAstAttributeName_is_extern,
+  eAstAttributeName_structs,
 }
 eAstAttributeName;
 
@@ -693,21 +694,18 @@ typedef struct Symbol
   char* name;
   SourceLoc* src_loc;
   Scope* scope;
-  int nesting_depth;
   AstNode* ast_node;
   Type* type;
   Symbol* decl;
   int data_loc;
   void* data;
-  bool is_global;
+  bool is_static_alloc;
 }
 Symbol;
 
 typedef struct
 {
   List* scopes;
-  Scope* global_scope;
-  Scope* module_scope;
   Scope* active_scope;
   int nesting_depth;
   MemoryArena* arena;
@@ -720,7 +718,6 @@ typedef enum
   eList_ast_node,
   eList_symbol,
   eList_scope,
-  eList_ir_instr,
   eList_type_pair,
   eList_data_area,
 }

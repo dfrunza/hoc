@@ -12,7 +12,7 @@ int typevar_id = 1;
 
 int last_label_id;
 
-bool build_symtab(AstNode* node);
+bool symtab(AstNode* node);
 void gen_x86_load_rvalue(String* code, AstNode* node);
 bool gen_x86(String* code, AstNode* node);
 
@@ -1004,7 +1004,7 @@ void process_includes(List* include_list, List* module_list, ListItem* module_li
   mem_zero_struct(include_list, List);
 }
 
-bool build_symtab_type(AstNode* node)
+bool symtab_type(AstNode* node)
 {
   bool success = true;
 
@@ -1026,19 +1026,21 @@ bool build_symtab_type(AstNode* node)
       }
       break;
 
+#if 0
     case eAstNode_pointer:
       {
-        success = build_symtab_type(node->pointer.pointee_expr);
+        success = symtab_type(node->pointer.pointee_expr);
       }
       break;
+#endif
 
     case eAstNode_array:
       {
-        if(success = build_symtab_type(node->array.elem_expr))
+        if(success = symtab_type(node->array.elem_expr))
         {
           if(node->array.size_expr)
           {
-            success = build_symtab(node->array.size_expr);
+            success = symtab(node->array.size_expr);
           }
         }
       }
@@ -1050,7 +1052,7 @@ bool build_symtab_type(AstNode* node)
   return success;
 }
 
-bool build_symtab_formal_arg(AstNode* node, eSymbol symkind)
+bool symtab_formal_arg(AstNode* node, eSymbol symkind)
 {
   assert(node->kind == eAstNode_var);
   assert(symkind == eSymbol_ret_var || symkind == eSymbol_formal_arg);
@@ -1069,12 +1071,12 @@ bool build_symtab_formal_arg(AstNode* node, eSymbol symkind)
     node->var.decl_sym = decl_sym;
     decl_sym->ast_node = node;
 
-    success = build_symtab(node->var.type);
+    success = symtab(node->var.type);
   }
   return success;
 }
 
-bool build_symtab_var(AstNode* node, Scope* scope, void* data)
+bool symtab_var(AstNode* node, Scope* scope, void* data)
 {
   assert(node->kind == eAstNode_var);
   bool success = true;
@@ -1098,11 +1100,11 @@ bool build_symtab_var(AstNode* node, Scope* scope, void* data)
   decl_sym->ast_node = node;
   decl_sym->data = data;
 
-  success = build_symtab(node->var.type);
+  success = symtab(node->var.type);
   return success;
 }
 
-bool build_symtab(AstNode* node)
+bool symtab(AstNode* node)
 {
   bool success = true;
 
@@ -1113,7 +1115,7 @@ bool build_symtab(AstNode* node)
         AstNode* module_body = node->module.body;
         Scope* module_scope = node->module.scope = begin_scope(eScope_module, node);
         add_builtin_types(module_scope);
-        success = build_symtab(module_body);
+        success = symtab(module_body);
         end_scope();
         if(!success)
           break;
@@ -1198,7 +1200,7 @@ bool build_symtab(AstNode* node)
         {
           AstNode* node = ITEM(list_item, ast_node);
           append_list_elem(node_list, node, eList_ast_node);
-          success = build_symtab(node);
+          success = symtab(node);
         }
         for(ListItem* list_item = proc_list->first;
             list_item && success;
@@ -1206,7 +1208,7 @@ bool build_symtab(AstNode* node)
         {
           AstNode* node = ITEM(list_item, ast_node);
           append_list_elem(node_list, node, eList_ast_node);
-          success = build_symtab(node);
+          success = symtab(node);
         }
         for(ListItem* list_item = stmt_list->first;
             list_item && success;
@@ -1214,26 +1216,26 @@ bool build_symtab(AstNode* node)
         {
           AstNode* node = ITEM(list_item, ast_node);
           append_list_elem(node_list, node, eList_ast_node);
-          success = build_symtab(node);
+          success = symtab(node);
         }
         end_scope();
       }
       break;
 
     case eAstNode_type:
+#if 0
+      if(success = symtab_type(node->type.type_expr))
       {
-        if(success = build_symtab_type(node->type.type_expr))
-        {
-          Symbol* decl_sym = add_decl_symbol(make_temp_name("typ"), node->src_loc, symbol_table->active_scope, eSymbol_type);
-          node->type.decl_sym = decl_sym;
-          decl_sym->ast_node = node;
-        }
+        Symbol* decl_sym = add_decl_symbol(make_temp_name("typ"), node->src_loc, symbol_table->active_scope, eSymbol_type);
+        node->type.decl_sym = decl_sym;
+        decl_sym->ast_node = node;
       }
+#endif
       break;
 
     case eAstNode_var:
       {
-        success = build_symtab_var(node, symbol_table->active_scope, 0);
+        success = symtab_var(node, symbol_table->active_scope, 0);
       }
       break;
 
@@ -1304,15 +1306,15 @@ bool build_symtab(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = build_symtab_formal_arg(ITEM(list_item, ast_node), eSymbol_formal_arg);
+          success = symtab_formal_arg(ITEM(list_item, ast_node), eSymbol_formal_arg);
         }
-        if(success && (success = build_symtab_formal_arg(ret_var, eSymbol_ret_var)))
+        if(success && (success = symtab_formal_arg(ret_var, eSymbol_ret_var)))
         {
           if(!is_extern)
           {
             if(body)
             {
-              if(success = build_symtab(body))
+              if(success = symtab(body))
               {
                 Scope* body_scope = body->block.scope;
                 proc_scope->nesting_depth = body_scope->nesting_depth;
@@ -1350,7 +1352,7 @@ bool build_symtab(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = build_symtab(ITEM(list_item, ast_node));
+          success = symtab(ITEM(list_item, ast_node));
         }
       }
       break;
@@ -1359,14 +1361,14 @@ bool build_symtab(AstNode* node)
       {
         AstNode* left_operand = node->bin_expr.left_operand;
         AstNode* right_operand = node->bin_expr.right_operand;
-        success = build_symtab(left_operand) && build_symtab(right_operand);
+        success = symtab(left_operand) && symtab(right_operand);
       }
       break;
 
     case eAstNode_un_expr:
       {
         AstNode* operand = node->un_expr.operand;
-        success = build_symtab(operand);
+        success = symtab(operand);
       }
       break;
 
@@ -1391,7 +1393,7 @@ bool build_symtab(AstNode* node)
           ATTR(elem_expr, str_val, name) = "char";
 
           Scope* module_scope = find_scope(symbol_table->active_scope, eScope_module);
-          if(success = build_symtab_var(var, module_scope, str_val))
+          if(success = symtab_var(var, module_scope, str_val))
           {
             AstNode* module_body = ATTR(module_scope->ast_node, ast_node, body);
             prepend_list_elem(ATTR(module_body, list, vars), var, eList_ast_node);
@@ -1400,7 +1402,7 @@ bool build_symtab(AstNode* node)
             AstNode* occur_id = make_ast_node(eAstGen_gen0, node, eAstNode_id);
             ATTR(occur_id, str_val, name) = var_name;
 
-            success = build_symtab(occur_id);
+            success = symtab(occur_id);
           }
         }
 #endif
@@ -1411,7 +1413,7 @@ bool build_symtab(AstNode* node)
       {
         if(node->stmt.stmt)
         {
-          success = build_symtab(node->stmt.stmt);
+          success = symtab(node->stmt.stmt);
         }
       }
       break;
@@ -1419,7 +1421,7 @@ bool build_symtab(AstNode* node)
     case eAstNode_if_stmt:
       {
         AstNode* cond_expr = node->if_stmt.cond_expr;
-        if(success = build_symtab(cond_expr))
+        if(success = symtab(cond_expr))
         {
           AstNode* body = node->if_stmt.body;
           if(body->kind != eAstNode_block)
@@ -1430,7 +1432,7 @@ bool build_symtab(AstNode* node)
             body->block.nodes = single_stmt_block;
           }
 
-          if(!(success = build_symtab(body)))
+          if(!(success = symtab(body)))
             break;
 
           node->if_stmt.body = body;
@@ -1446,7 +1448,7 @@ bool build_symtab(AstNode* node)
               else_body->block.nodes = single_stmt_block;
             }
 
-            success = build_symtab(else_body);
+            success = symtab(else_body);
           }
         }
       }
@@ -1459,7 +1461,7 @@ bool build_symtab(AstNode* node)
         while_scope->nesting_depth = enclosing_scope->nesting_depth;
 
         AstNode* cond_expr = node->while_stmt.cond_expr;
-        if(success = build_symtab(cond_expr))
+        if(success = symtab(cond_expr))
         {
           AstNode* body = node->while_stmt.body;
           if(body->kind != eAstNode_block)
@@ -1469,7 +1471,7 @@ bool build_symtab(AstNode* node)
             body = new_ast_node(eAstNode_block, body->src_loc);
             body->block.nodes = single_stmt_block;
           }
-          success = build_symtab(body);
+          success = symtab(body);
         }
         end_scope();
       }
@@ -1525,7 +1527,7 @@ bool build_symtab(AstNode* node)
             ret_expr->stmt.stmt = assign;
             node->ret_stmt.ret_expr = ret_expr;
 
-            success = build_symtab(ret_expr);
+            success = symtab(ret_expr);
           }
         }
         else
@@ -1787,6 +1789,7 @@ bool build_types(AstNode* node)
       break;
 
     case eAstNode_type:
+#if 0
       {
         AstNode* type_expr = node->type.type_expr;
         if(success = build_types(type_expr))
@@ -1794,6 +1797,7 @@ bool build_types(AstNode* node)
           node->ty = node->eval_ty = type_expr->ty;
         }
       }
+#endif
       break;
 
 #if 0
@@ -1806,6 +1810,7 @@ bool build_types(AstNode* node)
       break;
 #endif
 
+#if 0
     case eAstNode_pointer:
       {
         AstNode* pointee_expr = node->pointer.pointee_expr;
@@ -1815,6 +1820,7 @@ bool build_types(AstNode* node)
         }
       }
       break;
+#endif
 
     case eAstNode_array:
       {
@@ -3537,7 +3543,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   get_next_token(&token_stream);
 
   AstNode* module = 0;
-  if(!parse(&token_stream, &module))
+  if(!parse_module(&token_stream, &module))
   {
     return false;
   }
@@ -3556,6 +3562,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   }/*<<<*/
 #endif
 
+#if 0
   AstNode* module_body = module->module.body;
   List* module_nodes_list = module_body->block.nodes;
   for(ListItem* list_item = module_nodes_list->first;
@@ -3581,7 +3588,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 
   symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
   begin_scope(eScope_global, 0);
-  if(!build_symtab(module))
+  if(!symtab(module))
   {
     return false;
   }
@@ -3589,32 +3596,11 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   assert(symbol_table->active_scope == 0);
   assert(symbol_table->nesting_depth == -1);
 
-#if 0
-  if(DEBUG_enabled)/*>>>*/
-  {
-    h_printf("--- Name ID ---\n");
-    DEBUG_print_arena_usage(arena, "arena");
-    DEBUG_print_arena_usage(symbol_table->arena, "symbol_table");
-
-    begin_temp_memory(&arena);
-    String str; str_init(&str, arena);
-    DEBUG_print_ast_node(&str, 0, "module", module);
-    str_dump_to_file(&str, "debug_build_symtab.txt");
-    str_cap(&str);
-    end_temp_memory(&arena);
-  }/*<<<*/
-#endif
-
   if(!(build_types(module) && eval_types(module)
       && resolve_types(module) && check_types(module)))
   {
     return false;
   }
-  if(DEBUG_enabled)/*>>>*/
-  {
-    h_printf("--- Semantic ---\n");
-    DEBUG_print_arena_usage(arena, "arena");
-  }/*<<<*/
 
   for(ListItem* list_item = symbol_table->scopes->first;
       list_item;
@@ -3790,6 +3776,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     return false;
   }
   str_printfln(x86_text, "END");
+#endif
 
   return true;
 }

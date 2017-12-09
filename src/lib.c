@@ -456,11 +456,19 @@ void print_char(char buf[3], char raw_char)
     *buf = raw_char;
 }
 
+void init_list(List* list, MemoryArena* arena, eList kind)
+{
+  list->kind = kind;
+  list->arena = arena;
+  list->kind = kind;
+  list->arena = arena;
+  list->first = list->last = 0;
+}
+
 List* new_list(MemoryArena* arena, eList kind)
 {
   List* list = mem_push_struct(arena, List);
-  list->kind = kind;
-  list->arena = arena;
+  init_list(list, arena, kind);
   return list;
 }
 

@@ -39,8 +39,8 @@ IF %errorlevel% NEQ 0 GOTO :hocc_error
 REM /Cx     - preserve case in publics, externs
 REM /Zi     - add symbolic debug info
 REM /Fl     - generate listing
-ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
-/link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
+REM ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
+REM /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
 
 REM cl %C_flags% ..\fp3.c /link %L_flags%
 

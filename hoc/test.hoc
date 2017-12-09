@@ -1,98 +1,13 @@
+/*
 include "std.hoc";
 include "str.hoc";
 include "math.hoc";
 include "fizzbuzz.hoc";
 include "fibo.hoc";
-/*
 include "sort.hoc";
 */
 
-proc void test_hoc()
-{
-  proc void print_numbers(int* numbers, int len)
-  {
-    var int i = 0;
-    while(i < len)
-    {
-      print_int(*(numbers + (type int*)(i*4)));
-      print_str(&"\n");
-
-      i = i+1;
-    }
-  }
-
-  proc int* make_numbers(int how_many)
-  {
-    var int i = 0;
-    var int c1 = 17;
-    var int c2 = 31;
-    var int* numbers = (type int*)new(how_many*4);
-
-    while(i < how_many)
-    {
-      if((i % 2) == 0)
-      {
-        *(numbers + (type int*)(i*4)) = c1 * i;
-      }
-      else
-      {
-        *(numbers + (type int*)(i*4)) = c2 * i;
-      }
-
-      i = i+1;
-    }
-    return numbers;
-  }
-
-  var float f1 = -12.0;
-  var float f2 = 0.058;
-  var float result = f1 + f2;
-  print_float(f1);
-  print_str(&" + ");
-  print_float(f2);
-  print_str(&" = ");
-  print_float(result);
-  print_str(&"\n---------\n");
-
-  var int i_a = 7*7*5*3;
-  var int i_b = 7*3*11;
-  var int i_r = gcd(i_a, i_b);
-  print_str(&"gcd(");
-  print_int(i_a);
-  print_str(&",");
-  print_int(i_b);
-  print_str(&")=");
-  print_int(i_r);
-
-  print_str(&"\n--- FIBONACCI ---\n");
-  fibo(40);
-
-  print_str(&"\n--- FIZZBUZZ ---\n");
-  fizzbuzz(50);
-
-  var int nr_count = 30;
-  var int* numbers = make_numbers(nr_count);
-  print_str(&"\n--- SHUFFLED ---\n");
-  print_numbers(numbers, nr_count);
-}
-/*
-*/
-
-/* FIXME
-var [4]void data;
-*/
-
-/*
-proc void printf(char* s, ...)
-{
-}
-*/
-
-proc void main()
-{
-  test_hoc();
-}
-
-
-main();
+var int i;
+include "some_shit.hoc";
+proc void foo();
 

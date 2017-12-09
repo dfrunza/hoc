@@ -427,7 +427,6 @@ Scope;
   ENUM_MEMBER(eAstNode_do_while_stmt),\
   ENUM_MEMBER(eAstNode_for_stmt),\
   ENUM_MEMBER(eAstNode_loop_ctrl),\
-  ENUM_MEMBER(eAstNode_pointer),\
   ENUM_MEMBER(eAstNode_enum_decl),\
   ENUM_MEMBER(eAstNode_struct_decl),\
   ENUM_MEMBER(eAstNode_union_decl),\
@@ -463,196 +462,12 @@ typedef enum
 }
 eLoopCtrl;
 
-typedef struct AstNode
+typedef enum
 {
-  eAstNode kind;
-  SourceLoc* src_loc;
-  Type* ty;
-  Type* eval_ty;
-
-  union
-  {
-    struct
-    {
-      char* name;
-      Symbol* occur_sym;
-      Symbol* decl_sym;
-      AstNode* decl_ast;
-    }
-    id;
-
-    struct
-    {
-      AstNode* left_operand;
-      AstNode* right_operand;
-      eOperator op_kind;
-    }
-    bin_expr;
-
-    struct
-    {
-      AstNode* operand;
-      eOperator op_kind;
-    }
-    un_expr;
-
-    struct
-    {
-      char* asm_text;
-    }
-    asm_block;
-
-    struct
-    {
-      char* name;
-      AstNode* type_expr;
-      Symbol* decl_sym;
-    }
-    type;
-
-    struct
-    {
-      List* members;
-    }
-    init_list;
-
-    struct
-    {
-      AstNode* elem_expr;
-      AstNode* size_expr;
-    }
-    array;
-
-    struct
-    {
-      AstNode* pointee_expr;
-    }
-    pointer;
-
-    struct
-    {
-      char* name;
-      AstNode* id;
-      List* actual_args;
-      Symbol* occur_sym;
-      Symbol* decl_sym;
-      AstNode* proc;
-    }
-    call;
-
-    struct
-    {
-      AstNode* ret_expr;
-      AstNode* proc;
-      int nesting_depth;
-    }
-    ret_stmt;
-
-    struct
-    {
-      eLoopCtrl kind;
-      AstNode* loop;
-      int nesting_depth;
-    }
-    loop_ctrl;
-
-    struct
-    {
-      AstNode* stmt;
-    }
-    stmt;
-
-    struct
-    {
-      AstNode* cond_expr;
-      AstNode* body;
-      AstNode* else_body;
-    }
-    if_stmt;
-
-    struct
-    {
-      AstNode* cond_expr;
-      AstNode* body;
-      Scope* scope;
-      Label label;
-    }
-    while_stmt;
-    
-    struct
-    {
-      char* name;
-      char* label;
-      AstNode* id;
-      bool is_extern;
-      AstNode* ret_var;
-      List* formal_args;
-      AstNode* body;
-      Symbol* decl_sym;
-      Scope* scope;
-    }
-    proc;
-
-    struct
-    {
-      eLiteral kind;
-      union
-      {
-        int int_val;
-        float float_val;
-        bool bool_val;
-        char char_val;
-        char* str_val;
-      };
-    }
-    lit;
-
-    struct
-    {
-      char* name;
-      AstNode* id;
-      AstNode* type;
-      AstNode* init_expr;
-      Symbol* decl_sym;
-    }
-    var;
-
-    struct
-    {
-      char* file_path;
-      AstNode* body;
-      Scope* scope;
-    }
-    module;
-
-    struct
-    {
-      char* file_path;
-      AstNode* body;
-    }
-    include;
-
-    struct
-    {
-      Scope* scope;
-      List* nodes;
-      List* stmts;
-      List* procs;
-      List* vars;
-    }
-    block;
-
-    struct
-    {
-      char* name;
-      AstNode* id;
-      List* members;
-    }
-    //record;
-    enum_decl, union_decl, struct_decl;
-  };
+  eProcModifier_None,
+  eProcModifier_extern,
 }
-AstNode;
+eProcModifier;
 
 typedef enum
 {
@@ -735,31 +550,6 @@ typedef struct
 }
 TypePair;
 
-typedef struct Symbol
-{
-  eSymbol kind;
-
-  char* name;
-  SourceLoc* src_loc;
-  Scope* scope;
-  AstNode* ast_node;
-  Type* ty;
-  Symbol* decl;
-  int data_loc;
-  void* data;
-  bool is_static_alloc;
-}
-Symbol;
-
-typedef struct
-{
-  List* scopes;
-  Scope* active_scope;
-  int nesting_depth;
-  MemoryArena* arena;
-}
-SymbolTable;
-
 typedef enum
 {
   eList_None,
@@ -798,6 +588,238 @@ typedef struct List
   MemoryArena* arena;
 }
 List;
+
+typedef struct AstNode
+{
+  eAstNode kind;
+  SourceLoc* src_loc;
+  Type* ty;
+  Type* eval_ty;
+
+  union
+  {
+    struct
+    {
+      char* name;
+      Symbol* occur_sym;
+      Symbol* decl_sym;
+      AstNode* decl_ast;
+    }
+    id;
+
+    struct
+    {
+      AstNode* left_operand;
+      AstNode* right_operand;
+      eOperator op_kind;
+    }
+    bin_expr;
+
+    struct
+    {
+      AstNode* operand;
+      eOperator op_kind;
+    }
+    un_expr;
+
+    struct
+    {
+      char* asm_text;
+    }
+    asm_block;
+
+    struct
+    {
+      eType kind;
+      Symbol* decl_sym;
+
+      union
+      {
+        char* name;
+
+        struct
+        {
+          AstNode* pointee;
+        }
+        pointer;
+
+        struct
+        {
+          AstNode* elem;
+          AstNode* size;
+        }
+        array;
+      };
+    }
+    type;
+
+    struct
+    {
+      AstNode* elem_expr;
+      AstNode* size_expr;
+    }
+    array;
+
+    struct
+    {
+      AstNode* pointee_expr;
+    }
+    pointer;
+
+    struct
+    {
+      char* name;
+      AstNode* id;
+      List* actual_args;
+      Symbol* occur_sym;
+      Symbol* decl_sym;
+      AstNode* proc;
+    }
+    call;
+
+    struct
+    {
+      AstNode* ret_expr;
+      AstNode* proc;
+      int nesting_depth;
+    }
+    ret_stmt;
+
+    struct
+    {
+      eLoopCtrl kind;
+      AstNode* loop;
+      int nesting_depth;
+    }
+    loop_ctrl;
+
+    struct
+    {
+      AstNode* stmt;
+    }
+    stmt;
+
+    struct
+    {
+      AstNode* cond_expr;
+      AstNode* body;
+      AstNode* else_body;
+    }
+    if_stmt;
+
+    struct
+    {
+      AstNode* cond_expr;
+      AstNode* body;
+      Scope* scope;
+      Label label;
+    }
+    while_stmt;
+    
+    struct
+    {
+      char* name;
+      eProcModifier modifier;
+      char* label;
+      AstNode* id;
+      bool is_extern;
+      AstNode* ret_var;
+      List* formal_args;
+      List formal_arg_list;
+      AstNode* ret_type;
+      AstNode* body;
+      Symbol* decl_sym;
+      Scope* scope;
+    }
+    proc;
+
+    struct
+    {
+      eLiteral kind;
+      union
+      {
+        int int_val;
+        float float_val;
+        bool bool_val;
+        char char_val;
+        char* str_val;
+      };
+    }
+    lit;
+
+    struct
+    {
+      char* name;
+      AstNode* type;
+      AstNode* init_expr;
+      Symbol* decl_sym;
+    }
+    var;
+
+    struct
+    {
+      char* file_path;
+      AstNode* body;
+      List proc_list;
+      List var_list;
+      List include_list;
+      Scope* scope;
+    }
+    module;
+
+    struct
+    {
+      char* file_path;
+      AstNode* body;
+    }
+    include;
+
+    struct
+    {
+      Scope* scope;
+      List* nodes;
+      List* stmts;
+      List* procs;
+      List* vars;
+    }
+    block;
+
+    struct
+    {
+      char* name;
+      AstNode* id;
+      List* members;
+    }
+    //record;
+    enum_decl, union_decl, struct_decl;
+  };
+}
+AstNode;
+
+typedef struct Symbol
+{
+  eSymbol kind;
+
+  char* name;
+  SourceLoc* src_loc;
+  Scope* scope;
+  AstNode* ast_node;
+  Type* ty;
+  Symbol* decl;
+  int data_loc;
+  void* data;
+  bool is_static_alloc;
+}
+Symbol;
+
+typedef struct
+{
+  List* scopes;
+  Scope* active_scope;
+  int nesting_depth;
+  MemoryArena* arena;
+}
+SymbolTable;
 
 void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* node_list);
 

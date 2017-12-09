@@ -7,7 +7,18 @@ include "fibo.hoc";
 include "sort.hoc";
 */
 
-var int i;
-include "some_shit.hoc";
-proc void foo();
+proc void foo()
+{
+  if()
+  {}
+  else if()
+  {}
+  else if()
+  {}
+  else
+  {}
+}
+
+proc void bar()
+{}
 

@@ -245,76 +245,6 @@ bool parse_actual_arg_list(TokenStream* input, List* args)
   return success;
 }
 
-bool parse_proc(TokenStream* input, AstNode** node);
-bool parse_var(TokenStream* input, AstNode** node);
-bool parse_include(TokenStream* input, AstNode** node);
-
-bool parse_module_stmt(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = true;
-  switch(input->token.kind)
-  {
-    case eToken_extern:
-    case eToken_proc:
-      success = parse_proc(input, node);
-      break;
-    case eToken_var:
-      success = parse_var(input, node);
-      break;
-    case eToken_include:
-      success = parse_include(input, node);
-      break;
-  }
-  return success;
-}
-
-bool parse_module_stmt_list(TokenStream* input, AstNode* module)
-{
-  bool success = true;
-  AstNode* stmt = 0;
-  if(success = parse_module_stmt(input, &stmt))
-  {
-    if(stmt)
-    {
-      switch(stmt->kind)
-      {
-        case eAstNode_proc:
-          append_list_elem(&module->module.proc_list, stmt, eList_ast_node);
-          break;
-        case eAstNode_var:
-          append_list_elem(&module->module.var_list, stmt, eList_ast_node);
-          break;
-        case eAstNode_include:
-          append_list_elem(&module->module.include_list, stmt, eList_ast_node);
-          break;
-        default:
-          assert(0);
-      }
-      if(input->token.kind == eToken_semicolon)
-      {
-        if(get_next_token(input))
-        {
-          success = parse_module_stmt_list(input, module);
-        }
-      }
-      else
-        success = compile_error(&input->src_loc, "expected `;`, actual `%s`", get_token_printstr(&input->token));
-    }
-    else
-    {
-      if(input->token.kind == eToken_end_of_input)
-      {
-        //get_next_token(input);
-        //TODO: reset the input
-      }
-      else
-        success = compile_error(&input->src_loc, "expected `end-of-input`, at `%s`", get_token_printstr(&input->token));
-    }
-  }
-  return success;
-}
-
 bool parse_node_list(TokenStream* input, List* nodes)
 {
   bool success = true;
@@ -336,6 +266,7 @@ bool parse_node_list(TokenStream* input, List* nodes)
   return success;
 }
 
+#if 0
 bool parse_block(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -358,6 +289,7 @@ bool parse_block(TokenStream* input, AstNode** node)
   }
   return success;
 }
+#endif
 
 bool parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
 {
@@ -963,6 +895,7 @@ bool parse_un_expr(TokenStream* input, AstNode** node)
   return success;
 }
 
+#if 0
 bool parse_expr(TokenStream* input, AstNode** node)
 {
   bool success = true;
@@ -971,6 +904,7 @@ bool parse_expr(TokenStream* input, AstNode** node)
     success = parse_rest_of_assignment(input, *node, node);
   return success;
 }
+#endif
 
 bool parse_var(TokenStream* input, AstNode** node)
 {
@@ -1116,6 +1050,7 @@ bool parse_for(TokenStream* input, AstNode1** node)
 }
 #endif
 
+#if 0
 bool parse_while(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1184,7 +1119,9 @@ bool parse_while(TokenStream* input, AstNode** node)
   }
   return success;
 }
+#endif
 
+#if 0
 bool parse_else(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1221,7 +1158,9 @@ bool parse_else(TokenStream* input, AstNode** node)
   }
   return success;
 }
+#endif
 
+#if 0
 bool parse_if(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1288,6 +1227,7 @@ bool parse_if(TokenStream* input, AstNode** node)
   }
   return success;
 }
+#endif
 
 bool parse_proc_modifier(TokenStream* input, eProcModifier* modifier)
 {
@@ -1328,18 +1268,218 @@ bool parse_formal_arg_list(TokenStream* input, AstNode* proc)
   return success;
 }
 
+bool parse_expr(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  return success;
+}
+
+bool parse_if(TokenStream* input, AstNode** node);
+bool parse_while(TokenStream* input, AstNode** node);
+
+bool parse_if_stmt(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  switch(input->token.kind)
+  {
+    case eToken_var:
+      success = parse_var(input, node);
+      break;
+    case eToken_if:
+      success = parse_if(input, node);
+      break;
+    case eToken_while:
+      success = parse_while(input, node);
+      break;
+  }
+  return success;
+}
+
+bool parse_empty(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  if(input->token.kind == eToken_semicolon)
+  {
+    *node = new_ast_node(eAstNode_empty, clone_source_loc(&input->src_loc));
+    success = get_next_token(input);
+  }
+  return success;
+}
+
+bool parse_stmt(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  switch(input->token.kind)
+  {
+    case eToken_var:
+      success = parse_var(input, node) && consume_semicolon(input);
+      break;
+    case eToken_if:
+      success = parse_if(input, node);
+      break;
+    case eToken_while:
+      success = parse_while(input, node);
+      break;
+    case eToken_semicolon:
+      success = parse_empty(input, node);
+      break;
+  }
+  return success;
+}
+
+bool parse_stmt_list(TokenStream* input, AstNode* block)
+{
+  bool success = true;
+  AstNode* stmt = 0;
+  if(success = parse_stmt(input, &stmt))
+  {
+    if(stmt)
+    {
+      switch(stmt->kind)
+      {
+        case eAstNode_var:
+          append_list_elem(&block->block.var_list, stmt, eList_ast_node);
+          break;
+        case eAstNode_if_stmt:
+        case eAstNode_while_stmt:
+        case eAstNode_bin_expr:
+        case eAstNode_un_expr:
+          append_list_elem(&block->block.stmt_list, stmt, eList_ast_node);
+          break;
+        case eAstNode_empty:
+          break;
+        default:
+          assert(0);
+      }
+      success = parse_stmt_list(input, block);
+    }
+  }
+  return success;
+}
+
+bool parse_block(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  if(input->token.kind == eToken_open_brace)
+  {
+    AstNode* block = *node = new_ast_node(eAstNode_block, clone_source_loc(&input->src_loc));
+    init_list(&block->block.var_list, arena, eList_ast_node);
+    init_list(&block->block.stmt_list, arena, eList_ast_node);
+    if(success = (get_next_token(input) && parse_stmt_list(input, block)))
+    {
+      if(input->token.kind == eToken_close_brace)
+      {
+        success = get_next_token(input);
+      }
+      else
+        success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
+    }
+  }
+  return success;
+}
+
+bool parse_else_body(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  switch(input->token.kind)
+  {
+    case eToken_open_brace:
+      success = parse_block(input, node);
+      break;
+    case eToken_var:
+    case eToken_if:
+    case eToken_while:
+    case eToken_semicolon:
+      success = parse_stmt(input, node);
+      break;
+    default:
+      success = compile_error(&input->src_loc, "unexpected `%s`", get_token_printstr(&input->token));
+      break;
+  }
+  return success;
+}
+
+bool parse_else(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  if(input->token.kind == eToken_else)
+  {
+    success = get_next_token(input) && parse_else_body(input, node);
+  }
+  return success;
+}
+
+bool parse_if_body(TokenStream* input, AstNode** node)
+{
+  bool success = true;
+  switch(input->token.kind)
+  {
+    case eToken_open_brace:
+      success = parse_block(input, node);
+      break;
+    case eToken_var:
+    case eToken_if:
+    case eToken_while:
+    case eToken_semicolon:
+      success = parse_stmt(input, node);
+      break;
+    default:
+      success = compile_error(&input->src_loc, "unexpected `%s`", get_token_printstr(&input->token));
+      break;
+  }
+  return success;
+}
+
+bool parse_if(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  if(input->token.kind == eToken_if)
+  {
+    AstNode* if_ = *node = new_ast_node(eAstNode_if_stmt, clone_source_loc(&input->src_loc));
+    init_list(&if_->if_stmt.var_list, arena, eList_ast_node);
+    init_list(&if_->if_stmt.stmt_list, arena, eList_ast_node);
+    if(success = get_next_token(input))
+    {
+      if(input->token.kind == eToken_open_parens)
+      {
+        if(success = (get_next_token(input) && parse_expr(input, &if_->if_stmt.cond_expr)))
+        {
+          if(input->token.kind == eToken_close_parens)
+          {
+            success = get_next_token(input) && parse_if_body(input, &if_->if_stmt.body) && parse_else(input, &if_->if_stmt.else_body);
+          }
+          else
+            success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+        }
+      }
+      else
+        success = compile_error(&input->src_loc, "expected `(`, actual `%s`", get_token_printstr(&input->token));
+    }
+  }
+  return success;
+}
+
+bool parse_while(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  return success;
+}
+
 bool parse_proc_body(TokenStream* input, AstNode* proc)
 {
   bool success = true;
   if(input->token.kind == eToken_open_brace)
   {
-    success = get_next_token(input);
-    if(input->token.kind == eToken_close_brace)
-    {
-      success = get_next_token(input);
-    }
-    else
-      success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
+    success = parse_block(input, &proc->proc.body);
   }
   return success;
 }
@@ -1351,6 +1491,8 @@ bool parse_proc(TokenStream* input, AstNode** node)
 
   AstNode* proc = *node = new_ast_node(eAstNode_proc, clone_source_loc(&input->src_loc));
   init_list(&proc->proc.formal_arg_list, arena, eList_ast_node);
+  init_list(&proc->proc.var_list, arena, eList_ast_node);
+  init_list(&proc->proc.stmt_list, arena, eList_ast_node);
   if(success = parse_proc_modifier(input, &proc->proc.modifier))
   {
     if(input->token.kind == eToken_proc)
@@ -1951,6 +2093,78 @@ bool parse_node(TokenStream* input, AstNode** node)
 }
 #endif
 
+bool parse_proc(TokenStream* input, AstNode** node);
+bool parse_var(TokenStream* input, AstNode** node);
+bool parse_include(TokenStream* input, AstNode** node);
+
+bool parse_module_stmt(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  switch(input->token.kind)
+  {
+    case eToken_extern:
+    case eToken_proc:
+      success = parse_proc(input, node);
+      break;
+    case eToken_var:
+      success = parse_var(input, node);
+      break;
+    case eToken_include:
+      success = parse_include(input, node);
+      break;
+    case eToken_semicolon:
+      success = parse_empty(input, node);
+      break;
+  }
+  return success;
+}
+
+bool parse_module_stmt_list(TokenStream* input, AstNode* module)
+{
+  bool success = true;
+  AstNode* stmt = 0;
+  if(success = parse_module_stmt(input, &stmt))
+  {
+    if(stmt)
+    {
+      switch(stmt->kind)
+      {
+        case eAstNode_proc:
+          append_list_elem(&module->module.proc_list, stmt, eList_ast_node);
+          break;
+        case eAstNode_var:
+          append_list_elem(&module->module.var_list, stmt, eList_ast_node);
+          break;
+        case eAstNode_include:
+          append_list_elem(&module->module.include_list, stmt, eList_ast_node);
+          break;
+        case eAstNode_empty:
+          break;
+        default:
+          assert(0);
+      }
+      success = parse_module_stmt_list(input, module);
+    }
+  }
+  return success;
+}
+
+bool parse_module_body(TokenStream* input, AstNode* module)
+{
+  bool success = true;
+  if(success = parse_module_stmt_list(input, module))
+  {
+    if(input->token.kind == eToken_end_of_input)
+    {
+      //TODO: reset the input
+    }
+    else
+      success = compile_error(&input->src_loc, "expected `end-of-input`, at `%s`", get_token_printstr(&input->token));
+  }
+  return success;
+}
+
 bool parse_module(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1961,7 +2175,7 @@ bool parse_module(TokenStream* input, AstNode** node)
   init_list(&module->module.proc_list, arena, eList_ast_node);
   init_list(&module->module.var_list, arena, eList_ast_node);
   init_list(&module->module.include_list, arena, eList_ast_node);
-  success = parse_module_stmt_list(input, module);
+  success = parse_module_body(input, module);
   return success;
 }
 

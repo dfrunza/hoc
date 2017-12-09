@@ -1309,12 +1309,17 @@ bool parse_empty(TokenStream* input, AstNode** node)
   return success;
 }
 
+bool parse_block(TokenStream* input, AstNode** node);
+
 bool parse_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
   switch(input->token.kind)
   {
+    case eToken_open_brace:
+      success = parse_block(input, node);
+      break;
     case eToken_var:
       success = parse_var(input, node) && consume_semicolon(input);
       break;
@@ -1348,6 +1353,7 @@ bool parse_stmt_list(TokenStream* input, AstNode* block)
         case eAstNode_while_stmt:
         case eAstNode_bin_expr:
         case eAstNode_un_expr:
+        case eAstNode_block:
           append_list_elem(&block->block.stmt_list, stmt, eList_ast_node);
           break;
         case eAstNode_empty:
@@ -1390,8 +1396,6 @@ bool parse_else_body(TokenStream* input, AstNode** node)
   switch(input->token.kind)
   {
     case eToken_open_brace:
-      success = parse_block(input, node);
-      break;
     case eToken_var:
     case eToken_if:
     case eToken_while:
@@ -1422,8 +1426,6 @@ bool parse_if_body(TokenStream* input, AstNode** node)
   switch(input->token.kind)
   {
     case eToken_open_brace:
-      success = parse_block(input, node);
-      break;
     case eToken_var:
     case eToken_if:
     case eToken_while:
@@ -1477,9 +1479,17 @@ bool parse_while(TokenStream* input, AstNode** node)
 bool parse_proc_body(TokenStream* input, AstNode* proc)
 {
   bool success = true;
-  if(input->token.kind == eToken_open_brace)
+  switch(input->token.kind)
   {
-    success = parse_block(input, &proc->proc.body);
+    case eToken_open_brace:
+      success = parse_block(input, &proc->proc.body);
+      break;
+    case eToken_semicolon:
+      success = parse_empty(input, &proc->proc.body);
+      break;
+    default:
+      success = compile_error(&input->src_loc, "unexpected `%s`", get_token_printstr(&input->token));
+      break;
   }
   return success;
 }

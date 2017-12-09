@@ -9,14 +9,6 @@ include "sort.hoc";
 
 proc void foo()
 {
-  if()
-  {}
-  else if()
-  {}
-  else if()
-  {}
-  else
-  {}
 }
 
 proc void bar()

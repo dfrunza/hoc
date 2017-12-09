@@ -72,7 +72,7 @@ SourceLoc;
 
 typedef struct
 {
-  char id[12];
+  char name[12];
 }
 Label;
 
@@ -402,117 +402,6 @@ typedef struct Scope
 }
 Scope;
 
-typedef enum 
-{
-  eAstAttribute_None,
-  eAstAttribute_ast_node,
-  eAstAttribute_int_val,
-  eAstAttribute_float_val,
-  eAstAttribute_char_val,
-  eAstAttribute_bool_val,
-  eAstAttribute_str_val,
-  eAstAttribute_op_kind,
-  eAstAttribute_list,
-  eAstAttribute_lit_kind,
-  eAstAttribute_scope,
-  eAstAttribute_type,
-  eAstAttribute_symbol,
-  eAstAttribute_label,
-}
-eAstAttribute;
-
-typedef enum
-{
-  eAstAttributeName_None,
-  eAstAttributeName_symbol,
-  eAstAttributeName_decl_sym,
-  eAstAttributeName_occur_sym,
-  eAstAttributeName_type,
-  eAstAttributeName_eval_type,
-  eAstAttributeName_type_expr,
-  eAstAttributeName_pointee_expr,
-  eAstAttributeName_elem_expr,
-  eAstAttributeName_nesting_depth,
-  eAstAttributeName_loop,
-  eAstAttributeName_formal_args,
-  eAstAttributeName_ret_type,
-  eAstAttributeName_ret_var,
-  eAstAttributeName_scope,
-  eAstAttributeName_decl_scope,
-  eAstAttributeName_occur_scope,
-  eAstAttributeName_var_decl,
-  eAstAttributeName_proc_decl,
-  eAstAttributeName_type_decl,
-  eAstAttributeName_str_lit,
-  eAstAttributeName_operand,
-  eAstAttributeName_left_operand,
-  eAstAttributeName_right_operand,
-  eAstAttributeName_op_kind,
-  eAstAttributeName_name,
-  eAstAttributeName_nodes,
-  eAstAttributeName_procs,
-  eAstAttributeName_vars,
-  eAstAttributeName_stmts,
-  eAstAttributeName_file_path,
-  eAstAttributeName_body,
-  eAstAttributeName_stmt,
-  eAstAttributeName_id,
-  eAstAttributeName_init_expr,
-  eAstAttributeName_actual_args,
-  eAstAttributeName_int_val,
-  eAstAttributeName_float_val,
-  eAstAttributeName_bool_val,
-  eAstAttributeName_char_val,
-  eAstAttributeName_str_val,
-  eAstAttributeName_ret_expr,
-  eAstAttributeName_expr,
-  eAstAttributeName_cond_expr,
-  eAstAttributeName_loop_expr,
-  eAstAttributeName_else_body,
-  eAstAttributeName_decl_expr,
-  eAstAttributeName_size_expr,
-  eAstAttributeName_members,
-  eAstAttributeName_count_expr,
-  eAstAttributeName_lit_kind,
-  eAstAttributeName_data_area,
-  eAstAttributeName_label,
-  eAstAttributeName_asm_text,
-  eAstAttributeName_is_extern,
-  eAstAttributeName_structs,
-}
-eAstAttributeName;
-
-typedef struct
-{
-  eAstAttribute kind;
-  eAstAttributeName name;
-
-  union
-  {
-    AstNode* ast_node;
-    bool bool_val;
-    int int_val;
-    float float_val;
-    char char_val;
-    char* str_val;
-    List* list;
-    eOperator op_kind;
-    eLiteral lit_kind;
-    Scope* scope;
-    Type* type;
-    Symbol* symbol;
-    Label label;
-  };
-}
-AstAttribute;
-
-typedef struct
-{
-  eAstAttribute kind;
-  eAstAttributeName name;
-}
-AstAttributeMetaInfo;
-
 #ifndef eAstNode_MEMBER_LIST
 #define eAstNode_MEMBER_LIST()\
   ENUM_MEMBER(eAstNode_None),\
@@ -525,12 +414,10 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(eAstNode_include),\
   ENUM_MEMBER(eAstNode_block),\
   ENUM_MEMBER(eAstNode_stmt),\
-  ENUM_MEMBER(eAstNode_var_decl),\
-  ENUM_MEMBER(eAstNode_var_occur),\
-  ENUM_MEMBER(eAstNode_proc_decl),\
-  ENUM_MEMBER(eAstNode_proc_occur),\
-  ENUM_MEMBER(eAstNode_type_decl),\
-  ENUM_MEMBER(eAstNode_type_occur),\
+  ENUM_MEMBER(eAstNode_var),\
+  ENUM_MEMBER(eAstNode_proc),\
+  ENUM_MEMBER(eAstNode_call),\
+  ENUM_MEMBER(eAstNode_type),\
   ENUM_MEMBER(eAstNode_lit),\
   ENUM_MEMBER(eAstNode_ret_stmt),\
   ENUM_MEMBER(eAstNode_goto_stmt),\
@@ -539,8 +426,7 @@ AstAttributeMetaInfo;
   ENUM_MEMBER(eAstNode_while_stmt),\
   ENUM_MEMBER(eAstNode_do_while_stmt),\
   ENUM_MEMBER(eAstNode_for_stmt),\
-  ENUM_MEMBER(eAstNode_break_stmt),\
-  ENUM_MEMBER(eAstNode_continue_stmt),\
+  ENUM_MEMBER(eAstNode_loop_ctrl),\
   ENUM_MEMBER(eAstNode_pointer),\
   ENUM_MEMBER(eAstNode_enum_decl),\
   ENUM_MEMBER(eAstNode_struct_decl),\
@@ -569,42 +455,204 @@ char* get_ast_kind_printstr(eAstNode kind)
   return eAstNode_strings[kind];
 }
 
-#define MAX_ATTRIBUTE_COUNT 16
-
-typedef struct
-{
-  eAstNode kind;
-  int attr_count;
-  AstAttributeMetaInfo attrs[MAX_ATTRIBUTE_COUNT];
-}
-AstKindMetaInfo;
-
-typedef struct
-{
-  int kind_count;
-  AstKindMetaInfo* kinds;
-}
-AstMetaInfo;
-
 typedef enum
 {
-  eAstGen_gen0,
-  eAstGen_gen1,
-  eAstGen_Count,
+  eLoopCtrl_None,
+  eLoopCtrl_break,
+  eLoopCtrl_continue,
 }
-eAstGen;
+eLoopCtrl;
 
 typedef struct AstNode
 {
-  eAstGen gen;
   eAstNode kind;
   SourceLoc* src_loc;
+  Type* ty;
+  Type* eval_ty;
 
-  AstAttribute attrs[MAX_ATTRIBUTE_COUNT];
+  union
+  {
+    struct
+    {
+      char* name;
+      Symbol* occur_sym;
+      Symbol* decl_sym;
+      AstNode* decl_ast;
+    }
+    id;
+
+    struct
+    {
+      AstNode* left_operand;
+      AstNode* right_operand;
+      eOperator op_kind;
+    }
+    bin_expr;
+
+    struct
+    {
+      AstNode* operand;
+      eOperator op_kind;
+    }
+    un_expr;
+
+    struct
+    {
+      char* asm_text;
+    }
+    asm_block;
+
+    struct
+    {
+      char* name;
+      AstNode* type_expr;
+      Symbol* decl_sym;
+    }
+    type;
+
+    struct
+    {
+      List* members;
+    }
+    init_list;
+
+    struct
+    {
+      AstNode* elem_expr;
+      AstNode* size_expr;
+    }
+    array;
+
+    struct
+    {
+      AstNode* pointee_expr;
+    }
+    pointer;
+
+    struct
+    {
+      char* name;
+      AstNode* id;
+      List* actual_args;
+      Symbol* occur_sym;
+      Symbol* decl_sym;
+      AstNode* proc;
+    }
+    call;
+
+    struct
+    {
+      AstNode* ret_expr;
+      AstNode* proc;
+      int nesting_depth;
+    }
+    ret_stmt;
+
+    struct
+    {
+      eLoopCtrl kind;
+      AstNode* loop;
+      int nesting_depth;
+    }
+    loop_ctrl;
+
+    struct
+    {
+      AstNode* stmt;
+    }
+    stmt;
+
+    struct
+    {
+      AstNode* cond_expr;
+      AstNode* body;
+      AstNode* else_body;
+    }
+    if_stmt;
+
+    struct
+    {
+      AstNode* cond_expr;
+      AstNode* body;
+      Scope* scope;
+      Label label;
+    }
+    while_stmt;
+    
+    struct
+    {
+      char* name;
+      char* label;
+      AstNode* id;
+      bool is_extern;
+      AstNode* ret_var;
+      List* formal_args;
+      AstNode* body;
+      Symbol* decl_sym;
+      Scope* scope;
+    }
+    proc;
+
+    struct
+    {
+      eLiteral kind;
+      union
+      {
+        int int_val;
+        float float_val;
+        bool bool_val;
+        char char_val;
+        char* str_val;
+      };
+    }
+    lit;
+
+    struct
+    {
+      char* name;
+      AstNode* id;
+      AstNode* type;
+      AstNode* init_expr;
+      Symbol* decl_sym;
+    }
+    var;
+
+    struct
+    {
+      char* file_path;
+      AstNode* body;
+      Scope* scope;
+    }
+    module;
+
+    struct
+    {
+      char* file_path;
+      AstNode* body;
+    }
+    include;
+
+    struct
+    {
+      Scope* scope;
+      List* nodes;
+      List* stmts;
+      List* procs;
+      List* vars;
+    }
+    block;
+
+    struct
+    {
+      char* name;
+      AstNode* id;
+      List* members;
+    }
+    //record;
+    enum_decl, union_decl, struct_decl;
+  };
 }
 AstNode;
-
-AstMetaInfo ast_meta_infos[2];
 
 typedef enum
 {
@@ -695,7 +743,7 @@ typedef struct Symbol
   SourceLoc* src_loc;
   Scope* scope;
   AstNode* ast_node;
-  Type* type;
+  Type* ty;
   Symbol* decl;
   int data_loc;
   void* data;

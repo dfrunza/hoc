@@ -31,8 +31,8 @@ bool parse_rest_of_type_expr(TokenStream* input, AstNode* expr, AstNode** node)
   
   if(input->token.kind == eToken_star)
   {
-    AstNode* ptr = *node = new_ast_node(eAstGen_gen0, eAstNode_pointer, clone_source_loc(&input->src_loc));
-    ATTR(ptr, ast_node, pointee_expr) = expr;
+    AstNode* ptr = *node = new_ast_node(eAstNode_pointer, clone_source_loc(&input->src_loc));
+    ptr->pointer.pointee_expr = expr;
 
     success = get_next_token(input) && parse_rest_of_type_expr(input, *node, node);
   }
@@ -48,18 +48,18 @@ bool parse_type_expr(TokenStream* input, AstNode** node)
   {
     case eToken_open_bracket:
       {
-        AstNode* array = *node = new_ast_node(eAstGen_gen0, eAstNode_array, clone_source_loc(&input->src_loc));
+        AstNode* array = *node = new_ast_node(eAstNode_array, clone_source_loc(&input->src_loc));
 
         AstNode* size_expr = 0;
         if(success = get_next_token(input) && parse_expr(input, &size_expr))
         {
-          ATTR(array, ast_node, size_expr) = size_expr;
+          array->array.size_expr = size_expr;
           if(input->token.kind == eToken_close_bracket)
           {
             AstNode* elem_expr = 0;
             if(success = get_next_token(input) && parse_type_expr(input, &elem_expr))
             {
-              ATTR(array, ast_node, elem_expr) = elem_expr;
+              array->array.elem_expr = elem_expr;
               if(!elem_expr)
               {
                 putback_token(input);
@@ -75,8 +75,8 @@ bool parse_type_expr(TokenStream* input, AstNode** node)
 
     case eToken_id:
       {
-        AstNode* id = *node = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
-        ATTR(id, str_val, name) = input->token.lexeme;
+        AstNode* id = *node = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+        id->id.name = input->token.lexeme;
 
         success = get_next_token(input) && parse_rest_of_type_expr(input, *node, node);
       }
@@ -117,8 +117,8 @@ bool parse_type(TokenStream* input, AstNode** node)
   {
     if(type_expr)
     {
-      AstNode* type = *node = new_ast_node(eAstGen_gen0, eAstNode_type_decl, clone_source_loc(&input->src_loc));
-      ATTR(type, ast_node, type_expr) = type_expr;
+      AstNode* type = *node = new_ast_node(eAstNode_type, clone_source_loc(&input->src_loc));
+      type->type.type_expr = type_expr;
     }
   }
   return success;
@@ -171,10 +171,10 @@ bool parse_initializer_list(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_open_brace)
   {
-    AstNode* init_list = *node = new_ast_node(eAstGen_gen0, eAstNode_init_list, clone_source_loc(&input->src_loc));
-    ATTR(init_list, list, members) = new_list(arena, eList_ast_node);
+    AstNode* init_list = *node = new_ast_node(eAstNode_init_list, clone_source_loc(&input->src_loc));
+    init_list->init_list.members = new_list(arena, eList_ast_node);
 
-    if(success = get_next_token(input) && parse_initializer_member_list(input, ATTR(init_list, list, members)))
+    if(success = get_next_token(input) && parse_initializer_member_list(input, init_list->init_list.members))
     {
       if(input->token.kind == eToken_close_brace)
       {
@@ -241,8 +241,8 @@ bool parse_block(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_open_brace)
   {
-    AstNode* block = *node = new_ast_node(eAstGen_gen0, eAstNode_block, clone_source_loc(&input->src_loc));
-    List* nodes = ATTR(block, list, nodes) = new_list(arena, eList_ast_node);
+    AstNode* block = *node = new_ast_node(eAstNode_block, clone_source_loc(&input->src_loc));
+    List* nodes = block->block.nodes = new_list(arena, eList_ast_node);
 
     if(success = get_next_token(input) && parse_node_list(input, nodes))
     {
@@ -269,11 +269,11 @@ bool parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
         // procedure call
         if(left_node->kind == eAstNode_id)
         {
-          AstNode* proc_occur = *node = new_ast_node(eAstGen_gen0, eAstNode_proc_occur, clone_source_loc(&input->src_loc));
-          ATTR(proc_occur, ast_node, id) = left_node;
-          ATTR(proc_occur, list, actual_args) = new_list(arena, eList_ast_node);
+          AstNode* call = *node = new_ast_node(eAstNode_call, clone_source_loc(&input->src_loc));
+          call->call.id = left_node;
+          call->call.actual_args = new_list(arena, eList_ast_node);
 
-          if(success = get_next_token(input) && parse_actual_arg_list(input, ATTR(proc_occur, list, actual_args)))
+          if(success = get_next_token(input) && parse_actual_arg_list(input, call->call.actual_args))
           {
             if(input->token.kind == eToken_close_parens)
             {
@@ -291,15 +291,15 @@ bool parse_rest_of_id(TokenStream* input, AstNode* left_node, AstNode** node)
     case eToken_open_bracket:
       {
         // array
-        AstNode* index = *node = new_ast_node(eAstGen_gen0, eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-        ATTR(index, op_kind, op_kind) = eOperator_index;
-        ATTR(index, ast_node, left_operand) = left_node;
+        AstNode* index = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
+        index->bin_expr.op_kind = eOperator_index;
+        index->bin_expr.left_operand = left_node;
 
-        if(success = get_next_token(input) && parse_expr(input, &ATTR(index, ast_node, right_operand)))
+        if(success = get_next_token(input) && parse_expr(input, &index->bin_expr.right_operand))
         {
           if(input->token.kind == eToken_close_bracket)
           {
-            if(ATTR(index, ast_node, right_operand))
+            if(index->bin_expr.right_operand)
             {
               success = get_next_token(input) && parse_rest_of_id(input, *node, node);
             }
@@ -330,21 +330,21 @@ bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** no
     case eToken_dot:
     case eToken_arrow_right:
       {
-        AstNode* bin_expr = *node = new_ast_node(eAstGen_gen0, eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-        ATTR(bin_expr, ast_node, left_operand) = left_node;
+        AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
+        bin_expr->bin_expr.left_operand = left_node;
 
         if(input->token.kind == eToken_dot)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_member_select;
+          bin_expr->bin_expr.op_kind = eOperator_member_select;
         }
         else if(input->token.kind == eToken_arrow_right)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_ptr_member_select;
+          bin_expr->bin_expr.op_kind = eOperator_ptr_member_select;
         }
 
-        if(success = get_next_token(input) && parse_selector(input, &ATTR(bin_expr, ast_node, right_operand)))
+        if(success = get_next_token(input) && parse_selector(input, &bin_expr->bin_expr.right_operand))
         {
-          if(ATTR(bin_expr, ast_node, right_operand))
+          if(bin_expr->bin_expr.right_operand)
           {
             success = parse_rest_of_selector(input, *node, node);
           }
@@ -360,8 +360,8 @@ bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** no
     case eToken_plus_plus:
     case eToken_minus_minus:
       {
-        AstNode* un_expr = *node = new_ast_node(eAstGen_gen0, eAstNode_un_expr, clone_source_loc(&input->src_loc));
-        ATTR(un_expr, ast_node, operand) = left_node;
+        AstNode* un_expr = *node = new_ast_node(eAstNode_un_expr, clone_source_loc(&input->src_loc));
+        un_expr->un_expr.operand = left_node;
 
         if(input->token.kind == eToken_minus_minus)
         {
@@ -411,27 +411,27 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
     case eToken_fwd_slash:
     case eToken_percent:
       {
-        AstNode* bin_expr = *node = new_ast_node(eAstGen_gen0, eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-        ATTR(bin_expr, ast_node, left_operand) = left_node;
+        AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
+        bin_expr->bin_expr.left_operand = left_node;
 
         if(input->token.kind == eToken_star)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_mul;
+          bin_expr->bin_expr.op_kind = eOperator_mul;
         }
         else if(input->token.kind == eToken_fwd_slash)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_div;
+          bin_expr->bin_expr.op_kind = eOperator_div;
         }
         else if(input->token.kind == eToken_percent)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_mod;
+          bin_expr->bin_expr.op_kind = eOperator_mod;
         }
         else
           assert(0);
 
-        if(success = get_next_token(input) && parse_factor(input, &ATTR(bin_expr, ast_node, right_operand)))
+        if(success = get_next_token(input) && parse_factor(input, &bin_expr->bin_expr.right_operand))
         {
-          if(ATTR(bin_expr, ast_node, right_operand))
+          if(bin_expr->bin_expr.right_operand)
           {
             success = parse_rest_of_factor(input, *node, node);
           }
@@ -475,51 +475,51 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     case eToken_angle_left_left:
     case eToken_circumflex:
       {
-        AstNode* bin_expr = *node = new_ast_node(eAstGen_gen0, eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-        ATTR(bin_expr, ast_node, left_operand) = left_node;
+        AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
+        bin_expr->bin_expr.left_operand = left_node;
 
         if(input->token.kind == eToken_plus)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_add;
+          bin_expr->bin_expr.op_kind = eOperator_add;
         }
         else if(input->token.kind == eToken_minus)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_sub;
+          bin_expr->bin_expr.op_kind = eOperator_sub;
         }
         else if(input->token.kind == eToken_pipe)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_bit_or;
+          bin_expr->bin_expr.op_kind = eOperator_bit_or;
         }
         else if(input->token.kind == eToken_pipe_pipe)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_logic_or;
+          bin_expr->bin_expr.op_kind = eOperator_logic_or;
         }
         else if(input->token.kind == eToken_ampersand)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_bit_and;
+          bin_expr->bin_expr.op_kind = eOperator_bit_and;
         }
         else if(input->token.kind == eToken_ampersand_ampersand)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_logic_and;
+          bin_expr->bin_expr.op_kind = eOperator_logic_and;
         }
         else if(input->token.kind == eToken_angle_left_left)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_bit_shift_left;
+          bin_expr->bin_expr.op_kind = eOperator_bit_shift_left;
         }
         else if(input->token.kind == eToken_angle_right_right)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_bit_shift_right;
+          bin_expr->bin_expr.op_kind = eOperator_bit_shift_right;
         }
         else if(input->token.kind == eToken_circumflex)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_bit_xor;
+          bin_expr->bin_expr.op_kind = eOperator_bit_xor;
         }
         else
           assert(0);
 
-        if(success && (success = get_next_token(input) && parse_term(input, &ATTR(bin_expr, ast_node, right_operand))))
+        if(success && (success = get_next_token(input) && parse_term(input, &bin_expr->bin_expr.right_operand)))
         {
-          if(ATTR(bin_expr, ast_node, right_operand))
+          if(bin_expr->bin_expr.right_operand)
           {
             success = parse_rest_of_term(input, *node, node);
           }
@@ -561,43 +561,43 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
     case eToken_angle_right:
     case eToken_angle_right_eq:
       {
-        AstNode* bin_expr = *node = new_ast_node(eAstGen_gen0, eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-        ATTR(bin_expr, ast_node, left_operand) = left_node;
+        AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
+        bin_expr->bin_expr.left_operand = left_node;
 
         if(input->token.kind == eToken_eq)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_assign;
+          bin_expr->bin_expr.op_kind = eOperator_assign;
         }
         else if(input->token.kind == eToken_eq_eq)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_eq;
+          bin_expr->bin_expr.op_kind = eOperator_eq;
         }
         else if(input->token.kind == eToken_exclam_eq)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_not_eq;
+          bin_expr->bin_expr.op_kind = eOperator_not_eq;
         }
         else if(input->token.kind == eToken_angle_left)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_less;
+          bin_expr->bin_expr.op_kind = eOperator_less;
         }
         else if(input->token.kind == eToken_angle_left_eq)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_less_eq;
+          bin_expr->bin_expr.op_kind = eOperator_less_eq;
         }
         else if(input->token.kind == eToken_angle_right)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_greater;
+          bin_expr->bin_expr.op_kind = eOperator_greater;
         }
         else if(input->token.kind == eToken_angle_right_eq)
         {
-          ATTR(bin_expr, op_kind, op_kind) = eOperator_greater_eq;
+          bin_expr->bin_expr.op_kind = eOperator_greater_eq;
         }
         else
           assert(0);
 
-        if(success = get_next_token(input) && parse_expr(input, &ATTR(bin_expr, ast_node, right_operand)))
+        if(success = get_next_token(input) && parse_expr(input, &bin_expr->bin_expr.right_operand))
         {
-          if(!ATTR(bin_expr, ast_node, right_operand))
+          if(!bin_expr->bin_expr.right_operand)
           {
             putback_token(input);
             success = compile_error(&input->src_loc, "operand expected, at `%s`", get_token_printstr(&input->token));
@@ -625,15 +625,15 @@ bool parse_selector(TokenStream* input, AstNode** node)
           {
             if(input->token.kind == eToken_close_parens)
             {
-              if((success = get_next_token(input)) && expr->kind == eAstNode_type_decl)
+              if((success = get_next_token(input)) && expr->kind == eAstNode_type)
               {
-                AstNode* cast = *node = new_ast_node(eAstGen_gen0, eAstNode_bin_expr, expr->src_loc);
-                ATTR(cast, op_kind, op_kind) = eOperator_cast;
-                ATTR(cast, ast_node, left_operand) = expr;
+                AstNode* cast = *node = new_ast_node(eAstNode_bin_expr, expr->src_loc);
+                cast->bin_expr.op_kind = eOperator_cast;
+                cast->bin_expr.left_operand = expr;
 
-                if(success = parse_un_expr(input, &ATTR(cast, ast_node, right_operand)))
+                if(success = parse_un_expr(input, &cast->bin_expr.right_operand))
                 {
-                  if(!ATTR(cast, ast_node, right_operand))
+                  if(!cast->bin_expr.right_operand)
                   {
                     putback_token(input);
                     success = compile_error(&input->src_loc, "expression expected, at `%s`", get_token_printstr(&input->token));
@@ -660,37 +660,33 @@ bool parse_selector(TokenStream* input, AstNode** node)
     case eToken_string:
     case eToken_char:
       {
-        AstNode* lit = *node = new_ast_node(eAstGen_gen0, eAstNode_lit, clone_source_loc(&input->src_loc));
+        AstNode* lit = *node = new_ast_node(eAstNode_lit, clone_source_loc(&input->src_loc));
 
         if(input->token.kind == eToken_int_num)
         {
-          ATTR(lit, lit_kind, lit_kind) = eLiteral_int_val;
-          ATTR(lit, int_val, int_val) = *input->token.int_val;
+          lit->lit.kind = eLiteral_int_val;
+          lit->lit.int_val = *input->token.int_val;
         }
         else if(input->token.kind == eToken_float_num)
         {
-          ATTR(lit, lit_kind, lit_kind) = eLiteral_float_val;
-          ATTR(lit, float_val, float_val) = *input->token.float_val;
+          lit->lit.kind = eLiteral_float_val;
+          lit->lit.float_val = *input->token.float_val;
         }
         else if(input->token.kind == eToken_true ||
             input->token.kind == eToken_false)
         {
-          ATTR(lit, lit_kind, lit_kind) = eLiteral_bool_val;
-          ATTR(lit, bool_val, bool_val) = (input->token.kind == eToken_true ? 1 : 0);
+          lit->lit.kind = eLiteral_bool_val;
+          lit->lit.bool_val = (input->token.kind == eToken_true ? 1 : 0);
         }
         else if(input->token.kind == eToken_char)
         {
-          ATTR(lit, lit_kind, lit_kind) = eLiteral_char_val;
-          ATTR(lit, char_val, char_val) = input->token.char_val;
+          lit->lit.kind = eLiteral_char_val;
+          lit->lit.char_val = input->token.char_val;
         }
         else if(input->token.kind == eToken_string)
         {
-          ATTR(lit, lit_kind, lit_kind) = eLiteral_str_val;
-          ATTR(lit, str_val, str_val) = input->token.str_val;
-#if 0
-          AstNode* str = *node = new_ast_node(eAstGen_gen0, eAstNode_str, clone_source_loc(&input->src_loc));
-          ATTR(str, ast_node, str_lit) = lit;
-#endif
+          lit->lit.kind = eLiteral_str_val;
+          lit->lit.str_val = input->token.str_val;
         }
         else
           assert(0);
@@ -701,8 +697,8 @@ bool parse_selector(TokenStream* input, AstNode** node)
 
     case eToken_id:
       {
-        AstNode* id = *node = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
-        ATTR(id, str_val, name) = input->token.lexeme;
+        AstNode* id = *node = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+        id->id.name = input->token.lexeme;
         success = get_next_token(input) && parse_rest_of_id(input, *node, node);
       }
       break;
@@ -730,13 +726,13 @@ bool parse_formal_arg(TokenStream* input, AstNode** node)
   AstNode* type = 0;
   if((success = parse_type(input, &type)) && type)
   {
-    AstNode* var_decl = *node = new_ast_node(eAstGen_gen0, eAstNode_var_decl, clone_source_loc(&input->src_loc));
-    ATTR(var_decl, ast_node, type) = type;
+    AstNode* var = *node = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
+    var->var.type = type;
 
     if(input->token.kind == eToken_id)
     {
-      AstNode* id = ATTR(var_decl, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
-      ATTR(id, str_val, name) = input->token.lexeme;
+      AstNode* id = var->var.id = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+      id->id.name = input->token.lexeme;
       success = get_next_token(input);
     }
     else
@@ -784,28 +780,28 @@ bool parse_un_expr(TokenStream* input, AstNode** node)
     case eToken_minus_minus:
     case eToken_plus_plus:
       {
-        AstNode* un_expr = *node = new_ast_node(eAstGen_gen0, eAstNode_un_expr, clone_source_loc(&input->src_loc));
+        AstNode* un_expr = *node = new_ast_node(eAstNode_un_expr, clone_source_loc(&input->src_loc));
 
         if(input->token.kind == eToken_exclam)
         {
-          ATTR(un_expr, op_kind, op_kind) = eOperator_logic_not;
+          un_expr->un_expr.op_kind = eOperator_logic_not;
         }
         else if(input->token.kind == eToken_star)
         {
-          ATTR(un_expr, op_kind, op_kind) = eOperator_deref;
+          un_expr->un_expr.op_kind = eOperator_deref;
         }
         else if(input->token.kind == eToken_ampersand)
         {
-          ATTR(un_expr, op_kind, op_kind) = eOperator_address_of;
+          un_expr->un_expr.op_kind = eOperator_address_of;
         }
         else if(input->token.kind == eToken_minus)
         {
-          ATTR(un_expr, op_kind, op_kind) = eOperator_neg;
+          un_expr->un_expr.op_kind = eOperator_neg;
         }
         else if(input->token.kind == eToken_minus_minus)
         {
 #if 0
-          un_expr->op = eOperator_pre_decr;
+          un_expr->un_expr.op_kind = eOperator_pre_decr;
 #else
           success = compile_error(&input->src_loc, "`--` not supported");
 #endif
@@ -813,7 +809,7 @@ bool parse_un_expr(TokenStream* input, AstNode** node)
         else if(input->token.kind == eToken_plus_plus)
         {
 #if 0
-          un_expr->op = eOperator_pre_incr;
+          un_expr->un_expr.op_kind = eOperator_pre_incr;
 #else
           success = compile_error(&input->src_loc, "`++` not supported");
 #endif
@@ -821,9 +817,9 @@ bool parse_un_expr(TokenStream* input, AstNode** node)
         else
           assert(0);
 
-        if(success && (success = get_next_token(input) && parse_factor(input, &ATTR(un_expr, ast_node, operand))))
+        if(success && (success = get_next_token(input) && parse_factor(input, &un_expr->un_expr.operand)))
         {
-          if(!ATTR(un_expr, ast_node, operand))
+          if(!un_expr->un_expr.operand)
           {
             putback_token(input);
             success = compile_error(&input->src_loc, "operand expected, at `%s`", get_token_printstr(&input->token));
@@ -858,34 +854,34 @@ bool parse_var(TokenStream* input, AstNode** node)
   {
     if(type)
     {
-      AstNode* var_decl = *node = new_ast_node(eAstGen_gen0, eAstNode_var_decl, clone_source_loc(&input->src_loc));
-      ATTR(var_decl, ast_node, type) = type;
+      AstNode* var = *node = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
+      var->var.type = type;
 
       if(input->token.kind == eToken_id)
       {
-        AstNode* id = ATTR(var_decl, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
-        ATTR(id, str_val, name) = input->token.lexeme;
+        AstNode* id = var->var.id = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+        id->id.name = input->token.lexeme;
 
         if((success = get_next_token(input)) && input->token.kind == eToken_eq
             && (success = get_next_token(input)))
         {
-          AstNode* occur_id = new_ast_node(eAstGen_gen0, eAstNode_id, id->src_loc);
-          ATTR(occur_id, str_val, name) = ATTR(id, str_val, name);
+          AstNode* occur_id = new_ast_node(eAstNode_id, id->src_loc);
+          occur_id->id.name = id->id.name;
 
-          AstNode* assign = new_ast_node(eAstGen_gen0, eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-          ATTR(assign, op_kind, op_kind) = eOperator_assign;
-          ATTR(assign, ast_node, left_operand) = occur_id;
+          AstNode* assign = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
+          assign->bin_expr.op_kind = eOperator_assign;
+          assign->bin_expr.left_operand = occur_id;
 
           AstNode* init_expr = 0;
           if(success = parse_expr(input, &init_expr))
           {
             if(init_expr)
             {
-              ATTR(assign, ast_node, right_operand) = init_expr;
+              assign->bin_expr.right_operand = init_expr;
 
-              init_expr = new_ast_node(eAstGen_gen0, eAstNode_stmt, assign->src_loc);
-              ATTR(init_expr, ast_node, stmt) = assign;
-              ATTR(var_decl, ast_node, init_expr) = init_expr;
+              init_expr = new_ast_node(eAstNode_stmt, assign->src_loc);
+              init_expr->stmt.stmt = assign;
+              var->var.init_expr = init_expr;
             }
             else
             {
@@ -969,7 +965,7 @@ bool parse_while(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_while)
   {
-    AstNode* while_stmt = *node = new_ast_node(eAstGen_gen0, eAstNode_while_stmt, clone_source_loc(&input->src_loc));
+    AstNode* while_stmt = *node = new_ast_node(eAstNode_while_stmt, clone_source_loc(&input->src_loc));
 
     if(!(success = get_next_token(input)))
     {
@@ -978,11 +974,11 @@ bool parse_while(TokenStream* input, AstNode** node)
 
     if(input->token.kind == eToken_open_parens)
     {
-      success = get_next_token(input) && parse_expr(input, &ATTR(while_stmt, ast_node, cond_expr));
+      success = get_next_token(input) && parse_expr(input, &while_stmt->while_stmt.cond_expr);
       if(!success)
         return success;
 
-      if(ATTR(while_stmt, ast_node, cond_expr))
+      if(while_stmt->while_stmt.cond_expr)
       {
         if(input->token.kind == eToken_close_parens)
         {
@@ -995,7 +991,7 @@ bool parse_while(TokenStream* input, AstNode** node)
 
           if(body)
           {
-            ATTR(while_stmt, ast_node, body) = body;
+            while_stmt->while_stmt.body = body;
           }
           else
           {
@@ -1003,10 +999,10 @@ bool parse_while(TokenStream* input, AstNode** node)
             {
               if(body)
               {
-                AstNode* block = new_ast_node(eAstGen_gen0, eAstNode_block, clone_source_loc(&input->src_loc));
-                ATTR(block, list, nodes) = new_list(arena, eList_ast_node);
-                append_list_elem(ATTR(block, list, nodes), body, eList_ast_node);
-                ATTR(while_stmt, ast_node, body) = block;
+                AstNode* block = new_ast_node(eAstNode_block, clone_source_loc(&input->src_loc));
+                block->block.nodes = new_list(arena, eList_ast_node);
+                append_list_elem(block->block.nodes, body, eList_ast_node);
+                while_stmt->while_stmt.body = block;
               }
               else
               {
@@ -1051,9 +1047,9 @@ bool parse_else(TokenStream* input, AstNode** node)
         {
           if(body)
           {
-            AstNode* block = new_ast_node(eAstGen_gen0, eAstNode_block, clone_source_loc(&input->src_loc));
-            ATTR(block, list, nodes) = new_list(arena, eList_ast_node);
-            append_list_elem(ATTR(block, list, nodes), body, eList_ast_node);
+            AstNode* block = new_ast_node(eAstNode_block, clone_source_loc(&input->src_loc));
+            block->block.nodes = new_list(arena, eList_ast_node);
+            append_list_elem(block->block.nodes, body, eList_ast_node);
             *node = block;
           }
           else
@@ -1075,20 +1071,20 @@ bool parse_if(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_if)
   {
-    AstNode* if_stmt = *node = new_ast_node(eAstGen_gen0, eAstNode_if_stmt, clone_source_loc(&input->src_loc));
+    AstNode* if_stmt = *node = new_ast_node(eAstNode_if_stmt, clone_source_loc(&input->src_loc));
 
     if(!(success = get_next_token(input)))
       return success;
 
     if(input->token.kind == eToken_open_parens)
     {
-      success = get_next_token(input) && parse_expr(input, &ATTR(if_stmt, ast_node, cond_expr));
+      success = get_next_token(input) && parse_expr(input, &if_stmt->if_stmt.cond_expr);
       if(!success)
         return success;
 
       if(input->token.kind == eToken_close_parens)
       {
-        if(ATTR(if_stmt, ast_node, cond_expr))
+        if(if_stmt->if_stmt.cond_expr)
         {
           AstNode* body = 0;
           success = get_next_token(input) && parse_block(input, &body);
@@ -1097,16 +1093,16 @@ bool parse_if(TokenStream* input, AstNode** node)
 
           if(body)
           {
-            ATTR(if_stmt, ast_node, body) = body;
+            if_stmt->if_stmt.body = body;
           }
           else if(success = parse_node(input, &body))
           {
             if(body)
             {
-              AstNode* block = new_ast_node(eAstGen_gen0, eAstNode_block, clone_source_loc(&input->src_loc));
-              ATTR(block, list, nodes) = new_list(arena, eList_ast_node);
-              append_list_elem(ATTR(block, list, nodes), body, eList_ast_node);
-              ATTR(if_stmt, ast_node, body) = block;
+              AstNode* block = new_ast_node(eAstNode_block, clone_source_loc(&input->src_loc));
+              block->block.nodes = new_list(arena, eList_ast_node);
+              append_list_elem(block->block.nodes, body, eList_ast_node);
+              if_stmt->if_stmt.body = block;
             }
             else
             {
@@ -1117,7 +1113,7 @@ bool parse_if(TokenStream* input, AstNode** node)
 
           if(success)
           {
-            success = parse_else(input, &ATTR(if_stmt, ast_node, else_body));
+            success = parse_else(input, &if_stmt->if_stmt.else_body);
           }
         }
         else
@@ -1140,21 +1136,21 @@ bool parse_proc(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
-  AstNode* proc = *node = new_ast_node(eAstGen_gen0, eAstNode_proc_decl, clone_source_loc(&input->src_loc));
+  AstNode* proc = *node = new_ast_node(eAstNode_proc, clone_source_loc(&input->src_loc));
   AstNode* ret_type = 0;
   if(success = parse_type(input, &ret_type))
   {
     if(ret_type)
     {
-      AstNode* ret_var = ATTR(proc, ast_node, ret_var) = new_ast_node(eAstGen_gen0, eAstNode_var_decl, ret_type->src_loc);
-      AstNode* ret_id = ATTR(ret_var, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, ret_type->src_loc);
-      ATTR(ret_id, str_val, name) = make_temp_name("ret");
-      ATTR(ret_var, ast_node, type) = ret_type;
+      AstNode* ret_var = proc->proc.ret_var = new_ast_node(eAstNode_var, ret_type->src_loc);
+      AstNode* ret_id = ret_var->var.id = new_ast_node(eAstNode_id, ret_type->src_loc);
+      ret_id->id.name = make_temp_name("ret");
+      ret_var->var.type = ret_type;
 
       if(input->token.kind == eToken_id)
       {
-        AstNode* id = ATTR(proc, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
-        ATTR(id, str_val, name) = input->token.lexeme;
+        AstNode* id = proc->proc.id = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+        id->id.name = input->token.lexeme;
 
         if(!(success = get_next_token(input)))
           return success;
@@ -1164,14 +1160,14 @@ bool parse_proc(TokenStream* input, AstNode** node)
           if(!(success = get_next_token(input)))
             return success;
 
-          ATTR(proc, list, formal_args) = new_list(arena, eList_ast_node);
-          if(success = parse_formal_arg_list(input, ATTR(proc, list, formal_args)))
+          proc->proc.formal_args = new_list(arena, eList_ast_node);
+          if(success = parse_formal_arg_list(input, proc->proc.formal_args))
           {
             if(input->token.kind == eToken_close_parens)
             {
-              if(success = get_next_token(input) && parse_block(input, &ATTR(proc, ast_node, body)))
+              if(success = get_next_token(input) && parse_block(input, &proc->proc.body))
               {
-                if(!ATTR(proc, ast_node, body))
+                if(!proc->proc.body)
                 {
                   success = consume_semicolon(input);
                 }
@@ -1198,7 +1194,7 @@ bool parse_include(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
-  AstNode* include = *node = new_ast_node(eAstGen_gen0, eAstNode_include, clone_source_loc(&input->src_loc));
+  AstNode* include = *node = new_ast_node(eAstNode_include, clone_source_loc(&input->src_loc));
 
   if(input->token.kind == eToken_string)
   {
@@ -1208,26 +1204,26 @@ bool parse_include(TokenStream* input, AstNode** node)
     path_make_dir(str.head);
     str_tidyup(&str);
     str_append(&str, input->token.str_val);
-    ATTR(include, str_val, file_path) = str_cap(&str);
+    include->include.file_path = str_cap(&str);
 
     if(!get_next_token(input))
       return success = false;
 
-    char* hoc_text = file_read_text(arena, ATTR(include, str_val, file_path));
+    char* hoc_text = file_read_text(arena, include->include.file_path);
     if(hoc_text)
     {
       TokenStream* incl_input = mem_push_struct(arena, TokenStream);
-      init_token_stream(incl_input, hoc_text, ATTR(include, str_val, file_path));
+      init_token_stream(incl_input, hoc_text, include->include.file_path);
 
       if(success = get_next_token(incl_input))
       {
-        AstNode* block = ATTR(include, ast_node, body) = new_ast_node(eAstGen_gen0, eAstNode_block, clone_source_loc(&incl_input->src_loc));
-        ATTR(block, list, nodes) = new_list(arena, eList_ast_node);
-        success = parse_node_list(incl_input, ATTR(block, list, nodes));
+        AstNode* block = include->include.body = new_ast_node(eAstNode_block, clone_source_loc(&incl_input->src_loc));
+        block->block.nodes = new_list(arena, eList_ast_node);
+        success = parse_node_list(incl_input, block->block.nodes);
       }
     }
     else
-      success = compile_error(&input->src_loc, "could not read file `%s`", ATTR(include, str_val, file_path));
+      success = compile_error(&input->src_loc, "could not read file `%s`", include->include.file_path);
   }
   else
     success = compile_error(&input->src_loc, "string expected, actual `%s`", get_token_printstr(&input->token));
@@ -1241,15 +1237,15 @@ bool parse_enum(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_enum)
   {
-    AstNode* enum_decl = *node = new_ast_node(eAstGen_gen0, eAstNode_enum_decl, clone_source_loc(&input->src_loc));
+    AstNode* enum_decl = *node = new_ast_node(eAstNode_enum_decl, clone_source_loc(&input->src_loc));
 
     if(!get_next_token(input))
       return success = false;
 
     if(input->token.kind == eToken_id)
     {
-      AstNode* id = ATTR(enum_decl, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
-      ATTR(id, str_val, name) = input->token.lexeme;
+      AstNode* id = enum_decl->enum_decl.id = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+      id->id.name = input->token.lexeme;
 
       if(!get_next_token(input))
         return success = false;
@@ -1260,16 +1256,16 @@ bool parse_enum(TokenStream* input, AstNode** node)
         if(!get_next_token(input))
           return success = false;
 
-        ATTR(enum_decl, list, members) = new_list(arena, eList_ast_node);
+        enum_decl->enum_decl.members = new_list(arena, eList_ast_node);
         AstNode* member = 0;
         do
         {
           member = 0;
           if(input->token.kind == eToken_id)
           {
-            member = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
-            ATTR(member, str_val, name) = input->token.lexeme;
-            append_list_elem(ATTR(enum_decl, list, members), member, eList_ast_node);
+            member = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+            member->id.name = input->token.lexeme;
+            append_list_elem(enum_decl->enum_decl.members, member, eList_ast_node);
 
             if((success = get_next_token(input)) && input->token.kind == eToken_comma)
             {
@@ -1302,19 +1298,19 @@ bool parse_union(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_union)
   {
-    AstNode* union_decl = *node = new_ast_node(eAstGen_gen0, eAstNode_union_decl, clone_source_loc(&input->src_loc));
+    AstNode* union_decl = *node = new_ast_node(eAstNode_union_decl, clone_source_loc(&input->src_loc));
 
     if((success = get_next_token(input)) && input->token.kind == eToken_id)
     {
-      AstNode* id = ATTR(union_decl, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
-      ATTR(id, str_val, name) = input->token.lexeme;
+      AstNode* id = union_decl->union_decl.id = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+      id->id.name = input->token.lexeme;
       success = get_next_token(input);
     }
 
     if(success)
     {
-      ATTR(union_decl, list, members) = new_list(arena, eList_ast_node);
-      success = parse_struct_member_list(input, ATTR(union_decl, list, members));
+      union_decl->union_decl.members = new_list(arena, eList_ast_node);
+      success = parse_struct_member_list(input, union_decl->union_decl.members);
     }
   }
   return success;
@@ -1327,19 +1323,19 @@ bool parse_struct(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_struct)
   {
-    AstNode* struct_decl = *node = new_ast_node(eAstGen_gen0, eAstNode_struct_decl, clone_source_loc(&input->src_loc));
+    AstNode* struct_decl = *node = new_ast_node(eAstNode_struct_decl, clone_source_loc(&input->src_loc));
 
     if((success = get_next_token(input)) && input->token.kind == eToken_id)
     {
-      AstNode* id = ATTR(struct_decl, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
-      ATTR(id, str_val, name) = input->token.lexeme;
+      AstNode* id = struct_decl->struct_decl.id = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+      id->id.name = input->token.lexeme;
       success = get_next_token(input);
     }
 
     if(success)
     {
-      ATTR(struct_decl, list, members) = new_list(arena, eList_ast_node);
-      success = parse_struct_member_list(input, ATTR(struct_decl, list, members));
+      struct_decl->struct_decl.members = new_list(arena, eList_ast_node);
+      success = parse_struct_member_list(input, struct_decl->struct_decl.members);
     }
   }
   return success;
@@ -1376,17 +1372,16 @@ bool parse_struct_member_list(TokenStream* input, List* member_list)
 
         if(success && type)
         {
-          AstNode* var_decl = member = new_ast_node(eAstGen_gen0, eAstNode_var_decl, clone_source_loc(&input->src_loc));
-          ATTR(var_decl, ast_node, type) = type;
+          AstNode* var = member = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
+          var->var.type = type;
 
           if(input->token.kind == eToken_id)
           {
-            AstNode* id = ATTR(var_decl, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, clone_source_loc(&input->src_loc));
-            ATTR(id, str_val, name) = input->token.lexeme;
+            AstNode* id = var->var.id = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+            id->id.name = input->token.lexeme;
             success = get_next_token(input);
           }
-          else if(type->kind == eAstNode_struct_decl
-                  || type->kind == eAstNode_union_decl)
+          else if(type->kind == eAstNode_struct_decl || type->kind == eAstNode_union_decl)
           {
             /* anonymous struct/union */
           }
@@ -1422,7 +1417,7 @@ bool parse_return(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_return)
   {
-    AstNode* ret_stmt = *node = new_ast_node(eAstGen_gen0, eAstNode_ret_stmt, clone_source_loc(&input->src_loc));
+    AstNode* ret_stmt = *node = new_ast_node(eAstNode_ret_stmt, clone_source_loc(&input->src_loc));
     if(success = get_next_token(input))
     {
       AstNode* ret_expr = 0;
@@ -1430,7 +1425,7 @@ bool parse_return(TokenStream* input, AstNode** node)
       {
         if(ret_expr)
         {
-          ATTR(ret_stmt, ast_node, ret_expr) = ret_expr;
+          ret_stmt->ret_stmt.ret_expr = ret_expr;
         }
       }
     }
@@ -1491,7 +1486,8 @@ bool parse_continue(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_continue)
   {
-    *node = new_ast_node(eAstGen_gen0, eAstNode_continue_stmt, clone_source_loc(&input->src_loc));
+    *node = new_ast_node(eAstNode_loop_ctrl, clone_source_loc(&input->src_loc));
+    (*node)->loop_ctrl.kind = eLoopCtrl_continue;
     success = get_next_token(input);
   }
   return success;
@@ -1504,7 +1500,8 @@ bool parse_break(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_break)
   {
-    *node = new_ast_node(eAstGen_gen0, eAstNode_break_stmt, clone_source_loc(&input->src_loc));
+    *node = new_ast_node(eAstNode_loop_ctrl, clone_source_loc(&input->src_loc));
+    (*node)->loop_ctrl.kind = eLoopCtrl_break;
     success = get_next_token(input);
   }
   return success;
@@ -1517,11 +1514,11 @@ bool parse_asm_block(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_open_brace)
   {
-    AstNode* asm_block = *node = new_ast_node(eAstGen_gen0, eAstNode_asm_block, clone_source_loc(&input->src_loc));
+    AstNode* asm_block = *node = new_ast_node(eAstNode_asm_block, clone_source_loc(&input->src_loc));
 
     if(success = get_asm_text(input))
     {
-      ATTR(asm_block, str_val, asm_text) = input->token.lexeme;
+      asm_block->asm_block.asm_text = input->token.lexeme;
       if(success = get_next_token(input))
       {
         if(input->token.kind == eToken_close_brace)
@@ -1563,9 +1560,9 @@ bool parse_node(TokenStream* input, AstNode** node)
       success = get_next_token(input) && parse_node(input, node);
       if(!success)
         break;
-      if((*node)->kind == eAstNode_proc_decl)
+      if((*node)->kind == eAstNode_proc)
       {
-        ATTR(*node, bool_val, is_extern) = true;
+        (*node)->proc.is_extern = true;
       }
       else
         success = compile_error((*node)->src_loc, "`extern` can only be applied to procs");
@@ -1610,8 +1607,8 @@ bool parse_node(TokenStream* input, AstNode** node)
     case eToken_semicolon:
       if(success = consume_semicolon(input))
       {
-        AstNode* stmt = new_ast_node(eAstGen_gen0, eAstNode_empty, clone_source_loc(&input->src_loc));
-        ATTR(*node = new_ast_node(eAstGen_gen0, eAstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
+        *node = new_ast_node(eAstNode_stmt, clone_source_loc(&input->src_loc));
+        (*node)->stmt.stmt = new_ast_node(eAstNode_empty, clone_source_loc(&input->src_loc));
       }
       break;
 
@@ -1633,7 +1630,8 @@ bool parse_node(TokenStream* input, AstNode** node)
           if(success = consume_semicolon(input))
           {
             AstNode* stmt = *node;
-            ATTR(*node = new_ast_node(eAstGen_gen0, eAstNode_stmt, stmt->src_loc), ast_node, stmt) = stmt;
+            *node = new_ast_node(eAstNode_stmt, clone_source_loc(stmt->src_loc));
+            (*node)->stmt.stmt = stmt;
           }
 #endif
         }
@@ -1647,12 +1645,12 @@ bool parse(TokenStream* input, AstNode** node)
 {
   bool success = true;
 
-  AstNode* module = *node = new_ast_node(eAstGen_gen0, eAstNode_module, clone_source_loc(&input->src_loc));
-  ATTR(module, str_val, file_path) = input->src_loc.file_path;
-  AstNode* body = ATTR(module, ast_node, body) = new_ast_node(eAstGen_gen0, eAstNode_block, clone_source_loc(&input->src_loc));
-  ATTR(body, list, nodes) = new_list(arena, eList_ast_node);
+  AstNode* module = *node = new_ast_node(eAstNode_module, clone_source_loc(&input->src_loc));
+  module->module.file_path = input->src_loc.file_path;
+  AstNode* body = module->module.body = new_ast_node(eAstNode_block, clone_source_loc(&input->src_loc));
+  body->block.nodes = new_list(arena, eList_ast_node);
 
-  if((success = parse_node_list(input, ATTR(body, list, nodes))) && input->token.kind != eToken_end_of_input)
+  if((success = parse_node_list(input, body->block.nodes)) && input->token.kind != eToken_end_of_input)
   {
     success = compile_error(&input->src_loc, "expected `end-of-input`, at `%s`", get_token_printstr(&input->token));
   }

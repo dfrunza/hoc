@@ -19,13 +19,12 @@ void gen_x86_leave_frame(String* code, int depth)
 
 void gen_x86_load_lvalue(String* code, AstNode* node)
 {
-  assert(node->gen == eAstGen_gen1);
-
   switch(node->kind)
   {
+#if 0
     case eAstNode_var_occur:
       {
-        Symbol* occur_sym = ATTR(node, symbol, occur_sym);
+        Symbol* occur_sym = node->var_occur.occur_sym;
         Symbol* decl_sym = occur_sym->decl;
 
         if(decl_sym->is_static_alloc)
@@ -62,15 +61,14 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
         }
       }
       break;
+#endif
 
     case eAstNode_un_expr:
       {
-        AstNode* operand = ATTR(node, ast_node, operand);
-        eOperator un_op = ATTR(node, op_kind, op_kind);
-
-        if(un_op == eOperator_deref)
+        AstNode* operand = node->un_expr.operand;
+        if(node->un_expr.op_kind == eOperator_deref)
         {
-          assert(ATTR(operand, type, eval_type)->kind == eType_pointer);
+          assert(operand->ty->kind == eType_pointer);
           gen_x86_load_rvalue(code, operand);
         }
         else
@@ -80,18 +78,16 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
 
     case eAstNode_bin_expr:
       {
-        Type* type = ATTR(node, type, eval_type);
-        AstNode* left_operand = ATTR(node, ast_node, left_operand);
-        AstNode* right_operand = ATTR(node, ast_node, right_operand);
-        eOperator bin_op = ATTR(node, op_kind, op_kind);
+        AstNode* left_operand = node->bin_expr.left_operand;
+        AstNode* right_operand = node->bin_expr.right_operand;
 
-        if(bin_op == eOperator_index)
+        if(node->bin_expr.op_kind == eOperator_index)
         {
           gen_x86_load_lvalue(code, left_operand);
           gen_x86_load_rvalue(code, right_operand);
 
           str_printfln(code, "pop eax");
-          str_printfln(code, "mov ebx, %d", type->width);
+          str_printfln(code, "mov ebx, %d", node->eval_ty->width);
           str_printfln(code, "imul ebx");
 
           str_printfln(code, "add dword ptr [esp], eax");
@@ -108,10 +104,9 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
 
 void gen_x86_load_rvalue(String* code, AstNode* node)
 {
-  assert(node->gen == eAstGen_gen1);
-
   switch(node->kind)
   {
+#if 0
     case eAstNode_var_occur:
       {
         Type* type = ATTR(node, type, eval_type);
@@ -120,54 +115,51 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
         str_printfln(code, "call _rt_load");
       }
       break;
+#endif
 
-    case eAstNode_proc_occur:
-      {
-        gen_x86(code, node);
-      }
+    case eAstNode_call:
+      gen_x86(code, node);
       break;
 
     case eAstNode_lit:
       {
-        eLiteral kind = ATTR(node, lit_kind, lit_kind);
-        if(kind == eLiteral_int_val)
+        switch(node->lit.kind)
         {
-          str_printfln(code, "push %d", ATTR(node, int_val, int_val));
-        }
-        else if(kind == eLiteral_bool_val)
-        {
-          str_printfln(code, "push %d", ATTR(node, bool_val, bool_val));
-        }
-        else if(kind == eLiteral_float_val)
-        {
-          union BitcastF32ToI32
-          {
-            float32 float32_val;
-            int32 int32_val;
-          };
+          case eLiteral_int_val:
+            str_printfln(code, "push %d", node->lit.int_val);
+            break;
+          case eLiteral_bool_val:
+            str_printfln(code, "push %d", node->lit.bool_val);
+            break;
+          case eLiteral_float_val:
+            {
+              union BitcastF32ToI32
+              {
+                float32 float32_val;
+                int32 int32_val;
+              };
 
-          union BitcastF32ToI32 val = {0};
-          val.float32_val = ATTR(node, float_val, float_val); 
-          str_printfln(code, "push %xh ; %f", val.int32_val, val.float32_val);
+              union BitcastF32ToI32 val = {0};
+              val.float32_val = node->lit.float_val;
+              str_printfln(code, "push %xh ; %f", val.int32_val, val.float32_val);
+            }
+            break;
+          case eLiteral_char_val:
+            str_printfln(code, "push %d", node->lit.char_val);
+            break;
+
+          default:
+            assert(0);
         }
-        else if(kind == eLiteral_char_val)
-        {
-          str_printfln(code, "push %d", ATTR(node, char_val, char_val));
-        }
-        else
-          assert(0);
       }
       break;
 
     case eAstNode_bin_expr:
       {
-        Type* type = ATTR(node, type, eval_type);
-        eOperator bin_op = ATTR(node, op_kind, op_kind);
-
-        if(bin_op == eOperator_index)
+        if(node->bin_expr.op_kind == eOperator_index)
         {
           gen_x86_load_lvalue(code, node);
-          str_printfln(code, "push %d", type->width);
+          str_printfln(code, "push %d", node->eval_ty->width);
           str_printfln(code, "call _rt_load");
         }
         else
@@ -179,25 +171,25 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
 
     case eAstNode_un_expr:
       {
-        Type* type = ATTR(node, type, eval_type);
-        AstNode* operand = ATTR(node, ast_node, operand);
-        eOperator un_op = ATTR(node, op_kind, op_kind);
+        AstNode* operand = node->un_expr.operand;
 
-        if(un_op == eOperator_address_of)
+        if(node->un_expr.op_kind == eOperator_address_of)
         {
+#if 0
           if(operand->kind == eAstNode_var_occur)
           {
             gen_x86_load_lvalue(code, operand);
           }
           else
+#endif
           {
             gen_x86_load_rvalue(code, operand);
           }
         }
-        else if(un_op == eOperator_deref)
+        else if(node->un_expr.op_kind == eOperator_deref)
         {
           gen_x86_load_lvalue(code, node);
-          str_printfln(code, "push %d", type->width);
+          str_printfln(code, "push %d", node->eval_ty->width);
           str_printfln(code, "call _rt_load");
         }
         else
@@ -211,14 +203,13 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
 
 bool gen_x86(String* code, AstNode* node)
 {
-  assert(node->gen == eAstGen_gen1);
   bool success = true;
 
   switch(node->kind)
   {
     case eAstNode_module:
       {
-        Scope* module_scope = ATTR(node, scope, scope);
+        Scope* module_scope = node->module.scope;
         for(ListItem* list_item = module_scope->decls[eSymbol_extern_proc]->first;
             list_item;
             list_item = list_item->next)
@@ -234,13 +225,13 @@ bool gen_x86(String* code, AstNode* node)
           gen_x86(code, decl_sym->ast_node);
         }
 
-        AstNode* body = ATTR(node, ast_node, body);
-        Scope* body_scope = ATTR(body, scope, scope);
+        AstNode* body = node->module.body;
+        Scope* body_scope = body->block.scope;
 
         str_printfln(code, "startup PROC");
         str_printfln(code, "call _rt_module_prologue");
         str_printfln(code, "sub esp, %d ;alloc locals", body_scope->locals_area_size);
-        for(ListItem* list_item = ATTR(body, list, stmts)->first;
+        for(ListItem* list_item = body->block.stmts->first;
             list_item;
             list_item = list_item->next)
         {
@@ -254,13 +245,12 @@ bool gen_x86(String* code, AstNode* node)
       }
       break;
 
-    case eAstNode_proc_decl:
+    case eAstNode_proc:
       {
-        Scope* proc_scope = ATTR(node, scope, scope);
+        Scope* proc_scope = node->proc.scope;
 
-        char* label = ATTR(node, str_val, label);
-        bool is_extern = ATTR(node, bool_val, is_extern);
-        if(is_extern)
+        char* label = node->proc.label;
+        if(node->proc.is_extern)
         {
           str_printfln(code, "EXTERN %s:PROC", label);
         }
@@ -281,13 +271,13 @@ bool gen_x86(String* code, AstNode* node)
             gen_x86(code, decl_sym->ast_node);
           }
 
-          AstNode* body = ATTR(node, ast_node, body);
-          Scope* body_scope = ATTR(body, scope, scope);
+          AstNode* body = node->proc.body;
+          Scope* body_scope = body->block.scope;
           str_printfln(code, "%s PROC", label);
           str_printfln(code, "push ebp");
           str_printfln(code, "mov ebp, esp");
           str_printfln(code, "sub esp, %d ;alloc locals", body_scope->locals_area_size);
-          for(ListItem* list_item = ATTR(body, list, stmts)->first;
+          for(ListItem* list_item = body->block.stmts->first;
               list_item;
               list_item = list_item->next)
           {
@@ -303,11 +293,11 @@ bool gen_x86(String* code, AstNode* node)
 
     case eAstNode_block:
       {
-        Scope* scope = ATTR(node, scope, scope);
+        Scope* scope = node->block.scope;
 
         str_printfln(code, "call _rt_block_prologue");
         str_printfln(code, "sub esp, %d", scope->locals_area_size);
-        for(ListItem* list_item = ATTR(node, list, stmts)->first;
+        for(ListItem* list_item = node->block.stmts->first;
             list_item;
             list_item = list_item->next)
         {
@@ -319,23 +309,22 @@ bool gen_x86(String* code, AstNode* node)
       }
       break;
 
-    case eAstNode_proc_occur:
+    case eAstNode_call:
       {
-        AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
-        Scope* callee_scope = ATTR(proc_decl, scope, scope);
-        char* label = ATTR(proc_decl, str_val, label);
-        bool is_extern = ATTR(proc_decl, bool_val, is_extern);
+        AstNode* proc = node->call.proc;
+        Scope* callee_scope = proc->proc.scope;
+        char* label = proc->proc.label;
 
         str_printfln(code, ";%s()", label);
         str_printfln(code, "sub esp, %d ;alloc ret", callee_scope->ret_area_size);
-        for(ListItem* list_item = ATTR(node, list, actual_args)->last;
+        for(ListItem* list_item = node->call.actual_args->last;
             list_item;
             list_item = list_item->prev)
         {
           gen_x86_load_rvalue(code, ITEM(list_item, ast_node));
         }
 
-        if(is_extern)
+        if(proc->proc.is_extern)
         {
           str_printfln(code, "call %s", label);
 
@@ -348,7 +337,7 @@ bool gen_x86(String* code, AstNode* node)
         }
         else
         {
-          Symbol* occur_sym = ATTR(node, symbol, occur_sym);
+          Symbol* occur_sym = node->call.occur_sym;
           Scope* caller_scope = occur_sym->scope;
 
           str_printfln(code, "push ebp");
@@ -369,29 +358,24 @@ bool gen_x86(String* code, AstNode* node)
 
     case eAstNode_stmt:
       {
-        AstNode* actual_stmt = ATTR(node, ast_node, stmt);
-        Type* type = ATTR(actual_stmt, type, eval_type);
+        AstNode* actual_stmt = node->stmt.stmt;
         gen_x86(code, actual_stmt);
-        str_printfln(code, "add esp, %d", type->width);
+        str_printfln(code, "add esp, %d", actual_stmt->eval_ty->width);
       }
       break;
 
     case eAstNode_bin_expr:
       {
-        AstNode* left_operand = ATTR(node, ast_node, left_operand);
-        AstNode* right_operand = ATTR(node, ast_node, right_operand);
-        Type* type = ATTR(node, type, eval_type);
-        Type* left_ty = ATTR(left_operand, type, eval_type);
-        Type* right_ty = ATTR(right_operand, type, eval_type);
-        eOperator bin_op = ATTR(node, op_kind, op_kind);
+        AstNode* left_operand = node->bin_expr.left_operand;
+        AstNode* right_operand = node->bin_expr.right_operand;
 
-        switch(bin_op)
+        switch(node->bin_expr.op_kind)
         {
           case eOperator_assign:
             {
               gen_x86_load_rvalue(code, right_operand);
               gen_x86_load_lvalue(code, left_operand);
-              str_printfln(code, "push %d", type->width);
+              str_printfln(code, "push %d", node->eval_ty->width);
               str_printfln(code, "call _rt_store");
             }
             break;
@@ -401,12 +385,12 @@ bool gen_x86(String* code, AstNode* node)
               gen_x86_load_rvalue(code, left_operand);
               gen_x86_load_rvalue(code, right_operand);
 
-              if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
+              if(types_are_equal(node->eval_ty, basic_type_int) || node->eval_ty->kind == eType_pointer)
               {
                 str_printfln(code, "pop eax");
                 str_printfln(code, "add dword ptr [esp], eax");
               }
-              else if(types_are_equal(type, basic_type_float))
+              else if(types_are_equal(node->eval_ty, basic_type_float))
               {
                 str_printfln(code, "movss xmm0, dword ptr [esp]");
                 str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
@@ -420,7 +404,7 @@ bool gen_x86(String* code, AstNode* node)
 
           case eOperator_sub:
             {
-              if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
+              if(types_are_equal(node->eval_ty, basic_type_int) || node->eval_ty->kind == eType_pointer)
               {
                 gen_x86_load_rvalue(code, left_operand);
                 gen_x86_load_rvalue(code, right_operand);
@@ -428,7 +412,7 @@ bool gen_x86(String* code, AstNode* node)
                 str_printfln(code, "pop eax");
                 str_printfln(code, "sub dword ptr [esp], eax");
               }
-              else if(types_are_equal(type, basic_type_float))
+              else if(types_are_equal(node->eval_ty, basic_type_float))
               {
                 gen_x86_load_rvalue(code, right_operand);
                 gen_x86_load_rvalue(code, left_operand);
@@ -448,13 +432,13 @@ bool gen_x86(String* code, AstNode* node)
               gen_x86_load_rvalue(code, right_operand);
               gen_x86_load_rvalue(code, left_operand);
 
-              if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
+              if(types_are_equal(node->eval_ty, basic_type_int) || node->eval_ty->kind == eType_pointer)
               {
                 str_printfln(code, "pop eax");
                 str_printfln(code, "imul dword ptr [esp]");
                 str_printfln(code, "mov dword ptr [esp], eax");
               }
-              else if(types_are_equal(type, basic_type_float))
+              else if(types_are_equal(node->eval_ty, basic_type_float))
               {
                 str_printfln(code, "movss xmm0, dword ptr [esp]");
                 str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
@@ -471,14 +455,14 @@ bool gen_x86(String* code, AstNode* node)
               gen_x86_load_rvalue(code, right_operand);
               gen_x86_load_rvalue(code, left_operand);
 
-              if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
+              if(types_are_equal(node->eval_ty, basic_type_int) || node->eval_ty->kind == eType_pointer)
               {
                 str_printfln(code, "pop eax");
                 str_printfln(code, "cdq"); // extend EAX into EDX
                 str_printfln(code, "idiv dword ptr [esp]");
                 str_printfln(code, "mov dword ptr [esp], eax");
               }
-              else if(types_are_equal(type, basic_type_float))
+              else if(types_are_equal(node->eval_ty, basic_type_float))
               {
                 str_printfln(code, "movss xmm0, dword ptr [esp]");
                 str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
@@ -495,7 +479,7 @@ bool gen_x86(String* code, AstNode* node)
               gen_x86_load_rvalue(code, right_operand);
               gen_x86_load_rvalue(code, left_operand);
 
-              if(types_are_equal(type, basic_type_int) || type->kind == eType_pointer)
+              if(types_are_equal(node->eval_ty, basic_type_int) || node->eval_ty->kind == eType_pointer)
               {
                 str_printfln(code, "pop eax");
                 str_printfln(code, "cdq"); // extend EAX into EDX
@@ -513,14 +497,14 @@ bool gen_x86(String* code, AstNode* node)
               gen_x86_load_rvalue(code, left_operand);
               gen_x86_load_rvalue(code, right_operand);
 
-              if(types_are_equal(left_ty, basic_type_char) || types_are_equal(left_ty, basic_type_int))
+              if(types_are_equal(left_operand->eval_ty, basic_type_char) || types_are_equal(left_operand->eval_ty, basic_type_int))
               {
-                if(types_are_equal(left_ty, basic_type_int))
+                if(types_are_equal(left_operand->eval_ty, basic_type_int))
                 {
                   str_printfln(code, "pop eax");
                   str_printfln(code, "pop ebx");
                 }
-                else if(types_are_equal(left_ty, basic_type_char))
+                else if(types_are_equal(left_operand->eval_ty, basic_type_char))
                 {
                   str_printfln(code, "movzx eax, byte ptr [esp]");
                   str_printfln(code, "movzx ebx, byte ptr [esp+%d]", MACHINE_WORD_SIZE);
@@ -529,7 +513,7 @@ bool gen_x86(String* code, AstNode* node)
 
                 str_printfln(code, "cmp ebx, eax");
               }
-              else if(types_are_equal(left_ty, basic_type_float))
+              else if(types_are_equal(left_operand->eval_ty, basic_type_float))
               {
                 str_printfln(code, "movss xmm0, dword ptr [esp]");
                 str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
@@ -540,17 +524,17 @@ bool gen_x86(String* code, AstNode* node)
 
               Label label = make_unique_label();
               str_printfln(code, "push 1");
-              if(bin_op == eOperator_eq)
+              if(node->bin_expr.op_kind == eOperator_eq)
               {
-                str_printfln(code, "jz %s$cmp_eq", label.id);
+                str_printfln(code, "jz %s$cmp_eq", label.name);
                 str_printfln(code, "xor dword ptr [esp], 1");
-                str_printfln(code, "%s$cmp_eq:", label.id);
+                str_printfln(code, "%s$cmp_eq:", label.name);
               }
-              else if(bin_op == eOperator_not_eq)
+              else if(node->bin_expr.op_kind == eOperator_not_eq)
               {
-                str_printfln(code, "jnz %s$cmp_not_eq", label.id);
+                str_printfln(code, "jnz %s$cmp_not_eq", label.name);
                 str_printfln(code, "xor dword ptr [esp], 1");
-                str_printfln(code, "%s$cmp_not_eq:", label.id);
+                str_printfln(code, "%s$cmp_not_eq:", label.name);
               }
               else
                 assert(0);
@@ -564,17 +548,17 @@ bool gen_x86(String* code, AstNode* node)
           case eOperator_less_eq:
           case eOperator_greater_eq:
             {
-              if(types_are_equal(left_ty, basic_type_char) || types_are_equal(left_ty, basic_type_int))
+              if(types_are_equal(left_operand->eval_ty, basic_type_char) || types_are_equal(left_operand->eval_ty, basic_type_int))
               {
                 gen_x86_load_rvalue(code, left_operand);
                 gen_x86_load_rvalue(code, right_operand);
 
-                if(types_are_equal(left_ty, basic_type_int))
+                if(types_are_equal(left_operand->eval_ty, basic_type_int))
                 {
                   str_printfln(code, "pop eax");
                   str_printfln(code, "pop ebx");
                 }
-                else if(types_are_equal(left_ty, basic_type_char))
+                else if(types_are_equal(left_operand->eval_ty, basic_type_char))
                 {
                   str_printfln(code, "movzx eax, byte ptr [esp]");
                   str_printfln(code, "movzx ebx, byte ptr [esp+%d]", MACHINE_WORD_SIZE);
@@ -585,36 +569,36 @@ bool gen_x86(String* code, AstNode* node)
 
                 Label label = make_unique_label();
                 str_printfln(code, "push 1");
-                if(bin_op == eOperator_less)
+                if(node->bin_expr.op_kind == eOperator_less)
                 {
-                  str_printfln(code, "jl %s$cmp_less", label.id);
+                  str_printfln(code, "jl %s$cmp_less", label.name);
                   str_printfln(code, "xor dword ptr [esp], 1");
-                  str_printfln(code, "%s$cmp_less:", label.id);
+                  str_printfln(code, "%s$cmp_less:", label.name);
                 }
-                else if(bin_op == eOperator_less_eq)
+                else if(node->bin_expr.op_kind == eOperator_less_eq)
                 {
-                  str_printfln(code, "jle %s$cmp_less_eq", label.id);
+                  str_printfln(code, "jle %s$cmp_less_eq", label.name);
                   str_printfln(code, "xor dword ptr [esp], 1");
-                  str_printfln(code, "%s$cmp_less_eq:", label.id);
+                  str_printfln(code, "%s$cmp_less_eq:", label.name);
                 }
-                else if(bin_op == eOperator_greater)
+                else if(node->bin_expr.op_kind == eOperator_greater)
                 {
-                  str_printfln(code, "jg %s$cmp_greater", label.id);
+                  str_printfln(code, "jg %s$cmp_greater", label.name);
                   str_printfln(code, "xor dword ptr [esp], 1");
-                  str_printfln(code, "%s$cmp_greater:", label.id);
+                  str_printfln(code, "%s$cmp_greater:", label.name);
                 }
-                else if(bin_op == eOperator_greater_eq)
+                else if(node->bin_expr.op_kind == eOperator_greater_eq)
                 {
-                  str_printfln(code, "jge %s$cmp_greater_eq", label.id);
+                  str_printfln(code, "jge %s$cmp_greater_eq", label.name);
                   str_printfln(code, "xor dword ptr [esp], 1");
-                  str_printfln(code, "%s$cmp_greater_eq:", label.id);
+                  str_printfln(code, "%s$cmp_greater_eq:", label.name);
                 }
                 else
                   assert(0);
               }
-              else if(types_are_equal(left_ty, basic_type_float))
+              else if(types_are_equal(left_operand->eval_ty, basic_type_float))
               {
-                if(bin_op == eOperator_less)
+                if(node->bin_expr.op_kind == eOperator_less)
                 {
                   gen_x86_load_rvalue(code, right_operand);
                   gen_x86_load_rvalue(code, left_operand);
@@ -622,7 +606,7 @@ bool gen_x86(String* code, AstNode* node)
                   str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
                   str_printfln(code, "cmpss xmm0, dword ptr [esp], 1");
                 }
-                else if(bin_op == eOperator_less_eq)
+                else if(node->bin_expr.op_kind == eOperator_less_eq)
                 {
                   gen_x86_load_rvalue(code, right_operand);
                   gen_x86_load_rvalue(code, left_operand);
@@ -630,7 +614,7 @@ bool gen_x86(String* code, AstNode* node)
                   str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
                   str_printfln(code, "cmpss xmm0, dword ptr [esp], 2");
                 }
-                else if(bin_op == eOperator_greater)
+                else if(node->bin_expr.op_kind == eOperator_greater)
                 {
                   gen_x86_load_rvalue(code, left_operand);
                   gen_x86_load_rvalue(code, right_operand);
@@ -638,7 +622,7 @@ bool gen_x86(String* code, AstNode* node)
                   str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
                   str_printfln(code, "cmpss xmm0, dword ptr [esp], 1");
                 }
-                else if(bin_op == eOperator_greater_eq)
+                else if(node->bin_expr.op_kind == eOperator_greater_eq)
                 {
                   gen_x86_load_rvalue(code, left_operand);
                   gen_x86_load_rvalue(code, right_operand);
@@ -665,15 +649,15 @@ bool gen_x86(String* code, AstNode* node)
 
               Label label = make_unique_label();
               str_printfln(code, "pop eax");
-              if(bin_op == eOperator_logic_and)
+              if(node->bin_expr.op_kind == eOperator_logic_and)
               {
                 str_printfln(code, "and eax, 1");
-                str_printfln(code, "jz %s$logic_end", label.id);
+                str_printfln(code, "jz %s$logic_end", label.name);
               }
-              else if(bin_op == eOperator_logic_or)
+              else if(node->bin_expr.op_kind == eOperator_logic_or)
               {
                 str_printfln(code, "or eax, 0");
-                str_printfln(code, "jnz %s$logic_end", label.id);
+                str_printfln(code, "jnz %s$logic_end", label.name);
               }
               else
                 assert(0);
@@ -681,20 +665,20 @@ bool gen_x86(String* code, AstNode* node)
               gen_x86_load_rvalue(code, right_operand);
 
               str_printfln(code, "pop eax");
-              if(bin_op == eOperator_logic_and)
+              if(node->bin_expr.op_kind == eOperator_logic_and)
               {
                 str_printfln(code, "and eax, 1");
-                str_printfln(code, "jz %s$logic_end", label.id);
+                str_printfln(code, "jz %s$logic_end", label.name);
               }
-              else if(bin_op == eOperator_logic_or)
+              else if(node->bin_expr.op_kind == eOperator_logic_or)
               {
                 str_printfln(code, "or eax, 0");
-                str_printfln(code, "jnz %s$logic_end", label.id);
+                str_printfln(code, "jnz %s$logic_end", label.name);
               }
               else
                 assert(0);
 
-              str_printfln(code, "%s$logic_end:", label.id);
+              str_printfln(code, "%s$logic_end:", label.name);
               str_printfln(code, "push eax");
             }
             break;
@@ -707,15 +691,15 @@ bool gen_x86(String* code, AstNode* node)
               gen_x86_load_rvalue(code, right_operand);
 
               str_printfln(code, "pop eax");
-              if(bin_op == eOperator_bit_and)
+              if(node->bin_expr.op_kind == eOperator_bit_and)
               {
                 str_printfln(code, "and dword ptr [esp], eax");
               }
-              else if(bin_op == eOperator_bit_or)
+              else if(node->bin_expr.op_kind == eOperator_bit_or)
               {
                 str_printfln(code, "or dword ptr [esp], eax");
               }
-              else if(bin_op == eOperator_bit_xor)
+              else if(node->bin_expr.op_kind == eOperator_bit_xor)
               {
                 str_printfln(code, "xor dword ptr [esp], eax");
               }
@@ -733,11 +717,11 @@ bool gen_x86(String* code, AstNode* node)
               str_printfln(code, "mov cl, byte ptr [esp]");
               str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
 
-              if(bin_op == eOperator_bit_shift_left)
+              if(node->bin_expr.op_kind == eOperator_bit_shift_left)
               {
                 str_printfln(code, "shl dword ptr [esp], cl");
               }
-              else if(bin_op == eOperator_bit_shift_right)
+              else if(node->bin_expr.op_kind == eOperator_bit_shift_right)
               {
                 str_printfln(code, "shr dword ptr [esp], cl");
               }
@@ -750,13 +734,15 @@ bool gen_x86(String* code, AstNode* node)
             {
               gen_x86_load_rvalue(code, right_operand);
 
-              if(types_are_equal(left_ty, basic_type_int) && types_are_equal(right_ty, basic_type_float))
+              if(types_are_equal(left_operand->eval_ty, basic_type_int)
+                  && types_are_equal(right_operand->eval_ty, basic_type_float))
               {
                 // int <- float
                 str_printfln(code, "cvttss2si eax, dword ptr [esp]");
                 str_printfln(code, "mov dword ptr [esp], eax");
               }
-              if(types_are_equal(left_ty, basic_type_float) && types_are_equal(right_ty, basic_type_int))
+              if(types_are_equal(left_operand->eval_ty, basic_type_float)
+                  && types_are_equal(right_operand->eval_ty, basic_type_int))
               {
                 // float <- int
                 str_printfln(code, "cvtsi2ss xmm0, dword ptr [esp]");
@@ -779,34 +765,32 @@ bool gen_x86(String* code, AstNode* node)
 
     case eAstNode_un_expr:
       {
-        AstNode* operand = ATTR(node, ast_node, operand);
-        Type* operand_ty = ATTR(operand, type, eval_type);
-        eOperator un_op = ATTR(node, op_kind, op_kind);
+        AstNode* operand = node->un_expr.operand;
 
-        if(un_op == eOperator_address_of)
+        if(node->un_expr.op_kind == eOperator_address_of)
         {
           gen_x86_load_rvalue(code, node);
         }
-        else if(un_op == eOperator_neg)
+        else if(node->un_expr.op_kind == eOperator_neg)
         {
           gen_x86_load_rvalue(code, operand);
 
-          if(types_are_equal(operand_ty, basic_type_int))
+          if(types_are_equal(operand->eval_ty, basic_type_int))
           {
             str_printfln(code, "neg dword ptr [esp]");
           }
-          else if(types_are_equal(operand_ty, basic_type_float))
+          else if(types_are_equal(operand->eval_ty, basic_type_float))
           {
             str_printfln(code, "xor dword ptr [esp], %xh", 0x80000000);
           }
           else
             assert(0);
         }
-        else if(un_op == eOperator_logic_not)
+        else if(node->un_expr.op_kind == eOperator_logic_not)
         {
           assert(0);
         }
-        else if(un_op == eOperator_deref)
+        else if(node->un_expr.op_kind == eOperator_deref)
         {
           gen_x86_load_rvalue(code, node);
         }
@@ -817,82 +801,79 @@ bool gen_x86(String* code, AstNode* node)
 
     case eAstNode_while_stmt:
       {
-        Label label = ATTR(node, label, label) = make_unique_label();
-        str_printfln(code, "%s$while_eval:", label.id);
-        gen_x86_load_rvalue(code, ATTR(node, ast_node, cond_expr));
+        Label label = node->while_stmt.label = make_unique_label();
+        str_printfln(code, "%s$while_eval:", label.name);
+        gen_x86_load_rvalue(code, node->while_stmt.cond_expr);
 
         str_printfln(code, "pop eax");
         str_printfln(code, "and eax, 1");
-        str_printfln(code, "jz %s$while_break", label.id);
+        str_printfln(code, "jz %s$while_break", label.name);
 
-        AstNode* body = ATTR(node, ast_node, body);
-        if(body)
+        if(node->while_stmt.body)
         {
-          gen_x86(code, body);
+          gen_x86(code, node->while_stmt.body);
         }
 
-        str_printfln(code, "jmp %s$while_eval", label.id);
-        str_printfln(code, "%s$while_break:", label.id);
+        str_printfln(code, "jmp %s$while_eval", label.name);
+        str_printfln(code, "%s$while_break:", label.name);
       }
       break;
 
     case eAstNode_if_stmt:
       {
-        gen_x86_load_rvalue(code, ATTR(node, ast_node, cond_expr));
+        gen_x86_load_rvalue(code, node->if_stmt.cond_expr);
 
         str_printfln(code, "pop eax");
         str_printfln(code, "and eax, 1");
 
         Label label = make_unique_label();
-        AstNode* else_body = ATTR(node, ast_node, else_body);
-        if(else_body)
+        if(node->if_stmt.else_body)
         {
-          str_printfln(code, "jz %s$if_else", label.id);
+          str_printfln(code, "jz %s$if_else", label.name);
         }
         else
         {
-          str_printfln(code, "jz %s$if_end", label.id);
+          str_printfln(code, "jz %s$if_end", label.name);
         }
 
-        gen_x86(code, ATTR(node, ast_node, body));
-        str_printfln(code, "jmp %s$if_end", label.id);
+        gen_x86(code, node->if_stmt.body);
+        str_printfln(code, "jmp %s$if_end", label.name);
 
-        if(else_body)
+        if(node->if_stmt.else_body)
         {
-          str_printfln(code, "%s$if_else:", label.id);
-          gen_x86(code, else_body);
+          str_printfln(code, "%s$if_else:", label.name);
+          gen_x86(code, node->if_stmt.else_body);
         }
 
-        str_printfln(code, "%s$if_end:", label.id);
+        str_printfln(code, "%s$if_end:", label.name);
       }
       break;
 
     case eAstNode_ret_stmt:
       {
-        AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
-        if(ret_expr)
+        if(node->ret_stmt.ret_expr)
         {
-          gen_x86(code, ret_expr);
+          gen_x86(code, node->ret_stmt.ret_expr);
         }
-
-        gen_x86_leave_frame(code, ATTR(node, int_val, nesting_depth));
+        gen_x86_leave_frame(code, node->ret_stmt.nesting_depth);
         str_printfln(code, "ret");
       }
       break;
 
-    case eAstNode_break_stmt:
-    case eAstNode_continue_stmt:
+    case eAstNode_loop_ctrl:
       {
-        AstNode* loop = ATTR(node, ast_node, loop);
-        gen_x86_leave_frame(code, ATTR(node, int_val, nesting_depth));
-
-        if(node->kind == eAstNode_break_stmt)
+        AstNode* loop = node->loop_ctrl.loop;
+        gen_x86_leave_frame(code, node->loop_ctrl.nesting_depth);
+        Label* label = 0;
+        if(loop->kind == eAstNode_while_stmt)
         {
-          str_printfln(code, "jmp %s$while_break", ATTR(loop, label, label).id);
-        }
-        else if(node->kind == eAstNode_continue_stmt)
-        {
-          str_printfln(code, "jmp %s$while_eval", ATTR(loop, label, label).id);
+          label = &loop->while_stmt.label;
+          if(node->loop_ctrl.kind == eLoopCtrl_break)
+            str_printfln(code, "jmp %s$while_break", label->name);
+          else if(node->loop_ctrl.kind == eLoopCtrl_continue)
+            str_printfln(code, "jmp %s$while_eval", label->name);
+          else
+            assert(0);
         }
         else
           assert(0);
@@ -903,9 +884,7 @@ bool gen_x86(String* code, AstNode* node)
       break; // skip
 
     case eAstNode_asm_block:
-      {
-        str_append(code, ATTR(node, str_val, asm_text));
-      }
+      str_append(code, node->asm_block.asm_text);
       break;
 
     default:

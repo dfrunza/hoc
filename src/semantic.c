@@ -99,16 +99,16 @@ Symbol* add_occur_symbol(char* name, SourceLoc* src_loc, Scope* scope, eSymbol k
   return sym;
 }
 
-void add_builtin_type(Scope* scope, char* name, Type* type)
+void add_builtin_type(Scope* scope, char* name, Type* ty)
 {
-  assert(type->kind == eType_basic);
-  AstNode* type_decl = new_ast_node(eAstGen_gen1, eAstNode_type_decl, 0);
-  ATTR(type_decl, str_val, name) = name;
-  ATTR(type_decl, type, type) = type;
+  assert(ty->kind == eType_basic);
+  AstNode* type = new_ast_node(eAstNode_type, 0);
+  type->type.name = name;
+  type->ty = ty;
   Symbol* decl_sym = add_decl_symbol(name, 0, scope, eSymbol_type);
-  decl_sym->type = type;
-  decl_sym->ast_node = type_decl;
-  ATTR(type_decl, symbol, decl_sym) = decl_sym;
+  decl_sym->ty = ty;
+  decl_sym->ast_node = type;
+  type->type.decl_sym = decl_sym;
 }
 
 void add_builtin_types(Scope* scope)
@@ -161,8 +161,8 @@ void process_includes(List* include_list, List* module_list, ListItem* module_li
 
     if(node->kind == eAstNode_include)
     {
-      AstNode* block = ATTR(node, ast_node, body);
-      process_includes(ATTR(block, list, nodes), include_list, list_item);
+      AstNode* block = node->include.body;
+      process_includes(block->block.nodes, include_list, list_item);
     }
   }
   replace_list_item_at(include_list, module_list, module_list_item);
@@ -174,54 +174,39 @@ bool name_ident(AstNode* node);
 
 bool name_ident_type(AstNode* node)
 {
-  assert(node->gen == eAstGen_gen0);
   bool success = true;
 
   switch(node->kind)
   {
     case eAstNode_id:
       {
-        AstNode id_gen0 = *node;
-        AstNode* type_occur_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_type_occur);
-        char* name = ATTR(&id_gen0, str_val, name);
-        ATTR(type_occur_gen1, str_val, name) = name;
+        char* name = node->id.name;
 
         Symbol* decl_sym = lookup_all_decls(name, symbol_table->active_scope);
         if(decl_sym)
         {
-          Symbol* occur_sym = add_occur_symbol(name, type_occur_gen1->src_loc, symbol_table->active_scope, eSymbol_type);
-          ATTR(type_occur_gen1, ast_node, type_decl) = decl_sym->ast_node;
-          ATTR(type_occur_gen1, symbol, occur_sym) = occur_sym;
+          Symbol* occur_sym = add_occur_symbol(name, node->src_loc, symbol_table->active_scope, eSymbol_type);
+          node->id.decl_ast = decl_sym->ast_node;
+          node->id.occur_sym = occur_sym;
         }
         else
-          success = compile_error(type_occur_gen1->src_loc, "unknown type `%s`", name);
+          success = compile_error(node->src_loc, "unknown type `%s`", name);
       }
       break;
 
     case eAstNode_pointer:
       {
-        AstNode ptr_gen0 = *node;
-        AstNode* ptr_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_pointer);
-        ATTR(ptr_gen1, ast_node, pointee_expr) = ATTR(&ptr_gen0, ast_node, pointee_expr);
-
-        success = name_ident_type(ATTR(&ptr_gen0, ast_node, pointee_expr));
+        success = name_ident_type(node->pointer.pointee_expr);
       }
       break;
 
     case eAstNode_array:
       {
-        AstNode array_gen0 = *node;
-        AstNode* array_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_array);
-
-        ATTR(array_gen1, ast_node, elem_expr) = ATTR(&array_gen0, ast_node, elem_expr);
-        ATTR(array_gen1, ast_node, size_expr) = ATTR(&array_gen0, ast_node, size_expr);
-
-        if(success = name_ident_type(ATTR(&array_gen0, ast_node, elem_expr)))
+        if(success = name_ident_type(node->array.elem_expr))
         {
-          AstNode* size_expr = ATTR(array_gen1, ast_node, size_expr);
-          if(size_expr)
+          if(node->array.size_expr)
           {
-            success = name_ident(size_expr);
+            success = name_ident(node->array.size_expr);
           }
         }
       }
@@ -235,43 +220,34 @@ bool name_ident_type(AstNode* node)
 
 bool name_ident_formal_arg(AstNode* node, eSymbol symkind)
 {
-  assert(node->kind == eAstNode_var_decl);
+  assert(node->kind == eAstNode_var);
   assert(symkind == eSymbol_ret_var || symkind == eSymbol_formal_arg);
   bool success = true;
 
-  AstNode var_decl_gen0 = *node;
-  AstNode* var_decl_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_var_decl);
-  char* name = ATTR(ATTR(&var_decl_gen0, ast_node, id), str_val, name);
-  ATTR(var_decl_gen1, str_val, name) = name;
-
+  char* name = node->var.name;
   Symbol* decl_sym = lookup_all_decls(name, symbol_table->active_scope);
   if(decl_sym && (decl_sym->scope == symbol_table->active_scope))
   {
-    success = compile_error(var_decl_gen1->src_loc, "formal arg `%s` already declared", name);
+    success = compile_error(node->src_loc, "formal arg `%s` already declared", name);
     compile_error(decl_sym->src_loc, "see declaration of `%s`", name);
   }
   else
   {
-    decl_sym = add_decl_symbol(name, var_decl_gen1->src_loc, symbol_table->active_scope, symkind);
-    ATTR(var_decl_gen1, symbol, decl_sym) = decl_sym;
-    decl_sym->ast_node = var_decl_gen1;
+    decl_sym = add_decl_symbol(name, node->src_loc, symbol_table->active_scope, symkind);
+    node->var.decl_sym = decl_sym;
+    decl_sym->ast_node = node;
 
-    ATTR(var_decl_gen1, ast_node, type) = ATTR(&var_decl_gen0, ast_node, type);
-    success = name_ident(ATTR(&var_decl_gen0, ast_node, type));
+    success = name_ident(node->var.type);
   }
   return success;
 }
 
-bool name_ident_var_decl(AstNode* node, Scope* scope, void* data)
+bool name_ident_var(AstNode* node, Scope* scope, void* data)
 {
-  assert(node->kind == eAstNode_var_decl);
+  assert(node->kind == eAstNode_var);
   bool success = true;
 
-  AstNode var_decl_gen0 = *node;
-  AstNode* var_decl_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_var_decl);
-  char* name = ATTR(ATTR(&var_decl_gen0, ast_node, id), str_val, name);
-  ATTR(var_decl_gen1, str_val, name) = name;
-
+  char* name = node->var.name;
   Scope* proc_scope = find_scope(symbol_table->active_scope, eScope_proc);
   Symbol* decl_sym = lookup_all_decls(name, symbol_table->active_scope);
   if(decl_sym)
@@ -279,46 +255,38 @@ bool name_ident_var_decl(AstNode* node, Scope* scope, void* data)
     if((decl_sym->kind != eSymbol_var && decl_sym->kind != eSymbol_ret_var && decl_sym->kind != eSymbol_formal_arg)
         || decl_sym->scope == symbol_table->active_scope || decl_sym->scope == proc_scope)
     {
-      success = compile_error(var_decl_gen1->src_loc, "name `%s` already declared", name);
+      success = compile_error(node->src_loc, "name `%s` already declared", name);
       compile_error(decl_sym->src_loc, "see declaration of `%s`", name);
     }
   }
   if(!success)
     return success;
 
-  decl_sym = ATTR(var_decl_gen1, symbol, decl_sym)
-    = add_decl_symbol(name, var_decl_gen1->src_loc, scope, eSymbol_var);
-  decl_sym->ast_node = var_decl_gen1;
+  decl_sym = node->var.decl_sym = add_decl_symbol(name, node->src_loc, scope, eSymbol_var);
+  decl_sym->ast_node = node;
   decl_sym->data = data;
 
-  AstNode* type = ATTR(var_decl_gen1, ast_node, type) = ATTR(&var_decl_gen0, ast_node, type);
-  success = name_ident(type);
+  success = name_ident(node->var.type);
   return success;
 }
 
 bool name_ident(AstNode* node)
 {
-  assert(node->gen == eAstGen_gen0);
   bool success = true;
 
   switch(node->kind)
   {
     case eAstNode_module:
       {
-        AstNode module_copy = *node;
-        AstNode* module = make_ast_node(eAstGen_gen1, node, eAstNode_module);
-        ATTR(module, str_val, file_path) = ATTR(&module_copy, str_val, file_path);
-
-        AstNode* body = ATTR(module, ast_node, body) = ATTR(&module_copy, ast_node, body);
-
-        Scope* module_scope = ATTR(node, scope, scope) = begin_scope(eScope_module, module);
+        AstNode* module_body = node->module.body;
+        Scope* module_scope = node->module.scope = begin_scope(eScope_module, node);
         add_builtin_types(module_scope);
-        success = name_ident(body);
+        success = name_ident(module_body);
         end_scope();
         if(!success)
           break;
 
-        Scope* body_scope = ATTR(body, scope, scope);
+        Scope* body_scope = module_body->block.scope;
         List* body_vars = body_scope->decls[eSymbol_var];
         List* module_vars = module_scope->decls[eSymbol_var];
         for(ListItem* list_item = body_vars->first;
@@ -338,26 +306,16 @@ bool name_ident(AstNode* node)
           Symbol* decl_sym = ITEM(list_item, symbol);
           decl_sym->is_static_alloc = true;
         }
-        module_scope->static_area_size += body_scope->locals_area_size;
-        body_scope->locals_area_size = 0;
       }
       break;
 
     case eAstNode_block:
       {
-        assert(node->kind == eAstNode_block);
+        List* proc_list = node->block.procs = new_list(arena, eList_ast_node);
+        List* stmt_list = node->block.stmts = new_list(arena, eList_ast_node);
+        List* var_list = node->block.vars = new_list(arena, eList_ast_node);
 
-        AstNode block_gen0 = *node;
-        AstNode* block_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_block);
-
-        List* proc_list = ATTR(block_gen1, list, procs) = new_list(arena, eList_ast_node);
-        List* stmt_list = ATTR(block_gen1, list, stmts) = new_list(arena, eList_ast_node);
-        List* var_list = ATTR(block_gen1, list, vars) = new_list(arena, eList_ast_node);
-        List* struct_list = ATTR(block_gen1, list, structs) = new_list(arena, eList_ast_node);
-
-        ATTR(block_gen1, scope, scope) = begin_scope(eScope_block, node);
-
-        List* node_list = ATTR(&block_gen0, list, nodes);
+        List* node_list = node->block.nodes;
         for(ListItem* list_item = node_list->first;
             list_item;)
         {
@@ -368,19 +326,19 @@ bool name_ident(AstNode* node)
 
           switch(node->kind)
           {
-            case eAstNode_proc_decl:
+            case eAstNode_proc:
               append_list_elem(proc_list, node, eList_ast_node);
               break;
 
-            case eAstNode_var_decl:
+            case eAstNode_var:
               {
                 append_list_elem(var_list, node, eList_ast_node);
 
-                AstNode* init_expr = ATTR(node, ast_node, init_expr);
+                AstNode* init_expr = node->var.init_expr;
                 if(init_expr)
                 {
                   append_list_elem(stmt_list, init_expr, eList_ast_node);
-                  ATTR(node, ast_node, init_expr) = 0;
+                  node->var.init_expr = 0;
                 }
               }
               break;
@@ -389,15 +347,10 @@ bool name_ident(AstNode* node)
             case eAstNode_while_stmt:
             case eAstNode_if_stmt:
             case eAstNode_ret_stmt:
-            case eAstNode_break_stmt:
-            case eAstNode_continue_stmt:
+            case eAstNode_loop_ctrl:
             case eAstNode_block:
             case eAstNode_asm_block:
               append_list_elem(stmt_list, node, eList_ast_node);
-              break;
-
-            case eAstNode_struct_decl:
-              append_list_elem(struct_list, node, eList_ast_node);
               break;
 
             default:
@@ -407,15 +360,6 @@ bool name_ident(AstNode* node)
         }
         assert(node_list->first == node_list->last && node_list->last == 0); // list should be empty
 
-        node_list = ATTR(block_gen1, list, nodes) = new_list(arena, eList_ast_node);
-        for(ListItem* list_item = struct_list->first;
-            list_item && success;
-            list_item = list_item->next)
-        {
-          AstNode* node = ITEM(list_item, ast_node);
-          append_list_elem(node_list, node, eList_ast_node);
-          success = name_ident(node);
-        }
         for(ListItem* list_item = var_list->first;
             list_item && success;
             list_item = list_item->next)
@@ -444,58 +388,47 @@ bool name_ident(AstNode* node)
       }
       break;
 
-    case eAstNode_type_decl:
+    case eAstNode_type:
       {
-        AstNode type_gen0 = *node;
-        AstNode* type_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_type_decl);
-
-        AstNode* type_expr = ATTR(type_gen1, ast_node, type_expr) = ATTR(&type_gen0, ast_node, type_expr);
-
-        if(success = name_ident_type(type_expr))
+        if(success = name_ident_type(node->type.type_expr))
         {
           Symbol* decl_sym = add_decl_symbol(make_temp_name("typ"), node->src_loc, symbol_table->active_scope, eSymbol_type);
-          ATTR(type_gen1, symbol, decl_sym) = decl_sym;
-          decl_sym->ast_node = type_gen1;
+          node->type.decl_sym = decl_sym;
+          decl_sym->ast_node = node;
         }
       }
       break;
 
-    case eAstNode_var_decl:
+    case eAstNode_var:
       {
-        success = name_ident_var_decl(node, symbol_table->active_scope, 0);
+        success = name_ident_var(node, symbol_table->active_scope, 0);
       }
       break;
 
     case eAstNode_id:
       {
-        AstNode id_gen0 = *node;
-        AstNode* var_occur_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_var_occur);
-        char* name = ATTR(&id_gen0, str_val, name);
-        ATTR(var_occur_gen1, str_val, name) = name;
-
+        char* name = node->id.name;
         Symbol* decl_sym = lookup_all_decls(name, symbol_table->active_scope);
         if(decl_sym)
         {
-          Symbol* occur_sym = add_occur_symbol(name, var_occur_gen1->src_loc, symbol_table->active_scope, eSymbol_var);
-          occur_sym->ast_node = var_occur_gen1;
+          Symbol* occur_sym = add_occur_symbol(name, node->src_loc, symbol_table->active_scope, eSymbol_var);
+          occur_sym->ast_node = node;
           occur_sym->decl = decl_sym;
 
-          ATTR(var_occur_gen1, symbol, occur_sym) = occur_sym;
-          ATTR(var_occur_gen1, symbol, decl_sym) = decl_sym;
-          ATTR(var_occur_gen1, ast_node, var_decl) = decl_sym->ast_node;
+          node->id.occur_sym = occur_sym;
+          node->id.decl_sym = decl_sym;
+          node->id.decl_ast = decl_sym->ast_node;
         }
         else
-          success = compile_error(var_occur_gen1->src_loc, "unknown var `%s`", name);
+          success = compile_error(node->src_loc, "unknown var `%s`", name);
       }
       break;
 
-    case eAstNode_proc_decl:
+    case eAstNode_proc:
       {
-        AstNode proc_decl_gen0 = *node;
-        AstNode* proc_decl_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_proc_decl);
-        char* name = ATTR(proc_decl_gen1, str_val, name) = ATTR(ATTR(&proc_decl_gen0, ast_node, id), str_val, name);
+        char* name = node->proc.name = node->proc.id->id.name;
 
-        char* label = ATTR(node, str_val, label) = name;
+        char* label = node->proc.label = name;
         Scope* decl_scope = find_scope(symbol_table->active_scope, eScope_proc);
         if(!decl_scope)
         {
@@ -504,12 +437,12 @@ bool name_ident(AstNode* node)
         if(decl_scope->kind == eScope_proc)
         {
           AstNode* encl_proc = decl_scope->ast_node;
-          assert(encl_proc->kind == eAstNode_proc_decl);
+          assert(encl_proc->kind == eAstNode_proc);
           String qual_label; str_init(&qual_label, arena);
-          str_append(&qual_label, ATTR(encl_proc, str_val, label));
+          str_append(&qual_label, encl_proc->proc.label);
           str_append(&qual_label, "$");
           str_append(&qual_label, label);
-          label = ATTR(node, str_val, label) = str_cap(&qual_label);
+          label = node->proc.label = str_cap(&qual_label);
         }
 
         Symbol* decl_sym = lookup_all_decls(name, symbol_table->active_scope);
@@ -518,24 +451,23 @@ bool name_ident(AstNode* node)
           if((decl_sym->kind != eSymbol_proc && decl_sym->kind != eSymbol_extern_proc)
               || decl_sym->scope == symbol_table->active_scope)
           {
-            success = compile_error(proc_decl_gen1->src_loc, "name `%s` already declared", name);
+            success = compile_error(node->src_loc, "name `%s` already declared", name);
             compile_error(decl_sym->src_loc, "see declaration of `%s`", name);
           }
         }
         if(!success)
           return success;
 
-        bool is_extern = ATTR(proc_decl_gen1, bool_val, is_extern) = ATTR(&proc_decl_gen0, bool_val, is_extern);
-        decl_sym = ATTR(proc_decl_gen1, symbol, decl_sym)
-          = add_decl_symbol(name, proc_decl_gen1->src_loc, decl_scope, is_extern ? eSymbol_extern_proc : eSymbol_proc);
-        decl_sym->ast_node = proc_decl_gen1;
+        bool is_extern = node->proc.is_extern;
+        decl_sym = node->proc.decl_sym
+          = add_decl_symbol(name, node->src_loc, decl_scope, is_extern ? eSymbol_extern_proc : eSymbol_proc);
+        decl_sym->ast_node = node;
 
-        List* formal_args = ATTR(proc_decl_gen1, list, formal_args) = ATTR(&proc_decl_gen0, list, formal_args);
-        AstNode* ret_var = ATTR(proc_decl_gen1, ast_node, ret_var) = ATTR(&proc_decl_gen0, ast_node, ret_var);
-        AstNode* body = ATTR(proc_decl_gen1, ast_node, body) = ATTR(&proc_decl_gen0, ast_node, body);
+        List* formal_args = node->proc.formal_args;
+        AstNode* ret_var = node->proc.ret_var;
+        AstNode* body = node->proc.body;
 
-        Scope* proc_scope = ATTR(proc_decl_gen1, scope, scope) = begin_scope(eScope_proc, proc_decl_gen1);
-
+        Scope* proc_scope = node->proc.scope = begin_scope(eScope_proc, node);
         for(ListItem* list_item = formal_args->first;
             list_item && success;
             list_item = list_item->next)
@@ -550,42 +482,39 @@ bool name_ident(AstNode* node)
             {
               if(success = name_ident(body))
               {
-                Scope* body_scope = ATTR(body, scope, scope);
+                Scope* body_scope = body->block.scope;
                 proc_scope->nesting_depth = body_scope->nesting_depth;
               }
             }
             else
-              success = compile_error(proc_decl_gen1->src_loc, "proc `%s` must have a body", name);
+              success = compile_error(node->src_loc, "proc `%s` must have a body", name);
           }
           else if(body)
-            success = compile_error(proc_decl_gen1->src_loc, "`extern` proc `%s` must not have a body", name);
+            success = compile_error(node->src_loc, "`extern` proc `%s` must not have a body", name);
         }
         end_scope();
       }
       break;
 
-    case eAstNode_proc_occur:
+    case eAstNode_call:
       {
-        AstNode proc_occur_gen0 = *node;
-        AstNode* proc_occur_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_proc_occur);
-        char* name = ATTR(ATTR(&proc_occur_gen0, ast_node, id), str_val, name);
-        ATTR(proc_occur_gen1, str_val, name) = name;
+        char* name = node->call.name = node->call.id->id.name;
 
-        Symbol* occur_sym = add_occur_symbol(name, proc_occur_gen1->src_loc, symbol_table->active_scope, eSymbol_proc);
-        occur_sym->ast_node = proc_occur_gen1;
-        ATTR(proc_occur_gen1, symbol, occur_sym) = occur_sym;
+        Symbol* occur_sym = add_occur_symbol(name, node->src_loc, symbol_table->active_scope, eSymbol_proc);
+        occur_sym->ast_node = node;
+        node->call.occur_sym = occur_sym;
 
         Symbol* decl_sym = lookup_decl_by_kind(name, symbol_table->active_scope,
             (eSymbol[]){eSymbol_proc, eSymbol_extern_proc, eSymbol_None});
         if(decl_sym)
         {
           occur_sym->decl = decl_sym;
-          ATTR(proc_occur_gen1, symbol, decl_sym) = decl_sym;
-          ATTR(proc_occur_gen1, ast_node, proc_decl) = decl_sym->ast_node;
+          node->call.decl_sym = decl_sym;
+          node->call.proc = decl_sym->ast_node;
         }
 
-        ATTR(proc_occur_gen1, list, actual_args) = ATTR(&proc_occur_gen0, list, actual_args);
-        for(ListItem* list_item = ATTR(&proc_occur_gen0, list, actual_args)->first;
+        List* actual_args = node->call.actual_args;
+        for(ListItem* list_item = actual_args->first;
             list_item && success;
             list_item = list_item->next)
         {
@@ -596,66 +525,32 @@ bool name_ident(AstNode* node)
       
     case eAstNode_bin_expr:
       {
-        AstNode bin_expr_gen0 = *node;
-        AstNode* bin_expr_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_bin_expr);
-        ATTR(bin_expr_gen1, op_kind, op_kind) = ATTR(&bin_expr_gen0 , op_kind, op_kind);
-
-        AstNode* left_operand = ATTR(&bin_expr_gen0, ast_node, left_operand);
-        AstNode* right_operand = ATTR(&bin_expr_gen0 , ast_node, right_operand);
-        if(success = name_ident(left_operand) && name_ident(right_operand))
-        {
-          ATTR(bin_expr_gen1, ast_node, left_operand) = left_operand;
-          ATTR(bin_expr_gen1, ast_node, right_operand) = right_operand;
-        }
+        AstNode* left_operand = node->bin_expr.left_operand;
+        AstNode* right_operand = node->bin_expr.right_operand;
+        success = name_ident(left_operand) && name_ident(right_operand);
       }
       break;
 
     case eAstNode_un_expr:
       {
-        AstNode un_expr_gen0 = *node;
-        AstNode* un_expr_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_un_expr);
-        ATTR(un_expr_gen1, op_kind, op_kind) = ATTR(&un_expr_gen0, op_kind, op_kind);
-
-        AstNode* operand = ATTR(&un_expr_gen0, ast_node, operand);
-        if(success = name_ident(operand))
-        {
-          ATTR(un_expr_gen1, ast_node, operand) = operand;
-        }
+        AstNode* operand = node->un_expr.operand;
+        success = name_ident(operand);
       }
       break;
 
     case eAstNode_lit:
       {
-        AstNode lit_gen0 = *node;
-        AstNode* lit_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_lit);
-
-        eLiteral lit_kind = ATTR(lit_gen1, lit_kind, lit_kind) = ATTR(&lit_gen0, lit_kind, lit_kind);
-
-        if(lit_kind == eLiteral_int_val)
-        {
-          ATTR(lit_gen1, int_val, int_val) = ATTR(&lit_gen0, int_val, int_val);
-        }
-        else if(lit_kind == eLiteral_float_val)
-        {
-          ATTR(lit_gen1, float_val, float_val) = ATTR(&lit_gen0, float_val, float_val);
-        }
-        else if(lit_kind == eLiteral_char_val)
-        {
-          ATTR(lit_gen1, char_val, char_val) = ATTR(&lit_gen0, char_val, char_val);
-        }
-        else if(lit_kind == eLiteral_bool_val)
-        {
-          ATTR(lit_gen1, bool_val, bool_val) = ATTR(&lit_gen0, bool_val, bool_val);
-        }
-        else if(lit_kind == eLiteral_str_val)
+#if 0
+        eLiteral lit_kind = node->lit.kind;
+        if(lit_kind == eLiteral_str_val)
         {
           char* str_val = ATTR(lit_gen1, str_val, str_val) = ATTR(&lit_gen0, str_val, str_val);
 
-          AstNode* var_decl = new_ast_node(eAstGen_gen0, eAstNode_var_decl, node->src_loc);
-          AstNode* decl_id = ATTR(var_decl, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, node->src_loc);
+          AstNode* var = new_ast_node(eAstGen_gen0, eAstNode_var, node->src_loc);
+          AstNode* decl_id = ATTR(var, ast_node, id) = new_ast_node(eAstGen_gen0, eAstNode_id, node->src_loc);
           char* var_name = ATTR(decl_id, str_val, name) = make_temp_name("str");
 
-          AstNode* var_type = ATTR(var_decl, ast_node, type) = new_ast_node(eAstGen_gen0, eAstNode_type_decl, node->src_loc);
+          AstNode* var_type = ATTR(var, ast_node, type) = new_ast_node(eAstGen_gen0, eAstNode_type_decl, node->src_loc);
           AstNode* type_expr = ATTR(var_type, ast_node, type_expr) = new_ast_node(eAstGen_gen0, eAstNode_array, node->src_loc);
           AstNode* size_expr = ATTR(type_expr, ast_node, size_expr) = new_ast_node(eAstGen_gen0, eAstNode_lit, node->src_loc);
           ATTR(size_expr, lit_kind, lit_kind) = eLiteral_int_val;
@@ -664,11 +559,11 @@ bool name_ident(AstNode* node)
           ATTR(elem_expr, str_val, name) = "char";
 
           Scope* module_scope = find_scope(symbol_table->active_scope, eScope_module);
-          if(success = name_ident_var_decl(var_decl, module_scope, str_val))
+          if(success = name_ident_var(var, module_scope, str_val))
           {
             AstNode* module_body = ATTR(module_scope->ast_node, ast_node, body);
-            prepend_list_elem(ATTR(module_body, list, vars), var_decl, eList_ast_node);
-            prepend_list_elem(ATTR(module_body, list, nodes), var_decl, eList_ast_node);
+            prepend_list_elem(ATTR(module_body, list, vars), var, eList_ast_node);
+            prepend_list_elem(ATTR(module_body, list, nodes), var, eList_ast_node);
 
             AstNode* occur_id = make_ast_node(eAstGen_gen0, node, eAstNode_id);
             ATTR(occur_id, str_val, name) = var_name;
@@ -676,63 +571,50 @@ bool name_ident(AstNode* node)
             success = name_ident(occur_id);
           }
         }
-        else
-          assert(0);
+#endif
       }
       break;
 
     case eAstNode_stmt:
       {
-        AstNode stmt_gen0 = *node;
-        AstNode* stmt_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_stmt);
-
-        AstNode* actual_stmt = ATTR(stmt_gen1, ast_node, stmt) = ATTR(&stmt_gen0, ast_node, stmt);
-        if(actual_stmt)
+        if(node->stmt.stmt)
         {
-          success = name_ident(actual_stmt);
+          success = name_ident(node->stmt.stmt);
         }
       }
       break;
 
     case eAstNode_if_stmt:
       {
-        AstNode if_stmt_gen0 = *node;
-        AstNode* if_stmt_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_if_stmt);
-
-        AstNode* cond_expr = ATTR(&if_stmt_gen0, ast_node, cond_expr);
+        AstNode* cond_expr = node->if_stmt.cond_expr;
         if(success = name_ident(cond_expr))
         {
-          ATTR(if_stmt_gen1, ast_node, cond_expr) = cond_expr;
-
-          AstNode* body = ATTR(&if_stmt_gen0, ast_node, body);
+          AstNode* body = node->if_stmt.body;
           if(body->kind != eAstNode_block)
           {
-            List* nodes = new_list(arena, eList_ast_node);
-            append_list_elem(nodes, body, eList_ast_node);
-            body = new_ast_node(eAstGen_gen0, eAstNode_block, body->src_loc);
-            ATTR(body, list, nodes) = nodes;
+            List* single_stmt_block = new_list(arena, eList_ast_node);
+            append_list_elem(single_stmt_block, body, eList_ast_node);
+            body = new_ast_node(eAstNode_block, body->src_loc);
+            body->block.nodes = single_stmt_block;
           }
 
           if(!(success = name_ident(body)))
             break;
 
-          ATTR(if_stmt_gen1, ast_node, body) = body;
+          node->if_stmt.body = body;
 
-          AstNode* else_body = ATTR(&if_stmt_gen0, ast_node, else_body);
+          AstNode* else_body = node->if_stmt.else_body;
           if(else_body)
           {
             if(else_body->kind != eAstNode_block)
             {
-              List* nodes = new_list(arena, eList_ast_node);
-              append_list_elem(nodes, else_body, eList_ast_node);
-              else_body = new_ast_node(eAstGen_gen0, eAstNode_block, else_body->src_loc);
-              ATTR(else_body, list, nodes) = nodes;
+              List* single_stmt_block = new_list(arena, eList_ast_node);
+              append_list_elem(single_stmt_block, else_body, eList_ast_node);
+              else_body = new_ast_node(eAstNode_block, else_body->src_loc);
+              else_body->block.nodes = single_stmt_block;
             }
 
-            if(success = name_ident(else_body))
-            {
-              ATTR(if_stmt_gen1, ast_node, else_body) = else_body;
-            }
+            success = name_ident(else_body);
           }
         }
       }
@@ -740,56 +622,41 @@ bool name_ident(AstNode* node)
 
     case eAstNode_while_stmt:
       {
-        AstNode while_stmt_gen0 = *node;
-        AstNode* while_stmt_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_while_stmt);
-
         Scope* enclosing_scope = symbol_table->active_scope;
-        Scope* while_scope = ATTR(while_stmt_gen1, scope, scope) = begin_scope(eScope_while, while_stmt_gen1);
+        Scope* while_scope = node->while_stmt.scope = begin_scope(eScope_while, node);
         while_scope->nesting_depth = enclosing_scope->nesting_depth;
 
-        AstNode* cond_expr = ATTR(&while_stmt_gen0, ast_node, cond_expr);
+        AstNode* cond_expr = node->while_stmt.cond_expr;
         if(success = name_ident(cond_expr))
         {
-          ATTR(while_stmt_gen1, ast_node, cond_expr) = cond_expr;
-
-          AstNode* body = ATTR(&while_stmt_gen0, ast_node, body);
+          AstNode* body = node->while_stmt.body;
           if(body->kind != eAstNode_block)
           {
-            List* nodes = new_list(arena, eList_ast_node);
-            append_list_elem(nodes, body, eList_ast_node);
-            body = new_ast_node(eAstGen_gen0, eAstNode_block, body->src_loc);
-            ATTR(body, list, nodes) = nodes;
+            List* single_stmt_block = new_list(arena, eList_ast_node);
+            append_list_elem(single_stmt_block, body, eList_ast_node);
+            body = new_ast_node(eAstNode_block, body->src_loc);
+            body->block.nodes = single_stmt_block;
           }
-          if(success = name_ident(body))
-          {
-            ATTR(while_stmt_gen1, ast_node, body) = body;
-          }
+          success = name_ident(body);
         }
         end_scope();
       }
       break;
 
-    case eAstNode_break_stmt:
-    case eAstNode_continue_stmt:
+    case eAstNode_loop_ctrl:
       {
-        make_ast_node(eAstGen_gen1, node, node->kind);
-
         Scope* loop_scope = find_scope(symbol_table->active_scope, eScope_while);
         if(loop_scope)
         {
-          ATTR(node, ast_node, loop) = loop_scope->ast_node;
+          node->loop_ctrl.loop = loop_scope->ast_node;
         }
         else
         {
           char* keyword = "???";
-          if(node->kind == eAstNode_break_stmt)
-          {
+          if(node->loop_ctrl.kind == eLoopCtrl_break)
             keyword = "break";
-          }
-          else if(node->kind == eAstNode_continue_stmt)
-          {
+          else if(node->loop_ctrl.kind == eLoopCtrl_continue)
             keyword = "continue";
-          }
           else
             assert(0);
           success = compile_error(node->src_loc, "unexpected `%s` at this location", keyword);
@@ -799,76 +666,44 @@ bool name_ident(AstNode* node)
 
     case eAstNode_empty:
       {
-        make_ast_node(eAstGen_gen1, node, node->kind);
+        ;//skip
       }
       break;
 
     case eAstNode_ret_stmt:
       {
-        AstNode ret_stmt_gen0 = *node;
-        AstNode* ret_stmt_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_ret_stmt);
-
         Scope* scope = find_scope(symbol_table->active_scope, eScope_proc);
         if(scope)
         {
-          AstNode* proc = ATTR(ret_stmt_gen1, ast_node, proc_decl) = scope->ast_node;
+          AstNode* proc = node->ret_stmt.proc = scope->ast_node;
 
-          AstNode* ret_expr = ATTR(ret_stmt_gen1, ast_node, ret_expr) = ATTR(&ret_stmt_gen0, ast_node, ret_expr);
+          AstNode* ret_expr = node->ret_stmt.ret_expr;
           if(ret_expr)
           {
-            AstNode* ret_var = ATTR(proc, ast_node, ret_var);
-            AstNode* occur_id = new_ast_node(eAstGen_gen0, eAstNode_id, ret_var->src_loc);
-            ATTR(occur_id, str_val, name) = ATTR(ret_var, str_val, name);
+            AstNode* ret_var = proc->proc.ret_var;
+            AstNode* occur_id = new_ast_node(eAstNode_id, ret_var->src_loc);
+            occur_id->id.name = ret_var->id.name;
 
-            AstNode* assign = new_ast_node(eAstGen_gen0, eAstNode_bin_expr, ret_expr->src_loc);
-            ATTR(assign, op_kind, op_kind) = eOperator_assign;
-            ATTR(assign, ast_node, left_operand) = occur_id;
-            ATTR(assign, ast_node, right_operand) = ret_expr;
+            AstNode* assign = new_ast_node(eAstNode_bin_expr, ret_expr->src_loc);
+            assign->bin_expr.op_kind = eOperator_assign;
+            assign->bin_expr.left_operand = occur_id;
+            assign->bin_expr.right_operand = ret_expr;
 
-            ret_expr = new_ast_node(eAstGen_gen0, eAstNode_stmt, assign->src_loc);
-            ATTR(ret_expr, ast_node, stmt) = assign;
-            ATTR(ret_stmt_gen1, ast_node, ret_expr) = ret_expr;
+            ret_expr = new_ast_node(eAstNode_stmt, assign->src_loc);
+            ret_expr->stmt.stmt = assign;
+            node->ret_stmt.ret_expr = ret_expr;
 
             success = name_ident(ret_expr);
           }
         }
         else
-          success = compile_error(ret_stmt_gen1->src_loc, "unexpected `return` at this location");
+          success = compile_error(node->src_loc, "unexpected `return` at this location");
       }
       break;
 
     case eAstNode_asm_block:
       {
-        AstNode asm_block_gen0 = *node;
-        AstNode* asm_block_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_asm_block);
-        ATTR(asm_block_gen1, str_val, asm_text) = ATTR(&asm_block_gen0, str_val, asm_text);
-      }
-      break;
-
-    case eAstNode_struct_decl:
-      {
-        AstNode struct_decl_gen0 = *node;
-        AstNode* struct_decl_gen1 = make_ast_node(eAstGen_gen1, node, eAstNode_struct_decl);
-        char* name = ATTR(struct_decl_gen1, str_val, name) = ATTR(ATTR(&struct_decl_gen0, ast_node, id), str_val, name);
-
-        Symbol* decl_sym = lookup_all_decls(name, symbol_table->active_scope);
-        if(decl_sym)
-        {
-          if(decl_sym->kind != eSymbol_type || decl_sym->scope == symbol_table->active_scope)
-          {
-            success = compile_error(struct_decl_gen1->src_loc, "name `%s` already declared", name);
-            compile_error(decl_sym->src_loc, "see declaration of `%s`", name);
-          }
-        }
-        if(!success)
-          return success;
-
-        decl_sym = ATTR(struct_decl_gen1, symbol, decl_sym) = add_decl_symbol(name, struct_decl_gen1->src_loc, symbol_table->active_scope, eSymbol_type);
-        decl_sym->ast_node = struct_decl_gen1;
-
-        ATTR(struct_decl_gen1, scope, scope) = begin_scope(eScope_struct, struct_decl_gen1);
-        //TODO
-        end_scope();
+        ;//skip
       }
       break;
 
@@ -880,78 +715,78 @@ bool name_ident(AstNode* node)
 
 bool build_types(AstNode* node)
 {
-  assert(node->gen == eAstGen_gen1);
   bool success = true;
 
   switch(node->kind)
   {
     case eAstNode_module:
       {
-        AstNode* body = ATTR(node, ast_node, body);
+        AstNode* body = node->module.body;
         if(success = build_types(body))
         {
-          ATTR(node, type, type) = ATTR(body, type, type);
-          ATTR(node, type, eval_type) = ATTR(body, type, eval_type);
+          node->ty = body->ty;
+          node->eval_ty = body->eval_ty;
         }
       }
       break;
 
     case eAstNode_block:
       {
-        for(ListItem* list_item = ATTR(node, list, nodes)->first;
+        for(ListItem* list_item = node->block.nodes->first;
             list_item && success;
             list_item = list_item->next)
         {
           success = build_types(ITEM(list_item, ast_node));
         }
 
-        ATTR(node, type, type) = new_proc_type(basic_type_void, basic_type_void);
-        ATTR(node, type, eval_type) = basic_type_void;
+        node->ty = new_proc_type(basic_type_void, basic_type_void);
+        node->eval_ty = basic_type_void;
       }
       break;
 
     case eAstNode_stmt:
       {
-        AstNode* actual_stmt = ATTR(node, ast_node, stmt);
+        AstNode* actual_stmt = node->stmt.stmt;
         if(actual_stmt)
         {
           success = build_types(actual_stmt);
-          ATTR(node, type, type) = ATTR(actual_stmt, type, eval_type);//new_proc_type(ATTR(actual_stmt, type, eval_type), basic_type_void);
-          ATTR(node, type, eval_type) = basic_type_void;
+          node->ty = actual_stmt->eval_ty;
+          node->eval_ty = basic_type_void;
         }
       }
       break;
 
-    case eAstNode_var_decl:
+    case eAstNode_var:
       {
-        AstNode* type = ATTR(node, ast_node, type);
+        AstNode* type = node->var.type;
         if(success = build_types(type))
         {
-          ATTR(node, type, type) = ATTR(type, type, type);
-          ATTR(node, type, eval_type) = basic_type_void;
+          node->ty = type->ty;
+          node->eval_ty = basic_type_void;
         }
       }
       break;
 
+#if 0
     case eAstNode_var_occur:
       {
-        AstNode* var_decl = ATTR(node, ast_node, var_decl);
-        ATTR(node, type, eval_type) = ATTR(node, type, type) = ATTR(var_decl, type, type);
+        AstNode* var = ATTR(node, ast_node, var);
+        ATTR(node, type, eval_ty) = ATTR(node, type, type) = ATTR(var, type, type);
       }
       break;
+#endif
 
     case eAstNode_bin_expr:
       {
-        AstNode* left_operand = ATTR(node, ast_node, left_operand);
+        AstNode* left_operand = node->bin_expr.left_operand;
         if(success = build_types(left_operand))
         {
-          AstNode* right_operand = ATTR(node, ast_node, right_operand);
+          AstNode* right_operand = node->bin_expr.right_operand;
           if(success = build_types(right_operand))
           {
-            Type* eval_type =  new_typevar();
-            ATTR(node, type, type) = new_proc_type(new_product_type(ATTR(left_operand, type, eval_type),
-                  ATTR(right_operand, type, eval_type)), eval_type);
-            ATTR(node, type, eval_type) = eval_type;
+            Type* eval_ty =  new_typevar();
+            node->ty = new_proc_type(new_product_type(left_operand->eval_ty, right_operand->eval_ty), eval_ty);
+            node->eval_ty = eval_ty;
           }
         }
       }
@@ -959,20 +794,19 @@ bool build_types(AstNode* node)
 
     case eAstNode_un_expr:
       {
-        AstNode* operand = ATTR(node, ast_node, operand);
+        AstNode* operand = node->un_expr.operand;
         if(success = build_types(operand))
         {
-          Type* eval_type = new_typevar();
-          ATTR(node, type, type) = new_proc_type(ATTR(operand, type, eval_type), eval_type);
-          ATTR(node, type, eval_type) = eval_type;
+          Type* eval_ty = new_typevar();
+          node->ty = new_proc_type(operand->eval_ty, eval_ty);
+          node->eval_ty = eval_ty;
         }
       }
       break;
 
-    case eAstNode_proc_decl:
+    case eAstNode_proc:
       {
-        List* args = ATTR(node, list, formal_args);
-        for(ListItem* list_item = args->first;
+        for(ListItem* list_item = node->proc.formal_args->first;
             list_item && success;
             list_item = list_item->next)
         {
@@ -982,33 +816,30 @@ bool build_types(AstNode* node)
         if(success)
         {
           Type* args_type = basic_type_void;
-          ListItem* list_item = args->first;
+          ListItem* list_item = node->proc.formal_args->first;
           if(list_item)
           {
             AstNode* arg = ITEM(list_item, ast_node);
-            args_type = ATTR(arg, type, type);
+            args_type = arg->ty;
 
             for(list_item = list_item->next;
                 list_item;
                 list_item = list_item->next)
             {
               AstNode* arg = ITEM(list_item, ast_node);
-              args_type = new_product_type(args_type, ATTR(arg, type, type));
+              args_type = new_product_type(args_type, arg->ty);
             }
           }
 
-          AstNode* ret_var = ATTR(node, ast_node, ret_var);
+          AstNode* ret_var = node->proc.ret_var;
           if(success = build_types(ret_var))
           {
-            Type* ret_type = ATTR(ret_var, type, type);
+            node->ty = new_proc_type(args_type, ret_var->ty);
+            node->eval_ty = basic_type_void;
 
-            ATTR(node, type, type) = new_proc_type(args_type, ret_type);
-            ATTR(node, type, eval_type) = basic_type_void;
-
-            bool is_extern = ATTR(node, bool_val, is_extern);
-            if(!is_extern)
+            if(!node->proc.is_extern)
             {
-              success = build_types(ATTR(node, ast_node, body));
+              success = build_types(node->proc.body);
             }
           }
         }
@@ -1017,19 +848,17 @@ bool build_types(AstNode* node)
 
     case eAstNode_ret_stmt:
       {
-        AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
-        if(ret_expr)
+        if(node->ret_stmt.ret_expr)
         {
-          success = build_types(ret_expr);
+          success = build_types(node->ret_stmt.ret_expr);
         }
-        ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
+        node->ty = node->eval_ty = basic_type_void;
       }
       break;
 
-    case eAstNode_proc_occur:
+    case eAstNode_call:
       {
-        List* args = ATTR(node, list, actual_args);
-        for(ListItem* list_item = args->first;
+        for(ListItem* list_item = node->call.actual_args->first;
             list_item && success;
             list_item = list_item->next)
         {
@@ -1037,42 +866,42 @@ bool build_types(AstNode* node)
         }
 
         Type* args_type = basic_type_void;
-        ListItem* list_item = ATTR(node, list, actual_args)->first;
+        ListItem* list_item = node->call.actual_args->first;
         if(list_item)
         {
           AstNode* arg = ITEM(list_item, ast_node);
-          args_type = ATTR(arg, type, eval_type);
+          args_type = arg->eval_ty;
 
           for(list_item = list_item->next;
               list_item;
               list_item = list_item->next)
           {
             AstNode* arg = ITEM(list_item, ast_node);
-            args_type = new_product_type(args_type, ATTR(arg, type, eval_type));
+            args_type = new_product_type(args_type, arg->eval_ty);
           }
         }
 
         Type* ret_type = new_typevar();
-        AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
-        if(proc_decl)
+        AstNode* proc = node->call.proc;
+        if(proc)
         {
-          ret_type = ATTR(proc_decl, type, type)->proc.ret;
+          ret_type = proc->ty->proc.ret;
         }
 
-        ATTR(node, type, type) = new_proc_type(args_type, ret_type);
-        ATTR(node, type, eval_type) = ret_type;
+        node->ty = new_proc_type(args_type, ret_type);
+        node->eval_ty = ret_type;
       }
       break;
 
     case eAstNode_while_stmt:
       {
-        if(success = build_types(ATTR(node, ast_node, cond_expr)))
+        if(success = build_types(node->while_stmt.cond_expr))
         {
-          AstNode* body = ATTR(node, ast_node, body);
+          AstNode* body = node->while_stmt.body;
           if(success = build_types(body))
           {
-            ATTR(node, type, type) = ATTR(body, type, type);
-            ATTR(node, type, eval_type) = ATTR(body, type, eval_type);
+            node->ty = body->ty;
+            node->eval_ty = body->eval_ty;
           }
         }
       }
@@ -1080,18 +909,18 @@ bool build_types(AstNode* node)
 
     case eAstNode_if_stmt:
       {
-        if(success = build_types(ATTR(node, ast_node, cond_expr)))
+        if(success = build_types(node->if_stmt.cond_expr))
         {
-          AstNode* body = ATTR(node, ast_node, body);
+          AstNode* body = node->if_stmt.body;
           if(success = build_types(body))
           {
-            ATTR(node, type, type) = ATTR(body, type, type);
-            ATTR(node, type, eval_type) = ATTR(body, type, eval_type);
+            node->ty = body->ty;
+            node->eval_ty = body->eval_ty;
 
-            AstNode* else_body = ATTR(node, ast_node, else_body);
+            AstNode* else_body = node->if_stmt.else_body;
             if(else_body)
             {
-              success = build_types(ATTR(node, ast_node, else_body));
+              success = build_types(else_body);
             }
           }
         }
@@ -1100,61 +929,60 @@ bool build_types(AstNode* node)
 
     case eAstNode_lit:
       {
-        eLiteral lit_kind = ATTR(node, lit_kind, lit_kind);
-
         Type* type = 0;
-        if(lit_kind == eLiteral_int_val)
+        switch(node->lit.kind)
         {
-          type = basic_type_int;
+          case eLiteral_int_val:
+            type = basic_type_int;
+            break;
+          case eLiteral_float_val:
+            type = basic_type_float;
+            break;
+          case eLiteral_char_val:
+            type = basic_type_char;
+            break;
+          case eLiteral_bool_val:
+            type = basic_type_bool;
+            break;
+          case eLiteral_str_val:
+            {
+              int size_val = cstr_len(node->lit.str_val) + 1; // +NULL
+              type = new_array_type(size_val, basic_type_char);
+            }
+            break;
+          default:
+            assert(0);
         }
-        else if(lit_kind == eLiteral_float_val)
-        {
-          type = basic_type_float;
-        }
-        else if(lit_kind == eLiteral_char_val)
-        {
-          type = basic_type_char;
-        }
-        else if(lit_kind == eLiteral_bool_val)
-        {
-          type = basic_type_bool;
-        }
-        else if(lit_kind == eLiteral_str_val)
-        {
-          int size_val = cstr_len(ATTR(node, str_val, str_val)) + 1; // +NULL
-          type = new_array_type(size_val, basic_type_char);
-        }
-        else
-          assert(0);
-
-        ATTR(node, type, type) = ATTR(node, type, eval_type) = type;
+        node->ty = node->eval_ty = type;
       }
       break;
 
-    case eAstNode_type_decl:
+    case eAstNode_type:
       {
-        AstNode* type_expr = ATTR(node, ast_node, type_expr);
+        AstNode* type_expr = node->type.type_expr;
         if(success = build_types(type_expr))
         {
-          ATTR(node, type, type) = ATTR(node, type, eval_type) = ATTR(type_expr, type, type);
+          node->ty = node->eval_ty = type_expr->ty;
         }
       }
       break;
 
+#if 0
     case eAstNode_type_occur:
       {
         AstNode* type_decl = ATTR(node, ast_node, type_decl);
         ATTR(node, type, type) = ATTR(type_decl, type, type);
-        ATTR(node, type, eval_type) = ATTR(type_decl, type, eval_type);
+        ATTR(node, type, eval_ty) = ATTR(type_decl, type, eval_ty);
       }
       break;
+#endif
 
     case eAstNode_pointer:
       {
-        AstNode* pointee_expr = ATTR(node, ast_node, pointee_expr);
+        AstNode* pointee_expr = node->pointer.pointee_expr;
         if(success = build_types(pointee_expr))
         {
-          ATTR(node, type, type) = new_pointer_type(ATTR(pointee_expr, type, type));
+          node->ty = node->eval_ty = new_pointer_type(pointee_expr->ty);
         }
       }
       break;
@@ -1162,41 +990,28 @@ bool build_types(AstNode* node)
     case eAstNode_array:
       {
         int size_val = 0;
-        AstNode* size_expr = ATTR(node, ast_node, size_expr);
+        AstNode* size_expr = node->array.size_expr;
         if(size_expr)
         {
-          if(size_expr->kind == eAstNode_lit && ATTR(size_expr, lit_kind, lit_kind) == eLiteral_int_val)
+          if(size_expr->kind == eAstNode_lit && size_expr->lit.kind == eLiteral_int_val)
           {
-            size_val = ATTR(size_expr, int_val, int_val);
+            size_val = size_expr->lit.int_val;
           }
           else
             success = compile_error(size_expr->src_loc, "array size must be an int literal");
         }
-        AstNode* elem_expr = ATTR(node, ast_node, elem_expr);
+        AstNode* elem_expr = node->array.elem_expr;
         if(success = build_types(elem_expr))
         {
-          ATTR(node, type, type) = ATTR(node, type, eval_type) = new_array_type(size_val, ATTR(elem_expr, type, type));
+          node->ty = node->eval_ty = new_array_type(size_val, elem_expr->ty);
         }
       }
       break;
 
-    case eAstNode_break_stmt:
-    case eAstNode_continue_stmt:
-      {
-        ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
-      }
-      break;
-
+    case eAstNode_loop_ctrl:
     case eAstNode_empty:
-      {
-        ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
-      }
-      break;
-
     case eAstNode_asm_block:
-      {
-        ATTR(node, type, type) = ATTR(node, type, eval_type) = basic_type_void;
-      }
+      node->ty = node->eval_ty = basic_type_void;
       break;
 
     default:
@@ -1207,29 +1022,24 @@ bool build_types(AstNode* node)
 
 bool eval_types(AstNode* node)
 {
-  assert(node->gen == eAstGen_gen1);
   bool success = true;
 
   switch(node->kind)
   {
     case eAstNode_module:
-      {
-        success = eval_types(ATTR(node, ast_node, body));
-      }
+      success = eval_types(node->module.body);
       break;
 
     case eAstNode_block:
       {
-        for(ListItem* list_item = ATTR(node, list, nodes)->first;
+        for(ListItem* list_item = node->block.nodes->first;
             list_item && success;
             list_item = list_item->next)
         {
           AstNode* stmt = ITEM(list_item, ast_node);
           if(success = eval_types(stmt))
           {
-            Type* stmt_ty = ATTR(stmt, type, eval_type);
-            Type* block_ty = ATTR(node, type, eval_type);
-            if(!type_unif(stmt_ty, block_ty))
+            if(!type_unif(stmt->eval_ty, node->eval_ty))
             {
               success = compile_error(stmt->src_loc, "type error (block stmt)");
             }
@@ -1239,45 +1049,39 @@ bool eval_types(AstNode* node)
       break;
     case eAstNode_stmt:
       {
-        AstNode* actual_stmt = ATTR(node, ast_node, stmt);
-        if(actual_stmt)
+        if(node->stmt.stmt)
         {
-          success = eval_types(actual_stmt);
+          success = eval_types(node->stmt.stmt);
         }
       }
       break;
 
     case eAstNode_bin_expr:
       {
-        AstNode* right_operand = ATTR(node, ast_node, right_operand);
-        AstNode* left_operand = ATTR(node, ast_node, left_operand);
+        AstNode* right_operand = node->bin_expr.right_operand;
+        AstNode* left_operand = node->bin_expr.left_operand;
 
         if(success = eval_types(right_operand) && eval_types(left_operand))
         {
-          Type* expr_ty = ATTR(node, type, eval_type);
-          Type* right_operand_ty = ATTR(right_operand, type, eval_type);
-          Type* left_operand_ty = ATTR(left_operand, type, eval_type);
-
-          eOperator op_kind = ATTR(node, op_kind, op_kind);
-          switch(op_kind)
+          switch(node->bin_expr.op_kind)
           {
             case eOperator_cast:
-              if(!type_unif(expr_ty, left_operand_ty))
+              if(!type_unif(node->eval_ty, left_operand->eval_ty))
               {
                 success = compile_error(node->src_loc, "type error (cast)");
               }
               break;
 
             case eOperator_index:
-              if(type_unif(right_operand_ty, basic_type_int))
+              if(type_unif(right_operand->eval_ty, basic_type_int))
               {
-                if(left_operand_ty->kind == eType_array)
+                if(left_operand->eval_ty->kind == eType_array)
                 {
-                  success = type_unif(left_operand_ty->array.elem, expr_ty);
+                  success = type_unif(left_operand->eval_ty->array.elem, node->eval_ty);
                 }
-                else if(left_operand_ty->kind == eType_typevar)
+                else if(left_operand->eval_ty->kind == eType_typevar)
                 {
-                  success = type_unif(left_operand_ty, new_array_type(0, expr_ty));
+                  success = type_unif(left_operand->eval_ty, new_array_type(0, node->eval_ty));
                 }
                 else
                   success = compile_error(node->src_loc, "type error (array index)");
@@ -1289,7 +1093,7 @@ bool eval_types(AstNode* node)
             case eOperator_bit_and:
             case eOperator_bit_or:
             case eOperator_bit_xor:
-              if(type_unif(left_operand_ty, right_operand_ty))
+              if(type_unif(left_operand->eval_ty, right_operand->eval_ty))
               {
                 ;//ok
               }
@@ -1299,7 +1103,7 @@ bool eval_types(AstNode* node)
 
             case eOperator_bit_shift_left:
             case eOperator_bit_shift_right:
-              if(type_unif(left_operand_ty, basic_type_int) && type_unif(right_operand_ty, basic_type_char))
+              if(type_unif(left_operand->eval_ty, basic_type_int) && type_unif(right_operand->eval_ty, basic_type_char))
               {
                 ;//ok
               }
@@ -1308,9 +1112,9 @@ bool eval_types(AstNode* node)
               break;
 
             default:
-              if(type_unif(left_operand_ty, right_operand_ty))
+              if(type_unif(left_operand->eval_ty, right_operand->eval_ty))
               {
-                switch(op_kind)
+                switch(node->bin_expr.op_kind)
                 {
                   case eOperator_less:
                   case eOperator_less_eq:
@@ -1321,14 +1125,14 @@ bool eval_types(AstNode* node)
                   case eOperator_logic_and:
                   case eOperator_logic_or:
                   case eOperator_logic_not:
-                    if(!type_unif(expr_ty, basic_type_bool))
+                    if(!type_unif(node->eval_ty, basic_type_bool))
                     {
                       success = compile_error(node->src_loc, "type error (bin expr)");
                     }
                     break;
 
                   default:
-                    if(!type_unif(expr_ty, left_operand_ty))
+                    if(!type_unif(node->eval_ty, left_operand->eval_ty))
                     {
                       success = compile_error(node->src_loc, "type error (bin expr)");
                     }
@@ -1342,9 +1146,8 @@ bool eval_types(AstNode* node)
           if(!success)
             break;
 
-          Type* type = ATTR(node, type, type);
-          assert(type->kind == eType_proc);
-          if(!type_unif(type->proc.ret, expr_ty))
+          assert(node->ty->kind == eType_proc);
+          if(!type_unif(node->ty->proc.ret, node->eval_ty))
           {
             success = compile_error(node->src_loc, "type error (bin expr)");
           }
@@ -1354,56 +1157,57 @@ bool eval_types(AstNode* node)
 
     case eAstNode_un_expr:
       {
-        AstNode* operand = ATTR(node, ast_node, operand);
+        AstNode* operand = node->un_expr.operand;
 
-        Type* expr_ty = ATTR(node, type, eval_type) = new_typevar();
+        node->eval_ty = new_typevar();
         if(success = eval_types(operand))
         {
-          Type* operand_ty = ATTR(operand, type, eval_type);
-
-          eOperator op_kind = ATTR(node, op_kind, op_kind);
-          if(op_kind == eOperator_neg || op_kind == eOperator_logic_not)
+          switch(node->un_expr.op_kind)
           {
-            if(!type_unif(expr_ty, operand_ty))
-            {
-              success = compile_error(node->src_loc, "type error (un expr)");
-            }
-          }
-          else if(op_kind == eOperator_deref)
-          {
-            Type* pointee_ty = new_typevar();
-            if(type_unif(operand_ty, new_pointer_type(pointee_ty)))
-            {
-              if(!type_unif(expr_ty, pointee_ty))
+            case eOperator_neg:
+            case eOperator_logic_not:
+              if(!type_unif(node->eval_ty, operand->eval_ty))
               {
                 success = compile_error(node->src_loc, "type error (un expr)");
               }
-            }
-            else
-              success = compile_error(operand->src_loc, "pointer type expected");
+              break;
+            case eOperator_deref:
+              {
+                Type* pointee_ty = new_typevar();
+                if(type_unif(operand->eval_ty, new_pointer_type(pointee_ty)))
+                {
+                  if(!type_unif(node->eval_ty, pointee_ty))
+                  {
+                    success = compile_error(node->src_loc, "type error (un expr)");
+                  }
+                }
+                else
+                  success = compile_error(operand->src_loc, "pointer type expected");
+              }
+              break;
+            case eOperator_address_of:
+              {
+                if(operand->eval_ty->kind == eType_array)
+                {
+                  // ptr(T) == ptr(array(T))
+                  success = type_unif(node->eval_ty, new_pointer_type(operand->eval_ty->array.elem));
+                }
+                else
+                {
+                  success = type_unif(node->eval_ty, new_pointer_type(operand->eval_ty));
+                }
+                if(!success)
+                {
+                  compile_error(node->src_loc, "type error (un expr)");
+                }
+              }
+              break;
+            default:
+              assert(0);
           }
-          else if(op_kind == eOperator_address_of)
-          {
-            if(operand_ty->kind == eType_array)
-            {
-              // ptr(T) == ptr(array(T))
-              success = type_unif(expr_ty, new_pointer_type(operand_ty->array.elem));
-            }
-            else
-            {
-              success = type_unif(expr_ty, new_pointer_type(operand_ty));
-            }
-            if(!success)
-            {
-              compile_error(node->src_loc, "type error (un expr)");
-            }
-          }
-          else
-            assert(0);
 
-          Type* type = ATTR(node, type, type);
-          assert(type->kind == eType_proc);
-          if(!type_unif(type->proc.ret, expr_ty))
+          assert(node->ty->kind == eType_proc);
+          if(!type_unif(node->ty->proc.ret, node->eval_ty))
           {
             success = compile_error(node->src_loc, "type error (un expr)");
           }
@@ -1411,19 +1215,18 @@ bool eval_types(AstNode* node)
       }
       break;
 
-    case eAstNode_proc_decl:
+    case eAstNode_proc:
       {
-        bool is_extern = ATTR(node, bool_val, is_extern);
-        if(!is_extern)
+        if(!node->proc.is_extern)
         {
-          success = eval_types(ATTR(node, ast_node, body));
+          success = eval_types(node->proc.body);
         }
       }
       break;
 
-    case eAstNode_proc_occur:
+    case eAstNode_call:
       {
-        for(ListItem* list_item = ATTR(node, list, actual_args)->first;
+        for(ListItem* list_item = node->call.actual_args->first;
             list_item && success;
             list_item = list_item->next)
         {
@@ -1432,15 +1235,15 @@ bool eval_types(AstNode* node)
         if(!success)
           break;
 
-        AstNode* proc_decl = ATTR(node, ast_node, proc_decl);
-        if(!proc_decl)
+        AstNode* proc = node->call.proc;
+        if(!proc)
         {
-          Symbol* occur_sym = ATTR(node, symbol, occur_sym);
+          Symbol* occur_sym = node->call.occur_sym;
           Symbol* decl_sym = lookup_decl_by_kind(occur_sym->name, occur_sym->scope,
               (eSymbol[]){eSymbol_proc, eSymbol_extern_proc, eSymbol_None});
           if(decl_sym)
           {
-            proc_decl = ATTR(node, ast_node, proc_decl) = decl_sym->ast_node;
+            proc = node->call.proc = decl_sym->ast_node;
           }
           else
             success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
@@ -1449,24 +1252,24 @@ bool eval_types(AstNode* node)
           break;
 
         Type* args_ty = basic_type_void;
-        ListItem* list_item = ATTR(node, list, actual_args)->first;
+        ListItem* list_item = node->call.actual_args->first;
         if(list_item)
         {
           AstNode* arg = ITEM(list_item, ast_node);
-          args_ty = ATTR(arg, type, eval_type);
+          args_ty = arg->eval_ty;
 
           for(list_item = list_item->next;
               list_item;
               list_item = list_item->next)
           {
             AstNode* arg = ITEM(list_item, ast_node);
-            args_ty = new_product_type(args_ty, ATTR(arg, type, eval_type));
+            args_ty = new_product_type(args_ty, arg->eval_ty);
           }
         }
 
-        Type* ret_ty = ATTR(proc_decl, type, type)->proc.ret;
-        Type* occur_ty = ATTR(node, type, type); assert(occur_ty->kind == eType_proc);
-        Type* decl_ty = ATTR(proc_decl, type, type); assert(decl_ty->kind == eType_proc);
+        Type* ret_ty = proc->ty->proc.ret;
+        Type* occur_ty = node->ty; assert(occur_ty->kind == eType_proc);
+        Type* decl_ty = proc->ty; assert(decl_ty->kind == eType_proc);
         if(type_unif(occur_ty->proc.args, args_ty) && type_unif(occur_ty->proc.ret, ret_ty))
         {
           if(!type_unif(decl_ty, occur_ty))
@@ -1481,20 +1284,20 @@ bool eval_types(AstNode* node)
 
     case eAstNode_ret_stmt:
       {
-        AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
+        AstNode* ret_expr = node->ret_stmt.ret_expr;
         Type* ret_expr_ty = basic_type_void;
         if(ret_expr)
         {
           if(success = eval_types(ret_expr))
           {
-            ret_expr_ty = ATTR(ret_expr, type, type);
+            ret_expr_ty = ret_expr->ty;
           }
         }
 
         if(success)
         {
-          AstNode* proc = ATTR(node, ast_node, proc_decl);
-          Type* proc_ret_ty = ATTR(proc, type, type)->proc.ret;
+          AstNode* proc = node->ret_stmt.proc;
+          Type* proc_ret_ty = proc->ty->proc.ret;
           if(!type_unif(ret_expr_ty, proc_ret_ty))
           {
             success = compile_error(node->src_loc, "type error (return stmt)");
@@ -1505,11 +1308,10 @@ bool eval_types(AstNode* node)
 
     case eAstNode_while_stmt:
       {
-        AstNode* cond_expr = ATTR(node, ast_node, cond_expr);
-        if(success = eval_types(cond_expr) && eval_types(ATTR(node, ast_node, body)))
+        AstNode* cond_expr = node->while_stmt.cond_expr;
+        if(success = eval_types(cond_expr) && eval_types(node->while_stmt.body))
         {
-          Type* cond_ty = ATTR(cond_expr, type, eval_type);
-          if(!type_unif(cond_ty, basic_type_bool))
+          if(!type_unif(cond_expr->ty, basic_type_bool))
           {
             success = compile_error(cond_expr->src_loc, "bool type expected");
           }
@@ -1519,8 +1321,8 @@ bool eval_types(AstNode* node)
 
     case eAstNode_if_stmt:
       {
-        AstNode* body = ATTR(node, ast_node, body);
-        AstNode* else_body = ATTR(node, ast_node, else_body);
+        AstNode* body = node->if_stmt.body;
+        AstNode* else_body = node->if_stmt.else_body;
 
         if(success = eval_types(body))
         {
@@ -1530,11 +1332,10 @@ bool eval_types(AstNode* node)
           }
         }
 
-        AstNode* cond_expr = ATTR(node, ast_node, cond_expr);
+        AstNode* cond_expr = node->if_stmt.cond_expr;
         if(success && (success = eval_types(cond_expr)))
         {
-          Type* cond_ty = ATTR(cond_expr, type, eval_type);
-          if(!type_unif(cond_ty, basic_type_bool))
+          if(!type_unif(cond_expr->eval_ty, basic_type_bool))
           {
             success = compile_error(cond_expr->src_loc, "bool type expected");
           }
@@ -1542,12 +1343,11 @@ bool eval_types(AstNode* node)
       }
       break;
 
-    case eAstNode_var_decl:
-    case eAstNode_var_occur:
+    case eAstNode_var:
+    //case eAstNode_var_occur:
     case eAstNode_lit:
-    case eAstNode_type_decl:
-    case eAstNode_break_stmt:
-    case eAstNode_continue_stmt:
+    case eAstNode_type:
+    case eAstNode_loop_ctrl:
     case eAstNode_empty:
     case eAstNode_asm_block:
       break;
@@ -1562,17 +1362,12 @@ bool node_resolve_type(AstNode* node)
 {
   bool success = true;
 
-  Type* type = ATTR(node, type, type);
-  if(success = resolve_type(type, &type))
+  if(success = resolve_type(node->ty, &node->ty))
   {
-    compute_type_width(type);
-    ATTR(node, type, type) = type;
-
-    type = ATTR(node, type, eval_type);
-    if(success = resolve_type(type, &type))
+    compute_type_width(node->ty);
+    if(success = resolve_type(node->eval_ty, &node->eval_ty))
     {
-      compute_type_width(type);
-      ATTR(node, type, eval_type) = type;
+      compute_type_width(node->eval_ty);
     }
     else
       assert(0);
@@ -1590,14 +1385,12 @@ bool resolve_types(AstNode* node)
   switch(node->kind)
   {
     case eAstNode_module:
-      {
-        success = resolve_types(ATTR(node, ast_node, body));
-      }
+      success = resolve_types(node->module.body);
       break;
 
     case eAstNode_block:
       {
-        for(ListItem* list_item = ATTR(node, list, nodes)->first;
+        for(ListItem* list_item = node->block.nodes->first;
             list_item && success;
             list_item = list_item->next)
         {
@@ -1607,51 +1400,43 @@ bool resolve_types(AstNode* node)
       break;
 
     case eAstNode_stmt:
+      if(node->stmt.stmt)
       {
-        AstNode* actual_stmt = ATTR(node, ast_node, stmt);
-        if(actual_stmt)
-        {
-          success = resolve_types(actual_stmt);
-        }
+        success = resolve_types(node->stmt.stmt);
       }
       break;
 
-    case eAstNode_var_decl:
+    case eAstNode_var:
+      if(success = node_resolve_type(node))
       {
-        if(success = node_resolve_type(node))
-        {
-          ATTR(node, symbol, decl_sym)->type = ATTR(node, type, type);
-        }
+        node->var.decl_sym->ty = node->ty;
       }
       break;
 
+#if 0
     case eAstNode_var_occur:
       {
         if(success = node_resolve_type(node))
         {
-          ATTR(node, symbol, occur_sym)->type = ATTR(node, type, type);
+          ATTR(node, symbol, occur_sym)->ty = ATTR(node, type, type);
         }
       }
       break;
+#endif
 
     case eAstNode_bin_expr:
-      {
-        success = resolve_types(ATTR(node, ast_node, left_operand))
-          && resolve_types(ATTR(node, ast_node, right_operand))
-          && node_resolve_type(node);
-      }
+      success = resolve_types(node->bin_expr.left_operand)
+        && resolve_types(node->bin_expr.right_operand)
+        && node_resolve_type(node);
       break;
 
     case eAstNode_un_expr:
-      {
-        success = resolve_types(ATTR(node, ast_node, operand))
-          && node_resolve_type(node);
-      }
+      success = resolve_types(node->un_expr.operand) && node_resolve_type(node);
       break;
 
-    case eAstNode_proc_decl:
+    case eAstNode_proc:
       {
-        for(ListItem* list_item = ATTR(node, list, formal_args)->first;
+        for(ListItem* list_item = node->proc.formal_args->first;
             list_item && success;
             list_item = list_item->next)
         {
@@ -1662,17 +1447,16 @@ bool resolve_types(AstNode* node)
 
         if(success = node_resolve_type(node))
         {
-          ATTR(node, symbol, decl_sym)->type = ATTR(node, type, type);
+          node->proc.decl_sym->ty = node->ty;
 
-          AstNode* ret_var = ATTR(node, ast_node, ret_var);
+          AstNode* ret_var = node->proc.ret_var;
           if(success = node_resolve_type(ret_var))
           {
-            ATTR(ret_var, symbol, decl_sym)->type = ATTR(ret_var, type, type);
+            node->id.decl_sym->ty = ret_var->ty;
 
-            AstNode* body = ATTR(node, ast_node, body);
-            bool is_extern = ATTR(node, bool_val, is_extern);
-            if(!is_extern)
+            if(!node->proc.is_extern)
             {
+              AstNode* body = node->proc.body;
               success = resolve_types(body) && node_resolve_type(body);
             }
           }
@@ -1680,9 +1464,9 @@ bool resolve_types(AstNode* node)
       }
       break;
 
-    case eAstNode_proc_occur:
+    case eAstNode_call:
       {
-        for(ListItem* list_item = ATTR(node, list, actual_args)->first;
+        for(ListItem* list_item = node->call.actual_args->first;
             list_item && success;
             list_item = list_item->next)
         {
@@ -1690,60 +1474,47 @@ bool resolve_types(AstNode* node)
         }
         if(success && (success = node_resolve_type(node)))
         {
-          ATTR(node, symbol, occur_sym)->type = ATTR(node, type, type);
+          node->call.occur_sym->ty = node->ty;
         }
       }
       break;
 
     case eAstNode_ret_stmt:
+      if(success = node_resolve_type(node))
       {
-        if(success = node_resolve_type(node))
+        if(node->ret_stmt.ret_expr)
         {
-          AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
-          if(ret_expr)
-          {
-            success = resolve_types(ret_expr);
-          }
+          success = resolve_types(node->ret_stmt.ret_expr);
         }
       }
       break;
 
     case eAstNode_while_stmt:
-      {
-        success = resolve_types(ATTR(node, ast_node, cond_expr))
-          && resolve_types(ATTR(node, ast_node, body));
-      }
+      success = resolve_types(node->while_stmt.cond_expr) && resolve_types(node->while_stmt.body);
       break;
 
     case eAstNode_if_stmt:
       {
-        success = resolve_types(ATTR(node, ast_node, cond_expr))
-          && resolve_types(ATTR(node, ast_node, body));
-        AstNode* else_body = ATTR(node, ast_node, else_body);
-        if(else_body)
+        success = resolve_types(node->if_stmt.cond_expr) && resolve_types(node->if_stmt.body);
+        if(node->if_stmt.else_body)
         {
-          success = resolve_types(else_body);
+          success = resolve_types(node->if_stmt.else_body);
         }
       }
       break;
 
     case eAstNode_lit:
+      success = node_resolve_type(node);
+      break;
+
+    case eAstNode_type:
+      if(success = node_resolve_type(node))
       {
-        success = node_resolve_type(node);
+        node->type.decl_sym->ty = node->ty;
       }
       break;
 
-    case eAstNode_type_decl:
-      {
-        if(success = node_resolve_type(node))
-        {
-          ATTR(node, symbol, decl_sym)->type = ATTR(node, type, type);
-        }
-      }
-      break;
-
-    case eAstNode_break_stmt:
-    case eAstNode_continue_stmt:
+    case eAstNode_loop_ctrl:
     case eAstNode_empty:
     case eAstNode_asm_block:
       break;
@@ -1756,64 +1527,49 @@ bool resolve_types(AstNode* node)
 
 bool check_types(AstNode* node)
 {
-  assert(node->gen == eAstGen_gen1);
   bool success = true;
 
   switch(node->kind)
   {
     case eAstNode_module:
-      {
-        success = check_types(ATTR(node, ast_node, body));
-      }
+      success = check_types(node->module.body);
       break;
 
     case eAstNode_block:
+      for(ListItem* list_item = node->block.nodes->first;
+          list_item && success;
+          list_item = list_item->next)
       {
-        for(ListItem* list_item = ATTR(node, list, nodes)->first;
-            list_item && success;
-            list_item = list_item->next)
-        {
-          success = check_types(ITEM(list_item, ast_node));
-        }
+        success = check_types(ITEM(list_item, ast_node));
       }
       break;
 
     case eAstNode_stmt:
+      if(node->stmt.stmt)
       {
-        AstNode* actual_stmt = ATTR(node, ast_node, stmt);
-        if(actual_stmt)
-        {
-          success = check_types(actual_stmt);
-        }
+        success = check_types(node->stmt.stmt);
       }
       break;
 
-    case eAstNode_var_decl:
+    case eAstNode_var:
+      if(node->ty == basic_type_void)
       {
-        Type* var_ty = ATTR(node, type, type);
-        if(var_ty == basic_type_void)
-        {
-          success = compile_error(node->src_loc, "variable type cannot be `void`");
-        }
+        success = compile_error(node->src_loc, "variable type cannot be `void`");
       }
       break;
 
     case eAstNode_bin_expr:
       {
-        AstNode* right_operand = ATTR(node, ast_node, right_operand);
-        AstNode* left_operand = ATTR(node, ast_node, left_operand);
+        AstNode* right_operand = node->bin_expr.right_operand;
+        AstNode* left_operand = node->bin_expr.left_operand;
 
         if(success = check_types(right_operand) && check_types(left_operand))
         {
-          Type* expr_ty = ATTR(node, type, type); assert(expr_ty->kind == eType_proc);
-          Type* args_ty = expr_ty->proc.args; assert(args_ty->kind == eType_product);
+          assert(node->ty->kind == eType_proc);
+          Type* args_ty = node->ty->proc.args; assert(args_ty->kind == eType_product);
+          Type* ret_ty = node->ty->proc.ret;
 
-          Type* ret_ty = expr_ty->proc.ret;
-          Type* left_arg_ty = args_ty->product.left;
-          Type* right_arg_ty = args_ty->product.right;
-
-          eOperator op_kind = ATTR(node, op_kind, op_kind);
-          switch(op_kind)
+          switch(node->bin_expr.op_kind)
           {
             case eOperator_add:
             case eOperator_sub:
@@ -1826,12 +1582,12 @@ bool check_types(AstNode* node)
                     || (ret_ty->kind == eType_pointer))
                 {
                   ;//ok
-                  assert(types_are_equal(ret_ty, left_arg_ty) && types_are_equal(left_arg_ty, right_arg_ty));
+                  assert(types_are_equal(ret_ty, args_ty->product.left) && types_are_equal(args_ty->product.left, args_ty->product.right));
                 }
                 else
                 {
                   success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                      get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
+                      get_operator_kind_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
                 }
               }
               break;
@@ -1841,12 +1597,12 @@ bool check_types(AstNode* node)
                 if(types_are_equal(ret_ty, basic_type_int))
                 {
                   ;//ok
-                  assert(types_are_equal(ret_ty, left_arg_ty) && types_are_equal(left_arg_ty, right_arg_ty));
+                  assert(types_are_equal(ret_ty, args_ty->product.left) && types_are_equal(args_ty->product.left, args_ty->product.right));
                 }
                 else
                 {
                   success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                      get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
+                      get_operator_kind_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
                 }
               }
               break;
@@ -1855,21 +1611,21 @@ bool check_types(AstNode* node)
             case eOperator_logic_or:
             case eOperator_logic_not:
               {
-                if(types_are_equal(left_arg_ty, basic_type_bool) && types_are_equal(left_arg_ty, right_arg_ty))
+                if(types_are_equal(args_ty->product.left, basic_type_bool) && types_are_equal(args_ty->product.left, args_ty->product.right))
                 {
                   ;//ok
                   assert(ret_ty == basic_type_bool);
                 }
                 else
                   success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                      get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
+                      get_operator_kind_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
               }
               break;
 
             case eOperator_bit_and:
             case eOperator_bit_or:
             case eOperator_bit_xor:
-              if(types_are_equal(left_arg_ty, basic_type_int) && types_are_equal(right_arg_ty, basic_type_int))
+              if(types_are_equal(args_ty->product.left, basic_type_int) && types_are_equal(args_ty->product.right, basic_type_int))
               {
                 ;//ok
               }
@@ -1879,7 +1635,7 @@ bool check_types(AstNode* node)
 
             case eOperator_bit_shift_left:
             case eOperator_bit_shift_right:
-              if(types_are_equal(left_arg_ty, basic_type_int) && types_are_equal(right_arg_ty, basic_type_char))
+              if(types_are_equal(args_ty->product.left, basic_type_int) && types_are_equal(args_ty->product.right, basic_type_char))
               {
                 ;//ok
               }
@@ -1894,10 +1650,10 @@ bool check_types(AstNode* node)
             case eOperator_eq:
             case eOperator_not_eq:
               {
-                if(types_are_equal(left_arg_ty, basic_type_int)
-                    || types_are_equal(left_arg_ty, basic_type_char)
-                    || types_are_equal(left_arg_ty, basic_type_float)
-                    && types_are_equal(left_arg_ty, right_arg_ty))
+                if(types_are_equal(args_ty->product.left, basic_type_int)
+                    || types_are_equal(args_ty->product.left, basic_type_char)
+                    || types_are_equal(args_ty->product.left, basic_type_float)
+                    && types_are_equal(args_ty->product.left, args_ty->product.right))
                 {
                   ;//ok
                   assert(types_are_equal(ret_ty, basic_type_bool));
@@ -1905,7 +1661,7 @@ bool check_types(AstNode* node)
                 else
                 {
                   success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                      get_operator_kind_printstr(op_kind), get_type_printstr(args_ty));
+                      get_operator_kind_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
                 }
               }
               break;
@@ -1913,7 +1669,7 @@ bool check_types(AstNode* node)
             case eOperator_assign:
               {
                 ;//ok
-                assert(types_are_equal(left_arg_ty, right_arg_ty) && types_are_equal(ret_ty, left_arg_ty));
+                assert(types_are_equal(args_ty->product.left, args_ty->product.right) && types_are_equal(ret_ty, args_ty->product.left));
               }
               break;
 
@@ -1930,45 +1686,45 @@ bool check_types(AstNode* node)
 
             case eOperator_cast:
               {
-                if(!types_are_equal(left_arg_ty, right_arg_ty))
+                if(!types_are_equal(args_ty->product.left, args_ty->product.right))
                 {
                   success = false;
 
-                  if(types_are_equal(left_arg_ty, basic_type_int))
+                  if(types_are_equal(args_ty->product.left, basic_type_int))
                   {
                     // int <- float | bool | pointer | char
-                    success = types_are_equal(right_arg_ty, basic_type_float)
-                      || types_are_equal(right_arg_ty, basic_type_bool)
-                      || types_are_equal(right_arg_ty, basic_type_char)
-                      || (right_arg_ty->kind == eType_pointer);
+                    success = types_are_equal(args_ty->product.right, basic_type_float)
+                      || types_are_equal(args_ty->product.right, basic_type_bool)
+                      || types_are_equal(args_ty->product.right, basic_type_char)
+                      || (args_ty->product.right->kind == eType_pointer);
                   }
-                  else if(types_are_equal(left_arg_ty, basic_type_char))
+                  else if(types_are_equal(args_ty->product.left, basic_type_char))
                   {
                     // char <- int
-                    success = types_are_equal(right_arg_ty, basic_type_int);
+                    success = types_are_equal(args_ty->product.right, basic_type_int);
                   }
-                  else if(types_are_equal(left_arg_ty, basic_type_float))
+                  else if(types_are_equal(args_ty->product.left, basic_type_float))
                   {
                     // float <- int
-                    success = types_are_equal(right_arg_ty, basic_type_int);
+                    success = types_are_equal(args_ty->product.right, basic_type_int);
                   }
-                  else if(left_arg_ty->kind == eType_pointer)
+                  else if(args_ty->product.left->kind == eType_pointer)
                   {
                     // pointer <- pointer | array | int
-                    success = (right_arg_ty->kind == eType_pointer)
-                      || (right_arg_ty->kind == eType_array)
-                      || types_are_equal(right_arg_ty, basic_type_int);
+                    success = (args_ty->product.right->kind == eType_pointer)
+                      || (args_ty->product.right->kind == eType_array)
+                      || types_are_equal(args_ty->product.right, basic_type_int);
                   }
-                  else if(left_arg_ty->kind == eType_array)
+                  else if(args_ty->product.left->kind == eType_array)
                   {
                     // array <- pointer | array
-                    success = (right_arg_ty->kind == eType_pointer) || (right_arg_ty->kind == eType_array);
+                    success = (args_ty->product.right->kind == eType_pointer) || (args_ty->product.right->kind == eType_array);
                   }
 
                   if(!success)
                   {
                     compile_error(node->src_loc, "invalid cast `%s` <- `%s`",
-                        get_type_printstr(left_arg_ty), get_type_printstr(right_arg_ty));
+                        get_type_printstr(args_ty->product.left), get_type_printstr(args_ty->product.right));
                   }
                 }
               }
@@ -1982,14 +1738,12 @@ bool check_types(AstNode* node)
       break;
 
     case eAstNode_un_expr:
-      {
-        success = check_types(ATTR(node, ast_node, operand));
-      }
+      success = check_types(node->un_expr.operand);
       break;
 
-    case eAstNode_proc_decl:
+    case eAstNode_proc:
       {
-        for(ListItem* list_item = ATTR(node, list, formal_args)->first;
+        for(ListItem* list_item = node->proc.formal_args->first;
             list_item && success;
             list_item = list_item->next)
         {
@@ -1998,17 +1752,16 @@ bool check_types(AstNode* node)
         if(!success)
           break;
 
-        bool is_extern = ATTR(node, bool_val, is_extern);
-        if(!is_extern)
+        if(!node->proc.is_extern)
         {
-          success = check_types(ATTR(node, ast_node, body));
+          success = check_types(node->proc.body);
         }
       }
       break;
 
-    case eAstNode_proc_occur:
+    case eAstNode_call:
       {
-        for(ListItem* list_item = ATTR(node, list, actual_args)->first;
+        for(ListItem* list_item = node->call.actual_args->first;
             list_item && success;
             list_item = list_item->next)
         {
@@ -2019,38 +1772,33 @@ bool check_types(AstNode* node)
 
     case eAstNode_ret_stmt:
       {
-        AstNode* ret_expr = ATTR(node, ast_node, ret_expr);
-        if(ret_expr)
+        if(node->ret_stmt.ret_expr)
         {
-          success = check_types(ret_expr);
+          success = check_types(node->ret_stmt.ret_expr);
         }
       }
       break;
 
     case eAstNode_while_stmt:
       {
-        success = check_types(ATTR(node, ast_node, cond_expr))
-          && check_types(ATTR(node, ast_node, body));
+        success = check_types(node->while_stmt.cond_expr) && check_types(node->while_stmt.body);
       }
       break;
 
     case eAstNode_if_stmt:
       {
-        success = check_types(ATTR(node, ast_node, cond_expr))
-          && check_types(ATTR(node, ast_node, body));
-        AstNode* else_body = ATTR(node, ast_node, else_body);
-        if(else_body)
+        success = check_types(node->if_stmt.cond_expr) && check_types(node->if_stmt.body);
+        if(node->if_stmt.else_body)
         {
-          success = check_types(else_body);
+          success = check_types(node->if_stmt.else_body);
         }
       }
       break;
 
-    case eAstNode_var_occur:
+    //case eAstNode_var_occur:
     case eAstNode_lit:
-    case eAstNode_type_decl:
-    case eAstNode_break_stmt:
-    case eAstNode_continue_stmt:
+    case eAstNode_type:
+    case eAstNode_loop_ctrl:
     case eAstNode_empty:
     case eAstNode_asm_block:
       break;

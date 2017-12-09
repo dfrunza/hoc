@@ -90,21 +90,15 @@ int compute_type_width(Type* type)
   switch(type->kind)
   {
     case eType_array:
-      {
-        type->width = type->array.size * compute_type_width(type->array.elem);
-      }
+      type->width = type->array.size * compute_type_width(type->array.elem);
       break;
 
     case eType_product:
-      {
-        type->width = compute_type_width(type->product.left) + compute_type_width(type->product.right);
-      }
+      type->width = compute_type_width(type->product.left) + compute_type_width(type->product.right);
       break;
 
     case eType_proc:
-      {
-        type->width = compute_type_width(type->proc.ret) + compute_type_width(type->proc.args);
-      }
+      type->width = compute_type_width(type->proc.ret) + compute_type_width(type->proc.args);
       break;
 
     case eType_basic:
@@ -116,15 +110,12 @@ int compute_type_width(Type* type)
           case eBasicType_bool:
             type->width = 4;
             break;
-
           case eBasicType_char:
             type->width = 1;
             break;
-
           case eBasicType_void:
             type->width = 0;
             break;
-
           default:
             assert(0);
         }
@@ -132,9 +123,7 @@ int compute_type_width(Type* type)
       break;
 
     case eType_pointer:
-      {
-        type->width = 4;
-      }
+      type->width = 4;
       break;
 
     default:

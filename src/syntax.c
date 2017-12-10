@@ -449,7 +449,7 @@ bool parse_cast(TokenStream* input, AstNode** node)
   bool success = true;
   if(input->token.kind == eToken_open_parens)
   {
-    if(success = (get_next_token(input) && input->token.kind == eToken_type))
+    if(success = (get_next_token(input) && input->token.kind == eToken_cast))
     {
       AstNode* cast = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
       cast->bin_expr.op_kind = eOperator_cast;
@@ -486,7 +486,7 @@ bool parse_selector(TokenStream* input, AstNode** node)
       {
         if(success = get_next_token(input))
         {
-          if(input->token.kind == eToken_type)
+          if(input->token.kind == eToken_cast)
           {
             putback_token(input);
             success = parse_cast(input, node);

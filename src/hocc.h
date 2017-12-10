@@ -120,6 +120,7 @@ typedef enum
   eToken_var,
   eToken_asm,
   eToken_type,
+  eToken_cast,
   eToken_if,
   eToken_else,
   eToken_while,

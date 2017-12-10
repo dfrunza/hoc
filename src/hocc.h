@@ -703,8 +703,6 @@ typedef struct AstNode
     {
       AstNode* cond_expr;
       AstNode* body;
-      List var_list;
-      List stmt_list;
       AstNode* else_body;
     }
     if_stmt;
@@ -728,8 +726,6 @@ typedef struct AstNode
       AstNode* ret_var;
       List* formal_args;
       List formal_arg_list;
-      List var_list;
-      List stmt_list;
       AstNode* ret_type;
       AstNode* body;
       Symbol* decl_sym;

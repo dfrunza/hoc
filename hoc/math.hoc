@@ -1,6 +1,6 @@
 proc int max(int a, int b)
 {
-  var int result = a;
+  var int result; result = a;
   if(a < b)
     result = b;
   return result;
@@ -8,7 +8,7 @@ proc int max(int a, int b)
 
 proc int min(int a, int b)
 {
-  var int result = a;
+  var int result; restult = a;
   if(a > b)
     result = b;
   return result;
@@ -16,7 +16,7 @@ proc int min(int a, int b)
 
 proc float maxf(float a, float b)
 {
-  var float result = a;
+  var float result; result = a;
   if(a < b)
     result = b;
   return result;
@@ -24,7 +24,7 @@ proc float maxf(float a, float b)
 
 proc float minf(float a, float b)
 {
-  var float result = a;
+  var float result; result = a;
   if(a > b)
     result = b;
   return result;
@@ -44,37 +44,38 @@ proc float absf(float a)
   return a;
 }
 
+proc int gcd_recurs(int a, int b)
+{
+  var int result; result = a;
+  if(b != 0)
+  {
+    result = b;
+    var int r; r = a % b;
+    if(r == 0)
+      result = b;
+    else
+      result = gcd_recurs(b, r);
+  }
+  return result;
+}
+
+proc int gcd_iter(int a, int b)
+{
+  while(a != b)
+  {
+    if(a > b)
+      a = a - b;
+    else
+      b = b - a;
+  }
+  return a;
+}
+
 /*
    Greatest Common Divisor
  */
 proc int gcd(int a, int b)
 {
-  proc int gcd_recurs(int a, int b)
-  {
-    var int result = a;
-    if(b != 0)
-    {
-      result = b;
-      var int r = a % b;
-      if(r == 0)
-        result = b;
-      else
-        result = gcd_recurs(b, r);
-    }
-    return result;
-  }
-
-  proc int gcd_iter(int a, int b)
-  {
-    while(a != b)
-    {
-      if(a > b)
-        a = a - b;
-      else
-        b = b - a;
-    }
-    return a;
-  }
 
   return gcd_recurs(abs(a), abs(b));
   /*
@@ -91,10 +92,10 @@ proc int lcm(int a, int b)
 
 proc float ipow(float a, int p)
 {
-  var bool inv = (p < 0);
+  var bool inv; inv = (p < 0);
   p = abs(p);
 
-  var float result = 1.0;
+  var float result; result = 1.0;
   if(p != 0)
   {
     while(p > 0)
@@ -108,27 +109,27 @@ proc float ipow(float a, int p)
   return result;
 }
 
+proc float sqrt_iter(float x, float g)
+{
+  var float r; r = x/g;
+
+  if(r != g)
+  {
+    r = (r+g)/2.0;
+    if(absf(r-g) == 1.0)
+      r = minf(r, g);
+  }
+  return r;
+}
+
 /*
    Computes the largest number 'r' such that 'r*r <= x'
 FIXME: sqrt(100.0) gives a funky result.
  */
 proc float sqrt(float x)
 {
-  proc float sqrt_iter(float x, float g)
-  {
-    var float r = x/g;
-
-    if(r != g)
-    {
-      r = (r+g)/2.0;
-      if(absf(r-g) == 1.0)
-        r = minf(r, g);
-    }
-    return r;
-  }
-
-  var float g = x;
-  var float r = 1.0;
+  var float g; g = x;
+  var float r; r = 1.0;
 
   while((g > 0.0) && (g != r))
   {
@@ -144,15 +145,15 @@ proc float sqrt(float x)
 */
 proc int floor_log_b(int b, float n)
 {
-  var int x = 0;
-  var float b_pow_x = 1.0;
+  var int x; x = 0;
+  var float b_pow_x; b_pow_x = 1.0;
 
   if(n > 1.0)
   {
     while(n > b_pow_x)
     {
       x = x + 1;
-      b_pow_x = ipow((type float)b, x);
+      b_pow_x = ipow((cast float)b, x);
     }
     x = x - 1;
   }
@@ -160,7 +161,7 @@ proc int floor_log_b(int b, float n)
   {
     while(b_pow_x > n)
     {
-      b_pow_x = ipow((type float)b, x);
+      b_pow_x = ipow((cast float)b, x);
       x = x - 1;
     }
     x = x + 1;
@@ -172,34 +173,36 @@ proc int floor_log_b(int b, float n)
 /* Returns the number of significand 10-base digits */
 proc int fp_bin_to_dec(float v, int* significand, int* exponent)
 {
-  var float v_abs = absf(v);
-  var int x = floor_log_b(10, v_abs) + 1;
+  var float v_abs; v_abs = absf(v);
+  var int x; x = floor_log_b(10, v_abs) + 1;
   *exponent = x;
 
-  var float B_power_x = ipow(10.0, -x);
-  var float v_prime = v_abs * B_power_x;
+  var float B_power_x; B_power_x = ipow(10.0, -x);
+  var float v_prime; v_prime = v_abs * B_power_x;
 
-  var int k = 0;
-  var float R = v_prime;
-  var float M = ipow(2.0, -23) / 2.0; /* -23 is the width of the significand of single precision binary FP */
+  var int k; k = 0;
+  var float R; R = v_prime;
+  var float M; M = ipow(2.0, -23) / 2.0; /* -23 is the width of the significand of single precision binary FP */
   var int U;
 
-  var bool run_loop = true;
+  var bool run_loop;
+  run_loop = true;
   while(run_loop)
   {
     k = k + 1;
-    U = (type int)(R * 10.0);
-    R = (R * 10.0) - (type float)U;
+    U = (cast int)(R * 10.0);
+    R = (R * 10.0) - (cast float)U;
     M = M * 10.0;
-    *(significand + (type int*)(k*4)) = U;
+    *(significand + (cast int*)(k*4)) = U;
 
     run_loop = (R >= M) && (R <= (1.0 - M));
   }
 
   if(R <= 0.5)
-    *(significand + (type int*)(k*4)) = U;
+    *(significand + (cast int*)(k*4)) = U;
   else
-    *(significand + (type int*)(k*4)) = U + 1;
+    *(significand + (cast int*)(k*4)) = U + 1;
 
   return k;
 }
+

@@ -5,28 +5,36 @@ extern proc void WriteConsoleA(int console_handle, char* buf, int chars_to_write
 extern proc int GetLastError();
 extern proc bool ReadFile(int file_handle, char* buf, int bytes_to_read_count, int* bytes_read_count, void* p_overlapped);
 
-var int stdout = GetStdHandle(-11); /*STD_OUTPUT_HANDLE*/
-var int stdin = GetStdHandle(-10); /*STD_INPUT_HANDLE*/
-var void* heap = VirtualAlloc((type void*)0, 4096, 0x1000/*MEM_COMMIT*/|0x2000/*MEM_RESERVE*/, 0x4/*PAGE_READWRITE*/);
-var int heap_ptr = 0;
+var int stdout;
+var int stdin; 
+var void* heap;
+var int heap_ptr;
 
 proc void* new(int size)
 {
-  var void* mem = heap + (type void*)heap_ptr;
+  var void* mem; mem = heap + (cast void*)heap_ptr;
   heap_ptr = heap_ptr + size;
   return mem;
 }
 
 proc int stdin_read(char* buf, int buf_size)
 {
-  var int bytes_read_count = 0;
-  if(ReadFile(stdin, buf, buf_size, &bytes_read_count, (type void*)0))
+  var int bytes_read_count; bytes_read_count = 0;
+  if(ReadFile(stdin, buf, buf_size, &bytes_read_count, (cast void*)0))
   {
     if((bytes_read_count >= 0) && (bytes_read_count < buf_size))
     {
-      *(buf + (type char*)bytes_read_count) = '\0';
+      *(buf + (cast char*)bytes_read_count) = '\0';
     }
   }
   return bytes_read_count;
+}
+
+proc int startup()
+{
+  stdout = GetStdHandle(-11/*STD_OUTPUT_HANDLE*/);
+  stdin = GetStdHandle(-10/*STD_INPUT_HANDLE*/);
+  heap = VirtualAlloc((cast void*)0, 4096, 0x1000/*MEM_COMMIT*/|0x2000/*MEM_RESERVE*/, 0x4/*PAGE_READWRITE*/);
+  heap_ptr = 0;
 }
 

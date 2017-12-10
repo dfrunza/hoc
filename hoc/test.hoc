@@ -13,3 +13,5 @@ proc void foo()
   a = *(cast int*)a;
 }
 
+
+

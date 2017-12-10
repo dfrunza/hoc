@@ -9,7 +9,7 @@ proc void fizzbuzz(int n)
 {
   if(n > 0)
   {
-    var int i = 1;
+    var int i; i = 1;
     while(i <= n)
     {
       if((i % 15) == 0)
@@ -26,5 +26,4 @@ proc void fizzbuzz(int n)
     }
   }
 }
-
 

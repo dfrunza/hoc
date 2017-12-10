@@ -59,7 +59,8 @@ bool parse_type(TokenStream* input, AstNode** node)
       success = get_next_token(input) && parse_rest_of_type(input, *node, node);
       break;
     default:
-      success = compile_error(&input->src_loc,  "expected `[` or identifier, actual `%s`", get_token_printstr(&input->token));
+      success = compile_error(&input->src_loc, "unexpected `%s`", get_token_printstr(&input->token));
+      break;
   }
   return success;
 }

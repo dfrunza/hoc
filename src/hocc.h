@@ -124,7 +124,6 @@ typedef enum
   eToken_if,
   eToken_else,
   eToken_while,
-  eToken_for,
   eToken_proc,
   eToken_struct,
   eToken_union,
@@ -139,10 +138,10 @@ typedef enum
   eToken_extern,
 
   eToken_id,
-  eToken_int_val,
-  eToken_float_val,
+  eToken_int,
+  eToken_float,
   eToken_string,
-  eToken_char_val,
+  eToken_char,
   eToken_asm_text,
 }
 eToken;
@@ -191,7 +190,7 @@ TokenStream;
   ENUM_MEMBER(eOperator_post_decr),\
   ENUM_MEMBER(eOperator_pre_incr),\
   ENUM_MEMBER(eOperator_post_incr),\
-  ENUM_MEMBER(eOperator_index),\
+  ENUM_MEMBER(eOperator_indexer),\
   ENUM_MEMBER(eOperator_eq),\
   ENUM_MEMBER(eOperator_not_eq),\
   ENUM_MEMBER(eOperator_less),\
@@ -218,7 +217,7 @@ typedef enum
 }
 eOperator;
 
-char* get_operator_kind_printstr(eOperator op)
+char* get_operator_printstr(eOperator op)
 {
   char* str = "???";
   switch(op)
@@ -264,7 +263,7 @@ char* get_operator_kind_printstr(eOperator op)
     case eOperator_post_incr:
       str = "++";
       break;
-    case eOperator_index:
+    case eOperator_indexer:
       str = "[]";
       break;
     case eOperator_eq:
@@ -301,7 +300,7 @@ char* get_operator_kind_printstr(eOperator op)
       str = "|";
       break;
     case eOperator_cast:
-      str = "(cast)";
+      str = "cast";
       break;
   }
   return str;
@@ -310,11 +309,11 @@ char* get_operator_kind_printstr(eOperator op)
 #ifndef eLiteral_MEMBER_LIST
 #define eLiteral_MEMBER_LIST()\
   ENUM_MEMBER(eLiteral_None),\
-  ENUM_MEMBER(eLiteral_int_val),\
-  ENUM_MEMBER(eLiteral_float_val),\
-  ENUM_MEMBER(eLiteral_bool_val),\
-  ENUM_MEMBER(eLiteral_char_val),\
-  ENUM_MEMBER(eLiteral_str_val),
+  ENUM_MEMBER(eLiteral_int),\
+  ENUM_MEMBER(eLiteral_float),\
+  ENUM_MEMBER(eLiteral_bool),\
+  ENUM_MEMBER(eLiteral_char),\
+  ENUM_MEMBER(eLiteral_string),
 #endif
 
 typedef enum
@@ -332,7 +331,7 @@ char* eLiteral_strings[] =
 #undef ENUM_MEMBER
 };
 
-char* get_literal_kind_printstr(eLiteral kind)
+char* get_literal_printstr(eLiteral kind)
 {
   return eLiteral_strings[kind];
 }
@@ -367,7 +366,7 @@ char* eScope_strings[] =
 #undef ENUM_MEMBER
 };
 
-char* get_scope_kind_printstr(eScope kind)
+char* get_scope_printstr(eScope kind)
 {
   return eScope_strings[kind];
 }
@@ -444,7 +443,7 @@ char* eAstNode_strings[] =
 #undef ENUM_MEMBER
 };
 
-char* get_ast_kind_printstr(eAstNode kind)
+char* get_ast_printstr(eAstNode kind)
 {
   return eAstNode_strings[kind];
 }

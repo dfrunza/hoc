@@ -7,7 +7,6 @@ Token keyword_list[] =
   {eToken_if, "if"},
   {eToken_else, "else"},
   {eToken_while, "while"},
-  {eToken_for, "for"},
   {eToken_return, "return"},
   {eToken_break, "break"},
   {eToken_continue, "continue"},
@@ -267,9 +266,6 @@ char* get_token_printstr(Token* token)
     case eToken_while:
       result = "while";
       break;
-    case eToken_for:
-      result = "for";
-      break;
     case eToken_proc:
       result = "proc";
       break;
@@ -313,14 +309,14 @@ char* get_token_printstr(Token* token)
       result = "extern";
       break;
     case eToken_id:
-    case eToken_int_val:
-    case eToken_float_val:
+    case eToken_int:
+    case eToken_float:
       result = token->lexeme;
       break;
     case eToken_string:
       result = token->str_val; // TODO: Substitute non-printable chars
       break;
-    case eToken_char_val:
+    case eToken_char:
     case eToken_unknown_char:
       print_char(result = char_print_buf, token->char_val);
       break;
@@ -490,13 +486,13 @@ loop:
 
     if(is_float)
     {
-      token->kind = eToken_float_val;
+      token->kind = eToken_float;
       token->float_val = mem_push_struct(arena, float);
       h_sscanf(digit_buf, "%f", token->float_val);
     }
     else
     {
-      token->kind = eToken_int_val;
+      token->kind = eToken_int;
       token->int_val = mem_push_struct(arena, int);
       if(is_hex)
         h_sscanf(digit_buf, "%x", token->int_val);
@@ -610,7 +606,7 @@ loop:
       else
       {
         token->char_val = *lexeme;
-        token->kind = eToken_char_val;
+        token->kind = eToken_char;
         input->cursor = ++estr.end;
       }
     }

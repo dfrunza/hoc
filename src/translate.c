@@ -128,33 +128,6 @@ void DEBUG_print_type(String* str, int indent_level, char* tag, Type* type)
   str_append(str, "\n");
 }/*<<<*/
 
-void DEBUG_print_scope(String* str, int indent_level, char* tag, Scope* scope)
-{/*>>>*/
-  if(scope)
-  {
-    if(tag)
-    {
-      DEBUG_print_line(str, indent_level, "%s @%lu", tag, scope);
-      ++indent_level;
-    }
-
-    DEBUG_print_line(str, indent_level, "kind: %s", get_scope_kind_printstr(scope->kind));
-    DEBUG_print_line(str, indent_level, "nesting_depth: %d", scope->nesting_depth);
-
-    if(scope->encl_scope)
-    {
-      DEBUG_print_line(str, indent_level, "encl_scope @%lu %s",
-          scope->encl_scope, get_scope_kind_printstr(scope->encl_scope->kind));
-    }
-
-    if(scope->ast_node)
-    {
-      DEBUG_print_line(str, indent_level, "ast_node @%lu %s",
-          scope->ast_node, get_ast_kind_printstr(scope->ast_node->kind));
-    }
-  }
-}/*<<<*/
-
 void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
 {/*>>>*/
   if(node)
@@ -168,11 +141,11 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     if(node->src_loc)
     {
       DEBUG_print_line(str, indent_level, "%s src_line=\"%s:%d\"",
-          get_ast_kind_printstr(node->kind), node->src_loc->file_path, node->src_loc->line_nr);
+          get_ast_printstr(node->kind), node->src_loc->file_path, node->src_loc->line_nr);
     }
     else
     {
-      DEBUG_print_line(str, indent_level, "%s", get_ast_kind_printstr(node->kind));
+      DEBUG_print_line(str, indent_level, "%s", get_ast_printstr(node->kind));
     }
 #else
     if(node->src_loc)
@@ -182,283 +155,11 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
 #endif
     ++indent_level;
 
-    if(node->kind == eAstNode_module || node->kind == eAstNode_include)
-    {
-      DEBUG_print_line(str, indent_level, "file_path: \"%s\"", ATTR(node, str_val, file_path));
-      DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-    }
-    else if(node->kind == eAstNode_proc)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_ast_node(str, indent_level, "ret_var", ATTR(node, ast_node, ret_var));
-        DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
-        DEBUG_print_ast_node_list(str, indent_level, "formal_args", ATTR(node, list, formal_args));
-        DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-      }
-      else if(node->gen == eAstGen_gen1)
-      {
-        //todo: print the symbol
-        DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str_val, name));
-        DEBUG_print_ast_node_list(str, indent_level, "formal_args", ATTR(node, list, formal_args));
-        DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_var_decl)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_ast_node(str, indent_level, "type", ATTR(node, ast_node, type));
-        DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
-        DEBUG_print_ast_node(str, indent_level, "init_expr", ATTR(node, ast_node, init_expr));
-      }
-      else if(node->gen == eAstGen_gen1)
-      {
-        DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str_val, name));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_var_occur)
-    {
-      if(node->gen == eAstGen_gen1)
-      {
-        DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str_val, name));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_id)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str_val, name));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_block)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_ast_node_list(str, indent_level, "nodes", ATTR(node, list, nodes));
-      }
-      else if(node->gen == eAstGen_gen1)
-      {
-        DEBUG_print_scope(str, indent_level, "scope", ATTR(node, scope, scope));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_bin_expr)
-    {
-      DEBUG_print_line(str, indent_level, "op: %s", get_operator_kind_printstr(ATTR(node, op_kind, op_kind)));
-      DEBUG_print_ast_node(str, indent_level, "left_operand", ATTR(node, ast_node, left_operand));
-      DEBUG_print_ast_node(str, indent_level, "right_operand", ATTR(node, ast_node, right_operand));
-    }
-    else if(node->kind == eAstNode_unr_expr)
-    {
-      DEBUG_print_line(str, indent_level, "op: %s", get_operator_kind_printstr(ATTR(node, op_kind, op_kind)));
-      DEBUG_print_ast_node(str, indent_level, "operand", ATTR(node, ast_node, operand));
-    }
-    else if(node->kind == eAstNode_lit)
-    {
-      eLiteral lit_kind = ATTR(node, lit_kind, lit_kind);
-      DEBUG_print_line(str, indent_level, get_literal_kind_printstr(lit_kind));
-      if(lit_kind == eLiteral_int_val)
-      {
-        DEBUG_print_line(str, indent_level, "int_val: %d", ATTR(node, int_val, int_val));
-      }
-      else if(lit_kind == eLiteral_float_val)
-      {
-        DEBUG_print_line(str, indent_level, "float_val: %f", ATTR(node, float_val, float_val));
-      }
-      else if(lit_kind == eLiteral_bool_val)
-      {
-        DEBUG_print_line(str, indent_level, "bool_val: %d", ATTR(node, bool_val, bool_val));
-      }
-      else if(lit_kind == eLiteral_char_val)
-      {
-        char buf[3] = {0};
-        print_char(buf, ATTR(node, char_val, char_val));
-        DEBUG_print_line(str, indent_level, "char_val: '%s'", buf);
-      }
-      else if(lit_kind == eLiteral_str_val)
-      {
-        DEBUG_print_line(str, indent_level, "str: \"%s\"", ATTR(node, str_val, str_val));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_stmt)
-    {
-      DEBUG_print_ast_node(str, indent_level, "stmt", ATTR(node, ast_node, stmt));
-    }
-    else if(node->kind == eAstNode_ret)
-    {
-      DEBUG_print_ast_node(str, indent_level, "ret_expr", ATTR(node, ast_node, ret_expr));
-#if 0
-      if(node->gen == eAstGen_gen1)
-      {
-        AstNode* proc = ATTR(node, ast_node, proc);
-        DEBUG_print_line(str, indent_level, "proc @%lu `%s`", proc, ATTR(proc, str, name));
-        DEBUG_print_line(str, indent_level, "nesting_depth: %d", ATTR(node, int_val, nesting_depth));
-      }
-#endif
-    }
-    else if(node->kind == eAstNode_break_stmt || node->kind == eAstNode_continue_stmt)
-    {
-#if 0
-      if(node->gen == eAstGen_gen1)
-      {
-        DEBUG_print_line(str, indent_level, "nesting_depth: %d", ATTR(node, int_val, nesting_depth));
-      }
-#endif
-    }
-    else if(node->kind == eAstNode_if_)
-    {
-      DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
-      DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-      DEBUG_print_ast_node(str, indent_level, "else_body", ATTR(node, ast_node, else_body));
-    }
-    else if(node->kind == eAstNode_while_)
-    {
-      DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
-      DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-    }
-    else if(node->kind == eAstNode_for_stmt)
-    {
-      DEBUG_print_ast_node(str, indent_level, "decl_expr", ATTR(node, ast_node, decl_expr));
-      DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
-      DEBUG_print_ast_node(str, indent_level, "loop_expr", ATTR(node, ast_node, loop_expr));
-      DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
-    }
-    else if(node->kind == eAstNode_array)
-    {
-      if(node->gen == eAstGen_gen0 || node->gen == eAstGen_gen1)
-      {
-        DEBUG_print_ast_node(str, indent_level, "elem_expr", ATTR(node, ast_node, elem_expr));
-        DEBUG_print_ast_node(str, indent_level, "size_expr", ATTR(node, ast_node, size_expr));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_pointer)
-    {
-      if(node->gen == eAstGen_gen0 || node->gen == eAstGen_gen1)
-      {
-        DEBUG_print_ast_node(str, indent_level, "pointee_expr", ATTR(node, ast_node, pointee_expr));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_proc_occur)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
-        DEBUG_print_ast_node_list(str, indent_level, "actual_args", ATTR(node, list, actual_args));
-      }
-      else if(node->gen == eAstGen_gen1)
-      {
-        DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str_val, name));
-        DEBUG_print_ast_node_list(str, indent_level, "actual_args", ATTR(node, list, actual_args));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_struct_decl)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
-        DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_union_decl)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
-        DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_enum_decl)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
-        DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_init_list)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_ast_node_list(str, indent_level, "members", ATTR(node, list, members));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_goto_stmt)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_label)
-    {
-      if(node->gen == eAstGen_gen0)
-      {
-        DEBUG_print_ast_node(str, indent_level, "id", ATTR(node, ast_node, id));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_type_decl)
-    {
-      if(node->gen == eAstGen_gen0 || node->gen == eAstGen_gen1)
-      {
-        DEBUG_print_ast_node(str, indent_level, "type_expr", ATTR(node, ast_node, type_expr));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_type_occur)
-    {
-      if(node->gen == eAstGen_gen1)
-      {
-        DEBUG_print_line(str, indent_level, "name: `%s`", ATTR(node, str_val, name));
-      }
-      else
-        assert(0);
-    }
-    else if(node->kind == eAstNode_empty)
-    {
-      ;//ok
-    }
-    else if(node->kind == eAstNode_asm_block)
-    {
-      if(node->gen == eAstGen_gen0 || node->gen == eAstGen_gen1)
-      {
-        DEBUG_print_line(str, indent_level, "asm_text: `%s`", ATTR(node, str_val, asm_text));
-      }
-      else
-        assert(0);
-    }
-    //else
-    //  fail(get_ast_kind_printstr(node->kind));
+    /* Example usage
+       DEBUG_print_line(str, indent_level, "name: `%s`", node->proc.name);
+       DEBUG_print_ast_node(str, indent_level, "id", node);
+       DEBUG_print_ast_node_list(str, indent_level, "formal_args", &node->proc.formal_arg_list);
+    */
   }
 }/*<<<*/
 
@@ -1544,6 +1245,24 @@ bool symtab(AstNode* node)
   return success;
 }
 
+bool symtab_module_body(SymbolTable* symtab, AstNode* module)
+{
+  bool success = true;
+  return success;
+}
+
+bool symtab_module(SymbolTable* symtab, AstNode* module)
+{
+  bool success = true;
+  Scope* global_scope = begin_scope(eScope_global, 0);
+  add_builtin_types(global_scope);
+  success = symtab_module_body(symtab, module);
+  end_scope();
+  assert(symtab->active_scope == 0);
+  assert(symtab->nesting_depth == -1);
+  return success;
+}
+
 bool build_types(AstNode* node)
 {
   bool success = true;
@@ -1763,22 +1482,22 @@ bool build_types(AstNode* node)
         Type* type = 0;
         switch(node->lit.kind)
         {
-          case eLiteral_int_val:
+          case eLiteral_int:
             type = basic_type_int;
             break;
-          case eLiteral_float_val:
+          case eLiteral_float:
             type = basic_type_float;
             break;
-          case eLiteral_char_val:
+          case eLiteral_char:
             type = basic_type_char;
             break;
-          case eLiteral_bool_val:
+          case eLiteral_bool:
             type = basic_type_bool;
             break;
-          case eLiteral_str_val:
+          case eLiteral_string:
             {
-              int size_val = cstr_len(node->lit.str_val) + 1; // +NULL
-              type = new_array_type(size_val, basic_type_char);
+              int size = cstr_len(node->lit.str_val) + 1; // +NULL
+              type = new_array_type(size, basic_type_char);
             }
             break;
           default:
@@ -1907,7 +1626,7 @@ bool eval_types(AstNode* node)
               }
               break;
 
-            case eOperator_index:
+            case eOperator_indexer:
               if(type_unif(right_operand->eval_ty, basic_type_int))
               {
                 if(left_operand->eval_ty->kind == eType_array)
@@ -2422,7 +2141,7 @@ bool check_types(AstNode* node)
                 else
                 {
                   success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                      get_operator_kind_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
+                      get_operator_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
                 }
               }
               break;
@@ -2437,7 +2156,7 @@ bool check_types(AstNode* node)
                 else
                 {
                   success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                      get_operator_kind_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
+                      get_operator_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
                 }
               }
               break;
@@ -2453,7 +2172,7 @@ bool check_types(AstNode* node)
                 }
                 else
                   success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                      get_operator_kind_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
+                      get_operator_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
               }
               break;
 
@@ -2496,7 +2215,7 @@ bool check_types(AstNode* node)
                 else
                 {
                   success = compile_error(node->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                      get_operator_kind_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
+                      get_operator_printstr(node->bin_expr.op_kind), get_type_printstr(args_ty));
                 }
               }
               break;
@@ -2508,7 +2227,7 @@ bool check_types(AstNode* node)
               }
               break;
 
-            case eOperator_index:
+            case eOperator_indexer:
               {
                 if(ret_ty->width > 0)
                 {
@@ -2724,7 +2443,7 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
         AstNode* left_operand = node->bin_expr.left_operand;
         AstNode* right_operand = node->bin_expr.right_operand;
 
-        if(node->bin_expr.op_kind == eOperator_index)
+        if(node->bin_expr.op_kind == eOperator_indexer)
         {
           gen_x86_load_lvalue(code, left_operand);
           gen_x86_load_rvalue(code, right_operand);
@@ -2768,13 +2487,13 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
       {
         switch(node->lit.kind)
         {
-          case eLiteral_int_val:
+          case eLiteral_int:
             str_printfln(code, "push %d", node->lit.int_val);
             break;
-          case eLiteral_bool_val:
+          case eLiteral_bool:
             str_printfln(code, "push %d", node->lit.bool_val);
             break;
-          case eLiteral_float_val:
+          case eLiteral_float:
             {
               union BitcastF32ToI32
               {
@@ -2787,7 +2506,7 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
               str_printfln(code, "push %xh ; %f", val.int32_val, val.float32_val);
             }
             break;
-          case eLiteral_char_val:
+          case eLiteral_char:
             str_printfln(code, "push %d", node->lit.char_val);
             break;
 
@@ -2799,7 +2518,7 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
 
     case eAstNode_bin_expr:
       {
-        if(node->bin_expr.op_kind == eOperator_index)
+        if(node->bin_expr.op_kind == eOperator_indexer)
         {
           gen_x86_load_lvalue(code, node);
           str_printfln(code, "push %d", node->eval_ty->width);
@@ -3394,7 +3113,7 @@ bool gen_x86(String* code, AstNode* node)
             }
             break;
 
-          case eOperator_index:
+          case eOperator_indexer:
             {
               gen_x86_load_rvalue(code, node);
             }
@@ -3577,6 +3296,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
       process_includes(incl_body->block.nodes, module_nodes_list, list_item);
     }
   }
+#endif
 
   basic_type_bool = new_basic_type(eBasicType_bool);
   basic_type_int = new_basic_type(eBasicType_int);
@@ -3587,6 +3307,11 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   subst_list = new_list(arena, eList_type_pair);
 
   symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
+  if(!symtab_module(symbol_table, module))
+  {
+    return false;
+  }
+#if 0
   begin_scope(eScope_global, 0);
   if(!symtab(module))
   {
@@ -3595,7 +3320,9 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   end_scope();
   assert(symbol_table->active_scope == 0);
   assert(symbol_table->nesting_depth == -1);
+#endif
 
+#if 0
   if(!(build_types(module) && eval_types(module)
       && resolve_types(module) && check_types(module)))
   {

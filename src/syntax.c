@@ -134,7 +134,7 @@ bool parse_indexer(TokenStream* input, AstNode* left_node, AstNode** node)
   if(input->token.kind == eToken_open_bracket)
   {
     AstNode* index = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-    index->bin_expr.op_kind = eOperator_index;
+    index->bin_expr.op_kind = eOperator_indexer;
     index->bin_expr.left_operand = left_node;
 
     if(success = get_next_token(input) && parse_expr(input, &index->bin_expr.right_operand))
@@ -448,14 +448,14 @@ bool parse_cast(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
-  if(input->token.kind == eToken_open_parens)
+  if(input->token.kind == eToken_cast && (success = get_next_token(input)))
   {
-    if(success = (get_next_token(input) && input->token.kind == eToken_cast))
-    {
-      AstNode* cast = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-      cast->bin_expr.op_kind = eOperator_cast;
+    AstNode* cast = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
+    cast->bin_expr.op_kind = eOperator_cast;
 
-      if(success = (get_next_token(input) && parse_type(input, &cast->bin_expr.left_operand)))
+    if(input->token.kind == eToken_open_parens && (success = get_next_token(input)))
+    {
+      if(success = parse_type(input, &cast->bin_expr.left_operand))
       {
         if(input->token.kind == eToken_close_parens)
         {
@@ -485,59 +485,55 @@ bool parse_selector(TokenStream* input, AstNode** node)
   {
     case eToken_open_parens:
       {
-        if(success = get_next_token(input))
+        if(success = (get_next_token(input) && parse_expr(input, node)))
         {
-          if(input->token.kind == eToken_cast)
+          if(input->token.kind == eToken_close_parens)
           {
-            putback_token(input);
-            success = parse_cast(input, node);
+            success = get_next_token(input);
           }
-          else if(success = parse_expr(input, node))
-          {
-            if(input->token.kind == eToken_close_parens)
-            {
-              success = get_next_token(input);
-            }
-            else
-              success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
-          }
+          else
+            success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
         }
       }
       break;
 
+    case eToken_cast:
+      success = parse_cast(input, node);
+      break;
+
     case eToken_true:
     case eToken_false:
-    case eToken_int_val:
-    case eToken_float_val:
+    case eToken_int:
+    case eToken_float:
     case eToken_string:
-    case eToken_char_val:
+    case eToken_char:
       {
         AstNode* lit = *node = new_ast_node(eAstNode_lit, clone_source_loc(&input->src_loc));
 
-        if(input->token.kind == eToken_int_val)
+        if(input->token.kind == eToken_int)
         {
-          lit->lit.kind = eLiteral_int_val;
+          lit->lit.kind = eLiteral_int;
           lit->lit.int_val = *input->token.int_val;
         }
-        else if(input->token.kind == eToken_float_val)
+        else if(input->token.kind == eToken_float)
         {
-          lit->lit.kind = eLiteral_float_val;
+          lit->lit.kind = eLiteral_float;
           lit->lit.float_val = *input->token.float_val;
         }
         else if(input->token.kind == eToken_true ||
             input->token.kind == eToken_false)
         {
-          lit->lit.kind = eLiteral_bool_val;
+          lit->lit.kind = eLiteral_bool;
           lit->lit.bool_val = (input->token.kind == eToken_true ? 1 : 0);
         }
-        else if(input->token.kind == eToken_char_val)
+        else if(input->token.kind == eToken_char)
         {
-          lit->lit.kind = eLiteral_char_val;
+          lit->lit.kind = eLiteral_char;
           lit->lit.char_val = input->token.char_val;
         }
         else if(input->token.kind == eToken_string)
         {
-          lit->lit.kind = eLiteral_str_val;
+          lit->lit.kind = eLiteral_string;
           lit->lit.str_val = input->token.str_val;
         }
         else
@@ -629,14 +625,7 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
       }
       break;
 
-    case eToken_id:
-    case eToken_open_parens:
-    case eToken_true:
-    case eToken_false:
-    case eToken_int_val:
-    case eToken_float_val:
-    case eToken_string:
-    case eToken_char_val:
+    default:
       success = parse_selector(input, node);
       break;
   }
@@ -916,9 +905,9 @@ bool parse_stmt(TokenStream* input, AstNode** node)
     case eToken_minus:
     case eToken_true:
     case eToken_false:
-    case eToken_int_val:
-    case eToken_float_val:
-    case eToken_char_val:
+    case eToken_int:
+    case eToken_float:
+    case eToken_char:
     case eToken_string:
       success = parse_expr(input, node) && consume_semicolon(input);
       break;

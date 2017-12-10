@@ -1,18 +1,18 @@
 include "std.hoc";
 include "math.hoc";
 include "str.hoc";
-/*
-include "sort.hoc";
-*/
 include "fibo.hoc";
 include "fizzbuzz.hoc";
+include "sort.hoc";
+/*
+*/
 
 proc void print_numbers(int* numbers, int len)
 {
-  var int i = 0;
+  var int i; i = 0;
   while(i < len)
   {
-    print_int(*(numbers + (type int*)(i*4)));
+    print_int(*(numbers + (cast int*)(i*4)));
     print_str(&"\n");
 
     i = i+1;
@@ -21,17 +21,17 @@ proc void print_numbers(int* numbers, int len)
 
 proc int* make_numbers(int how_many)
 {
-  var int i = 0;
-  var int c1 = 17;
-  var int c2 = 31;
-  var int* numbers = (type int*)new(how_many*4);
+  var int i; i = 0;
+  var int c1; c1 = 17;
+  var int c2; c2 = 31;
+  var int* numbers; numbers = (cast int*)malloc(how_many*4);
 
   while(i < how_many)
   {
     if((i % 2) == 0)
-      *(numbers + (type int*)(i*4)) = c1 * i;
+      *(numbers + (cast int*)(i*4)) = c1 * i;
     else
-      *(numbers + (type int*)(i*4)) = c2 * i;
+      *(numbers + (cast int*)(i*4)) = c2 * i;
 
     i = i+1;
   }
@@ -40,9 +40,9 @@ proc int* make_numbers(int how_many)
 
 proc void main()
 {
-  var float f1 = -12.0;
-  var float f2 = 0.058;
-  var float result = f1 + f2;
+  var float f1; f1 = -12.0;
+  var float f2; f2 = 0.058;
+  var float result; result = f1 + f2;
   print_float(f1);
   print_str(&" + ");
   print_float(f2);
@@ -50,9 +50,9 @@ proc void main()
   print_float(result);
   print_str(&"\n---------\n");
 
-  var int i_a = 7*7*5*3;
-  var int i_b = 7*3*11;
-  var int i_r = gcd(i_a, i_b);
+  var int i_a; i_a = 7*7*5*3;
+  var int i_b; i_b = 7*3*11;
+  var int i_r; i_r = gcd(i_a, i_b);
   print_str(&"gcd(");
   print_int(i_a);
   print_str(&",");
@@ -60,8 +60,8 @@ proc void main()
   print_str(&")=");
   print_int(i_r);
 
-  var int nr_count = 30;
-  var int* numbers = make_numbers(nr_count);
+  var int nr_count; nr_count = 30;
+  var int* numbers; numbers = make_numbers(nr_count);
   print_str(&"\n--- SHUFFLED ---\n");
   print_numbers(numbers, nr_count);
   /*
@@ -82,4 +82,3 @@ proc void main()
   */
 }
 
-main();

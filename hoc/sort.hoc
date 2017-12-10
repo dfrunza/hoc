@@ -2,7 +2,7 @@ proc void swap([]int data, int i, int j)
 {
   if(i != j)
   {
-    var int temp_val = data[i];
+    var int temp_val; temp_val = data[i];
     data[i] = data[j];
     data[j] = temp_val;
   }
@@ -10,69 +10,70 @@ proc void swap([]int data, int i, int j)
 
 proc void insertion_sort([]int array, int len)
 {
-  var int i = 0;
+  var int i; i = 0;
 
   while(i < len)
   {
-    var int j = i;
+    var int j; j = i;
     while(array[j] < array[j - 1])
     {
-      swap(array, j, j - 1);
+      swap[array, j, j - 1);
       j = j - 1;
     }
     i = i + 1;
   }
 }
 
+/* Returns -1 if all keys are equal.  */
+proc int qs_find_pivot_index([]int data, int start_index, int end_index)
+{
+  var int index; index = -1;
+  var int i; i = start_index;
+
+  while(i < end_index)
+  {
+    if(data[i] < data[i + 1])
+    {
+      index = i + 1;
+      break;
+    }
+    else if(data[i] > data[i + 1])
+    {
+      index = i;
+      break;
+    }
+    i = i + 1;
+  }
+  return index;
+}
+
+proc void quick_sort_recurs([]int data, int i, int j)
+{
+  var int pivot_index; pivot_index = qs_find_pivot_index(data, i, j);
+
+  if(pivot_index >= 0)
+  {
+    var int l; l = i;
+    var int r; r = j;
+    var int pivot; pivot = data[pivot_index];
+
+    while(l < r)
+    {
+      swap(data, l, r);
+      while(data[l] < pivot)
+        l = l + 1;
+      while(data[r] >= pivot)
+        r = r - 1;
+    }
+
+    quick_sort_recurs(data, i, r);
+    quick_sort_recurs(data, l, j);
+  }
+}
+
 proc void quick_sort([]int data, int len)
 {
-  /* Returns -1 if all keys are equal.  */
-  proc int qs_find_pivot_index([]int data, int start_index, int end_index)
-  {
-    var int index = -1;
-    var int i = start_index;
-
-    while(i < end_index)
-    {
-      if(data[i] < data[i + 1])
-      {
-        index = i + 1;
-        break;
-      }
-      else if(data[i] > data[i + 1])
-      {
-        index = i;
-        break;
-      }
-      i = i + 1;
-    }
-    return index;
-  }
-
-  proc void quick_sort_recurs([]int data, int i, int j)
-  {
-    var int pivot_index = qs_find_pivot_index(data, i, j);
-
-    if(pivot_index >= 0)
-    {
-      var int l = i;
-      var int r = j;
-      var int pivot = data[pivot_index];
-
-      while(l < r)
-      {
-        swap(data, l, r);
-        while(data[l] < pivot)
-          l = l + 1;
-        while(data[r] >= pivot)
-          r = r - 1;
-      }
-
-      quick_sort_recurs(data, i, r);
-      quick_sort_recurs(data, l, j);
-    }
-  }
-
   quick_sort_recurs(data, 0, len - 1);
 }
+
 

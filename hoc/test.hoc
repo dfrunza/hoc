@@ -9,9 +9,6 @@ include "sort.hoc";
 
 proc void foo()
 {
-  var int a;
-  a = *(cast int*)a;
 }
-
 
 

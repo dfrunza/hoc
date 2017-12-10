@@ -10,7 +10,7 @@ var int stdin;
 var void* heap;
 var int heap_ptr;
 
-proc void* new(int size)
+proc void* malloc(int size)
 {
   var void* mem; mem = heap + (cast void*)heap_ptr;
   heap_ptr = heap_ptr + size;

@@ -309,14 +309,14 @@ char* get_token_printstr(Token* token)
       result = "extern";
       break;
     case eToken_id:
-    case eToken_int_num:
-    case eToken_float_num:
+    case eToken_int_val:
+    case eToken_float_val:
       result = token->lexeme;
       break;
     case eToken_string:
       result = token->str_val; // TODO: Substitute non-printable chars
       break;
-    case eToken_char:
+    case eToken_char_val:
     case eToken_unknown_char:
       print_char(result = char_print_buf, token->char_val);
       break;
@@ -486,13 +486,13 @@ loop:
 
     if(is_float)
     {
-      token->kind = eToken_float_num;
+      token->kind = eToken_float_val;
       token->float_val = mem_push_struct(arena, float);
       h_sscanf(digit_buf, "%f", token->float_val);
     }
     else
     {
-      token->kind = eToken_int_num;
+      token->kind = eToken_int_val;
       token->int_val = mem_push_struct(arena, int);
       if(is_hex)
         h_sscanf(digit_buf, "%x", token->int_val);
@@ -606,7 +606,7 @@ loop:
       else
       {
         token->char_val = *lexeme;
-        token->kind = eToken_char;
+        token->kind = eToken_char_val;
         input->cursor = ++estr.end;
       }
     }

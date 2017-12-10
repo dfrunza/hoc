@@ -258,7 +258,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       DEBUG_print_ast_node(str, indent_level, "left_operand", ATTR(node, ast_node, left_operand));
       DEBUG_print_ast_node(str, indent_level, "right_operand", ATTR(node, ast_node, right_operand));
     }
-    else if(node->kind == eAstNode_un_expr)
+    else if(node->kind == eAstNode_unr_expr)
     {
       DEBUG_print_line(str, indent_level, "op: %s", get_operator_kind_printstr(ATTR(node, op_kind, op_kind)));
       DEBUG_print_ast_node(str, indent_level, "operand", ATTR(node, ast_node, operand));
@@ -296,7 +296,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     {
       DEBUG_print_ast_node(str, indent_level, "stmt", ATTR(node, ast_node, stmt));
     }
-    else if(node->kind == eAstNode_ret_stmt)
+    else if(node->kind == eAstNode_ret)
     {
       DEBUG_print_ast_node(str, indent_level, "ret_expr", ATTR(node, ast_node, ret_expr));
 #if 0
@@ -317,13 +317,13 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
       }
 #endif
     }
-    else if(node->kind == eAstNode_if_stmt)
+    else if(node->kind == eAstNode_if_)
     {
       DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
       DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
       DEBUG_print_ast_node(str, indent_level, "else_body", ATTR(node, ast_node, else_body));
     }
-    else if(node->kind == eAstNode_while_stmt)
+    else if(node->kind == eAstNode_while_)
     {
       DEBUG_print_ast_node(str, indent_level, "cond_expr", ATTR(node, ast_node, cond_expr));
       DEBUG_print_ast_node(str, indent_level, "body", ATTR(node, ast_node, body));
@@ -1032,7 +1032,6 @@ bool symtab_type(AstNode* node)
         success = symtab_type(node->pointer.pointee_expr);
       }
       break;
-#endif
 
     case eAstNode_array:
       {
@@ -1045,6 +1044,7 @@ bool symtab_type(AstNode* node)
         }
       }
       break;
+#endif
 
     default:
       assert(0);
@@ -1178,9 +1178,9 @@ bool symtab(AstNode* node)
               break;
 
             case eAstNode_stmt:
-            case eAstNode_while_stmt:
-            case eAstNode_if_stmt:
-            case eAstNode_ret_stmt:
+            case eAstNode_while_:
+            case eAstNode_if_:
+            case eAstNode_ret:
             case eAstNode_loop_ctrl:
             case eAstNode_block:
             case eAstNode_asm_block:
@@ -1365,9 +1365,9 @@ bool symtab(AstNode* node)
       }
       break;
 
-    case eAstNode_un_expr:
+    case eAstNode_unr_expr:
       {
-        AstNode* operand = node->un_expr.operand;
+        AstNode* operand = node->unr_expr.operand;
         success = symtab(operand);
       }
       break;
@@ -1418,12 +1418,12 @@ bool symtab(AstNode* node)
       }
       break;
 
-    case eAstNode_if_stmt:
+    case eAstNode_if_:
       {
-        AstNode* cond_expr = node->if_stmt.cond_expr;
+        AstNode* cond_expr = node->if_.cond_expr;
         if(success = symtab(cond_expr))
         {
-          AstNode* body = node->if_stmt.body;
+          AstNode* body = node->if_.body;
           if(body->kind != eAstNode_block)
           {
             List* single_stmt_block = new_list(arena, eList_ast_node);
@@ -1435,9 +1435,9 @@ bool symtab(AstNode* node)
           if(!(success = symtab(body)))
             break;
 
-          node->if_stmt.body = body;
+          node->if_.body = body;
 
-          AstNode* else_body = node->if_stmt.else_body;
+          AstNode* else_body = node->if_.else_body;
           if(else_body)
           {
             if(else_body->kind != eAstNode_block)
@@ -1454,16 +1454,16 @@ bool symtab(AstNode* node)
       }
       break;
 
-    case eAstNode_while_stmt:
+    case eAstNode_while_:
       {
         Scope* enclosing_scope = symbol_table->active_scope;
-        Scope* while_scope = node->while_stmt.scope = begin_scope(eScope_while, node);
+        Scope* while_scope = node->while_.scope = begin_scope(eScope_while, node);
         while_scope->nesting_depth = enclosing_scope->nesting_depth;
 
-        AstNode* cond_expr = node->while_stmt.cond_expr;
+        AstNode* cond_expr = node->while_.cond_expr;
         if(success = symtab(cond_expr))
         {
-          AstNode* body = node->while_stmt.body;
+          AstNode* body = node->while_.body;
           if(body->kind != eAstNode_block)
           {
             List* single_stmt_block = new_list(arena, eList_ast_node);
@@ -1504,14 +1504,14 @@ bool symtab(AstNode* node)
       }
       break;
 
-    case eAstNode_ret_stmt:
+    case eAstNode_ret:
       {
         Scope* scope = find_scope(symbol_table->active_scope, eScope_proc);
         if(scope)
         {
-          AstNode* proc = node->ret_stmt.proc = scope->ast_node;
+          AstNode* proc = node->ret.proc = scope->ast_node;
 
-          AstNode* ret_expr = node->ret_stmt.ret_expr;
+          AstNode* ret_expr = node->ret.ret_expr;
           if(ret_expr)
           {
             AstNode* ret_var = proc->proc.ret_var;
@@ -1525,7 +1525,7 @@ bool symtab(AstNode* node)
 
             ret_expr = new_ast_node(eAstNode_stmt, assign->src_loc);
             ret_expr->stmt.stmt = assign;
-            node->ret_stmt.ret_expr = ret_expr;
+            node->ret.ret_expr = ret_expr;
 
             success = symtab(ret_expr);
           }
@@ -1623,9 +1623,9 @@ bool build_types(AstNode* node)
       }
       break;
 
-    case eAstNode_un_expr:
+    case eAstNode_unr_expr:
       {
-        AstNode* operand = node->un_expr.operand;
+        AstNode* operand = node->unr_expr.operand;
         if(success = build_types(operand))
         {
           Type* eval_ty = new_typevar();
@@ -1677,11 +1677,11 @@ bool build_types(AstNode* node)
       }
       break;
 
-    case eAstNode_ret_stmt:
+    case eAstNode_ret:
       {
-        if(node->ret_stmt.ret_expr)
+        if(node->ret.ret_expr)
         {
-          success = build_types(node->ret_stmt.ret_expr);
+          success = build_types(node->ret.ret_expr);
         }
         node->ty = node->eval_ty = basic_type_void;
       }
@@ -1724,11 +1724,11 @@ bool build_types(AstNode* node)
       }
       break;
 
-    case eAstNode_while_stmt:
+    case eAstNode_while_:
       {
-        if(success = build_types(node->while_stmt.cond_expr))
+        if(success = build_types(node->while_.cond_expr))
         {
-          AstNode* body = node->while_stmt.body;
+          AstNode* body = node->while_.body;
           if(success = build_types(body))
           {
             node->ty = body->ty;
@@ -1738,17 +1738,17 @@ bool build_types(AstNode* node)
       }
       break;
 
-    case eAstNode_if_stmt:
+    case eAstNode_if_:
       {
-        if(success = build_types(node->if_stmt.cond_expr))
+        if(success = build_types(node->if_.cond_expr))
         {
-          AstNode* body = node->if_stmt.body;
+          AstNode* body = node->if_.body;
           if(success = build_types(body))
           {
             node->ty = body->ty;
             node->eval_ty = body->eval_ty;
 
-            AstNode* else_body = node->if_stmt.else_body;
+            AstNode* else_body = node->if_.else_body;
             if(else_body)
             {
               success = build_types(else_body);
@@ -1820,7 +1820,6 @@ bool build_types(AstNode* node)
         }
       }
       break;
-#endif
 
     case eAstNode_array:
       {
@@ -1842,6 +1841,7 @@ bool build_types(AstNode* node)
         }
       }
       break;
+#endif
 
     case eAstNode_loop_ctrl:
     case eAstNode_empty:
@@ -1990,14 +1990,14 @@ bool eval_types(AstNode* node)
       }
       break;
 
-    case eAstNode_un_expr:
+    case eAstNode_unr_expr:
       {
-        AstNode* operand = node->un_expr.operand;
+        AstNode* operand = node->unr_expr.operand;
 
         node->eval_ty = new_typevar();
         if(success = eval_types(operand))
         {
-          switch(node->un_expr.op_kind)
+          switch(node->unr_expr.op_kind)
           {
             case eOperator_neg:
             case eOperator_logic_not:
@@ -2117,9 +2117,9 @@ bool eval_types(AstNode* node)
       }
       break;
 
-    case eAstNode_ret_stmt:
+    case eAstNode_ret:
       {
-        AstNode* ret_expr = node->ret_stmt.ret_expr;
+        AstNode* ret_expr = node->ret.ret_expr;
         Type* ret_expr_ty = basic_type_void;
         if(ret_expr)
         {
@@ -2131,7 +2131,7 @@ bool eval_types(AstNode* node)
 
         if(success)
         {
-          AstNode* proc = node->ret_stmt.proc;
+          AstNode* proc = node->ret.proc;
           Type* proc_ret_ty = proc->ty->proc.ret;
           if(!type_unif(ret_expr_ty, proc_ret_ty))
           {
@@ -2141,10 +2141,10 @@ bool eval_types(AstNode* node)
       }
       break;
 
-    case eAstNode_while_stmt:
+    case eAstNode_while_:
       {
-        AstNode* cond_expr = node->while_stmt.cond_expr;
-        if(success = eval_types(cond_expr) && eval_types(node->while_stmt.body))
+        AstNode* cond_expr = node->while_.cond_expr;
+        if(success = eval_types(cond_expr) && eval_types(node->while_.body))
         {
           if(!type_unif(cond_expr->ty, basic_type_bool))
           {
@@ -2154,10 +2154,10 @@ bool eval_types(AstNode* node)
       }
       break;
 
-    case eAstNode_if_stmt:
+    case eAstNode_if_:
       {
-        AstNode* body = node->if_stmt.body;
-        AstNode* else_body = node->if_stmt.else_body;
+        AstNode* body = node->if_.body;
+        AstNode* else_body = node->if_.else_body;
 
         if(success = eval_types(body))
         {
@@ -2167,7 +2167,7 @@ bool eval_types(AstNode* node)
           }
         }
 
-        AstNode* cond_expr = node->if_stmt.cond_expr;
+        AstNode* cond_expr = node->if_.cond_expr;
         if(success && (success = eval_types(cond_expr)))
         {
           if(!type_unif(cond_expr->eval_ty, basic_type_bool))
@@ -2265,8 +2265,8 @@ bool resolve_types(AstNode* node)
         && node_resolve_type(node);
       break;
 
-    case eAstNode_un_expr:
-      success = resolve_types(node->un_expr.operand) && node_resolve_type(node);
+    case eAstNode_unr_expr:
+      success = resolve_types(node->unr_expr.operand) && node_resolve_type(node);
       break;
 
     case eAstNode_proc:
@@ -2314,26 +2314,26 @@ bool resolve_types(AstNode* node)
       }
       break;
 
-    case eAstNode_ret_stmt:
+    case eAstNode_ret:
       if(success = node_resolve_type(node))
       {
-        if(node->ret_stmt.ret_expr)
+        if(node->ret.ret_expr)
         {
-          success = resolve_types(node->ret_stmt.ret_expr);
+          success = resolve_types(node->ret.ret_expr);
         }
       }
       break;
 
-    case eAstNode_while_stmt:
-      success = resolve_types(node->while_stmt.cond_expr) && resolve_types(node->while_stmt.body);
+    case eAstNode_while_:
+      success = resolve_types(node->while_.cond_expr) && resolve_types(node->while_.body);
       break;
 
-    case eAstNode_if_stmt:
+    case eAstNode_if_:
       {
-        success = resolve_types(node->if_stmt.cond_expr) && resolve_types(node->if_stmt.body);
-        if(node->if_stmt.else_body)
+        success = resolve_types(node->if_.cond_expr) && resolve_types(node->if_.body);
+        if(node->if_.else_body)
         {
-          success = resolve_types(node->if_stmt.else_body);
+          success = resolve_types(node->if_.else_body);
         }
       }
       break;
@@ -2572,8 +2572,8 @@ bool check_types(AstNode* node)
       }
       break;
 
-    case eAstNode_un_expr:
-      success = check_types(node->un_expr.operand);
+    case eAstNode_unr_expr:
+      success = check_types(node->unr_expr.operand);
       break;
 
     case eAstNode_proc:
@@ -2605,27 +2605,27 @@ bool check_types(AstNode* node)
       }
       break;
 
-    case eAstNode_ret_stmt:
+    case eAstNode_ret:
       {
-        if(node->ret_stmt.ret_expr)
+        if(node->ret.ret_expr)
         {
-          success = check_types(node->ret_stmt.ret_expr);
+          success = check_types(node->ret.ret_expr);
         }
       }
       break;
 
-    case eAstNode_while_stmt:
+    case eAstNode_while_:
       {
-        success = check_types(node->while_stmt.cond_expr) && check_types(node->while_stmt.body);
+        success = check_types(node->while_.cond_expr) && check_types(node->while_.body);
       }
       break;
 
-    case eAstNode_if_stmt:
+    case eAstNode_if_:
       {
-        success = check_types(node->if_stmt.cond_expr) && check_types(node->if_stmt.body);
-        if(node->if_stmt.else_body)
+        success = check_types(node->if_.cond_expr) && check_types(node->if_.body);
+        if(node->if_.else_body)
         {
-          success = check_types(node->if_stmt.else_body);
+          success = check_types(node->if_.else_body);
         }
       }
       break;
@@ -2706,10 +2706,10 @@ void gen_x86_load_lvalue(String* code, AstNode* node)
       break;
 #endif
 
-    case eAstNode_un_expr:
+    case eAstNode_unr_expr:
       {
-        AstNode* operand = node->un_expr.operand;
-        if(node->un_expr.op_kind == eOperator_deref)
+        AstNode* operand = node->unr_expr.operand;
+        if(node->unr_expr.op_kind == eOperator_deref)
         {
           assert(operand->ty->kind == eType_pointer);
           gen_x86_load_rvalue(code, operand);
@@ -2812,11 +2812,11 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
       }
       break;
 
-    case eAstNode_un_expr:
+    case eAstNode_unr_expr:
       {
-        AstNode* operand = node->un_expr.operand;
+        AstNode* operand = node->unr_expr.operand;
 
-        if(node->un_expr.op_kind == eOperator_address_of)
+        if(node->unr_expr.op_kind == eOperator_address_of)
         {
 #if 0
           if(operand->kind == eAstNode_var_occur)
@@ -2829,7 +2829,7 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
             gen_x86_load_rvalue(code, operand);
           }
         }
-        else if(node->un_expr.op_kind == eOperator_deref)
+        else if(node->unr_expr.op_kind == eOperator_deref)
         {
           gen_x86_load_lvalue(code, node);
           str_printfln(code, "push %d", node->eval_ty->width);
@@ -3406,15 +3406,15 @@ bool gen_x86(String* code, AstNode* node)
       }
       break;
 
-    case eAstNode_un_expr:
+    case eAstNode_unr_expr:
       {
-        AstNode* operand = node->un_expr.operand;
+        AstNode* operand = node->unr_expr.operand;
 
-        if(node->un_expr.op_kind == eOperator_address_of)
+        if(node->unr_expr.op_kind == eOperator_address_of)
         {
           gen_x86_load_rvalue(code, node);
         }
-        else if(node->un_expr.op_kind == eOperator_neg)
+        else if(node->unr_expr.op_kind == eOperator_neg)
         {
           gen_x86_load_rvalue(code, operand);
 
@@ -3429,11 +3429,11 @@ bool gen_x86(String* code, AstNode* node)
           else
             assert(0);
         }
-        else if(node->un_expr.op_kind == eOperator_logic_not)
+        else if(node->unr_expr.op_kind == eOperator_logic_not)
         {
           assert(0);
         }
-        else if(node->un_expr.op_kind == eOperator_deref)
+        else if(node->unr_expr.op_kind == eOperator_deref)
         {
           gen_x86_load_rvalue(code, node);
         }
@@ -3442,19 +3442,19 @@ bool gen_x86(String* code, AstNode* node)
       }
       break;
 
-    case eAstNode_while_stmt:
+    case eAstNode_while_:
       {
-        Label label = node->while_stmt.label = make_unique_label();
+        Label label = node->while_.label = make_unique_label();
         str_printfln(code, "%s$while_eval:", label.name);
-        gen_x86_load_rvalue(code, node->while_stmt.cond_expr);
+        gen_x86_load_rvalue(code, node->while_.cond_expr);
 
         str_printfln(code, "pop eax");
         str_printfln(code, "and eax, 1");
         str_printfln(code, "jz %s$while_break", label.name);
 
-        if(node->while_stmt.body)
+        if(node->while_.body)
         {
-          gen_x86(code, node->while_stmt.body);
+          gen_x86(code, node->while_.body);
         }
 
         str_printfln(code, "jmp %s$while_eval", label.name);
@@ -3462,15 +3462,15 @@ bool gen_x86(String* code, AstNode* node)
       }
       break;
 
-    case eAstNode_if_stmt:
+    case eAstNode_if_:
       {
-        gen_x86_load_rvalue(code, node->if_stmt.cond_expr);
+        gen_x86_load_rvalue(code, node->if_.cond_expr);
 
         str_printfln(code, "pop eax");
         str_printfln(code, "and eax, 1");
 
         Label label = make_unique_label();
-        if(node->if_stmt.else_body)
+        if(node->if_.else_body)
         {
           str_printfln(code, "jz %s$if_else", label.name);
         }
@@ -3479,26 +3479,26 @@ bool gen_x86(String* code, AstNode* node)
           str_printfln(code, "jz %s$if_end", label.name);
         }
 
-        gen_x86(code, node->if_stmt.body);
+        gen_x86(code, node->if_.body);
         str_printfln(code, "jmp %s$if_end", label.name);
 
-        if(node->if_stmt.else_body)
+        if(node->if_.else_body)
         {
           str_printfln(code, "%s$if_else:", label.name);
-          gen_x86(code, node->if_stmt.else_body);
+          gen_x86(code, node->if_.else_body);
         }
 
         str_printfln(code, "%s$if_end:", label.name);
       }
       break;
 
-    case eAstNode_ret_stmt:
+    case eAstNode_ret:
       {
-        if(node->ret_stmt.ret_expr)
+        if(node->ret.ret_expr)
         {
-          gen_x86(code, node->ret_stmt.ret_expr);
+          gen_x86(code, node->ret.ret_expr);
         }
-        gen_x86_leave_frame(code, node->ret_stmt.nesting_depth);
+        gen_x86_leave_frame(code, node->ret.nesting_depth);
         str_printfln(code, "ret");
       }
       break;
@@ -3508,9 +3508,9 @@ bool gen_x86(String* code, AstNode* node)
         AstNode* loop = node->loop_ctrl.loop;
         gen_x86_leave_frame(code, node->loop_ctrl.nesting_depth);
         Label* label = 0;
-        if(loop->kind == eAstNode_while_stmt)
+        if(loop->kind == eAstNode_while_)
         {
-          label = &loop->while_stmt.label;
+          label = &loop->while_.label;
           if(node->loop_ctrl.kind == eLoopCtrl_break)
             str_printfln(code, "jmp %s$while_break", label->name);
           else if(node->loop_ctrl.kind == eLoopCtrl_continue)

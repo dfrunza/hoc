@@ -11,6 +11,3 @@ proc void foo()
 {
 }
 
-proc void bar()
-{}
-

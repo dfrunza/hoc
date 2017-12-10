@@ -138,10 +138,10 @@ typedef enum
   eToken_extern,
 
   eToken_id,
-  eToken_int_num,
-  eToken_float_num,
+  eToken_int_val,
+  eToken_float_val,
   eToken_string,
-  eToken_char,
+  eToken_char_val,
   eToken_asm_text,
 }
 eToken;
@@ -407,9 +407,8 @@ Scope;
   ENUM_MEMBER(eAstNode_None),\
   ENUM_MEMBER(eAstNode_id),\
   ENUM_MEMBER(eAstNode_asm_block),\
-  ENUM_MEMBER(eAstNode_array),\
   ENUM_MEMBER(eAstNode_bin_expr),\
-  ENUM_MEMBER(eAstNode_un_expr),\
+  ENUM_MEMBER(eAstNode_unr_expr),\
   ENUM_MEMBER(eAstNode_module),\
   ENUM_MEMBER(eAstNode_include),\
   ENUM_MEMBER(eAstNode_block),\
@@ -419,18 +418,13 @@ Scope;
   ENUM_MEMBER(eAstNode_call),\
   ENUM_MEMBER(eAstNode_type),\
   ENUM_MEMBER(eAstNode_lit),\
-  ENUM_MEMBER(eAstNode_ret_stmt),\
-  ENUM_MEMBER(eAstNode_goto_stmt),\
-  ENUM_MEMBER(eAstNode_label),\
-  ENUM_MEMBER(eAstNode_if_stmt),\
-  ENUM_MEMBER(eAstNode_while_stmt),\
-  ENUM_MEMBER(eAstNode_do_while_stmt),\
-  ENUM_MEMBER(eAstNode_for_stmt),\
+  ENUM_MEMBER(eAstNode_ret),\
+  ENUM_MEMBER(eAstNode_if_),\
+  ENUM_MEMBER(eAstNode_while_),\
   ENUM_MEMBER(eAstNode_loop_ctrl),\
   ENUM_MEMBER(eAstNode_enum_decl),\
   ENUM_MEMBER(eAstNode_struct_decl),\
   ENUM_MEMBER(eAstNode_union_decl),\
-  ENUM_MEMBER(eAstNode_init_list),\
   ENUM_MEMBER(eAstNode_empty),
 #endif
 
@@ -620,7 +614,7 @@ typedef struct AstNode
       AstNode* operand;
       eOperator op_kind;
     }
-    un_expr;
+    unr_expr;
 
     struct
     {
@@ -671,6 +665,7 @@ typedef struct AstNode
       char* name;
       AstNode* id;
       List* actual_args;
+      List actual_arg_list;
       Symbol* occur_sym;
       Symbol* decl_sym;
       AstNode* proc;
@@ -683,7 +678,7 @@ typedef struct AstNode
       AstNode* proc;
       int nesting_depth;
     }
-    ret_stmt;
+    ret;
 
     struct
     {
@@ -705,7 +700,7 @@ typedef struct AstNode
       AstNode* body;
       AstNode* else_body;
     }
-    if_stmt;
+    if_;
 
     struct
     {
@@ -714,7 +709,7 @@ typedef struct AstNode
       Scope* scope;
       Label label;
     }
-    while_stmt;
+    while_;
     
     struct
     {

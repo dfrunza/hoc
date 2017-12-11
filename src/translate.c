@@ -1248,6 +1248,7 @@ bool symtab(AstNode* node)
 bool symtab_module_body(SymbolTable* symtab, AstNode* module)
 {
   bool success = true;
+  //return symtab_module_stmt_list(symtab, );
   return success;
 }
 

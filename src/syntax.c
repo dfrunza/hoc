@@ -173,15 +173,17 @@ bool parse_rest_of_unr_expr(TokenStream* input, AstNode* left_node, AstNode** no
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
 
-        if(input->token.kind == eToken_dot)
+        switch(input->token.kind)
         {
-          bin_expr->bin_expr.op_kind = eOperator_member_select;
+          case eToken_dot:
+            bin_expr->bin_expr.op_kind = eOperator_selector;
+            break;
+          case eToken_arrow_right:
+            bin_expr->bin_expr.op_kind = eOperator_indirect_selector;
+            break;
+          default:
+            assert(0);
         }
-        else if(input->token.kind == eToken_arrow_right)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_ptr_member_select;
-        }
-
         if(success = get_next_token(input) && parse_selector(input, &bin_expr->bin_expr.right_operand))
         {
           if(bin_expr->bin_expr.right_operand)
@@ -226,20 +228,20 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
 
-        if(input->token.kind == eToken_star)
+        switch(input->token.kind)
         {
-          bin_expr->bin_expr.op_kind = eOperator_mul;
+          case eToken_star:
+            bin_expr->bin_expr.op_kind = eOperator_mul;
+            break;
+          case eToken_fwd_slash:
+            bin_expr->bin_expr.op_kind = eOperator_div;
+            break;
+          case eToken_percent:
+            bin_expr->bin_expr.op_kind = eOperator_mod;
+            break;
+          default:
+            assert(0);
         }
-        else if(input->token.kind == eToken_fwd_slash)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_div;
-        }
-        else if(input->token.kind == eToken_percent)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_mod;
-        }
-        else
-          assert(0);
 
         if(success = get_next_token(input) && parse_factor(input, &bin_expr->bin_expr.right_operand))
         {
@@ -289,44 +291,38 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
 
-        if(input->token.kind == eToken_plus)
+        switch(input->token.kind)
         {
-          bin_expr->bin_expr.op_kind = eOperator_add;
+          case eToken_plus:
+            bin_expr->bin_expr.op_kind = eOperator_add;
+            break;
+          case eToken_minus:
+            bin_expr->bin_expr.op_kind = eOperator_sub;
+            break;
+          case eToken_pipe:
+            bin_expr->bin_expr.op_kind = eOperator_bit_or;
+            break;
+          case eToken_pipe_pipe:
+            bin_expr->bin_expr.op_kind = eOperator_logic_or;
+            break;
+          case eToken_ampersand:
+            bin_expr->bin_expr.op_kind = eOperator_bit_and;
+            break;
+          case eToken_ampersand_ampersand:
+            bin_expr->bin_expr.op_kind = eOperator_logic_and;
+            break;
+          case eToken_angle_left_left:
+            bin_expr->bin_expr.op_kind = eOperator_bit_shift_left;
+            break;
+          case eToken_angle_right_right:
+            bin_expr->bin_expr.op_kind = eOperator_bit_shift_right;
+            break;
+          case eToken_circumflex:
+            bin_expr->bin_expr.op_kind = eOperator_bit_xor;
+            break;
+          default:
+            assert(0);
         }
-        else if(input->token.kind == eToken_minus)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_sub;
-        }
-        else if(input->token.kind == eToken_pipe)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_bit_or;
-        }
-        else if(input->token.kind == eToken_pipe_pipe)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_logic_or;
-        }
-        else if(input->token.kind == eToken_ampersand)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_bit_and;
-        }
-        else if(input->token.kind == eToken_ampersand_ampersand)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_logic_and;
-        }
-        else if(input->token.kind == eToken_angle_left_left)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_bit_shift_left;
-        }
-        else if(input->token.kind == eToken_angle_right_right)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_bit_shift_right;
-        }
-        else if(input->token.kind == eToken_circumflex)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_bit_xor;
-        }
-        else
-          assert(0);
 
         if(success && (success = get_next_token(input) && parse_term(input, &bin_expr->bin_expr.right_operand)))
         {
@@ -374,36 +370,32 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
 
-        if(input->token.kind == eToken_eq)
+        switch(input->token.kind)
         {
-          bin_expr->bin_expr.op_kind = eOperator_assign;
+          case eToken_eq:
+            bin_expr->bin_expr.op_kind = eOperator_assign;
+            break;
+          case eToken_eq_eq:
+            bin_expr->bin_expr.op_kind = eOperator_eq;
+            break;
+          case eToken_exclam_eq:
+            bin_expr->bin_expr.op_kind = eOperator_not_eq;
+            break;
+          case eToken_angle_left:
+            bin_expr->bin_expr.op_kind = eOperator_less;
+            break;
+          case eToken_angle_left_eq:
+            bin_expr->bin_expr.op_kind = eOperator_less_eq;
+            break;
+          case eToken_angle_right:
+            bin_expr->bin_expr.op_kind = eOperator_greater;
+            break;
+          case eToken_angle_right_eq:
+            bin_expr->bin_expr.op_kind = eOperator_greater_eq;
+            break;
+          default:
+            assert(0);
         }
-        else if(input->token.kind == eToken_eq_eq)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_eq;
-        }
-        else if(input->token.kind == eToken_exclam_eq)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_not_eq;
-        }
-        else if(input->token.kind == eToken_angle_left)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_less;
-        }
-        else if(input->token.kind == eToken_angle_left_eq)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_less_eq;
-        }
-        else if(input->token.kind == eToken_angle_right)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_greater;
-        }
-        else if(input->token.kind == eToken_angle_right_eq)
-        {
-          bin_expr->bin_expr.op_kind = eOperator_greater_eq;
-        }
-        else
-          assert(0);
 
         if(success = get_next_token(input) && parse_expr(input, &bin_expr->bin_expr.right_operand))
         {
@@ -502,34 +494,32 @@ bool parse_selector(TokenStream* input, AstNode** node)
       {
         AstNode* lit = *node = new_ast_node(eAstNode_lit, clone_source_loc(&input->src_loc));
 
-        if(input->token.kind == eToken_int)
+        switch(input->token.kind)
         {
-          lit->lit.kind = eLiteral_int;
-          lit->lit.int_val = *input->token.int_val;
+          case eToken_int:
+            lit->lit.kind = eLiteral_int;
+            lit->lit.int_val = *input->token.int_val;
+            break;
+          case eToken_float:
+            lit->lit.kind = eLiteral_float;
+            lit->lit.float_val = *input->token.float_val;
+            break;
+          case eToken_true:
+          case eToken_false:
+            lit->lit.kind = eLiteral_bool;
+            lit->lit.bool_val = (input->token.kind == eToken_true ? 1 : 0);
+            break;
+          case eToken_char:
+            lit->lit.kind = eLiteral_char;
+            lit->lit.char_val = input->token.char_val;
+            break;
+          case eToken_string:
+            lit->lit.kind = eLiteral_string;
+            lit->lit.str_val = input->token.str_val;
+            break;
+          default:
+            assert(0);
         }
-        else if(input->token.kind == eToken_float)
-        {
-          lit->lit.kind = eLiteral_float;
-          lit->lit.float_val = *input->token.float_val;
-        }
-        else if(input->token.kind == eToken_true ||
-            input->token.kind == eToken_false)
-        {
-          lit->lit.kind = eLiteral_bool;
-          lit->lit.bool_val = (input->token.kind == eToken_true ? 1 : 0);
-        }
-        else if(input->token.kind == eToken_char)
-        {
-          lit->lit.kind = eLiteral_char;
-          lit->lit.char_val = input->token.char_val;
-        }
-        else if(input->token.kind == eToken_string)
-        {
-          lit->lit.kind = eLiteral_string;
-          lit->lit.str_val = input->token.str_val;
-        }
-        else
-          assert(0);
 
         success = get_next_token(input);
       }
@@ -587,24 +577,23 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
       {
         AstNode* unr_expr = *node = new_ast_node(eAstNode_unr_expr, clone_source_loc(&input->src_loc));
 
-        if(input->token.kind == eToken_exclam)
+        switch(input->token.kind)
         {
-          unr_expr->unr_expr.op_kind = eOperator_logic_not;
+          case eToken_exclam:
+            unr_expr->unr_expr.op_kind = eOperator_logic_not;
+            break;
+          case eToken_star:
+            unr_expr->unr_expr.op_kind = eOperator_deref;
+            break;
+          case eToken_ampersand:
+            unr_expr->unr_expr.op_kind = eOperator_address_of;
+            break;
+          case eToken_minus:
+            unr_expr->unr_expr.op_kind = eOperator_neg;
+            break;
+          default:
+            assert(0);
         }
-        else if(input->token.kind == eToken_star)
-        {
-          unr_expr->unr_expr.op_kind = eOperator_deref;
-        }
-        else if(input->token.kind == eToken_ampersand)
-        {
-          unr_expr->unr_expr.op_kind = eOperator_address_of;
-        }
-        else if(input->token.kind == eToken_minus)
-        {
-          unr_expr->unr_expr.op_kind = eOperator_neg;
-        }
-        else
-          assert(0);
 
         if(success && (success = get_next_token(input) && parse_factor(input, &unr_expr->unr_expr.operand)))
         {
@@ -1073,7 +1062,6 @@ bool parse_include(TokenStream* input, AstNode** node)
     success = compile_error(&input->src_loc, "string expected, actual `%s`", get_token_printstr(&input->token));
   return success;
 }
-#endif
 
 bool parse_enum(TokenStream* input, AstNode** node)
 {
@@ -1281,6 +1269,7 @@ bool parse_asm_block(TokenStream* input, AstNode** node)
   }
   return success;
 }
+#endif
 
 bool parse_module_stmt(TokenStream* input, AstNode** node)
 {

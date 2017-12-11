@@ -184,8 +184,8 @@ TokenStream;
   ENUM_MEMBER(eOperator_assign),\
   ENUM_MEMBER(eOperator_deref),\
   ENUM_MEMBER(eOperator_address_of),\
-  ENUM_MEMBER(eOperator_member_select),\
-  ENUM_MEMBER(eOperator_ptr_member_select),\
+  ENUM_MEMBER(eOperator_selector),\
+  ENUM_MEMBER(eOperator_indirect_selector),\
   ENUM_MEMBER(eOperator_pre_decr),\
   ENUM_MEMBER(eOperator_post_decr),\
   ENUM_MEMBER(eOperator_pre_incr),\
@@ -249,10 +249,10 @@ char* get_operator_printstr(eOperator op)
     case eOperator_address_of:
       str = "&";
       break;
-    case eOperator_member_select:
+    case eOperator_selector:
       str = ".";
       break;
-    case eOperator_ptr_member_select:
+    case eOperator_indirect_selector:
       str = "->";
       break;
     case eOperator_pre_decr:

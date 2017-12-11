@@ -2,7 +2,7 @@ Token keyword_list[] =
 {
   {eToken_var, "var"},
   {eToken_asm, "asm"},
-  {eToken_cast, "cast"},
+//  {eToken_cast, "cast"},
   {eToken_if, "if"},
   {eToken_else, "else"},
   {eToken_while, "while"},
@@ -300,9 +300,11 @@ char* get_token_printstr(Token* token)
     case eToken_var:
       result = "var";
       break;
+#if 0
     case eToken_cast:
       result = "cast";
       break;
+#endif
     case eToken_goto:
       result = "goto";
       break;

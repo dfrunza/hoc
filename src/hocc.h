@@ -123,7 +123,7 @@ typedef enum
 
   eToken_asm,
   eToken_var,
-  eToken_cast,
+//  eToken_cast,
   eToken_if,
   eToken_else,
   eToken_while,
@@ -592,15 +592,6 @@ typedef struct List
 }
 List;
 
-typedef enum
-{
-  eTypeProduction_None,
-  eTypeProduction_array,
-  eTypeProduction_id,
-  eTypeProduction_pointer,
-}
-eTypeProduction;
-
 typedef struct AstNode
 {
   eAstNode kind;
@@ -642,11 +633,11 @@ typedef struct AstNode
 
     struct
     {
-      eTypeProduction production;
+      eType kind;
+      char* name;
 
       union
       {
-        char* name;
 
         struct
         {

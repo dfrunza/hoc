@@ -1284,11 +1284,11 @@ bool symtab(AstNode* node)
 bool symtab_proc_type(SymbolTable* symtab, AstNode* type)
 {
   bool success = true;
-  switch(type->type.production)
+  switch(type->kind)
   {
-    case eTypeProduction_id:
+    case eAstNode_id:
       {
-        Symbol* decl_sym = lookup_decl_symbol(type->type.name, symtab->active_scope);
+        Symbol* decl_sym = lookup_decl_symbol(type->id.name, symtab->active_scope);
         if(decl_sym)
         {
           type->decl_sym = decl_sym;

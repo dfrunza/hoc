@@ -76,4 +76,3 @@ proc void quick_sort([]int data, int len)
   quick_sort_recurs(data, 0, len - 1);
 }
 
-

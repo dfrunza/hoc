@@ -1,14 +1,6 @@
-/*
-include "std.hoc";
-include "str.hoc";
-include "math.hoc";
-include "fizzbuzz.hoc";
-include "fibo.hoc";
-include "sort.hoc";
-*/
-
 proc void foo()
 {
-  a = (int^):a[5];
+  var int a;
+  var float^ b;
+  a = ^(int^:b);
 }
-

@@ -109,9 +109,7 @@ typedef enum
   eToken_angle_left_eq,
   eToken_angle_left_left,
   eToken_ampersand,
-//  eToken_ampersand_ampersand,
   eToken_pipe,
-//  eToken_pipe_pipe,
   eToken_circumflex,
   eToken_and,
   eToken_or,
@@ -123,7 +121,6 @@ typedef enum
 
   eToken_asm,
   eToken_var,
-//  eToken_cast,
   eToken_if,
   eToken_else,
   eToken_while,
@@ -638,7 +635,6 @@ typedef struct AstNode
 
       union
       {
-
         struct
         {
           AstNode* elem, *pointee;

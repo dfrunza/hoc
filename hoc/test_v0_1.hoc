@@ -12,7 +12,7 @@ proc void print_numbers(int^ numbers, int len)
   var int i; i = 0;
   while(i < len)
   {
-    print_int(^(numbers + cast(int^)(i*4)));
+    print_int(^(numbers + int^:(i*4)));
     print_str(&"\n");
 
     i = i+1;
@@ -24,14 +24,16 @@ proc int^ make_numbers(int how_many)
   var int i; i = 0;
   var int c1; c1 = 17;
   var int c2; c2 = 31;
-  var int^ numbers; numbers = cast(int^)alloc(how_many*4);
+  var int^ numbers;
+  /*numbers = int^:alloc(how_many*4);*/
+  numbers = int^:alloc([how_many]int);
 
   while(i < how_many)
   {
     if((i mod 2) == 0)
-      ^(numbers + cast(int^)(i*4)) = c1 * i;
+      ^(numbers + int^:(i*4)) = c1 * i;
     else
-      ^(numbers + cast(int^)(i*4)) = c2 * i;
+      ^(numbers + int^:(i*4)) = c2 * i;
 
     i = i+1;
   }

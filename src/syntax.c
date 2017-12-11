@@ -530,7 +530,17 @@ bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** no
   switch(input->token.kind)
   {
     case eToken_open_parens:
-      success = parse_call(input, left_node, node);
+      {
+        if(left_node->kind != eAstNode_type)
+        {
+          success = parse_call(input, left_node, node);
+        }
+        else
+        {
+          putback_token(input);
+          success = compile_error(left_node->src_loc, "unexpected type at `%s`", get_token_printstr(&input->token));
+        }
+      }
       break;
     case eToken_open_bracket:
       success = parse_indexer(input, left_node, node);
@@ -606,24 +616,19 @@ bool parse_formal_arg(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
-  switch(input->token.kind)
+  if((success = parse_type(input, node)) && *node)
   {
-    case eToken_open_bracket:
-    case eToken_id:
-      {
-        AstNode* var = *node = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
-        if(success = parse_type(input, &var->var.type))
-        {
-          if(input->token.kind == eToken_id)
-          {
-            var->var.name = input->token.lexeme;
-            success = get_next_token(input);
-          }
-          else
-            success = compile_error(&input->src_loc, "identifier was expected at `%s`", get_token_printstr(&input->token));
-        }
-      }
-      break;
+    AstNode* type = *node;
+    AstNode* var = *node = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
+    var->var.type = type;
+
+    if(input->token.kind == eToken_id)
+    {
+      var->var.name = input->token.lexeme;
+      success = get_next_token(input);
+    }
+    else
+      success = compile_error(&input->src_loc, "identifier was expected at `%s`", get_token_printstr(&input->token));
   }
   return success;
 }
@@ -704,27 +709,18 @@ bool parse_var(TokenStream* input, AstNode** node)
       AstNode* var = *node = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
       if(success = parse_type(input, &var->var.type))
       {
-        if(input->token.kind == eToken_colon)
+        if(input->token.kind == eToken_id)
         {
-          if(success = get_next_token(input))
-          {
-            if(input->token.kind == eToken_id)
-            {
-              var->var.name = input->token.lexeme;
-              success = get_next_token(input);
-            }
-            else
-              success = compile_error(&input->src_loc, "identifier was expected at `%s`", get_token_printstr(&input->token));
-          }
+          var->var.name = input->token.lexeme;
+          success = get_next_token(input);
         }
         else
-          success = compile_error(&input->src_loc, "`:` was expected at `%s`", get_token_printstr(&input->token));
+          success = compile_error(&input->src_loc, "identifier was expected at `%s`", get_token_printstr(&input->token));
       }
     }
   }
   else
     success = compile_error(&input->src_loc, "`var` was expected at `%s`", get_token_printstr(&input->token));
-
   return success;
 }
 

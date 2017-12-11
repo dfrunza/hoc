@@ -2,7 +2,6 @@ Token keyword_list[] =
 {
   {eToken_var, "var"},
   {eToken_asm, "asm"},
-//  {eToken_cast, "cast"},
   {eToken_if, "if"},
   {eToken_else, "else"},
   {eToken_while, "while"},
@@ -186,11 +185,6 @@ char* get_token_printstr(Token* token)
     case eToken_comma:
       result = ",";
       break;
-#if 0
-    case eToken_percent:
-      result = "%";
-      break;
-#endif
     case eToken_star:
       result = "*";
       break;
@@ -245,19 +239,9 @@ char* get_token_printstr(Token* token)
     case eToken_ampersand:
       result = "&";
       break;
-#if 0
-    case eToken_ampersand_ampersand:
-      result = "&&";
-      break;
-#endif
     case eToken_pipe:
       result = "|";
       break;
-#if 0
-    case eToken_pipe_pipe:
-      result = "||";
-      break;
-#endif
     case eToken_circumflex:
       result = "^";
       break;
@@ -300,11 +284,6 @@ char* get_token_printstr(Token* token)
     case eToken_var:
       result = "var";
       break;
-#if 0
-    case eToken_cast:
-      result = "cast";
-      break;
-#endif
     case eToken_goto:
       result = "goto";
       break;
@@ -558,13 +537,6 @@ loop:
   {
     token->kind = eToken_ampersand;
     c = *(++input->cursor);
-#if 0
-    if(c == '&')
-    {
-      token->kind = eToken_ampersand_ampersand;
-      ++input->cursor;
-    }
-#endif
   }
   else if(c == '/')
   {
@@ -666,13 +638,6 @@ loop:
   {
     token->kind = eToken_pipe;
     c = *(++input->cursor);
-#if 0
-    if(c == '|')
-    {
-      token->kind = eToken_pipe_pipe;
-      ++input->cursor;
-    }
-#endif
   }
   else if(c == '!')
   {
@@ -699,13 +664,6 @@ loop:
     token->kind = eToken_star;
     ++input->cursor;
   }
-#if 0
-  else if(c == '%')
-  {
-    token->kind = eToken_percent;
-    ++input->cursor;
-  }
-#endif
   else if(c == '^')
   {
     token->kind = eToken_circumflex;

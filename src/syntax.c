@@ -13,7 +13,7 @@ bool consume_semicolon(TokenStream* input)
     success = get_next_token(input);
   }
   else
-    success = compile_error(&input->src_loc, "expected `;`, actual `%s`", get_token_printstr(&input->token));
+    success = compile_error(&input->src_loc, "`;` was expected, actual is `%s`", get_token_printstr(&input->token));
   return success;
 }
 
@@ -21,11 +21,11 @@ bool parse_rest_of_type(TokenStream* input, AstNode* type, AstNode** node)
 {
   *node = type;
   bool success = true;
-  if(input->token.kind == eToken_star)
+  if(input->token.kind == eToken_circumflex)
   {
     AstNode* pointer = *node = new_ast_node(eAstNode_type, clone_source_loc(&input->src_loc));
-    pointer->type.kind = eType_pointer;
-    pointer->type.pointer.pointee = type;
+    pointer->type.production = eTypeProduction_pointer;
+    pointer->type.pointee = type;
     success = get_next_token(input) && parse_rest_of_type(input, *node, node);
   }
   return success;
@@ -38,28 +38,30 @@ bool parse_type(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
-  AstNode* type = *node = new_ast_node(eAstNode_type, clone_source_loc(&input->src_loc));
   switch(input->token.kind)
   {
     case eToken_open_bracket:
-      type->type.kind = eType_array;
-      if(success = (get_next_token(input) && parse_expr(input, &type->type.array.size)))
       {
-        if(input->token.kind == eToken_close_bracket)
+        AstNode* type = *node = new_ast_node(eAstNode_type, clone_source_loc(&input->src_loc));
+        type->type.production = eTypeProduction_array;
+        if(success = (get_next_token(input) && parse_expr(input, &type->type.size)))
         {
-          success = get_next_token(input) && parse_type(input, &type->type.array.elem);
+          if(input->token.kind == eToken_close_bracket)
+          {
+            success = get_next_token(input) && parse_type(input, &type->type.elem);
+          }
+          else
+            success = compile_error(&input->src_loc,  "`]` was expected, actual is `%s`", get_token_printstr(&input->token));
         }
-        else
-          success = compile_error(&input->src_loc,  "expected `]`, actual `%s`", get_token_printstr(&input->token));
       }
       break;
     case eToken_id:
-      type->type.kind = eType_basic;
-      type->type.name = input->token.lexeme;
-      success = get_next_token(input) && parse_rest_of_type(input, *node, node);
-      break;
-    default:
-      success = compile_error(&input->src_loc, "unexpected `%s`", get_token_printstr(&input->token));
+      {
+        AstNode* type = *node = new_ast_node(eAstNode_type, clone_source_loc(&input->src_loc));
+        type->type.production = eTypeProduction_id;
+        type->type.name = input->token.lexeme;
+        success = get_next_token(input) && parse_rest_of_type(input, *node, node);
+      }
       break;
   }
   return success;
@@ -118,7 +120,7 @@ bool parse_call(TokenStream* input, AstNode* left_node, AstNode** node)
         success = get_next_token(input) && parse_rest_of_selector(input, *node, node);
       }
       else
-        success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+        success = compile_error(&input->src_loc, "`)` was expected, actual is `%s`", get_token_printstr(&input->token));
     }
   }
   return success;
@@ -132,7 +134,7 @@ bool parse_indexer(TokenStream* input, AstNode* left_node, AstNode** node)
   if(input->token.kind == eToken_open_bracket)
   {
     AstNode* index = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-    index->bin_expr.op_kind = eOperator_indexer;
+    index->bin_expr.op = eOperator_indexer;
     index->bin_expr.left_operand = left_node;
 
     if(success = get_next_token(input) && parse_expr(input, &index->bin_expr.right_operand))
@@ -146,12 +148,12 @@ bool parse_indexer(TokenStream* input, AstNode* left_node, AstNode** node)
         else
         {
           putback_token(input);
-          success = compile_error(&input->src_loc, "[] : expression required inside the brackets");
+          success = compile_error(&input->src_loc, "expression is required, at %s", get_token_printstr(&input->token));
         }
       }
       else
       {
-        success = compile_error(&input->src_loc, "expected `]`, actual `%s`", get_token_printstr(&input->token));
+        success = compile_error(&input->src_loc, "`]` was expected, actual is `%s`", get_token_printstr(&input->token));
       }
     }
   }
@@ -176,10 +178,10 @@ bool parse_rest_of_unr_expr(TokenStream* input, AstNode* left_node, AstNode** no
         switch(input->token.kind)
         {
           case eToken_dot:
-            bin_expr->bin_expr.op_kind = eOperator_selector;
+            bin_expr->bin_expr.op = eOperator_selector;
             break;
           case eToken_arrow_right:
-            bin_expr->bin_expr.op_kind = eOperator_indirect_selector;
+            bin_expr->bin_expr.op = eOperator_indirect_selector;
             break;
           default:
             assert(0);
@@ -191,10 +193,7 @@ bool parse_rest_of_unr_expr(TokenStream* input, AstNode* left_node, AstNode** no
             success = parse_rest_of_unr_expr(input, *node, node);
           }
           else
-          {
-            putback_token(input);
-            success = compile_error(&input->src_loc, "operand expected, at `%s`", get_token_printstr(&input->token));
-          }
+            success = compile_error(&input->src_loc, "operand was expected at `%s`", get_token_printstr(&input->token));
         }
       }
       break;
@@ -223,7 +222,7 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
   {
     case eToken_star:
     case eToken_fwd_slash:
-    case eToken_percent:
+    case eToken_mod:
       {
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
@@ -231,13 +230,13 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
         switch(input->token.kind)
         {
           case eToken_star:
-            bin_expr->bin_expr.op_kind = eOperator_mul;
+            bin_expr->bin_expr.op = eOperator_mul;
             break;
           case eToken_fwd_slash:
-            bin_expr->bin_expr.op_kind = eOperator_div;
+            bin_expr->bin_expr.op = eOperator_div;
             break;
-          case eToken_percent:
-            bin_expr->bin_expr.op_kind = eOperator_mod;
+          case eToken_mod:
+            bin_expr->bin_expr.op = eOperator_mod;
             break;
           default:
             assert(0);
@@ -250,10 +249,7 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
             success = parse_rest_of_factor(input, *node, node);
           }
           else
-          {
-            putback_token(input);
-            success = compile_error(&input->src_loc, "operand expected, at `%s`", get_token_printstr(&input->token));
-          }
+            success = compile_error(&input->src_loc, "operand was expected at `%s`", get_token_printstr(&input->token));
         }
       }
       break;
@@ -281,12 +277,12 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     case eToken_plus:
     case eToken_minus:
     case eToken_pipe:
-    case eToken_pipe_pipe:
+    case eToken_or:
     case eToken_ampersand:
-    case eToken_ampersand_ampersand:
+    case eToken_and:
     case eToken_angle_right_right:
     case eToken_angle_left_left:
-    case eToken_circumflex:
+    case eToken_xor:
       {
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
@@ -294,31 +290,31 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
         switch(input->token.kind)
         {
           case eToken_plus:
-            bin_expr->bin_expr.op_kind = eOperator_add;
+            bin_expr->bin_expr.op = eOperator_add;
             break;
           case eToken_minus:
-            bin_expr->bin_expr.op_kind = eOperator_sub;
+            bin_expr->bin_expr.op = eOperator_sub;
+            break;
+          case eToken_or:
+            bin_expr->bin_expr.op = eOperator_bit_or;
             break;
           case eToken_pipe:
-            bin_expr->bin_expr.op_kind = eOperator_bit_or;
+            bin_expr->bin_expr.op = eOperator_logic_or;
             break;
-          case eToken_pipe_pipe:
-            bin_expr->bin_expr.op_kind = eOperator_logic_or;
+          case eToken_and:
+            bin_expr->bin_expr.op = eOperator_bit_and;
             break;
           case eToken_ampersand:
-            bin_expr->bin_expr.op_kind = eOperator_bit_and;
-            break;
-          case eToken_ampersand_ampersand:
-            bin_expr->bin_expr.op_kind = eOperator_logic_and;
+            bin_expr->bin_expr.op = eOperator_logic_and;
             break;
           case eToken_angle_left_left:
-            bin_expr->bin_expr.op_kind = eOperator_bit_shift_left;
+            bin_expr->bin_expr.op = eOperator_bit_shift_left;
             break;
           case eToken_angle_right_right:
-            bin_expr->bin_expr.op_kind = eOperator_bit_shift_right;
+            bin_expr->bin_expr.op = eOperator_bit_shift_right;
             break;
-          case eToken_circumflex:
-            bin_expr->bin_expr.op_kind = eOperator_bit_xor;
+          case eToken_xor:
+            bin_expr->bin_expr.op = eOperator_bit_xor;
             break;
           default:
             assert(0);
@@ -331,10 +327,7 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
             success = parse_rest_of_term(input, *node, node);
           }
           else
-          {
-            putback_token(input);
-            success = compile_error(&input->src_loc, "operand expected, at `%s`", get_token_printstr(&input->token));
-          }
+            success = compile_error(&input->src_loc, "operand was expected at `%s`", get_token_printstr(&input->token));
         }
       }
       break;
@@ -373,25 +366,25 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
         switch(input->token.kind)
         {
           case eToken_eq:
-            bin_expr->bin_expr.op_kind = eOperator_assign;
+            bin_expr->bin_expr.op = eOperator_assign;
             break;
           case eToken_eq_eq:
-            bin_expr->bin_expr.op_kind = eOperator_eq;
+            bin_expr->bin_expr.op = eOperator_eq;
             break;
           case eToken_exclam_eq:
-            bin_expr->bin_expr.op_kind = eOperator_not_eq;
+            bin_expr->bin_expr.op = eOperator_not_eq;
             break;
           case eToken_angle_left:
-            bin_expr->bin_expr.op_kind = eOperator_less;
+            bin_expr->bin_expr.op = eOperator_less;
             break;
           case eToken_angle_left_eq:
-            bin_expr->bin_expr.op_kind = eOperator_less_eq;
+            bin_expr->bin_expr.op = eOperator_less_eq;
             break;
           case eToken_angle_right:
-            bin_expr->bin_expr.op_kind = eOperator_greater;
+            bin_expr->bin_expr.op = eOperator_greater;
             break;
           case eToken_angle_right_eq:
-            bin_expr->bin_expr.op_kind = eOperator_greater_eq;
+            bin_expr->bin_expr.op = eOperator_greater_eq;
             break;
           default:
             assert(0);
@@ -401,8 +394,7 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
         {
           if(!bin_expr->bin_expr.right_operand)
           {
-            putback_token(input);
-            success = compile_error(&input->src_loc, "operand expected, at `%s`", get_token_printstr(&input->token));
+            success = compile_error(&input->src_loc, "operand was expected at `%s`", get_token_printstr(&input->token));
           }
         }
       }
@@ -418,25 +410,29 @@ bool parse_cast(TokenStream* input, AstNode** node)
   if(input->token.kind == eToken_cast && (success = get_next_token(input)))
   {
     AstNode* cast = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-    cast->bin_expr.op_kind = eOperator_cast;
+    cast->bin_expr.op = eOperator_cast;
 
     if(input->token.kind == eToken_open_parens && (success = get_next_token(input)))
     {
       if(success = parse_type(input, &cast->bin_expr.left_operand))
       {
-        if(input->token.kind == eToken_close_parens)
+        if(cast->bin_expr.left_operand)
         {
-          if(success = (get_next_token(input) && parse_unr_expr(input, &cast->bin_expr.right_operand)))
+          if(input->token.kind == eToken_close_parens)
           {
-            if(!cast->bin_expr.right_operand)
+            if(success = (get_next_token(input) && parse_unr_expr(input, &cast->bin_expr.right_operand)))
             {
-              putback_token(input);
-              success = compile_error(&input->src_loc, "expression expected, at `%s`", get_token_printstr(&input->token));
+              if(!cast->bin_expr.right_operand)
+              {
+                success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
+              }
             }
           }
+          else
+            success = compile_error(&input->src_loc, "`)` was expected, actual is `%s`", get_token_printstr(&input->token));
         }
         else
-          success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+          success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
       }
     }
   }
@@ -476,7 +472,7 @@ bool parse_selector(TokenStream* input, AstNode** node)
             success = parse_rest_of_selector(input, *node, node);
           }
           else
-            success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+            success = compile_error(&input->src_loc, "`)` was expected, actual is `%s`", get_token_printstr(&input->token));
         }
       }
       break;
@@ -555,7 +551,7 @@ bool parse_formal_arg(TokenStream* input, AstNode** node)
             success = get_next_token(input);
           }
           else
-            success = compile_error(&input->src_loc, "identifier expected, actual `%s`", get_token_printstr(&input->token));
+            success = compile_error(&input->src_loc, "identifier was expected, actual is `%s`", get_token_printstr(&input->token));
         }
       }
       break;
@@ -571,25 +567,29 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
   switch(input->token.kind)
   {
     case eToken_exclam:
-    case eToken_star:
+    case eToken_circumflex:
     case eToken_ampersand:
     case eToken_minus:
+    case eToken_not:
       {
         AstNode* unr_expr = *node = new_ast_node(eAstNode_unr_expr, clone_source_loc(&input->src_loc));
 
         switch(input->token.kind)
         {
           case eToken_exclam:
-            unr_expr->unr_expr.op_kind = eOperator_logic_not;
+            unr_expr->unr_expr.op = eOperator_logic_not;
             break;
-          case eToken_star:
-            unr_expr->unr_expr.op_kind = eOperator_deref;
+          case eToken_circumflex:
+            unr_expr->unr_expr.op = eOperator_deref;
             break;
           case eToken_ampersand:
-            unr_expr->unr_expr.op_kind = eOperator_address_of;
+            unr_expr->unr_expr.op = eOperator_address_of;
             break;
           case eToken_minus:
-            unr_expr->unr_expr.op_kind = eOperator_neg;
+            unr_expr->unr_expr.op = eOperator_neg;
+            break;
+          case eToken_not:
+            unr_expr->unr_expr.op = eOperator_bit_not;
             break;
           default:
             assert(0);
@@ -599,8 +599,7 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
         {
           if(!unr_expr->unr_expr.operand)
           {
-            putback_token(input);
-            success = compile_error(&input->src_loc, "operand expected, at `%s`", get_token_printstr(&input->token));
+            success = compile_error(&input->src_loc, "operand was expected at `%s`", get_token_printstr(&input->token));
           }
         }
       }
@@ -642,12 +641,12 @@ bool parse_var(TokenStream* input, AstNode** node)
           success = get_next_token(input);
         }
         else
-          success = compile_error(&input->src_loc, "identifier expected, actual `%s`", get_token_printstr(&input->token));
+          success = compile_error(&input->src_loc, "identifier was expected, actual is `%s`", get_token_printstr(&input->token));
       }
     }
   }
   else
-    success = compile_error(&input->src_loc, "expected `var`, actual `%s`", get_token_printstr(&input->token));
+    success = compile_error(&input->src_loc, "`var` was expected, actual is `%s`", get_token_printstr(&input->token));
 
   return success;
 }
@@ -722,7 +721,7 @@ bool parse_block(TokenStream* input, AstNode** node)
         success = get_next_token(input);
       }
       else
-        success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
+        success = compile_error(&input->src_loc, "`}` was expected, actual is `%s`", get_token_printstr(&input->token));
     }
   }
   return success;
@@ -769,11 +768,11 @@ bool parse_if(TokenStream* input, AstNode** node)
             success = get_next_token(input) && parse_if_body(input, &if_->if_.body) && parse_else(input, &if_->if_.else_body);
           }
           else
-            success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+            success = compile_error(&input->src_loc, "`)` was expected, actual is `%s`", get_token_printstr(&input->token));
         }
       }
       else
-        success = compile_error(&input->src_loc, "expected `(`, actual `%s`", get_token_printstr(&input->token));
+        success = compile_error(&input->src_loc, "`(` was expected, actual is `%s`", get_token_printstr(&input->token));
     }
   }
   return success;
@@ -803,11 +802,11 @@ bool parse_while(TokenStream* input, AstNode** node)
             success = get_next_token(input) && parse_while_body(input, &while_->while_.body);
           }
           else
-            success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+            success = compile_error(&input->src_loc, "`)` was expected, actual is `%s`", get_token_printstr(&input->token));
         }
       }
       else
-        success = compile_error(&input->src_loc, "expected `(`, actual `%s`", get_token_printstr(&input->token));
+        success = compile_error(&input->src_loc, "`(` was expected, actual is `%s`", get_token_printstr(&input->token));
     }
   }
   return success;
@@ -979,20 +978,20 @@ bool parse_proc(TokenStream* input, AstNode** node)
                     success = get_next_token(input) && parse_proc_body(input, proc);
                   }
                   else
-                    success = compile_error(&input->src_loc, "expected `)`, actual `%s`", get_token_printstr(&input->token));
+                    success = compile_error(&input->src_loc, "`)` was expected, actual is `%s`", get_token_printstr(&input->token));
                 }
               }
               else
-                success = compile_error(&input->src_loc, "expected `(`, actual `%s`", get_token_printstr(&input->token));
+                success = compile_error(&input->src_loc, "`(` was expected, actual is `%s`", get_token_printstr(&input->token));
             }
           }
           else
-            success = compile_error(&input->src_loc, "identifier expected, actual `%s`", get_token_printstr(&input->token));
+            success = compile_error(&input->src_loc, "identifier was expected, actual is `%s`", get_token_printstr(&input->token));
         }
       }
     }
     else
-      success = compile_error(&input->src_loc, "expected `proc`, actual `%s`", get_token_printstr(&input->token));
+      success = compile_error(&input->src_loc, "`proc` was expected, actual is `%s`", get_token_printstr(&input->token));
   }
   return success;
 }
@@ -1013,11 +1012,11 @@ bool parse_include(TokenStream* input, AstNode** node)
         success = get_next_token(input);
       }
       else
-        success = compile_error(&input->src_loc, "expected string literal, actual `%s`", get_token_printstr(&input->token));
+        success = compile_error(&input->src_loc, "string literal was expected, actual is `%s`", get_token_printstr(&input->token));
     }
   }
   else
-    success = compile_error(&input->src_loc, "expected `include`, actual `%s`", get_token_printstr(&input->token));
+    success = compile_error(&input->src_loc, "`include` was expected, actual is `%s`", get_token_printstr(&input->token));
 
   return success;
 }
@@ -1220,7 +1219,7 @@ bool parse_struct_member_list(TokenStream* input, List* member_list)
             /* anonymous struct/union */
           }
           else
-            success = compile_error(&input->src_loc, "identifier expected, actual `%s`", get_token_printstr(&input->token));
+            success = compile_error(&input->src_loc, "identifier was expected, actual is `%s`", get_token_printstr(&input->token));
 
           if(success)
           {
@@ -1237,10 +1236,10 @@ bool parse_struct_member_list(TokenStream* input, List* member_list)
     if(input->token.kind == eToken_close_brace)
       success = get_next_token(input);
     else
-      success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
+      success = compile_error(&input->src_loc, "`}` was expected, actual is `%s`", get_token_printstr(&input->token));
   }
   else
-    success = compile_error(&input->src_loc, "expected `{`, actual `%s`", get_token_printstr(&input->token));
+    success = compile_error(&input->src_loc, "`{` was expected, actual is `%s`", get_token_printstr(&input->token));
   return success;
 }
 
@@ -1263,7 +1262,7 @@ bool parse_asm_block(TokenStream* input, AstNode** node)
           success = get_next_token(input);
         }
         else
-          success = compile_error(&input->src_loc, "expected `}`, actual `%s`", get_token_printstr(&input->token));
+          success = compile_error(&input->src_loc, "`}` was expected, actual is `%s`", get_token_printstr(&input->token));
       }
     }
   }
@@ -1282,13 +1281,10 @@ bool parse_module_stmt(TokenStream* input, AstNode** node)
       success = parse_proc(input, node);
       break;
     case eToken_var:
-      success = parse_var(input, node);
+      success = parse_var(input, node) && consume_semicolon(input);
       break;
     case eToken_include:
-      success = parse_include(input, node);
-      break;
-    case eToken_semicolon:
-      success = parse_empty(input, node);
+      success = parse_include(input, node) && consume_semicolon(input);
       break;
   }
   return success;
@@ -1302,6 +1298,7 @@ bool parse_module_stmt_list(TokenStream* input, AstNode* module)
   {
     if(stmt)
     {
+      append_list_elem(&module->module.node_list, stmt, eList_ast_node);
       switch(stmt->kind)
       {
         case eAstNode_proc:
@@ -1334,7 +1331,7 @@ bool parse_module_body(TokenStream* input, AstNode* module)
       //TODO: reset the input
     }
     else
-      success = compile_error(&input->src_loc, "expected `end-of-input`, at `%s`", get_token_printstr(&input->token));
+      success = compile_error(&input->src_loc, "`end-of-input` was expected at `%s`", get_token_printstr(&input->token));
   }
   return success;
 }
@@ -1346,10 +1343,10 @@ bool parse_module(TokenStream* input, AstNode** node)
 
   AstNode* module = *node = new_ast_node(eAstNode_module, clone_source_loc(&input->src_loc));
   module->module.file_path = input->src_loc.file_path;
+  init_list(&module->module.node_list, arena, eList_ast_node);
   init_list(&module->module.proc_list, arena, eList_ast_node);
   init_list(&module->module.var_list, arena, eList_ast_node);
   init_list(&module->module.include_list, arena, eList_ast_node);
-  success = parse_module_body(input, module);
-  return success;
+  return success = parse_module_body(input, module);;
 }
 

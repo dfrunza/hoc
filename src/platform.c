@@ -5,7 +5,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-void mem_zero_f(void* mem, int len)
+void mem_zero_(void* mem, int len)
 {
   memset(mem, 0, (size_t)len);
 }
@@ -47,7 +47,7 @@ int h_putc(int ch)
   return putc(ch, stdout);
 }
 
-bool compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ...)
+bool compile_error_(char* file, int line, SourceLoc* src_loc, char* message, ...)
 {
   char* filename_buf = mem_push_array_nz(arena, char, cstr_len(file));
   cstr_copy(filename_buf, file);
@@ -67,7 +67,7 @@ bool compile_error_f(char* file, int line, SourceLoc* src_loc, char* message, ..
   return false;
 }
 
-void assert_f(char* message, char* file, int line)
+void assert_(char* message, char* file, int line)
 {
   if(DEBUG_enabled)
   {
@@ -81,7 +81,7 @@ void assert_f(char* message, char* file, int line)
   }
 }
 
-void fail_f(char* file, int line, char* message, ...)
+void fail_(char* file, int line, char* message, ...)
 {
   fprintf(stderr, "%s(%d) : ", file, line);
 
@@ -98,7 +98,7 @@ void fail_f(char* file, int line, char* message, ...)
   *(int*)0 = 0;
 }
 
-bool error_f(char* file, int line, char* message, ...)
+bool error_(char* file, int line, char* message, ...)
 {
   fprintf(stderr, "%s(%d) : ", file, line);
 

@@ -2,7 +2,6 @@ Token keyword_list[] =
 {
   {eToken_var, "var"},
   {eToken_asm, "asm"},
-  {eToken_type, "type"},
   {eToken_cast, "cast"},
   {eToken_if, "if"},
   {eToken_else, "else"},
@@ -19,6 +18,11 @@ Token keyword_list[] =
   {eToken_union, "union"},
   {eToken_enum, "enum"},
   {eToken_extern, "extern"},
+  {eToken_and, "and"},
+  {eToken_or, "or"},
+  {eToken_xor, "xor"},
+  {eToken_not, "not"},
+  {eToken_mod, "mod"},
   {eToken_None, 0}, /* terminator */
 };
 
@@ -82,7 +86,7 @@ bool escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
     {
       c = *(++estr->end);
       if(!is_valid_escape_char(c))
-        success = compile_error_f(file, line, &input->src_loc, "invalid escape char `%c`", c);
+        success = compile_error_(file, line, &input->src_loc, "invalid escape char `%c`", c);
     }
     estr->len++;
     c = *(++estr->end);
@@ -90,7 +94,7 @@ bool escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
   if(success)
   {
     if(*estr->end != estr->quote)
-      success = compile_error_f(file, line, &input->src_loc, 
+      success = compile_error_(file, line, &input->src_loc, 
                                 "malformed string literal, missing the closing `%c`", estr->quote);
   }
   assert((estr->end - estr->begin) >= 1);
@@ -182,9 +186,11 @@ char* get_token_printstr(Token* token)
     case eToken_comma:
       result = ",";
       break;
+#if 0
     case eToken_percent:
       result = "%";
       break;
+#endif
     case eToken_star:
       result = "*";
       break;
@@ -239,23 +245,24 @@ char* get_token_printstr(Token* token)
     case eToken_ampersand:
       result = "&";
       break;
+#if 0
     case eToken_ampersand_ampersand:
       result = "&&";
       break;
+#endif
     case eToken_pipe:
       result = "|";
       break;
+#if 0
     case eToken_pipe_pipe:
       result = "||";
       break;
+#endif
     case eToken_circumflex:
       result = "^";
       break;
     case eToken_end_of_input:
       result = "end-of-input";
-      break;
-    case eToken_var:
-      result = "var";
       break;
     case eToken_if:
       result = "if";
@@ -290,8 +297,8 @@ char* get_token_printstr(Token* token)
     case eToken_enum:
       result = "enum";
       break;
-    case eToken_type:
-      result = "type";
+    case eToken_var:
+      result = "var";
       break;
     case eToken_cast:
       result = "cast";
@@ -307,6 +314,21 @@ char* get_token_printstr(Token* token)
       break;
     case eToken_extern:
       result = "extern";
+      break;
+    case eToken_and:
+      result = "and";
+      break;
+    case eToken_or:
+      result = "or";
+      break;
+    case eToken_xor:
+      result = "xor";
+      break;
+    case eToken_not:
+      result = "not";
+      break;
+    case eToken_mod:
+      result = "mod";
       break;
     case eToken_id:
     case eToken_int:
@@ -335,19 +357,19 @@ void init_token_stream(TokenStream* stream, char* text, char* file_path)
   /* TODO: Compute the absolute path to the file, so that Vim could properly
      jump from the QuickFix window to the error line in the file. */
   src_loc->file_path = file_path;
-  stream->prev_state = mem_push_struct(arena, TokenStream);
+  stream->last_state = mem_push_struct(arena, TokenStream);
 }
 
 void putback_token(TokenStream* input)
 {
-  *input = *input->prev_state;
+  *input = *input->last_state;
 }
 
 Token* get_prev_token(TokenStream* input)
 {
   Token* token = &input->token;
-  if(input->prev_state)
-    token = &input->prev_state->token;
+  if(input->last_state)
+    token = &input->last_state->token;
   return token;
 }
 
@@ -372,7 +394,7 @@ char skip_whitespace(TokenStream* input, char* whitechars)
 bool get_asm_text(TokenStream* input)
 {
   bool success = true;
-  *input->prev_state = *input;
+  *input->last_state = *input;
   mem_zero_struct(&input->token, Token);
   SourceLoc* src_loc = &input->src_loc;
   src_loc->src_line = input->cursor;
@@ -412,7 +434,7 @@ bool get_asm_text(TokenStream* input)
 bool get_next_token(TokenStream* input)
 {
   bool success = true;
-  *input->prev_state = *input;
+  *input->last_state = *input;
   mem_zero_struct(&input->token, Token);
   SourceLoc* src_loc = &input->src_loc;
   src_loc->src_line = input->cursor;
@@ -534,11 +556,13 @@ loop:
   {
     token->kind = eToken_ampersand;
     c = *(++input->cursor);
+#if 0
     if(c == '&')
     {
       token->kind = eToken_ampersand_ampersand;
       ++input->cursor;
     }
+#endif
   }
   else if(c == '/')
   {
@@ -640,11 +664,13 @@ loop:
   {
     token->kind = eToken_pipe;
     c = *(++input->cursor);
+#if 0
     if(c == '|')
     {
       token->kind = eToken_pipe_pipe;
       ++input->cursor;
     }
+#endif
   }
   else if(c == '!')
   {
@@ -671,11 +697,13 @@ loop:
     token->kind = eToken_star;
     ++input->cursor;
   }
+#if 0
   else if(c == '%')
   {
     token->kind = eToken_percent;
     ++input->cursor;
   }
+#endif
   else if(c == '^')
   {
     token->kind = eToken_circumflex;

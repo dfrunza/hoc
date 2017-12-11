@@ -14,27 +14,27 @@ bool char_is_hex_digit(char c)
 }
 
 #define struct_check_bounds(ARENA, TYPE, STRUCT)\
-  mem_check_bounds_f(ARENA, sizeof(TYPE), STRUCT)
+  mem_check_bounds_(ARENA, sizeof(TYPE), STRUCT)
 
 #define arena_check_bounds(ARENA)\
-  mem_check_bounds_f((ARENA), 0, (ARENA)->free)
+  mem_check_bounds_((ARENA), 0, (ARENA)->free)
 
 #define mem_push_struct(ARENA, TYPE)\
-  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), 1, true))
+  ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), 1, true))
 
 #define mem_push_array(ARENA, TYPE, COUNT)\
-  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, true))
+  ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT, true))
 
 #define mem_push_array_nz(ARENA, TYPE, COUNT)\
-  ((TYPE*)mem_push_struct_f(ARENA, sizeof(TYPE), COUNT, false))
+  ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT, false))
 
 #define mem_zero_struct(VAR, TYPE)\
-  (mem_zero_f(VAR, sizeof(TYPE)))
+  (mem_zero_(VAR, sizeof(TYPE)))
 
 #define mem_zero_array(VAR, TYPE)\
-  (mem_zero_f(VAR, sizeof_array(VAR) * sizeof(TYPE)))
+  (mem_zero_(VAR, sizeof_array(VAR) * sizeof(TYPE)))
 
-void mem_check_bounds_f(MemoryArena* arena, int elem_size, void* ptr)
+void mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
 {
   assert(arena->base <= (uint8*)ptr);
   assert((arena->free + elem_size) < arena->cap);
@@ -44,7 +44,7 @@ void mem_zero_range(void* start, void* one_past_end)
 {
   assert(one_past_end >= start);
   int len = (int)((uint8*)one_past_end - (uint8*)start);
-  mem_zero_f(start, len);
+  mem_zero_(start, len);
 }
 
 void free_arena(MemoryArena* arena)
@@ -119,7 +119,7 @@ void end_temp_memory(MemoryArena** arena)
   pop_arena(arena);
 }
 
-void* mem_push_struct_f(MemoryArena* arena, int elem_size, int count, bool zero_mem)
+void* mem_push_struct_(MemoryArena* arena, int elem_size, int count, bool zero_mem)
 {
   assert(count > 0);
 

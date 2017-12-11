@@ -9,5 +9,11 @@ include "sort.hoc";
 
 proc void foo()
 {
+  /*
+  [4]int^ : a;
+
+  a = ^(int^):a;
+  a = int:a + int:b;
+  */
 }
 

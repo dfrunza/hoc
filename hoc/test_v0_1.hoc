@@ -7,31 +7,31 @@ include "sort.hoc";
 /*
 */
 
-proc void print_numbers(int* numbers, int len)
+proc void print_numbers(int^ numbers, int len)
 {
   var int i; i = 0;
   while(i < len)
   {
-    print_int(*(numbers + cast(int*)(i*4)));
+    print_int(^(numbers + cast(int^)(i*4)));
     print_str(&"\n");
 
     i = i+1;
   }
 }
 
-proc int* make_numbers(int how_many)
+proc int^ make_numbers(int how_many)
 {
   var int i; i = 0;
   var int c1; c1 = 17;
   var int c2; c2 = 31;
-  var int* numbers; numbers = cast(int*)malloc(how_many*4);
+  var int^ numbers; numbers = cast(int^)alloc(how_many*4);
 
   while(i < how_many)
   {
-    if((i % 2) == 0)
-      *(numbers + cast(int*)(i*4)) = c1 * i;
+    if((i mod 2) == 0)
+      ^(numbers + cast(int^)(i*4)) = c1 * i;
     else
-      *(numbers + cast(int*)(i*4)) = c2 * i;
+      ^(numbers + cast(int^)(i*4)) = c2 * i;
 
     i = i+1;
   }
@@ -61,7 +61,7 @@ proc void main()
   print_int(i_r);
 
   var int nr_count; nr_count = 30;
-  var int* numbers; numbers = make_numbers(nr_count);
+  var int^ numbers; numbers = make_numbers(nr_count);
   print_str(&"\n--- SHUFFLED ---\n");
   print_numbers(numbers, nr_count);
   /*

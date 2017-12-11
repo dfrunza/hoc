@@ -50,7 +50,7 @@ proc int gcd_recurs(int a, int b)
   if(b != 0)
   {
     result = b;
-    var int r; r = a % b;
+    var int r; r = a mod b;
     if(r == 0)
       result = b;
     else
@@ -171,11 +171,11 @@ proc int floor_log_b(int b, float n)
 }
 
 /* Returns the number of significand 10-base digits */
-proc int fp_bin_to_dec(float v, int* significand, int* exponent)
+proc int fp_bin_to_dec(float v, int^ significand, int^ exponent)
 {
   var float v_abs; v_abs = absf(v);
   var int x; x = floor_log_b(10, v_abs) + 1;
-  *exponent = x;
+  ^exponent = x;
 
   var float B_power_x; B_power_x = ipow(10.0, -x);
   var float v_prime; v_prime = v_abs * B_power_x;
@@ -193,15 +193,15 @@ proc int fp_bin_to_dec(float v, int* significand, int* exponent)
     U = cast(int)(R * 10.0);
     R = (R * 10.0) - cast(float)U;
     M = M * 10.0;
-    *(significand + cast(int*)(k*4)) = U;
+    ^(significand + cast(int^)(k*4)) = U;
 
     run_loop = (R >= M) && (R <= (1.0 - M));
   }
 
   if(R <= 0.5)
-    *(significand + cast(int*)(k*4)) = U;
+    ^(significand + cast(int^)(k*4)) = U;
   else
-    *(significand + cast(int*)(k*4)) = U + 1;
+    ^(significand + cast(int^)(k*4)) = U + 1;
 
   return k;
 }

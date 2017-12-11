@@ -91,7 +91,6 @@ typedef enum
   eToken_semicolon,
   eToken_colon,
   eToken_comma,
-  eToken_percent,
   eToken_star,
   eToken_fwd_slash,
   eToken_back_slash,
@@ -110,16 +109,20 @@ typedef enum
   eToken_angle_left_eq,
   eToken_angle_left_left,
   eToken_ampersand,
-  eToken_ampersand_ampersand,
+//  eToken_ampersand_ampersand,
   eToken_pipe,
-  eToken_pipe_pipe,
+//  eToken_pipe_pipe,
   eToken_circumflex,
+  eToken_and,
+  eToken_or,
+  eToken_xor,
+  eToken_not,
+  eToken_mod,
   eToken_unknown_char,
   eToken_end_of_input,
 
-  eToken_var,
   eToken_asm,
-  eToken_type,
+  eToken_var,
   eToken_cast,
   eToken_if,
   eToken_else,
@@ -163,7 +166,7 @@ Token;
 
 typedef struct TokenStream
 {
-  struct TokenStream* prev_state;
+  struct TokenStream* last_state;
   Token token;
   char* text;
   char* cursor;
@@ -203,6 +206,7 @@ TokenStream;
   ENUM_MEMBER(eOperator_bit_and),\
   ENUM_MEMBER(eOperator_bit_or),\
   ENUM_MEMBER(eOperator_bit_xor),\
+  ENUM_MEMBER(eOperator_bit_not),\
   ENUM_MEMBER(eOperator_bit_shift_left),\
   ENUM_MEMBER(eOperator_bit_shift_right),\
   ENUM_MEMBER(eOperator_cast),\
@@ -235,7 +239,7 @@ char* get_operator_printstr(eOperator op)
       str = "/";
       break;
     case eOperator_mod:
-      str = "%";
+      str = "mod";
       break;
     case eOperator_neg:
       str = "-";
@@ -285,19 +289,25 @@ char* get_operator_printstr(eOperator op)
       str = ">=";
       break;
     case eOperator_logic_and:
-      str = "&&";
+      str = "&";
       break;
     case eOperator_logic_or:
-      str = "||";
+      str = "|";
       break;
     case eOperator_logic_not:
       str = "!";
       break;
     case eOperator_bit_and:
-      str = "&";
+      str = "and";
       break;
     case eOperator_bit_or:
-      str = "|";
+      str = "or";
+      break;
+    case eOperator_bit_xor:
+      str = "xor";
+      break;
+    case eOperator_bit_not:
+      str = "not";
       break;
     case eOperator_cast:
       str = "cast";
@@ -343,7 +353,6 @@ typedef struct Symbol Symbol;
 #ifndef eScope_MEMBER_LIST
 #define eScope_MEMBER_LIST()\
   ENUM_MEMBER(eScope_None),\
-  ENUM_MEMBER(eScope_global),\
   ENUM_MEMBER(eScope_module),\
   ENUM_MEMBER(eScope_proc),\
   ENUM_MEMBER(eScope_while),\
@@ -375,11 +384,11 @@ typedef enum
 {
   eSymbol_None,
   eSymbol_var,
-  eSymbol_ret_var,
-  eSymbol_formal_arg,
+//  eSymbol_ret_var,
+//  eSymbol_formal_arg,
   eSymbol_type,
   eSymbol_proc,
-  eSymbol_extern_proc,
+//  eSymbol_extern_proc,
   eSymbol_Count,
 }
 eSymbol;
@@ -583,20 +592,29 @@ typedef struct List
 }
 List;
 
+typedef enum
+{
+  eTypeProduction_None,
+  eTypeProduction_array,
+  eTypeProduction_id,
+  eTypeProduction_pointer,
+}
+eTypeProduction;
+
 typedef struct AstNode
 {
   eAstNode kind;
   SourceLoc* src_loc;
   Type* ty;
   Type* eval_ty;
+  Symbol* occur_sym;
+  Symbol* decl_sym;
 
   union
   {
     struct
     {
       char* name;
-      Symbol* occur_sym;
-      Symbol* decl_sym;
       AstNode* decl_ast;
     }
     id;
@@ -605,14 +623,14 @@ typedef struct AstNode
     {
       AstNode* left_operand;
       AstNode* right_operand;
-      eOperator op_kind;
+      eOperator op;
     }
     bin_expr;
 
     struct
     {
       AstNode* operand;
-      eOperator op_kind;
+      eOperator op;
     }
     unr_expr;
 
@@ -624,8 +642,7 @@ typedef struct AstNode
 
     struct
     {
-      eType kind;
-      Symbol* decl_sym;
+      eTypeProduction production;
 
       union
       {
@@ -633,20 +650,14 @@ typedef struct AstNode
 
         struct
         {
-          AstNode* pointee;
-        }
-        pointer;
-
-        struct
-        {
-          AstNode* elem;
+          AstNode* elem, *pointee;
           AstNode* size;
-        }
-        array;
+        };
       };
     }
     type;
 
+#if 0
     struct
     {
       AstNode* elem_expr;
@@ -659,6 +670,7 @@ typedef struct AstNode
       AstNode* pointee_expr;
     }
     pointer;
+#endif
 
     struct
     {
@@ -716,7 +728,6 @@ typedef struct AstNode
       char* name;
       eProcModifier modifier;
       char* label;
-      AstNode* id;
       bool is_extern;
       AstNode* ret_var;
       List* formal_args;
@@ -755,6 +766,7 @@ typedef struct AstNode
     {
       char* file_path;
       AstNode* body;
+      List node_list;
       List proc_list;
       List var_list;
       List include_list;

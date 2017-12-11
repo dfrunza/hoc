@@ -17,7 +17,7 @@ proc void insertion_sort([]int array, int len)
     var int j; j = i;
     while(array[j] < array[j - 1])
     {
-      swap[array, j, j - 1);
+      swap(array, j, j - 1);
       j = j - 1;
     }
     i = i + 1;

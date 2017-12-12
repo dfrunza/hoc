@@ -665,9 +665,9 @@ Symbol* lookup_all_decls(char* name, Scope* scope)
 }
 #endif
 
-Symbol* add_decl_symbol(SymbolTable* symtab,
-                        char* name, SourceLoc* src_loc,
-                        Scope* scope, eSymbol kind, AstNode* ast_node)
+Symbol* add_decl(SymbolTable* symtab,
+                 char* name, SourceLoc* src_loc,
+                 Scope* scope, eSymbol kind, AstNode* ast_node)
 {
   Symbol* sym = mem_push_struct(symtab->arena, Symbol);
   sym->kind = kind;
@@ -680,7 +680,7 @@ Symbol* add_decl_symbol(SymbolTable* symtab,
   return sym;
 }
 
-Symbol* add_occur_symbol(SymbolTable* symtab, Symbol* decl_sym, Scope* scope, AstNode* ast_node)
+Symbol* add_occur(SymbolTable* symtab, Symbol* decl_sym, Scope* scope, AstNode* ast_node)
 {
   Symbol* sym = mem_push_struct(symtab->arena, Symbol);
   sym->kind = decl_sym->kind;
@@ -700,7 +700,7 @@ void add_builtin_type(SymbolTable* symtab, char* name, Type* ty)
   AstNode* type = new_ast_node(eAstNode_type, 0);
   type->type.name = name;
   type->ty = ty;
-  Symbol* decl_sym = add_decl_symbol(symtab, name, 0, symtab->active_scope, eSymbol_type, type);
+  Symbol* decl_sym = add_decl(symtab, name, 0, symtab->active_scope, eSymbol_type, type);
   decl_sym->ty = ty;
 }
 
@@ -1006,7 +1006,7 @@ bool symtab(AstNode* node)
         Symbol* decl_sym = lookup_all_decls(name, symbol_table->active_scope);
         if(decl_sym)
         {
-          Symbol* occur_sym = add_occur_symbol(name, node->src_loc, symbol_table->active_scope, eSymbol_var);
+          Symbol* occur_sym = add_occur(name, node->src_loc, symbol_table->active_scope, eSymbol_var);
           occur_sym->ast_node = node;
           occur_sym->decl = decl_sym;
 
@@ -1055,7 +1055,7 @@ bool symtab(AstNode* node)
 
         bool is_extern = node->proc.is_extern;
         decl_sym = node->proc.decl_sym
-          = add_decl_symbol(name, node->src_loc, decl_scope, is_extern ? eSymbol_extern_proc : eSymbol_proc);
+          = add_decl(name, node->src_loc, decl_scope, is_extern ? eSymbol_extern_proc : eSymbol_proc);
         decl_sym->ast_node = node;
 
         List* formal_args = node->proc.formal_args;
@@ -1095,7 +1095,7 @@ bool symtab(AstNode* node)
       {
         char* name = node->call.name = node->call.id->id.name;
 
-        Symbol* occur_sym = add_occur_symbol(name, node->src_loc, symbol_table->active_scope, eSymbol_proc);
+        Symbol* occur_sym = add_occur(name, node->src_loc, symbol_table->active_scope, eSymbol_proc);
         occur_sym->ast_node = node;
         node->call.occur_sym = occur_sym;
 
@@ -1316,7 +1316,7 @@ bool symtab_type(SymbolTable* symtab, AstNode* type)
         Symbol* decl_sym = lookup_decl(type->id.name, symtab->active_scope, eSymbol_type);
         if(decl_sym)
         {
-          add_occur_symbol(symtab, decl_sym, symtab->active_scope, type);
+          add_occur(symtab, decl_sym, symtab->active_scope, type);
         }
         else
           success = compile_error(type->src_loc, "unknown type `%s`", type->id.name);
@@ -1355,7 +1355,7 @@ bool symtab_formal_arg(SymbolTable* symtab, AstNode* proc, AstNode* arg)
   }
   else
   {
-    decl_sym = add_decl_symbol(symtab, arg->var.name, arg->src_loc, proc->proc.scope, eSymbol_var, arg);
+    decl_sym = add_decl(symtab, arg->var.name, arg->src_loc, proc->proc.scope, eSymbol_var, arg);
   }
   return success;
 }
@@ -1374,7 +1374,7 @@ bool symtab_var(SymbolTable* symtab, AstNode* block, AstNode* var)
   }
   else
   {
-    decl_sym = add_decl_symbol(symtab, var->var.name, var->src_loc, symtab->active_scope, eSymbol_var, var);
+    decl_sym = add_decl(symtab, var->var.name, var->src_loc, symtab->active_scope, eSymbol_var, var);
   }
   return success;
 }
@@ -1388,7 +1388,7 @@ bool symtab_id_expr(SymbolTable* symtab, AstNode* block, AstNode* id)
   Symbol* decl_sym = lookup_decl(id->id.name, symtab->active_scope, eSymbol_var|eSymbol_proc|eSymbol_type);
   if(decl_sym)
   {
-    add_occur_symbol(symtab, decl_sym, symtab->active_scope, id);
+    add_occur(symtab, decl_sym, symtab->active_scope, id);
   }
   else
     success = compile_error(id->src_loc, "unknown id `%s`", id->id.name);
@@ -1428,7 +1428,7 @@ bool symtab_call_expr(SymbolTable* symtab, AstNode* block, AstNode* call)
     Symbol* decl_sym = lookup_decl(id->id.name, symtab->active_scope, eSymbol_var | eSymbol_proc);
     if(decl_sym)
     {
-      add_occur_symbol(symtab, decl_sym, symtab->active_scope, id);
+      add_occur(symtab, decl_sym, symtab->active_scope, id);
     }
     else
       success = compile_error(id->src_loc, "unknown id `%s`", id->id.name);
@@ -1627,7 +1627,7 @@ bool symtab_module_proc(SymbolTable* symtab, AstNode* proc)
   }
   else
   {
-    decl_sym = add_decl_symbol(symtab, proc->proc.name, proc->src_loc, symtab->active_scope, eSymbol_proc, proc);
+    decl_sym = add_decl(symtab, proc->proc.name, proc->src_loc, symtab->active_scope, eSymbol_proc, proc);
     proc->proc.scope = begin_nested_scope(symtab, eScope_proc, proc);
     success = symtab_formal_arg_list(symtab, proc) && symtab_proc_body(symtab, proc);
     end_nested_scope(symtab);
@@ -1649,7 +1649,7 @@ bool symtab_module_var(SymbolTable* symtab, AstNode* module, AstNode* var)
   }
   else
   {
-    decl_sym = add_decl_symbol(symtab, var->var.name, var->src_loc, symtab->active_scope, eSymbol_var, var);
+    decl_sym = add_decl(symtab, var->var.name, var->src_loc, symtab->active_scope, eSymbol_var, var);
   }
   return success;
 }

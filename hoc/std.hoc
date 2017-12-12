@@ -1,30 +1,30 @@
 extern proc int GetStdHandle(int device_id);
-extern proc char^ GetCommandLineA();
-extern proc void^ VirtualAlloc(void^ address, int alloc_size, int alloc_var, int protect_flags);
-extern proc void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
+extern proc char* GetCommandLineA();
+extern proc void* VirtualAlloc(void* address, int alloc_size, int alloc_var, int protect_flags);
+extern proc void WriteConsoleA(int console_handle, char* buf, int chars_to_write_count, int* chars_written_count, void* reserved);
 extern proc int GetLastError();
-extern proc bool ReadFile(int file_handle, char^ buf, int bytes_to_read_count, int^ bytes_read_count, void^ p_overlapped);
+extern proc bool ReadFile(int file_handle, char* buf, int bytes_to_read_count, int* bytes_read_count, void* p_overlapped);
 
 var int stdout;
 var int stdin; 
-var void^ heap;
+var void* heap;
 var int heap_ptr;
 
-proc void^ alloc(int size)
+proc void* alloc(int size)
 {
-  var void^ mem; mem = heap + void^:heap_ptr;
+  var void* mem; mem = heap + void*:heap_ptr;
   heap_ptr = heap_ptr + size;
   return mem;
 }
 
-proc int stdin_read(char^ buf, int buf_size)
+proc int stdin_read(char* buf, int buf_size)
 {
   var int bytes_read_count; bytes_read_count = 0;
-  if(ReadFile(stdin, buf, buf_size, &bytes_read_count, void^:0))
+  if(ReadFile(stdin, buf, buf_size, &bytes_read_count, void*:0))
   {
     if((bytes_read_count >= 0) && (bytes_read_count < buf_size))
     {
-      ^(buf + char^:bytes_read_count) = '\0';
+      *(buf + char*:bytes_read_count) = '\0';
     }
   }
   return bytes_read_count;
@@ -34,7 +34,7 @@ proc int startup()
 {
   stdout = GetStdHandle(-11/*STD_OUTPUT_HANDLE*/);
   stdin = GetStdHandle(-10/*STD_INPUT_HANDLE*/);
-  heap = VirtualAlloc(void^:0, 4096, 0x1000/*MEM_COMMIT*/|0x2000/*MEM_RESERVE*/, 0x4/*PAGE_READWRITE*/);
+  heap = VirtualAlloc(void*:0, 4096, 0x1000/*MEM_COMMIT*/|0x2000/*MEM_RESERVE*/, 0x4/*PAGE_READWRITE*/);
   heap_ptr = 0;
 }
 

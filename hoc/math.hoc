@@ -8,7 +8,7 @@ proc int max(int a, int b)
 
 proc int min(int a, int b)
 {
-  var int result; restult = a;
+  var int result; result = a;
   if(a > b)
     result = b;
   return result;
@@ -28,13 +28,6 @@ proc float minf(float a, float b)
   if(a > b)
     result = b;
   return result;
-}
-
-proc int abs(int a)
-{
-  if(a < 0)
-    a = -a;
-  return a;
 }
 
 proc float absf(float a)
@@ -87,7 +80,7 @@ proc int gcd(int a, int b)
  */
 proc int lcm(int a, int b)
 {
-  return abs(a*b)/gcd(a, b);
+  return abs(a  b)/gcd(a, b);
 }
 
 proc float ipow(float a, int p)
@@ -100,7 +93,7 @@ proc float ipow(float a, int p)
   {
     while(p > 0)
     {
-      result = result*a;
+      result = result  a;
       p = p - 1;
     }
     if(inv)
@@ -171,14 +164,14 @@ proc int floor_log_b(int b, float n)
 }
 
 /* Returns the number of significand 10-base digits */
-proc int fp_bin_to_dec(float v, int^ significand, int^ exponent)
+proc int fp_bin_to_dec(float v, int* significand, int* exponent)
 {
   var float v_abs; v_abs = absf(v);
   var int x; x = floor_log_b(10, v_abs) + 1;
-  ^exponent = x;
+  *exponent = x;
 
   var float B_power_x; B_power_x = ipow(10.0, -x);
-  var float v_prime; v_prime = v_abs * B_power_x;
+  var float v_prime; v_prime = v_abs  B_power_x;
 
   var int k; k = 0;
   var float R; R = v_prime;
@@ -190,18 +183,18 @@ proc int fp_bin_to_dec(float v, int^ significand, int^ exponent)
   while(run_loop)
   {
     k = k + 1;
-    U = int:(R * 10.0);
-    R = (R * 10.0) - float:U;
-    M = M * 10.0;
-    ^(significand + int^:(k*4)) = U;
+    U = int:(R  10.0);
+    R = (R  10.0) - float:U;
+    M = M  10.0;
+    *(significand + int*:(k  4)) = U;
 
     run_loop = (R >= M) && (R <= (1.0 - M));
   }
 
   if(R <= 0.5)
-    ^(significand + int^:(k*4)) = U;
+    *(significand + int*:(k  4)) = U;
   else
-    ^(significand + int^:(k*4)) = U + 1;
+    *(significand + int*:(k  4)) = U + 1;
 
   return k;
 }

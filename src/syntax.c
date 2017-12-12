@@ -21,7 +21,7 @@ bool parse_rest_of_type(TokenStream* input, AstNode* type, AstNode** node)
 {
   *node = type;
   bool success = true;
-  if(input->token.kind == eToken_circumflex)
+  if(input->token.kind == eToken_star)
   {
     AstNode* pointer = *node = new_ast_node(eAstNode_type, clone_source_loc(&input->src_loc));
     pointer->type.kind = eType_pointer;
@@ -254,7 +254,7 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
 
   switch(input->token.kind)
   {
-    case eToken_star:
+    case eToken_mul:
     case eToken_fwd_slash:
     case eToken_mod:
       {
@@ -263,7 +263,7 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
 
         switch(input->token.kind)
         {
-          case eToken_star:
+          case eToken_mul:
             bin_expr->bin_expr.op = eOperator_mul;
             break;
           case eToken_fwd_slash:
@@ -541,7 +541,7 @@ bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** no
     case eToken_open_bracket:
       success = parse_indexer(input, left_node, node);
       break;
-    case eToken_circumflex:
+    case eToken_star:
       success = parse_rest_of_type(input, left_node, node);
       break;
   }
@@ -637,7 +637,7 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
   switch(input->token.kind)
   {
     case eToken_exclam:
-    case eToken_circumflex:
+    case eToken_star:
     case eToken_ampersand:
     case eToken_minus:
     case eToken_not:
@@ -649,7 +649,7 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
           case eToken_exclam:
             unr_expr->unr_expr.op = eOperator_logic_not;
             break;
-          case eToken_circumflex:
+          case eToken_star:
             unr_expr->unr_expr.op = eOperator_deref;
             break;
           case eToken_ampersand:

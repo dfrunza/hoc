@@ -188,6 +188,9 @@ char* get_token_printstr(Token* token)
     case eToken_star:
       result = "*";
       break;
+    case eToken_mul:
+      result = "ž";
+      break;
     case eToken_fwd_slash:
       result = "/";
       break;
@@ -242,9 +245,11 @@ char* get_token_printstr(Token* token)
     case eToken_pipe:
       result = "|";
       break;
+#if 0
     case eToken_circumflex:
       result = "^";
       break;
+#endif
     case eToken_end_of_input:
       result = "end-of-input";
       break;
@@ -664,11 +669,18 @@ loop:
     token->kind = eToken_star;
     ++input->cursor;
   }
+  else if(c == 'ž')
+  {
+    token->kind = eToken_mul;
+    c = *(++input->cursor);
+  }
+#if 0
   else if(c == '^')
   {
     token->kind = eToken_circumflex;
     ++input->cursor;
   }
+#endif
   else if(c == '\\')
   {
     token->kind = eToken_back_slash;

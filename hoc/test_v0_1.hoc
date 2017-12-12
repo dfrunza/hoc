@@ -1,4 +1,3 @@
-include "std.hoc";
 include "math.hoc";
 include "str.hoc";
 include "fibo.hoc";
@@ -7,33 +6,32 @@ include "sort.hoc";
 /*
 */
 
-proc void print_numbers(int^ numbers, int len)
+proc void print_numbers(int* numbers, int len)
 {
   var int i; i = 0;
   while(i < len)
   {
-    print_int(^(numbers + int^:(i*4)));
+    print_int(*(numbers + int*:(i ž 4)));
     print_str(&"\n");
 
     i = i+1;
   }
 }
 
-proc int^ make_numbers(int how_many)
+proc int* make_numbers(int how_many)
 {
   var int i; i = 0;
   var int c1; c1 = 17;
   var int c2; c2 = 31;
-  var int^ numbers;
-  /*numbers = int^:alloc(how_many*4);*/
-  numbers = int^:alloc([how_many]int);
+  var int* numbers;
+  numbers = int*:alloc([how_many]int);
 
   while(i < how_many)
   {
     if((i mod 2) == 0)
-      ^(numbers + int^:(i*4)) = c1 * i;
+      *(numbers + int*:(iž4)) = c1ži;
     else
-      ^(numbers + int^:(i*4)) = c2 * i;
+      *(numbers + int*:(iž4)) = c2ži;
 
     i = i+1;
   }
@@ -52,8 +50,8 @@ proc void main()
   print_float(result);
   print_str(&"\n---------\n");
 
-  var int i_a; i_a = 7*7*5*3;
-  var int i_b; i_b = 7*3*11;
+  var int i_a; i_a = 7ž7ž5ž3;
+  var int i_b; i_b = 7ž3ž11;
   var int i_r; i_r = gcd(i_a, i_b);
   print_str(&"gcd(");
   print_int(i_a);
@@ -63,7 +61,7 @@ proc void main()
   print_int(i_r);
 
   var int nr_count; nr_count = 30;
-  var int^ numbers; numbers = make_numbers(nr_count);
+  var int* numbers; numbers = make_numbers(nr_count);
   print_str(&"\n--- SHUFFLED ---\n");
   print_numbers(numbers, nr_count);
   /*

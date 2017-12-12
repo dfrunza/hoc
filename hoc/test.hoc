@@ -1,8 +1,17 @@
-var int a;
+var bool a;
 
 proc void main()
 {
-  var float b;
-  a = a ž a;
-  a = int:a + float:b;
+  var bool b;
+  var bool c;
+
+  if(ªa)
+  {
+    a = a & b;
+  }
+  else if(a & ªb | c)
+  {
+    main();
+  }
 }
+

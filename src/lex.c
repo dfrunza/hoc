@@ -209,12 +209,14 @@ char* get_token_printstr(Token* token)
     case eToken_minus_minus:
       result = "--";
       break;
+#if 0
     case eToken_exclam:
       result = "!";
       break;
     case eToken_exclam_eq:
       result = "!=";
       break;
+#endif
     case eToken_eq:
       result = "=";
       break;
@@ -537,6 +539,11 @@ loop:
       token->kind = eToken_angle_left_left;
       ++input->cursor;
     }
+    else if(c == '>')
+    {
+      token->kind = eToken_angle_left_right;
+      ++input->cursor;
+    }
   }
   else if(c == '&')
   {
@@ -644,6 +651,7 @@ loop:
     token->kind = eToken_pipe;
     c = *(++input->cursor);
   }
+#if 0
   else if(c == '!')
   {
     token->kind = eToken_exclam;
@@ -653,6 +661,12 @@ loop:
       token->kind = eToken_exclam_eq;
       ++input->cursor;
     }
+  }
+#endif
+  else if(c == 'ª')
+  {
+    token->kind = eToken_logic_not;
+    c = *(++input->cursor);
   }
   else if(c == '+')
   {

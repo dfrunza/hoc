@@ -388,11 +388,12 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
   {
     case eToken_eq:
     case eToken_eq_eq:
-    case eToken_exclam_eq:
+//    case eToken_exclam_eq:
     case eToken_angle_left:
     case eToken_angle_left_eq:
     case eToken_angle_right:
     case eToken_angle_right_eq:
+    case eToken_angle_left_right:
       {
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
@@ -405,7 +406,12 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
           case eToken_eq_eq:
             bin_expr->bin_expr.op = eOperator_eq;
             break;
+#if 0
           case eToken_exclam_eq:
+            bin_expr->bin_expr.op = eOperator_not_eq;
+            break;
+#endif
+          case eToken_angle_left_right:
             bin_expr->bin_expr.op = eOperator_not_eq;
             break;
           case eToken_angle_left:
@@ -636,7 +642,8 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
 
   switch(input->token.kind)
   {
-    case eToken_exclam:
+//    case eToken_exclam:
+    case eToken_logic_not:
     case eToken_star:
     case eToken_ampersand:
     case eToken_minus:
@@ -646,7 +653,8 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
 
         switch(input->token.kind)
         {
-          case eToken_exclam:
+//          case eToken_exclam:
+          case eToken_logic_not:
             unr_expr->unr_expr.op = eOperator_logic_not;
             break;
           case eToken_star:

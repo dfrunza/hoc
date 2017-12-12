@@ -19,26 +19,17 @@ bool char_is_hex_digit(char c)
 #define arena_check_bounds(ARENA)\
   mem_check_bounds_((ARENA), 0, (ARENA)->free)
 
-#define mem_push_struct(ARENA, TYPE)\
-  ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), 1, true))
-
-#define mem_push_array(ARENA, TYPE, COUNT)\
-  ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT, true))
-
-#define mem_push_array_nz(ARENA, TYPE, COUNT)\
-  ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT, false))
+void mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
+{
+  assert(arena->base <= (uint8*)ptr);
+  assert((arena->free + elem_size) < arena->cap);
+}
 
 #define mem_zero_struct(VAR, TYPE)\
   (mem_zero_(VAR, sizeof(TYPE)))
 
 #define mem_zero_array(VAR, TYPE)\
   (mem_zero_(VAR, sizeof_array(VAR) * sizeof(TYPE)))
-
-void mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
-{
-  assert(arena->base <= (uint8*)ptr);
-  assert((arena->free + elem_size) < arena->cap);
-}
 
 void mem_zero_range(void* start, void* one_past_end)
 {
@@ -118,6 +109,15 @@ void end_temp_memory(MemoryArena** arena)
 {
   pop_arena(arena);
 }
+
+#define mem_push_struct(ARENA, TYPE)\
+  ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), 1, true))
+
+#define mem_push_array(ARENA, TYPE, COUNT)\
+  ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT, true))
+
+#define mem_push_array_nz(ARENA, TYPE, COUNT)\
+  ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT, false))
 
 void* mem_push_struct_(MemoryArena* arena, int elem_size, int count, bool zero_mem)
 {
@@ -454,6 +454,17 @@ void print_char(char buf[3], char raw_char)
     cstr_copy(buf, "\\'");
   else
     *buf = raw_char;
+}
+
+int bitpos(int k)
+{
+  int pos = 1;
+  for(; (k & 1) == 0 && pos < 32/*int*/;
+      k = k >> 1)
+  {
+    pos++;
+  }
+  return (k & 1) ? pos : 0;
 }
 
 void init_list(List* list, MemoryArena* arena, eList kind)

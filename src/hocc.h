@@ -54,11 +54,11 @@ typedef struct String
 }
 String;
 
-#define sizeof_array(ARRAY)\
+#define countof(ARRAY)\
   (sizeof(ARRAY)/sizeof(ARRAY[0]))
 
-#define OBJ(VAR, KIND, NAME)\
-  (((VAR)->kind == KIND##_##NAME) ? &(VAR)->NAME : 0)
+#define KIND(VAR, KIND)\
+  (((VAR)->kind == KIND) ? (VAR) : 0)
 
 typedef struct List List;
 
@@ -343,10 +343,6 @@ char* get_literal_printstr(eLiteral kind)
   return eLiteral_strings[kind];
 }
 
-typedef struct Type Type;
-typedef struct AstNode AstNode;
-typedef struct Symbol Symbol;
-
 #ifndef eScope_MEMBER_LIST
 #define eScope_MEMBER_LIST()\
   ENUM_MEMBER(eScope_None),\
@@ -379,14 +375,53 @@ char* get_scope_printstr(eScope kind)
 
 typedef enum
 {
+  eList_None,
+  eList_ast_node,
+  eList_symbol,
+  eList_scope,
+  eList_type_pair,
+  eList_data_area,
+}
+eList;
+
+typedef struct Type Type;
+typedef struct AstNode AstNode;
+typedef struct Symbol Symbol;
+typedef struct Scope Scope;
+typedef struct TypePair TypePair;
+
+typedef struct ListItem
+{
+  eList kind;
+  union
+  {
+    void* elem;
+    AstNode* ast_node;
+    Symbol* symbol;
+    Scope* scope;
+    TypePair* type_pair;
+  };
+  struct ListItem* next;
+  struct ListItem* prev;
+}
+ListItem;
+
+typedef struct List
+{
+  eList kind;
+  ListItem* first;
+  ListItem* last;
+  MemoryArena* arena;
+}
+List;
+
+typedef enum
+{
   eSymbol_None,
-  eSymbol_var,
-//  eSymbol_ret_var,
-//  eSymbol_formal_arg,
-  eSymbol_type,
-  eSymbol_proc,
-//  eSymbol_extern_proc,
-  eSymbol_Count,
+  eSymbol_var = 1 << 0,
+  eSymbol_proc = 1 << 1,
+  eSymbol_type = 1 << 2,
+  eSymbol_Count = 4,
 }
 eSymbol;
 
@@ -399,7 +434,7 @@ typedef struct Scope
   AstNode* ast_node;
 
   List* decls[eSymbol_Count];
-  List* occurs[eSymbol_Count];
+  List occurs;
 
   int static_area_size;
   int locals_area_size;
@@ -425,8 +460,8 @@ Scope;
   ENUM_MEMBER(eAstNode_type),\
   ENUM_MEMBER(eAstNode_lit),\
   ENUM_MEMBER(eAstNode_ret),\
-  ENUM_MEMBER(eAstNode_if_),\
-  ENUM_MEMBER(eAstNode_while_),\
+  ENUM_MEMBER(eAstNode_if),\
+  ENUM_MEMBER(eAstNode_while),\
   ENUM_MEMBER(eAstNode_loop_ctrl),\
   ENUM_MEMBER(eAstNode_enum_decl),\
   ENUM_MEMBER(eAstNode_struct_decl),\
@@ -543,51 +578,12 @@ typedef struct Type
 }
 Type;
 
-typedef struct
+typedef struct TypePair
 {
   Type* key;
   Type* value;
 }
 TypePair;
-
-typedef enum
-{
-  eList_None,
-  eList_ast_node,
-  eList_symbol,
-  eList_scope,
-  eList_type_pair,
-  eList_data_area,
-}
-eList;
-
-#define ITEM(VAR, NAME)\
-  (((VAR)->kind == eList_##NAME) ? (VAR)->NAME : 0)
-
-typedef struct ListItem
-{
-  eList kind;
-  union
-  {
-    void* elem;
-    AstNode* ast_node;
-    Symbol* symbol;
-    Scope* scope;
-    TypePair* type_pair;
-  };
-  struct ListItem* next;
-  struct ListItem* prev;
-}
-ListItem;
-
-typedef struct List
-{
-  eList kind;
-  ListItem* first;
-  ListItem* last;
-  MemoryArena* arena;
-}
-List;
 
 typedef struct AstNode
 {
@@ -602,6 +598,7 @@ typedef struct AstNode
   {
     struct
     {
+      eSymbol sym_kind;
       char* name;
       AstNode* decl_ast;
     }
@@ -624,17 +621,10 @@ typedef struct AstNode
 
     struct
     {
-      char* asm_text;
-    }
-    asm_block;
-
-    struct
-    {
       eType kind;
-      char* name;
-
       union
       {
+        char* name;
         struct
         {
           AstNode* elem, *pointee;
@@ -644,29 +634,11 @@ typedef struct AstNode
     }
     type;
 
-#if 0
     struct
     {
-      AstNode* elem_expr;
-      AstNode* size_expr;
-    }
-    array;
-
-    struct
-    {
-      AstNode* pointee_expr;
-    }
-    pointer;
-#endif
-
-    struct
-    {
-      char* name;
-      AstNode* id;
+      AstNode* expr;
       List* actual_args;
       List actual_arg_list;
-      Symbol* occur_sym;
-      Symbol* decl_sym;
       AstNode* proc;
     }
     call;
@@ -745,7 +717,6 @@ typedef struct AstNode
       char* name;
       AstNode* type;
       AstNode* init_expr;
-      Symbol* decl_sym;
     }
     var;
 
@@ -771,10 +742,12 @@ typedef struct AstNode
     struct
     {
       Scope* scope;
+      Scope* encl_proc_scope;
       List* nodes;
       List* stmts;
       List* procs;
       List* vars;
+      List node_list;
       List var_list;
       List stmt_list;
     }
@@ -788,6 +761,12 @@ typedef struct AstNode
     }
     //record;
     enum_decl, union_decl, struct_decl;
+
+    struct
+    {
+      char* asm_text;
+    }
+    asm_block;
   };
 }
 AstNode;

@@ -177,7 +177,7 @@ void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* n
         list_item;
         list_item = list_item->next)
     {
-      AstNode* node = ITEM(list_item, ast_node);
+      AstNode* node = KIND(list_item, eList_ast_node)->ast_node;
       DEBUG_print_ast_node(str, indent_level, 0, node);
     }
   }
@@ -543,11 +543,11 @@ char* get_type_printstr(Type* type)
 SymbolTable* new_symbol_table(MemoryArena** arena, int size)
 {
   MemoryArena* symbol_arena = push_arena(arena, size);
-  symbol_table = mem_push_struct(symbol_arena, SymbolTable);
-  symbol_table->arena = symbol_arena;
-  symbol_table->nesting_depth = -1;
-  symbol_table->scopes = new_list(symbol_arena, eList_scope);
-  return symbol_table;
+  SymbolTable* symtab = mem_push_struct(symbol_arena, SymbolTable);
+  symtab->arena = symbol_arena;
+  symtab->nesting_depth = -1;
+  symtab->scopes = new_list(symbol_arena, eList_scope);
+  return symtab;
 }
 
 Scope* find_scope(Scope* active_scope, eScope kind)
@@ -568,7 +568,7 @@ Symbol* lookup_symbol(char* name, List* symbols)
   ListItem* list_item = symbols->last;
   while(list_item)
   {
-    Symbol* symbol = ITEM(list_item, symbol);
+    Symbol* symbol = KIND(list_item, eList_symbol)->symbol;
     if(cstr_match(symbol->name, name))
     {
       result = symbol;
@@ -579,16 +579,34 @@ Symbol* lookup_symbol(char* name, List* symbols)
   return result;
 }
 
-Symbol* lookup_decl_symbol(char* name, Scope* scope)
+Symbol* lookup_decl(char* name, Scope* scope, eSymbol kind)
 {
   Symbol* result = 0;
   while(!result && scope)
   {
-    for(int k = eSymbol_None+1;
-        k < eSymbol_Count && !result;
-        k++)
+    eSymbol k = kind;
+    int p = bitpos(k);
+    while(!result && p)
     {
-      result = lookup_symbol(name, scope->decls[k]);
+      result = lookup_symbol(name, scope->decls[p]);
+      k = k ^ (1 << (p-1)); // clear the bit
+      p = bitpos(k);
+    }
+    scope = scope->encl_scope;
+  }
+  return result;
+}
+
+Symbol* lookup_all_decls(char* name, Scope* scope)
+{
+  Symbol* result = 0;
+  while(!result && scope)
+  {
+    for(int p = eSymbol_None;
+        p < eSymbol_Count && !result;
+        p++)
+    {
+      result = lookup_symbol(name, scope->decls[p]);
     }
     scope = scope->encl_scope;
   }
@@ -602,7 +620,7 @@ Symbol* lookup_symbol(char* name, List* symbols, eSymbol kind)
   ListItem* list_item = symbols->last;
   while(list_item)
   {
-    Symbol* symbol = ITEM(list_item, symbol);
+    Symbol* symbol = KIND(list_item, eList_symbol)->symbol;
     if(symbol->kind == kind && cstr_match(symbol->name, name))
     {
       result = symbol;
@@ -613,7 +631,7 @@ Symbol* lookup_symbol(char* name, List* symbols, eSymbol kind)
   return result;
 }
 
-Symbol* lookup_decl_by_kind(char* name, Scope* scope, eSymbol* kinds)
+Symbol* lookup_all_decls_by_kind(char* name, Scope* scope, eSymbol* kinds)
 {
   Symbol* result = 0;
   while(!result && scope)
@@ -647,71 +665,78 @@ Symbol* lookup_all_decls(char* name, Scope* scope)
 }
 #endif
 
-Symbol* add_decl_symbol(char* name, SourceLoc* src_loc, Scope* scope, eSymbol kind, AstNode* ast_node)
+Symbol* add_decl_symbol(SymbolTable* symtab,
+                        char* name, SourceLoc* src_loc,
+                        Scope* scope, eSymbol kind, AstNode* ast_node)
 {
-  Symbol* sym = mem_push_struct(symbol_table->arena, Symbol);
+  Symbol* sym = mem_push_struct(symtab->arena, Symbol);
   sym->kind = kind;
   sym->name = name;
   sym->src_loc = src_loc;
   sym->scope = scope;
   sym->ast_node = ast_node;
   ast_node->decl_sym = sym;
-  append_list_elem(scope->decls[kind], sym, eList_symbol);
+  append_list_elem(scope->decls[bitpos(kind)], sym, eList_symbol);
   return sym;
 }
 
-Symbol* add_occur_symbol(char* name, SourceLoc* src_loc, Scope* scope, eSymbol kind, AstNode* ast_node)
+Symbol* add_occur_symbol(SymbolTable* symtab, Symbol* decl_sym, Scope* scope, AstNode* ast_node)
 {
-  Symbol* sym = mem_push_struct(symbol_table->arena, Symbol);
-  sym->kind = kind;
-  sym->name = name;
-  sym->src_loc = src_loc;
+  Symbol* sym = mem_push_struct(symtab->arena, Symbol);
+  sym->kind = decl_sym->kind;
+  sym->name = decl_sym->name;
+  sym->src_loc = decl_sym->src_loc;
   sym->scope = scope;
   sym->ast_node = ast_node;
   ast_node->occur_sym = sym;
-  append_list_elem(scope->occurs[kind], sym, eList_symbol);
+  ast_node->decl_sym = decl_sym;
+  append_list_elem(&scope->occurs, sym, eList_symbol);
   return sym;
 }
 
-void add_builtin_type(Scope* scope, char* name, Type* ty)
+void add_builtin_type(SymbolTable* symtab, char* name, Type* ty)
 {
   assert(ty->kind == eType_basic);
   AstNode* type = new_ast_node(eAstNode_type, 0);
   type->type.name = name;
   type->ty = ty;
-  Symbol* decl_sym = add_decl_symbol(name, 0, scope, eSymbol_type, type);
+  Symbol* decl_sym = add_decl_symbol(symtab, name, 0, symtab->active_scope, eSymbol_type, type);
   decl_sym->ty = ty;
 }
 
-Scope* begin_scope(eScope kind, AstNode* ast_node)
+Scope* begin_scope(SymbolTable* symtab, eScope kind, AstNode* ast_node)
 {
-  Scope* scope = mem_push_struct(symbol_table->arena, Scope);
+  Scope* scope = mem_push_struct(symtab->arena, Scope);
   scope->kind = kind;
-  if(scope->kind == eScope_block || scope->kind == eScope_module)
-  {
-    symbol_table->nesting_depth++;
-  }
-  scope->nesting_depth = symbol_table->nesting_depth;
-  scope->encl_scope = symbol_table->active_scope;
+  scope->nesting_depth = symtab->nesting_depth;
+  scope->encl_scope = symtab->active_scope;
   scope->ast_node = ast_node;
-  for(int i = 0; i < eSymbol_Count; i++)
+  for(int k = 0; k < eSymbol_Count; k++)
   {
-    scope->decls[i] = new_list(arena, eList_symbol);
-    scope->occurs[i] = new_list(arena, eList_symbol);
+    scope->decls[k] = new_list(arena, eList_symbol);
   }
-  symbol_table->active_scope = scope;
-  append_list_elem(symbol_table->scopes, scope, eList_scope);
+  init_list(&scope->occurs, arena, eList_symbol);
+  symtab->active_scope = scope;
+  append_list_elem(symtab->scopes, scope, eList_scope);
   return scope;
 }
 
-void end_scope()
+void end_scope(SymbolTable* symtab)
 {
-  Scope* scope = symbol_table->active_scope;
-  if(scope->kind == eScope_block || scope->kind == eScope_module)
-  {
-    symbol_table->nesting_depth--;
-  }
-  symbol_table->active_scope = scope->encl_scope;
+  Scope* scope = symtab->active_scope;
+  symtab->active_scope = scope->encl_scope;
+}
+
+Scope* begin_nested_scope(SymbolTable* symtab, eScope kind, AstNode* ast_node)
+{
+  symtab->nesting_depth++;
+  return begin_scope(symtab, kind, ast_node);
+}
+
+void end_nested_scope(SymbolTable* symtab)
+{
+  end_scope(symtab);
+  symtab->nesting_depth--;
 }
 
 void process_includes(List* include_list, List* module_list, ListItem* module_list_item)
@@ -720,7 +745,7 @@ void process_includes(List* include_list, List* module_list, ListItem* module_li
       list_item;
       list_item = list_item->next)
   {
-    AstNode* node = ITEM(list_item, ast_node);
+    AstNode* node = KIND(list_item, eList_ast_node)->ast_node;
 
     if(node->kind == eAstNode_include)
     {
@@ -873,7 +898,7 @@ bool symtab(AstNode* node)
             list_item;
             list_item = list_item->next)
         {
-          Symbol* decl_sym = ITEM(list_item, symbol);
+          Symbol* decl_sym = KIND(list_item, eList_symbol)->symbol;
           decl_sym->is_static_alloc = true;
         }
       }
@@ -889,7 +914,7 @@ bool symtab(AstNode* node)
         for(ListItem* list_item = node_list->first;
             list_item;)
         {
-          AstNode* node = ITEM(list_item, ast_node);
+          AstNode* node = KIND(list_item, eList_ast_node)->ast_node;
 
           ListItem* next_list_item = list_item->next;
           remove_list_item(node_list, list_item);
@@ -914,8 +939,8 @@ bool symtab(AstNode* node)
               break;
 
             case eAstNode_stmt:
-            case eAstNode_while_:
-            case eAstNode_if_:
+            case eAstNode_while:
+            case eAstNode_if:
             case eAstNode_ret:
             case eAstNode_loop_ctrl:
             case eAstNode_block:
@@ -934,7 +959,7 @@ bool symtab(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          AstNode* node = ITEM(list_item, ast_node);
+          AstNode* node = KIND(list_item, eList_ast_node)->ast_node;
           append_list_elem(node_list, node, eList_ast_node);
           success = symtab(node);
         }
@@ -942,7 +967,7 @@ bool symtab(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          AstNode* node = ITEM(list_item, ast_node);
+          AstNode* node = KIND(list_item, eList_ast_node)->ast_node;
           append_list_elem(node_list, node, eList_ast_node);
           success = symtab(node);
         }
@@ -950,7 +975,7 @@ bool symtab(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          AstNode* node = ITEM(list_item, ast_node);
+          AstNode* node = KIND(list_item, eList_ast_node)->ast_node;
           append_list_elem(node_list, node, eList_ast_node);
           success = symtab(node);
         }
@@ -1042,7 +1067,7 @@ bool symtab(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = symtab_formal_arg(ITEM(list_item, ast_node), eSymbol_formal_arg);
+          success = symtab_formal_arg(KIND(list_item, eList_ast_node)->ast_node, eSymbol_formal_arg);
         }
         if(success && (success = symtab_formal_arg(ret_var, eSymbol_ret_var)))
         {
@@ -1074,7 +1099,7 @@ bool symtab(AstNode* node)
         occur_sym->ast_node = node;
         node->call.occur_sym = occur_sym;
 
-        Symbol* decl_sym = lookup_decl_by_kind(name, symbol_table->active_scope,
+        Symbol* decl_sym = lookup_decl(name, symbol_table->active_scope,
             (eSymbol[]){eSymbol_proc, eSymbol_extern_proc, eSymbol_None});
         if(decl_sym)
         {
@@ -1088,7 +1113,7 @@ bool symtab(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = symtab(ITEM(list_item, ast_node));
+          success = symtab(KIND(list_item, eList_ast_node)->ast_node);
         }
       }
       break;
@@ -1154,7 +1179,7 @@ bool symtab(AstNode* node)
       }
       break;
 
-    case eAstNode_if_:
+    case eAstNode_if:
       {
         AstNode* cond_expr = node->if_.cond_expr;
         if(success = symtab(cond_expr))
@@ -1190,7 +1215,7 @@ bool symtab(AstNode* node)
       }
       break;
 
-    case eAstNode_while_:
+    case eAstNode_while:
       {
         Scope* enclosing_scope = symbol_table->active_scope;
         Scope* while_scope = node->while_.scope = begin_scope(eScope_while, node);
@@ -1281,62 +1306,381 @@ bool symtab(AstNode* node)
 }
 #endif
 
-bool symtab_proc_type(SymbolTable* symtab, AstNode* type)
+bool symtab_type(SymbolTable* symtab, AstNode* type)
 {
   bool success = true;
   switch(type->kind)
   {
     case eAstNode_id:
       {
-        Symbol* decl_sym = lookup_decl_symbol(type->id.name, symtab->active_scope);
+        Symbol* decl_sym = lookup_decl(type->id.name, symtab->active_scope, eSymbol_type);
         if(decl_sym)
         {
-          type->decl_sym = decl_sym;
-          add_occur_symbol(type->type.name, type->src_loc, symtab->active_scope, eSymbol_type, type);
+          add_occur_symbol(symtab, decl_sym, symtab->active_scope, type);
         }
         else
-          success = compile_error(type->src_loc, "unknown type `%s`", type->type.name);
+          success = compile_error(type->src_loc, "unknown type `%s`", type->id.name);
       }
       break;
+    case eAstNode_type:
+      switch(type->type.kind)
+      {
+        case eType_array:
+          success = symtab_type(symtab, type->type.size) && symtab_type(symtab, type->type.elem);
+          break;
+        case eType_pointer:
+          success = symtab_type(symtab, type->type.pointee);
+          break;
+        default:
+          break;
+      }
+      break;
+    default:
+      assert(0);
+  }
+  return success;
+}
+
+bool symtab_formal_arg(SymbolTable* symtab, AstNode* proc, AstNode* arg)
+{
+  assert(KIND(proc, eAstNode_proc));
+  assert(KIND(arg, eAstNode_var));
+  bool success = true;
+
+  Symbol* decl_sym = lookup_decl(arg->var.name, proc->proc.scope, eSymbol_var);
+  if(decl_sym && (decl_sym->scope == proc->proc.scope))
+  {
+    success = compile_error(arg->src_loc, "formal arg `%s` has already been declared", arg->var.name);
+    compile_error(decl_sym->src_loc, "see the declaration of `%s`", arg->var.name);
+  }
+  else
+  {
+    decl_sym = add_decl_symbol(symtab, arg->var.name, arg->src_loc, proc->proc.scope, eSymbol_var, arg);
+  }
+  return success;
+}
+
+bool symtab_var(SymbolTable* symtab, AstNode* block, AstNode* var)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(var, eAstNode_var));
+  bool success = true;
+
+  Symbol* decl_sym = lookup_decl(var->var.name, symtab->active_scope, eSymbol_var|eSymbol_proc);
+  if(decl_sym && (decl_sym->scope == symtab->active_scope || decl_sym->scope == block->block.encl_proc_scope))
+  {
+    success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
+    compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
+  }
+  else
+  {
+    decl_sym = add_decl_symbol(symtab, var->var.name, var->src_loc, symtab->active_scope, eSymbol_var, var);
+  }
+  return success;
+}
+
+bool symtab_id_expr(SymbolTable* symtab, AstNode* block, AstNode* id)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(id, eAstNode_id));
+  bool success = true;
+
+  Symbol* decl_sym = lookup_decl(id->id.name, symtab->active_scope, eSymbol_var|eSymbol_proc|eSymbol_type);
+  if(decl_sym)
+  {
+    add_occur_symbol(symtab, decl_sym, symtab->active_scope, id);
+  }
+  else
+    success = compile_error(id->src_loc, "unknown id `%s`", id->id.name);
+  return success;
+}
+
+bool symtab_block_expr(SymbolTable* symtab, AstNode* block, AstNode* expr);
+
+bool symtab_bin_expr(SymbolTable* symtab, AstNode* block, AstNode* bin_expr)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(bin_expr, eAstNode_bin_expr));
+  bool success = true;
+  success = symtab_block_expr(symtab, block, bin_expr->bin_expr.left_operand)
+    && symtab_block_expr(symtab, block, bin_expr->bin_expr.right_operand);
+  return success;
+}
+
+bool symtab_unr_expr(SymbolTable* symtab, AstNode* block, AstNode* unr_expr)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(unr_expr, eAstNode_unr_expr));
+  bool success = true;
+  success = symtab_block_expr(symtab, block, unr_expr->unr_expr.operand);
+  return success;
+}
+
+bool symtab_call_expr(SymbolTable* symtab, AstNode* block, AstNode* call)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(call, eAstNode_call));
+  bool success = true;
+
+  if(call->call.expr->kind == eAstNode_id)
+  {
+    AstNode* id = call->call.expr;
+    Symbol* decl_sym = lookup_decl(id->id.name, symtab->active_scope, eSymbol_var | eSymbol_proc);
+    if(decl_sym)
+    {
+      add_occur_symbol(symtab, decl_sym, symtab->active_scope, id);
+    }
+    else
+      success = compile_error(id->src_loc, "unknown id `%s`", id->id.name);
+  }
+  else
+  {
+    success = symtab_block_expr(symtab, block, call->call.expr);
+  }
+  if(success)
+  {
+    for(ListItem* list_item = call->call.actual_arg_list.first;
+        list_item && success;
+        list_item = list_item->next)
+    {
+      AstNode* arg = KIND(list_item, eList_ast_node)->ast_node;
+      success = symtab_block_expr(symtab, block, arg);
+    }
+  }
+  return success;
+}
+
+bool symtab_block_expr(SymbolTable* symtab, AstNode* block, AstNode* expr)
+{
+  assert(KIND(block, eAstNode_block));
+  bool success = true;
+
+  switch(expr->kind)
+  {
+    case eAstNode_bin_expr:
+      success = symtab_bin_expr(symtab, block, expr);
+      break;
+    case eAstNode_unr_expr:
+      success = symtab_unr_expr(symtab, block, expr);
+      break;
+    case eAstNode_id:
+      success = symtab_id_expr(symtab, block, expr);
+      break;
+    case eAstNode_call:
+      success = symtab_call_expr(symtab, block, expr);
+      break;
+    case eAstNode_lit:
+      break;
+    case eAstNode_type:
+      success = symtab_type(symtab, expr);
+      break;
+    default:
+      assert(0);
+  }
+  return success;
+}
+
+bool symtab_block(SymbolTable* symtab, AstNode* block);
+bool symtab_block_stmt(SymbolTable* symtab, AstNode* block, AstNode* stmt);
+
+bool symtab_if(SymbolTable* symtab, AstNode* block, AstNode* if_)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(if_, eAstNode_if));
+  bool success = true;
+
+  if(success = symtab_block_expr(symtab, block, if_->if_.cond_expr))
+  {
+    if((success = symtab_block_stmt(symtab, block, if_->if_.body)) && if_->if_.else_body)
+    {
+      success = symtab_block_stmt(symtab, block, if_->if_.else_body);
+    }
+  }
+  return success;
+}
+
+bool symtab_while(SymbolTable* symtab, AstNode* block, AstNode* while_)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(while_, eAstNode_while));
+  bool success = true;
+
+  if(success = symtab_block_expr(symtab, block, while_->while_.cond_expr))
+  {
+    while_->while_.scope = begin_nested_scope(symtab, eScope_while, while_);
+    success = symtab_block_stmt(symtab, block, while_->while_.body);
+    end_nested_scope(symtab);
+  }
+  return success;
+}
+
+bool symtab_block_stmt(SymbolTable* symtab, AstNode* block, AstNode* stmt)
+{
+  assert(KIND(block, eAstNode_block));
+  bool success = true;
+
+  switch(stmt->kind)
+  {
+    case eAstNode_var:
+      success = symtab_var(symtab, block, stmt);
+      break;
+    case eAstNode_if:
+      success = symtab_if(symtab, block, stmt);
+      break;
+    case eAstNode_while:
+      success = symtab_while(symtab, block, stmt);
+      break;
+    case eAstNode_block:
+      {
+        stmt->block.scope = begin_nested_scope(symtab, eScope_block, stmt);
+        success = symtab_block(symtab, stmt);
+        end_nested_scope(symtab);
+      }
+      break;
+    case eAstNode_bin_expr:
+    case eAstNode_unr_expr:
+    case eAstNode_id:
+    case eAstNode_call:
+      success = symtab_block_expr(symtab, block, stmt);
+      break;
+    case eAstNode_loop_ctrl:
+      break;
+    case eAstNode_ret:
+      break;
+    case eAstNode_empty:
+      break;
+    default:
+      assert(0);
+  }
+  return success;
+}
+
+bool symtab_block(SymbolTable* symtab, AstNode* block)
+{
+  assert(KIND(block, eAstNode_block));
+  bool success = true;
+
+  for(ListItem* list_item = block->block.node_list.first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    AstNode* stmt = KIND(list_item, eList_ast_node)->ast_node;
+    success = symtab_block_stmt(symtab, block, stmt);
+  }
+  return success;
+}
+
+bool symtab_proc_body(SymbolTable* symtab, AstNode* proc)
+{
+  assert(KIND(proc, eAstNode_proc));
+  bool success = true;
+  AstNode* body = proc->proc.body;
+  if(proc->proc.modifier == eProcModifier_extern)
+  {
+    if(body->kind != eAstNode_empty)
+    {
+      success = compile_error(proc->src_loc, "`extern` proc `%s` must not define a body", proc->proc.name);
+    }
+  }
+  else
+  {
+    if(body->kind == eAstNode_block)
+    {
+      body->block.encl_proc_scope = proc->proc.scope;
+      begin_scope(symtab, eScope_block, body);
+      success = symtab_block(symtab, body);
+      end_scope(symtab);
+    }
+    else if(body->kind == eAstNode_empty)
+      success = compile_error(proc->src_loc, "proc `%s` must define a body", proc->proc.name);
+    else
+      assert(0);
+  }
+  return success;
+}
+
+bool symtab_formal_arg_list(SymbolTable* symtab, AstNode* proc)
+{
+  assert(KIND(proc, eAstNode_proc));
+  bool success = true;
+
+  for(ListItem* list_item = proc->proc.formal_arg_list.first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    AstNode* arg = KIND(list_item, eList_ast_node)->ast_node;
+    success = symtab_formal_arg(symtab, proc, arg);
   }
   return success;
 }
 
 bool symtab_module_proc(SymbolTable* symtab, AstNode* proc)
 {
+  assert(KIND(proc, eAstNode_proc));
   bool success = true;
-  Symbol* decl_sym = lookup_decl_symbol(proc->proc.name, symtab->active_scope);
-  if(decl_sym && (decl_sym->scope != symtab->active_scope))
+
+  Symbol* decl_sym = lookup_decl(proc->proc.name, symtab->active_scope, eSymbol_var|eSymbol_proc|eSymbol_type);
+  if(decl_sym && (decl_sym->scope == symtab->active_scope))
   {
     success = compile_error(proc->src_loc, "name `%s` has already been declared", proc->proc.name);
     compile_error(decl_sym->src_loc, "see the declaration of `%s`", proc->proc.name);
   }
   else
   {
-    decl_sym = add_decl_symbol(proc->proc.name, proc->src_loc, symtab->active_scope, eSymbol_proc, proc);
+    decl_sym = add_decl_symbol(symtab, proc->proc.name, proc->src_loc, symtab->active_scope, eSymbol_proc, proc);
+    proc->proc.scope = begin_nested_scope(symtab, eScope_proc, proc);
+    success = symtab_formal_arg_list(symtab, proc) && symtab_proc_body(symtab, proc);
+    end_nested_scope(symtab);
+  }
+  return success;
+}
+
+bool symtab_module_var(SymbolTable* symtab, AstNode* module, AstNode* var)
+{
+  assert(KIND(module, eAstNode_module));
+  assert(KIND(var, eAstNode_var));
+  bool success = true;
+
+  Symbol* decl_sym = lookup_decl(var->var.name, symtab->active_scope, eSymbol_var|eSymbol_proc);
+  if(decl_sym && (decl_sym->scope == symtab->active_scope))
+  {
+    success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
+    compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
+  }
+  else
+  {
+    decl_sym = add_decl_symbol(symtab, var->var.name, var->src_loc, symtab->active_scope, eSymbol_var, var);
   }
   return success;
 }
 
 bool symtab_module(SymbolTable* symtab, AstNode* module)
 {
+  assert(KIND(module, eAstNode_module));
   bool success = true;
-  Scope* module_scope = module->module.scope = begin_scope(eScope_module, module);
-  add_builtin_type(module_scope, "bool", basic_type_bool);
-  add_builtin_type(module_scope, "int", basic_type_int);
-  add_builtin_type(module_scope, "char", basic_type_char);
-  add_builtin_type(module_scope, "float", basic_type_float);
-  add_builtin_type(module_scope, "void", basic_type_void);
 
+  module->module.scope = begin_nested_scope(symtab, eScope_module, module);
+  add_builtin_type(symtab, "bool", basic_type_bool);
+  add_builtin_type(symtab, "int", basic_type_int);
+  add_builtin_type(symtab, "char", basic_type_char);
+  add_builtin_type(symtab, "float", basic_type_float);
+  add_builtin_type(symtab, "void", basic_type_void);
+
+  for(ListItem* list_item = module->module.var_list.first;
+      list_item && success;
+      list_item = list_item->next)
+  {
+    AstNode* stmt = KIND(list_item, eList_ast_node)->ast_node;
+    success = symtab_module_var(symtab, module, stmt);
+  }
   for(ListItem* list_item = module->module.proc_list.first;
       list_item && success;
       list_item = list_item->next)
   {
-    AstNode* proc = ITEM(list_item, ast_node);
+    AstNode* proc = KIND(list_item, eList_ast_node)->ast_node;
     success = symtab_module_proc(symtab, proc);
   }
-
-  end_scope();
+  end_nested_scope(symtab);
   assert(symtab->active_scope == 0);
   assert(symtab->nesting_depth == -1);
   return success;
@@ -1365,7 +1709,7 @@ bool build_types(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = build_types(ITEM(list_item, ast_node));
+          success = build_types(KIND(list_item, eList_ast_node)->ast_node);
         }
 
         node->ty = new_proc_type(basic_type_void, basic_type_void);
@@ -1439,7 +1783,7 @@ bool build_types(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = build_types(ITEM(list_item, ast_node));
+          success = build_types(KIND(list_item, eList_ast_node)->ast_node);
         }
 
         if(success)
@@ -1448,14 +1792,14 @@ bool build_types(AstNode* node)
           ListItem* list_item = node->proc.formal_args->first;
           if(list_item)
           {
-            AstNode* arg = ITEM(list_item, ast_node);
+            AstNode* arg = KIND(list_item, eList_ast_node)->ast_node;
             args_type = arg->ty;
 
             for(list_item = list_item->next;
                 list_item;
                 list_item = list_item->next)
             {
-              AstNode* arg = ITEM(list_item, ast_node);
+              AstNode* arg = KIND(list_item, eList_ast_node)->ast_node;
               args_type = new_product_type(args_type, arg->ty);
             }
           }
@@ -1491,21 +1835,21 @@ bool build_types(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = build_types(ITEM(list_item, ast_node));
+          success = build_types(KIND(list_item, eList_ast_node)->ast_node);
         }
 
         Type* args_type = basic_type_void;
         ListItem* list_item = node->call.actual_args->first;
         if(list_item)
         {
-          AstNode* arg = ITEM(list_item, ast_node);
+          AstNode* arg = KIND(list_item, eList_ast_node)->ast_node;
           args_type = arg->eval_ty;
 
           for(list_item = list_item->next;
               list_item;
               list_item = list_item->next)
           {
-            AstNode* arg = ITEM(list_item, ast_node);
+            AstNode* arg = KIND(list_item, eList_ast_node)->ast_node;
             args_type = new_product_type(args_type, arg->eval_ty);
           }
         }
@@ -1522,7 +1866,7 @@ bool build_types(AstNode* node)
       }
       break;
 
-    case eAstNode_while_:
+    case eAstNode_while:
       {
         if(success = build_types(node->while_.cond_expr))
         {
@@ -1536,7 +1880,7 @@ bool build_types(AstNode* node)
       }
       break;
 
-    case eAstNode_if_:
+    case eAstNode_if:
       {
         if(success = build_types(node->if_.cond_expr))
         {
@@ -1669,7 +2013,7 @@ bool eval_types(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          AstNode* stmt = ITEM(list_item, ast_node);
+          AstNode* stmt = KIND(list_item, eList_ast_node)->ast_node;
           if(success = eval_types(stmt))
           {
             if(!type_unif(stmt->eval_ty, node->eval_ty))
@@ -1863,7 +2207,7 @@ bool eval_types(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = eval_types(ITEM(list_item, ast_node));
+          success = eval_types(KIND(list_item, eList_ast_node)->ast_node);
         }
         if(!success)
           break;
@@ -1873,7 +2217,7 @@ bool eval_types(AstNode* node)
         {
 #if 0
           Symbol* occur_sym = node->call.occur_sym;
-          Symbol* decl_sym = lookup_decl_by_kind(occur_sym->name, occur_sym->scope,
+          Symbol* decl_sym = lookup_all_decls_by_kind(occur_sym->name, occur_sym->scope,
               (eSymbol[]){eSymbol_proc, eSymbol_extern_proc, eSymbol_None});
           if(decl_sym)
           {
@@ -1891,14 +2235,14 @@ bool eval_types(AstNode* node)
         ListItem* list_item = node->call.actual_args->first;
         if(list_item)
         {
-          AstNode* arg = ITEM(list_item, ast_node);
+          AstNode* arg = KIND(list_item, eList_ast_node)->ast_node;
           args_ty = arg->eval_ty;
 
           for(list_item = list_item->next;
               list_item;
               list_item = list_item->next)
           {
-            AstNode* arg = ITEM(list_item, ast_node);
+            AstNode* arg = KIND(list_item, eList_ast_node)->ast_node;
             args_ty = new_product_type(args_ty, arg->eval_ty);
           }
         }
@@ -1942,7 +2286,7 @@ bool eval_types(AstNode* node)
       }
       break;
 
-    case eAstNode_while_:
+    case eAstNode_while:
       {
         AstNode* cond_expr = node->while_.cond_expr;
         if(success = eval_types(cond_expr) && eval_types(node->while_.body))
@@ -1955,7 +2299,7 @@ bool eval_types(AstNode* node)
       }
       break;
 
-    case eAstNode_if_:
+    case eAstNode_if:
       {
         AstNode* body = node->if_.body;
         AstNode* else_body = node->if_.else_body;
@@ -2030,7 +2374,7 @@ bool resolve_types(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = resolve_types(ITEM(list_item, ast_node));
+          success = resolve_types(KIND(list_item, eList_ast_node)->ast_node);
         }
       }
       break;
@@ -2045,7 +2389,7 @@ bool resolve_types(AstNode* node)
     case eAstNode_var:
       if(success = node_resolve_type(node))
       {
-        node->var.decl_sym->ty = node->ty;
+        node->decl_sym->ty = node->ty;
       }
       break;
 
@@ -2076,7 +2420,7 @@ bool resolve_types(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = resolve_types(ITEM(list_item, ast_node));
+          success = resolve_types(KIND(list_item, eList_ast_node)->ast_node);
         }
         if(!success)
           break;
@@ -2108,11 +2452,11 @@ bool resolve_types(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = resolve_types(ITEM(list_item, ast_node));
+          success = resolve_types(KIND(list_item, eList_ast_node)->ast_node);
         }
         if(success && (success = node_resolve_type(node)))
         {
-          node->call.occur_sym->ty = node->ty;
+          node->occur_sym->ty = node->ty;
         }
       }
       break;
@@ -2127,11 +2471,11 @@ bool resolve_types(AstNode* node)
       }
       break;
 
-    case eAstNode_while_:
+    case eAstNode_while:
       success = resolve_types(node->while_.cond_expr) && resolve_types(node->while_.body);
       break;
 
-    case eAstNode_if_:
+    case eAstNode_if:
       {
         success = resolve_types(node->if_.cond_expr) && resolve_types(node->if_.body);
         if(node->if_.else_body)
@@ -2180,7 +2524,7 @@ bool check_types(AstNode* node)
           list_item && success;
           list_item = list_item->next)
       {
-        success = check_types(ITEM(list_item, ast_node));
+        success = check_types(KIND(list_item, eList_ast_node)->ast_node);
       }
       break;
 
@@ -2387,7 +2731,7 @@ bool check_types(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = check_types(ITEM(list_item, ast_node));
+          success = check_types(KIND(list_item, eList_ast_node)->ast_node);
         }
         if(!success)
           break;
@@ -2405,7 +2749,7 @@ bool check_types(AstNode* node)
             list_item && success;
             list_item = list_item->next)
         {
-          success = check_types(ITEM(list_item, ast_node));
+          success = check_types(KIND(list_item, eList_ast_node)->ast_node);
         }
       }
       break;
@@ -2419,13 +2763,13 @@ bool check_types(AstNode* node)
       }
       break;
 
-    case eAstNode_while_:
+    case eAstNode_while:
       {
         success = check_types(node->while_.cond_expr) && check_types(node->while_.body);
       }
       break;
 
-    case eAstNode_if_:
+    case eAstNode_if:
       {
         success = check_types(node->if_.cond_expr) && check_types(node->if_.body);
         if(node->if_.else_body)
@@ -2663,7 +3007,7 @@ bool gen_x86(String* code, AstNode* node)
             list_item;
             list_item = list_item->next)
         {
-          Symbol* decl_sym = ITEM(list_item, symbol);
+          Symbol* decl_sym = KIND(list_item, eList_symbol)->symbol;
           gen_x86(code, decl_sym->ast_node);
         }
 #endif
@@ -2671,7 +3015,7 @@ bool gen_x86(String* code, AstNode* node)
             list_item;
             list_item = list_item->next)
         {
-          Symbol* decl_sym = ITEM(list_item, symbol);
+          Symbol* decl_sym = KIND(list_item, eList_symbol)->symbol;
           gen_x86(code, decl_sym->ast_node);
         }
 
@@ -2685,7 +3029,7 @@ bool gen_x86(String* code, AstNode* node)
             list_item;
             list_item = list_item->next)
         {
-          AstNode* stmt = ITEM(list_item, ast_node);
+          AstNode* stmt = KIND(list_item, eList_ast_node)->ast_node;
           gen_x86(code, stmt);
         }
         gen_x86_leave_frame(code, 0);
@@ -2711,7 +3055,7 @@ bool gen_x86(String* code, AstNode* node)
               list_item;
               list_item = list_item->next)
           {
-            Symbol* decl_sym = ITEM(list_item, symbol);
+            Symbol* decl_sym = KIND(list_item, eList_symbol)->symbol;
             gen_x86(code, decl_sym->ast_node);
           }
 #endif
@@ -2719,7 +3063,7 @@ bool gen_x86(String* code, AstNode* node)
               list_item;
               list_item = list_item->next)
           {
-            Symbol* decl_sym = ITEM(list_item, symbol);
+            Symbol* decl_sym = KIND(list_item, eList_symbol)->symbol;
             gen_x86(code, decl_sym->ast_node);
           }
 
@@ -2733,7 +3077,7 @@ bool gen_x86(String* code, AstNode* node)
               list_item;
               list_item = list_item->next)
           {
-            AstNode* stmt = ITEM(list_item, ast_node);
+            AstNode* stmt = KIND(list_item, eList_ast_node)->ast_node;
             gen_x86(code, stmt);
           }
           gen_x86_leave_frame(code, 0);
@@ -2753,7 +3097,7 @@ bool gen_x86(String* code, AstNode* node)
             list_item;
             list_item = list_item->next)
         {
-          AstNode* stmt = ITEM(list_item, ast_node);
+          AstNode* stmt = KIND(list_item, eList_ast_node)->ast_node;
           gen_x86(code, stmt);
         }
         gen_x86_leave_frame(code, 0);
@@ -2773,7 +3117,7 @@ bool gen_x86(String* code, AstNode* node)
             list_item;
             list_item = list_item->prev)
         {
-          gen_x86_load_rvalue(code, ITEM(list_item, ast_node));
+          gen_x86_load_rvalue(code, KIND(list_item, eList_ast_node)->ast_node);
         }
 
         if(proc->proc.is_extern)
@@ -2789,7 +3133,7 @@ bool gen_x86(String* code, AstNode* node)
         }
         else
         {
-          Symbol* occur_sym = node->call.occur_sym;
+          Symbol* occur_sym = node->occur_sym;
           Scope* caller_scope = occur_sym->scope;
 
           str_printfln(code, "push ebp");
@@ -3251,7 +3595,7 @@ bool gen_x86(String* code, AstNode* node)
       }
       break;
 
-    case eAstNode_while_:
+    case eAstNode_while:
       {
         Label label = node->while_.label = make_unique_label();
         str_printfln(code, "%s$while_eval:", label.name);
@@ -3271,7 +3615,7 @@ bool gen_x86(String* code, AstNode* node)
       }
       break;
 
-    case eAstNode_if_:
+    case eAstNode_if:
       {
         gen_x86_load_rvalue(code, node->if_.cond_expr);
 
@@ -3317,7 +3661,7 @@ bool gen_x86(String* code, AstNode* node)
         AstNode* loop = node->loop_ctrl.loop;
         gen_x86_leave_frame(code, node->loop_ctrl.nesting_depth);
         Label* label = 0;
-        if(loop->kind == eAstNode_while_)
+        if(loop->kind == eAstNode_while)
         {
           label = &loop->while_.label;
           if(node->loop_ctrl.kind == eLoopCtrl_break)
@@ -3378,7 +3722,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
       list_item;
       list_item = list_item->next)
   {
-    AstNode* stmt = ITEM(list_item, ast_node);
+    AstNode* stmt = KIND(list_item, eList_ast_node)->ast_node;
 
     if(stmt->kind == eAstNode_include)
     {
@@ -3423,13 +3767,13 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
       list_item;
       list_item = list_item->next)
   {
-    Scope* scope = ITEM(list_item, scope);
+    Scope* scope = KIND(list_item, eList_scope)->scope;
     int offset = 0;
     for(ListItem* list_item = scope->decls[eSymbol_var]->first;
         list_item;
         list_item = list_item->next)
     {
-      Symbol* symbol = ITEM(list_item, symbol);
+      Symbol* symbol = KIND(list_item, eList_symbol)->symbol;
       if(symbol->is_static_alloc)
       {
         symbol->data_loc = offset;
@@ -3449,7 +3793,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         list_item;
         list_item = list_item->next)
     {
-      Symbol* symbol = ITEM(list_item, symbol);
+      Symbol* symbol = KIND(list_item, eList_symbol)->symbol;
       symbol->data_loc = offset;
       offset += symbol->ty->width;
       scope->args_area_size += symbol->ty->width;
@@ -3459,7 +3803,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         list_item;
         list_item = list_item->next)
     {
-      Symbol* symbol = ITEM(list_item, symbol);
+      Symbol* symbol = KIND(list_item, eList_symbol)->symbol;
       symbol->data_loc = offset;
       offset += symbol->ty->width;
       scope->ret_area_size += symbol->ty->width;
@@ -3470,7 +3814,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         list_item;
         list_item = list_item->next)
     {
-      Symbol* decl_sym = ITEM(list_item, symbol);
+      Symbol* decl_sym = KIND(list_item, eList_symbol)->symbol;
       AstNode* proc = decl_sym->ast_node;
       assert(proc->kind == eAstNode_proc);
       assert(proc->proc.is_extern);
@@ -3496,7 +3840,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
       list_item;
       list_item = list_item->next)
   {
-    Symbol* symbol = ITEM(list_item, symbol);
+    Symbol* symbol = KIND(list_item, eList_symbol)->symbol;
     int data_size = symbol->ty->width;
     if(symbol->data)
     {

@@ -1,6 +1,119 @@
-proc void foo()
+extern proc void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
+
+var int stdout;
+var int stdin; 
+var void^ heap;
+var int heap_ptr;
+
+proc int strlen(char^ str)
 {
-  var int a;
-  var float^ b;
-  a = ^(int^:b);
+  var int len; len = 0;
+  while(^str != '\0')
+  {
+    str = str + char^:1;
+    len = len + 1;
+  }
+  return len;
 }
+
+proc void print_str(char^ str)
+{
+  var int len; len = strlen(str);
+  var int chars_written_count; chars_written_count = 0;
+  WriteConsoleA(stdout, str, len, &chars_written_count, void^:0);
+}
+
+proc int abs(int a)
+{
+  if(a < 0)
+    a = -a;
+  return a;
+}
+
+proc void digit_to_char(char^ buf, int pos, int digit)
+{
+  if(digit == 0)
+    ^(buf + char^:pos) = '0';
+  else if(digit == 1)
+    ^(buf + char^:pos) = '1';
+  else if(digit == 2)
+    ^(buf + char^:pos) = '2';
+  else if(digit == 3)
+    ^(buf + char^:pos) = '3';
+  else if(digit == 4)
+    ^(buf + char^:pos) = '4';
+  else if(digit == 5)
+    ^(buf + char^:pos) = '5';
+  else if(digit == 6)
+    ^(buf + char^:pos) = '6';
+  else if(digit == 7)
+    ^(buf + char^:pos) = '7';
+  else if(digit == 8)
+    ^(buf + char^:pos) = '8';
+  else if(digit == 9)
+    ^(buf + char^:pos) = '9';
+  else
+    ^(buf + char^:pos) = '?';
+}
+
+proc char^ int_to_str(char^ buf, int buf_len, int i)
+{
+  var int buf_i; buf_i = buf_len - 1;
+  ^(buf + char^:buf_i) = '\0';
+
+  var bool is_negative; is_negative = false;
+  if(i < 0)
+  {
+    i = abs(i);
+    is_negative = true;
+  }
+
+  buf_i = buf_i - 1;
+  var int remainder; remainder = i mod 10;
+  digit_to_char(buf, buf_i, remainder);
+
+  while(i > remainder)
+  {
+    buf_i = buf_i - 1;
+    i = (i - remainder) / 10;
+    remainder = i mod 10;
+    digit_to_char(buf, buf_i, remainder);
+  }
+
+  if(is_negative)
+  {
+    buf_i = buf_i - 1;
+    ^(buf + char^:buf_i) = '-';
+  }
+
+  return (buf + char^:buf_i);
+}
+
+proc void print_int(int i)
+{
+  var [20]char buf;
+  print_str(int_to_str(&buf, 20, i));
+}
+
+proc void fizzbuzz(int n)
+{
+  if(n > 0)
+  {
+    var int i; i = 1;
+    while(i <= n)
+    {
+      if((i mod 15) == 0)
+        print_str(&"fizzbuzz");
+      else if((i mod 3) == 0)
+        print_str(&"buzz");
+      else if((i mod 5) == 0)
+        print_str(&"fizz");
+      else
+        print_int(i);
+
+      print_str(&"\n");
+      i = i + 1;
+    }
+  }
+}
+

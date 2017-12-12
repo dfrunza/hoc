@@ -85,16 +85,11 @@ bool parse_type(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool parse_actual_arg(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  return parse_expr(input, node);
-}
-
 bool parse_actual_arg_list(TokenStream* input, AstNode* call);
 
 bool parse_rest_of_actual_arg_list(TokenStream* input, AstNode* call)
 {
+  assert(KIND(call, eAstNode_call));
   bool success = true;
   if(input->token.kind == eToken_comma && (success = get_next_token(input)))
   {
@@ -105,9 +100,10 @@ bool parse_rest_of_actual_arg_list(TokenStream* input, AstNode* call)
 
 bool parse_actual_arg_list(TokenStream* input, AstNode* call)
 {
+  assert(KIND(call, eAstNode_call));
   bool success = false;
   AstNode* arg = 0;
-  if(success = parse_actual_arg(input, &arg))
+  if(success = parse_expr(input, &arg))
   {
     if(arg)
     {
@@ -129,7 +125,7 @@ bool parse_call(TokenStream* input, AstNode* left_node, AstNode** node)
   if(input->token.kind == eToken_open_parens)
   {
     AstNode* call = *node = new_ast_node(eAstNode_call, clone_source_loc(&input->src_loc));
-    call->call.id = left_node;
+    call->call.expr = left_node;
     init_list(&call->call.actual_arg_list, arena, eList_ast_node);
 
     if(success = get_next_token(input) && parse_actual_arg_list(input, call))
@@ -750,6 +746,7 @@ bool parse_rest_of_formal_arg_list(TokenStream* input, AstNode* proc)
 
 bool parse_formal_arg_list(TokenStream* input, AstNode* proc)
 {
+  assert(KIND(proc, eAstNode_proc));
   bool success = true;
   AstNode* arg = 0;
   if(success = parse_formal_arg(input, &arg))
@@ -785,6 +782,7 @@ bool parse_block(TokenStream* input, AstNode** node)
   if(input->token.kind == eToken_open_brace)
   {
     AstNode* block = *node = new_ast_node(eAstNode_block, clone_source_loc(&input->src_loc));
+    init_list(&block->block.node_list, arena, eList_ast_node);
     init_list(&block->block.var_list, arena, eList_ast_node);
     init_list(&block->block.stmt_list, arena, eList_ast_node);
     if(success = (get_next_token(input) && parse_stmt_list(input, block)))
@@ -817,31 +815,30 @@ bool parse_else(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool parse_if_body(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  return parse_stmt(input, node);
-}
-
 bool parse_if(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
   if(input->token.kind == eToken_if)
   {
-    AstNode* if_ = *node = new_ast_node(eAstNode_if_, clone_source_loc(&input->src_loc));
+    AstNode* if_ = *node = new_ast_node(eAstNode_if, clone_source_loc(&input->src_loc));
     if(success = get_next_token(input))
     {
       if(input->token.kind == eToken_open_parens)
       {
         if(success = (get_next_token(input) && parse_expr(input, &if_->if_.cond_expr)))
         {
-          if(input->token.kind == eToken_close_parens)
+          if(if_->if_.cond_expr)
           {
-            success = get_next_token(input) && parse_if_body(input, &if_->if_.body) && parse_else(input, &if_->if_.else_body);
+            if(input->token.kind == eToken_close_parens)
+            {
+              success = get_next_token(input) && parse_stmt(input, &if_->if_.body) && parse_else(input, &if_->if_.else_body);
+            }
+            else
+              success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
           }
           else
-            success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
+            success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
         }
       }
       else
@@ -863,7 +860,7 @@ bool parse_while(TokenStream* input, AstNode** node)
   bool success = true;
   if(input->token.kind == eToken_while)
   {
-    AstNode* while_ = *node = new_ast_node(eAstNode_while_, clone_source_loc(&input->src_loc));
+    AstNode* while_ = *node = new_ast_node(eAstNode_while, clone_source_loc(&input->src_loc));
     if(success = get_next_token(input))
     {
       if(input->token.kind == eToken_open_parens)
@@ -971,19 +968,21 @@ bool parse_stmt(TokenStream* input, AstNode** node)
 
 bool parse_stmt_list(TokenStream* input, AstNode* block)
 {
+  assert(KIND(block, eAstNode_block));
   bool success = true;
   AstNode* stmt = 0;
   if(success = parse_stmt(input, &stmt))
   {
     if(stmt)
     {
+      append_list_elem(&block->block.node_list, stmt, eList_ast_node);
       switch(stmt->kind)
       {
         case eAstNode_var:
           append_list_elem(&block->block.var_list, stmt, eList_ast_node);
           break;
-        case eAstNode_if_:
-        case eAstNode_while_:
+        case eAstNode_if:
+        case eAstNode_while:
         case eAstNode_bin_expr:
         case eAstNode_unr_expr:
         case eAstNode_block:
@@ -1365,6 +1364,7 @@ bool parse_module_stmt(TokenStream* input, AstNode** node)
 
 bool parse_module_stmt_list(TokenStream* input, AstNode* module)
 {
+  assert(KIND(module, eAstNode_module));
   bool success = true;
   AstNode* stmt = 0;
   if(success = parse_module_stmt(input, &stmt))
@@ -1396,6 +1396,7 @@ bool parse_module_stmt_list(TokenStream* input, AstNode* module)
 
 bool parse_module_body(TokenStream* input, AstNode* module)
 {
+  assert(KIND(module, eAstNode_module));
   bool success = true;
   if(success = parse_module_stmt_list(input, module))
   {

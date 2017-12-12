@@ -113,7 +113,7 @@ typedef enum
   eToken_angle_left_right,
   eToken_ampersand,
   eToken_pipe,
-//  eToken_circumflex,
+  eToken_circumflex,
   eToken_and,
   eToken_or,
   eToken_xor,

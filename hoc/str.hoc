@@ -1,7 +1,7 @@
 proc int strlen(char* str)
 {
   var int len; len = 0;
-  while(*str != '\0')
+  while(*str <> '\0')
   {
     str = str + char*:1;
     len = len + 1;
@@ -13,7 +13,7 @@ proc void print_str(char* str)
 {
   var int len; len = strlen(str);
   var int chars_written_count; chars_written_count = 0;
-  WriteConsoleA(stdout, str, len, &chars_written_count, void*:0);
+  WriteConsoleA(stdout, str, len, ^chars_written_count, void*:0);
 }
 
 proc void digit_to_char(char* buf, int pos, int digit)
@@ -88,10 +88,10 @@ proc void init_intbuf(int* buf, int len, int val)
 proc void float_to_str(char* buf, int buf_len, float f)
 {
   var [9]int significand; /* 0-th cell is not used */
-  init_intbuf(&significand, 9, 0);
+  init_intbuf(^significand, 9, 0);
   var int exponent; exponent = 0;
 
-  var int digit_count; digit_count = fp_bin_to_dec(f, &significand, &exponent);
+  var int digit_count; digit_count = fp_bin_to_dec(f, ^significand, ^exponent);
 
   var int pos; pos = 0;
 
@@ -111,7 +111,7 @@ proc void float_to_str(char* buf, int buf_len, float f)
   }
   else
   {
-    while((i <= digit_count) && (exponent > 0))
+    while((i <= digit_count) & (exponent > 0))
     {
       digit_to_char(buf, pos, significand[i]);
       i = i + 1;
@@ -135,14 +135,14 @@ proc void float_to_str(char* buf, int buf_len, float f)
     pos = pos + 1;
   }
 
-  if(exponent != 0)
+  if(exponent <> 0)
   {
     *(buf + char*:pos) = 'e';
     pos = pos + 1;
 
     var [20]char exponent_buf;
-    var char* exponent_str; exponent_str = int_to_str(&exponent_buf, 20, exponent);
-    while(*exponent_str != '\0')
+    var char* exponent_str; exponent_str = int_to_str(^exponent_buf, 20, exponent);
+    while(*exponent_str <> '\0')
     {
       *(buf + char*:pos) = *exponent_str;
       exponent_str = exponent_str + char*:1;
@@ -156,21 +156,21 @@ proc void float_to_str(char* buf, int buf_len, float f)
 proc void print_int(int i)
 {
   var [20]char buf;
-  print_str(int_to_str(&buf, 20, i));
+  print_str(int_to_str(^buf, 20, i));
 }
 
 proc void print_float(float f)
 {
   var [20]char buf;
-  float_to_str(&buf, 20, f);
-  print_str(&buf);
+  float_to_str(^buf, 20, f);
+  print_str(^buf);
 }
 
 proc void print_bool(bool b)
 {
   if(b)
-    print_str(&"true");
+    print_str(^"true");
   else
-    print_str(&"false");
+    print_str(^"false");
 }
 

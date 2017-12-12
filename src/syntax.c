@@ -645,7 +645,8 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
 //    case eToken_exclam:
     case eToken_logic_not:
     case eToken_star:
-    case eToken_ampersand:
+//    case eToken_ampersand:
+    case eToken_circumflex:
     case eToken_minus:
     case eToken_not:
       {
@@ -660,7 +661,8 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
           case eToken_star:
             unr_expr->unr_expr.op = eOperator_deref;
             break;
-          case eToken_ampersand:
+//          case eToken_ampersand:
+          case eToken_circumflex:
             unr_expr->unr_expr.op = eOperator_address_of;
             break;
           case eToken_minus:

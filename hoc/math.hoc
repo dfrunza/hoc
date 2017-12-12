@@ -40,7 +40,7 @@ proc float absf(float a)
 proc int gcd_recurs(int a, int b)
 {
   var int result; result = a;
-  if(b != 0)
+  if(b <> 0)
   {
     result = b;
     var int r; r = a mod b;
@@ -54,7 +54,7 @@ proc int gcd_recurs(int a, int b)
 
 proc int gcd_iter(int a, int b)
 {
-  while(a != b)
+  while(a <> b)
   {
     if(a > b)
       a = a - b;
@@ -89,7 +89,7 @@ proc float ipow(float a, int p)
   p = abs(p);
 
   var float result; result = 1.0;
-  if(p != 0)
+  if(p <> 0)
   {
     while(p > 0)
     {
@@ -106,7 +106,7 @@ proc float sqrt_iter(float x, float g)
 {
   var float r; r = x/g;
 
-  if(r != g)
+  if(r <> g)
   {
     r = (r+g)/2.0;
     if(absf(r-g) == 1.0)
@@ -124,7 +124,7 @@ proc float sqrt(float x)
   var float g; g = x;
   var float r; r = 1.0;
 
-  while((g > 0.0) && (g != r))
+  while((g > 0.0) & (g <> r))
   {
     g = r;
     r = sqrt_iter(x, g);
@@ -188,7 +188,7 @@ proc int fp_bin_to_dec(float v, int* significand, int* exponent)
     M = M ž 10.0;
     *(significand + int*:(k ž 4)) = U;
 
-    run_loop = (R >= M) && (R <= (1.0 - M));
+    run_loop = (R >= M) & (R <= (1.0 - M));
   }
 
   if(R <= 0.5)

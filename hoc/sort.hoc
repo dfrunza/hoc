@@ -1,6 +1,6 @@
 proc void swap([]int data, int i, int j)
 {
-  if(i != j)
+  if(i <> j)
   {
     var int temp_val; temp_val = data[i];
     data[i] = data[j];

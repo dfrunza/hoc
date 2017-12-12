@@ -1,17 +1,5 @@
-var bool a;
-
-proc void main()
+proc void foo()
 {
-  var bool b;
-  var bool c;
-
-  if(ªa)
-  {
-    a = a & b;
-  }
-  else if(a & ªb | c)
-  {
-    main();
-  }
+  var char* s;
 }
 

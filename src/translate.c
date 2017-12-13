@@ -1012,6 +1012,7 @@ bool symtab_block_stmt(SymbolTable* symtab, AstNode* block, AstNode* stmt)
     case eAstNode_unr_expr:
     case eAstNode_id:
     case eAstNode_call:
+    case eAstNode_lit:
       success = symtab_expr(symtab, block, stmt);
       break;
     case eAstNode_loop_ctrl:

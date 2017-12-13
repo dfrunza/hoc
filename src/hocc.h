@@ -176,49 +176,42 @@ typedef struct TokenStream
 }
 TokenStream;
 
-#ifndef eOperator_MEMBER_LIST
-#define eOperator_MEMBER_LIST()\
-  ENUM_MEMBER(eOperator_None),\
-  ENUM_MEMBER(eOperator_add),\
-  ENUM_MEMBER(eOperator_sub),\
-  ENUM_MEMBER(eOperator_mul),\
-  ENUM_MEMBER(eOperator_div),\
-  ENUM_MEMBER(eOperator_mod),\
-  ENUM_MEMBER(eOperator_neg),\
-  ENUM_MEMBER(eOperator_assign),\
-  ENUM_MEMBER(eOperator_deref),\
-  ENUM_MEMBER(eOperator_address_of),\
-  ENUM_MEMBER(eOperator_selector),\
-  ENUM_MEMBER(eOperator_indirect_selector),\
-  ENUM_MEMBER(eOperator_pre_decr),\
-  ENUM_MEMBER(eOperator_post_decr),\
-  ENUM_MEMBER(eOperator_pre_incr),\
-  ENUM_MEMBER(eOperator_post_incr),\
-  ENUM_MEMBER(eOperator_indexer),\
-  ENUM_MEMBER(eOperator_eq),\
-  ENUM_MEMBER(eOperator_not_eq),\
-  ENUM_MEMBER(eOperator_less),\
-  ENUM_MEMBER(eOperator_less_eq),\
-  ENUM_MEMBER(eOperator_greater),\
-  ENUM_MEMBER(eOperator_greater_eq),\
-  ENUM_MEMBER(eOperator_logic_and),\
-  ENUM_MEMBER(eOperator_logic_or),\
-  ENUM_MEMBER(eOperator_logic_not),\
-  ENUM_MEMBER(eOperator_bit_and),\
-  ENUM_MEMBER(eOperator_bit_or),\
-  ENUM_MEMBER(eOperator_bit_xor),\
-  ENUM_MEMBER(eOperator_bit_not),\
-  ENUM_MEMBER(eOperator_bit_shift_left),\
-  ENUM_MEMBER(eOperator_bit_shift_right),\
-  ENUM_MEMBER(eOperator_cast),\
-  ENUM_MEMBER(eOperator_Count),
-#endif
-
 typedef enum
 {
-#define ENUM_MEMBER(NAME) NAME
-  eOperator_MEMBER_LIST()
-#undef ENUM_MEMBER
+  eOperator_None,
+  eOperator_add,
+  eOperator_sub,
+  eOperator_mul,
+  eOperator_div,
+  eOperator_mod,
+  eOperator_neg,
+  eOperator_assign,
+  eOperator_deref,
+  eOperator_address_of,
+  eOperator_selector,
+  eOperator_indirect_selector,
+  eOperator_pre_decr,
+  eOperator_post_decr,
+  eOperator_pre_incr,
+  eOperator_post_incr,
+  eOperator_indexer,
+  eOperator_eq,
+  eOperator_not_eq,
+  eOperator_less,
+  eOperator_less_eq,
+  eOperator_greater,
+  eOperator_greater_eq,
+  eOperator_logic_and,
+  eOperator_logic_or,
+  eOperator_logic_not,
+  eOperator_bit_and,
+  eOperator_bit_or,
+  eOperator_bit_xor,
+  eOperator_bit_not,
+  eOperator_bit_shift_left,
+  eOperator_bit_shift_right,
+  eOperator_cast,
+  eOperator_Count,
 }
 eOperator;
 
@@ -317,35 +310,16 @@ char* get_operator_printstr(eOperator op)
   return str;
 }
 
-#ifndef eLiteral_MEMBER_LIST
-#define eLiteral_MEMBER_LIST()\
-  ENUM_MEMBER(eLiteral_None),\
-  ENUM_MEMBER(eLiteral_int),\
-  ENUM_MEMBER(eLiteral_float),\
-  ENUM_MEMBER(eLiteral_bool),\
-  ENUM_MEMBER(eLiteral_char),\
-  ENUM_MEMBER(eLiteral_string),
-#endif
-
 typedef enum
 {
-#define ENUM_MEMBER(NAME) NAME
-  eLiteral_MEMBER_LIST()
-#undef ENUM_MEMBER
+  eLiteral_None,
+  eLiteral_int,
+  eLiteral_float,
+  eLiteral_bool,
+  eLiteral_char,
+  eLiteral_string,
 }
 eLiteral;
-
-char* eLiteral_strings[] =
-{
-#define ENUM_MEMBER(NAME) #NAME
-  eLiteral_MEMBER_LIST()
-#undef ENUM_MEMBER
-};
-
-char* get_literal_printstr(eLiteral kind)
-{
-  return eLiteral_strings[kind];
-}
 
 typedef enum
 {
@@ -428,51 +402,32 @@ typedef struct Scope
 }
 Scope;
 
-#ifndef eAstNode_MEMBER_LIST
-#define eAstNode_MEMBER_LIST()\
-  ENUM_MEMBER(eAstNode_None),\
-  ENUM_MEMBER(eAstNode_id),\
-  ENUM_MEMBER(eAstNode_asm_block),\
-  ENUM_MEMBER(eAstNode_bin_expr),\
-  ENUM_MEMBER(eAstNode_unr_expr),\
-  ENUM_MEMBER(eAstNode_module),\
-  ENUM_MEMBER(eAstNode_include),\
-  ENUM_MEMBER(eAstNode_block),\
-  ENUM_MEMBER(eAstNode_stmt),\
-  ENUM_MEMBER(eAstNode_var),\
-  ENUM_MEMBER(eAstNode_proc),\
-  ENUM_MEMBER(eAstNode_call),\
-  ENUM_MEMBER(eAstNode_type),\
-  ENUM_MEMBER(eAstNode_lit),\
-  ENUM_MEMBER(eAstNode_return),\
-  ENUM_MEMBER(eAstNode_if),\
-  ENUM_MEMBER(eAstNode_while),\
-  ENUM_MEMBER(eAstNode_loop_ctrl),\
-  ENUM_MEMBER(eAstNode_enum_decl),\
-  ENUM_MEMBER(eAstNode_struct_decl),\
-  ENUM_MEMBER(eAstNode_union_decl),\
-  ENUM_MEMBER(eAstNode_empty),
-#endif
-
 typedef enum 
 {
-#define ENUM_MEMBER(NAME) NAME
-  eAstNode_MEMBER_LIST()
-#undef ENUM_MEMBER
+  eAstNode_None,
+  eAstNode_id,
+  eAstNode_asm_block,
+  eAstNode_bin_expr,
+  eAstNode_unr_expr,
+  eAstNode_module,
+  eAstNode_include,
+  eAstNode_block,
+  eAstNode_stmt,
+  eAstNode_var,
+  eAstNode_proc,
+  eAstNode_call,
+  eAstNode_type,
+  eAstNode_lit,
+  eAstNode_return,
+  eAstNode_if,
+  eAstNode_while,
+  eAstNode_loop_ctrl,
+  eAstNode_enum_decl,
+  eAstNode_struct_decl,
+  eAstNode_union_decl,
+  eAstNode_empty,
 }
 eAstNode;
-
-char* eAstNode_strings[] =
-{
-#define ENUM_MEMBER(NAME) #NAME
-  eAstNode_MEMBER_LIST()
-#undef ENUM_MEMBER
-};
-
-char* get_ast_printstr(eAstNode kind)
-{
-  return eAstNode_strings[kind];
-}
 
 typedef enum
 {

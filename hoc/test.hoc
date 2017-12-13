@@ -1,5 +1,4 @@
 proc void foo()
 {
-  var int i;
-  numbers = int*:alloc([how_many]int);
 }
+

@@ -995,6 +995,7 @@ bool parse_stmt_list(TokenStream* input, AstNode* block)
         case eAstNode_call:
         case eAstNode_return:
         case eAstNode_loop_ctrl:
+        case eAstNode_lit:
           append_list_elem(&block->block.stmt_list, stmt, eList_ast_node);
           break;
         case eAstNode_empty:

@@ -209,10 +209,10 @@ char* get_token_printstr(Token* token)
     case eToken_minus_minus:
       result = "--";
       break;
-#if 0
     case eToken_exclam:
       result = "!";
       break;
+#if 0
     case eToken_exclam_eq:
       result = "!=";
       break;
@@ -246,6 +246,9 @@ char* get_token_printstr(Token* token)
       break;
     case eToken_pipe:
       result = "|";
+      break;
+    case eToken_tilde:
+      result = "~";
       break;
     case eToken_circumflex:
       result = "^";
@@ -649,18 +652,23 @@ loop:
     token->kind = eToken_pipe;
     c = *(++input->cursor);
   }
-#if 0
+  else if(c == '~')
+  {
+    token->kind = eToken_tilde;
+    c = *(++input->cursor);
+  }
   else if(c == '!')
   {
     token->kind = eToken_exclam;
     c = *(++input->cursor);
+#if 0
     if(c == '=')
     {
       token->kind = eToken_exclam_eq;
       ++input->cursor;
     }
-  }
 #endif
+  }
   else if(c == 'ª')
   {
     token->kind = eToken_logic_not;

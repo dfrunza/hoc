@@ -108,7 +108,7 @@ proc float sqrt_iter(float x, float g)
 
   if(r <> g)
   {
-    r = (r+g)/2.0;
+    r = (r+g) / 2.0;
     if(absf(r-g) == 1.0)
       r = minf(r, g);
   }
@@ -124,7 +124,7 @@ proc float sqrt(float x)
   var float g; g = x;
   var float r; r = 1.0;
 
-  while((g > 0.0) & (g <> r))
+  while((g > 0.0) and (g <> r))
   {
     g = r;
     r = sqrt_iter(x, g);
@@ -188,7 +188,7 @@ proc int fp_bin_to_dec(float v, int* significand, int* exponent)
     M = M  10.0;
     *(significand + int*:(k  4)) = U;
 
-    run_loop = (R >= M) & (R <= (1.0 - M));
+    run_loop = (R >= M) and (R <= (1.0 - M));
   }
 
   if(R <= 0.5)

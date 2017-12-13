@@ -1,5 +1,5 @@
 proc void foo()
 {
-  var char* s;
+  var int i;
+  numbers = int*:alloc([how_many]int);
 }
-

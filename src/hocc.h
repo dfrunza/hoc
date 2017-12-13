@@ -99,7 +99,7 @@ typedef enum
   eToken_minus,
   eToken_minus_minus,
   eToken_mul,
-//  eToken_exclam,
+  eToken_exclam,
 //  eToken_exclam_eq,
   eToken_logic_not,
   eToken_eq,
@@ -113,6 +113,7 @@ typedef enum
   eToken_angle_left_right,
   eToken_ampersand,
   eToken_pipe,
+  eToken_tilde,
   eToken_circumflex,
   eToken_and,
   eToken_or,
@@ -346,35 +347,16 @@ char* get_literal_printstr(eLiteral kind)
   return eLiteral_strings[kind];
 }
 
-#ifndef eScope_MEMBER_LIST
-#define eScope_MEMBER_LIST()\
-  ENUM_MEMBER(eScope_None),\
-  ENUM_MEMBER(eScope_module),\
-  ENUM_MEMBER(eScope_proc),\
-  ENUM_MEMBER(eScope_while),\
-  ENUM_MEMBER(eScope_block),\
-  ENUM_MEMBER(eScope_struct),
-#endif
-
 typedef enum
 {
-#define ENUM_MEMBER(NAME) NAME
-  eScope_MEMBER_LIST()
-#undef ENUM_MEMBER
+  eScope_None = 0,
+  eScope_module = 1 << 0,
+  eScope_proc = 1 << 1,
+  eScope_while = 1 << 2,
+  eScope_block = 1 << 3,
+  eScope_struct = 1 << 4,
 }
 eScope;
-
-char* eScope_strings[] =
-{
-#define ENUM_MEMBER(NAME) #NAME
-  eScope_MEMBER_LIST()
-#undef ENUM_MEMBER
-};
-
-char* get_scope_printstr(eScope kind)
-{
-  return eScope_strings[kind];
-}
 
 typedef enum
 {
@@ -462,7 +444,7 @@ Scope;
   ENUM_MEMBER(eAstNode_call),\
   ENUM_MEMBER(eAstNode_type),\
   ENUM_MEMBER(eAstNode_lit),\
-  ENUM_MEMBER(eAstNode_ret),\
+  ENUM_MEMBER(eAstNode_return),\
   ENUM_MEMBER(eAstNode_if),\
   ENUM_MEMBER(eAstNode_while),\
   ENUM_MEMBER(eAstNode_loop_ctrl),\
@@ -648,7 +630,7 @@ typedef struct AstNode
 
     struct
     {
-      AstNode* ret_expr;
+      AstNode* expr;
       AstNode* proc;
       int nesting_depth;
     }

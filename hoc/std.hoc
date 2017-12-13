@@ -22,7 +22,7 @@ proc int stdin_read(char* buf, int buf_size)
   var int bytes_read_count; bytes_read_count = 0;
   if(ReadFile(stdin, buf, buf_size, ^bytes_read_count, void*:0))
   {
-    if((bytes_read_count >= 0) & (bytes_read_count < buf_size))
+    if((bytes_read_count >= 0) and (bytes_read_count < buf_size))
     {
       *(buf + char*:bytes_read_count) = '\0';
     }

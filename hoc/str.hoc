@@ -111,7 +111,7 @@ proc void float_to_str(char* buf, int buf_len, float f)
   }
   else
   {
-    while((i <= digit_count) & (exponent > 0))
+    while((i <= digit_count) and (exponent > 0))
     {
       digit_to_char(buf, pos, significand[i]);
       i = i + 1;

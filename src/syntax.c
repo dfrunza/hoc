@@ -316,7 +316,7 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     case eToken_and:
     case eToken_angle_right_right:
     case eToken_angle_left_left:
-    case eToken_xor:
+    case eToken_tilde:
       {
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
@@ -329,16 +329,16 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
           case eToken_minus:
             bin_expr->bin_expr.op = eOperator_sub;
             break;
-          case eToken_or:
+          case eToken_pipe:
             bin_expr->bin_expr.op = eOperator_bit_or;
             break;
-          case eToken_pipe:
+          case eToken_or:
             bin_expr->bin_expr.op = eOperator_logic_or;
             break;
-          case eToken_and:
+          case eToken_ampersand:
             bin_expr->bin_expr.op = eOperator_bit_and;
             break;
-          case eToken_ampersand:
+          case eToken_and:
             bin_expr->bin_expr.op = eOperator_logic_and;
             break;
           case eToken_angle_left_left:
@@ -347,7 +347,7 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
           case eToken_angle_right_right:
             bin_expr->bin_expr.op = eOperator_bit_shift_right;
             break;
-          case eToken_xor:
+          case eToken_tilde:
             bin_expr->bin_expr.op = eOperator_bit_xor;
             break;
           default:
@@ -388,7 +388,6 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
   {
     case eToken_eq:
     case eToken_eq_eq:
-//    case eToken_exclam_eq:
     case eToken_angle_left:
     case eToken_angle_left_eq:
     case eToken_angle_right:
@@ -406,11 +405,6 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
           case eToken_eq_eq:
             bin_expr->bin_expr.op = eOperator_eq;
             break;
-#if 0
-          case eToken_exclam_eq:
-            bin_expr->bin_expr.op = eOperator_not_eq;
-            break;
-#endif
           case eToken_angle_left_right:
             bin_expr->bin_expr.op = eOperator_not_eq;
             break;
@@ -642,34 +636,30 @@ bool parse_unr_expr(TokenStream* input, AstNode** node)
 
   switch(input->token.kind)
   {
-//    case eToken_exclam:
-    case eToken_logic_not:
+    case eToken_exclam:
+    case eToken_not:
     case eToken_star:
-//    case eToken_ampersand:
     case eToken_circumflex:
     case eToken_minus:
-    case eToken_not:
       {
         AstNode* unr_expr = *node = new_ast_node(eAstNode_unr_expr, clone_source_loc(&input->src_loc));
 
         switch(input->token.kind)
         {
-//          case eToken_exclam:
-          case eToken_logic_not:
+          case eToken_exclam:
+            unr_expr->unr_expr.op = eOperator_bit_not;
+            break;
+          case eToken_not:
             unr_expr->unr_expr.op = eOperator_logic_not;
             break;
           case eToken_star:
             unr_expr->unr_expr.op = eOperator_deref;
             break;
-//          case eToken_ampersand:
           case eToken_circumflex:
             unr_expr->unr_expr.op = eOperator_address_of;
             break;
           case eToken_minus:
             unr_expr->unr_expr.op = eOperator_neg;
-            break;
-          case eToken_not:
-            unr_expr->unr_expr.op = eOperator_bit_not;
             break;
           default:
             assert(0);
@@ -877,12 +867,17 @@ bool parse_while(TokenStream* input, AstNode** node)
       {
         if(success = (get_next_token(input) && parse_expr(input, &while_->while_.cond_expr)))
         {
-          if(input->token.kind == eToken_close_parens)
+          if(while_->while_.cond_expr)
           {
-            success = get_next_token(input) && parse_while_body(input, &while_->while_.body);
+            if(input->token.kind == eToken_close_parens)
+            {
+              success = get_next_token(input) && parse_while_body(input, &while_->while_.body);
+            }
+            else
+              success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
           }
           else
-            success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
+            success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
         }
       }
       else
@@ -899,10 +894,10 @@ bool parse_return(TokenStream* input, AstNode** node)
 
   if(input->token.kind == eToken_return)
   {
-    AstNode* ret = *node = new_ast_node(eAstNode_ret, clone_source_loc(&input->src_loc));
+    AstNode* ret = *node = new_ast_node(eAstNode_return, clone_source_loc(&input->src_loc));
     if(success = get_next_token(input))
     {
-      success = parse_expr(input, &ret->ret.ret_expr);
+      success = parse_expr(input, &ret->ret.expr);
     }
   }
   return success;
@@ -998,7 +993,7 @@ bool parse_stmt_list(TokenStream* input, AstNode* block)
         case eAstNode_block:
         case eAstNode_id:
         case eAstNode_call:
-        case eAstNode_ret:
+        case eAstNode_return:
         case eAstNode_loop_ctrl:
           append_list_elem(&block->block.stmt_list, stmt, eList_ast_node);
           break;

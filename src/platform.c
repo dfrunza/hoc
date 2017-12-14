@@ -200,22 +200,32 @@ int file_write_bytes(char* file_path, uint8* bytes, int count)
   return bytes_written;
 }
 
-int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path)
+int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int alloc_extra)
 {
   *bytes = 0;
-  int byte_count = 0;
+  int byte_count = -1;
   FILE* file = fopen(file_path, "rb");
   if(file)
   {
-    fseek(file, 0, SEEK_END);
-    byte_count = ftell(file);
-    if(byte_count > 0)
+    if(fseek(file, 0, SEEK_END) == 0)
     {
-      fseek(file, 0, SEEK_SET);
-      *bytes = mem_push_array_nz(arena, uint8, byte_count);
-      fread(*bytes, (size_t)byte_count, 1, file);
+      byte_count = ftell(file);
+      if(byte_count >= 0)
+      {
+        if(fseek(file, 0, SEEK_SET) == 0)
+        {
+          *bytes = mem_push_array_nz(arena, uint8, byte_count + alloc_extra);
+          fread(*bytes, (size_t)byte_count, 1, file);
+          if(ferror(file))
+            byte_count = -1;
+        }
+        else
+          byte_count = -1;
+      }
+      fclose(file);
     }
-    fclose(file);
+    else
+      byte_count = -1;
   }
   return byte_count;
 }
@@ -223,8 +233,11 @@ int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path)
 char* file_read_text(MemoryArena* arena, char* file_path)
 {
   char* text = 0;
-  file_read_bytes(arena, (uint8**)&text, file_path);
-  *mem_push_array(arena, char, 1) = '\0'; // NULL terminator
+  int byte_count = 0;
+  if((byte_count = file_read_bytes(arena, (uint8**)&text, file_path, 1)) >= 0)
+  {
+    text[byte_count] = '\0'; // NULL terminator
+  }
   return text;
 }
 

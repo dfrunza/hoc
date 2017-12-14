@@ -30,6 +30,6 @@ char* path_find_leaf(char* file_path);
 char* path_make_leaf(char* file_path, bool with_extension);
 char* path_make_dir(char* file_path);
 int file_write_bytes(char* file_path, uint8* bytes, int count);
-int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path);
+int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int alloc_extra);
 char* file_read_text(MemoryArena* arena, char* file_path);
 

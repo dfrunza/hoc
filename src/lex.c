@@ -19,9 +19,14 @@ Token keyword_list[] =
   {eToken_extern, "extern"},
   {eToken_and, "and"},
   {eToken_or, "or"},
-  {eToken_xor, "xor"},
   {eToken_not, "not"},
   {eToken_mod, "mod"},
+  {eToken_int, "int"},
+  {eToken_float, "float"},
+  {eToken_bool, "bool"},
+  {eToken_char, "char"},
+  {eToken_void, "void"},
+  {eToken_auto, "auto"},
   {eToken_None, 0}, /* terminator */
 };
 
@@ -319,15 +324,33 @@ char* get_token_printstr(Token* token)
     case eToken_mod:
       result = "mod";
       break;
-    case eToken_id:
     case eToken_int:
-    case eToken_float:
-      result = token->lexeme;
+      result = "int";
       break;
-    case eToken_string:
-      result = token->str_val; // TODO: Substitute non-printable chars
+    case eToken_float:
+      result = "float";
+      break;
+    case eToken_bool:
+      result = "bool";
       break;
     case eToken_char:
+      result = "char";
+      break;
+    case eToken_void:
+      result = "void";
+      break;
+    case eToken_auto:
+      result = "auto";
+      break;
+    case eToken_id:
+    case eToken_int_val:
+    case eToken_float_val:
+      result = token->lexeme;
+      break;
+    case eToken_string_val:
+      result = token->str_val; // TODO: Substitute non-printable chars
+      break;
+    case eToken_char_val:
     case eToken_unknown_char:
       print_char(result = char_print_buf, token->char_val);
       break;
@@ -497,13 +520,13 @@ loop:
 
     if(is_float)
     {
-      token->kind = eToken_float;
+      token->kind = eToken_float_val;
       token->float_val = mem_push_struct(arena, float);
       h_sscanf(digit_buf, "%f", token->float_val);
     }
     else
     {
-      token->kind = eToken_int;
+      token->kind = eToken_int_val;
       token->int_val = mem_push_struct(arena, int);
       if(is_hex)
         h_sscanf(digit_buf, "%x", token->int_val);
@@ -598,7 +621,7 @@ loop:
     if(success = escaped_string(__FILE__, __LINE__, input, &estr))
     {
       token->str_val = install_escaped_str(&estr);;
-      token->kind = eToken_string;
+      token->kind = eToken_string_val;
       input->cursor = ++estr.end;
     }
   }
@@ -617,7 +640,7 @@ loop:
       else
       {
         token->char_val = *lexeme;
-        token->kind = eToken_char;
+        token->kind = eToken_char_val;
         input->cursor = ++estr.end;
       }
     }

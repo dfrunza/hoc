@@ -1,4 +1,7 @@
-proc void foo()
+var int a;
+
+proc void main()
 {
+
 }
 

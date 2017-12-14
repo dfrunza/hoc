@@ -140,12 +140,18 @@ typedef enum
   eToken_true,
   eToken_false,
   eToken_extern,
-
-  eToken_id,
   eToken_int,
   eToken_float,
-  eToken_string,
+  eToken_bool,
   eToken_char,
+  eToken_void,
+  eToken_auto,
+
+  eToken_id,
+  eToken_int_val,
+  eToken_float_val,
+  eToken_string_val,
+  eToken_char_val,
   eToken_asm_text,
 }
 eToken;
@@ -392,7 +398,7 @@ typedef struct Scope
   struct Scope* encl_scope;
   AstNode* ast_node;
 
-  List* decls[eSymbol_Count];
+  List decls[eSymbol_Count];
   List occurs;
 
   int static_area_size;
@@ -401,33 +407,6 @@ typedef struct Scope
   int args_area_size;
 }
 Scope;
-
-typedef enum 
-{
-  eAstNode_None,
-  eAstNode_id,
-  eAstNode_asm_block,
-  eAstNode_bin_expr,
-  eAstNode_unr_expr,
-  eAstNode_module,
-  eAstNode_include,
-  eAstNode_block,
-  eAstNode_stmt,
-  eAstNode_var,
-  eAstNode_proc,
-  eAstNode_call,
-  eAstNode_type,
-  eAstNode_lit,
-  eAstNode_return,
-  eAstNode_if,
-  eAstNode_while,
-  eAstNode_loop_ctrl,
-  eAstNode_enum_decl,
-  eAstNode_struct_decl,
-  eAstNode_union_decl,
-  eAstNode_empty,
-}
-eAstNode;
 
 typedef enum
 {
@@ -464,7 +443,7 @@ typedef enum
   eBasicType_float,
   eBasicType_char,
   eBasicType_bool,
-  eBasicType_type,
+  eBasicType_auto,
 }
 eBasicType;
 
@@ -525,6 +504,35 @@ typedef struct TypePair
 }
 TypePair;
 
+typedef enum 
+{
+  eAstNode_None,
+  eAstNode_id,
+  eAstNode_asm_block,
+  eAstNode_bin_expr,
+  eAstNode_unr_expr,
+  eAstNode_module,
+  eAstNode_include,
+  eAstNode_block,
+  eAstNode_stmt,
+  eAstNode_var,
+  eAstNode_proc,
+  eAstNode_call,
+  eAstNode_type,
+  eAstNode_basic_type,
+  eAstNode_lit,
+  eAstNode_return,
+  eAstNode_if,
+  eAstNode_while,
+  eAstNode_loop_ctrl,
+  eAstNode_enum_decl,
+  eAstNode_struct_decl,
+  eAstNode_union_decl,
+  eAstNode_empty,
+  eAstNode_args,
+}
+eAstNode;
+
 typedef struct AstNode
 {
   eAstNode kind;
@@ -536,6 +544,12 @@ typedef struct AstNode
 
   union
   {
+    struct
+    {
+      List nodes;
+    }
+    args;
+
     struct
     {
       eSymbol sym_kind;
@@ -565,9 +579,10 @@ typedef struct AstNode
       union
       {
         char* name;
+        AstNode* pointee;
         struct
         {
-          AstNode* elem, *pointee;
+          AstNode* elem;
           AstNode* size;
         };
       };
@@ -576,9 +591,14 @@ typedef struct AstNode
 
     struct
     {
+      eBasicType kind;
+    }
+    basic_type;
+
+    struct
+    {
       AstNode* expr;
-      List* actual_args;
-      List actual_arg_list;
+      List actual_args;
       AstNode* proc;
     }
     call;
@@ -626,14 +646,9 @@ typedef struct AstNode
     {
       char* name;
       eProcModifier modifier;
-      char* label;
-      bool is_extern;
-      AstNode* ret_var;
-      List* formal_args;
-      List formal_arg_list;
+      AstNode* args;
       AstNode* ret_type;
       AstNode* body;
-      Symbol* decl_sym;
       Scope* scope;
     }
     proc;
@@ -664,10 +679,10 @@ typedef struct AstNode
     {
       char* file_path;
       AstNode* body;
-      List node_list;
-      List proc_list;
-      List var_list;
-      List include_list;
+      List nodes;
+      List procs;
+      List vars;
+      List includes;
       Scope* scope;
     }
     module;
@@ -683,13 +698,9 @@ typedef struct AstNode
     {
       Scope* scope;
       Scope* encl_proc_scope;
-      List* nodes;
-      List* stmts;
-      List* procs;
-      List* vars;
-      List node_list;
-      List var_list;
-      List stmt_list;
+      List nodes;
+      List vars;
+      List stmts;
     }
     block;
 
@@ -736,5 +747,5 @@ typedef struct
 }
 SymbolTable;
 
-void DEBUG_print_ast_node_list(String* str, int indent_level, char* tag, List* node_list);
+void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes);
 

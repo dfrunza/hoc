@@ -3346,6 +3346,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   basic_type_void = new_basic_type(eBasicType_void);
   subst_list = new_list(arena, eList_type_pair);
 
+#if 0
   symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
   if(!symtab_module(symbol_table, module))
   {
@@ -3356,6 +3357,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   {
     return false;
   }
+#endif
+
 #if 0
   if(!(build_types(module) && eval_types(module)
       && resolve_types(module) && check_types(module)))

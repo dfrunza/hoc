@@ -1,7 +1,6 @@
-var int a;
 
-proc void main()
+proc void main(int:b() a, int b)
 {
-
 }
+
 

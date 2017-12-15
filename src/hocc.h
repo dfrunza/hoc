@@ -200,7 +200,7 @@ typedef enum
   eOperator_post_decr,
   eOperator_pre_incr,
   eOperator_post_incr,
-  eOperator_indexer,
+  eOperator_index,
   eOperator_eq,
   eOperator_not_eq,
   eOperator_less,
@@ -217,6 +217,8 @@ typedef enum
   eOperator_bit_shift_left,
   eOperator_bit_shift_right,
   eOperator_cast,
+  eOperator_array,
+  eOperator_pointer,
   eOperator_Count,
 }
 eOperator;
@@ -267,7 +269,7 @@ char* get_operator_printstr(eOperator op)
     case eOperator_post_incr:
       str = "++";
       break;
-    case eOperator_indexer:
+    case eOperator_index:
       str = "[]";
       break;
     case eOperator_eq:

@@ -1,6 +1,5 @@
 Token keyword_list[] = 
 {
-//  {eToken_var, "var"},
   {eToken_asm, "asm"},
   {eToken_if, "if"},
   {eToken_else, "else"},
@@ -12,7 +11,6 @@ Token keyword_list[] =
   {eToken_include, "include"},
   {eToken_true, "true"},
   {eToken_false, "false"},
-//  {eToken_proc, "proc"},
   {eToken_struct, "struct"},
   {eToken_union, "union"},
   {eToken_enum, "enum"},
@@ -270,11 +268,6 @@ char* get_token_printstr(Token* token)
     case eToken_while:
       result = "while";
       break;
-#if 0
-    case eToken_proc:
-      result = "proc";
-      break;
-#endif
     case eToken_struct:
       result = "struct";
       break;
@@ -296,11 +289,6 @@ char* get_token_printstr(Token* token)
     case eToken_enum:
       result = "enum";
       break;
-#if 0
-    case eToken_var:
-      result = "var";
-      break;
-#endif
     case eToken_goto:
       result = "goto";
       break;

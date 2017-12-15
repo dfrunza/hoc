@@ -998,7 +998,7 @@ bool symtab_proc_body(SymbolTable* symtab, AstNode* proc)
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
   AstNode* body = proc->proc.body;
-  if(proc->proc.modifier == eProcModifier_extern)
+  if(proc->modifier == eModifier_extern)
   {
     if(body->kind != eAstNode_empty)
     {
@@ -3253,7 +3253,7 @@ bool set_types_proc(AstNode* proc)
     proc->ty = new_proc_type(args->ty, ret_type->ty);
     proc->eval_ty = basic_type_void;
 
-    if(proc->proc.modifier != eProcModifier_extern)
+    if(proc->modifier != eModifier_extern)
     {
       success = set_types_block(proc->proc.body);
     }

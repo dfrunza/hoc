@@ -679,13 +679,13 @@ bool parse_formal_arg(TokenStream* input, AstNode** node)
 
   if((success = parse_expr(input, node)) && *node)
   {
-    AstNode* type = *node;
-    AstNode* var = *node = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
-    var->var.type = type;
-
     if(input->token.kind == eToken_id)
     {
+      AstNode* type = *node;
+      AstNode* var = *node = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
+      var->var.type = type;
       var->var.name = input->token.lexeme;
+
       success = get_next_token(input);
     }
     else
@@ -754,40 +754,13 @@ bool parse_expr(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool parse_var(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = true;
-
-  if(input->token.kind == eToken_var)
-  {
-    if(success = get_next_token(input))
-    {
-      AstNode* var = *node = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
-      if(success = parse_expr(input, &var->var.type))
-      {
-        if(input->token.kind == eToken_id)
-        {
-          var->var.name = input->token.lexeme;
-          success = get_next_token(input);
-        }
-        else
-          success = compile_error(&input->src_loc, "identifier was expected at `%s`", get_token_printstr(&input->token));
-      }
-    }
-  }
-  else
-    success = compile_error(&input->src_loc, "`var` was expected at `%s`", get_token_printstr(&input->token));
-  return success;
-}
-
-bool parse_proc_modifier(TokenStream* input, eProcModifier* modifier)
+bool parse_modifier(TokenStream* input, eModifier* modifier)
 {
   bool success = true;
-  *modifier = eProcModifier_None;
+  *modifier = eModifier_None;
   if(input->token.kind == eToken_extern)
   {
-    *modifier = eProcModifier_extern;
+    *modifier = eModifier_extern;
     success = get_next_token(input);
   }
   return success;
@@ -1003,9 +976,6 @@ bool parse_stmt(TokenStream* input, AstNode** node)
     case eToken_open_brace:
       success = parse_block(input, node);
       break;
-    case eToken_var:
-      success = parse_var(input, node) && consume_semicolon(input);
-      break;
     case eToken_if:
       success = parse_if(input, node);
       break;
@@ -1027,6 +997,15 @@ bool parse_stmt(TokenStream* input, AstNode** node)
     default:
       if((success = parse_expr(input, node)) && *node)
       {
+        if(input->token.kind == eToken_id)
+        {
+          AstNode* type = *node;
+          AstNode* var = *node = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
+          var->var.type = type;
+          var->var.name = input->token.lexeme;
+
+          success = get_next_token(input);
+        }
         success = consume_semicolon(input);
       }
       break;
@@ -1049,10 +1028,8 @@ bool parse_stmts(TokenStream* input, AstNode* block)
         case eAstNode_var:
           append_list_elem(&block->block.vars, stmt, eList_ast_node);
           break;
-
         case eAstNode_empty:
           break;
-
         default:
           append_list_elem(&block->block.stmts, stmt, eList_ast_node);
           break;
@@ -1078,82 +1055,6 @@ bool parse_proc_body(TokenStream* input, AstNode* proc)
       success = compile_error(&input->src_loc, "unexpected `%s`", get_token_printstr(&input->token));
       break;
   }
-  return success;
-}
-
-bool parse_proc(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = true;
-
-  AstNode* proc = *node = new_ast_node(eAstNode_proc, clone_source_loc(&input->src_loc));
-  if(success = parse_proc_modifier(input, &proc->proc.modifier))
-  {
-    if(input->token.kind == eToken_proc)
-    {
-      if(success = get_next_token(input))
-      {
-        if(success = parse_expr(input, &proc->proc.ret_type))
-        {
-          if(input->token.kind == eToken_id)
-          {
-            proc->proc.name = input->token.lexeme;
-            if(success = get_next_token(input))
-            {
-              if(input->token.kind == eToken_open_parens)
-              {
-                if(success = get_next_token(input))
-                {
-                  AstNode* args = proc->proc.args = new_ast_node(eAstNode_args, clone_source_loc(&input->src_loc));
-                  init_list(&args->args.nodes, arena, eList_ast_node);
-                  if(success = parse_formal_args(input, proc->proc.args))
-                  {
-                    if(input->token.kind == eToken_close_parens)
-                    {
-                      success = get_next_token(input) && parse_proc_body(input, proc);
-                    }
-                    else
-                      success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
-                  }
-                }
-              }
-              else
-                success = compile_error(&input->src_loc, "`(` was expected at `%s`", get_token_printstr(&input->token));
-            }
-          }
-          else
-            success = compile_error(&input->src_loc, "identifier was expected at `%s`", get_token_printstr(&input->token));
-        }
-      }
-    }
-    else
-      success = compile_error(&input->src_loc, "`proc` was expected at `%s`", get_token_printstr(&input->token));
-  }
-  return success;
-}
-
-bool parse_include(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = true;
-
-  if(input->token.kind == eToken_include)
-  {
-    if(success = get_next_token(input))
-    {
-      AstNode* include = *node = new_ast_node(eAstNode_include, clone_source_loc(&input->src_loc));
-      if(input->token.kind == eToken_string_val)
-      {
-        include->include.file_path = input->token.str_val;
-        success = get_next_token(input);
-      }
-      else
-        success = compile_error(&input->src_loc, "string literal was expected at `%s`", get_token_printstr(&input->token));
-    }
-  }
-  else
-    success = compile_error(&input->src_loc, "`include` was expected at `%s`", get_token_printstr(&input->token));
-
   return success;
 }
 
@@ -1412,15 +1313,74 @@ bool parse_module_stmt(TokenStream* input, AstNode** node)
   bool success = true;
   switch(input->token.kind)
   {
+#if 0
     case eToken_extern:
     case eToken_proc:
       success = parse_proc(input, node);
       break;
-    case eToken_var:
-      success = parse_var(input, node) && consume_semicolon(input);
-      break;
+#endif
+
     case eToken_include:
-      success = parse_include(input, node) && consume_semicolon(input);
+      if(success = get_next_token(input))
+      {
+        AstNode* include = *node = new_ast_node(eAstNode_include, clone_source_loc(&input->src_loc));
+        if(input->token.kind == eToken_string_val)
+        {
+          include->include.file_path = input->token.str_val;
+          success = get_next_token(input) && consume_semicolon(input);
+        }
+        else
+          success = compile_error(&input->src_loc, "string literal was expected at `%s`", get_token_printstr(&input->token));
+      }
+      break;
+
+    default:
+      {
+        eModifier modifier = eModifier_None;
+        if((success = parse_modifier(input, &modifier) && parse_expr(input, node)) && *node)
+        {
+          (*node)->modifier = modifier;
+          if(input->token.kind == eToken_id)
+          {
+            char* name = input->token.lexeme;
+            if(success = get_next_token(input))
+            {
+              if(input->token.kind == eToken_open_parens)
+              {
+                AstNode* ret_type = *node;
+                AstNode* proc = *node = new_ast_node(eAstNode_proc, clone_source_loc(&input->src_loc));
+                proc->proc.ret_type = ret_type;
+                proc->proc.name = name;
+                if(success = get_next_token(input))
+                {
+                  AstNode* args = proc->proc.args = new_ast_node(eAstNode_args, clone_source_loc(&input->src_loc));
+                  init_list(&args->args.nodes, arena, eList_ast_node);
+                  if(success = parse_formal_args(input, proc->proc.args))
+                  {
+                    if(input->token.kind == eToken_close_parens)
+                    {
+                      success = get_next_token(input) && parse_proc_body(input, proc);
+                    }
+                    else
+                      success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
+                  }
+                }
+              }
+              else
+              {
+                AstNode* type = *node;
+                AstNode* var = *node = new_ast_node(eAstNode_var, clone_source_loc(&input->src_loc));
+                var->var.type = type;
+                var->var.name = name;
+
+                success = consume_semicolon(input);
+              }
+            }
+          }
+          else
+            success = compile_error(&input->src_loc, "identifier was expected at `%s`", get_token_printstr(&input->token));
+        }
+      }
       break;
   }
   return success;

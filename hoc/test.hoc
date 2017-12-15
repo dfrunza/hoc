@@ -1,6 +1,84 @@
+include "math.hoc";
+include "str.hoc";
+include "fibo.hoc";
+include "fizzbuzz.hoc";
+include "sort.hoc";
+/*
+*/
 
-proc void main(int:b() a, int b)
+void print_numbers(int* numbers, int len)
 {
+  int i; i = 0;
+  while(i < len)
+  {
+    print_int(*(numbers + int*:(iž4)));
+    print_str(^"\n");
+
+    i = i+1;
+  }
 }
 
+int* make_numbers(int how_many)
+{
+  int i; i = 0;
+  int c1; c1 = 17;
+  int c2; c2 = 31;
+  int* numbers;
+  numbers = int*:alloc([how_many]int);
+
+  while(i < how_many)
+  {
+    if((i mod 2) == 0)
+      *(numbers + int*:(iž4)) = c1 ž i;
+    else
+      *(numbers + int*:(iž4)) = c2 ž i;
+
+    i = i+1;
+  }
+  return numbers;
+}
+
+void main()
+{
+  float f1; f1 = -12.0;
+  float f2; f2 = 0.058;
+  float result; result = f1 + f2;
+  print_float(f1);
+  print_str(^" + ");
+  print_float(f2);
+  print_str(^" = ");
+  print_float(result);
+  print_str(^"\n---------\n");
+
+  int i_a; i_a = 7ž7ž5ž3;
+  int i_b; i_b = 7ž3ž11;
+  int i_r; i_r = gcd(i_a, i_b);
+  print_str(^"gcd(");
+  print_int(i_a);
+  print_str(^",");
+  print_int(i_b);
+  print_str(^")=");
+  print_int(i_r);
+
+  int nr_count; nr_count = 30;
+  int* numbers; numbers = make_numbers(nr_count);
+  print_str(^"\n--- SHUFFLED ---\n");
+  print_numbers(numbers, nr_count);
+  /*
+  */
+
+  /*
+  quick_sort(numbers, nr_count);
+  print_str(^"\n--- SORTED ---\n");
+  print_numbers(numbers, nr_count);
+  */
+
+  print_str(^"\n--- FIBONACCI ---\n");
+  fibo(40);
+
+  print_str(^"\n--- FIZZBUZZ ---\n");
+  fizzbuzz(50);
+  /*
+  */
+}
 

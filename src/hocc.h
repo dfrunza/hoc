@@ -420,10 +420,10 @@ eLoopCtrl;
 
 typedef enum
 {
-  eProcModifier_None,
-  eProcModifier_extern,
+  eModifier_None,
+  eModifier_extern,
 }
-eProcModifier;
+eModifier;
 
 typedef enum
 {
@@ -543,6 +543,7 @@ typedef struct AstNode
   Type* eval_ty;
   Symbol* occur_sym;
   Symbol* decl_sym;
+  eModifier modifier;
 
   union
   {
@@ -647,7 +648,6 @@ typedef struct AstNode
     struct
     {
       char* name;
-      eProcModifier modifier;
       AstNode* args;
       AstNode* ret_type;
       AstNode* body;

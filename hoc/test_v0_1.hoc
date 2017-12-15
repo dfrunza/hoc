@@ -6,9 +6,9 @@ include "sort.hoc";
 /*
 */
 
-proc void print_numbers(int* numbers, int len)
+void print_numbers(int* numbers, int len)
 {
-  var int i; i = 0;
+  int i; i = 0;
   while(i < len)
   {
     print_int(*(numbers + int*:(i4)));
@@ -18,12 +18,12 @@ proc void print_numbers(int* numbers, int len)
   }
 }
 
-proc int* make_numbers(int how_many)
+int* make_numbers(int how_many)
 {
-  var int i; i = 0;
-  var int c1; c1 = 17;
-  var int c2; c2 = 31;
-  var int* numbers;
+  int i; i = 0;
+  int c1; c1 = 17;
+  int c2; c2 = 31;
+  int* numbers;
   numbers = int*:alloc([how_many]int);
 
   while(i < how_many)
@@ -38,11 +38,11 @@ proc int* make_numbers(int how_many)
   return numbers;
 }
 
-proc void main()
+void main()
 {
-  var float f1; f1 = -12.0;
-  var float f2; f2 = 0.058;
-  var float result; result = f1 + f2;
+  float f1; f1 = -12.0;
+  float f2; f2 = 0.058;
+  float result; result = f1 + f2;
   print_float(f1);
   print_str(^" + ");
   print_float(f2);
@@ -50,9 +50,9 @@ proc void main()
   print_float(result);
   print_str(^"\n---------\n");
 
-  var int i_a; i_a = 7753;
-  var int i_b; i_b = 7311;
-  var int i_r; i_r = gcd(i_a, i_b);
+  int i_a; i_a = 7753;
+  int i_b; i_b = 7311;
+  int i_r; i_r = gcd(i_a, i_b);
   print_str(^"gcd(");
   print_int(i_a);
   print_str(^",");
@@ -60,8 +60,8 @@ proc void main()
   print_str(^")=");
   print_int(i_r);
 
-  var int nr_count; nr_count = 30;
-  var int* numbers; numbers = make_numbers(nr_count);
+  int nr_count; nr_count = 30;
+  int* numbers; numbers = make_numbers(nr_count);
   print_str(^"\n--- SHUFFLED ---\n");
   print_numbers(numbers, nr_count);
   /*

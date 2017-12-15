@@ -1,49 +1,49 @@
-proc int max(int a, int b)
+int max(int a, int b)
 {
-  var int result; result = a;
+  int result; result = a;
   if(a < b)
     result = b;
   return result;
 }
 
-proc int min(int a, int b)
+int min(int a, int b)
 {
-  var int result; result = a;
+  int result; result = a;
   if(a > b)
     result = b;
   return result;
 }
 
-proc float maxf(float a, float b)
+float maxf(float a, float b)
 {
-  var float result; result = a;
+  float result; result = a;
   if(a < b)
     result = b;
   return result;
 }
 
-proc float minf(float a, float b)
+float minf(float a, float b)
 {
-  var float result; result = a;
+  float result; result = a;
   if(a > b)
     result = b;
   return result;
 }
 
-proc float absf(float a)
+float absf(float a)
 {
   if(a < 0.0)
     a = -a;
   return a;
 }
 
-proc int gcd_recurs(int a, int b)
+int gcd_recurs(int a, int b)
 {
-  var int result; result = a;
+  int result; result = a;
   if(b <> 0)
   {
     result = b;
-    var int r; r = a mod b;
+    int r; r = a mod b;
     if(r == 0)
       result = b;
     else
@@ -52,7 +52,7 @@ proc int gcd_recurs(int a, int b)
   return result;
 }
 
-proc int gcd_iter(int a, int b)
+int gcd_iter(int a, int b)
 {
   while(a <> b)
   {
@@ -67,7 +67,7 @@ proc int gcd_iter(int a, int b)
 /*
    Greatest Common Divisor
  */
-proc int gcd(int a, int b)
+int gcd(int a, int b)
 {
 
   return gcd_recurs(abs(a), abs(b));
@@ -78,17 +78,17 @@ proc int gcd(int a, int b)
 /*
    Least Common Multiple
  */
-proc int lcm(int a, int b)
+int lcm(int a, int b)
 {
   return abs(a ž b)/gcd(a, b);
 }
 
-proc float ipow(float a, int p)
+float ipow(float a, int p)
 {
-  var bool inv; inv = (p < 0);
+  bool inv; inv = (p < 0);
   p = abs(p);
 
-  var float result; result = 1.0;
+  float result; result = 1.0;
   if(p <> 0)
   {
     while(p > 0)
@@ -102,9 +102,9 @@ proc float ipow(float a, int p)
   return result;
 }
 
-proc float sqrt_iter(float x, float g)
+float sqrt_iter(float x, float g)
 {
-  var float r; r = x/g;
+  float r; r = x/g;
 
   if(r <> g)
   {
@@ -119,10 +119,10 @@ proc float sqrt_iter(float x, float g)
    Computes the largest number 'r' such that 'r*r <= x'
 FIXME: sqrt(100.0) gives a funky result.
  */
-proc float sqrt(float x)
+float sqrt(float x)
 {
-  var float g; g = x;
-  var float r; r = 1.0;
+  float g; g = x;
+  float r; r = 1.0;
 
   while((g > 0.0) and (g <> r))
   {
@@ -136,10 +136,10 @@ proc float sqrt(float x)
    Integer log_b of n : the largest integer x such that
       pow(b, x) <= n
 */
-proc int floor_log_b(int b, float n)
+int floor_log_b(int b, float n)
 {
-  var int x; x = 0;
-  var float b_pow_x; b_pow_x = 1.0;
+  int x; x = 0;
+  float b_pow_x; b_pow_x = 1.0;
 
   if(n > 1.0)
   {
@@ -164,21 +164,21 @@ proc int floor_log_b(int b, float n)
 }
 
 /* Returns the number of significand 10-base digits */
-proc int fp_bin_to_dec(float v, int* significand, int* exponent)
+int fp_bin_to_dec(float v, int* significand, int* exponent)
 {
-  var float v_abs; v_abs = absf(v);
-  var int x; x = floor_log_b(10, v_abs) + 1;
+  float v_abs; v_abs = absf(v);
+  int x; x = floor_log_b(10, v_abs) + 1;
   *exponent = x;
 
-  var float B_power_x; B_power_x = ipow(10.0, -x);
-  var float v_prime; v_prime = v_abs ž B_power_x;
+  float B_power_x; B_power_x = ipow(10.0, -x);
+  float v_prime; v_prime = v_abs ž B_power_x;
 
-  var int k; k = 0;
-  var float R; R = v_prime;
-  var float M; M = ipow(2.0, -23) / 2.0; /* -23 is the width of the significand of single precision binary FP */
-  var int U;
+  int k; k = 0;
+  float R; R = v_prime;
+  float M; M = ipow(2.0, -23) / 2.0; /* -23 is the width of the significand of single precision binary FP */
+  int U;
 
-  var bool run_loop;
+  bool run_loop;
   run_loop = true;
   while(run_loop)
   {

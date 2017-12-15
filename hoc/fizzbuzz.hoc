@@ -5,11 +5,11 @@
      fizzbuzz if it's divisible by 15
      else print the integer itself
 */
-proc void fizzbuzz(int n)
+void fizzbuzz(int n)
 {
   if(n > 0)
   {
-    var int i; i = 1;
+    int i; i = 1;
     while(i <= n)
     {
       if((i mod 15) == 0)

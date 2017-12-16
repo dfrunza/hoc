@@ -1,5 +1,12 @@
 void main()
 {
-  printf("Hello mate!");
+  int* a;
+  float b;
+  ^b = ^foo(a);
+  []int* a;
 }
+
+float foo(int* a)
+{}
+
 

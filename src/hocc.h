@@ -520,7 +520,6 @@ typedef enum
   eAstNode_var,
   eAstNode_proc,
   eAstNode_call,
-  eAstNode_type,
   eAstNode_basic_type,
   eAstNode_lit,
   eAstNode_return,
@@ -531,7 +530,7 @@ typedef enum
   eAstNode_struct_decl,
   eAstNode_union_decl,
   eAstNode_empty,
-  eAstNode_args,
+  eAstNode_arg_list,
 }
 eAstNode;
 
@@ -549,9 +548,15 @@ typedef struct AstNode
   {
     struct
     {
+      eBasicType kind;
+    }
+    basic_type;
+
+    struct
+    {
       List nodes;
     }
-    args;
+    arg_list;
 
     struct
     {
@@ -575,28 +580,6 @@ typedef struct AstNode
       eOperator op;
     }
     unr_expr;
-
-    struct
-    {
-      eType kind;
-      union
-      {
-        char* name;
-        AstNode* pointee;
-        struct
-        {
-          AstNode* elem;
-          AstNode* size;
-        };
-      };
-    }
-    type;
-
-    struct
-    {
-      eBasicType kind;
-    }
-    basic_type;
 
     struct
     {
@@ -648,7 +631,7 @@ typedef struct AstNode
     struct
     {
       char* name;
-      AstNode* args;
+      AstNode* arg_list;
       AstNode* ret_type;
       AstNode* body;
       Scope* scope;

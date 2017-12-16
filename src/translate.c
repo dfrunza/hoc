@@ -682,6 +682,7 @@ void end_nested_scope(SymbolTable* symtab)
   symtab->nesting_depth--;
 }
 
+
 #if 0
 void process_includes(List* include_list, List* module_list, ListItem* module_li)
 {
@@ -716,6 +717,7 @@ bool symtab_type(SymbolTable* symtab, AstNode* block, AstNode* type)
       add_occur_sym(symtab, type->id.name, symtab->active_scope, type);
       break;
 
+#if 0
     case eAstNode_type:
       switch(type->type.kind)
       {
@@ -728,7 +730,9 @@ bool symtab_type(SymbolTable* symtab, AstNode* block, AstNode* type)
         default:
           break;
       }
+      assert(0);
       break;
+#endif
 
     default:
       assert(0);
@@ -850,9 +854,11 @@ bool symtab_expr(SymbolTable* symtab, AstNode* block, AstNode* expr)
       break;
     case eAstNode_lit:
       break;
+#if 0
     case eAstNode_type:
       success = symtab_type(symtab, block, expr);
       break;
+#endif
     default:
       assert(0);
   }
@@ -1022,12 +1028,12 @@ bool symtab_proc_body(SymbolTable* symtab, AstNode* proc)
   return success;
 }
 
-bool symtab_formal_args(SymbolTable* symtab, Scope* proc_scope, AstNode* args)
+bool symtab_formal_args(SymbolTable* symtab, Scope* proc_scope, AstNode* arg_list)
 {
-  assert(KIND(args, eAstNode_args));
+  assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = args->args.nodes.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -1052,7 +1058,7 @@ bool symtab_module_proc(SymbolTable* symtab, AstNode* proc)
   {
     add_decl_sym(symtab, proc->proc.name, symtab->active_scope, eSymbol_proc, proc);
     proc->proc.scope = begin_nested_scope(symtab, eScope_proc, proc);
-    success = symtab_formal_args(symtab, proc->proc.scope, proc->proc.args) && symtab_proc_body(symtab, proc);
+    success = symtab_formal_args(symtab, proc->proc.scope, proc->proc.arg_list) && symtab_proc_body(symtab, proc);
     end_nested_scope(symtab);
   }
   return success;
@@ -1083,6 +1089,7 @@ bool symtab_module(SymbolTable* symtab, AstNode* module)
   bool success = true;
 
   module->module.scope = begin_nested_scope(symtab, eScope_module, module);
+
   for(ListItem* li = module->module.nodes.first;
       li && success;
       li = li->next)
@@ -1668,7 +1675,7 @@ bool eval_types(AstNode* node)
         Type* ret_ty = proc->ty->proc.ret;
         Type* occur_ty = node->ty; assert(occur_ty->kind == eType_proc);
         Type* decl_ty = proc->ty; assert(decl_ty->kind == eType_proc);
-        if(type_unif(occur_ty->proc.args, args_ty) && type_unif(occur_ty->proc.ret, ret_ty))
+        if(type_unif(occur_ty->proc.arg_list, args_ty) && type_unif(occur_ty->proc.ret, ret_ty))
         {
           if(!type_unif(decl_ty, occur_ty))
           {
@@ -1968,7 +1975,7 @@ bool check_types(AstNode* node)
         if(success = check_types(right_operand) && check_types(left_operand))
         {
           assert(node->ty->kind == eType_proc);
-          Type* args_ty = node->ty->proc.args; assert(args_ty->kind == eType_product);
+          Type* args_ty = node->ty->proc.arg_list; assert(args_ty->kind == eType_product);
           Type* ret_ty = node->ty->proc.ret;
 
           switch(node->bin_expr.op)
@@ -3115,11 +3122,43 @@ bool set_types_expr(AstNode* expr)
   return success;
 }
 
-bool set_types_type_decl(AstNode* type)
+bool set_types_type(AstNode* type)
 {
   bool success = true;
+
   switch(type->kind)
   {
+    case eAstNode_unr_expr:
+      if(type->unr_expr.op == eOperator_pointer)
+      {
+        AstNode* pointee = type->unr_expr.operand;
+        if(success = set_types_type(pointee))
+        {
+          type->ty = type->eval_ty = new_pointer_type(pointee->ty);
+        }
+      }
+      else
+        success = compile_error(type->src_loc, "invalid type expression");
+      break;
+
+    case eAstNode_bin_expr:
+      if(type->bin_expr.op == eOperator_array)
+      {
+        AstNode* size = type->bin_expr.left_operand;
+        AstNode* elem = type->bin_expr.right_operand;
+        if(success = set_types_expr(size) && set_types_type(elem))
+        {
+          type->ty = type->eval_ty = new_array_type(0/*TODO*/, elem->ty);
+        }
+      }
+      else
+        success = compile_error(type->src_loc, "invalid type expression");
+      break;
+
+    case eAstNode_id:
+      assert(0);
+      break;
+
     case eAstNode_basic_type:
       switch(type->basic_type.kind)
       {
@@ -3146,43 +3185,6 @@ bool set_types_type_decl(AstNode* type)
       }
       break;
 
-    // case struct, enum, ..
-    default:
-      assert(0);
-  }
-  return success;
-}
-
-bool set_types_type(AstNode* type)
-{
-  bool success = true;
-
-  switch(type->kind)
-  {
-    case eAstNode_type:
-      {
-        switch(type->type.kind)
-        {
-          case eType_pointer:
-            if(success = set_types_type(type->type.pointee))
-            {
-              type->ty = type->eval_ty = new_pointer_type(type->type.pointee->ty);
-            }
-            break;
-          case eType_array:
-            if(success = set_types_expr(type->type.size) && set_types_type(type->type.elem))
-            {
-              type->ty = type->eval_ty = new_array_type(0, type->type.elem->ty); //TODO
-            }
-            break;
-          default:
-            assert(0);
-        }
-      }
-      break;
-    case eAstNode_basic_type:
-      success = set_types_type_decl(type);
-      break;
     default:
       assert(0);
   }
@@ -3210,12 +3212,12 @@ bool set_types_block(AstNode* block)
   return success;
 }
 
-bool set_types_formal_args(AstNode* args)
+bool set_types_formal_args(AstNode* arg_list)
 {
-  assert(KIND(args, eAstNode_args));
+  assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = args->args.nodes.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -3224,19 +3226,19 @@ bool set_types_formal_args(AstNode* args)
   }
   if(success)
   {
-    args->ty = basic_type_void;
-    ListItem* li = args->args.nodes.first;
+    arg_list->ty = basic_type_void;
+    ListItem* li = arg_list->arg_list.nodes.first;
     if(li)
     {
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      args->ty = arg->ty;
+      arg_list->ty = arg->ty;
       for(li = li->next; li; li = li->next)
       {
         AstNode* next_arg = KIND(li, eList_ast_node)->ast_node;
-        args->ty = new_product_type(args->ty, next_arg->ty);
+        arg_list->ty = new_product_type(arg_list->ty, next_arg->ty);
       }
     }
-    args->eval_ty = args->ty;
+    arg_list->eval_ty = arg_list->ty;
   }
   return success;
 }
@@ -3247,10 +3249,10 @@ bool set_types_proc(AstNode* proc)
   bool success = true;
 
   AstNode* ret_type = proc->proc.ret_type;
-  AstNode* args = proc->proc.args;
-  if(success = set_types_formal_args(args) && set_types_type(ret_type))
+  AstNode* arg_list = proc->proc.arg_list;
+  if(success = set_types_formal_args(arg_list) && set_types_type(ret_type))
   {
-    proc->ty = new_proc_type(args->ty, ret_type->ty);
+    proc->ty = new_proc_type(arg_list->ty, ret_type->ty);
     proc->eval_ty = basic_type_void;
 
     if(proc->modifier != eModifier_extern)
@@ -3346,7 +3348,6 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   basic_type_void = new_basic_type(eBasicType_void);
   subst_list = new_list(arena, eList_type_pair);
 
-#if 0
   symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
   if(!symtab_module(symbol_table, module))
   {
@@ -3357,7 +3358,6 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   {
     return false;
   }
-#endif
 
 #if 0
   if(!(build_types(module) && eval_types(module)

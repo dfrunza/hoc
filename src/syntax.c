@@ -566,15 +566,44 @@ bool parse_cast(TokenStream* input, AstNode** node)
       break;
 
     case eToken_id:
-    case eToken_void:
+      {
+        AstNode* id = *node = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+        id->id.name = input->token.lexeme;
+        success = get_next_token(input) && parse_rest_of_cast(input, *node, node);
+      }
+      break;
+
     case eToken_int:
     case eToken_float:
     case eToken_bool:
     case eToken_char:
+    case eToken_void:
     case eToken_auto:
       {
-        AstNode* id = *node = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
-        id->id.name = input->token.lexeme;
+        AstNode* basic_type = *node = new_ast_node(eAstNode_basic_type, clone_source_loc(&input->src_loc));
+        switch(input->token.kind)
+        {
+          case eToken_int:
+            basic_type->basic_type.kind = eBasicType_int;
+            break;
+          case eToken_float:
+            basic_type->basic_type.kind = eBasicType_float;
+            break;
+          case eToken_bool:
+            basic_type->basic_type.kind = eBasicType_bool;
+            break;
+          case eToken_char:
+            basic_type->basic_type.kind = eBasicType_char;
+            break;
+          case eToken_void:
+            basic_type->basic_type.kind = eBasicType_void;
+            break;
+          case eToken_auto:
+            basic_type->basic_type.kind = eBasicType_auto;
+            break;
+          default:
+            assert(0);
+        }
         success = get_next_token(input) && parse_rest_of_cast(input, *node, node);
       }
       break;
@@ -699,11 +728,11 @@ bool parse_selector(TokenStream* input, AstNode** node)
     case eToken_open_bracket:
     case eToken_star:
     case eToken_id:
-    case eToken_void:
     case eToken_int:
     case eToken_float:
     case eToken_bool:
     case eToken_char:
+    case eToken_void:
     case eToken_auto:
       success = parse_cast(input, node) && parse_rest_of_cast(input, *node, node);
       break;
@@ -805,22 +834,22 @@ bool parse_modifier(TokenStream* input, eModifier* modifier)
   return success;
 }
 
-bool parse_formal_args(TokenStream* input, AstNode* args);
+bool parse_formal_args(TokenStream* input, AstNode* arg_list);
 
-bool parse_rest_of_formal_args(TokenStream* input, AstNode* args)
+bool parse_rest_of_formal_args(TokenStream* input, AstNode* arg_list)
 {
-  assert(KIND(args, eAstNode_args));
+  assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
   if(input->token.kind == eToken_comma && (success = get_next_token(input)))
   {
-    success = parse_formal_args(input, args);
+    success = parse_formal_args(input, arg_list);
   }
   return success;
 }
 
-bool parse_formal_args(TokenStream* input, AstNode* args)
+bool parse_formal_args(TokenStream* input, AstNode* arg_list)
 {
-  assert(KIND(args, eAstNode_args));
+  assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
   AstNode* arg = 0;
@@ -828,8 +857,8 @@ bool parse_formal_args(TokenStream* input, AstNode* args)
   {
     if(arg)
     {
-      append_list_elem(&args->args.nodes, arg, eList_ast_node);
-      success = parse_rest_of_formal_args(input, args);
+      append_list_elem(&arg_list->arg_list.nodes, arg, eList_ast_node);
+      success = parse_rest_of_formal_args(input, arg_list);
     }
   }
   return success;
@@ -1373,9 +1402,9 @@ bool parse_module_stmt(TokenStream* input, AstNode** node)
                 proc->proc.name = name;
                 if(success = get_next_token(input))
                 {
-                  AstNode* args = proc->proc.args = new_ast_node(eAstNode_args, clone_source_loc(&input->src_loc));
-                  init_list(&args->args.nodes, arena, eList_ast_node);
-                  if(success = parse_formal_args(input, proc->proc.args))
+                  AstNode* arg_list = proc->proc.arg_list = new_ast_node(eAstNode_arg_list, clone_source_loc(&input->src_loc));
+                  init_list(&arg_list->arg_list.nodes, arena, eList_ast_node);
+                  if(success = parse_formal_args(input, proc->proc.arg_list))
                   {
                     if(input->token.kind == eToken_close_parens)
                     {

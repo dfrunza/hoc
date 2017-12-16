@@ -250,7 +250,8 @@ char* get_operator_printstr(eOperator op)
       str = "=";
       break;
     case eOperator_deref:
-      str = "*";
+    case eOperator_pointer:
+      str = "^";
       break;
     case eOperator_address_of:
       str = "&";
@@ -276,7 +277,7 @@ char* get_operator_printstr(eOperator op)
       str = "==";
       break;
     case eOperator_not_eq:
-      str = "!=";
+      str = "<>";
       break;
     case eOperator_less:
       str = "<";
@@ -297,22 +298,22 @@ char* get_operator_printstr(eOperator op)
       str = "|";
       break;
     case eOperator_logic_not:
-      str = "!";
-      break;
-    case eOperator_bit_and:
-      str = "and";
-      break;
-    case eOperator_bit_or:
-      str = "or";
-      break;
-    case eOperator_bit_xor:
-      str = "xor";
-      break;
-    case eOperator_bit_not:
       str = "not";
       break;
+    case eOperator_bit_and:
+      str = "&";
+      break;
+    case eOperator_bit_or:
+      str = "|";
+      break;
+    case eOperator_bit_xor:
+      str = "~";
+      break;
+    case eOperator_bit_not:
+      str = "!";
+      break;
     case eOperator_cast:
-      str = "cast";
+      str = ":";
       break;
   }
   return str;
@@ -723,7 +724,7 @@ typedef struct Symbol
   Scope* scope;
   AstNode* ast_node;
   Type* ty;
-  Symbol* decl;
+  Symbol* decl_sym;
   int data_loc;
   void* data;
   bool is_static_alloc;

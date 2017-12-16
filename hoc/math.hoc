@@ -30,6 +30,13 @@ float minf(float a, float b)
   return result;
 }
 
+int abs(int a)
+{
+  if(a < 0)
+    a = -a;
+  return a;
+}
+
 float absf(float a)
 {
   if(a < 0.0)

@@ -80,7 +80,7 @@ int gcd(int a, int b)
  */
 int lcm(int a, int b)
 {
-  return abs(a × b)/gcd(a, b);
+  return abs(a * b)/gcd(a, b);
 }
 
 float ipow(float a, int p)
@@ -93,7 +93,7 @@ float ipow(float a, int p)
   {
     while(p > 0)
     {
-      result = result × a;
+      result = result * a;
       p = p - 1;
     }
     if(inv)
@@ -116,7 +116,7 @@ float sqrt_iter(float x, float g)
 }
 
 /*
-   Computes the largest number 'r' such that 'r*r <= x'
+   Computes the largest number 'r' such that 'r^r <= x'
 FIXME: sqrt(100.0) gives a funky result.
  */
 float sqrt(float x)
@@ -164,14 +164,14 @@ int floor_log_b(int b, float n)
 }
 
 /* Returns the number of significand 10-base digits */
-int fp_bin_to_dec(float v, int* significand, int* exponent)
+int fp_bin_to_dec(float v, int^ significand, int^ exponent)
 {
   float v_abs; v_abs = absf(v);
   int x; x = floor_log_b(10, v_abs) + 1;
-  *exponent = x;
+  ^exponent = x;
 
   float B_power_x; B_power_x = ipow(10.0, -x);
-  float v_prime; v_prime = v_abs × B_power_x;
+  float v_prime; v_prime = v_abs * B_power_x;
 
   int k; k = 0;
   float R; R = v_prime;
@@ -183,18 +183,18 @@ int fp_bin_to_dec(float v, int* significand, int* exponent)
   while(run_loop)
   {
     k = k + 1;
-    U = int:(R × 10.0);
-    R = (R × 10.0) - float:U;
-    M = M × 10.0;
-    *(significand + int*:(k × 4)) = U;
+    U = int:(R * 10.0);
+    R = (R * 10.0) - float:U;
+    M = M * 10.0;
+    ^(significand + int^:(k * 4)) = U;
 
     run_loop = (R >= M) and (R <= (1.0 - M));
   }
 
   if(R <= 0.5)
-    *(significand + int*:(k × 4)) = U;
+    ^(significand + int^:(k * 4)) = U;
   else
-    *(significand + int*:(k × 4)) = U + 1;
+    ^(significand + int^:(k * 4)) = U + 1;
 
   return k;
 }

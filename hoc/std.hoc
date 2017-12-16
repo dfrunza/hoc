@@ -1,30 +1,30 @@
 extern int GetStdHandle(int device_id);
-extern char* GetCommandLineA();
-extern void* VirtualAlloc(void* address, int alloc_size, int alloc_var, int protect_flags);
-extern void WriteConsoleA(int console_handle, char* buf, int chars_to_write_count, int* chars_written_count, void* reserved);
+extern char^ GetCommandLineA();
+extern void^ VirtualAlloc(void^ address, int alloc_size, int alloc_var, int protect_flags);
+extern void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
 extern int GetLastError();
-extern bool ReadFile(int file_handle, char* buf, int bytes_to_read_count, int* bytes_read_count, void* p_overlapped);
+extern bool ReadFile(int file_handle, char^ buf, int bytes_to_read_count, int^ bytes_read_count, void^ p_overlapped);
 
 int stdout;
 int stdin; 
-void* heap;
+void^ heap;
 int heap_ptr;
 
-void* alloc(int size)
+void^ alloc(int size)
 {
-  void* mem; mem = heap + void*:heap_ptr;
+  void^ mem; mem = heap + void^:heap_ptr;
   heap_ptr = heap_ptr + size;
   return mem;
 }
 
-int stdin_read(char* buf, int buf_size)
+int stdin_read(char^ buf, int buf_size)
 {
   int bytes_read_count; bytes_read_count = 0;
-  if(ReadFile(stdin, buf, buf_size, ^bytes_read_count, void*:0))
+  if(ReadFile(stdin, buf, buf_size, &bytes_read_count, void^:0))
   {
     if((bytes_read_count >= 0) and (bytes_read_count < buf_size))
     {
-      *(buf + char*:bytes_read_count) = '\0';
+      ^(buf + char^:bytes_read_count) = '\0';
     }
   }
   return bytes_read_count;
@@ -34,7 +34,7 @@ int startup()
 {
   stdout = GetStdHandle(-11/*STD_OUTPUT_HANDLE*/);
   stdin = GetStdHandle(-10/*STD_INPUT_HANDLE*/);
-  heap = VirtualAlloc(void*:0, 4096, 0x1000/*MEM_COMMIT*/|0x2000/*MEM_RESERVE*/, 0x4/*PAGE_READWRITE*/);
+  heap = VirtualAlloc(void^:0, 4096, 0x1000/*MEM_COMMIT*/|0x2000/*MEM_RESERVE*/, 0x4/*PAGE_READWRITE*/);
   heap_ptr = 0;
 }
 

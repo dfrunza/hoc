@@ -796,6 +796,7 @@ bool symtab_bin_expr(SymbolTable* symtab, AstNode* block, AstNode* bin_expr)
   assert(KIND(block, eAstNode_block));
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
+
   success = symtab_expr(symtab, block, bin_expr->bin_expr.left_operand)
     && symtab_expr(symtab, block, bin_expr->bin_expr.right_operand);
   return success;
@@ -1122,655 +1123,6 @@ bool symtab_module(SymbolTable* symtab, AstNode* module)
 }
 
 #if 0
-bool build_types(AstNode* node)
-{
-  bool success = true;
-
-  switch(node->kind)
-  {
-    case eAstNode_module:
-      {
-        AstNode* body = node->module.body;
-        if(success = build_types(body))
-        {
-          node->ty = body->ty;
-          node->eval_ty = body->eval_ty;
-        }
-      }
-      break;
-
-    case eAstNode_block:
-      {
-        for(ListItem* li = node->block.nodes.first;
-            li && success;
-            li = li->next)
-        {
-          success = build_types(KIND(li, eList_ast_node)->ast_node);
-        }
-
-        node->ty = new_proc_type(basic_type_void, basic_type_void);
-        node->eval_ty = basic_type_void;
-      }
-      break;
-
-    case eAstNode_stmt:
-      {
-        AstNode* actual_stmt = node->stmt.stmt;
-        if(actual_stmt)
-        {
-          success = build_types(actual_stmt);
-          node->ty = actual_stmt->eval_ty;
-          node->eval_ty = basic_type_void;
-        }
-      }
-      break;
-
-    case eAstNode_var:
-      {
-        AstNode* type = node->var.type;
-        if(success = build_types(type))
-        {
-          node->ty = type->ty;
-          node->eval_ty = basic_type_void;
-        }
-      }
-      break;
-
-#if 0
-    case eAstNode_var_occur:
-      {
-        AstNode* var = ATTR(node, ast_node, var);
-        ATTR(node, type, eval_ty) = ATTR(node, type, type) = ATTR(var, type, type);
-      }
-      break;
-#endif
-
-    case eAstNode_bin_expr:
-      {
-        AstNode* left_operand = node->bin_expr.left_operand;
-        if(success = build_types(left_operand))
-        {
-          AstNode* right_operand = node->bin_expr.right_operand;
-          if(success = build_types(right_operand))
-          {
-            Type* eval_ty =  new_typevar();
-            node->ty = new_proc_type(new_product_type(left_operand->eval_ty, right_operand->eval_ty), eval_ty);
-            node->eval_ty = eval_ty;
-          }
-        }
-      }
-      break;
-
-    case eAstNode_unr_expr:
-      {
-        AstNode* operand = node->unr_expr.operand;
-        if(success = build_types(operand))
-        {
-          Type* eval_ty = new_typevar();
-          node->ty = new_proc_type(operand->eval_ty, eval_ty);
-          node->eval_ty = eval_ty;
-        }
-      }
-      break;
-
-    case eAstNode_proc:
-      {
-        for(ListItem* li = node->proc.formal_args.first;
-            li && success;
-            li = li->next)
-        {
-          success = build_types(KIND(li, eList_ast_node)->ast_node);
-        }
-
-        if(success)
-        {
-          Type* args_type = basic_type_void;
-          ListItem* li = node->proc.formal_args.first;
-          if(li)
-          {
-            AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-            args_type = arg->ty;
-
-            for(li = li->next;
-                li;
-                li = li->next)
-            {
-              AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-              args_type = new_product_type(args_type, arg->ty);
-            }
-          }
-
-#if 0
-          AstNode* ret_var = node->proc.ret_var;
-          if(success = build_types(ret_var))
-          {
-            node->ty = new_proc_type(args_type, ret_var->ty);
-            node->eval_ty = basic_type_void;
-
-            if(!node->proc.is_extern)
-            {
-              success = build_types(node->proc.body);
-            }
-          }
-#endif
-        }
-      }
-      break;
-
-    case eAstNode_return:
-      {
-        if(node->ret.expr)
-        {
-          success = build_types(node->ret.expr);
-        }
-        node->ty = node->eval_ty = basic_type_void;
-      }
-      break;
-
-    case eAstNode_call:
-      {
-        for(ListItem* li = node->call.actual_args.first;
-            li && success;
-            li = li->next)
-        {
-          success = build_types(KIND(li, eList_ast_node)->ast_node);
-        }
-
-        Type* args_type = basic_type_void;
-        ListItem* li = node->call.actual_args.first;
-        if(li)
-        {
-          AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-          args_type = arg->eval_ty;
-
-          for(li = li->next;
-              li;
-              li = li->next)
-          {
-            AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-            args_type = new_product_type(args_type, arg->eval_ty);
-          }
-        }
-
-        Type* ret_type = new_typevar();
-        AstNode* proc = node->call.proc;
-        if(proc)
-        {
-          ret_type = proc->ty->proc.ret;
-        }
-
-        node->ty = new_proc_type(args_type, ret_type);
-        node->eval_ty = ret_type;
-      }
-      break;
-
-    case eAstNode_while:
-      {
-        if(success = build_types(node->while_.cond_expr))
-        {
-          AstNode* body = node->while_.body;
-          if(success = build_types(body))
-          {
-            node->ty = body->ty;
-            node->eval_ty = body->eval_ty;
-          }
-        }
-      }
-      break;
-
-    case eAstNode_if:
-      {
-        if(success = build_types(node->if_.cond_expr))
-        {
-          AstNode* body = node->if_.body;
-          if(success = build_types(body))
-          {
-            node->ty = body->ty;
-            node->eval_ty = body->eval_ty;
-
-            AstNode* else_body = node->if_.else_body;
-            if(else_body)
-            {
-              success = build_types(else_body);
-            }
-          }
-        }
-      }
-      break;
-
-    case eAstNode_lit:
-      {
-        Type* type = 0;
-        switch(node->lit.kind)
-        {
-          case eLiteral_int:
-            type = basic_type_int;
-            break;
-          case eLiteral_float:
-            type = basic_type_float;
-            break;
-          case eLiteral_char:
-            type = basic_type_char;
-            break;
-          case eLiteral_bool:
-            type = basic_type_bool;
-            break;
-          case eLiteral_string:
-            {
-              int size = cstr_len(node->lit.str_val) + 1; // +NULL
-              type = new_array_type(size, basic_type_char);
-            }
-            break;
-          default:
-            assert(0);
-        }
-        node->ty = node->eval_ty = type;
-      }
-      break;
-
-    case eAstNode_type:
-#if 0
-      {
-        AstNode* type_expr = node->type.type_expr;
-        if(success = build_types(type_expr))
-        {
-          node->ty = node->eval_ty = type_expr->ty;
-        }
-      }
-#endif
-      break;
-
-#if 0
-    case eAstNode_type_occur:
-      {
-        AstNode* type_decl = ATTR(node, ast_node, type_decl);
-        ATTR(node, type, type) = ATTR(type_decl, type, type);
-        ATTR(node, type, eval_ty) = ATTR(type_decl, type, eval_ty);
-      }
-      break;
-#endif
-
-#if 0
-    case eAstNode_pointer:
-      {
-        AstNode* pointee_expr = node->pointer.pointee_expr;
-        if(success = build_types(pointee_expr))
-        {
-          node->ty = node->eval_ty = new_pointer_type(pointee_expr->ty);
-        }
-      }
-      break;
-
-    case eAstNode_array:
-      {
-        int size_val = 0;
-        AstNode* size_expr = node->array.size_expr;
-        if(size_expr)
-        {
-          if(size_expr->kind == eAstNode_lit && size_expr->lit.kind == eLiteral_int_val)
-          {
-            size_val = size_expr->lit.int_val;
-          }
-          else
-            success = compile_error(size_expr->src_loc, "array size must be an int literal");
-        }
-        AstNode* elem_expr = node->array.elem_expr;
-        if(success = build_types(elem_expr))
-        {
-          node->ty = node->eval_ty = new_array_type(size_val, elem_expr->ty);
-        }
-      }
-      break;
-#endif
-
-    case eAstNode_loop_ctrl:
-    case eAstNode_empty:
-    case eAstNode_asm_block:
-      node->ty = node->eval_ty = basic_type_void;
-      break;
-
-    default:
-      assert(0);
-  }
-  return success;
-}
-
-bool eval_types(AstNode* node)
-{
-  bool success = true;
-
-  switch(node->kind)
-  {
-    case eAstNode_module:
-      success = eval_types(node->module.body);
-      break;
-
-    case eAstNode_block:
-      {
-        for(ListItem* li = node->block.nodes.first;
-            li && success;
-            li = li->next)
-        {
-          AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-          if(success = eval_types(stmt))
-          {
-            if(!type_unif(stmt->eval_ty, node->eval_ty))
-            {
-              success = compile_error(stmt->src_loc, "type error (block stmt)");
-            }
-          }
-        }
-      }
-      break;
-    case eAstNode_stmt:
-      {
-        if(node->stmt.stmt)
-        {
-          success = eval_types(node->stmt.stmt);
-        }
-      }
-      break;
-
-    case eAstNode_bin_expr:
-      {
-        AstNode* right_operand = node->bin_expr.right_operand;
-        AstNode* left_operand = node->bin_expr.left_operand;
-
-        if(success = eval_types(right_operand) && eval_types(left_operand))
-        {
-          switch(node->bin_expr.op)
-          {
-            case eOperator_cast:
-              if(!type_unif(node->eval_ty, left_operand->eval_ty))
-              {
-                success = compile_error(node->src_loc, "type error (cast)");
-              }
-              break;
-
-            case eOperator_indexer:
-              if(type_unif(right_operand->eval_ty, basic_type_int))
-              {
-                if(left_operand->eval_ty->kind == eType_array)
-                {
-                  success = type_unif(left_operand->eval_ty->array.elem, node->eval_ty);
-                }
-                else if(left_operand->eval_ty->kind == eType_typevar)
-                {
-                  success = type_unif(left_operand->eval_ty, new_array_type(0, node->eval_ty));
-                }
-                else
-                  success = compile_error(node->src_loc, "type error (array index)");
-              }
-              else
-                success = compile_error(node->src_loc, "int type expected");
-              break;
-
-            case eOperator_bit_and:
-            case eOperator_bit_or:
-            case eOperator_bit_xor:
-              if(type_unif(left_operand->eval_ty, right_operand->eval_ty))
-              {
-                ;//ok
-              }
-              else
-                success = compile_error(node->src_loc, "type error (bitwise op)");
-              break;
-
-            case eOperator_bit_shift_left:
-            case eOperator_bit_shift_right:
-              if(type_unif(left_operand->eval_ty, basic_type_int) && type_unif(right_operand->eval_ty, basic_type_char))
-              {
-                ;//ok
-              }
-              else
-                success = compile_error(node->src_loc, "type error (bitwise op)");
-              break;
-
-            default:
-              if(type_unif(left_operand->eval_ty, right_operand->eval_ty))
-              {
-                switch(node->bin_expr.op)
-                {
-                  case eOperator_less:
-                  case eOperator_less_eq:
-                  case eOperator_greater:
-                  case eOperator_greater_eq:
-                  case eOperator_eq:
-                  case eOperator_not_eq:
-                  case eOperator_logic_and:
-                  case eOperator_logic_or:
-                  case eOperator_logic_not:
-                    if(!type_unif(node->eval_ty, basic_type_bool))
-                    {
-                      success = compile_error(node->src_loc, "type error (bin expr)");
-                    }
-                    break;
-
-                  default:
-                    if(!type_unif(node->eval_ty, left_operand->eval_ty))
-                    {
-                      success = compile_error(node->src_loc, "type error (bin expr)");
-                    }
-                    break;
-                }
-              }
-              else
-                success = compile_error(node->src_loc, "type error (bin expr)");
-              break;
-          }
-          if(!success)
-            break;
-
-          assert(node->ty->kind == eType_proc);
-          if(!type_unif(node->ty->proc.ret, node->eval_ty))
-          {
-            success = compile_error(node->src_loc, "type error (bin expr)");
-          }
-        }
-      }
-      break;
-
-    case eAstNode_unr_expr:
-      {
-        AstNode* operand = node->unr_expr.operand;
-
-        node->eval_ty = new_typevar();
-        if(success = eval_types(operand))
-        {
-          switch(node->unr_expr.op)
-          {
-            case eOperator_neg:
-            case eOperator_logic_not:
-              if(!type_unif(node->eval_ty, operand->eval_ty))
-              {
-                success = compile_error(node->src_loc, "type error (un expr)");
-              }
-              break;
-            case eOperator_deref:
-              {
-                Type* pointee_ty = new_typevar();
-                if(type_unif(operand->eval_ty, new_pointer_type(pointee_ty)))
-                {
-                  if(!type_unif(node->eval_ty, pointee_ty))
-                  {
-                    success = compile_error(node->src_loc, "type error (un expr)");
-                  }
-                }
-                else
-                  success = compile_error(operand->src_loc, "pointer type expected");
-              }
-              break;
-            case eOperator_address_of:
-              {
-                if(operand->eval_ty->kind == eType_array)
-                {
-                  // ptr(T) == ptr(array(T))
-                  success = type_unif(node->eval_ty, new_pointer_type(operand->eval_ty->array.elem));
-                }
-                else
-                {
-                  success = type_unif(node->eval_ty, new_pointer_type(operand->eval_ty));
-                }
-                if(!success)
-                {
-                  compile_error(node->src_loc, "type error (un expr)");
-                }
-              }
-              break;
-            default:
-              assert(0);
-          }
-
-          assert(node->ty->kind == eType_proc);
-          if(!type_unif(node->ty->proc.ret, node->eval_ty))
-          {
-            success = compile_error(node->src_loc, "type error (un expr)");
-          }
-        }
-      }
-      break;
-
-    case eAstNode_proc:
-      success = eval_types(node->proc.body);
-      break;
-
-    case eAstNode_call:
-      {
-        for(ListItem* li = node->call.actual_args.first;
-            li && success;
-            li = li->next)
-        {
-          success = eval_types(KIND(li, eList_ast_node)->ast_node);
-        }
-        if(!success)
-          break;
-
-        AstNode* proc = node->call.proc;
-        if(!proc)
-        {
-#if 0
-          Symbol* occur_sym = node->call.occur_sym;
-          Symbol* decl_sym = lookup_all_decls_by_kind(occur_sym->name, occur_sym->scope,
-              (eSymbol[]){eSymbol_proc, eSymbol_extern_proc, eSymbol_None});
-          if(decl_sym)
-          {
-            proc = node->call.proc = decl_sym->ast_node;
-          }
-          else
-            success = compile_error(occur_sym->src_loc, "unknown proc `%s`", occur_sym->name);
-#endif
-            success = compile_error(node->src_loc, "unknown proc");
-        }
-        if(!success)
-          break;
-
-        Type* args_ty = basic_type_void;
-        ListItem* li = node->call.actual_args.first;
-        if(li)
-        {
-          AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-          args_ty = arg->eval_ty;
-
-          for(li = li->next;
-              li;
-              li = li->next)
-          {
-            AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-            args_ty = new_product_type(args_ty, arg->eval_ty);
-          }
-        }
-
-        Type* ret_ty = proc->ty->proc.ret;
-        Type* occur_ty = node->ty; assert(occur_ty->kind == eType_proc);
-        Type* decl_ty = proc->ty; assert(decl_ty->kind == eType_proc);
-        if(type_unif(occur_ty->proc.arg_list, args_ty) && type_unif(occur_ty->proc.ret, ret_ty))
-        {
-          if(!type_unif(decl_ty, occur_ty))
-          {
-            success = compile_error(node->src_loc, "type error (proc occur)");
-          }
-        }
-        else
-          success = compile_error(node->src_loc, "type error (proc occur)");
-      }
-      break;
-
-    case eAstNode_return:
-      {
-        AstNode* expr = node->ret.expr;
-        Type* expr_ty = basic_type_void;
-        if(expr)
-        {
-          if(success = eval_types(expr))
-          {
-            expr_ty = expr->ty;
-          }
-        }
-
-        if(success)
-        {
-          AstNode* proc = node->ret.proc;
-          Type* proc_ret_ty = proc->ty->proc.ret;
-          if(!type_unif(expr_ty, proc_ret_ty))
-          {
-            success = compile_error(node->src_loc, "type error (return stmt)");
-          }
-        }
-      }
-      break;
-
-    case eAstNode_while:
-      {
-        AstNode* cond_expr = node->while_.cond_expr;
-        if(success = eval_types(cond_expr) && eval_types(node->while_.body))
-        {
-          if(!type_unif(cond_expr->ty, basic_type_bool))
-          {
-            success = compile_error(cond_expr->src_loc, "bool type expected");
-          }
-        }
-      }
-      break;
-
-    case eAstNode_if:
-      {
-        AstNode* body = node->if_.body;
-        AstNode* else_body = node->if_.else_body;
-
-        if(success = eval_types(body))
-        {
-          if(else_body)
-          {
-            success = eval_types(else_body);
-          }
-        }
-
-        AstNode* cond_expr = node->if_.cond_expr;
-        if(success && (success = eval_types(cond_expr)))
-        {
-          if(!type_unif(cond_expr->eval_ty, basic_type_bool))
-          {
-            success = compile_error(cond_expr->src_loc, "bool type expected");
-          }
-        }
-      }
-      break;
-
-    case eAstNode_var:
-    //case eAstNode_var_occur:
-    case eAstNode_lit:
-    case eAstNode_type:
-    case eAstNode_loop_ctrl:
-    case eAstNode_empty:
-    case eAstNode_asm_block:
-      break;
-
-    default:
-      assert(0);
-  }
-  return success;
-}
-
 bool node_resolve_type(AstNode* node)
 {
   bool success = true;
@@ -3150,7 +2502,7 @@ bool set_types_type(AstNode* type)
       {
         AstNode* size = type->bin_expr.left_operand;
         AstNode* elem = type->bin_expr.right_operand;
-        if(success = (size ? set_types_expr(size) : true) && set_types_type(elem))
+        if(success = set_types_expr(size) && set_types_type(elem))
         {
           type->ty = type->eval_ty = new_array_type(0/*TODO*/, elem->ty);
         }
@@ -3212,7 +2564,20 @@ bool set_types_bin_expr(AstNode* bin_expr)
 
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
-  if(success = set_types_expr(left_operand) && set_types_expr(right_operand))
+  eOperator op = bin_expr->bin_expr.op;
+
+  if(op == eOperator_cast)
+  {
+    success = set_types_type(left_operand) && set_types_expr(right_operand);
+  }
+  else if(op == eOperator_array)
+  {
+    success = set_types_expr(left_operand) && set_types_type(right_operand);
+  }
+  else
+    success = set_types_expr(left_operand) && set_types_expr(right_operand);
+
+  if(success)
   {
     bin_expr->eval_ty = new_typevar();
     bin_expr->ty = new_proc_type(new_product_type(left_operand->ty, right_operand->ty), bin_expr->eval_ty);
@@ -3226,7 +2591,13 @@ bool set_types_unr_expr(AstNode* unr_expr)
   bool success = true;
 
   AstNode* operand = unr_expr->unr_expr.operand;
-  if(success = set_types_expr(operand))
+  eOperator op = unr_expr->unr_expr.op;
+
+  if(op == eOperator_pointer || op == eOperator_array)
+  {
+    success = compile_error(unr_expr->src_loc, "invalid application of operator");
+  }
+  else if(success = set_types_expr(operand))
   {
     unr_expr->eval_ty = new_typevar();
     unr_expr->ty = new_proc_type(operand->eval_ty, unr_expr->eval_ty);
@@ -3346,9 +2717,14 @@ bool set_types_return(AstNode* ret)
 
   if(ret->ret.expr)
   {
-    success = set_types_expr(ret->ret.expr);
+    AstNode* ret_expr = ret->ret.expr;
+    if(success = set_types_expr(ret_expr))
+    {
+      ret->ty = ret_expr->ty;
+      ret->eval_ty = ret_expr->eval_ty;
+    }
   }
-  if(success)
+  else
   {
     ret->ty = ret->eval_ty = basic_type_void;
   }
@@ -3550,6 +2926,24 @@ bool set_types_module(AstNode* module)
   return success;
 }
 
+bool eval_types_type(AstNode* type)
+{
+  bool success = true;
+
+  switch(type->kind)
+  {
+    case eAstNode_unr_expr:
+      assert(type->unr_expr.op == eOperator_pointer)
+      break;
+    case eAstNode_bin_expr:
+      assert(type->bin_expr.op == eOperator_array)
+      break;
+    case eAstNode_basic_type:
+      break;
+  }
+  return success;
+}
+
 bool eval_types_expr(AstNode* expr);
 
 bool eval_types_bin_expr(AstNode* bin_expr)
@@ -3559,10 +2953,22 @@ bool eval_types_bin_expr(AstNode* bin_expr)
 
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
+  eOperator op = bin_expr->bin_expr.op;
 
-  if(success = eval_types_expr(left_operand) && eval_types_expr(right_operand))
+  if(op == eOperator_cast)
   {
-    switch(bin_expr->bin_expr.op)
+    success = eval_types_type(left_operand) && eval_types_expr(right_operand);
+  }
+  else if(op == eOperator_array)
+  {
+    success = eval_types_expr(left_operand) && eval_types_type(right_operand);
+  }
+  else
+    success = eval_types_expr(left_operand) && eval_types_expr(right_operand);
+
+  if(success)
+  {
+    switch(op)
     {
       case eOperator_cast:
         if(!type_unif(bin_expr->eval_ty, left_operand->eval_ty))
@@ -3676,15 +3082,17 @@ bool eval_types_id(AstNode* id)
       switch(decl_ast->ty->kind)
       {
         case eType_var:
-          if(id->decl_sym->order_nr <= id->occur_sym->order_nr)
+          if((id->decl_sym->scope == id->occur_sym->scope) && (id->decl_sym->order_nr > id->occur_sym->order_nr))
+          {
+            success = compile_error(id->src_loc, "var `%s` must be declared before its use", id->id.name);
+          }
+          else
           {
             if(!type_unif(decl_ast->ty->var.type, id->eval_ty))
             {
               success = compile_error(id->src_loc, "type error (var id)");
             }
           }
-          else
-            success = compile_error(id->src_loc, "var `%s` must be declared before its use", id->id.name);
           break;
         case eType_proc:
           if(!type_unif(decl_ast->ty->proc.ret, id->eval_ty))
@@ -3708,8 +3116,11 @@ bool eval_types_unr_expr(AstNode* unr_expr)
   bool success = true;
 
   AstNode* operand = unr_expr->unr_expr.operand;
+  eOperator op = unr_expr->unr_expr.op;
 
-  if(success = eval_types_expr(operand))
+  success = (op == eOperator_pointer ? eval_types_type(operand) : eval_types_expr(operand));
+
+  if(success)
   {
     switch(unr_expr->unr_expr.op)
     {
@@ -3750,6 +3161,11 @@ bool eval_types_unr_expr(AstNode* unr_expr)
         {
           compile_error(unr_expr->src_loc, "type error (unr expr)");
         }
+        break;
+
+      case eOperator_pointer:
+      case eOperator_array:
+        success = compile_error(unr_expr->src_loc, "invalid application of operator");
         break;
 
       default:
@@ -3858,25 +3274,25 @@ bool eval_types_expr(AstNode* expr)
   return success;
 }
 
-bool eval_types_block_stmt(AstNode* stmt)
+bool eval_types_block_stmt(AstNode* stmt);
+
+bool eval_types_if(AstNode* if_)
 {
+  assert(KIND(if_, eAstNode_if));
   bool success = true;
 
-  switch(stmt->kind)
+  AstNode* body = if_->if_.body;
+  AstNode* else_body = if_->if_.else_body;
+  if(success = eval_types_block_stmt(body) && (else_body ? eval_types_block_stmt(else_body) : true))
   {
-    case eAstNode_bin_expr:
-    case eAstNode_unr_expr:
-    case eAstNode_id:
-    case eAstNode_call:
-    case eAstNode_lit:
-      success = eval_types_expr(stmt);
-      break;
-    case eAstNode_var:
-    case eAstNode_loop_ctrl:
-    case eAstNode_empty:
-      break;
-    default:
-      assert(0);
+    AstNode* cond_expr = if_->if_.cond_expr;
+    if(success = eval_types_expr(cond_expr))
+    {
+      if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+      {
+        success = compile_error(cond_expr->src_loc, "bool type was expected in `if` expression");
+      }
+    }
   }
   return success;
 }
@@ -3896,12 +3312,81 @@ bool eval_types_block(AstNode* block)
   return success;
 }
 
+bool eval_types_while(AstNode* while_)
+{
+  assert(KIND(while_, eAstNode_while));
+  bool success = true;
+
+  AstNode* cond_expr = while_->while_.cond_expr;
+  AstNode* body = while_->while_.body;
+  if(success = eval_types_expr(cond_expr) && eval_types_block_stmt(body))
+  {
+    if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+    {
+      success = compile_error(cond_expr->src_loc, "bool type was expected in `while` expression");
+    }
+  }
+  return success;
+}
+
+bool eval_types_return(AstNode* ret)
+{
+  assert(KIND(ret, eAstNode_return));
+  bool success = true;
+
+  AstNode* ret_expr = ret->ret.expr;
+  if(success = eval_types_expr(ret_expr))
+  {
+    AstNode* proc = ret->ret.proc;
+    Type* proc_ty = KIND(proc->ty, eType_proc);
+    if(!type_unif(ret_expr->eval_ty, proc_ty->proc.ret))
+    {
+      success = compile_error(ret->src_loc, "type error (return)");
+    }
+  }
+  return success;
+}
+bool eval_types_block_stmt(AstNode* stmt)
+{
+  bool success = true;
+
+  switch(stmt->kind)
+  {
+    case eAstNode_bin_expr:
+    case eAstNode_unr_expr:
+    case eAstNode_id:
+    case eAstNode_call:
+    case eAstNode_lit:
+      success = eval_types_expr(stmt);
+      break;
+    case eAstNode_if:
+      success = eval_types_if(stmt);
+      break;
+    case eAstNode_while:
+      success = eval_types_while(stmt);
+      break;
+    case eAstNode_block:
+      success = eval_types_block(stmt);
+      break;
+    case eAstNode_return:
+      success = eval_types_return(stmt);
+      break;
+    case eAstNode_var:
+    case eAstNode_loop_ctrl:
+    case eAstNode_empty:
+      break;
+    default:
+      assert(0);
+  }
+  return success;
+}
+
 bool eval_types_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
-  success = eval_types_formal_args(proc->proc.arg_list) && eval_types_block(proc->proc.body);
+  success = eval_types_formal_args(proc->proc.arg_list) && eval_types_block_stmt(proc->proc.body);
   return success;
 }
 

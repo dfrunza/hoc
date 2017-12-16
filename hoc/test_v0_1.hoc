@@ -11,7 +11,7 @@ void print_numbers(int* numbers, int len)
   int i; i = 0;
   while(i < len)
   {
-    print_int(*(numbers + int*:(i4)));
+    print_int(*(numbers + int*:(i×4)));
     print_str(^"\n");
 
     i = i+1;
@@ -29,9 +29,9 @@ int* make_numbers(int how_many)
   while(i < how_many)
   {
     if((i mod 2) == 0)
-      *(numbers + int*:(i4)) = c1  i;
+      *(numbers + int*:(i×4)) = c1 × i;
     else
-      *(numbers + int*:(i4)) = c2  i;
+      *(numbers + int*:(i×4)) = c2 × i;
 
     i = i+1;
   }
@@ -50,8 +50,8 @@ void main()
   print_float(result);
   print_str(^"\n---------\n");
 
-  int i_a; i_a = 7753;
-  int i_b; i_b = 7311;
+  int i_a; i_a = 7×7×5×3;
+  int i_b; i_b = 7×3×11;
   int i_r; i_r = gcd(i_a, i_b);
   print_str(^"gcd(");
   print_int(i_a);

@@ -80,7 +80,7 @@ void init_intbuf(int* buf, int len, int val)
   int i; i = 0;
   while(i < len)
   {
-    *(buf + int*:(i ž 4)) = val;
+    *(buf + int*:(i × 4)) = val;
     i = i + 1;
   }
 }

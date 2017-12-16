@@ -397,6 +397,7 @@ typedef struct Scope
   eScope kind;
 
   int nesting_depth;
+  int sym_order_nr;
   struct Scope* encl_scope;
   AstNode* ast_node;
 
@@ -431,6 +432,7 @@ typedef enum
   eType_typevar,
   eType_basic,
   eType_proc,
+  eType_var,
   eType_product,
   eType_pointer,
   eType_array,
@@ -457,6 +459,12 @@ typedef struct Type
 
   union
   {
+    struct
+    {
+      Type* type;
+    }
+    var;
+
     struct
     {
       eBasicType kind;
@@ -554,7 +562,7 @@ typedef struct AstNode
 
     struct
     {
-      List nodes;
+      List args;
     }
     arg_list;
 
@@ -584,7 +592,7 @@ typedef struct AstNode
     struct
     {
       AstNode* expr;
-      List actual_args;
+      AstNode* arg_list;
       AstNode* proc;
     }
     call;
@@ -656,7 +664,6 @@ typedef struct AstNode
     {
       char* name;
       AstNode* type;
-      AstNode* init_expr;
     }
     var;
 
@@ -682,7 +689,6 @@ typedef struct AstNode
     struct
     {
       Scope* scope;
-      Scope* encl_proc_scope;
       List nodes;
       List vars;
       List stmts;
@@ -712,6 +718,7 @@ typedef struct Symbol
   eSymbol kind;
 
   char* name;
+  int order_nr;
   SourceLoc* src_loc;
   Scope* scope;
   AstNode* ast_node;
@@ -727,6 +734,7 @@ typedef struct
 {
   List* scopes;
   Scope* active_scope;
+  Scope* proc_scope;
   int nesting_depth;
   MemoryArena* arena;
 }

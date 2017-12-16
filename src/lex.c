@@ -192,7 +192,7 @@ char* get_token_printstr(Token* token)
       result = "*";
       break;
     case eToken_mul:
-      result = "ž";
+      result = "×";
       break;
     case eToken_fwd_slash:
       result = "/";
@@ -704,7 +704,7 @@ loop:
     token->kind = eToken_star;
     ++input->cursor;
   }
-  else if(c == 'ž')
+  else if(c == '×')
   {
     token->kind = eToken_mul;
     c = *(++input->cursor);

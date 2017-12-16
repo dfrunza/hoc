@@ -57,6 +57,10 @@ void make_type_printstr(String* str, Type* type)
       str_append(str, "char");
     else if(type->basic.kind == eBasicType_void)
       str_append(str, "void");
+    else if(type->basic.kind == eBasicType_auto)
+      str_append(str, "auto");
+    else
+      assert(0);
   }
   else if(type->kind == eType_pointer)
   {
@@ -85,6 +89,10 @@ void make_type_printstr(String* str, Type* type)
     str_append(str, " (");
     make_type_printstr(str, type->proc.args);
     str_append(str, ")");
+  }
+  else if(type->kind == eType_var)
+  {
+    make_type_printstr(str, type->var.type);
   }
   else if(type->kind == eType_typevar)
   {
@@ -186,6 +194,14 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
 #include "lex.c"
 #include "syntax.c"
 
+Type* new_var_type(Type* var_type)
+{
+  Type* type = mem_push_struct(arena, Type);
+  type->kind = eType_var;
+  type->var.type = var_type;
+  return type;
+}
+
 Type* new_basic_type(eBasicType kind)
 {
   Type* type = mem_push_struct(arena, Type);
@@ -266,6 +282,10 @@ bool types_are_equal(Type* type_a, Type* type_b)
         are_equal = types_are_equal(type_a->array.elem, type_b->array.elem);
         break;
 
+      case eType_var:
+        are_equal = types_are_equal(type_a->var.type, type_b->var.type);
+        break;
+
       default:
         assert(0);
     }
@@ -312,6 +332,10 @@ int compute_type_width(Type* type)
 
     case eType_pointer:
       type->width = 4;
+      break;
+
+    case eType_var:
+      type->width = compute_type_width(type->var.type);
       break;
 
     default:
@@ -399,8 +423,11 @@ bool type_unif(Type* type_a, Type* type_b)
             break;
 
           case eType_array:
-            success = (repr_type_a->array.size == repr_type_b->array.size)
-              && type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
+            success = type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
+            break;
+
+          case eType_var:
+            success = type_unif(repr_type_a->var.type, repr_type_b->var.type);
             break;
 
           default:
@@ -479,6 +506,10 @@ Type* type_subst(List* subst_list, Type* type)
         subst->array.elem = type_subst(subst_list, subst->array.elem);
         break;
 
+      case eType_var:
+        subst->var.type = type_subst(subst_list, subst->var.type);
+        break;
+
       default:
         assert(0);
     }
@@ -519,6 +550,10 @@ bool resolve_type(Type* type, Type** resolved_type)
       
     case eType_array:
       success = resolve_type(type->array.elem, &type->array.elem);
+      break;
+
+    case eType_var:
+      success = resolve_type(type->var.type, &type->var.type);
       break;
 
     default:
@@ -631,6 +666,7 @@ Symbol* add_decl_sym(SymbolTable* symtab, char* name, Scope* scope, eSymbol kind
   sym->src_loc = ast_node->src_loc;
   sym->scope = scope;
   sym->ast_node = ast_node;
+  sym->order_nr = scope->sym_order_nr++;
   ast_node->decl_sym = sym;
   append_list_elem(&scope->decls[bitpos(kind)], sym, eList_symbol);
   return sym;
@@ -643,6 +679,7 @@ Symbol* add_occur_sym(SymbolTable* symtab, char* name, Scope* scope, AstNode* as
   sym->src_loc = ast_node->src_loc;
   sym->scope = scope;
   sym->ast_node = ast_node;
+  sym->order_nr = scope->sym_order_nr++;
   append_list_elem(&scope->occurs, sym, eList_symbol);
   return sym;
 }
@@ -706,40 +743,6 @@ void process_includes(List* include_list, List* module_list, ListItem* module_li
 
 bool symtab_expr(SymbolTable* symtab, AstNode* block, AstNode* expr);
 
-bool symtab_type(SymbolTable* symtab, AstNode* block, AstNode* type)
-{
-  assert(KIND(block, eAstNode_block));
-  bool success = true;
-
-  switch(type->kind)
-  {
-    case eAstNode_id:
-      add_occur_sym(symtab, type->id.name, symtab->active_scope, type);
-      break;
-
-#if 0
-    case eAstNode_type:
-      switch(type->type.kind)
-      {
-        case eType_array:
-          success = symtab_expr(symtab, block, type->type.size) && symtab_type(symtab, block, type->type.elem);
-          break;
-        case eType_pointer:
-          success = symtab_type(symtab, block, type->type.pointee);
-          break;
-        default:
-          break;
-      }
-      assert(0);
-      break;
-#endif
-
-    default:
-      assert(0);
-  }
-  return success;
-}
-
 bool symtab_formal_arg(SymbolTable* symtab, Scope* proc_scope, AstNode* arg)
 {
   assert(KIND(arg, eAstNode_var));
@@ -764,8 +767,8 @@ bool symtab_var(SymbolTable* symtab, AstNode* block, AstNode* var)
   assert(KIND(var, eAstNode_var));
   bool success = true;
 
-  Symbol* decl_sym = lookup_decl_sym(var->var.name, symtab->active_scope, eSymbol_var|eSymbol_proc);
-  if(decl_sym && (decl_sym->scope == symtab->active_scope || decl_sym->scope == block->block.encl_proc_scope))
+  Symbol* decl_sym = lookup_decl_sym(var->var.name, symtab->active_scope, eSymbol_var|eSymbol_proc|eSymbol_type);
+  if(decl_sym && (decl_sym->scope == symtab->active_scope || decl_sym->scope == symtab->proc_scope))
   {
     success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
     compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
@@ -777,7 +780,7 @@ bool symtab_var(SymbolTable* symtab, AstNode* block, AstNode* var)
   return success;
 }
 
-bool symtab_id_expr(SymbolTable* symtab, AstNode* block, AstNode* id)
+bool symtab_id(SymbolTable* symtab, AstNode* block, AstNode* id)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(id, eAstNode_id));
@@ -805,7 +808,22 @@ bool symtab_unr_expr(SymbolTable* symtab, AstNode* block, AstNode* unr_expr)
   return success;
 }
 
-bool symtab_call_expr(SymbolTable* symtab, AstNode* block, AstNode* call)
+bool symtab_actual_args(SymbolTable* symtab, AstNode* block, AstNode* arg_list)
+{
+  assert(KIND(arg_list, eAstNode_arg_list));
+  bool success = true;
+
+  for(ListItem* li = arg_list->arg_list.args.first;
+      li && success;
+      li = li->next)
+  {
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    success = symtab_expr(symtab, block, arg);
+  }
+  return success;
+}
+
+bool symtab_call(SymbolTable* symtab, AstNode* block, AstNode* call)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(call, eAstNode_call));
@@ -818,17 +836,7 @@ bool symtab_call_expr(SymbolTable* symtab, AstNode* block, AstNode* call)
   }
   else
   {
-    success = symtab_expr(symtab, block, call->call.expr);
-  }
-  if(success)
-  {
-    for(ListItem* li = call->call.actual_args.first;
-        li && success;
-        li = li->next)
-    {
-      AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      success = symtab_expr(symtab, block, arg);
-    }
+    success = symtab_expr(symtab, block, call->call.expr) && symtab_actual_args(symtab, block, call->call.arg_list);
   }
   return success;
 }
@@ -847,18 +855,14 @@ bool symtab_expr(SymbolTable* symtab, AstNode* block, AstNode* expr)
       success = symtab_unr_expr(symtab, block, expr);
       break;
     case eAstNode_id:
-      success = symtab_id_expr(symtab, block, expr);
+      success = symtab_id(symtab, block, expr);
       break;
     case eAstNode_call:
-      success = symtab_call_expr(symtab, block, expr);
+      success = symtab_call(symtab, block, expr);
       break;
+    case eAstNode_basic_type:
     case eAstNode_lit:
       break;
-#if 0
-    case eAstNode_type:
-      success = symtab_type(symtab, block, expr);
-      break;
-#endif
     default:
       assert(0);
   }
@@ -929,10 +933,9 @@ bool symtab_return(SymbolTable* symtab, AstNode* block, AstNode* ret)
   assert(KIND(ret, eAstNode_return));
   bool success = true;
 
-  Scope* proc_scope = find_scope(symtab->active_scope, eScope_proc);
-  if(proc_scope)
+  if(symtab->proc_scope)
   {
-    ret->ret.proc = proc_scope->ast_node;
+    ret->ret.proc = symtab->proc_scope->ast_node;
     success = symtab_expr(symtab, block, ret->ret.expr);
   }
   else
@@ -1015,7 +1018,6 @@ bool symtab_proc_body(SymbolTable* symtab, AstNode* proc)
   {
     if(body->kind == eAstNode_block)
     {
-      body->block.encl_proc_scope = proc->proc.scope;
       begin_scope(symtab, eScope_block, body);
       success = symtab_block(symtab, body);
       end_scope(symtab);
@@ -1028,17 +1030,17 @@ bool symtab_proc_body(SymbolTable* symtab, AstNode* proc)
   return success;
 }
 
-bool symtab_formal_args(SymbolTable* symtab, Scope* proc_scope, AstNode* arg_list)
+bool symtab_formal_args(SymbolTable* symtab, AstNode* arg_list)
 {
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.nodes.first;
+  for(ListItem* li = arg_list->arg_list.args.first;
       li && success;
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = symtab_formal_arg(symtab, proc_scope, arg);
+    success = symtab_formal_arg(symtab, symtab->proc_scope, arg);
   }
   return success;
 }
@@ -1057,9 +1059,10 @@ bool symtab_module_proc(SymbolTable* symtab, AstNode* proc)
   else
   {
     add_decl_sym(symtab, proc->proc.name, symtab->active_scope, eSymbol_proc, proc);
-    proc->proc.scope = begin_nested_scope(symtab, eScope_proc, proc);
-    success = symtab_formal_args(symtab, proc->proc.scope, proc->proc.arg_list) && symtab_proc_body(symtab, proc);
+    symtab->proc_scope = proc->proc.scope = begin_nested_scope(symtab, eScope_proc, proc);
+    success = symtab_formal_args(symtab, proc->proc.arg_list) && symtab_proc_body(symtab, proc);
     end_nested_scope(symtab);
+    symtab->proc_scope = 0;
   }
   return success;
 }
@@ -1070,7 +1073,7 @@ bool symtab_module_var(SymbolTable* symtab, AstNode* module, AstNode* var)
   assert(KIND(var, eAstNode_var));
   bool success = true;
 
-  Symbol* decl_sym = lookup_decl_sym(var->var.name, symtab->active_scope, eSymbol_var|eSymbol_proc);
+  Symbol* decl_sym = lookup_decl_sym(var->var.name, symtab->active_scope, eSymbol_var|eSymbol_proc|eSymbol_type);
   if(decl_sym && (decl_sym->scope == symtab->active_scope))
   {
     success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
@@ -1102,6 +1105,8 @@ bool symtab_module(SymbolTable* symtab, AstNode* module)
         break;
       case eAstNode_proc:
         success = symtab_module_proc(symtab, stmt);
+        break;
+      case eAstNode_include:
         break;
       default:
         assert(0);
@@ -3116,11 +3121,7 @@ bool gen_x86(String* code, AstNode* node)
 }
 #endif
 
-bool set_types_expr(AstNode* expr)
-{
-  bool success = true;
-  return success;
-}
+bool set_types_expr(AstNode* expr);
 
 bool set_types_type(AstNode* type)
 {
@@ -3146,17 +3147,13 @@ bool set_types_type(AstNode* type)
       {
         AstNode* size = type->bin_expr.left_operand;
         AstNode* elem = type->bin_expr.right_operand;
-        if(success = set_types_expr(size) && set_types_type(elem))
+        if(success = (size ? set_types_expr(size) : true) && set_types_type(elem))
         {
           type->ty = type->eval_ty = new_array_type(0/*TODO*/, elem->ty);
         }
       }
       else
         success = compile_error(type->src_loc, "invalid type expression");
-      break;
-
-    case eAstNode_id:
-      assert(0);
       break;
 
     case eAstNode_basic_type:
@@ -3186,7 +3183,7 @@ bool set_types_type(AstNode* type)
       break;
 
     default:
-      assert(0);
+      success = compile_error(type->src_loc, "invalid type expression");
   }
   return success;
 }
@@ -3199,8 +3196,238 @@ bool set_types_var(AstNode* var)
   AstNode* type = var->var.type;
   if(success = set_types_type(type))
   {
-    var->ty = type->ty;
+    var->ty = new_var_type(type->ty);
     var->eval_ty = basic_type_void;
+  }
+  return success;
+}
+
+bool set_types_bin_expr(AstNode* bin_expr)
+{
+  assert(KIND(bin_expr, eAstNode_bin_expr));
+  bool success = true;
+
+  AstNode* left_operand = bin_expr->bin_expr.left_operand;
+  AstNode* right_operand = bin_expr->bin_expr.right_operand;
+  if(success = set_types_expr(left_operand) && set_types_expr(right_operand))
+  {
+    bin_expr->eval_ty = new_typevar();
+    bin_expr->ty = new_proc_type(new_product_type(left_operand->ty, right_operand->ty), bin_expr->eval_ty);
+  }
+  return success;
+}
+
+bool set_types_unr_expr(AstNode* unr_expr)
+{
+  assert(KIND(unr_expr, eAstNode_unr_expr));
+  bool success = true;
+
+  AstNode* operand = unr_expr->unr_expr.operand;
+  if(success = set_types_expr(operand))
+  {
+    unr_expr->eval_ty = new_typevar();
+    unr_expr->ty = new_proc_type(operand->eval_ty, unr_expr->eval_ty);
+  }
+  return success;
+}
+
+bool set_types_id(AstNode* id)
+{
+  assert(KIND(id, eAstNode_id));
+  bool success = true;
+  id->ty = id->eval_ty = new_typevar();
+  return success;
+}
+
+Type* make_type_of_arg_list(AstNode* arg_list);
+
+bool set_types_actual_args(AstNode* arg_list)
+{
+  assert(KIND(arg_list, eAstNode_arg_list));
+  bool success = true;
+
+  for(ListItem* li = arg_list->arg_list.args.first;
+      li && success;
+      li = li->next)
+  {
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    success = set_types_expr(arg);
+  }
+  if(success)
+  {
+    arg_list->ty = arg_list->eval_ty = make_type_of_arg_list(arg_list);
+  }
+  return success;
+}
+
+bool set_types_call(AstNode* call)
+{
+  assert(KIND(call, eAstNode_call));
+  bool success = true;
+
+  AstNode* arg_list = call->call.arg_list;
+  if(success = set_types_actual_args(arg_list))
+  {
+    call->eval_ty = new_typevar();
+    call->ty = new_proc_type(arg_list->ty, call->eval_ty);
+  }
+  return success;
+}
+
+bool set_types_lit(AstNode* lit)
+{
+  assert(KIND(lit, eAstNode_lit));
+  bool success = true;
+
+  Type* ty = 0;
+  switch(lit->lit.kind)
+  {
+    case eLiteral_int:
+      ty = basic_type_int;
+      break;
+    case eLiteral_float:
+      ty = basic_type_float;
+      break;
+    case eLiteral_char:
+      ty = basic_type_char;
+      break;
+    case eLiteral_bool:
+      ty = basic_type_bool;
+      break;
+    case eLiteral_string:
+      ty = new_array_type(0, basic_type_char);
+      break;
+    default:
+      assert(0);
+  }
+  lit->ty = lit->eval_ty = ty;
+  return success;
+}
+
+bool set_types_expr(AstNode* expr)
+{
+  bool success = true;
+
+  switch(expr->kind)
+  {
+    case eAstNode_bin_expr:
+      success = set_types_bin_expr(expr);
+      break;
+    case eAstNode_unr_expr:
+      success = set_types_unr_expr(expr);
+      break;
+    case eAstNode_id:
+      success = set_types_id(expr);
+      break;
+    case eAstNode_call:
+      success = set_types_call(expr);
+      break;
+    case eAstNode_lit:
+      success = set_types_lit(expr);
+      break;
+    case eAstNode_basic_type:
+      success = set_types_type(expr);
+      break;
+    default:
+      assert(0);
+  }
+  return success;
+}
+
+bool set_types_return(AstNode* ret)
+{
+  assert(KIND(ret, eAstNode_return));
+  bool success = true;
+
+  if(ret->ret.expr)
+  {
+    success = set_types_expr(ret->ret.expr);
+  }
+  if(success)
+  {
+    ret->ty = ret->eval_ty = basic_type_void;
+  }
+  return success;
+}
+
+bool set_types_block_stmt(AstNode* stmt);
+
+bool set_types_if(AstNode* if_)
+{
+  assert(KIND(if_, eAstNode_if));
+  bool success = true;
+
+  if(success = set_types_expr(if_->if_.cond_expr))
+  {
+    AstNode* body = if_->if_.body;
+    if(success = set_types_block_stmt(body))
+    {
+      if_->ty = body->ty;
+      if_->eval_ty = body->eval_ty;
+
+      AstNode* else_body = if_->if_.else_body;
+      if(else_body)
+      {
+        success = set_types_block_stmt(else_body);
+      }
+    }
+  }
+  return success;
+}
+
+bool set_types_while(AstNode* while_)
+{
+  assert(KIND(while_, eAstNode_while));
+  bool success = true;
+
+  if(success = set_types_expr(while_->while_.cond_expr))
+  {
+    AstNode* body = while_->while_.body;
+    if(success = set_types_block_stmt(body))
+    {
+      while_->ty = body->ty;
+      while_->eval_ty = body->eval_ty;
+    }
+  }
+  return success;
+}
+
+bool set_types_block(AstNode* block);
+
+bool set_types_block_stmt(AstNode* stmt)
+{
+  bool success = true;
+
+  switch(stmt->kind)
+  {
+    case eAstNode_var:
+      success = set_types_var(stmt);
+      break;
+    case eAstNode_block:
+      success = set_types_block(stmt);
+      break;
+    case eAstNode_bin_expr:
+    case eAstNode_unr_expr:
+    case eAstNode_id:
+    case eAstNode_call:
+    case eAstNode_lit:
+      success = set_types_expr(stmt);
+      break;
+    case eAstNode_loop_ctrl:
+    case eAstNode_empty:
+      stmt->ty = stmt->eval_ty = basic_type_void;
+      break;
+    case eAstNode_return:
+      success = set_types_return(stmt);
+      break;
+    case eAstNode_if:
+      success = set_types_if(stmt);
+      break;
+    case eAstNode_while:
+      success = set_types_while(stmt);
+      break;
+    default:
+      assert(0);
   }
   return success;
 }
@@ -3209,7 +3436,36 @@ bool set_types_block(AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
+
+  for(ListItem* li = block->block.nodes.first;
+      li && success;
+      li = li->next)
+  {
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
+    success = set_types_block_stmt(stmt);
+  }
+  if(success)
+  {
+    block->ty = block->eval_ty = basic_type_void;
+  }
   return success;
+}
+
+Type* make_type_of_arg_list(AstNode* arg_list)
+{
+  Type* result = basic_type_void;
+  ListItem* li = arg_list->arg_list.args.first;
+  if(li)
+  {
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    result = arg->ty;
+    for(li = li->next; li; li = li->next)
+    {
+      AstNode* next_arg = KIND(li, eList_ast_node)->ast_node;
+      result = new_product_type(arg_list->ty, next_arg->ty);
+    }
+  }
+  return result;
 }
 
 bool set_types_formal_args(AstNode* arg_list)
@@ -3217,7 +3473,7 @@ bool set_types_formal_args(AstNode* arg_list)
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.nodes.first;
+  for(ListItem* li = arg_list->arg_list.args.first;
       li && success;
       li = li->next)
   {
@@ -3226,19 +3482,7 @@ bool set_types_formal_args(AstNode* arg_list)
   }
   if(success)
   {
-    arg_list->ty = basic_type_void;
-    ListItem* li = arg_list->arg_list.nodes.first;
-    if(li)
-    {
-      AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      arg_list->ty = arg->ty;
-      for(li = li->next; li; li = li->next)
-      {
-        AstNode* next_arg = KIND(li, eList_ast_node)->ast_node;
-        arg_list->ty = new_product_type(arg_list->ty, next_arg->ty);
-      }
-    }
-    arg_list->eval_ty = arg_list->ty;
+    arg_list->ty = arg_list->eval_ty = make_type_of_arg_list(arg_list);
   }
   return success;
 }
@@ -3274,6 +3518,9 @@ bool set_types_module_stmt(AstNode* stmt)
       break;
     case eAstNode_var:
       success = set_types_var(stmt);
+      break;
+    case eAstNode_include:
+      stmt->ty = stmt->eval_ty = basic_type_void;
       break;
     default:
       assert(0);

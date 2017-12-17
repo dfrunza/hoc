@@ -1,8 +1,6 @@
 void main()
 {
-  []auto a;
-  []float i;
-  a = i;
-  a[3] = 12.23;
+  []int^ a;
+  ^a[0] = 8;
 }
 

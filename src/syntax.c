@@ -482,7 +482,7 @@ bool parse_rest_of_deref(TokenStream* input, AstNode** node)
       break;
 
     case eToken_id:
-      success = parse_id(input, node);
+      success = parse_id(input, node) && parse_index(input, *node, node);
       break;
 
     case eToken_void:
@@ -491,7 +491,7 @@ bool parse_rest_of_deref(TokenStream* input, AstNode** node)
     case eToken_bool:
     case eToken_char:
     case eToken_auto:
-      success = parse_basic_type(input, node);
+      success = parse_basic_type(input, node) && parse_index(input, *node, node);
       break;
 
     case eToken_open_parens:
@@ -527,6 +527,7 @@ bool parse_deref(TokenStream* input, AstNode** node)
 }
 
 bool parse_array(TokenStream* input, AstNode** node);
+bool parse_pointer(TokenStream* input, AstNode* left_node, AstNode** node);
 
 bool parse_rest_of_array(TokenStream* input, AstNode** node)
 {
@@ -540,7 +541,7 @@ bool parse_rest_of_array(TokenStream* input, AstNode** node)
       break;
 
     case eToken_id:
-      success = parse_id(input, node);
+      success = compile_error(&input->src_loc, "unknown type id `%s`", get_token_printstr(&input->token));
       break;
 
     case eToken_void:
@@ -549,7 +550,7 @@ bool parse_rest_of_array(TokenStream* input, AstNode** node)
     case eToken_bool:
     case eToken_char:
     case eToken_auto:
-      success = parse_basic_type(input, node);
+      success = parse_basic_type(input, node) && parse_pointer(input, *node, node);
       break;
 
     case eToken_open_parens:
@@ -611,7 +612,7 @@ bool parse_cast(TokenStream* input, AstNode** node)
       {
         if(input->token.kind == eToken_close_parens)
         {
-          success = get_next_token(input) && parse_rest_of_cast(input, *node, node);
+          success = get_next_token(input);
         }
         else
           success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
@@ -677,12 +678,16 @@ bool parse_pointer(TokenStream* input, AstNode* left_node, AstNode** node)
   *node = left_node;
   bool success = true;
 
-  if(input->token.kind == eToken_circumflex && (success = get_next_token(input)))
+  if(input->token.kind == eToken_circumflex)
   {
     AstNode* pointer = *node = new_ast_node(eAstNode_unr_expr, clone_source_loc(&input->src_loc));
     pointer->unr_expr.op = eOperator_pointer;
     pointer->unr_expr.operand = left_node;
-    success = parse_rest_of_cast(input, *node, node);
+
+    if((success = get_next_token(input)) && input->token.kind == eToken_circumflex)
+    {
+      success = parse_pointer(input, *node, node);
+    }
   }
   return success;
 }

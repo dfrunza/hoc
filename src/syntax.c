@@ -612,7 +612,12 @@ bool parse_cast(TokenStream* input, AstNode** node)
       {
         if(input->token.kind == eToken_close_parens)
         {
-          success = get_next_token(input) && parse_rest_of_cast(input, *node, node);
+          if(*node)
+          {
+            success = get_next_token(input) && parse_rest_of_cast(input, *node, node);
+          }
+          else
+            success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
         }
         else
           success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
@@ -709,16 +714,9 @@ bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** no
     case eToken_open_parens:
       success = parse_call(input, left_node, node);
       break;
-
-#if 0
     case eToken_open_bracket:
       success = parse_index(input, left_node, node);
       break;
-
-    case eToken_circumflex:
-      success = parse_pointer(input, left_node, node);
-      break;
-#endif
   }
   return success;
 }

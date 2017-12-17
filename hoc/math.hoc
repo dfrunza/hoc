@@ -153,7 +153,7 @@ int floor_log_b(int b, float n)
     while(n > b_pow_x)
     {
       x = x + 1;
-      b_pow_x = ipow(float:b, x);
+      b_pow_x = ipow((float):b, x);
     }
     x = x - 1;
   }
@@ -161,7 +161,7 @@ int floor_log_b(int b, float n)
   {
     while(b_pow_x > n)
     {
-      b_pow_x = ipow(float:b, x);
+      b_pow_x = ipow((float):b, x);
       x = x - 1;
     }
     x = x + 1;
@@ -190,19 +190,20 @@ int fp_bin_to_dec(float v, int^ significand, int^ exponent)
   while(run_loop)
   {
     k = k + 1;
-    U = int:(R * 10.0);
-    R = (R * 10.0) - float:U;
+    U = (int):(R * 10.0);
+    R = (R * 10.0) - (float):U;
     M = M * 10.0;
-    ^(significand + int^:(k * 4)) = U;
+    ^(significand + (int^):(k * 4)) = U;
 
     run_loop = (R >= M) and (R <= (1.0 - M));
   }
 
   if(R <= 0.5)
-    ^(significand + int^:(k * 4)) = U;
+    ^(significand + (int^):(k * 4)) = U;
   else
-    ^(significand + int^:(k * 4)) = U + 1;
+    ^(significand + (int^):(k * 4)) = U + 1;
 
   return k;
 }
+
 

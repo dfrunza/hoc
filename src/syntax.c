@@ -409,89 +409,27 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
   return success;
 }
 
-bool parse_deref(TokenStream* input, AstNode** node)
+bool parse_id(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
 
-  AstNode* deref = *node = new_ast_node(eAstNode_unr_expr, clone_source_loc(&input->src_loc));
-  deref->unr_expr.op = eOperator_deref;
-  if(success = get_next_token(input) && parse_cast(input, &deref->unr_expr.operand))
+  if(input->token.kind == eToken_id)
   {
-    if(!deref->unr_expr.operand)
-    {
-      success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
-    }
+    AstNode* id = *node = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
+    id->id.name = input->token.lexeme;
+    success = get_next_token(input);
   }
   return success;
 }
 
-bool parse_array(TokenStream* input, AstNode** node)
-{
-  *node = 0;
-  bool success = true;
-
-  AstNode* array = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-  array->bin_expr.op = eOperator_array;
-  if(success = get_next_token(input) && parse_expr(input, &array->bin_expr.left_operand))
-  {
-    if(input->token.kind == eToken_close_bracket)
-    {
-      if(!array->bin_expr.left_operand)
-      {
-        AstNode* size0 = array->bin_expr.left_operand = new_ast_node(eAstNode_lit, clone_source_loc(&input->src_loc));
-        size0->lit.kind = eLiteral_int;
-        size0->lit.int_val = 0;
-      }
-      if(success = get_next_token(input) && parse_cast(input, &array->bin_expr.right_operand))
-      {
-        if(!array->bin_expr.right_operand)
-        {
-          success = compile_error(&input->src_loc,  "expression was expected at `%s`", get_token_printstr(&input->token));
-        }
-      }
-    }
-    else
-      success = compile_error(&input->src_loc,  "`]` was expected at `%s`", get_token_printstr(&input->token));
-  }
-  return success;
-}
-
-bool parse_cast(TokenStream* input, AstNode** node)
+bool parse_basic_type(TokenStream* input, AstNode** node)
 {
   *node = 0;
   bool success = true;
 
   switch(input->token.kind)
   {
-    case eToken_open_parens:
-      if(success = get_next_token(input) && parse_expr(input, node))
-      {
-        if(input->token.kind == eToken_close_parens)
-        {
-          success = get_next_token(input) && parse_rest_of_cast(input, *node, node);
-        }
-        else
-          success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
-      }
-      break;
-
-    case eToken_circumflex:
-      success = parse_deref(input, node) && parse_rest_of_cast(input, *node, node);
-      break;
-
-    case eToken_open_bracket:
-      success = parse_array(input, node) && parse_rest_of_cast(input, *node, node);
-      break;
-
-    case eToken_id:
-      {
-        AstNode* id = *node = new_ast_node(eAstNode_id, clone_source_loc(&input->src_loc));
-        id->id.name = input->token.lexeme;
-        success = get_next_token(input) && parse_rest_of_cast(input, *node, node);
-      }
-      break;
-
     case eToken_int:
     case eToken_float:
     case eToken_bool:
@@ -523,8 +461,182 @@ bool parse_cast(TokenStream* input, AstNode** node)
           default:
             assert(0);
         }
-        success = get_next_token(input) && parse_rest_of_cast(input, *node, node);
+        success = get_next_token(input);
       }
+      break;
+  }
+  return success;
+}
+
+bool parse_deref(TokenStream* input, AstNode** node);
+
+bool parse_rest_of_deref(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  switch(input->token.kind)
+  {
+    case eToken_circumflex:
+      success = parse_deref(input, node);
+      break;
+
+    case eToken_id:
+      success = parse_id(input, node);
+      break;
+
+    case eToken_void:
+    case eToken_int:
+    case eToken_float:
+    case eToken_bool:
+    case eToken_char:
+    case eToken_auto:
+      success = parse_basic_type(input, node);
+      break;
+
+    case eToken_open_parens:
+      if(success = get_next_token(input) && parse_cast(input, node))
+      {
+        if(input->token.kind == eToken_close_parens)
+        {
+          success = get_next_token(input);
+        }
+        else
+          success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
+      }
+      break;
+  }
+  return success;
+}
+
+bool parse_deref(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  AstNode* deref = *node = new_ast_node(eAstNode_unr_expr, clone_source_loc(&input->src_loc));
+  deref->unr_expr.op = eOperator_deref;
+  if(success = get_next_token(input) && parse_rest_of_deref(input, &deref->unr_expr.operand))
+  {
+    if(!deref->unr_expr.operand)
+    {
+      success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
+    }
+  }
+  return success;
+}
+
+bool parse_array(TokenStream* input, AstNode** node);
+
+bool parse_rest_of_array(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  switch(input->token.kind)
+  {
+    case eToken_open_bracket:
+      success = parse_array(input, node);
+      break;
+
+    case eToken_id:
+      success = parse_id(input, node);
+      break;
+
+    case eToken_void:
+    case eToken_int:
+    case eToken_float:
+    case eToken_bool:
+    case eToken_char:
+    case eToken_auto:
+      success = parse_basic_type(input, node);
+      break;
+
+    case eToken_open_parens:
+      if(success = get_next_token(input) && parse_cast(input, node))
+      {
+        if(input->token.kind == eToken_close_parens)
+        {
+          success = get_next_token(input);
+        }
+        else
+          success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
+      }
+      break;
+  }
+  return success;
+}
+
+bool parse_array(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  AstNode* array = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
+  array->bin_expr.op = eOperator_array;
+  if(success = get_next_token(input) && parse_expr(input, &array->bin_expr.left_operand))
+  {
+    if(input->token.kind == eToken_close_bracket)
+    {
+      if(!array->bin_expr.left_operand)
+      {
+        AstNode* size0 = array->bin_expr.left_operand = new_ast_node(eAstNode_lit, clone_source_loc(&input->src_loc));
+        size0->lit.kind = eLiteral_int;
+        size0->lit.int_val = 0;
+      }
+      if(success = get_next_token(input) && parse_rest_of_array(input, &array->bin_expr.right_operand))
+      {
+        if(!array->bin_expr.right_operand)
+        {
+          success = compile_error(&input->src_loc,  "expression was expected at `%s`", get_token_printstr(&input->token));
+        }
+      }
+    }
+    else
+      success = compile_error(&input->src_loc,  "`]` was expected at `%s`", get_token_printstr(&input->token));
+  }
+  return success;
+}
+
+
+bool parse_cast(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  switch(input->token.kind)
+  {
+    case eToken_open_parens:
+      if(success = get_next_token(input) && parse_expr(input, node))
+      {
+        if(input->token.kind == eToken_close_parens)
+        {
+          success = get_next_token(input) && parse_rest_of_cast(input, *node, node);
+        }
+        else
+          success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
+      }
+      break;
+
+    case eToken_circumflex:
+      success = parse_deref(input, node) && parse_rest_of_cast(input, *node, node);
+      break;
+
+    case eToken_open_bracket:
+      success = parse_array(input, node) && parse_rest_of_cast(input, *node, node);
+      break;
+
+    case eToken_id:
+      success = parse_id(input, node) && parse_rest_of_cast(input, *node, node);
+      break;
+
+    case eToken_void:
+    case eToken_int:
+    case eToken_float:
+    case eToken_bool:
+    case eToken_char:
+    case eToken_auto:
+      success = parse_basic_type(input, node) && parse_rest_of_cast(input, *node, node);
       break;
   }
   return success;

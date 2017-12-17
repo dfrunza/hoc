@@ -983,6 +983,7 @@ bool symtab_block_stmt(SymbolTable* symtab, AstNode* block, AstNode* stmt)
     case eAstNode_return:
       success = symtab_return(symtab, block, stmt);
       break;
+    case eAstNode_basic_type:
     case eAstNode_empty:
       break;
     default:
@@ -1137,7 +1138,7 @@ bool resolve_types_of_node(AstNode* node)
       assert(0);
   }
   else
-    assert(0);
+    success = compile_error(node->src_loc, "type error (unresolved type)");
 
   return success;
 }
@@ -2652,6 +2653,9 @@ bool set_types_block_stmt(AstNode* stmt)
     case eAstNode_empty:
       stmt->ty = stmt->eval_ty = basic_type_void;
       break;
+    case eAstNode_basic_type:
+      success = set_types_type(stmt);
+      break;
     case eAstNode_return:
       success = set_types_return(stmt);
       break;
@@ -2836,11 +2840,17 @@ bool eval_types_bin_expr(AstNode* bin_expr)
         {
           if(left_operand->eval_ty->kind == eType_array)
           {
-            success = type_unif(left_operand->eval_ty->array.elem, bin_expr->eval_ty);
+            if(!type_unif(left_operand->eval_ty->array.elem, bin_expr->eval_ty))
+            {
+              success = compile_error(bin_expr->src_loc, "type error (index op)");
+            }
           }
           else if(left_operand->eval_ty->kind == eType_typevar)
           {
-            success = type_unif(left_operand->eval_ty, new_array_type(0, bin_expr->eval_ty));
+            if(!type_unif(left_operand->eval_ty, new_array_type(0, bin_expr->eval_ty)))
+            {
+              success = compile_error(bin_expr->src_loc, "type error (index op)");
+            }
           }
           else
             success = compile_error(bin_expr->src_loc, "type error (index op)");
@@ -3222,6 +3232,9 @@ bool eval_types_block_stmt(AstNode* stmt)
     case eAstNode_loop_ctrl:
     case eAstNode_empty:
       break;
+    case eAstNode_basic_type:
+      success = eval_types_type(stmt);
+      break;
     default:
       assert(0);
   }
@@ -3450,6 +3463,27 @@ bool resolve_types_while(AstNode* while_)
   return success;
 }
 
+bool resolve_types_type(AstNode* type)
+{
+  bool success = true;
+
+  switch(type->kind)
+  {
+    case eAstNode_unr_expr:
+      assert(type->unr_expr.op == eOperator_pointer);
+      success = resolve_types_type(type->unr_expr.operand) && resolve_types_of_node(type);
+      break;
+    case eAstNode_bin_expr:
+      assert(type->bin_expr.op == eOperator_array);
+      success = resolve_types_expr(type->bin_expr.left_operand) && resolve_types_type(type->bin_expr.right_operand)
+        && resolve_types_of_node(type);
+      break;
+    case eAstNode_basic_type:
+      break;
+  }
+  return success;
+}
+
 bool resolve_types_block_stmt(AstNode* stmt)
 {
   bool success = true;
@@ -3481,29 +3515,11 @@ bool resolve_types_block_stmt(AstNode* stmt)
     case eAstNode_loop_ctrl:
     case eAstNode_empty:
       break;
+    case eAstNode_basic_type:
+      success = resolve_types_type(stmt);
+      break;
     default:
       assert(0);
-  }
-  return success;
-}
-
-bool resolve_types_type(AstNode* type)
-{
-  bool success = true;
-
-  switch(type->kind)
-  {
-    case eAstNode_unr_expr:
-      assert(type->unr_expr.op == eOperator_pointer);
-      success = resolve_types_type(type->unr_expr.operand) && resolve_types_of_node(type);
-      break;
-    case eAstNode_bin_expr:
-      assert(type->bin_expr.op == eOperator_array);
-      success = resolve_types_expr(type->bin_expr.left_operand) && resolve_types_type(type->bin_expr.right_operand)
-        && resolve_types_of_node(type);
-      break;
-    case eAstNode_basic_type:
-      break;
   }
   return success;
 }
@@ -3550,6 +3566,58 @@ bool resolve_types_module(AstNode* module)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = resolve_types_module_stmt(stmt);
+  }
+  return success;
+}
+
+bool check_types_formal_args(AstNode* arg_list)
+{
+  assert(KIND(arg_list, eAstNode_arg_list));
+  bool success = true;
+  return success;
+}
+
+bool check_types_block_stmt(AstNode* stmt)
+{
+  bool success = true;
+  return success;
+}
+
+bool check_types_proc(AstNode* proc)
+{
+  assert(KIND(proc, eAstNode_proc));
+  bool success = true;
+
+  success = check_types_formal_args(proc->proc.arg_list) && check_types_block_stmt(proc->proc.body);
+  return success;
+}
+
+bool check_types_module_stmt(AstNode* stmt)
+{
+  bool success = true;
+
+  switch(stmt->kind)
+  {
+    case eAstNode_proc:
+      success = check_types_proc(stmt);
+      break;
+    default:
+      assert(0);
+  }
+  return success;
+}
+
+bool check_types_module(AstNode* module)
+{
+  assert(KIND(module, eAstNode_module));
+  bool success = true;
+
+  for(ListItem* li = module->module.nodes.first;
+      li && success;
+      li = li->next)
+  {
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
+    success = check_types_module_stmt(stmt);
   }
   return success;
 }
@@ -3610,7 +3678,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     return false;
   }
   if(!(set_types_module(module) && eval_types_module(module) &&
-       resolve_types_module(module)))
+       resolve_types_module(module) && check_types_module(module)))
   {
     return false;
   }

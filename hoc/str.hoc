@@ -13,7 +13,7 @@ void print_str(char^ str)
 {
   int len; len = strlen(str);
   int chars_written_count; chars_written_count = 0;
-  WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
+  /*WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);*/
 }
 
 void digit_to_char(char^ buf, int pos, int digit)
@@ -88,7 +88,7 @@ void init_intbuf(int^ buf, int len, int val)
 void float_to_str(char^ buf, int buf_len, float f)
 {
   [9]int significand; /* 0-th cell is not used */
-  init_intbuf(&significand, 9, 0);
+  init_intbuf(&significand[0], 9, 0);
   int exponent; exponent = 0;
 
   int digit_count; digit_count = fp_bin_to_dec(f, &significand, &exponent);

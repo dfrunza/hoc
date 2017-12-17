@@ -482,7 +482,7 @@ bool parse_rest_of_deref(TokenStream* input, AstNode** node)
       break;
 
     case eToken_id:
-      success = parse_id(input, node) && parse_index(input, *node, node);
+      success = parse_id(input, node);
       break;
 
     case eToken_void:
@@ -491,7 +491,7 @@ bool parse_rest_of_deref(TokenStream* input, AstNode** node)
     case eToken_bool:
     case eToken_char:
     case eToken_auto:
-      success = parse_basic_type(input, node) && parse_index(input, *node, node);
+      success = parse_basic_type(input, node);
       break;
 
     case eToken_open_parens:
@@ -550,11 +550,11 @@ bool parse_rest_of_array(TokenStream* input, AstNode** node)
     case eToken_bool:
     case eToken_char:
     case eToken_auto:
-      success = parse_basic_type(input, node) && parse_pointer(input, *node, node);
+      success = parse_basic_type(input, node);
       break;
 
     case eToken_open_parens:
-      if(success = get_next_token(input) && parse_cast(input, node))
+      if(success = get_next_token(input) && parse_array(input, node) && parse_pointer(input, *node, node))
       {
         if(input->token.kind == eToken_close_parens)
         {
@@ -612,7 +612,7 @@ bool parse_cast(TokenStream* input, AstNode** node)
       {
         if(input->token.kind == eToken_close_parens)
         {
-          success = get_next_token(input);
+          success = get_next_token(input) && parse_rest_of_cast(input, *node, node);
         }
         else
           success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
@@ -620,15 +620,15 @@ bool parse_cast(TokenStream* input, AstNode** node)
       break;
 
     case eToken_circumflex:
-      success = parse_deref(input, node) && parse_rest_of_cast(input, *node, node);
+      success = parse_deref(input, node) && parse_index(input, *node, node);
       break;
 
     case eToken_open_bracket:
-      success = parse_array(input, node) && parse_rest_of_cast(input, *node, node);
+      success = parse_array(input, node) && parse_pointer(input, *node, node) && parse_rest_of_cast(input, *node, node);
       break;
 
     case eToken_id:
-      success = parse_id(input, node) && parse_rest_of_cast(input, *node, node);
+      success = parse_id(input, node) && parse_pointer(input, *node, node) && parse_rest_of_cast(input, *node, node);
       break;
 
     case eToken_void:
@@ -637,7 +637,7 @@ bool parse_cast(TokenStream* input, AstNode** node)
     case eToken_bool:
     case eToken_char:
     case eToken_auto:
-      success = parse_basic_type(input, node) && parse_rest_of_cast(input, *node, node);
+      success = parse_basic_type(input, node) && parse_pointer(input, *node, node) && parse_rest_of_cast(input, *node, node);
       break;
   }
   return success;
@@ -664,10 +664,6 @@ bool parse_rest_of_cast(TokenStream* input, AstNode* left_node, AstNode** node)
           }
         }
       }
-      break;
-
-    default:
-      success = parse_rest_of_selector(input, left_node, node);
       break;
   }
   return success;
@@ -770,7 +766,7 @@ bool parse_selector(TokenStream* input, AstNode** node)
     case eToken_char:
     case eToken_void:
     case eToken_auto:
-      success = parse_cast(input, node) && parse_rest_of_cast(input, *node, node);
+      success = parse_cast(input, node) && parse_rest_of_selector(input, *node, node); /* && parse_rest_of_cast(input, *node, node);*/
       break;
   }
   return success;

@@ -495,7 +495,7 @@ bool parse_rest_of_deref(TokenStream* input, AstNode** node)
       break;
 
     case eToken_open_parens:
-      if(success = get_next_token(input) && parse_cast(input, node))
+      if(success = get_next_token(input) && parse_expr(input, node))
       {
         if(input->token.kind == eToken_close_parens)
         {

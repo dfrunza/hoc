@@ -1,6 +1,6 @@
 #define ARENA_SIZE (3*MEGABYTE)
 #define SYMBOL_ARENA_SIZE (ARENA_SIZE / 8)
-#define X86_CODE_ARENA_SIZE (ARENA_SIZE / 4)
+#define IR_CODE_ARENA_SIZE (ARENA_SIZE / 4)
 #define BINIMAGE_SIGNATURE "HC"
 #define MACHINE_WORD_SIZE 4
 
@@ -61,6 +61,13 @@ String;
   (((VAR)->kind == KIND) ? (VAR) : 0)
 
 typedef struct List List;
+typedef struct Type Type;
+typedef struct AstNode AstNode;
+typedef struct Symbol Symbol;
+typedef struct Scope Scope;
+typedef struct TypePair TypePair;
+
+void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes);
 
 typedef struct
 {
@@ -352,12 +359,6 @@ typedef enum
 }
 eList;
 
-typedef struct Type Type;
-typedef struct AstNode AstNode;
-typedef struct Symbol Symbol;
-typedef struct Scope Scope;
-typedef struct TypePair TypePair;
-
 typedef struct ListItem
 {
   eList kind;
@@ -383,16 +384,6 @@ typedef struct List
 }
 List;
 
-typedef enum
-{
-  eSymbol_None,
-  eSymbol_var = 1 << 0,
-  eSymbol_proc = 1 << 1,
-  eSymbol_type = 1 << 2,
-  eSymbol_Count = 4,
-}
-eSymbol;
-
 typedef struct Scope
 {
   eScope kind;
@@ -402,7 +393,7 @@ typedef struct Scope
   struct Scope* encl_scope;
   AstNode* ast_node;
 
-  List decls[eSymbol_Count];
+  List decls;
   List occurs;
 
   int static_area_size;
@@ -569,7 +560,6 @@ typedef struct AstNode
 
     struct
     {
-      eSymbol sym_kind;
       char* name;
       AstNode* decl_ast;
     }
@@ -716,8 +706,6 @@ AstNode;
 
 typedef struct Symbol
 {
-  eSymbol kind;
-
   char* name;
   int order_nr;
   SourceLoc* src_loc;
@@ -735,11 +723,17 @@ typedef struct
 {
   List* scopes;
   Scope* active_scope;
-  Scope* proc_scope;
   int nesting_depth;
   MemoryArena* arena;
 }
 SymbolTable;
 
-void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes);
+typedef struct
+{
+  eOperator op;
+  Symbol* arg1;
+  Symbol* arg2;
+  Symbol* result;
+}
+IrStmt;
 

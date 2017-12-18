@@ -1,4 +1,3 @@
-SymbolTable* symbol_table = 0;
 int tempvar_id = 0;
 
 Type* basic_type_bool;
@@ -11,7 +10,6 @@ int typevar_id = 1;
 
 int last_label_id;
 
-bool symtab(AstNode* node);
 void gen_x86_load_rvalue(String* code, AstNode* node);
 bool gen_x86(String* code, AstNode* node);
 
@@ -613,35 +611,12 @@ Symbol* lookup_sym(char* name, List* symbols)
   return result;
 }
 
-Symbol* lookup_decl_sym(char* name, Scope* scope, eSymbol kind)
+Symbol* lookup_decl_sym(char* name, Scope* scope)
 {
   Symbol* result = 0;
   while(!result && scope)
   {
-    eSymbol k = kind;
-    int p = bitpos(k);
-    while(!result && p)
-    {
-      result = lookup_sym(name, &scope->decls[p]);
-      k = k ^ (1 << (p-1)); // clear the bit
-      p = bitpos(k);
-    }
-    scope = scope->encl_scope;
-  }
-  return result;
-}
-
-Symbol* lookup_all_decl_sym(char* name, Scope* scope)
-{
-  Symbol* result = 0;
-  while(!result && scope)
-  {
-    for(int p = eSymbol_None;
-        p < eSymbol_Count && !result;
-        p++)
-    {
-      result = lookup_sym(name, &scope->decls[p]);
-    }
+    result = lookup_sym(name, &scope->decls);
     scope = scope->encl_scope;
   }
   return result;
@@ -658,17 +633,16 @@ Symbol* lookup_occur_sym(char* name, Scope* scope)
   return result;
 }
 
-Symbol* add_decl_sym(SymbolTable* symtab, char* name, Scope* scope, eSymbol kind, AstNode* ast_node)
+Symbol* add_decl_sym(SymbolTable* symtab, char* name, Scope* scope, AstNode* ast_node)
 {
   Symbol* sym = mem_push_struct(symtab->arena, Symbol);
-  sym->kind = kind;
   sym->name = name;
   sym->src_loc = ast_node->src_loc;
   sym->scope = scope;
   sym->ast_node = ast_node;
   sym->order_nr = scope->sym_order_nr++;
   ast_node->decl_sym = sym;
-  append_list_elem(&scope->decls[bitpos(kind)], sym, eList_symbol);
+  append_list_elem(&scope->decls, sym, eList_symbol);
   return sym;
 }
 
@@ -693,10 +667,7 @@ Scope* begin_scope(SymbolTable* symtab, eScope kind, AstNode* ast_node)
   scope->sym_order_nr = 0;
   scope->encl_scope = symtab->active_scope;
   scope->ast_node = ast_node;
-  for(int k = 0; k < eSymbol_Count; k++)
-  {
-    init_list(&scope->decls[k], arena, eList_symbol);
-  }
+  init_list(&scope->decls, arena, eList_symbol);
   init_list(&scope->occurs, arena, eList_symbol);
   symtab->active_scope = scope;
   append_list_elem(symtab->scopes, scope, eList_scope);
@@ -750,7 +721,7 @@ bool symtab_formal_arg(SymbolTable* symtab, Scope* proc_scope, AstNode* arg)
   assert(KIND(arg, eAstNode_var));
   bool success = true;
 
-  Symbol* decl_sym = lookup_decl_sym(arg->var.name, proc_scope, eSymbol_var);
+  Symbol* decl_sym = lookup_decl_sym(arg->var.name, proc_scope);
   if(decl_sym && (decl_sym->scope == proc_scope))
   {
     success = compile_error(arg->src_loc, "formal arg `%s` has already been declared", arg->var.name);
@@ -758,7 +729,7 @@ bool symtab_formal_arg(SymbolTable* symtab, Scope* proc_scope, AstNode* arg)
   }
   else
   {
-    add_decl_sym(symtab, arg->var.name, proc_scope, eSymbol_var, arg);
+    add_decl_sym(symtab, arg->var.name, proc_scope, arg);
   }
   return success;
 }
@@ -769,15 +740,16 @@ bool symtab_var(SymbolTable* symtab, AstNode* block, AstNode* var)
   assert(KIND(var, eAstNode_var));
   bool success = true;
 
-  Symbol* decl_sym = lookup_all_decl_sym(var->var.name, symtab->active_scope);
-  if(decl_sym && (decl_sym->scope == symtab->active_scope || decl_sym->scope == symtab->proc_scope))
+  Symbol* decl_sym = lookup_decl_sym(var->var.name, symtab->active_scope);
+  Scope* proc_scope = find_scope(symtab->active_scope, eScope_proc);
+  if(decl_sym && (decl_sym->scope == symtab->active_scope || decl_sym->scope == proc_scope))
   {
     success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
     compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
   }
   else
   {
-    add_decl_sym(symtab, var->var.name, symtab->active_scope, eSymbol_var, var);
+    add_decl_sym(symtab, var->var.name, symtab->active_scope, var);
   }
   return success;
 }
@@ -937,9 +909,10 @@ bool symtab_return(SymbolTable* symtab, AstNode* block, AstNode* ret)
   assert(KIND(ret, eAstNode_return));
   bool success = true;
 
-  if(symtab->proc_scope)
+  Scope* proc_scope = find_scope(symtab->active_scope, eScope_proc);
+  if(proc_scope)
   {
-    ret->ret.proc = symtab->proc_scope->ast_node;
+    ret->ret.proc = proc_scope->ast_node;
     success = symtab_expr(symtab, block, ret->ret.expr);
   }
   else
@@ -1040,12 +1013,13 @@ bool symtab_formal_args(SymbolTable* symtab, AstNode* arg_list)
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
+  Scope* proc_scope = find_scope(symtab->active_scope, eScope_proc);
   for(ListItem* li = arg_list->arg_list.args.first;
       li && success;
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = symtab_formal_arg(symtab, symtab->proc_scope, arg);
+    success = symtab_formal_arg(symtab, proc_scope, arg);
   }
   return success;
 }
@@ -1055,7 +1029,7 @@ bool symtab_module_proc(SymbolTable* symtab, AstNode* proc)
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
-  Symbol* decl_sym = lookup_all_decl_sym(proc->proc.name, symtab->active_scope);
+  Symbol* decl_sym = lookup_decl_sym(proc->proc.name, symtab->active_scope);
   if(decl_sym && (decl_sym->scope == symtab->active_scope))
   {
     success = compile_error(proc->src_loc, "name `%s` has already been declared", proc->proc.name);
@@ -1063,11 +1037,10 @@ bool symtab_module_proc(SymbolTable* symtab, AstNode* proc)
   }
   else
   {
-    add_decl_sym(symtab, proc->proc.name, symtab->active_scope, eSymbol_proc, proc);
-    symtab->proc_scope = proc->proc.scope = begin_nested_scope(symtab, eScope_proc, proc);
+    add_decl_sym(symtab, proc->proc.name, symtab->active_scope, proc);
+    proc->proc.scope = begin_nested_scope(symtab, eScope_proc, proc);
     success = symtab_formal_args(symtab, proc->proc.arg_list) && symtab_proc_body(symtab, proc);
     end_nested_scope(symtab);
-    symtab->proc_scope = 0;
   }
   return success;
 }
@@ -1078,7 +1051,7 @@ bool symtab_module_var(SymbolTable* symtab, AstNode* module, AstNode* var)
   assert(KIND(var, eAstNode_var));
   bool success = true;
 
-  Symbol* decl_sym = lookup_all_decl_sym(var->var.name, symtab->active_scope);
+  Symbol* decl_sym = lookup_decl_sym(var->var.name, symtab->active_scope);
   if(decl_sym && (decl_sym->scope == symtab->active_scope))
   {
     success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
@@ -1086,7 +1059,7 @@ bool symtab_module_var(SymbolTable* symtab, AstNode* module, AstNode* var)
   }
   else
   {
-    add_decl_sym(symtab, var->var.name, symtab->active_scope, eSymbol_var, var);
+    add_decl_sym(symtab, var->var.name, symtab->active_scope, var);
   }
   return success;
 }
@@ -2649,7 +2622,7 @@ bool eval_types_id(AstNode* id)
   if(!id->decl_sym)
   {
     assert(!id->id.decl_ast);
-    id->decl_sym = lookup_all_decl_sym(id->id.name, id->occur_sym->scope);
+    id->decl_sym = lookup_decl_sym(id->id.name, id->occur_sym->scope);
     if(id->decl_sym)
     {
       id->id.decl_ast = id->decl_sym->ast_node;
@@ -3683,31 +3656,130 @@ bool check_types_module(AstNode* module)
   return success;
 }
 
+bool gen_ir_expr(MemoryArena* ir_arena, AstNode* expr);
+
+bool gen_ir_bin_expr(MemoryArena* ir_arena, AstNode* bin_expr)
+{
+  assert(KIND(bin_expr, eAstNode_bin_expr));
+  bool success = true;
+
+  AstNode* right_operand = bin_expr->bin_expr.right_operand;
+  AstNode* left_operand = bin_expr->bin_expr.left_operand;
+  eOperator op = bin_expr->bin_expr.op;
+
+  if(success = gen_ir_expr(ir_arena, right_operand) && gen_ir_expr(ir_arena, left_operand))
+  {
+    switch(op)
+    {
+      case eOperator_assign:
+        {
+          //E.place := E1.place;
+        }
+        break;
+    }
+  }
+  return success;
+}
+
+bool gen_ir_expr(MemoryArena* ir_arena, AstNode* expr)
+{
+  bool success = true;
+
+  switch(expr->kind)
+  {
+    case eAstNode_bin_expr:
+      success = gen_ir_bin_expr(ir_arena, expr);
+      break;
+  }
+  return success;
+}
+
+bool gen_ir_block_stmt(MemoryArena* ir_arena, AstNode* stmt)
+{
+  bool success = true;
+
+  switch(stmt->kind)
+  {
+    case eAstNode_bin_expr:
+    case eAstNode_unr_expr:
+    case eAstNode_id:
+    case eAstNode_call:
+    case eAstNode_lit:
+      success = gen_ir_expr(ir_arena, stmt);
+      break;
+
+  }
+  return success;
+}
+
+bool gen_ir_proc(MemoryArena* ir_arena, AstNode* proc)
+{
+  assert(KIND(proc, eAstNode_proc));
+  bool success = true;
+
+  success = gen_ir_block_stmt(ir_arena, proc->proc.body);
+  return success;
+}
+
+bool gen_ir_module_stmt(MemoryArena* ir_arena, AstNode* stmt)
+{
+  bool success = true;
+
+  switch(stmt->kind)
+  {
+    case eAstNode_proc:
+      success = gen_ir_proc(ir_arena, stmt);
+      break;
+  }
+  return success;
+}
+
+bool gen_ir_module(MemoryArena* ir_arena, AstNode* module)
+{
+  assert(KIND(module, eAstNode_module));
+  bool success = true;
+
+  for(ListItem* li = module->module.nodes.first;
+      li && success;
+      li = li->next)
+  {
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
+    success = gen_ir_module_stmt(ir_arena, stmt);
+  }
+  return success;
+}
+
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 {
+  basic_type_bool = new_basic_type(eBasicType_bool);
+  basic_type_int = new_basic_type(eBasicType_int);
+  basic_type_char = new_basic_type(eBasicType_char);
+  basic_type_float = new_basic_type(eBasicType_float);
+  basic_type_void = new_basic_type(eBasicType_void);
+  subst_list = new_list(arena, eList_type_pair);
+
+  SymbolTable* symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
+
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
   get_next_token(&token_stream);
 
   AstNode* module = 0;
-  if(!parse_module(&token_stream, &module))
+  if(!(parse_module(&token_stream, &module) &&
+       symtab_module(symbol_table, module) &&
+       set_types_module(module) && 
+       eval_types_module(module) &&
+       resolve_types_module(module) && 
+       check_types_module(module)))
   {
     return false;
   }
-#if 0
-  if(DEBUG_enabled)/*>>>*/
-  {
-    h_printf("--- Parse ---\n");
-    DEBUG_print_arena_usage(arena, "arena");
 
-    begin_temp_memory(&arena);
-    String str; str_init(&str, arena);
-    DEBUG_print_ast_node(&str, 0, "module", module);
-    str_dump_to_file(&str, "debug_parse.txt");
-    str_cap(&str);
-    end_temp_memory(&arena);
-  }/*<<<*/
-#endif
+  MemoryArena* ir_arena = push_arena(&arena, IR_CODE_ARENA_SIZE);
+  if(!gen_ir_module(ir_arena, module))
+  {
+    return false;
+  }
 
 #if 0
   AstNode* module_body = module->module.body;
@@ -3726,31 +3798,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   }
 #endif
 
-  basic_type_bool = new_basic_type(eBasicType_bool);
-  basic_type_int = new_basic_type(eBasicType_int);
-  basic_type_char = new_basic_type(eBasicType_char);
-  basic_type_float = new_basic_type(eBasicType_float);
-  basic_type_void = new_basic_type(eBasicType_void);
-  subst_list = new_list(arena, eList_type_pair);
-
-  symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
-  if(!symtab_module(symbol_table, module))
-  {
-    return false;
-  }
-  if(!(set_types_module(module) && eval_types_module(module) &&
-       resolve_types_module(module) && check_types_module(module)))
-  {
-    return false;
-  }
-
 #if 0
-  if(!(build_types(module) && eval_types(module)
-      && resolve_types(module) && check_types(module)))
-  {
-    return false;
-  }
-
   for(ListItem* li = symbol_table->scopes->first;
       li;
       li = li->next)

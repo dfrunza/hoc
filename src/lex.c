@@ -339,7 +339,7 @@ char* get_token_printstr(Token* token)
     case eToken_float_val:
       result = token->lexeme;
       break;
-    case eToken_string_val:
+    case eToken_str_val:
       result = token->str_val; // TODO: Substitute non-printable chars
       break;
     case eToken_char_val:
@@ -613,7 +613,7 @@ loop:
     if(success = escaped_string(__FILE__, __LINE__, input, &estr))
     {
       token->str_val = install_escaped_str(&estr);;
-      token->kind = eToken_string_val;
+      token->kind = eToken_str_val;
       input->cursor = ++estr.end;
     }
   }

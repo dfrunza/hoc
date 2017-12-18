@@ -157,7 +157,7 @@ typedef enum
   eToken_id,
   eToken_int_val,
   eToken_float_val,
-  eToken_string_val,
+  eToken_str_val,
   eToken_char_val,
   eToken_asm_text,
 }
@@ -333,7 +333,6 @@ typedef enum
   eLiteral_float,
   eLiteral_bool,
   eLiteral_char,
-  eLiteral_string,
 }
 eLiteral;
 
@@ -506,6 +505,116 @@ typedef struct TypePair
 }
 TypePair;
 
+typedef enum
+{
+  eIrOp_None,
+  eIrOp_add,
+  eIrOp_sub,
+  eIrOp_mul,
+  eIrOp_div,
+  eIrOp_mod,
+  eIrOp_neg,
+  eIrOp_eq,
+  eIrOp_not_eq,
+  eIrOp_less,
+  eIrOp_less_eq,
+  eIrOp_greater,
+  eIrOp_greater_eq,
+  eIrOp_logic_and,
+  eIrOp_logic_or,
+  eIrOp_logic_not,
+  eIrOp_bit_and,
+  eIrOp_bit_or,
+  eIrOp_bit_xor,
+  eIrOp_bit_not,
+  eIrOp_bit_shift_left,
+  eIrOp_bit_shift_right,
+  eIrOp_int_to_float,
+  eIrOp_float_to_int,
+}
+eIrOp;
+
+typedef struct
+{
+  MemoryArena* ir_arena;
+  MemoryArena* sym_arena;
+}
+IrContext;
+
+typedef enum
+{
+  eIrLiteral_int,
+  eIrLiteral_float,
+  eIrLiteral_bool,
+  eIrLiteral_char,
+}
+eIrLiteral;
+
+typedef struct
+{
+  eIrLiteral kind;
+  union
+  {
+    int int_val;
+    float float_val;
+    bool bool_val;
+    char char_val;
+  };
+}
+IrLiteral;
+
+typedef enum
+{
+  eIrArg_None,
+  eIrArg_symbol,
+  eIrArg_const,
+  eIrArg_index,
+  eIrArg_address_of,
+  eIrArg_deref,
+  eIrArg_label,
+}
+eIrArg;
+
+typedef struct
+{
+  eIrArg kind;
+  union
+  {
+    Symbol* sym;
+    IrLiteral lit;
+  };
+}
+IrArg;
+
+typedef enum
+{
+  eIrStmt_None,
+  eIrStmt_assign,
+  eIrStmt_jump,
+  eIrStmt_cond_jump,
+  eIrStmt_call,
+  eIrStmt_param,
+}
+eIrStmt;
+
+typedef struct
+{
+  eIrStmt kind;
+
+  union
+  {
+    struct
+    {
+      eIrOp op;
+      IrArg* arg1;
+      IrArg* arg2;
+      IrArg* result;
+    }
+    assign;
+  };
+}
+IrStmt;
+
 typedef enum 
 {
   eAstNode_None,
@@ -522,6 +631,7 @@ typedef enum
   eAstNode_call,
   eAstNode_basic_type,
   eAstNode_lit,
+  eAstNode_str,
   eAstNode_return,
   eAstNode_if,
   eAstNode_while,
@@ -540,9 +650,8 @@ typedef struct AstNode
   SourceLoc* src_loc;
   Type* ty;
   Type* eval_ty;
-  Symbol* occur_sym;
-  Symbol* decl_sym;
   eModifier modifier;
+  IrArg ir_place;
 
   union
   {
@@ -562,6 +671,8 @@ typedef struct AstNode
     {
       char* name;
       AstNode* decl_ast;
+      Symbol* occur_sym;
+      Symbol* decl_sym;
     }
     id;
 
@@ -634,8 +745,15 @@ typedef struct AstNode
       AstNode* ret_type;
       AstNode* body;
       Scope* scope;
+      Symbol* decl_sym;
     }
     proc;
+
+    struct
+    {
+      char* str_val;
+    }
+    str;
 
     struct
     {
@@ -646,7 +764,6 @@ typedef struct AstNode
         float float_val;
         bool bool_val;
         char char_val;
-        char* str_val;
       };
     }
     lit;
@@ -655,6 +772,7 @@ typedef struct AstNode
     {
       char* name;
       AstNode* type;
+      Symbol* decl_sym;
     }
     var;
 
@@ -721,19 +839,10 @@ Symbol;
 
 typedef struct
 {
-  List* scopes;
+  List scopes;
   Scope* active_scope;
   int nesting_depth;
   MemoryArena* arena;
 }
-SymbolTable;
-
-typedef struct
-{
-  eOperator op;
-  Symbol* arg1;
-  Symbol* arg2;
-  Symbol* result;
-}
-IrStmt;
+SymbolContext;
 

@@ -572,14 +572,11 @@ char* get_type_printstr(Type* type)
   return str_cap(&str);
 }
 
-SymbolTable* new_symbol_table(MemoryArena** arena, int size)
+void init_symbol_context(SymbolContext* sym_context, MemoryArena* sym_arena)
 {
-  MemoryArena* symbol_arena = push_arena(arena, size);
-  SymbolTable* symtab = mem_push_struct(symbol_arena, SymbolTable);
-  symtab->arena = symbol_arena;
-  symtab->nesting_depth = -1;
-  symtab->scopes = new_list(symbol_arena, eList_scope);
-  return symtab;
+  sym_context->arena = sym_arena;
+  sym_context->nesting_depth = -1;
+  init_list(&sym_context->scopes, sym_context->arena, eList_scope);
 }
 
 Scope* find_scope(Scope* active_scope, eScope kind)
@@ -633,63 +630,74 @@ Symbol* lookup_occur_sym(char* name, Scope* scope)
   return result;
 }
 
-Symbol* add_decl_sym(SymbolTable* symtab, char* name, Scope* scope, AstNode* ast_node)
+Symbol* new_temp_sym(MemoryArena* arena, Scope* scope, AstNode* ast_node)
 {
-  Symbol* sym = mem_push_struct(symtab->arena, Symbol);
-  sym->name = name;
+  Symbol* sym = mem_push_struct(arena, Symbol);
+  sym->name = make_temp_name("tmp");
   sym->src_loc = ast_node->src_loc;
-  sym->scope = scope;
   sym->ast_node = ast_node;
+  sym->ty = ast_node->eval_ty;
+  sym->scope = scope;
   sym->order_nr = scope->sym_order_nr++;
-  ast_node->decl_sym = sym;
   append_list_elem(&scope->decls, sym, eList_symbol);
   return sym;
 }
 
-Symbol* add_occur_sym(SymbolTable* symtab, char* name, Scope* scope, AstNode* ast_node)
+Symbol* add_decl_sym(MemoryArena* arena, char* name, Scope* scope, AstNode* ast_node)
 {
-  Symbol* sym = mem_push_struct(symtab->arena, Symbol);
+  Symbol* sym = mem_push_struct(arena, Symbol);
   sym->name = name;
   sym->src_loc = ast_node->src_loc;
   sym->scope = scope;
   sym->ast_node = ast_node;
   sym->order_nr = scope->sym_order_nr++;
-  ast_node->occur_sym = sym;
+  append_list_elem(&scope->decls, sym, eList_symbol);
+  return sym;
+}
+
+Symbol* add_occur_sym(MemoryArena* arena, char* name, Scope* scope, AstNode* ast_node)
+{
+  Symbol* sym = mem_push_struct(arena, Symbol);
+  sym->name = name;
+  sym->src_loc = ast_node->src_loc;
+  sym->scope = scope;
+  sym->ast_node = ast_node;
+  sym->order_nr = scope->sym_order_nr++;
   append_list_elem(&scope->occurs, sym, eList_symbol);
   return sym;
 }
 
-Scope* begin_scope(SymbolTable* symtab, eScope kind, AstNode* ast_node)
+Scope* begin_scope(SymbolContext* sym_context, eScope kind, AstNode* ast_node)
 {
-  Scope* scope = mem_push_struct(symtab->arena, Scope);
+  Scope* scope = mem_push_struct(sym_context->arena, Scope);
   scope->kind = kind;
-  scope->nesting_depth = symtab->nesting_depth;
+  scope->nesting_depth = sym_context->nesting_depth;
   scope->sym_order_nr = 0;
-  scope->encl_scope = symtab->active_scope;
+  scope->encl_scope = sym_context->active_scope;
   scope->ast_node = ast_node;
   init_list(&scope->decls, arena, eList_symbol);
   init_list(&scope->occurs, arena, eList_symbol);
-  symtab->active_scope = scope;
-  append_list_elem(symtab->scopes, scope, eList_scope);
+  sym_context->active_scope = scope;
+  append_list_elem(&sym_context->scopes, scope, eList_scope);
   return scope;
 }
 
-void end_scope(SymbolTable* symtab)
+void end_scope(SymbolContext* sym_context)
 {
-  Scope* scope = symtab->active_scope;
-  symtab->active_scope = scope->encl_scope;
+  Scope* scope = sym_context->active_scope;
+  sym_context->active_scope = scope->encl_scope;
 }
 
-Scope* begin_nested_scope(SymbolTable* symtab, eScope kind, AstNode* ast_node)
+Scope* begin_nested_scope(SymbolContext* sym_context, eScope kind, AstNode* ast_node)
 {
-  symtab->nesting_depth++;
-  return begin_scope(symtab, kind, ast_node);
+  sym_context->nesting_depth++;
+  return begin_scope(sym_context, kind, ast_node);
 }
 
-void end_nested_scope(SymbolTable* symtab)
+void end_nested_scope(SymbolContext* sym_context)
 {
-  end_scope(symtab);
-  symtab->nesting_depth--;
+  end_scope(sym_context);
+  sym_context->nesting_depth--;
 }
 
 
@@ -714,9 +722,9 @@ void process_includes(List* include_list, List* module_list, ListItem* module_li
 }
 #endif
 
-bool symtab_expr(SymbolTable* symtab, AstNode* block, AstNode* expr);
+bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr);
 
-bool symtab_formal_arg(SymbolTable* symtab, Scope* proc_scope, AstNode* arg)
+bool sym_formal_arg(SymbolContext* sym_context, Scope* proc_scope, AstNode* arg)
 {
   assert(KIND(arg, eAstNode_var));
   bool success = true;
@@ -729,61 +737,61 @@ bool symtab_formal_arg(SymbolTable* symtab, Scope* proc_scope, AstNode* arg)
   }
   else
   {
-    add_decl_sym(symtab, arg->var.name, proc_scope, arg);
+    arg->var.decl_sym = add_decl_sym(sym_context->arena, arg->var.name, proc_scope, arg);
   }
   return success;
 }
 
-bool symtab_var(SymbolTable* symtab, AstNode* block, AstNode* var)
+bool sym_var(SymbolContext* sym_context, AstNode* block, AstNode* var)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(var, eAstNode_var));
   bool success = true;
 
-  Symbol* decl_sym = lookup_decl_sym(var->var.name, symtab->active_scope);
-  Scope* proc_scope = find_scope(symtab->active_scope, eScope_proc);
-  if(decl_sym && (decl_sym->scope == symtab->active_scope || decl_sym->scope == proc_scope))
+  Symbol* decl_sym = lookup_decl_sym(var->var.name, sym_context->active_scope);
+  Scope* proc_scope = find_scope(sym_context->active_scope, eScope_proc);
+  if(decl_sym && (decl_sym->scope == sym_context->active_scope || decl_sym->scope == proc_scope))
   {
     success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
     compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
   }
   else
   {
-    add_decl_sym(symtab, var->var.name, symtab->active_scope, var);
+    var->var.decl_sym = add_decl_sym(sym_context->arena, var->var.name, sym_context->active_scope, var);
   }
   return success;
 }
 
-bool symtab_id(SymbolTable* symtab, AstNode* block, AstNode* id)
+bool sym_id(SymbolContext* sym_context, AstNode* block, AstNode* id)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(id, eAstNode_id));
   bool success = true;
-  add_occur_sym(symtab, id->id.name, symtab->active_scope, id);
+  id->id.occur_sym = add_occur_sym(sym_context->arena, id->id.name, sym_context->active_scope, id);
   return success;
 }
 
-bool symtab_bin_expr(SymbolTable* symtab, AstNode* block, AstNode* bin_expr)
+bool sym_bin_expr(SymbolContext* sym_context, AstNode* block, AstNode* bin_expr)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
 
-  success = symtab_expr(symtab, block, bin_expr->bin_expr.left_operand)
-    && symtab_expr(symtab, block, bin_expr->bin_expr.right_operand);
+  success = sym_expr(sym_context, block, bin_expr->bin_expr.left_operand)
+    && sym_expr(sym_context, block, bin_expr->bin_expr.right_operand);
   return success;
 }
 
-bool symtab_unr_expr(SymbolTable* symtab, AstNode* block, AstNode* unr_expr)
+bool sym_unr_expr(SymbolContext* sym_context, AstNode* block, AstNode* unr_expr)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
-  success = symtab_expr(symtab, block, unr_expr->unr_expr.operand);
+  success = sym_expr(sym_context, block, unr_expr->unr_expr.operand);
   return success;
 }
 
-bool symtab_actual_args(SymbolTable* symtab, AstNode* block, AstNode* arg_list)
+bool sym_actual_args(SymbolContext* sym_context, AstNode* block, AstNode* arg_list)
 {
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
@@ -793,12 +801,12 @@ bool symtab_actual_args(SymbolTable* symtab, AstNode* block, AstNode* arg_list)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = symtab_expr(symtab, block, arg);
+    success = sym_expr(sym_context, block, arg);
   }
   return success;
 }
 
-bool symtab_call(SymbolTable* symtab, AstNode* block, AstNode* call)
+bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(call, eAstNode_call));
@@ -809,15 +817,15 @@ bool symtab_call(SymbolTable* symtab, AstNode* block, AstNode* call)
   if(call_expr->kind == eAstNode_id)
   {
     AstNode* id = call->call.expr;
-    add_occur_sym(symtab, id->id.name, symtab->active_scope, id);
-    success = symtab_expr(symtab, block, call_expr) && symtab_actual_args(symtab, block, arg_list);
+    id->id.decl_sym = add_occur_sym(sym_context->arena, id->id.name, sym_context->active_scope, id);
+    success = sym_expr(sym_context, block, call_expr) && sym_actual_args(sym_context, block, arg_list);
   }
   else
     success = compile_error(call->src_loc, "unsupported call expr");
   return success;
 }
 
-bool symtab_expr(SymbolTable* symtab, AstNode* block, AstNode* expr)
+bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -825,16 +833,16 @@ bool symtab_expr(SymbolTable* symtab, AstNode* block, AstNode* expr)
   switch(expr->kind)
   {
     case eAstNode_bin_expr:
-      success = symtab_bin_expr(symtab, block, expr);
+      success = sym_bin_expr(sym_context, block, expr);
       break;
     case eAstNode_unr_expr:
-      success = symtab_unr_expr(symtab, block, expr);
+      success = sym_unr_expr(sym_context, block, expr);
       break;
     case eAstNode_id:
-      success = symtab_id(symtab, block, expr);
+      success = sym_id(sym_context, block, expr);
       break;
     case eAstNode_call:
-      success = symtab_call(symtab, block, expr);
+      success = sym_call(sym_context, block, expr);
       break;
     case eAstNode_basic_type:
     case eAstNode_lit:
@@ -845,46 +853,46 @@ bool symtab_expr(SymbolTable* symtab, AstNode* block, AstNode* expr)
   return success;
 }
 
-bool symtab_block(SymbolTable* symtab, AstNode* block);
-bool symtab_block_stmt(SymbolTable* symtab, AstNode* block, AstNode* stmt);
+bool sym_block(SymbolContext* sym_context, AstNode* block);
+bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt);
 
-bool symtab_if(SymbolTable* symtab, AstNode* block, AstNode* if_)
+bool sym_if(SymbolContext* sym_context, AstNode* block, AstNode* if_)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(if_, eAstNode_if));
   bool success = true;
 
-  if(success = symtab_expr(symtab, block, if_->if_.cond_expr) && symtab_block_stmt(symtab, block, if_->if_.body))
+  if(success = sym_expr(sym_context, block, if_->if_.cond_expr) && sym_block_stmt(sym_context, block, if_->if_.body))
   {
     if(success && if_->if_.else_body)
     {
-      success = symtab_block_stmt(symtab, block, if_->if_.else_body);
+      success = sym_block_stmt(sym_context, block, if_->if_.else_body);
     }
   }
   return success;
 }
 
-bool symtab_while(SymbolTable* symtab, AstNode* block, AstNode* while_)
+bool sym_while(SymbolContext* sym_context, AstNode* block, AstNode* while_)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(while_, eAstNode_while));
   bool success = true;
 
-  if(success = symtab_expr(symtab, block, while_->while_.cond_expr))
+  if(success = sym_expr(sym_context, block, while_->while_.cond_expr))
   {
-    while_->while_.scope = begin_nested_scope(symtab, eScope_while, while_);
-    success = symtab_block_stmt(symtab, block, while_->while_.body);
-    end_nested_scope(symtab);
+    while_->while_.scope = begin_nested_scope(sym_context, eScope_while, while_);
+    success = sym_block_stmt(sym_context, block, while_->while_.body);
+    end_nested_scope(sym_context);
   }
   return success;
 }
 
-bool symtab_loop_ctrl(SymbolTable* symtab, AstNode* block, AstNode* stmt)
+bool sym_loop_ctrl(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
 
-  Scope* loop_scope = find_scope(symtab->active_scope, eScope_while);
+  Scope* loop_scope = find_scope(sym_context->active_scope, eScope_while);
   if(loop_scope)
   {
     stmt->loop_ctrl.loop = loop_scope->ast_node;
@@ -903,24 +911,24 @@ bool symtab_loop_ctrl(SymbolTable* symtab, AstNode* block, AstNode* stmt)
   return success;
 }
 
-bool symtab_return(SymbolTable* symtab, AstNode* block, AstNode* ret)
+bool sym_return(SymbolContext* sym_context, AstNode* block, AstNode* ret)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(ret, eAstNode_return));
   bool success = true;
 
-  Scope* proc_scope = find_scope(symtab->active_scope, eScope_proc);
+  Scope* proc_scope = find_scope(sym_context->active_scope, eScope_proc);
   if(proc_scope)
   {
     ret->ret.proc = proc_scope->ast_node;
-    success = symtab_expr(symtab, block, ret->ret.expr);
+    success = sym_expr(sym_context, block, ret->ret.expr);
   }
   else
     success = compile_error(ret->src_loc, "unexpected `return`");
   return success;
 }
 
-bool symtab_block_stmt(SymbolTable* symtab, AstNode* block, AstNode* stmt)
+bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -928,19 +936,19 @@ bool symtab_block_stmt(SymbolTable* symtab, AstNode* block, AstNode* stmt)
   switch(stmt->kind)
   {
     case eAstNode_var:
-      success = symtab_var(symtab, block, stmt);
+      success = sym_var(sym_context, block, stmt);
       break;
     case eAstNode_if:
-      success = symtab_if(symtab, block, stmt);
+      success = sym_if(sym_context, block, stmt);
       break;
     case eAstNode_while:
-      success = symtab_while(symtab, block, stmt);
+      success = sym_while(sym_context, block, stmt);
       break;
     case eAstNode_block:
       {
-        stmt->block.scope = begin_nested_scope(symtab, eScope_block, stmt);
-        success = symtab_block(symtab, stmt);
-        end_nested_scope(symtab);
+        stmt->block.scope = begin_nested_scope(sym_context, eScope_block, stmt);
+        success = sym_block(sym_context, stmt);
+        end_nested_scope(sym_context);
       }
       break;
     case eAstNode_bin_expr:
@@ -948,13 +956,13 @@ bool symtab_block_stmt(SymbolTable* symtab, AstNode* block, AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
-      success = symtab_expr(symtab, block, stmt);
+      success = sym_expr(sym_context, block, stmt);
       break;
     case eAstNode_loop_ctrl:
-      success = symtab_loop_ctrl(symtab, block, stmt);
+      success = sym_loop_ctrl(sym_context, block, stmt);
       break;
     case eAstNode_return:
-      success = symtab_return(symtab, block, stmt);
+      success = sym_return(sym_context, block, stmt);
       break;
     case eAstNode_basic_type:
     case eAstNode_empty:
@@ -965,7 +973,7 @@ bool symtab_block_stmt(SymbolTable* symtab, AstNode* block, AstNode* stmt)
   return success;
 }
 
-bool symtab_block(SymbolTable* symtab, AstNode* block)
+bool sym_block(SymbolContext* sym_context, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -975,12 +983,12 @@ bool symtab_block(SymbolTable* symtab, AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = symtab_block_stmt(symtab, block, stmt);
+    success = sym_block_stmt(sym_context, block, stmt);
   }
   return success;
 }
 
-bool symtab_proc_body(SymbolTable* symtab, AstNode* proc)
+bool sym_proc_body(SymbolContext* sym_context, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
@@ -996,9 +1004,9 @@ bool symtab_proc_body(SymbolTable* symtab, AstNode* proc)
   {
     if(body->kind == eAstNode_block)
     {
-      begin_scope(symtab, eScope_block, body);
-      success = symtab_block(symtab, body);
-      end_scope(symtab);
+      body->block.scope = begin_scope(sym_context, eScope_block, body);
+      success = sym_block(sym_context, body);
+      end_scope(sym_context);
     }
     else if(body->kind == eAstNode_empty)
       success = compile_error(proc->src_loc, "proc `%s` must define a body", proc->proc.name);
@@ -1008,68 +1016,68 @@ bool symtab_proc_body(SymbolTable* symtab, AstNode* proc)
   return success;
 }
 
-bool symtab_formal_args(SymbolTable* symtab, AstNode* arg_list)
+bool sym_formal_args(SymbolContext* sym_context, AstNode* arg_list)
 {
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  Scope* proc_scope = find_scope(symtab->active_scope, eScope_proc);
+  Scope* proc_scope = find_scope(sym_context->active_scope, eScope_proc);
   for(ListItem* li = arg_list->arg_list.args.first;
       li && success;
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = symtab_formal_arg(symtab, proc_scope, arg);
+    success = sym_formal_arg(sym_context, proc_scope, arg);
   }
   return success;
 }
 
-bool symtab_module_proc(SymbolTable* symtab, AstNode* proc)
+bool sym_module_proc(SymbolContext* sym_context, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
-  Symbol* decl_sym = lookup_decl_sym(proc->proc.name, symtab->active_scope);
-  if(decl_sym && (decl_sym->scope == symtab->active_scope))
+  Symbol* decl_sym = lookup_decl_sym(proc->proc.name, sym_context->active_scope);
+  if(decl_sym && (decl_sym->scope == sym_context->active_scope))
   {
     success = compile_error(proc->src_loc, "name `%s` has already been declared", proc->proc.name);
     compile_error(decl_sym->src_loc, "see the declaration of `%s`", proc->proc.name);
   }
   else
   {
-    add_decl_sym(symtab, proc->proc.name, symtab->active_scope, proc);
-    proc->proc.scope = begin_nested_scope(symtab, eScope_proc, proc);
-    success = symtab_formal_args(symtab, proc->proc.arg_list) && symtab_proc_body(symtab, proc);
-    end_nested_scope(symtab);
+    proc->proc.decl_sym = add_decl_sym(sym_context->arena, proc->proc.name, sym_context->active_scope, proc);
+    proc->proc.scope = begin_nested_scope(sym_context, eScope_proc, proc);
+    success = sym_formal_args(sym_context, proc->proc.arg_list) && sym_proc_body(sym_context, proc);
+    end_nested_scope(sym_context);
   }
   return success;
 }
 
-bool symtab_module_var(SymbolTable* symtab, AstNode* module, AstNode* var)
+bool sym_module_var(SymbolContext* sym_context, AstNode* module, AstNode* var)
 {
   assert(KIND(module, eAstNode_module));
   assert(KIND(var, eAstNode_var));
   bool success = true;
 
-  Symbol* decl_sym = lookup_decl_sym(var->var.name, symtab->active_scope);
-  if(decl_sym && (decl_sym->scope == symtab->active_scope))
+  Symbol* decl_sym = lookup_decl_sym(var->var.name, sym_context->active_scope);
+  if(decl_sym && (decl_sym->scope == sym_context->active_scope))
   {
     success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
     compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
   }
   else
   {
-    add_decl_sym(symtab, var->var.name, symtab->active_scope, var);
+    var->var.decl_sym = add_decl_sym(sym_context->arena, var->var.name, sym_context->active_scope, var);
   }
   return success;
 }
 
-bool symtab_module(SymbolTable* symtab, AstNode* module)
+bool sym_module(SymbolContext* sym_context, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
 
-  module->module.scope = begin_nested_scope(symtab, eScope_module, module);
+  module->module.scope = begin_nested_scope(sym_context, eScope_module, module);
 
   for(ListItem* li = module->module.nodes.first;
       li && success;
@@ -1079,10 +1087,10 @@ bool symtab_module(SymbolTable* symtab, AstNode* module)
     switch(stmt->kind)
     {
       case eAstNode_var:
-        success = symtab_module_var(symtab, module, stmt);
+        success = sym_module_var(sym_context, module, stmt);
         break;
       case eAstNode_proc:
-        success = symtab_module_proc(symtab, stmt);
+        success = sym_module_proc(sym_context, stmt);
         break;
       case eAstNode_include:
         break;
@@ -1090,29 +1098,9 @@ bool symtab_module(SymbolTable* symtab, AstNode* module)
         assert(0);
     }
   }
-  end_nested_scope(symtab);
-  assert(symtab->active_scope == 0);
-  assert(symtab->nesting_depth == -1);
-  return success;
-}
-
-bool resolve_types_of_node(AstNode* node)
-{
-  bool success = true;
-
-  if(success = resolve_type(node->ty, &node->ty))
-  {
-    compute_type_width(node->ty);
-    if(success = resolve_type(node->eval_ty, &node->eval_ty))
-    {
-      compute_type_width(node->eval_ty);
-    }
-    else
-      assert(0);
-  }
-  else
-    success = compile_error(node->src_loc, "type error (unresolved type)");
-
+  end_nested_scope(sym_context);
+  assert(sym_context->active_scope == 0);
+  assert(sym_context->nesting_depth == -1);
   return success;
 }
 
@@ -2018,6 +2006,8 @@ bool gen_x86(String* code, AstNode* node)
 }
 #endif
 
+/*------------------       SET TYPES       -------------------- */
+
 bool set_types_expr(AstNode* expr);
 
 bool set_types_type(AstNode* type)
@@ -2197,6 +2187,14 @@ bool set_types_call(AstNode* call)
   return success;
 }
 
+bool set_types_str(AstNode* str)
+{
+  assert(KIND(str, eAstNode_str));
+  bool success = true;
+  str->ty = str->eval_ty = new_array_type(0, basic_type_char);
+  return success;
+}
+
 bool set_types_lit(AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
@@ -2216,9 +2214,6 @@ bool set_types_lit(AstNode* lit)
       break;
     case eLiteral_bool:
       ty = basic_type_bool;
-      break;
-    case eLiteral_string:
-      ty = new_array_type(0, basic_type_char);
       break;
     default:
       assert(0);
@@ -2251,6 +2246,8 @@ bool set_types_expr(AstNode* expr)
     case eAstNode_basic_type:
       success = set_types_type(expr);
       break;
+    case eAstNode_str:
+      success = set_types_str(expr);
     default:
       assert(0);
   }
@@ -2476,6 +2473,8 @@ bool set_types_module(AstNode* module)
   return success;
 }
 
+/*------------------       EVAL TYPES       -------------------- */
+
 bool eval_types_type(AstNode* type)
 {
   bool success = true;
@@ -2619,14 +2618,14 @@ bool eval_types_id(AstNode* id)
   assert(KIND(id, eAstNode_id));
   bool success = true;
 
-  if(!id->decl_sym)
+  if(!id->id.decl_sym)
   {
     assert(!id->id.decl_ast);
-    id->decl_sym = lookup_decl_sym(id->id.name, id->occur_sym->scope);
-    if(id->decl_sym)
+    id->id.decl_sym = lookup_decl_sym(id->id.name, id->id.occur_sym->scope);
+    if(id->id.decl_sym)
     {
-      id->id.decl_ast = id->decl_sym->ast_node;
-      id->occur_sym->decl_sym = id->decl_sym;
+      id->id.decl_ast = id->id.decl_sym->ast_node;
+      id->id.occur_sym->decl_sym = id->id.decl_sym;
     }
     else
       success = compile_error(id->src_loc, "unknown id `%s`", id->id.name);
@@ -2639,7 +2638,7 @@ bool eval_types_id(AstNode* id)
       switch(decl_ast->ty->kind)
       {
         case eType_var:
-          if((id->decl_sym->scope == id->occur_sym->scope) && (id->decl_sym->order_nr > id->occur_sym->order_nr))
+          if((id->id.decl_sym->scope == id->id.occur_sym->scope) && (id->id.decl_sym->order_nr > id->id.occur_sym->order_nr))
           {
             success = compile_error(id->src_loc, "var `%s` must be declared before its use", id->id.name);
           }
@@ -2679,7 +2678,7 @@ bool eval_types_unr_expr(AstNode* unr_expr)
 
   if(success = eval_types_expr(operand))
   {
-    switch(unr_expr->unr_expr.op)
+    switch(op)
     {
       case eOperator_neg:
       case eOperator_logic_not:
@@ -2975,6 +2974,28 @@ bool eval_types_module(AstNode* module)
   return success;
 }
 
+/*------------------       RESOLVE TYPES       -------------------- */
+
+bool resolve_types_of_node(AstNode* node)
+{
+  bool success = true;
+
+  if(success = resolve_type(node->ty, &node->ty))
+  {
+    compute_type_width(node->ty);
+    if(success = resolve_type(node->eval_ty, &node->eval_ty))
+    {
+      compute_type_width(node->eval_ty);
+    }
+    else
+      success = compile_error(node->src_loc, "type error (unresolved type)");
+  }
+  else
+    success = compile_error(node->src_loc, "type error (unresolved type)");
+
+  return success;
+}
+
 bool resolve_types_var(AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
@@ -2982,7 +3003,7 @@ bool resolve_types_var(AstNode* var)
 
   if(success = resolve_types_of_node(var))
   {
-    var->decl_sym->ty = var->ty;
+    var->var.decl_sym->ty = var->ty;
   }
   return success;
 }
@@ -3032,7 +3053,7 @@ bool resolve_types_id(AstNode* id)
   bool success = true;
   if(success = resolve_types_of_node(id))
   {
-    id->occur_sym->ty = id->ty;
+    id->id.occur_sym->ty = id->ty;
   }
   return success;
 }
@@ -3223,7 +3244,7 @@ bool resolve_types_proc(AstNode* proc)
   if(success = resolve_types_formal_args(proc->proc.arg_list) && resolve_types_type(proc->proc.ret_type)
     && resolve_types_block_stmt(proc->proc.body) && resolve_types_of_node(proc))
   {
-    proc->decl_sym->ty = proc->ty;
+    proc->proc.decl_sym->ty = proc->ty;
   }
   return success;
 }
@@ -3261,6 +3282,8 @@ bool resolve_types_module(AstNode* module)
   }
   return success;
 }
+
+/*------------------       CHECK TYPES       -------------------- */
 
 bool check_types_var(AstNode* var)
 {
@@ -3656,9 +3679,83 @@ bool check_types_module(AstNode* module)
   return success;
 }
 
-bool gen_ir_expr(MemoryArena* ir_arena, AstNode* expr);
+/*------------------       IR       -------------------- */
+eIrOp conv_operator_to_ir_op(eOperator op)
+{
+  eIrOp ir_op = eIrOp_None;
+  switch(op)
+  {
+    case eOperator_add:
+      ir_op = eIrOp_add;
+      break;
+    case eOperator_sub:
+      ir_op = eIrOp_sub;
+      break;
+    case eOperator_mul:
+      ir_op = eIrOp_mul;
+      break;
+    case eOperator_div:
+      ir_op = eIrOp_div;
+      break;
+    case eOperator_mod:
+      ir_op = eIrOp_mod;
+      break;
+    case eOperator_neg:
+      ir_op = eIrOp_neg;
+      break;
+    case eOperator_bit_and:
+      ir_op = eIrOp_bit_and;
+      break;
+    case eOperator_bit_or:
+      ir_op = eIrOp_bit_or;
+      break;
+    case eOperator_bit_xor:
+      ir_op = eIrOp_bit_xor;
+      break;
+    case eOperator_bit_shift_left:
+      ir_op = eIrOp_bit_shift_left;
+      break;
+    case eOperator_bit_shift_right:
+      ir_op = eIrOp_bit_shift_right;
+      break;
+    case eOperator_less:
+      ir_op = eIrOp_less;
+      break;
+    case eOperator_less_eq:
+      ir_op = eIrOp_less_eq;
+      break;
+    case eOperator_greater:
+      ir_op = eIrOp_greater;
+      break;
+    case eOperator_greater_eq:
+      ir_op = eIrOp_greater_eq;
+      break;
+    case eOperator_eq:
+      ir_op = eIrOp_eq;
+      break;
+    case eOperator_not_eq:
+      ir_op = eIrOp_not_eq;
+      break;
+    default:
+      assert(0);
+  }
+  return ir_op;
+}
 
-bool gen_ir_bin_expr(MemoryArena* ir_arena, AstNode* bin_expr)
+void ir_emit_assign(MemoryArena* ir_arena, eOperator op, IrArg* arg1, IrArg* arg2, IrArg* result)
+{
+  IrStmt* ir_stmt = mem_push_struct(ir_arena, IrStmt);
+  ir_stmt->kind = eIrStmt_assign;
+  ir_stmt->assign.op = op;
+  ir_stmt->assign.arg1 = arg1;
+  ir_stmt->assign.arg2 = arg2;
+  ir_stmt->assign.result = result;
+}
+
+bool gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr);
+bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt);
+
+bool gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
@@ -3667,13 +3764,77 @@ bool gen_ir_bin_expr(MemoryArena* ir_arena, AstNode* bin_expr)
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   eOperator op = bin_expr->bin_expr.op;
 
-  if(success = gen_ir_expr(ir_arena, right_operand) && gen_ir_expr(ir_arena, left_operand))
+  if(success = gen_ir_expr(ir_context, scope, right_operand) && gen_ir_expr(ir_context, scope, left_operand))
   {
     switch(op)
     {
       case eOperator_assign:
         {
-          //E.place := E1.place;
+          if(left_operand->kind == eAstNode_id)
+          {
+            ir_emit_assign(ir_context->ir_arena, eIrOp_None, &right_operand->ir_place, 0, &left_operand->ir_place);
+          }
+          else
+            fail("I'm a meat popsicle");
+        }
+        break;
+
+      case eOperator_add:
+      case eOperator_sub:
+      case eOperator_mul:
+      case eOperator_div:
+      case eOperator_mod:
+      case eOperator_bit_and:
+      case eOperator_bit_or:
+      case eOperator_bit_xor:
+      case eOperator_bit_shift_left:
+      case eOperator_bit_shift_right:
+      case eOperator_less:
+      case eOperator_less_eq:
+      case eOperator_greater:
+      case eOperator_greater_eq:
+      case eOperator_eq:
+      case eOperator_not_eq:
+        {
+          bin_expr->ir_place.kind = eIrArg_symbol;
+          bin_expr->ir_place.sym = new_temp_sym(ir_context->sym_arena, scope, bin_expr);
+          ir_emit_assign(ir_context->ir_arena, conv_operator_to_ir_op(op), &left_operand->ir_place, &right_operand->ir_place, &bin_expr->ir_place);
+        }
+        break;
+
+      default:
+        assert(0);
+    }
+  }
+  return success;
+}
+
+bool gen_ir_id(IrContext* ir_context, Scope* scope, AstNode* id)
+{
+  assert(KIND(id, eAstNode_id));
+  bool success = true;
+  id->ir_place.kind = eIrArg_symbol;
+  id->ir_place.sym = id->id.decl_sym;
+  return success;
+}
+
+bool gen_ir_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
+{
+  assert(KIND(unr_expr, eAstNode_unr_expr));
+  bool success = true;
+
+  AstNode* operand = unr_expr->unr_expr.operand;
+  eOperator op = unr_expr->unr_expr.op;
+
+  if(success = gen_ir_expr(ir_context, scope, operand))
+  {
+    switch(op)
+    {
+      case eOperator_neg:
+        {
+          unr_expr->ir_place.kind = eIrArg_symbol;
+          unr_expr->ir_place.sym = new_temp_sym(ir_context->sym_arena, scope, unr_expr);
+          ir_emit_assign(ir_context->ir_arena, conv_operator_to_ir_op(op), &operand->ir_place, 0, &unr_expr->ir_place);
         }
         break;
     }
@@ -3681,20 +3842,41 @@ bool gen_ir_bin_expr(MemoryArena* ir_arena, AstNode* bin_expr)
   return success;
 }
 
-bool gen_ir_expr(MemoryArena* ir_arena, AstNode* expr)
+bool gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
 {
   bool success = true;
 
   switch(expr->kind)
   {
     case eAstNode_bin_expr:
-      success = gen_ir_bin_expr(ir_arena, expr);
+      success = gen_ir_bin_expr(ir_context, scope, expr);
+      break;
+    case eAstNode_unr_expr:
+      success = gen_ir_unr_expr(ir_context, scope, expr);
+      break;
+    case eAstNode_id:
+      success = gen_ir_id(ir_context, scope, expr);
       break;
   }
   return success;
 }
 
-bool gen_ir_block_stmt(MemoryArena* ir_arena, AstNode* stmt)
+bool gen_ir_block(IrContext* ir_context, Scope* scope, AstNode* block)
+{
+  assert(KIND(block, eAstNode_block));
+  bool success = true;
+
+  for(ListItem* li = block->block.nodes.first;
+      li && success;
+      li = li->next)
+  {
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
+    success = gen_ir_block_stmt(ir_context, scope, stmt);
+  }
+  return success;
+}
+
+bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 {
   bool success = true;
 
@@ -3705,36 +3887,39 @@ bool gen_ir_block_stmt(MemoryArena* ir_arena, AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
-      success = gen_ir_expr(ir_arena, stmt);
+      success = gen_ir_expr(ir_context, scope, stmt);
       break;
 
+    case eAstNode_block:
+      success = gen_ir_block(ir_context, stmt->block.scope, stmt);
+      break;
   }
   return success;
 }
 
-bool gen_ir_proc(MemoryArena* ir_arena, AstNode* proc)
+bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
-  success = gen_ir_block_stmt(ir_arena, proc->proc.body);
+  success = gen_ir_block_stmt(ir_context, proc->proc.scope, proc->proc.body);
   return success;
 }
 
-bool gen_ir_module_stmt(MemoryArena* ir_arena, AstNode* stmt)
+bool gen_ir_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 {
   bool success = true;
 
   switch(stmt->kind)
   {
     case eAstNode_proc:
-      success = gen_ir_proc(ir_arena, stmt);
+      success = gen_ir_proc(ir_context, scope, stmt);
       break;
   }
   return success;
 }
 
-bool gen_ir_module(MemoryArena* ir_arena, AstNode* module)
+bool gen_ir_module(IrContext* ir_context, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
@@ -3744,7 +3929,7 @@ bool gen_ir_module(MemoryArena* ir_arena, AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = gen_ir_module_stmt(ir_arena, stmt);
+    success = gen_ir_module_stmt(ir_context, module->module.scope, stmt);
   }
   return success;
 }
@@ -3758,7 +3943,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   basic_type_void = new_basic_type(eBasicType_void);
   subst_list = new_list(arena, eList_type_pair);
 
-  SymbolTable* symbol_table = new_symbol_table(&arena, SYMBOL_ARENA_SIZE);
+  SymbolContext sym_context = {0};
+  init_symbol_context(&sym_context, push_arena(&arena, SYMBOL_ARENA_SIZE));
 
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
@@ -3766,7 +3952,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 
   AstNode* module = 0;
   if(!(parse_module(&token_stream, &module) &&
-       symtab_module(symbol_table, module) &&
+       sym_module(&sym_context, module) &&
        set_types_module(module) && 
        eval_types_module(module) &&
        resolve_types_module(module) && 
@@ -3775,8 +3961,10 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     return false;
   }
 
-  MemoryArena* ir_arena = push_arena(&arena, IR_CODE_ARENA_SIZE);
-  if(!gen_ir_module(ir_arena, module))
+  IrContext ir_context = {0};
+  ir_context.ir_arena = push_arena(&arena, IR_CODE_ARENA_SIZE);
+  ir_context.sym_arena = sym_context.arena;
+  if(!gen_ir_module(&ir_context, module))
   {
     return false;
   }

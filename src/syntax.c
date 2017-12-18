@@ -732,7 +732,6 @@ bool parse_selector(TokenStream* input, AstNode** node)
     case eToken_false:
     case eToken_int_val:
     case eToken_float_val:
-    case eToken_string_val:
     case eToken_char_val:
       {
         AstNode* lit = *node = new_ast_node(eAstNode_lit, clone_source_loc(&input->src_loc));
@@ -756,13 +755,17 @@ bool parse_selector(TokenStream* input, AstNode** node)
             lit->lit.kind = eLiteral_char;
             lit->lit.char_val = input->token.char_val;
             break;
-          case eToken_string_val:
-            lit->lit.kind = eLiteral_string;
-            lit->lit.str_val = input->token.str_val;
-            break;
           default:
             assert(0);
         }
+        success = get_next_token(input);
+      }
+      break;
+
+    case eToken_str_val:
+      {
+        AstNode* str = *node = new_ast_node(eAstNode_str, clone_source_loc(&input->src_loc));
+        str->str.str_val = input->token.str_val;
         success = get_next_token(input);
       }
       break;
@@ -1416,7 +1419,7 @@ bool parse_module_stmt(TokenStream* input, AstNode** node)
       if(success = get_next_token(input))
       {
         AstNode* include = *node = new_ast_node(eAstNode_include, clone_source_loc(&input->src_loc));
-        if(input->token.kind == eToken_string_val)
+        if(input->token.kind == eToken_str_val)
         {
           include->include.file_path = input->token.str_val;
           success = get_next_token(input) && consume_semicolon(input);

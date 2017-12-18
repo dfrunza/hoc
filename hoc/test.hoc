@@ -1,6 +1,5 @@
 void main()
 {
-  []int^ id;
   int a;
-  a = ^id[0];
+  a = -2;
 }

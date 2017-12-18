@@ -182,11 +182,10 @@ int fp_bin_to_dec(float v, int^ significand, int^ exponent)
 
   int k; k = 0;
   float R; R = v_prime;
-  float M; M = ipow(2.0, -23) / 2.0; /* -23 is the width of the significand of single precision binary FP */
+  float M; M = ipow(2.0, -23) / 2.0; /* 23 is the width of the significand of single precision binary FP */
   int U;
 
-  bool run_loop;
-  run_loop = true;
+  bool run_loop; run_loop = true;
   while(run_loop)
   {
     k = k + 1;

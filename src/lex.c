@@ -352,16 +352,16 @@ char* get_token_printstr(Token* token)
   return result;
 }
 
-void init_token_stream(TokenStream* stream, char* text, char* file_path)
+void init_token_stream(TokenStream* input, char* text, char* file_path)
 {
-  stream->text = text;
-  stream->cursor = stream->text;
-  SourceLoc* src_loc = &stream->src_loc;
+  input->text = text;
+  input->cursor = input->text;
+  SourceLoc* src_loc = &input->src_loc;
   src_loc->line_nr = 1;
   /* TODO: Compute the absolute path to the file, so that Vim could properly
      jump from the QuickFix window to the error line in the file. */
   src_loc->file_path = file_path;
-  stream->last_state = mem_push_struct(arena, TokenStream);
+  input->last_state = mem_push_struct(arena, TokenStream);
 }
 
 void putback_token(TokenStream* input)

@@ -13,14 +13,14 @@ int last_label_id;
 void gen_x86_load_rvalue(String* code, AstNode* node);
 bool gen_x86(String* code, AstNode* node);
 
-Label make_unique_label()
+Label* make_unique_label(MemoryArena* arena)
 {
-  Label label = {0};
-  h_sprintf(label.name, "L%d", last_label_id++);
+  Label* label = mem_push_struct(arena, Label);
+  h_sprintf(label->name, "L%d", last_label_id++);
   return label;
 }
 
-char* make_temp_name(char* label)
+char* make_tempvar_name(char* label)
 {
   String str; str_init(&str, arena);
   str_printf(&str, "$%s%d", label, tempvar_id++);
@@ -100,9 +100,9 @@ void make_type_printstr(String* str, Type* type)
     assert(0);
 }
 
-#if 0
+#if 0/*>>>*/
 void DEBUG_print_line(String* str, int indent_level, char* message, ...)
-{/*>>>*/
+{
   for(int i = 0; i < indent_level; i++)
   {
     str_append(str, "  ");
@@ -114,10 +114,10 @@ void DEBUG_print_line(String* str, int indent_level, char* message, ...)
   va_end(varargs);
 
   str_append(str, "\n");
-}/*<<<*/
+}
 
 void DEBUG_print_type(String* str, int indent_level, char* tag, Type* type)
-{/*>>>*/
+{
   for(int i = 0; i < indent_level; i++)
   {
     str_append(str, "  ");
@@ -131,10 +131,10 @@ void DEBUG_print_type(String* str, int indent_level, char* tag, Type* type)
 
   make_type_printstr(str, type);
   str_append(str, "\n");
-}/*<<<*/
+}
 
 void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* node)
-{/*>>>*/
+{
   if(node)
   {
     if(tag)
@@ -166,10 +166,10 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
        DEBUG_print_ast_nodes(str, indent_level, "formal_args", &node->proc.formal_args);
     */
   }
-}/*<<<*/
+}
 
 void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes)
-{/*>>>*/
+{
   if(nodes->first)
   {
     if(tag)
@@ -186,8 +186,8 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
       DEBUG_print_ast_node(str, indent_level, 0, node);
     }
   }
-}/*<<<*/
-#endif
+}
+#endif/*<<<*/
 
 #include "lex.c"
 #include "syntax.c"
@@ -572,13 +572,6 @@ char* get_type_printstr(Type* type)
   return str_cap(&str);
 }
 
-void init_symbol_context(SymbolContext* sym_context, MemoryArena* sym_arena)
-{
-  sym_context->arena = sym_arena;
-  sym_context->nesting_depth = -1;
-  init_list(&sym_context->scopes, sym_context->arena, eList_scope);
-}
-
 Scope* find_scope(Scope* active_scope, eScope kind)
 {
   Scope* scope = active_scope;
@@ -622,7 +615,7 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
 Symbol* new_temp_sym(MemoryArena* arena, Scope* scope, AstNode* ast_node)
 {
   Symbol* sym = mem_push_struct(arena, Symbol);
-  sym->name = make_temp_name("tmp");
+  sym->name = make_tempvar_name("tmp");
   sym->src_loc = ast_node->src_loc;
   sym->ast_node = ast_node;
   sym->ty = ast_node->eval_ty;
@@ -2658,6 +2651,7 @@ bool eval_types_unr_expr(AstNode* unr_expr)
     {
       case eOperator_neg:
       case eOperator_logic_not:
+      case eOperator_bit_not:
         if(!type_unif(unr_expr->eval_ty, operand->eval_ty))
         {
           success = compile_error(unr_expr->src_loc, "type error (unr expr)");
@@ -2698,10 +2692,13 @@ bool eval_types_unr_expr(AstNode* unr_expr)
       default:
         assert(0);
     }
-    Type* unr_expr_ty = KIND(unr_expr->ty, eType_proc);
-    if(!type_unif(unr_expr_ty->proc.ret, unr_expr->eval_ty))
+    if(success)
     {
-      success = compile_error(unr_expr->src_loc, "type error (unr expr)");
+      Type* unr_expr_ty = KIND(unr_expr->ty, eType_proc);
+      if(!type_unif(unr_expr_ty->proc.ret, unr_expr->eval_ty))
+      {
+        success = compile_error(unr_expr->src_loc, "type error (unr expr)");
+      }
     }
   }
   return success;
@@ -2813,7 +2810,7 @@ bool eval_types_if(AstNode* if_)
     {
       if(!type_unif(cond_expr->eval_ty, basic_type_bool))
       {
-        success = compile_error(cond_expr->src_loc, "bool type was expected in `if` expression");
+        success = compile_error(cond_expr->src_loc, "bool expression was expected");
       }
     }
   }
@@ -2846,7 +2843,7 @@ bool eval_types_while(AstNode* while_)
   {
     if(!type_unif(cond_expr->eval_ty, basic_type_bool))
     {
-      success = compile_error(cond_expr->src_loc, "bool type was expected in `while` expression");
+      success = compile_error(cond_expr->src_loc, "bool expression was expected");
     }
   }
   return success;
@@ -3428,27 +3425,34 @@ bool check_types_bin_expr(AstNode* bin_expr)
             if(types_are_equal(args_ty->product.left, basic_type_int))
             {
               // int <- float | bool | pointer | char
-              success = types_are_equal(args_ty->product.right, basic_type_float)
-                || types_are_equal(args_ty->product.right, basic_type_bool)
-                || types_are_equal(args_ty->product.right, basic_type_char)
-                || (args_ty->product.right->kind == eType_pointer);
+              success = types_are_equal(args_ty->product.right, basic_type_float) ||
+                types_are_equal(args_ty->product.right, basic_type_bool) ||
+                types_are_equal(args_ty->product.right, basic_type_char) ||
+                (args_ty->product.right->kind == eType_pointer);
             }
             else if(types_are_equal(args_ty->product.left, basic_type_char))
             {
-              // char <- int
-              success = types_are_equal(args_ty->product.right, basic_type_int);
+              // char <- int | bool
+              success = types_are_equal(args_ty->product.right, basic_type_int) ||
+                types_are_equal(args_ty->product.right, basic_type_bool);
             }
             else if(types_are_equal(args_ty->product.left, basic_type_float))
             {
               // float <- int
               success = types_are_equal(args_ty->product.right, basic_type_int);
             }
+            else if(types_are_equal(args_ty->product.left, basic_type_bool))
+            {
+              // bool <- int | char
+              success = types_are_equal(args_ty->product.right, basic_type_int) ||
+                types_are_equal(args_ty->product.right, basic_type_char);
+            }
             else if(args_ty->product.left->kind == eType_pointer)
             {
               // pointer <- pointer | array | int
-              success = (args_ty->product.right->kind == eType_pointer)
-                || (args_ty->product.right->kind == eType_array)
-                || types_are_equal(args_ty->product.right, basic_type_int);
+              success = (args_ty->product.right->kind == eType_pointer) ||
+                (args_ty->product.right->kind == eType_array) ||
+                types_are_equal(args_ty->product.right, basic_type_int);
             }
             else if(args_ty->product.left->kind == eType_array)
             {
@@ -3715,9 +3719,11 @@ eIrOp conv_operator_to_ir_op(eOperator op)
   return ir_op;
 }
 
-void ir_emit_assign(MemoryArena* ir_arena, eOperator op, IrArg* arg1, IrArg* arg2, IrArg* result)
+void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, IrArg* result)
 {
-  IrStmt* ir_stmt = mem_push_struct(ir_arena, IrStmt);
+  assert(result->kind == eIrArg_data_obj);
+  IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  ir_context->stmt_count++;
   ir_stmt->kind = eIrStmt_assign;
   ir_stmt->assign.op = op;
   ir_stmt->assign.arg1 = arg1;
@@ -3725,134 +3731,199 @@ void ir_emit_assign(MemoryArena* ir_arena, eOperator op, IrArg* arg1, IrArg* arg
   ir_stmt->assign.result = result;
 }
 
-bool gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr);
-bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt);
+void ir_emit_label(IrContext* ir_context, Label* label)
+{
+  IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  ir_context->stmt_count++;
+  ir_stmt->kind = eIrStmt_label;
+  ir_stmt->label = label;
+}
 
-bool gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
+void ir_emit_cond_goto(IrContext* ir_context, eIrOp relop, IrArg* arg1, IrArg* arg2, Label* label)
+{
+  IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  ir_context->stmt_count++;
+  ir_stmt->kind = eIrStmt_cond_goto;
+  ir_stmt->cond_goto.relop = relop;
+  ir_stmt->cond_goto.arg1 = arg1;
+  ir_stmt->cond_goto.arg2 = arg2;
+  ir_stmt->cond_goto.label = label;
+}
+
+void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr);
+void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt);
+
+void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
-  bool success = true;
 
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   eOperator op = bin_expr->bin_expr.op;
 
-  if(success = gen_ir_expr(ir_context, scope, right_operand) && gen_ir_expr(ir_context, scope, left_operand))
+  gen_ir_expr(ir_context, scope, right_operand);
+  gen_ir_expr(ir_context, scope, left_operand);
+  switch(op)
   {
-    switch(op)
-    {
-      case eOperator_assign:
+    case eOperator_assign:
+      {
+        if(left_operand->kind == eAstNode_id)
         {
-          if(left_operand->kind == eAstNode_id)
-          {
-            ir_emit_assign(ir_context->ir_arena, eIrOp_None, &right_operand->ir_place, 0, &left_operand->ir_place);
-          }
-          else
-            fail("I'm a meat popsicle");
+          ir_emit_assign(ir_context, eIrOp_None, &right_operand->ir_place, 0, &left_operand->ir_place);
         }
-        break;
+        else
+          fail("I'm a meat popsicle");
+      }
+      break;
 
-      case eOperator_add:
-      case eOperator_sub:
-      case eOperator_mul:
-      case eOperator_div:
-      case eOperator_mod:
-      case eOperator_bit_and:
-      case eOperator_bit_or:
-      case eOperator_bit_xor:
-      case eOperator_bit_shift_left:
-      case eOperator_bit_shift_right:
-      case eOperator_less:
-      case eOperator_less_eq:
-      case eOperator_greater:
-      case eOperator_greater_eq:
-      case eOperator_eq:
-      case eOperator_not_eq:
-        {
-          bin_expr->ir_place.kind = eIrArg_symbol;
-          bin_expr->ir_place.sym = new_temp_sym(ir_context->sym_arena, scope, bin_expr);
-          ir_emit_assign(ir_context->ir_arena, conv_operator_to_ir_op(op), &left_operand->ir_place, &right_operand->ir_place, &bin_expr->ir_place);
-        }
-        break;
+    case eOperator_add:
+    case eOperator_sub:
+    case eOperator_mul:
+    case eOperator_div:
+    case eOperator_mod:
+    case eOperator_bit_and:
+    case eOperator_bit_or:
+    case eOperator_bit_xor:
+    case eOperator_bit_shift_left:
+    case eOperator_bit_shift_right:
+    case eOperator_less:
+    case eOperator_less_eq:
+    case eOperator_greater:
+    case eOperator_greater_eq:
+    case eOperator_eq:
+    case eOperator_not_eq:
+      {
+        bin_expr->ir_place.kind = eIrArg_data_obj;
+        bin_expr->ir_place.data_obj = new_temp_sym(ir_context->sym_arena, scope, bin_expr);
+        ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &left_operand->ir_place, &right_operand->ir_place, &bin_expr->ir_place);
+      }
+      break;
 
-      default:
-        assert(0);
-    }
+    default:
+      assert(0);
   }
-  return success;
 }
 
-bool gen_ir_id(IrContext* ir_context, Scope* scope, AstNode* id)
+void gen_ir_id(IrContext* ir_context, Scope* scope, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
-  bool success = true;
-  id->ir_place.kind = eIrArg_symbol;
-  id->ir_place.sym = id->id.decl_sym;
-  return success;
+  id->ir_place.kind = eIrArg_data_obj;
+  id->ir_place.data_obj = id->id.decl_sym;
 }
 
-bool gen_ir_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
+void gen_ir_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode_unr_expr));
-  bool success = true;
 
   AstNode* operand = unr_expr->unr_expr.operand;
   eOperator op = unr_expr->unr_expr.op;
 
-  if(success = gen_ir_expr(ir_context, scope, operand))
+  gen_ir_expr(ir_context, scope, operand);
+  switch(op)
   {
-    switch(op)
-    {
-      case eOperator_neg:
-        {
-          unr_expr->ir_place.kind = eIrArg_symbol;
-          unr_expr->ir_place.sym = new_temp_sym(ir_context->sym_arena, scope, unr_expr);
-          ir_emit_assign(ir_context->ir_arena, conv_operator_to_ir_op(op), &operand->ir_place, 0, &unr_expr->ir_place);
-        }
-        break;
-    }
+    case eOperator_neg:
+      {
+        unr_expr->ir_place.kind = eIrArg_data_obj;
+        unr_expr->ir_place.data_obj = new_temp_sym(ir_context->sym_arena, scope, unr_expr);
+        ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &operand->ir_place, 0, &unr_expr->ir_place);
+      }
+      break;
   }
-  return success;
 }
 
-bool gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
+void gen_ir_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
 {
-  bool success = true;
+  assert(KIND(lit, eAstNode_lit));
 
+  lit->ir_place.kind = eIrArg_const;
+  IrConstant* ir_const = &lit->ir_place.ir_const;
+  switch(lit->lit.kind)
+  {
+    case eLiteral_int:
+      ir_const->kind = eIrConstant_int;
+      ir_const->int_val = lit->lit.int_val;
+      break;
+
+    case eLiteral_float:
+      ir_const->kind = eIrConstant_float;
+      ir_const->float_val = lit->lit.float_val;
+      break;
+
+    case eLiteral_bool:
+      ir_const->kind = eIrConstant_int;
+      ir_const->int_val = (int)lit->lit.bool_val;
+      break;
+
+    case eLiteral_char:
+      ir_const->kind = eIrConstant_char;
+      ir_const->char_val = lit->lit.char_val;
+      break;
+
+    default:
+      assert(0);
+  }
+}
+
+void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
+{
   switch(expr->kind)
   {
     case eAstNode_bin_expr:
-      success = gen_ir_bin_expr(ir_context, scope, expr);
+      gen_ir_bin_expr(ir_context, scope, expr);
       break;
     case eAstNode_unr_expr:
-      success = gen_ir_unr_expr(ir_context, scope, expr);
+      gen_ir_unr_expr(ir_context, scope, expr);
       break;
     case eAstNode_id:
-      success = gen_ir_id(ir_context, scope, expr);
+      gen_ir_id(ir_context, scope, expr);
+      break;
+    case eAstNode_lit:
+      gen_ir_lit(ir_context, scope, expr);
       break;
   }
-  return success;
 }
 
-bool gen_ir_block(IrContext* ir_context, Scope* scope, AstNode* block)
+void gen_ir_block(IrContext* ir_context, Scope* scope, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
-  bool success = true;
 
   for(ListItem* li = block->block.nodes.first;
-      li && success;
+      li;
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = gen_ir_block_stmt(ir_context, scope, stmt);
+    gen_ir_block_stmt(ir_context, scope, stmt);
   }
-  return success;
 }
 
-bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
+void gen_ir_cond_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
 {
-  bool success = true;
+  static IrArg zero = {0};
+  zero.kind = eIrArg_const;
+  zero.ir_const.kind = eIrConstant_int;
+  zero.ir_const.int_val = 0;
+  gen_ir_expr(ir_context, scope, expr);
+  ir_emit_cond_goto(ir_context, eIrOp_eq, &expr->ir_place, &zero, expr->label_false);
+}
 
+void gen_ir_if(IrContext* ir_context, Scope* scope, AstNode* if_)
+{
+  assert(KIND(if_, eAstNode_if));
+
+  AstNode* cond_expr = if_->if_.cond_expr;
+  AstNode* body = if_->if_.body;
+  if_->label_next = make_unique_label(arena);
+  cond_expr->label_true = make_unique_label(arena);
+  cond_expr->label_false = if_->label_next;
+  body->label_next = if_->label_next;
+  gen_ir_cond_expr(ir_context, scope, cond_expr);
+  ir_emit_label(ir_context, cond_expr->label_true);
+  gen_ir_block_stmt(ir_context, body->block.scope, body);
+  ir_emit_label(ir_context, if_->label_next);
+}
+
+void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
+{
   switch(stmt->kind)
   {
     case eAstNode_bin_expr:
@@ -3860,51 +3931,262 @@ bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
-      success = gen_ir_expr(ir_context, scope, stmt);
+      gen_ir_expr(ir_context, scope, stmt);
       break;
 
     case eAstNode_block:
-      success = gen_ir_block(ir_context, stmt->block.scope, stmt);
+      gen_ir_block(ir_context, stmt->block.scope, stmt);
+      break;
+
+    case eAstNode_if:
+      gen_ir_if(ir_context, scope, stmt);
       break;
   }
-  return success;
 }
 
-bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
+void gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
-  bool success = true;
-
-  success = gen_ir_block_stmt(ir_context, proc->proc.scope, proc->proc.body);
-  return success;
+  gen_ir_block_stmt(ir_context, proc->proc.scope, proc->proc.body);
 }
 
-bool gen_ir_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
+void gen_ir_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 {
-  bool success = true;
-
   switch(stmt->kind)
   {
     case eAstNode_proc:
-      success = gen_ir_proc(ir_context, scope, stmt);
+      gen_ir_proc(ir_context, scope, stmt);
       break;
   }
-  return success;
 }
 
-bool gen_ir_module(IrContext* ir_context, AstNode* module)
+void gen_ir_module(IrContext* ir_context, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
-  bool success = true;
 
   for(ListItem* li = module->module.nodes.first;
-      li && success;
+      li;
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = gen_ir_module_stmt(ir_context, module->module.scope, stmt);
+    gen_ir_module_stmt(ir_context, module->module.scope, stmt);
   }
-  return success;
+}
+
+void DEBUG_print_ir_op(String* text, eIrOp op)
+{
+  switch(op)
+  {
+    case eIrOp_add:
+      str_printf(text, "+");
+      break;
+    case eIrOp_sub:
+      str_printf(text, "-");
+      break;
+    case eIrOp_mul:
+      str_printf(text, "*");
+      break;
+    case eIrOp_div:
+      str_printf(text, "/");
+      break;
+    case eIrOp_mod:
+      str_printf(text, "mod");
+      break;
+    case eIrOp_neg:
+      str_printf(text, "-");
+      break;
+    case eIrOp_eq:
+      str_printf(text, "==");
+      break;
+    case eIrOp_not_eq:
+      str_printf(text, "<>");
+      break;
+    case eIrOp_less:
+      str_printf(text, "<");
+      break;
+    case eIrOp_less_eq:
+      str_printf(text, "<=");
+      break;
+    case eIrOp_greater:
+      str_printf(text, ">");
+      break;
+    case eIrOp_greater_eq:
+      str_printf(text, ">=");
+      break;
+    case eIrOp_logic_and:
+      str_printf(text, "and");
+      break;
+    case eIrOp_logic_or:
+      str_printf(text, "or");
+      break;
+    case eIrOp_logic_not:
+      str_printf(text, "not");
+      break;
+    case eIrOp_bit_and:
+      str_printf(text, "&");
+      break;
+    case eIrOp_bit_or:
+      str_printf(text, "|");
+      break;
+    case eIrOp_bit_xor:
+      str_printf(text, "~");
+      break;
+    case eIrOp_bit_not:
+      str_printf(text, "!");
+      break;
+    case eIrOp_bit_shift_left:
+      str_printf(text, "<<");
+      break;
+    case eIrOp_bit_shift_right:
+      str_printf(text, ">>");
+      break;
+    case eIrOp_int_to_float:
+      str_printf(text, "itof");
+      break;
+    case eIrOp_float_to_int:
+      str_printf(text, "ftoi");
+      break;
+
+    default:
+      assert(0);
+  }
+}
+
+void DEBUG_print_ir_arg(String* text, IrArg* arg)
+{
+  switch(arg->kind)
+  {
+    case eIrArg_data_obj:
+      str_printf(text, "%s", arg->data_obj->name);
+      break;
+
+#if 0
+    case eIrArg_label:
+      str_printf(text, "%s", arg->label.name);
+      break;
+#endif
+
+    case eIrArg_const:
+      switch(arg->ir_const.kind)
+      {
+        case eIrConstant_int:
+          str_printf(text, "%d", arg->ir_const.int_val);
+          break;
+        case eIrConstant_float:
+          str_printf(text, "%f", arg->ir_const.float_val);
+          break;
+        case eIrConstant_char:
+          str_printf(text, "%c", arg->ir_const.char_val);
+          break;
+        default:
+          assert(0);
+      }
+      break;
+
+    default:
+      assert(0);
+  }
+}
+
+void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
+{
+  switch(stmt->kind)
+  {
+    case eIrStmt_assign:
+      {
+        struct IrStmt_assign* assign = &stmt->assign;
+        switch(assign->op)
+        {
+          case eIrOp_None:
+            DEBUG_print_ir_arg(text, assign->result);
+            str_printf(text, " = ");
+            DEBUG_print_ir_arg(text, assign->arg1);
+            break;
+
+          /* bin_ops */
+          case eIrOp_add:
+          case eIrOp_sub:
+          case eIrOp_mul:
+          case eIrOp_div:
+          case eIrOp_mod:
+          case eIrOp_eq:
+          case eIrOp_not_eq:
+          case eIrOp_less:
+          case eIrOp_less_eq:
+          case eIrOp_greater:
+          case eIrOp_greater_eq:
+          case eIrOp_logic_and:
+          case eIrOp_logic_or:
+          case eIrOp_logic_not:
+          case eIrOp_bit_and:
+          case eIrOp_bit_or:
+          case eIrOp_bit_xor:
+          case eIrOp_bit_not:
+          case eIrOp_bit_shift_left:
+          case eIrOp_bit_shift_right:
+            DEBUG_print_ir_arg(text, assign->result);
+            str_printf(text, " = ");
+            DEBUG_print_ir_arg(text, assign->arg1);
+            str_printf(text, " ");
+            DEBUG_print_ir_op(text, assign->op);
+            str_printf(text, " ");
+            DEBUG_print_ir_arg(text, assign->arg2);
+            break;
+
+          /* unr_ops */
+          case eIrOp_neg:
+          case eIrOp_int_to_float:
+          case eIrOp_float_to_int:
+            DEBUG_print_ir_arg(text, assign->result);
+            str_printf(text, " = ");
+            DEBUG_print_ir_op(text, assign->op);
+            DEBUG_print_ir_arg(text, assign->arg1);
+            break;
+
+          default:
+            assert(0);
+        }
+      }
+      break;
+
+    case eIrStmt_cond_goto:
+      {
+        struct IrStmt_cond_goto* cond_goto = &stmt->cond_goto;
+        str_printf(text, "if ");
+        DEBUG_print_ir_arg(text, cond_goto->arg1);
+        str_printf(text, " ");
+        DEBUG_print_ir_op(text, cond_goto->relop);
+        str_printf(text, " ");
+        DEBUG_print_ir_arg(text, cond_goto->arg2);
+        str_printf(text, " goto %s", cond_goto->label->name);
+      }
+      break;
+
+    case eIrStmt_label:
+      str_printf(text, "%s:", stmt->label->name);
+      break;
+
+    default:
+      str_printf(text, "???");
+  }
+  str_printfln(text, "");
+}
+
+void DEBUG_print_ir_code(IrContext* ir_context, char* file_path)
+{
+  begin_temp_memory(&arena);
+  String text = {0};
+  str_init(&text, arena);
+
+  for(int i = 0; i < ir_context->stmt_count; i++)
+  {
+    IrStmt* stmt = (IrStmt*)(ir_context->ir_arena->base) + i;
+    DEBUG_print_ir_stmt(&text, stmt);
+  }
+
+  int text_len = str_len(&text);
+  file_write_bytes(file_path, (uint8*)text.head, text_len);
+  end_temp_memory(&arena);
 }
 
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
@@ -3917,7 +4199,14 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   subst_list = new_list(arena, eList_type_pair);
 
   SymbolContext sym_context = {0};
-  init_symbol_context(&sym_context, push_arena(&arena, SYMBOL_ARENA_SIZE));
+  sym_context.arena = push_arena(&arena, SYMBOL_ARENA_SIZE);
+  sym_context.nesting_depth = -1;
+  init_list(&sym_context.scopes, sym_context.arena, eList_scope);
+
+  IrContext ir_context = {0};
+  ir_context.ir_arena = push_arena(&arena, IR_CODE_ARENA_SIZE);
+  ir_context.sym_arena = sym_context.arena;
+  ir_context.stmt_count = 0;
 
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
@@ -3934,13 +4223,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     return false;
   }
 
-  IrContext ir_context = {0};
-  ir_context.ir_arena = push_arena(&arena, IR_CODE_ARENA_SIZE);
-  ir_context.sym_arena = sym_context.arena;
-  if(!gen_ir_module(&ir_context, module))
-  {
-    return false;
-  }
+  gen_ir_module(&ir_context, module);
+  DEBUG_print_ir_code(&ir_context, "./ir.txt");
 
 #if 0
   AstNode* module_body = module->module.body;

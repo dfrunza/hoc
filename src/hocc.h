@@ -1,5 +1,5 @@
 #define ARENA_SIZE (3*MEGABYTE)
-#define SYMBOL_ARENA_SIZE (ARENA_SIZE / 8)
+#define SYMBOL_ARENA_SIZE (ARENA_SIZE / 4)
 #define IR_CODE_ARENA_SIZE (ARENA_SIZE / 4)
 #define BINIMAGE_SIGNATURE "HC"
 #define MACHINE_WORD_SIZE 4
@@ -530,6 +530,13 @@ typedef enum
   eIrOp_bit_shift_right,
   eIrOp_int_to_float,
   eIrOp_float_to_int,
+
+  // op | arg1 | arg2 | result
+  eIrOp_index_right,   // result = arg1[arg2]
+  eIrOp_index_left,    // result[arg2] = arg1
+  eIrOp_pointer_right, // result = *arg1
+  eIrOp_pointer_left,  // *result = arg1
+  eIrOp_address_of,    // result = &arg1
 }
 eIrOp;
 
@@ -537,40 +544,36 @@ typedef struct
 {
   MemoryArena* ir_arena;
   MemoryArena* sym_arena;
+  MemoryArena* arena;
+  int stmt_count;
 }
 IrContext;
 
 typedef enum
 {
-  eIrLiteral_int,
-  eIrLiteral_float,
-  eIrLiteral_bool,
-  eIrLiteral_char,
+  eIrConstant_int,
+  eIrConstant_float,
+  eIrConstant_char,
 }
-eIrLiteral;
+eIrConstant;
 
 typedef struct
 {
-  eIrLiteral kind;
+  eIrConstant kind;
   union
   {
     int int_val;
     float float_val;
-    bool bool_val;
     char char_val;
   };
 }
-IrLiteral;
+IrConstant;
 
 typedef enum
 {
   eIrArg_None,
-  eIrArg_symbol,
+  eIrArg_data_obj,
   eIrArg_const,
-  eIrArg_index,
-  eIrArg_address_of,
-  eIrArg_deref,
-  eIrArg_label,
 }
 eIrArg;
 
@@ -579,8 +582,9 @@ typedef struct
   eIrArg kind;
   union
   {
-    Symbol* sym;
-    IrLiteral lit;
+    Symbol* data_obj;
+    IrConstant ir_const;
+    char* label;
   };
 }
 IrArg;
@@ -589,10 +593,11 @@ typedef enum
 {
   eIrStmt_None,
   eIrStmt_assign,
-  eIrStmt_jump,
-  eIrStmt_cond_jump,
+  eIrStmt_goto,
+  eIrStmt_cond_goto,
   eIrStmt_call,
   eIrStmt_param,
+  eIrStmt_label,
 }
 eIrStmt;
 
@@ -602,7 +607,8 @@ typedef struct
 
   union
   {
-    struct
+    Label* label;
+    struct IrStmt_assign
     {
       eIrOp op;
       IrArg* arg1;
@@ -610,6 +616,15 @@ typedef struct
       IrArg* result;
     }
     assign;
+
+    struct IrStmt_cond_goto
+    {
+      eIrOp relop;
+      IrArg* arg1;
+      IrArg* arg2;
+      Label* label;
+    } 
+    cond_goto;
   };
 }
 IrStmt;
@@ -651,6 +666,10 @@ typedef struct AstNode
   Type* eval_ty;
   eModifier modifier;
   IrArg ir_place;
+
+  Label* label_true;
+  Label* label_false;
+  Label* label_next;
 
   union
   {
@@ -714,12 +733,6 @@ typedef struct AstNode
       int nesting_depth;
     }
     loop_ctrl;
-
-    struct
-    {
-      AstNode* stmt;
-    }
-    stmt;
 
     struct
     {

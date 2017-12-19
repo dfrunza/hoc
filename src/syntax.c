@@ -186,6 +186,8 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
     case eToken_star:
     case eToken_fwd_slash:
     case eToken_mod:
+    case eToken_and:
+    case eToken_ampersand:
       {
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
@@ -200,6 +202,12 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
             break;
           case eToken_mod:
             bin_expr->bin_expr.op = eOperator_mod;
+            break;
+          case eToken_and:
+            bin_expr->bin_expr.op = eOperator_logic_and;
+            break;
+          case eToken_ampersand:
+            bin_expr->bin_expr.op = eOperator_bit_and;
             break;
           default:
             assert(0);
@@ -255,8 +263,6 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     case eToken_minus:
     case eToken_pipe:
     case eToken_or:
-    case eToken_ampersand:
-    case eToken_and:
     case eToken_angle_right_right:
     case eToken_angle_left_left:
     case eToken_tilde:
@@ -277,12 +283,6 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
             break;
           case eToken_or:
             bin_expr->bin_expr.op = eOperator_logic_or;
-            break;
-          case eToken_ampersand:
-            bin_expr->bin_expr.op = eOperator_bit_and;
-            break;
-          case eToken_and:
-            bin_expr->bin_expr.op = eOperator_logic_and;
             break;
           case eToken_angle_left_left:
             bin_expr->bin_expr.op = eOperator_bit_shift_left;

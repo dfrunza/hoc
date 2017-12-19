@@ -519,7 +519,7 @@ void append_list_item(List* list, ListItem* item)
 
 void append_list_elem(List* list, void* elem, eList kind)
 {
-  ListItem* item = mem_push_struct(arena, ListItem);
+  ListItem* item = mem_push_struct(list->arena, ListItem);
   item->elem = elem;
   item->kind = kind;
   append_list_item(list, item);
@@ -545,7 +545,7 @@ void prepend_list_item(List* list, ListItem* item)
 
 void prepend_list_elem(List* list, void* elem, eList kind)
 {
-  ListItem* item = mem_push_struct(arena, ListItem);
+  ListItem* item = mem_push_struct(list->arena, ListItem);
   item->elem = elem;
   item->kind = kind;
   prepend_list_item(list, item);

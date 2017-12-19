@@ -613,18 +613,7 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
   Symbol* result = 0;
   while(!result && scope)
   {
-    result = lookup_sym(name, &scope->decls);
-    scope = scope->encl_scope;
-  }
-  return result;
-}
-
-Symbol* lookup_occur_sym(char* name, Scope* scope)
-{
-  Symbol* result = 0;
-  while(!result && scope)
-  {
-    result = lookup_sym(name, &scope->occurs);
+    result = lookup_sym(name, &scope->decl_syms);
     scope = scope->encl_scope;
   }
   return result;
@@ -639,7 +628,7 @@ Symbol* new_temp_sym(MemoryArena* arena, Scope* scope, AstNode* ast_node)
   sym->ty = ast_node->eval_ty;
   sym->scope = scope;
   sym->order_nr = scope->sym_order_nr++;
-  append_list_elem(&scope->decls, sym, eList_symbol);
+  append_list_elem(&scope->decl_syms, sym, eList_symbol);
   return sym;
 }
 
@@ -651,19 +640,7 @@ Symbol* add_decl_sym(MemoryArena* arena, char* name, Scope* scope, AstNode* ast_
   sym->scope = scope;
   sym->ast_node = ast_node;
   sym->order_nr = scope->sym_order_nr++;
-  append_list_elem(&scope->decls, sym, eList_symbol);
-  return sym;
-}
-
-Symbol* add_occur_sym(MemoryArena* arena, char* name, Scope* scope, AstNode* ast_node)
-{
-  Symbol* sym = mem_push_struct(arena, Symbol);
-  sym->name = name;
-  sym->src_loc = ast_node->src_loc;
-  sym->scope = scope;
-  sym->ast_node = ast_node;
-  sym->order_nr = scope->sym_order_nr++;
-  append_list_elem(&scope->occurs, sym, eList_symbol);
+  append_list_elem(&scope->decl_syms, sym, eList_symbol);
   return sym;
 }
 
@@ -675,8 +652,7 @@ Scope* begin_scope(SymbolContext* sym_context, eScope kind, AstNode* ast_node)
   scope->sym_order_nr = 0;
   scope->encl_scope = sym_context->active_scope;
   scope->ast_node = ast_node;
-  init_list(&scope->decls, arena, eList_symbol);
-  init_list(&scope->occurs, arena, eList_symbol);
+  init_list(&scope->decl_syms, arena, eList_symbol);
   sym_context->active_scope = scope;
   append_list_elem(&sym_context->scopes, scope, eList_scope);
   return scope;
@@ -767,7 +743,9 @@ bool sym_id(SymbolContext* sym_context, AstNode* block, AstNode* id)
   assert(KIND(block, eAstNode_block));
   assert(KIND(id, eAstNode_id));
   bool success = true;
-  id->id.occur_sym = add_occur_sym(sym_context->arena, id->id.name, sym_context->active_scope, id);
+  Scope* scope = sym_context->active_scope;
+  id->id.scope = scope;
+  id->id.order_nr = scope->sym_order_nr++;
   return success;
 }
 
@@ -817,8 +795,7 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
   if(call_expr->kind == eAstNode_id)
   {
     AstNode* id = call->call.expr;
-    id->id.decl_sym = add_occur_sym(sym_context->arena, id->id.name, sym_context->active_scope, id);
-    success = sym_expr(sym_context, block, call_expr) && sym_actual_args(sym_context, block, arg_list);
+    success = sym_id(sym_context, block, id) && sym_expr(sym_context, block, call_expr) && sym_actual_args(sym_context, block, arg_list);
   }
   else
     success = compile_error(call->src_loc, "unsupported call expr");
@@ -2621,11 +2598,10 @@ bool eval_types_id(AstNode* id)
   if(!id->id.decl_sym)
   {
     assert(!id->id.decl_ast);
-    id->id.decl_sym = lookup_decl_sym(id->id.name, id->id.occur_sym->scope);
+    id->id.decl_sym = lookup_decl_sym(id->id.name, id->id.scope);
     if(id->id.decl_sym)
     {
       id->id.decl_ast = id->id.decl_sym->ast_node;
-      id->id.occur_sym->decl_sym = id->id.decl_sym;
     }
     else
       success = compile_error(id->src_loc, "unknown id `%s`", id->id.name);
@@ -2638,7 +2614,7 @@ bool eval_types_id(AstNode* id)
       switch(decl_ast->ty->kind)
       {
         case eType_var:
-          if((id->id.decl_sym->scope == id->id.occur_sym->scope) && (id->id.decl_sym->order_nr > id->id.occur_sym->order_nr))
+          if((id->id.decl_sym->scope == id->id.scope) && (id->id.decl_sym->order_nr > id->id.order_nr))
           {
             success = compile_error(id->src_loc, "var `%s` must be declared before its use", id->id.name);
           }
@@ -3051,10 +3027,7 @@ bool resolve_types_id(AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   bool success = true;
-  if(success = resolve_types_of_node(id))
-  {
-    id->id.occur_sym->ty = id->ty;
-  }
+  success = resolve_types_of_node(id);
   return success;
 }
 

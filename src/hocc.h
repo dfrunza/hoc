@@ -392,8 +392,7 @@ typedef struct Scope
   struct Scope* encl_scope;
   AstNode* ast_node;
 
-  List decls;
-  List occurs;
+  List decl_syms;
 
   int static_area_size;
   int locals_area_size;
@@ -671,7 +670,8 @@ typedef struct AstNode
     {
       char* name;
       AstNode* decl_ast;
-      Symbol* occur_sym;
+      int order_nr;
+      Scope* scope;
       Symbol* decl_sym;
     }
     id;

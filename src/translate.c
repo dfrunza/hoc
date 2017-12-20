@@ -819,6 +819,7 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
       break;
     case eAstNode_basic_type:
     case eAstNode_lit:
+    case eAstNode_str:
       break;
     default:
       assert(0);
@@ -929,6 +930,7 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
+    case eAstNode_str:
       success = sym_expr(sym_context, block, stmt);
       break;
     case eAstNode_loop_ctrl:
@@ -2221,6 +2223,7 @@ bool set_types_expr(AstNode* expr)
       break;
     case eAstNode_str:
       success = set_types_str(expr);
+      break;
     default:
       assert(0);
   }
@@ -2309,6 +2312,7 @@ bool set_types_block_stmt(AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
+    case eAstNode_str:
       success = set_types_expr(stmt);
       break;
     case eAstNode_loop_ctrl:
@@ -2789,6 +2793,7 @@ bool eval_types_expr(AstNode* expr)
       success = eval_types_call(expr);
       break;
     case eAstNode_lit:
+    case eAstNode_str:
     case eAstNode_basic_type:
       break;
     default:
@@ -2804,17 +2809,17 @@ bool eval_types_if(AstNode* if_)
   assert(KIND(if_, eAstNode_if));
   bool success = true;
 
+  AstNode* cond_expr = if_->if_.cond_expr;
   AstNode* body = if_->if_.body;
   AstNode* else_body = if_->if_.else_body;
-  if(success = eval_types_block_stmt(body) && (else_body ? eval_types_block_stmt(else_body) : true))
+
+  if(success = eval_types_expr(cond_expr) &&
+     eval_types_block_stmt(body) &&
+     (else_body ? eval_types_block_stmt(else_body) : true))
   {
-    AstNode* cond_expr = if_->if_.cond_expr;
-    if(success = eval_types_expr(cond_expr))
+    if(!type_unif(cond_expr->eval_ty, basic_type_bool))
     {
-      if(!type_unif(cond_expr->eval_ty, basic_type_bool))
-      {
-        success = compile_error(cond_expr->src_loc, "bool expression was expected");
-      }
+      success = compile_error(cond_expr->src_loc, "bool expression was expected");
     }
   }
   return success;
@@ -2881,6 +2886,7 @@ bool eval_types_block_stmt(AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
+    case eAstNode_str:
       success = eval_types_expr(stmt);
       break;
     case eAstNode_if:
@@ -3080,6 +3086,7 @@ bool resolve_types_expr(AstNode* expr)
       success = resolve_types_call(expr);
       break;
     case eAstNode_lit:
+    case eAstNode_str:
     case eAstNode_basic_type:
       break;
     default:
@@ -3181,6 +3188,7 @@ bool resolve_types_block_stmt(AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
+    case eAstNode_str:
       success = resolve_types_expr(stmt);
       break;
     case eAstNode_block:
@@ -3297,11 +3305,13 @@ bool check_types_bin_expr(AstNode* bin_expr)
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   eOperator op = bin_expr->bin_expr.op;
 
-  if(success = check_types_expr(right_operand) && check_types_expr(left_operand))
+  if(success = check_types_expr(left_operand) && check_types_expr(right_operand))
   {
     Type* expr_ty = KIND(bin_expr->ty, eType_proc);
-    Type* args_ty = expr_ty->proc.args;
-    assert(KIND(args_ty, eType_product));
+    Type* operands_ty = expr_ty->proc.args;
+    assert(KIND(operands_ty, eType_product));
+    Type* left_ty = operands_ty->product.left;
+    Type* right_ty = operands_ty->product.right;
     Type* ret_ty = expr_ty->proc.ret;
 
     switch(op)
@@ -3317,12 +3327,12 @@ bool check_types_bin_expr(AstNode* bin_expr)
              || (ret_ty->kind == eType_pointer))
           {
             ;//ok
-            assert(types_are_equal(ret_ty, args_ty->product.left) && types_are_equal(args_ty->product.left, args_ty->product.right));
+            assert(types_are_equal(ret_ty, left_ty) && types_are_equal(left_ty, right_ty));
           }
           else
           {
             success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                    get_operator_printstr(op), get_type_printstr(args_ty));
+                                    get_operator_printstr(op), get_type_printstr(operands_ty));
           }
         }
         break;
@@ -3332,50 +3342,51 @@ bool check_types_bin_expr(AstNode* bin_expr)
           if(types_are_equal(ret_ty, basic_type_int))
           {
             ;//ok
-            assert(types_are_equal(ret_ty, args_ty->product.left) && types_are_equal(args_ty->product.left, args_ty->product.right));
+            assert(types_are_equal(ret_ty, left_ty) && types_are_equal(left_ty, right_ty));
           }
           else
           {
             success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                    get_operator_printstr(op), get_type_printstr(args_ty));
+                                    get_operator_printstr(op), get_type_printstr(operands_ty));
           }
         }
         break;
 
       case eOperator_logic_and:
       case eOperator_logic_or:
-      case eOperator_logic_not:
         {
-          if(types_are_equal(args_ty->product.left, basic_type_bool) && types_are_equal(args_ty->product.left, args_ty->product.right))
+          if(types_are_equal(left_ty, basic_type_bool) && types_are_equal(left_ty, right_ty))
           {
             ;//ok
             assert(ret_ty == basic_type_bool);
           }
           else
             success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                    get_operator_printstr(op), get_type_printstr(args_ty));
+                                    get_operator_printstr(op), get_type_printstr(operands_ty));
         }
         break;
 
       case eOperator_bit_and:
       case eOperator_bit_or:
       case eOperator_bit_xor:
-        if(types_are_equal(args_ty->product.left, basic_type_int) && types_are_equal(args_ty->product.right, basic_type_int))
+        if(types_are_equal(left_ty, basic_type_int) && types_are_equal(right_ty, basic_type_int))
         {
           ;//ok
         }
         else
-          success = compile_error(bin_expr->src_loc, "type error (bitwise op)");
+          success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
+                                  get_operator_printstr(op), get_type_printstr(operands_ty));
         break;
 
       case eOperator_bit_shift_left:
       case eOperator_bit_shift_right:
-        if(types_are_equal(args_ty->product.left, basic_type_int) && types_are_equal(args_ty->product.right, basic_type_char))
+        if(types_are_equal(left_ty, basic_type_int) && types_are_equal(right_ty, basic_type_char))
         {
           ;//ok
         }
         else
-          success = compile_error(bin_expr->src_loc, "type error (bitwise op)");
+          success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
+                                  get_operator_printstr(op), get_type_printstr(operands_ty));
         break;
 
       case eOperator_less:
@@ -3385,10 +3396,10 @@ bool check_types_bin_expr(AstNode* bin_expr)
       case eOperator_eq:
       case eOperator_not_eq:
         {
-          if(types_are_equal(args_ty->product.left, basic_type_int)
-             || types_are_equal(args_ty->product.left, basic_type_char)
-             || types_are_equal(args_ty->product.left, basic_type_float)
-             && types_are_equal(args_ty->product.left, args_ty->product.right))
+          if(types_are_equal(left_ty, basic_type_int)
+             || types_are_equal(left_ty, basic_type_char)
+             || types_are_equal(left_ty, basic_type_float)
+             && types_are_equal(left_ty, right_ty))
           {
             ;//ok
             assert(types_are_equal(ret_ty, basic_type_bool));
@@ -3396,16 +3407,13 @@ bool check_types_bin_expr(AstNode* bin_expr)
           else
           {
             success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                    get_operator_printstr(op), get_type_printstr(args_ty));
+                                    get_operator_printstr(op), get_type_printstr(operands_ty));
           }
         }
         break;
 
       case eOperator_assign:
-        {
-          ;//ok
-          assert(types_are_equal(args_ty->product.left, args_ty->product.right) && types_are_equal(ret_ty, args_ty->product.left));
-        }
+        assert(types_are_equal(left_ty, right_ty) && types_are_equal(ret_ty, left_ty));
         break;
 
       case eOperator_index:
@@ -3421,52 +3429,51 @@ bool check_types_bin_expr(AstNode* bin_expr)
 
       case eOperator_cast:
         {
-          if(!types_are_equal(args_ty->product.left, args_ty->product.right))
+          if(!types_are_equal(left_ty, right_ty))
           {
             success = false;
 
-            if(types_are_equal(args_ty->product.left, basic_type_int))
+            if(types_are_equal(left_ty, basic_type_int))
             {
               // int <- float | bool | pointer | char
-              success = types_are_equal(args_ty->product.right, basic_type_float) ||
-                types_are_equal(args_ty->product.right, basic_type_bool) ||
-                types_are_equal(args_ty->product.right, basic_type_char) ||
-                (args_ty->product.right->kind == eType_pointer);
+              success = types_are_equal(right_ty, basic_type_float) ||
+                types_are_equal(right_ty, basic_type_bool) ||
+                types_are_equal(right_ty, basic_type_char) ||
+                (right_ty->kind == eType_pointer);
             }
-            else if(types_are_equal(args_ty->product.left, basic_type_char))
+            else if(types_are_equal(left_ty, basic_type_char))
             {
               // char <- int | bool
-              success = types_are_equal(args_ty->product.right, basic_type_int) ||
-                types_are_equal(args_ty->product.right, basic_type_bool);
+              success = types_are_equal(right_ty, basic_type_int) ||
+                types_are_equal(right_ty, basic_type_bool);
             }
-            else if(types_are_equal(args_ty->product.left, basic_type_float))
+            else if(types_are_equal(left_ty, basic_type_float))
             {
               // float <- int
-              success = types_are_equal(args_ty->product.right, basic_type_int);
+              success = types_are_equal(right_ty, basic_type_int);
             }
-            else if(types_are_equal(args_ty->product.left, basic_type_bool))
+            else if(types_are_equal(left_ty, basic_type_bool))
             {
               // bool <- int | char
-              success = types_are_equal(args_ty->product.right, basic_type_int) ||
-                types_are_equal(args_ty->product.right, basic_type_char);
+              success = types_are_equal(right_ty, basic_type_int) ||
+                types_are_equal(right_ty, basic_type_char);
             }
-            else if(args_ty->product.left->kind == eType_pointer)
+            else if(left_ty->kind == eType_pointer)
             {
               // pointer <- pointer | array | int
-              success = (args_ty->product.right->kind == eType_pointer) ||
-                (args_ty->product.right->kind == eType_array) ||
-                types_are_equal(args_ty->product.right, basic_type_int);
+              success = (right_ty->kind == eType_pointer) ||
+                (right_ty->kind == eType_array) ||
+                types_are_equal(right_ty, basic_type_int);
             }
-            else if(args_ty->product.left->kind == eType_array)
+            else if(left_ty->kind == eType_array)
             {
               // array <- pointer | array
-              success = (args_ty->product.right->kind == eType_pointer) || (args_ty->product.right->kind == eType_array);
+              success = (right_ty->kind == eType_pointer) || (right_ty->kind == eType_array);
             }
 
             if(!success)
             {
-              compile_error(bin_expr->src_loc, "invalid cast `%s` <- `%s`",
-                            get_type_printstr(args_ty->product.left), get_type_printstr(args_ty->product.right));
+              compile_error(bin_expr->src_loc, "invalid cast `%s` <- `%s`", get_type_printstr(left_ty), get_type_printstr(right_ty));
             }
           }
         }
@@ -3483,7 +3490,51 @@ bool check_types_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
-  success = check_types_expr(unr_expr->unr_expr.operand);
+
+  AstNode* operand = unr_expr->unr_expr.operand;
+  eOperator op = unr_expr->unr_expr.op;
+
+  if(success = check_types_expr(operand))
+  {
+    Type* expr_ty = KIND(unr_expr->ty, eType_proc);
+    Type* operand_ty = expr_ty->proc.args;
+    Type* ret_ty = expr_ty->proc.ret;
+
+    switch(op)
+    {
+      case eOperator_logic_not:
+        if(types_are_equal(operand_ty, basic_type_bool))
+        {
+          ;//ok
+          assert(ret_ty == basic_type_bool);
+        }
+        else
+          success = compile_error(unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
+                                  get_operator_printstr(op), get_type_printstr(operand_ty));
+        break;
+
+      case eOperator_bit_not:
+        if(types_are_equal(operand_ty, basic_type_int))
+        {
+          ;//ok
+        }
+        else
+          success = compile_error(unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
+                                  get_operator_printstr(op), get_type_printstr(operand_ty));
+        break;
+
+      case eOperator_neg:
+        if(types_are_equal(operand_ty, basic_type_int) ||
+           types_are_equal(operand_ty, basic_type_float))
+        {
+          ;//ok
+        }
+        else
+          success = compile_error(unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
+                                  get_operator_printstr(op), get_type_printstr(operand_ty));
+        break;
+    }
+  }
   return success;
 }
 
@@ -3527,6 +3578,7 @@ bool check_types_expr(AstNode* expr)
       break;
     case eAstNode_id:
     case eAstNode_lit:
+    case eAstNode_str:
     case eAstNode_basic_type:
       break;
     default:
@@ -3592,6 +3644,7 @@ bool check_types_block_stmt(AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
+    case eAstNode_str:
       success = check_types_expr(stmt);
       break;
     case eAstNode_return:
@@ -4005,6 +4058,7 @@ void gen_ir_bool_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
   {
     case eAstNode_id:
       gen_ir_bool_id(ir_context, scope, expr);
+      break;
     case eAstNode_lit:
       gen_ir_bool_lit(ir_context, scope, expr);
       break;
@@ -4102,6 +4156,10 @@ void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 
     case eAstNode_var:
       //TODO
+      break;
+
+    case eAstNode_str:
+      //FIXME
       break;
 
     default:

@@ -10,11 +10,10 @@ void main()
   int y;
   int z;
 
-  while(a < b)
+  if((not a) < b)
   {
-    if(c < d)
-      x = y + z;
-    else
-      x = y - z;
+    z = 123;
   }
 }
+
+

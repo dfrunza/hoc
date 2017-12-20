@@ -10,16 +10,25 @@ static int typevar_id = 1;
 
 static int last_label_id;
 
-static IrArg bool_true_ir_arg;
-static IrArg bool_false_ir_arg;
+static IrArg ir_arg_bool_true;
+static IrArg ir_arg_bool_false;
 
 void gen_x86_load_rvalue(String* code, AstNode* node);
 bool gen_x86(String* code, AstNode* node);
 
-Label* make_unique_label(MemoryArena* arena)
+Label* make_symbolic_label(MemoryArena* arena)
 {
   Label* label = mem_push_struct(arena, Label);
-  h_sprintf(label->name, "L%d", last_label_id++);
+  label->kind = eLabel_symbolic;
+  h_sprintf(label->name, "L_%d", last_label_id++);
+  return label;
+}
+
+Label* make_numeric_label(MemoryArena* arena, int num)
+{
+  Label* label = mem_push_struct(arena, Label);
+  label->kind = eLabel_numeric;
+  label->num = num;
   return label;
 }
 
@@ -615,7 +624,7 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
   return result;
 }
 
-Symbol* new_temp_sym(MemoryArena* arena, Scope* scope, AstNode* ast_node)
+Symbol* new_tempvar(MemoryArena* arena, Scope* scope, AstNode* ast_node)
 {
   Symbol* sym = mem_push_struct(arena, Symbol);
   sym->name = make_tempvar_name("t_");
@@ -1609,7 +1618,7 @@ bool gen_x86(String* code, AstNode* node)
               else
                 assert(0);
 
-              Label label = make_unique_label();
+              Label label = make_symbolic_label();
               str_printfln(code, "push 1");
               if(node->bin_expr.op == eOperator_eq)
               {
@@ -1654,7 +1663,7 @@ bool gen_x86(String* code, AstNode* node)
 
                 str_printfln(code, "cmp ebx, eax");
 
-                Label label = make_unique_label();
+                Label label = make_symbolic_label();
                 str_printfln(code, "push 1");
                 if(node->bin_expr.op == eOperator_less)
                 {
@@ -1734,7 +1743,7 @@ bool gen_x86(String* code, AstNode* node)
             {
               gen_x86_load_rvalue(code, left_operand);
 
-              Label label = make_unique_label();
+              Label label = make_symbolic_label();
               str_printfln(code, "pop eax");
               if(node->bin_expr.op == eOperator_logic_and)
               {
@@ -1888,7 +1897,7 @@ bool gen_x86(String* code, AstNode* node)
 
     case eAstNode_while:
       {
-        Label label = node->while_.label = make_unique_label();
+        Label label = node->while_.label = make_symbolic_label();
         str_printfln(code, "%s$while_eval:", label.name);
         gen_x86_load_rvalue(code, node->while_.cond_expr);
 
@@ -1913,7 +1922,7 @@ bool gen_x86(String* code, AstNode* node)
         str_printfln(code, "pop eax");
         str_printfln(code, "and eax, 1");
 
-        Label label = make_unique_label();
+        Label label = make_symbolic_label();
         if(node->if_.else_body)
         {
           str_printfln(code, "jz %s$if_else", label.name);
@@ -3781,6 +3790,7 @@ void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, I
   IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
   ir_stmt->kind = eIrStmt_assign;
+  ir_stmt->nr = ir_context->next_stmt_nr++;
   ir_stmt->assign.op = op;
   ir_stmt->assign.arg1 = arg1;
   ir_stmt->assign.arg2 = arg2;
@@ -3800,6 +3810,7 @@ void ir_emit_cond_goto(IrContext* ir_context, eIrOp relop, IrArg* arg1, IrArg* a
   IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
   ir_stmt->kind = eIrStmt_cond_goto;
+  ir_stmt->nr = ir_context->next_stmt_nr++;
   ir_stmt->cond_goto.relop = relop;
   ir_stmt->cond_goto.arg1 = arg1;
   ir_stmt->cond_goto.arg2 = arg2;
@@ -3808,8 +3819,10 @@ void ir_emit_cond_goto(IrContext* ir_context, eIrOp relop, IrArg* arg1, IrArg* a
 
 void ir_emit_goto(IrContext* ir_context, Label* label)
 {
+  assert(label->name);
   IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
+  ir_stmt->nr = ir_context->next_stmt_nr++;
   ir_stmt->kind = eIrStmt_goto;
   ir_stmt->label = label;
 }
@@ -3826,19 +3839,17 @@ void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   eOperator op = bin_expr->bin_expr.op;
 
-  gen_ir_expr(ir_context, scope, right_operand);
-  gen_ir_expr(ir_context, scope, left_operand);
   switch(op)
   {
     case eOperator_assign:
+      gen_ir_expr(ir_context, scope, left_operand);
+      gen_ir_expr(ir_context, scope, right_operand);
+      if(left_operand->kind == eAstNode_id)
       {
-        if(left_operand->kind == eAstNode_id)
-        {
-          ir_emit_assign(ir_context, eIrOp_None, &right_operand->ir_place, 0, &left_operand->ir_place);
-        }
-        else
-          fail("I'm a meat popsicle");
+        ir_emit_assign(ir_context, eIrOp_None, &right_operand->ir_place, 0, &left_operand->ir_place);
       }
+      else
+        fail("I'm a meat popsicle");
       break;
 
     case eOperator_add:
@@ -3857,11 +3868,11 @@ void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
     case eOperator_greater_eq:
     case eOperator_eq:
     case eOperator_not_eq:
-      {
-        bin_expr->ir_place.kind = eIrArg_data_obj;
-        bin_expr->ir_place.data_obj = new_temp_sym(ir_context->sym_arena, scope, bin_expr);
-        ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &left_operand->ir_place, &right_operand->ir_place, &bin_expr->ir_place);
-      }
+      gen_ir_expr(ir_context, scope, left_operand);
+      gen_ir_expr(ir_context, scope, right_operand);
+      bin_expr->ir_place.kind = eIrArg_data_obj;
+      bin_expr->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, bin_expr);
+      ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &left_operand->ir_place, &right_operand->ir_place, &bin_expr->ir_place);
       break;
 
     default:
@@ -3883,15 +3894,17 @@ void gen_ir_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
   AstNode* operand = unr_expr->unr_expr.operand;
   eOperator op = unr_expr->unr_expr.op;
 
-  gen_ir_expr(ir_context, scope, operand);
   switch(op)
   {
     case eOperator_neg:
-      {
-        unr_expr->ir_place.kind = eIrArg_data_obj;
-        unr_expr->ir_place.data_obj = new_temp_sym(ir_context->sym_arena, scope, unr_expr);
-        ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &operand->ir_place, 0, &unr_expr->ir_place);
-      }
+      gen_ir_expr(ir_context, scope, operand);
+      unr_expr->ir_place.kind = eIrArg_data_obj;
+      unr_expr->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, unr_expr);
+      ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &operand->ir_place, 0, &unr_expr->ir_place);
+      break;
+
+    case eOperator_logic_not:
+      fail("todo");
       break;
 
     default:
@@ -3932,16 +3945,61 @@ void gen_ir_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
   }
 }
 
+void gen_ir_bool_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
+{
+  assert(KIND(unr_expr, eAstNode_unr_expr));
+
+  AstNode* operand = unr_expr->unr_expr.operand;
+  eOperator op = unr_expr->unr_expr.op;
+
+  switch(op)
+  {
+    case eOperator_logic_not:
+      operand->label_true = unr_expr->label_false;
+      operand->label_false = unr_expr->label_true;
+      gen_ir_bool_expr(ir_context, scope, operand);
+      break;
+
+    default:
+      assert(0);
+  }
+}
+
 void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
 {
   switch(expr->kind)
   {
     case eAstNode_bin_expr:
-      gen_ir_bin_expr(ir_context, scope, expr);
+      {
+        eOperator op = expr->bin_expr.op;
+        if(op == eOperator_logic_and || op == eOperator_logic_or)
+        {
+          expr->label_true = make_symbolic_label(arena);
+          expr->label_false = make_symbolic_label(arena);
+          expr->ir_place.kind = eIrArg_data_obj;
+          expr->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, expr);
+          gen_ir_bool_expr(ir_context, scope, expr);
+          ir_emit_label(ir_context, expr->label_true);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, &expr->ir_place);
+          ir_emit_goto(ir_context, make_numeric_label(arena, ir_context->next_stmt_nr + 2));
+          ir_emit_label(ir_context, expr->label_false);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, &expr->ir_place);
+        }
+        else
+          gen_ir_bin_expr(ir_context, scope, expr);
+      }
       break;
+
     case eAstNode_unr_expr:
-      gen_ir_unr_expr(ir_context, scope, expr);
+      {
+        eOperator op = expr->unr_expr.op;
+        if(op == eOperator_logic_not)
+          gen_ir_bool_unr_expr(ir_context, scope, expr);
+        else
+          gen_ir_unr_expr(ir_context, scope, expr);
+      }
       break;
+
     case eAstNode_id:
       gen_ir_id(ir_context, scope, expr);
       break;
@@ -3987,8 +4045,11 @@ void gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
       break;
 
     case eOperator_logic_or:
+      assert(bin_expr->label_true);
+      assert(bin_expr->label_false);
+
       left_operand->label_true = bin_expr->label_true;
-      left_operand->label_false = make_unique_label(arena);
+      left_operand->label_false = make_symbolic_label(arena);
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
       gen_ir_bool_expr(ir_context, scope, left_operand);
@@ -3997,7 +4058,10 @@ void gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
       break;
 
     case eOperator_logic_and:
-      left_operand->label_true = make_unique_label(arena);
+      assert(bin_expr->label_true);
+      assert(bin_expr->label_false);
+
+      left_operand->label_true = make_symbolic_label(arena);
       left_operand->label_false = bin_expr->label_false;
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
@@ -4011,31 +4075,11 @@ void gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
   }
 }
 
-void gen_ir_bool_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
-{
-  assert(KIND(unr_expr, eAstNode_unr_expr));
-
-  AstNode* operand = unr_expr->unr_expr.operand;
-  eOperator op = unr_expr->unr_expr.op;
-
-  switch(op)
-  {
-    case eOperator_logic_not:
-      operand->label_true = unr_expr->label_false;
-      operand->label_false = unr_expr->label_true;
-      gen_ir_bool_expr(ir_context, scope, operand);
-      break;
-
-    default:
-      assert(0);
-  }
-}
-
 void gen_ir_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   gen_ir_expr(ir_context, scope, id);
-  ir_emit_cond_goto(ir_context, eIrOp_eq, &id->ir_place, &bool_true_ir_arg, id->label_true);
+  ir_emit_cond_goto(ir_context, eIrOp_eq, &id->ir_place, &ir_arg_bool_true, id->label_true);
   ir_emit_goto(ir_context, id->label_false);
 }
 
@@ -4080,9 +4124,9 @@ void gen_ir_while(IrContext* ir_context, Scope* scope, AstNode* while_)
   AstNode* cond_expr = while_->while_.cond_expr;
   AstNode* body = while_->while_.body;
 
-  while_->label_begin = make_unique_label(arena);
-  while_->label_next = make_unique_label(arena);
-  cond_expr->label_true = make_unique_label(arena);
+  while_->label_begin = make_symbolic_label(arena);
+  while_->label_next = make_symbolic_label(arena);
+  cond_expr->label_true = make_symbolic_label(arena);
   cond_expr->label_false = while_->label_next;
   body->label_next = while_->label_begin;
 
@@ -4102,11 +4146,11 @@ void gen_ir_if(IrContext* ir_context, Scope* scope, AstNode* if_)
   AstNode* body = if_->if_.body;
   AstNode* else_body = if_->if_.else_body;
 
-  if_->label_next = make_unique_label(arena);
+  if_->label_next = make_symbolic_label(arena);
   if(else_body)
   {
-    cond_expr->label_true = make_unique_label(arena);
-    cond_expr->label_false = make_unique_label(arena);
+    cond_expr->label_true = make_symbolic_label(arena);
+    cond_expr->label_false = make_symbolic_label(arena);
     body->label_next = if_->label_next;
     else_body->label_next = if_->label_next;
 
@@ -4119,7 +4163,7 @@ void gen_ir_if(IrContext* ir_context, Scope* scope, AstNode* if_)
   }
   else
   {
-    cond_expr->label_true = make_unique_label(arena);
+    cond_expr->label_true = make_symbolic_label(arena);
     cond_expr->label_false = if_->label_next;
     body->label_next = if_->label_next;
 
@@ -4381,19 +4425,19 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
 
     case eIrStmt_goto:
       {
-        str_printf(text, "goto ");
-        str_printf(text, stmt->label->name);
+        Label* label = stmt->label;
+        if(label->kind == eLabel_symbolic)
+          str_printf(text, "goto %s", label->name);
+        else if(label->kind == eLabel_numeric)
+          str_printf(text, "goto %d", label->num);
+        else
+          assert(0);
       }
-      break;
-
-    case eIrStmt_label:
-      str_printf(text, "%s:", stmt->label->name);
       break;
 
     default:
       str_printf(text, "???");
   }
-  str_printfln(text, "");
 }
 
 void DEBUG_print_ir_code(IrContext* ir_context, char* file_path)
@@ -4405,7 +4449,16 @@ void DEBUG_print_ir_code(IrContext* ir_context, char* file_path)
   for(int i = 0; i < ir_context->stmt_count; i++)
   {
     IrStmt* stmt = (IrStmt*)(ir_context->ir_arena->base) + i;
-    DEBUG_print_ir_stmt(&text, stmt);
+    if(stmt->kind == eIrStmt_label)
+    {
+      str_printf(&text, "%6s:", stmt->label->name);
+    }
+    else
+    {
+      str_printf(&text, "%6d: ", stmt->nr);
+      DEBUG_print_ir_stmt(&text, stmt);
+    }
+    str_printfln(&text, "");
   }
 
   int text_len = str_len(&text);
@@ -4422,12 +4475,12 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   basic_type_void = new_basic_type(eBasicType_void);
   subst_list = new_list(arena, eList_type_pair);
 
-  bool_true_ir_arg.kind = eIrArg_const;  
-  bool_true_ir_arg.ir_const.kind = eIrConstant_int;
-  bool_true_ir_arg.ir_const.int_val = 1;
-  bool_false_ir_arg.kind = eIrArg_const;  
-  bool_false_ir_arg.ir_const.kind = eIrConstant_int;
-  bool_false_ir_arg.ir_const.int_val = 0;
+  ir_arg_bool_true.kind = eIrArg_const;  
+  ir_arg_bool_true.ir_const.kind = eIrConstant_int;
+  ir_arg_bool_true.ir_const.int_val = 1;
+  ir_arg_bool_false.kind = eIrArg_const;  
+  ir_arg_bool_false.ir_const.kind = eIrConstant_int;
+  ir_arg_bool_false.ir_const.int_val = 0;
 
   SymbolContext sym_context = {0};
   sym_context.arena = push_arena(&arena, SYMBOL_ARENA_SIZE);
@@ -4621,7 +4674,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 
   str_printfln(x86_text, "_rt_leave_frame PROC");
   str_printfln(x86_text, "pop ebx ;return address;");
-  label = make_unique_label();
+  label = make_symbolic_label();
   str_printfln(x86_text, "pop ecx ;depth");
   str_printfln(x86_text, "%s$loop:", label.name);
   str_printfln(x86_text, "mov esp, ebp");
@@ -4635,7 +4688,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   str_printfln(x86_text, "pop ebx ;return address;");
   str_printfln(x86_text, "pop ecx ;declaration scope offset");
   str_printfln(x86_text, "mov esi, dword ptr [esp]");
-  label = make_unique_label();
+  label = make_symbolic_label();
   str_printfln(x86_text, "%s$loop:", label.name);
   str_printfln(x86_text, "mov esi, dword ptr[esi]");
   str_printfln(x86_text, "loop %s$loop", label.name);

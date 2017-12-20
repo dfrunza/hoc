@@ -77,9 +77,22 @@ typedef struct
 }
 SourceLoc;
 
+typedef enum
+{
+  eLabel_None,
+  eLabel_symbolic,
+  eLabel_numeric,
+}
+eLabel;
+
 typedef struct
 {
-  char name[12];
+  eLabel kind;
+  union
+  {
+    char name[12];
+    int num;
+  };
 }
 Label;
 
@@ -553,6 +566,7 @@ typedef struct
   MemoryArena* sym_arena;
   MemoryArena* arena;
   int stmt_count;
+  int next_stmt_nr;
 }
 IrContext;
 
@@ -591,7 +605,6 @@ typedef struct
   {
     Symbol* data_obj;
     IrConstant ir_const;
-    char* label;
   };
 }
 IrArg;
@@ -611,6 +624,7 @@ eIrStmt;
 typedef struct
 {
   eIrStmt kind;
+  int nr;
 
   union
   {

@@ -226,7 +226,7 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
               case eAstNode_unr_expr:
               case eAstNode_call:
                 bin_expr->bin_expr.right_operand = right_operand;
-                success = parse_rest_of_factor(input, *node, node);
+                success = parse_rest_of_factor(input, *node, node); // left-associativity
                 break;
               default:
                 success = compile_error(right_operand->src_loc, "invalid operand");
@@ -262,10 +262,16 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
     case eToken_plus:
     case eToken_minus:
     case eToken_pipe:
-    case eToken_or:
     case eToken_angle_right_right:
     case eToken_angle_left_left:
     case eToken_tilde:
+    case eToken_eq_eq:
+    case eToken_angle_left:
+    case eToken_angle_left_eq:
+    case eToken_angle_right:
+    case eToken_angle_right_eq:
+    case eToken_angle_left_right:
+    case eToken_or:
       {
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
@@ -281,9 +287,6 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
           case eToken_pipe:
             bin_expr->bin_expr.op = eOperator_bit_or;
             break;
-          case eToken_or:
-            bin_expr->bin_expr.op = eOperator_logic_or;
-            break;
           case eToken_angle_left_left:
             bin_expr->bin_expr.op = eOperator_bit_shift_left;
             break;
@@ -292,6 +295,27 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
             break;
           case eToken_tilde:
             bin_expr->bin_expr.op = eOperator_bit_xor;
+            break;
+          case eToken_eq_eq:
+            bin_expr->bin_expr.op = eOperator_eq;
+            break;
+          case eToken_angle_left_right:
+            bin_expr->bin_expr.op = eOperator_not_eq;
+            break;
+          case eToken_angle_left:
+            bin_expr->bin_expr.op = eOperator_less;
+            break;
+          case eToken_angle_left_eq:
+            bin_expr->bin_expr.op = eOperator_less_eq;
+            break;
+          case eToken_angle_right:
+            bin_expr->bin_expr.op = eOperator_greater;
+            break;
+          case eToken_angle_right_eq:
+            bin_expr->bin_expr.op = eOperator_greater_eq;
+            break;
+          case eToken_or:
+            bin_expr->bin_expr.op = eOperator_logic_or;
             break;
           default:
             assert(0);
@@ -310,7 +334,7 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
               case eAstNode_unr_expr:
               case eAstNode_call:
                 bin_expr->bin_expr.right_operand = right_operand;
-                success = parse_rest_of_term(input, *node, node);
+                success = parse_rest_of_term(input, *node, node); // left-associativity
                 break;
               default:
                 success = compile_error(right_operand->src_loc, "invalid operand");
@@ -344,42 +368,10 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
   switch(input->token.kind)
   {
     case eToken_eq:
-    case eToken_eq_eq:
-    case eToken_angle_left:
-    case eToken_angle_left_eq:
-    case eToken_angle_right:
-    case eToken_angle_right_eq:
-    case eToken_angle_left_right:
       {
         AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
         bin_expr->bin_expr.left_operand = left_node;
-
-        switch(input->token.kind)
-        {
-          case eToken_eq:
-            bin_expr->bin_expr.op = eOperator_assign;
-            break;
-          case eToken_eq_eq:
-            bin_expr->bin_expr.op = eOperator_eq;
-            break;
-          case eToken_angle_left_right:
-            bin_expr->bin_expr.op = eOperator_not_eq;
-            break;
-          case eToken_angle_left:
-            bin_expr->bin_expr.op = eOperator_less;
-            break;
-          case eToken_angle_left_eq:
-            bin_expr->bin_expr.op = eOperator_less_eq;
-            break;
-          case eToken_angle_right:
-            bin_expr->bin_expr.op = eOperator_greater;
-            break;
-          case eToken_angle_right_eq:
-            bin_expr->bin_expr.op = eOperator_greater_eq;
-            break;
-          default:
-            assert(0);
-        }
+        bin_expr->bin_expr.op = eOperator_assign;
 
         AstNode* right_operand = 0;
         if(success = get_next_token(input) && parse_expr(input, &right_operand))

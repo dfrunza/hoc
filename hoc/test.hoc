@@ -1,7 +1,20 @@
 void main()
 {
-  bool a;
-  int i;
-  if(i <> i)
-    i = 1;
+  int a;
+  int b;
+  int c;
+  int d;
+  int e;
+  int f;
+  int x;
+  int y;
+  int z;
+
+  while(a < b)
+  {
+    if(c < d)
+      x = y + z;
+    else
+      x = y - z;
+  }
 }

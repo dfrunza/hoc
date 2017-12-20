@@ -192,37 +192,42 @@ TokenStream;
 typedef enum
 {
   eOperator_None,
+
+  /* arithmetic ops */
   eOperator_add,
   eOperator_sub,
   eOperator_mul,
   eOperator_div,
   eOperator_mod,
   eOperator_neg,
-  eOperator_assign,
-  eOperator_deref,
-  eOperator_address_of,
-  eOperator_selector,
-  eOperator_indirect_selector,
-  eOperator_pre_decr,
-  eOperator_post_decr,
-  eOperator_pre_incr,
-  eOperator_post_incr,
-  eOperator_index,
+
+  /* relational ops */
   eOperator_eq,
   eOperator_not_eq,
   eOperator_less,
   eOperator_less_eq,
   eOperator_greater,
   eOperator_greater_eq,
+
+  /* logical ops */
   eOperator_logic_and,
   eOperator_logic_or,
   eOperator_logic_not,
+
+  /* bit ops */
   eOperator_bit_and,
   eOperator_bit_or,
   eOperator_bit_xor,
   eOperator_bit_not,
   eOperator_bit_shift_left,
   eOperator_bit_shift_right,
+
+  eOperator_assign,
+  eOperator_deref,
+  eOperator_address_of,
+  eOperator_selector,
+  eOperator_indirect_selector,
+  eOperator_index,
   eOperator_cast,
   eOperator_array,
   eOperator_pointer,
@@ -269,6 +274,7 @@ char* get_operator_printstr(eOperator op)
     case eOperator_indirect_selector:
       str = "->";
       break;
+#if 0
     case eOperator_pre_decr:
     case eOperator_post_decr:
       str = "--";
@@ -277,6 +283,7 @@ char* get_operator_printstr(eOperator op)
     case eOperator_post_incr:
       str = "++";
       break;
+#endif
     case eOperator_index:
       str = "[]";
       break;
@@ -299,10 +306,10 @@ char* get_operator_printstr(eOperator op)
       str = ">=";
       break;
     case eOperator_logic_and:
-      str = "&";
+      str = "and";
       break;
     case eOperator_logic_or:
-      str = "|";
+      str = "or";
       break;
     case eOperator_logic_not:
       str = "not";
@@ -670,6 +677,7 @@ typedef struct AstNode
   Label* label_true;
   Label* label_false;
   Label* label_next;
+  Label* label_begin;
 
   union
   {

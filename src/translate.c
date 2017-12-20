@@ -1,14 +1,17 @@
-int tempvar_id = 0;
+static int tempvar_id = 0;
 
-Type* basic_type_bool;
-Type* basic_type_int;
-Type* basic_type_char;
-Type* basic_type_float;
-Type* basic_type_void;
-List* subst_list;
-int typevar_id = 1;
+static Type* basic_type_bool;
+static Type* basic_type_int;
+static Type* basic_type_char;
+static Type* basic_type_float;
+static Type* basic_type_void;
+static List* subst_list;
+static int typevar_id = 1;
 
-int last_label_id;
+static int last_label_id;
+
+static IrArg bool_true_ir_arg;
+static IrArg bool_false_ir_arg;
 
 void gen_x86_load_rvalue(String* code, AstNode* node);
 bool gen_x86(String* code, AstNode* node);
@@ -615,7 +618,7 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
 Symbol* new_temp_sym(MemoryArena* arena, Scope* scope, AstNode* ast_node)
 {
   Symbol* sym = mem_push_struct(arena, Symbol);
-  sym->name = make_tempvar_name("tmp");
+  sym->name = make_tempvar_name("t_");
   sym->src_loc = ast_node->src_loc;
   sym->ast_node = ast_node;
   sym->ty = ast_node->eval_ty;
@@ -3750,7 +3753,16 @@ void ir_emit_cond_goto(IrContext* ir_context, eIrOp relop, IrArg* arg1, IrArg* a
   ir_stmt->cond_goto.label = label;
 }
 
+void ir_emit_goto(IrContext* ir_context, Label* label)
+{
+  IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  ir_context->stmt_count++;
+  ir_stmt->kind = eIrStmt_goto;
+  ir_stmt->label = label;
+}
+
 void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr);
+void gen_ir_bool_expr(IrContext* ir_context, Scope* scope, AstNode* expr);
 void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt);
 
 void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
@@ -3828,6 +3840,9 @@ void gen_ir_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
         ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &operand->ir_place, 0, &unr_expr->ir_place);
       }
       break;
+
+    default:
+      assert(0);
   }
 }
 
@@ -3896,14 +3911,133 @@ void gen_ir_block(IrContext* ir_context, Scope* scope, AstNode* block)
   }
 }
 
-void gen_ir_cond_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
+void gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
 {
-  static IrArg zero = {0};
-  zero.kind = eIrArg_const;
-  zero.ir_const.kind = eIrConstant_int;
-  zero.ir_const.int_val = 0;
-  gen_ir_expr(ir_context, scope, expr);
-  ir_emit_cond_goto(ir_context, eIrOp_eq, &expr->ir_place, &zero, expr->label_false);
+  assert(KIND(bin_expr, eAstNode_bin_expr));
+
+  AstNode* left_operand = bin_expr->bin_expr.left_operand;
+  AstNode* right_operand = bin_expr->bin_expr.right_operand;
+  eOperator op = bin_expr->bin_expr.op;
+
+  switch(op)
+  {
+    case eOperator_eq:
+    case eOperator_not_eq:
+    case eOperator_less:
+    case eOperator_less_eq:
+    case eOperator_greater:
+    case eOperator_greater_eq:
+      gen_ir_expr(ir_context, scope, left_operand);
+      gen_ir_expr(ir_context, scope, right_operand);
+      ir_emit_cond_goto(ir_context, conv_operator_to_ir_op(op), &left_operand->ir_place, &right_operand->ir_place, bin_expr->label_true);
+      ir_emit_goto(ir_context, bin_expr->label_false);
+      break;
+
+    case eOperator_logic_or:
+      left_operand->label_true = bin_expr->label_true;
+      left_operand->label_false = make_unique_label(arena);
+      right_operand->label_true = bin_expr->label_true;
+      right_operand->label_false = bin_expr->label_false;
+      gen_ir_bool_expr(ir_context, scope, left_operand);
+      ir_emit_label(ir_context, left_operand->label_false);
+      gen_ir_bool_expr(ir_context, scope, right_operand);
+      break;
+
+    case eOperator_logic_and:
+      left_operand->label_true = make_unique_label(arena);
+      left_operand->label_false = bin_expr->label_false;
+      right_operand->label_true = bin_expr->label_true;
+      right_operand->label_false = bin_expr->label_false;
+      gen_ir_bool_expr(ir_context, scope, left_operand);
+      ir_emit_label(ir_context, left_operand->label_true);
+      gen_ir_bool_expr(ir_context, scope, right_operand);
+      break;
+
+    default:
+      assert(0);
+  }
+}
+
+void gen_ir_bool_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
+{
+  assert(KIND(unr_expr, eAstNode_unr_expr));
+
+  AstNode* operand = unr_expr->unr_expr.operand;
+  eOperator op = unr_expr->unr_expr.op;
+
+  switch(op)
+  {
+    case eOperator_logic_not:
+      operand->label_true = unr_expr->label_false;
+      operand->label_false = unr_expr->label_true;
+      gen_ir_bool_expr(ir_context, scope, operand);
+      break;
+
+    default:
+      assert(0);
+  }
+}
+
+void gen_ir_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
+{
+  assert(KIND(id, eAstNode_id));
+  gen_ir_expr(ir_context, scope, id);
+  ir_emit_cond_goto(ir_context, eIrOp_eq, &id->ir_place, &bool_true_ir_arg, id->label_true);
+  ir_emit_goto(ir_context, id->label_false);
+}
+
+void gen_ir_bool_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
+{
+  assert(KIND(lit, eAstNode_lit));
+  if(lit->lit.bool_val != 0)
+  {
+    ir_emit_goto(ir_context, lit->label_true);
+  }
+  else
+  {
+    ir_emit_goto(ir_context, lit->label_false);
+  }
+}
+
+void gen_ir_bool_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
+{
+  switch(expr->kind)
+  {
+    case eAstNode_id:
+      gen_ir_bool_id(ir_context, scope, expr);
+    case eAstNode_lit:
+      gen_ir_bool_lit(ir_context, scope, expr);
+      break;
+    case eAstNode_bin_expr:
+      gen_ir_bool_bin_expr(ir_context, scope, expr);
+      break;
+    case eAstNode_unr_expr:
+      gen_ir_bool_unr_expr(ir_context, scope, expr);
+      break;
+    default:
+      assert(0);
+  }
+}
+
+void gen_ir_while(IrContext* ir_context, Scope* scope, AstNode* while_)
+{
+  assert(KIND(while_, eAstNode_while));
+
+  AstNode* cond_expr = while_->while_.cond_expr;
+  AstNode* body = while_->while_.body;
+
+  while_->label_begin = make_unique_label(arena);
+  while_->label_next = make_unique_label(arena);
+  cond_expr->label_true = make_unique_label(arena);
+  cond_expr->label_false = while_->label_next;
+  body->label_next = while_->label_begin;
+
+  ir_emit_label(ir_context, while_->label_begin);
+  gen_ir_bool_expr(ir_context, scope, cond_expr);
+  ir_emit_label(ir_context, cond_expr->label_true);
+  gen_ir_block_stmt(ir_context, scope, body);
+  ir_emit_goto(ir_context, while_->label_begin);
+  ir_emit_label(ir_context, while_->label_next);
 }
 
 void gen_ir_if(IrContext* ir_context, Scope* scope, AstNode* if_)
@@ -3912,13 +4046,33 @@ void gen_ir_if(IrContext* ir_context, Scope* scope, AstNode* if_)
 
   AstNode* cond_expr = if_->if_.cond_expr;
   AstNode* body = if_->if_.body;
+  AstNode* else_body = if_->if_.else_body;
+
   if_->label_next = make_unique_label(arena);
-  cond_expr->label_true = make_unique_label(arena);
-  cond_expr->label_false = if_->label_next;
-  body->label_next = if_->label_next;
-  gen_ir_cond_expr(ir_context, scope, cond_expr);
-  ir_emit_label(ir_context, cond_expr->label_true);
-  gen_ir_block_stmt(ir_context, body->block.scope, body);
+  if(else_body)
+  {
+    cond_expr->label_true = make_unique_label(arena);
+    cond_expr->label_false = make_unique_label(arena);
+    body->label_next = if_->label_next;
+    else_body->label_next = if_->label_next;
+
+    gen_ir_bool_expr(ir_context, scope, cond_expr);
+    ir_emit_label(ir_context, cond_expr->label_true);
+    gen_ir_block_stmt(ir_context, scope, body);
+    ir_emit_goto(ir_context, if_->label_next);
+    ir_emit_label(ir_context, cond_expr->label_false);
+    gen_ir_block_stmt(ir_context, scope, else_body);
+  }
+  else
+  {
+    cond_expr->label_true = make_unique_label(arena);
+    cond_expr->label_false = if_->label_next;
+    body->label_next = if_->label_next;
+
+    gen_ir_bool_expr(ir_context, scope, cond_expr);
+    ir_emit_label(ir_context, cond_expr->label_true);
+    gen_ir_block_stmt(ir_context, scope, body);
+  }
   ir_emit_label(ir_context, if_->label_next);
 }
 
@@ -3941,6 +4095,17 @@ void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     case eAstNode_if:
       gen_ir_if(ir_context, scope, stmt);
       break;
+
+    case eAstNode_while:
+      gen_ir_while(ir_context, scope, stmt);
+      break;
+
+    case eAstNode_var:
+      //TODO
+      break;
+
+    default:
+      assert(0);
   }
 }
 
@@ -4041,10 +4206,10 @@ void DEBUG_print_ir_op(String* text, eIrOp op)
       str_printf(text, ">>");
       break;
     case eIrOp_int_to_float:
-      str_printf(text, "itof");
+      str_printf(text, "int_to_float");
       break;
     case eIrOp_float_to_int:
-      str_printf(text, "ftoi");
+      str_printf(text, "float_to_int");
       break;
 
     default:
@@ -4059,12 +4224,6 @@ void DEBUG_print_ir_arg(String* text, IrArg* arg)
     case eIrArg_data_obj:
       str_printf(text, "%s", arg->data_obj->name);
       break;
-
-#if 0
-    case eIrArg_label:
-      str_printf(text, "%s", arg->label.name);
-      break;
-#endif
 
     case eIrArg_const:
       switch(arg->ir_const.kind)
@@ -4162,6 +4321,13 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
       }
       break;
 
+    case eIrStmt_goto:
+      {
+        str_printf(text, "goto ");
+        str_printf(text, stmt->label->name);
+      }
+      break;
+
     case eIrStmt_label:
       str_printf(text, "%s:", stmt->label->name);
       break;
@@ -4197,6 +4363,13 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   basic_type_float = new_basic_type(eBasicType_float);
   basic_type_void = new_basic_type(eBasicType_void);
   subst_list = new_list(arena, eList_type_pair);
+
+  bool_true_ir_arg.kind = eIrArg_const;  
+  bool_true_ir_arg.ir_const.kind = eIrConstant_int;
+  bool_true_ir_arg.ir_const.int_val = 1;
+  bool_false_ir_arg.kind = eIrArg_const;  
+  bool_false_ir_arg.ir_const.kind = eIrConstant_int;
+  bool_false_ir_arg.ir_const.int_val = 0;
 
   SymbolContext sym_context = {0};
   sym_context.arena = push_arena(&arena, SYMBOL_ARENA_SIZE);

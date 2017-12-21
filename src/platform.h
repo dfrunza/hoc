@@ -3,7 +3,7 @@
 void assert_(char* message, char* file, int line);
 
 #define assert(EXPR)\
-  do { if(!(EXPR)) assert_(#EXPR, __FILE__, __LINE__); } while(0);
+  do { if(!(EXPR)) assert_(#EXPR, __FILE__, __LINE__); } while(0)
 
 void fail_(char* file, int line, char* message, ...);
 

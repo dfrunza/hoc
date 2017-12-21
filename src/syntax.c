@@ -41,7 +41,7 @@ bool parse_actual_args(TokenStream* input, AstNode* arg_list)
   {
     if(arg)
     {
-      append_list_elem(&arg_list->arg_list.args, arg, eList_ast_node);
+      append_list_elem(&arg_list->arg_list.nodes, arg, eList_ast_node);
       success = parse_rest_of_actual_args(input, arg_list);
     }
   }
@@ -60,7 +60,7 @@ bool parse_call(TokenStream* input, AstNode* left_node, AstNode** node)
     AstNode* call = *node = new_ast_node(eAstNode_call, clone_source_loc(&input->src_loc));
     call->call.expr = left_node;
     AstNode* arg_list = call->call.arg_list = new_ast_node(eAstNode_arg_list, clone_source_loc(&input->src_loc));
-    init_list(&arg_list->arg_list.args, arena, eList_ast_node);
+    init_list(&arg_list->arg_list.nodes, arena, eList_ast_node);
 
     if(success = get_next_token(input) && parse_actual_args(input, call->call.arg_list))
     {
@@ -895,7 +895,7 @@ bool parse_formal_args(TokenStream* input, AstNode* arg_list)
   {
     if(arg)
     {
-      append_list_elem(&arg_list->arg_list.args, arg, eList_ast_node);
+      append_list_elem(&arg_list->arg_list.nodes, arg, eList_ast_node);
       success = parse_rest_of_formal_args(input, arg_list);
     }
   }
@@ -1441,7 +1441,7 @@ bool parse_module_stmt(TokenStream* input, AstNode** node)
                 if(success = get_next_token(input))
                 {
                   AstNode* arg_list = proc->proc.arg_list = new_ast_node(eAstNode_arg_list, clone_source_loc(&input->src_loc));
-                  init_list(&arg_list->arg_list.args, arena, eList_ast_node);
+                  init_list(&arg_list->arg_list.nodes, arena, eList_ast_node);
 
                   if(success = parse_formal_args(input, proc->proc.arg_list))
                   {

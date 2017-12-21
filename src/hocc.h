@@ -90,7 +90,7 @@ typedef struct
   eLabel kind;
   union
   {
-    char name[12];
+    char* name;
     int num;
   };
 }
@@ -618,6 +618,7 @@ typedef enum
   eIrStmt_call,
   eIrStmt_param,
   eIrStmt_label,
+  eIrStmt_return,
 }
 eIrStmt;
 
@@ -628,6 +629,7 @@ typedef struct
 
   union
   {
+    IrArg* param, *ret;
     Label* label;
     struct IrStmt_assign
     {
@@ -646,6 +648,13 @@ typedef struct
       Label* label;
     } 
     cond_goto;
+
+    struct IrStmt_call
+    {
+      char* name;
+      int param_count;
+    }
+    call;
   };
 }
 IrStmt;
@@ -703,7 +712,7 @@ typedef struct AstNode
 
     struct
     {
-      List args;
+      List nodes;
     }
     arg_list;
 

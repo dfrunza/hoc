@@ -13,14 +13,20 @@ static int last_label_id;
 static IrArg ir_arg_bool_true;
 static IrArg ir_arg_bool_false;
 
-void gen_x86_load_rvalue(String* code, AstNode* node);
-bool gen_x86(String* code, AstNode* node);
-
-Label* make_symbolic_label(MemoryArena* arena)
+Label* new_symbolic_label(MemoryArena* arena)
 {
   Label* label = mem_push_struct(arena, Label);
   label->kind = eLabel_symbolic;
+  label->name = mem_push_array(arena, char, 12);
   h_sprintf(label->name, "L_%d", last_label_id++);
+  return label;
+}
+
+Label* make_symbolic_label(MemoryArena* arena, char* name)
+{
+  Label* label = mem_push_struct(arena, Label);
+  label->kind = eLabel_symbolic;
+  label->name = name;
   return label;
 }
 
@@ -32,7 +38,7 @@ Label* make_numeric_label(MemoryArena* arena, int num)
   return label;
 }
 
-char* make_tempvar_name(char* label)
+char* new_tempvar_name(char* label)
 {
   String str; str_init(&str, arena);
   str_printf(&str, "$%s%d", label, tempvar_id++);
@@ -624,10 +630,25 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
   return result;
 }
 
+Symbol* new_retvar(MemoryArena* arena, AstNode* proc)
+{
+  assert(KIND(proc, eAstNode_proc));
+  Scope* scope = proc->proc.scope;
+  Symbol* sym = mem_push_struct(arena, Symbol);
+  sym->name = new_tempvar_name("r_");
+  sym->src_loc = proc->src_loc;
+  sym->ast_node = proc;
+  sym->ty = proc->proc.ret_type->eval_ty;
+  sym->scope = scope;
+  sym->order_nr = scope->sym_order_nr++;
+  prepend_list_elem(&scope->decl_syms, sym, eList_symbol);
+  return sym;
+}
+
 Symbol* new_tempvar(MemoryArena* arena, Scope* scope, AstNode* ast_node)
 {
   Symbol* sym = mem_push_struct(arena, Symbol);
-  sym->name = make_tempvar_name("t_");
+  sym->name = new_tempvar_name("t_");
   sym->src_loc = ast_node->src_loc;
   sym->ast_node = ast_node;
   sym->ty = ast_node->eval_ty;
@@ -779,7 +800,7 @@ bool sym_actual_args(SymbolContext* sym_context, AstNode* block, AstNode* arg_li
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.args.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -1006,7 +1027,7 @@ bool sym_formal_args(SymbolContext* sym_context, AstNode* arg_list)
   bool success = true;
 
   Scope* proc_scope = find_scope(sym_context->active_scope, eScope_proc);
-  for(ListItem* li = arg_list->arg_list.args.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -1618,7 +1639,7 @@ bool gen_x86(String* code, AstNode* node)
               else
                 assert(0);
 
-              Label label = make_symbolic_label();
+              Label label = new_symbolic_label();
               str_printfln(code, "push 1");
               if(node->bin_expr.op == eOperator_eq)
               {
@@ -1663,7 +1684,7 @@ bool gen_x86(String* code, AstNode* node)
 
                 str_printfln(code, "cmp ebx, eax");
 
-                Label label = make_symbolic_label();
+                Label label = new_symbolic_label();
                 str_printfln(code, "push 1");
                 if(node->bin_expr.op == eOperator_less)
                 {
@@ -1743,7 +1764,7 @@ bool gen_x86(String* code, AstNode* node)
             {
               gen_x86_load_rvalue(code, left_operand);
 
-              Label label = make_symbolic_label();
+              Label label = new_symbolic_label();
               str_printfln(code, "pop eax");
               if(node->bin_expr.op == eOperator_logic_and)
               {
@@ -1897,7 +1918,7 @@ bool gen_x86(String* code, AstNode* node)
 
     case eAstNode_while:
       {
-        Label label = node->while_.label = make_symbolic_label();
+        Label label = node->while_.label = new_symbolic_label();
         str_printfln(code, "%s$while_eval:", label.name);
         gen_x86_load_rvalue(code, node->while_.cond_expr);
 
@@ -1922,7 +1943,7 @@ bool gen_x86(String* code, AstNode* node)
         str_printfln(code, "pop eax");
         str_printfln(code, "and eax, 1");
 
-        Label label = make_symbolic_label();
+        Label label = new_symbolic_label();
         if(node->if_.else_body)
         {
           str_printfln(code, "jz %s$if_else", label.name);
@@ -2111,7 +2132,7 @@ bool set_types_unr_expr(AstNode* unr_expr)
 
   if(op == eOperator_pointer || op == eOperator_array)
   {
-    success = compile_error(unr_expr->src_loc, "invalid application of operator");
+    success = compile_error(unr_expr->src_loc, "invalid application of operator '%s'", get_operator_printstr(op));
   }
   else if(success = set_types_expr(operand))
   {
@@ -2137,7 +2158,7 @@ bool set_types_actual_args(AstNode* arg_list)
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.args.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -2368,7 +2389,7 @@ bool set_types_block(AstNode* block)
 Type* make_type_of_arg_list(AstNode* arg_list)
 {
   Type* result = basic_type_void;
-  ListItem* li = arg_list->arg_list.args.first;
+  ListItem* li = arg_list->arg_list.nodes.first;
   if(li)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
@@ -2387,7 +2408,7 @@ bool set_types_formal_args(AstNode* arg_list)
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.args.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -2410,7 +2431,7 @@ bool set_types_proc(AstNode* proc)
   AstNode* arg_list = proc->proc.arg_list;
   if(success = set_types_formal_args(arg_list) && set_types_type(ret_type))
   {
-    proc->ty = new_proc_type(arg_list->ty, ret_type->ty);
+    proc->ty = new_proc_type(arg_list->eval_ty, ret_type->eval_ty);
     proc->eval_ty = basic_type_void;
 
     if(proc->modifier != eModifier_extern)
@@ -2468,10 +2489,10 @@ bool eval_types_type(AstNode* type)
   switch(type->kind)
   {
     case eAstNode_unr_expr:
-      assert(type->unr_expr.op == eOperator_pointer)
+      assert(type->unr_expr.op == eOperator_pointer);
       break;
     case eAstNode_bin_expr:
-      assert(type->bin_expr.op == eOperator_array)
+      assert(type->bin_expr.op == eOperator_array);
       break;
     case eAstNode_basic_type:
       break;
@@ -2737,7 +2758,7 @@ bool eval_types_formal_args(AstNode* arg_list)
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.args.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -2752,7 +2773,7 @@ bool eval_types_actual_args(AstNode* arg_list)
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.args.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -3004,7 +3025,7 @@ bool resolve_types_formal_args(AstNode* arg_list)
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.args.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -3051,7 +3072,7 @@ bool resolve_types_actual_args(AstNode* arg_list)
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.args.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -3234,7 +3255,7 @@ bool resolve_types_proc(AstNode* proc)
   if(success = resolve_types_formal_args(proc->proc.arg_list) && resolve_types_type(proc->proc.ret_type)
     && resolve_types_block_stmt(proc->proc.body) && resolve_types_of_node(proc))
   {
-    proc->proc.decl_sym->ty = proc->ty;
+    proc->proc.decl_sym->ty = proc->eval_ty;
   }
   return success;
 }
@@ -3292,7 +3313,7 @@ bool check_types_formal_args(AstNode* arg_list)
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.args.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -3305,6 +3326,72 @@ bool check_types_formal_args(AstNode* arg_list)
 bool check_types_expr(AstNode* expr);
 bool check_types_block_stmt(AstNode* stmt);
 
+bool check_types_cast(AstNode* cast)
+{
+  assert(KIND(cast, eAstNode_bin_expr)->bin_expr.op == eOperator_cast);
+  bool success = true;
+
+  AstNode* right_operand = cast->bin_expr.right_operand;
+
+  if(success = check_types_expr(right_operand))
+  {
+    Type* expr_ty = KIND(cast->ty, eType_proc);
+    Type* operands_ty = expr_ty->proc.args;
+    assert(KIND(operands_ty, eType_product));
+    Type* left_ty = operands_ty->product.left;
+    Type* right_ty = operands_ty->product.right;
+
+    if(!types_are_equal(left_ty, right_ty))
+    {
+      success = false;
+
+      if(types_are_equal(left_ty, basic_type_int))
+      {
+        // int <- float | bool | pointer | char
+        success = types_are_equal(right_ty, basic_type_float) ||
+          types_are_equal(right_ty, basic_type_bool) ||
+          types_are_equal(right_ty, basic_type_char) ||
+          (right_ty->kind == eType_pointer);
+      }
+      else if(types_are_equal(left_ty, basic_type_char))
+      {
+        // char <- int | bool
+        success = types_are_equal(right_ty, basic_type_int) ||
+          types_are_equal(right_ty, basic_type_bool);
+      }
+      else if(types_are_equal(left_ty, basic_type_float))
+      {
+        // float <- int
+        success = types_are_equal(right_ty, basic_type_int);
+      }
+      else if(types_are_equal(left_ty, basic_type_bool))
+      {
+        // bool <- int | char
+        success = types_are_equal(right_ty, basic_type_int) ||
+          types_are_equal(right_ty, basic_type_char);
+      }
+      else if(left_ty->kind == eType_pointer)
+      {
+        // pointer <- pointer | array | int
+        success = (right_ty->kind == eType_pointer) ||
+          (right_ty->kind == eType_array) ||
+          types_are_equal(right_ty, basic_type_int);
+      }
+      else if(left_ty->kind == eType_array)
+      {
+        // array <- pointer | array
+        success = (right_ty->kind == eType_pointer) || (right_ty->kind == eType_array);
+      }
+
+      if(!success)
+      {
+        compile_error(cast->src_loc, "invalid cast `%s` <- `%s`", get_type_printstr(left_ty), get_type_printstr(right_ty));
+      }
+    }
+  }
+  return success;
+}
+
 bool check_types_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
@@ -3314,7 +3401,11 @@ bool check_types_bin_expr(AstNode* bin_expr)
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   eOperator op = bin_expr->bin_expr.op;
 
-  if(success = check_types_expr(left_operand) && check_types_expr(right_operand))
+  if(op == eOperator_cast)
+  {
+    success = check_types_cast(bin_expr);
+  }
+  else if(success = check_types_expr(left_operand) && check_types_expr(right_operand))
   {
     Type* expr_ty = KIND(bin_expr->ty, eType_proc);
     Type* operands_ty = expr_ty->proc.args;
@@ -3436,58 +3527,6 @@ bool check_types_bin_expr(AstNode* bin_expr)
         }
         break;
 
-      case eOperator_cast:
-        {
-          if(!types_are_equal(left_ty, right_ty))
-          {
-            success = false;
-
-            if(types_are_equal(left_ty, basic_type_int))
-            {
-              // int <- float | bool | pointer | char
-              success = types_are_equal(right_ty, basic_type_float) ||
-                types_are_equal(right_ty, basic_type_bool) ||
-                types_are_equal(right_ty, basic_type_char) ||
-                (right_ty->kind == eType_pointer);
-            }
-            else if(types_are_equal(left_ty, basic_type_char))
-            {
-              // char <- int | bool
-              success = types_are_equal(right_ty, basic_type_int) ||
-                types_are_equal(right_ty, basic_type_bool);
-            }
-            else if(types_are_equal(left_ty, basic_type_float))
-            {
-              // float <- int
-              success = types_are_equal(right_ty, basic_type_int);
-            }
-            else if(types_are_equal(left_ty, basic_type_bool))
-            {
-              // bool <- int | char
-              success = types_are_equal(right_ty, basic_type_int) ||
-                types_are_equal(right_ty, basic_type_char);
-            }
-            else if(left_ty->kind == eType_pointer)
-            {
-              // pointer <- pointer | array | int
-              success = (right_ty->kind == eType_pointer) ||
-                (right_ty->kind == eType_array) ||
-                types_are_equal(right_ty, basic_type_int);
-            }
-            else if(left_ty->kind == eType_array)
-            {
-              // array <- pointer | array
-              success = (right_ty->kind == eType_pointer) || (right_ty->kind == eType_array);
-            }
-
-            if(!success)
-            {
-              compile_error(bin_expr->src_loc, "invalid cast `%s` <- `%s`", get_type_printstr(left_ty), get_type_printstr(right_ty));
-            }
-          }
-        }
-        break;
-
       default:
         assert(0);
     }
@@ -3552,7 +3591,7 @@ bool check_types_actual_args(AstNode* arg_list)
   assert(KIND(arg_list, eAstNode_arg_list));
   bool success = true;
 
-  for(ListItem* li = arg_list->arg_list.args.first;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
       li && success;
       li = li->next)
   {
@@ -3787,44 +3826,79 @@ eIrOp conv_operator_to_ir_op(eOperator op)
 void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, IrArg* result)
 {
   assert(result->kind == eIrArg_data_obj);
-  IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
-  ir_stmt->kind = eIrStmt_assign;
-  ir_stmt->nr = ir_context->next_stmt_nr++;
-  ir_stmt->assign.op = op;
-  ir_stmt->assign.arg1 = arg1;
-  ir_stmt->assign.arg2 = arg2;
-  ir_stmt->assign.result = result;
+  stmt->kind = eIrStmt_assign;
+  stmt->nr = ir_context->next_stmt_nr++;
+  stmt->assign.op = op;
+  stmt->assign.arg1 = arg1;
+  stmt->assign.arg2 = arg2;
+  stmt->assign.result = result;
 }
 
 void ir_emit_label(IrContext* ir_context, Label* label)
 {
-  IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
-  ir_stmt->kind = eIrStmt_label;
-  ir_stmt->label = label;
+  stmt->kind = eIrStmt_label;
+  stmt->nr = ir_context->next_stmt_nr; // do not increment the 'next_stmt_nr' for label stmts 
+  stmt->label = label;
 }
 
 void ir_emit_cond_goto(IrContext* ir_context, eIrOp relop, IrArg* arg1, IrArg* arg2, Label* label)
 {
-  IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
-  ir_stmt->kind = eIrStmt_cond_goto;
-  ir_stmt->nr = ir_context->next_stmt_nr++;
-  ir_stmt->cond_goto.relop = relop;
-  ir_stmt->cond_goto.arg1 = arg1;
-  ir_stmt->cond_goto.arg2 = arg2;
-  ir_stmt->cond_goto.label = label;
+  stmt->kind = eIrStmt_cond_goto;
+  stmt->nr = ir_context->next_stmt_nr++;
+  stmt->cond_goto.relop = relop;
+  stmt->cond_goto.arg1 = arg1;
+  stmt->cond_goto.arg2 = arg2;
+  stmt->cond_goto.label = label;
 }
 
 void ir_emit_goto(IrContext* ir_context, Label* label)
 {
-  assert(label->name);
-  IrStmt* ir_stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  if(label->kind == eLabel_symbolic)
+    assert(label->name);
+  else if(label->kind == eLabel_numeric)
+    assert(label->num > 0);
+  else
+    assert(0);
+
+  IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
-  ir_stmt->nr = ir_context->next_stmt_nr++;
-  ir_stmt->kind = eIrStmt_goto;
-  ir_stmt->label = label;
+  stmt->nr = ir_context->next_stmt_nr++;
+  stmt->kind = eIrStmt_goto;
+  stmt->label = label;
+}
+
+void ir_emit_call_param(IrContext* ir_context, IrArg* param)
+{
+  IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  ir_context->stmt_count++;
+  stmt->kind = eIrStmt_param;
+  stmt->nr = ir_context->next_stmt_nr++;
+  stmt->param = param;
+}
+
+void ir_emit_call(IrContext* ir_context, char* proc_name, int param_count)
+{
+  IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  ir_context->stmt_count++;
+  stmt->nr = ir_context->next_stmt_nr++;
+  stmt->kind = eIrStmt_call;
+  stmt->call.name = proc_name;
+  stmt->call.param_count = param_count;
+}
+
+void ir_emit_return(IrContext* ir_context, IrArg* ret)
+{
+  IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  ir_context->stmt_count++;
+  stmt->nr = ir_context->next_stmt_nr++;
+  stmt->kind = eIrStmt_return;
+  stmt->ret = ret;
 }
 
 void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr);
@@ -3965,6 +4039,44 @@ void gen_ir_bool_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr
   }
 }
 
+void gen_ir_actual_args(IrContext* ir_context, Scope* scope, AstNode* arg_list)
+{
+  assert(KIND(arg_list, eAstNode_arg_list));
+  for(ListItem* li = arg_list->arg_list.nodes.first;
+      li;
+      li = li->next)
+  {
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    gen_ir_expr(ir_context, scope, arg);
+  }
+}
+
+void gen_ir_call(IrContext* ir_context, Scope* scope, AstNode* call)
+{
+  assert(KIND(call, eAstNode_call));
+
+  if(!types_are_equal(call->eval_ty, basic_type_void))
+  {
+    call->ir_place.kind = eIrArg_data_obj;
+    call->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, call);
+  }
+
+  AstNode* arg_list = call->call.arg_list;
+  gen_ir_actual_args(ir_context, scope, arg_list);
+  int param_count = 0;
+  for(ListItem* li = arg_list->arg_list.nodes.first;
+      li;
+      li = li->next)
+  {
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    ir_emit_call_param(ir_context, &arg->ir_place);
+    param_count++;
+  }
+
+  assert(KIND(call->call.expr, eAstNode_id));
+  ir_emit_call(ir_context, call->call.expr->id.name, param_count);
+}
+
 void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
 {
   switch(expr->kind)
@@ -3974,8 +4086,8 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         eOperator op = expr->bin_expr.op;
         if(op == eOperator_logic_and || op == eOperator_logic_or)
         {
-          expr->label_true = make_symbolic_label(arena);
-          expr->label_false = make_symbolic_label(arena);
+          expr->label_true = new_symbolic_label(arena);
+          expr->label_false = new_symbolic_label(arena);
           expr->ir_place.kind = eIrArg_data_obj;
           expr->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, expr);
           gen_ir_bool_expr(ir_context, scope, expr);
@@ -3994,7 +4106,18 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
       {
         eOperator op = expr->unr_expr.op;
         if(op == eOperator_logic_not)
+        {
+          expr->label_true = new_symbolic_label(arena);
+          expr->label_false = new_symbolic_label(arena);
+          expr->ir_place.kind = eIrArg_data_obj;
+          expr->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, expr);
           gen_ir_bool_unr_expr(ir_context, scope, expr);
+          ir_emit_label(ir_context, expr->label_true);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, &expr->ir_place);
+          ir_emit_goto(ir_context, make_numeric_label(arena, ir_context->next_stmt_nr + 2));
+          ir_emit_label(ir_context, expr->label_false);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, &expr->ir_place);
+        }
         else
           gen_ir_unr_expr(ir_context, scope, expr);
       }
@@ -4006,6 +4129,13 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     case eAstNode_lit:
       gen_ir_lit(ir_context, scope, expr);
       break;
+
+    case eAstNode_call:
+      gen_ir_call(ir_context, scope, expr);
+      break;
+
+    default:
+      assert(0);
   }
 }
 
@@ -4049,7 +4179,7 @@ void gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
       assert(bin_expr->label_false);
 
       left_operand->label_true = bin_expr->label_true;
-      left_operand->label_false = make_symbolic_label(arena);
+      left_operand->label_false = new_symbolic_label(arena);
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
       gen_ir_bool_expr(ir_context, scope, left_operand);
@@ -4061,7 +4191,7 @@ void gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
       assert(bin_expr->label_true);
       assert(bin_expr->label_false);
 
-      left_operand->label_true = make_symbolic_label(arena);
+      left_operand->label_true = new_symbolic_label(arena);
       left_operand->label_false = bin_expr->label_false;
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
@@ -4124,9 +4254,9 @@ void gen_ir_while(IrContext* ir_context, Scope* scope, AstNode* while_)
   AstNode* cond_expr = while_->while_.cond_expr;
   AstNode* body = while_->while_.body;
 
-  while_->label_begin = make_symbolic_label(arena);
-  while_->label_next = make_symbolic_label(arena);
-  cond_expr->label_true = make_symbolic_label(arena);
+  while_->label_begin = new_symbolic_label(arena);
+  while_->label_next = new_symbolic_label(arena);
+  cond_expr->label_true = new_symbolic_label(arena);
   cond_expr->label_false = while_->label_next;
   body->label_next = while_->label_begin;
 
@@ -4146,11 +4276,11 @@ void gen_ir_if(IrContext* ir_context, Scope* scope, AstNode* if_)
   AstNode* body = if_->if_.body;
   AstNode* else_body = if_->if_.else_body;
 
-  if_->label_next = make_symbolic_label(arena);
+  if_->label_next = new_symbolic_label(arena);
   if(else_body)
   {
-    cond_expr->label_true = make_symbolic_label(arena);
-    cond_expr->label_false = make_symbolic_label(arena);
+    cond_expr->label_true = new_symbolic_label(arena);
+    cond_expr->label_false = new_symbolic_label(arena);
     body->label_next = if_->label_next;
     else_body->label_next = if_->label_next;
 
@@ -4163,7 +4293,7 @@ void gen_ir_if(IrContext* ir_context, Scope* scope, AstNode* if_)
   }
   else
   {
-    cond_expr->label_true = make_symbolic_label(arena);
+    cond_expr->label_true = new_symbolic_label(arena);
     cond_expr->label_false = if_->label_next;
     body->label_next = if_->label_next;
 
@@ -4172,6 +4302,18 @@ void gen_ir_if(IrContext* ir_context, Scope* scope, AstNode* if_)
     gen_ir_block_stmt(ir_context, scope, body);
   }
   ir_emit_label(ir_context, if_->label_next);
+}
+
+void gen_ir_return(IrContext* ir_context, Scope* scope, AstNode* ret)
+{
+  assert(KIND(ret, eAstNode_return));
+  if(ret->ret.expr)
+  {
+    gen_ir_expr(ir_context, scope, ret->ret.expr);
+    ir_emit_return(ir_context, &ret->ret.expr->ir_place);
+  }
+  else
+    ir_emit_return(ir_context, 0);
 }
 
 void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
@@ -4206,6 +4348,10 @@ void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
       //FIXME
       break;
 
+    case eAstNode_return:
+      gen_ir_return(ir_context, scope, stmt);
+      break;
+
     default:
       assert(0);
   }
@@ -4214,7 +4360,22 @@ void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 void gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
-  gen_ir_block_stmt(ir_context, proc->proc.scope, proc->proc.body);
+  AstNode* ret_type = proc->proc.ret_type;
+  if(!types_are_equal(ret_type->eval_ty, basic_type_void))
+  {
+    proc->ir_place.kind = eIrArg_data_obj;
+    proc->ir_place.data_obj = new_retvar(ir_context->sym_arena, proc);
+  }
+  if((proc->modifier & eModifier_extern) != 0)
+  {
+    ;//TODO
+  }
+  else
+  {
+    AstNode* body = proc->proc.body;
+    assert(KIND(body, eAstNode_block));
+    gen_ir_block_stmt(ir_context, body->block.scope, body);
+  }
 }
 
 void gen_ir_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
@@ -4222,8 +4383,12 @@ void gen_ir_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
   switch(stmt->kind)
   {
     case eAstNode_proc:
+      ir_emit_label(ir_context, make_symbolic_label(arena, stmt->proc.name));
       gen_ir_proc(ir_context, scope, stmt);
       break;
+
+    default:
+      assert(0);
   }
 }
 
@@ -4435,6 +4600,28 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
       }
       break;
 
+    case eIrStmt_param:
+      {
+        str_printf(text, "param ");
+        DEBUG_print_ir_arg(text, stmt->param);
+      }
+      break;
+
+    case eIrStmt_call:
+      {
+        struct IrStmt_call* call = &stmt->call;
+        str_printf(text, "call %s, %d", call->name, call->param_count);
+      }
+      break;
+
+    case eIrStmt_return:
+      {
+        str_printf(text, "return ");
+        if(stmt->ret)
+          DEBUG_print_ir_arg(text, stmt->ret);
+      }
+      break;
+
     default:
       str_printf(text, "???");
   }
@@ -4508,7 +4695,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   }
 
   gen_ir_module(&ir_context, module);
-  DEBUG_print_ir_code(&ir_context, "./ir.txt");
+  DEBUG_print_ir_code(&ir_context, "./out.ir");
 
 #if 0
   AstNode* module_body = module->module.body;
@@ -4674,7 +4861,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 
   str_printfln(x86_text, "_rt_leave_frame PROC");
   str_printfln(x86_text, "pop ebx ;return address;");
-  label = make_symbolic_label();
+  label = new_symbolic_label();
   str_printfln(x86_text, "pop ecx ;depth");
   str_printfln(x86_text, "%s$loop:", label.name);
   str_printfln(x86_text, "mov esp, ebp");
@@ -4688,7 +4875,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   str_printfln(x86_text, "pop ebx ;return address;");
   str_printfln(x86_text, "pop ecx ;declaration scope offset");
   str_printfln(x86_text, "mov esi, dword ptr [esp]");
-  label = make_symbolic_label();
+  label = new_symbolic_label();
   str_printfln(x86_text, "%s$loop:", label.name);
   str_printfln(x86_text, "mov esi, dword ptr[esi]");
   str_printfln(x86_text, "loop %s$loop", label.name);

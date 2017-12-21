@@ -565,21 +565,18 @@ bool parse_array(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
-  AstNode* array = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-  array->bin_expr.op = eOperator_array;
-  if(success = get_next_token(input) && parse_expr(input, &array->bin_expr.left_operand))
+  AstNode* array = *node = new_ast_node(eAstNode_array, clone_source_loc(&input->src_loc));
+  if(success = get_next_token(input) && parse_expr(input, &array->array.size_expr))
   {
     if(input->token.kind == eToken_close_bracket)
     {
-      if(!array->bin_expr.left_operand)
+      if(!array->array.size_expr)
       {
-        AstNode* size0 = array->bin_expr.left_operand = new_ast_node(eAstNode_lit, clone_source_loc(&input->src_loc));
-        size0->lit.kind = eLiteral_int;
-        size0->lit.int_val = 0;
+        success = compile_error(&input->src_loc,  "expression was expected at `%s`", get_token_printstr(&input->token));
       }
-      if(success = get_next_token(input) && parse_rest_of_array(input, &array->bin_expr.right_operand))
+      else if(success = get_next_token(input) && parse_rest_of_array(input, &array->array.elem_expr))
       {
-        if(!array->bin_expr.right_operand)
+        if(!array->array.elem_expr)
         {
           success = compile_error(&input->src_loc,  "expression was expected at `%s`", get_token_printstr(&input->token));
         }

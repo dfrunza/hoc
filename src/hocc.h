@@ -242,7 +242,6 @@ typedef enum
   eOperator_indirect_selector,
   eOperator_index,
   eOperator_cast,
-  eOperator_array,
   eOperator_pointer,
   eOperator_Count,
 }
@@ -504,6 +503,7 @@ typedef struct Type
     struct
     {
       int size;
+      int ndim;
       Type* elem;
     }
     array;
@@ -685,6 +685,7 @@ typedef enum
   eAstNode_union_decl,
   eAstNode_empty,
   eAstNode_arg_list,
+  eAstNode_array,
 }
 eAstNode;
 
@@ -704,6 +705,15 @@ typedef struct AstNode
 
   union
   {
+    struct
+    {
+      AstNode* size_expr;
+      AstNode* elem_expr;
+      int size;
+      int ndim;
+    }
+    array;
+
     struct
     {
       eBasicType kind;
@@ -854,8 +864,8 @@ typedef struct AstNode
       AstNode* id;
       List* members;
     }
-    //record;
-    enum_decl, union_decl, struct_decl;
+    enum_decl,
+    union_decl, struct_decl; //record;
 
     struct
     {

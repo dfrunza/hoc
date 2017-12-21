@@ -252,11 +252,12 @@ Type* new_product_type(Type* left, Type* right)
   return type;
 }
 
-Type* new_array_type(int size, Type* elem)
+Type* new_array_type(int size, int ndim, Type* elem)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_array;
   type->array.size = size;
+  type->array.ndim = ndim;
   type->array.elem = elem;
   return type;
 }
@@ -2014,6 +2015,36 @@ bool gen_x86(String* code, AstNode* node)
 /*------------------       SET TYPES       -------------------- */
 
 bool set_types_expr(AstNode* expr);
+bool set_types_type(AstNode* type);
+
+bool set_types_array(AstNode* array)
+{
+  assert(KIND(array, eAstNode_array));
+  bool success = true;
+
+  array->array.size = array->array.ndim = 0;
+  if(success = set_types_expr(array->array.size_expr) && set_types_type(array->array.elem_expr))
+  {
+    AstNode* size_expr = array->array.size_expr;
+    if(size_expr->kind == eAstNode_lit && size_expr->lit.kind == eLiteral_int)
+    {
+      if((array->array.size = size_expr->lit.int_val) > 0)
+      {
+        array->array.ndim = 1;
+        AstNode* elem_expr = array->array.elem_expr;
+        if(elem_expr->kind == eAstNode_array)
+          array->array.ndim += elem_expr->array.ndim;
+
+        array->ty = array->eval_ty = new_array_type(array->array.size, array->array.ndim, array->array.elem_expr->ty);
+      }
+      else
+        success = compile_error(size_expr->src_loc, "array size must be greater than 0");
+    }
+    else
+      success = compile_error(size_expr->src_loc, "array size must be an int literal");
+  }
+  return success;
+}
 
 bool set_types_type(AstNode* type)
 {
@@ -2034,18 +2065,8 @@ bool set_types_type(AstNode* type)
         success = compile_error(type->src_loc, "invalid type expression");
       break;
 
-    case eAstNode_bin_expr:
-      if(type->bin_expr.op == eOperator_array)
-      {
-        AstNode* size = type->bin_expr.left_operand;
-        AstNode* elem = type->bin_expr.right_operand;
-        if(success = set_types_expr(size) && set_types_type(elem))
-        {
-          type->ty = type->eval_ty = new_array_type(0/*TODO*/, elem->ty);
-        }
-      }
-      else
-        success = compile_error(type->src_loc, "invalid type expression");
+    case eAstNode_array:
+      success = set_types_array(type);
       break;
 
     case eAstNode_basic_type:
@@ -2107,10 +2128,6 @@ bool set_types_bin_expr(AstNode* bin_expr)
   {
     success = set_types_type(left_operand) && set_types_expr(right_operand);
   }
-  else if(op == eOperator_array)
-  {
-    success = set_types_expr(left_operand) && set_types_type(right_operand);
-  }
   else
     success = set_types_expr(left_operand) && set_types_expr(right_operand);
 
@@ -2130,7 +2147,7 @@ bool set_types_unr_expr(AstNode* unr_expr)
   AstNode* operand = unr_expr->unr_expr.operand;
   eOperator op = unr_expr->unr_expr.op;
 
-  if(op == eOperator_pointer || op == eOperator_array)
+  if(op == eOperator_pointer)
   {
     success = compile_error(unr_expr->src_loc, "invalid application of operator '%s'", get_operator_printstr(op));
   }
@@ -2196,7 +2213,7 @@ bool set_types_str(AstNode* str)
 {
   assert(KIND(str, eAstNode_str));
   bool success = true;
-  str->ty = str->eval_ty = new_array_type(0, basic_type_char);
+  str->ty = str->eval_ty = new_array_type(0/*TODO*/, 1, basic_type_char);
   return success;
 }
 
@@ -2233,6 +2250,9 @@ bool set_types_expr(AstNode* expr)
 
   switch(expr->kind)
   {
+    case eAstNode_array:
+      success = set_types_array(expr);
+      break;
     case eAstNode_bin_expr:
       success = set_types_bin_expr(expr);
       break;
@@ -2482,6 +2502,18 @@ bool set_types_module(AstNode* module)
 
 /*------------------       EVAL TYPES       -------------------- */
 
+bool eval_types_expr(AstNode* expr);
+bool eval_types_type(AstNode* type);
+
+bool eval_types_array(AstNode* array)
+{
+  assert(KIND(array, eAstNode_array));
+  bool success = true;
+
+  success = eval_types_expr(array->array.size_expr) && eval_types_type(array->array.elem_expr);
+  return success;
+}
+
 bool eval_types_type(AstNode* type)
 {
   bool success = true;
@@ -2491,16 +2523,14 @@ bool eval_types_type(AstNode* type)
     case eAstNode_unr_expr:
       assert(type->unr_expr.op == eOperator_pointer);
       break;
-    case eAstNode_bin_expr:
-      assert(type->bin_expr.op == eOperator_array);
+    case eAstNode_array:
+      success = eval_types_array(type);
       break;
     case eAstNode_basic_type:
       break;
   }
   return success;
 }
-
-bool eval_types_expr(AstNode* expr);
 
 bool eval_types_bin_expr(AstNode* bin_expr)
 {
@@ -2514,10 +2544,6 @@ bool eval_types_bin_expr(AstNode* bin_expr)
   if(op == eOperator_cast)
   {
     success = eval_types_type(left_operand) && eval_types_expr(right_operand);
-  }
-  else if(op == eOperator_array)
-  {
-    success = eval_types_expr(left_operand) && eval_types_type(right_operand);
   }
   else
     success = eval_types_expr(left_operand) && eval_types_expr(right_operand);
@@ -2545,7 +2571,7 @@ bool eval_types_bin_expr(AstNode* bin_expr)
           }
           else if(left_operand->eval_ty->kind == eType_typevar)
           {
-            if(!type_unif(left_operand->eval_ty, new_array_type(0, bin_expr->eval_ty)))
+            if(!type_unif(left_operand->eval_ty, new_array_type(0, 1, bin_expr->eval_ty)))
             {
               success = compile_error(bin_expr->src_loc, "type error (index op)");
             }
@@ -3041,6 +3067,7 @@ bool resolve_types_formal_args(AstNode* arg_list)
 
 bool resolve_types_block_stmt(AstNode* stmt);
 bool resolve_types_expr(AstNode* expr);
+bool resolve_types_type(AstNode* type);
 
 bool resolve_types_bin_expr(AstNode* bin_expr)
 {
@@ -3186,6 +3213,16 @@ bool resolve_types_while(AstNode* while_)
   return success;
 }
 
+bool resolve_types_array(AstNode* array)
+{
+  assert(KIND(array, eAstNode_array));
+  bool success = true;
+
+  success = resolve_types_expr(array->array.size_expr) &&
+    resolve_types_type(array->array.elem_expr) && resolve_types_of_node(array);
+  return success;
+}
+
 bool resolve_types_type(AstNode* type)
 {
   bool success = true;
@@ -3196,10 +3233,8 @@ bool resolve_types_type(AstNode* type)
       assert(type->unr_expr.op == eOperator_pointer);
       success = resolve_types_type(type->unr_expr.operand) && resolve_types_of_node(type);
       break;
-    case eAstNode_bin_expr:
-      assert(type->bin_expr.op == eOperator_array);
-      success = resolve_types_expr(type->bin_expr.left_operand) && resolve_types_type(type->bin_expr.right_operand)
-        && resolve_types_of_node(type);
+    case eAstNode_array:
+      success = resolve_types_array(type);
       break;
     case eAstNode_basic_type:
       break;

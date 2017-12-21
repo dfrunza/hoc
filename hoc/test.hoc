@@ -1,20 +1,5 @@
 void main()
 {
-  bool a;
-  int b;
-  int c;
-  int d;
-  int e;
-  int f;
-  int x;
-  int y;
-  int z;
-
-  c = foo(b);
-}
-
-int foo(int x)
-{
-  return x+x;
+  [2][5]int a;
 }
 

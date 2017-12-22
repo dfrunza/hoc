@@ -1,4 +1,7 @@
 void main()
 {
+  [2]int A;
+  int a;
+  a = A[0];
 }
 

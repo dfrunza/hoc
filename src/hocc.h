@@ -235,7 +235,6 @@ typedef enum
   eOperator_bit_shift_left,
   eOperator_bit_shift_right,
 
-  eOperator_assign,
   eOperator_deref,
   eOperator_address_of,
   eOperator_selector,
@@ -267,9 +266,6 @@ char* get_operator_printstr(eOperator op)
       break;
     case eOperator_neg:
       str = "-";
-      break;
-    case eOperator_assign:
-      str = "=";
       break;
     case eOperator_deref:
 #if 0
@@ -685,6 +681,7 @@ typedef enum
   eAstNode_array,
   eAstNode_index,
   eAstNode_pointer,
+  eAstNode_assign,
 }
 eAstNode;
 
@@ -704,6 +701,13 @@ typedef struct AstNode
 
   union
   {
+    struct
+    {
+      AstNode* left_expr;
+      AstNode* right_expr;
+    }
+    assign;
+
     struct
     {
       AstNode* pointee;

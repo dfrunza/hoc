@@ -946,6 +946,16 @@ bool sym_return(SymbolContext* sym_context, AstNode* block, AstNode* ret)
   return success;
 }
 
+bool sym_assign(SymbolContext* sym_context, AstNode* block, AstNode* assign)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(assign, eAstNode_assign));
+  bool success = true;
+
+  success = sym_expr(sym_context, block, assign->assign.left_expr) && sym_expr(sym_context, block, assign->assign.right_expr);
+  return success;
+}
+
 bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
 {
   assert(KIND(block, eAstNode_block));
@@ -968,6 +978,9 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
         success = sym_block(sym_context, stmt);
         end_nested_scope(sym_context);
       }
+      break;
+    case eAstNode_assign:
+      success = sym_assign(sym_context, block, stmt);
       break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
@@ -2393,6 +2406,20 @@ bool set_types_block(AstNode* block)
   return success;
 }
 
+bool set_types_assign(AstNode* assign)
+{
+  assert(KIND(assign, eAstNode_assign));
+  bool success = true;
+
+  AstNode* left_expr = assign->assign.left_expr;
+  AstNode* right_expr =assign->assign.right_expr;
+  if(success = set_types_expr(left_expr) && set_types_expr(right_expr))
+  {
+    assign->ty = assign->eval_ty = left_expr->eval_ty;
+  }
+  return success;
+}
+
 bool set_types_block_stmt(AstNode* stmt)
 {
   bool success = true;
@@ -2404,6 +2431,9 @@ bool set_types_block_stmt(AstNode* stmt)
       break;
     case eAstNode_block:
       success = set_types_block(stmt);
+      break;
+    case eAstNode_assign:
+      success = set_types_assign(stmt);
       break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
@@ -2984,12 +3014,23 @@ bool eval_types_return(AstNode* ret)
   return success;
 }
 
+bool eval_types_assign(AstNode* assign)
+{
+  assert(KIND(assign, eAstNode_assign));
+  bool success = true;
+  success = eval_types_expr(assign->assign.left_expr) && eval_types_expr(assign->assign.right_expr);
+  return success;
+}
+
 bool eval_types_block_stmt(AstNode* stmt)
 {
   bool success = true;
 
   switch(stmt->kind)
   {
+    case eAstNode_assign:
+      success = eval_types_assign(stmt);
+      break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
     case eAstNode_id:
@@ -3318,12 +3359,24 @@ bool resolve_types_type(AstNode* type)
   return success;
 }
 
+bool resolve_types_assign(AstNode* assign)
+{
+  assert(KIND(assign, eAstNode_assign));
+  bool success = true;
+  success = resolve_types_expr(assign->assign.left_expr) && resolve_types_expr(assign->assign.right_expr) &&
+    resolve_types_of_node(assign);
+  return success;
+}
+
 bool resolve_types_block_stmt(AstNode* stmt)
 {
   bool success = true;
 
   switch(stmt->kind)
   {
+    case eAstNode_assign:
+      success = resolve_types_assign(stmt);
+      break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
     case eAstNode_id:
@@ -3626,10 +3679,6 @@ bool check_types_bin_expr(AstNode* bin_expr)
         }
         break;
 
-      case eOperator_assign:
-        assert(types_are_equal(left_ty, right_ty) && types_are_equal(ret_ty, left_ty));
-        break;
-
       default:
         assert(0);
     }
@@ -3727,12 +3776,29 @@ bool check_types_index(AstNode* index)
   return success;
 }
 
+bool check_types_assign(AstNode* assign)
+{
+  assert(KIND(assign, eAstNode_assign));
+  bool success = true;
+
+  AstNode* left_expr = assign->assign.left_expr;
+  AstNode* right_expr = assign->assign.right_expr;
+  if(!type_unif(left_expr->eval_ty, right_expr->eval_ty))
+  {
+    success = compile_error(assign->src_loc, "type error (assignment)");
+  }
+  return success;
+}
+
 bool check_types_expr(AstNode* expr)
 {
   bool success = true;
 
   switch(expr->kind)
   {
+    case eAstNode_assign:
+      success = check_types_assign(expr);
+      break;
     case eAstNode_bin_expr:
       success = check_types_bin_expr(expr);
       break;
@@ -3805,6 +3871,9 @@ bool check_types_block_stmt(AstNode* stmt)
 
   switch(stmt->kind)
   {
+    case eAstNode_assign:
+      success = check_types_assign(stmt);
+      break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
     case eAstNode_id:
@@ -4027,6 +4096,18 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr);
 void gen_ir_bool_expr(IrContext* ir_context, Scope* scope, AstNode* expr);
 void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt);
 
+void gen_ir_assign(IrContext* ir_context, Scope* scope, AstNode* assign)
+{
+  assert(KIND(assign, eAstNode_assign));
+
+  AstNode* left_expr = assign->assign.left_expr;
+  AstNode* right_expr = assign->assign.right_expr;
+
+  gen_ir_expr(ir_context, scope, left_expr);
+  gen_ir_expr(ir_context, scope, right_expr);
+  ir_emit_assign(ir_context, eIrOp_None, &right_expr->ir_place, 0, &left_expr->ir_place);
+}
+
 void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
@@ -4037,17 +4118,6 @@ void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
 
   switch(op)
   {
-    case eOperator_assign:
-      gen_ir_expr(ir_context, scope, left_operand);
-      gen_ir_expr(ir_context, scope, right_operand);
-      if(left_operand->kind == eAstNode_id)
-      {
-        ir_emit_assign(ir_context, eIrOp_None, &right_operand->ir_place, 0, &left_operand->ir_place);
-      }
-      else
-        fail("I'm a meat popsicle");
-      break;
-
     case eOperator_add:
     case eOperator_sub:
     case eOperator_mul:
@@ -4446,6 +4516,9 @@ void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 {
   switch(stmt->kind)
   {
+    case eAstNode_assign:
+      gen_ir_assign(ir_context, scope, stmt);
+      break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
     case eAstNode_id:

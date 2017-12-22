@@ -370,16 +370,15 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
   {
     case eToken_eq:
       {
-        AstNode* bin_expr = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-        bin_expr->bin_expr.left_operand = left_node;
-        bin_expr->bin_expr.op = eOperator_assign;
+        AstNode* assign = *node = new_ast_node(eAstNode_assign, clone_source_loc(&input->src_loc));
+        assign->assign.left_expr = left_node;
 
-        AstNode* right_operand = 0;
-        if(success = get_next_token(input) && parse_expr(input, &right_operand))
+        AstNode* right_expr = 0;
+        if(success = get_next_token(input) && parse_expr(input, &right_expr))
         {
-          if(right_operand)
+          if(right_expr)
           {
-            switch(right_operand->kind)
+            switch(right_expr->kind)
             {
               case eAstNode_lit:
               case eAstNode_id:
@@ -387,10 +386,10 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
               case eAstNode_unr_expr:
               case eAstNode_call:
               case eAstNode_index:
-                bin_expr->bin_expr.right_operand = right_operand;
+                assign->assign.right_expr = right_expr;
                 break;
               default:
-                success = compile_error(right_operand->src_loc, "invalid operand");
+                success = compile_error(right_expr->src_loc, "invalid operand in assignment expression");
                 break;
             }
           }

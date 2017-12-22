@@ -241,7 +241,6 @@ typedef enum
   eOperator_selector,
   eOperator_indirect_selector,
   eOperator_cast,
-  eOperator_pointer,
   eOperator_Count,
 }
 eOperator;
@@ -273,7 +272,9 @@ char* get_operator_printstr(eOperator op)
       str = "=";
       break;
     case eOperator_deref:
+#if 0
     case eOperator_pointer:
+#endif
       str = "^";
       break;
     case eOperator_address_of:
@@ -293,11 +294,6 @@ char* get_operator_printstr(eOperator op)
     case eOperator_pre_incr:
     case eOperator_post_incr:
       str = "++";
-      break;
-#endif
-#if 0
-    case eOperator_index:
-      str = "[]";
       break;
 #endif
     case eOperator_eq:
@@ -688,6 +684,7 @@ typedef enum
   eAstNode_arg_list,
   eAstNode_array,
   eAstNode_index,
+  eAstNode_pointer,
 }
 eAstNode;
 
@@ -707,6 +704,12 @@ typedef struct AstNode
 
   union
   {
+    struct
+    {
+      AstNode* pointee;
+    }
+    pointer;
+
     struct
     {
       AstNode* size_expr;

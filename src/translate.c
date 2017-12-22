@@ -81,7 +81,7 @@ void make_type_printstr(String* str, Type* type)
   else if(type->kind == eType_pointer)
   {
     make_type_printstr(str, type->pointer.pointee);
-    str_append(str, get_operator_printstr(eOperator_pointer));
+    str_append(str, "^");
   }
   else if(type->kind == eType_array)
   {
@@ -2033,7 +2033,6 @@ bool gen_x86(String* code, AstNode* node)
 bool set_types_expr(AstNode* expr);
 bool set_types_type(AstNode* type);
 bool set_types_block_stmt(AstNode* stmt);
-bool set_types_block(AstNode* block);
 
 bool set_types_array(AstNode* array)
 {
@@ -2064,23 +2063,27 @@ bool set_types_array(AstNode* array)
   return success;
 }
 
+bool set_types_pointer(AstNode* pointer)
+{
+  assert(KIND(pointer, eAstNode_pointer));
+  bool success = true;
+
+  AstNode* pointee = pointer->pointer.pointee;
+  if(success = set_types_type(pointee))
+  {
+    pointer->ty = pointer->eval_ty = new_pointer_type(pointee->ty);
+  }
+  return success;
+}
+
 bool set_types_type(AstNode* type)
 {
   bool success = true;
 
   switch(type->kind)
   {
-    case eAstNode_unr_expr:
-      if(type->unr_expr.op == eOperator_pointer)
-      {
-        AstNode* pointee = type->unr_expr.operand;
-        if(success = set_types_type(pointee))
-        {
-          type->ty = type->eval_ty = new_pointer_type(pointee->ty);
-        }
-      }
-      else
-        success = compile_error(type->src_loc, "invalid type expression");
+    case eAstNode_pointer:
+      success = set_types_pointer(type);
       break;
 
     case eAstNode_array:
@@ -2163,13 +2166,7 @@ bool set_types_unr_expr(AstNode* unr_expr)
   bool success = true;
 
   AstNode* operand = unr_expr->unr_expr.operand;
-  eOperator op = unr_expr->unr_expr.op;
-
-  if(op == eOperator_pointer)
-  {
-    success = compile_error(unr_expr->src_loc, "invalid application of operator '%s'", get_operator_printstr(op));
-  }
-  else if(success = set_types_expr(operand))
+  if(success = set_types_expr(operand))
   {
     unr_expr->eval_ty = new_typevar();
     unr_expr->ty = new_proc_type(operand->eval_ty, unr_expr->eval_ty);
@@ -2280,6 +2277,9 @@ bool set_types_expr(AstNode* expr)
 
   switch(expr->kind)
   {
+    case eAstNode_pointer:
+      success = set_types_pointer(expr);
+      break;
     case eAstNode_array:
       success = set_types_array(expr);
       break;
@@ -2374,6 +2374,25 @@ bool set_types_while(AstNode* while_)
   return success;
 }
 
+bool set_types_block(AstNode* block)
+{
+  assert(KIND(block, eAstNode_block));
+  bool success = true;
+
+  for(ListItem* li = block->block.nodes.first;
+      li && success;
+      li = li->next)
+  {
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
+    success = set_types_block_stmt(stmt);
+  }
+  if(success)
+  {
+    block->ty = block->eval_ty = basic_type_void;
+  }
+  return success;
+}
+
 bool set_types_block_stmt(AstNode* stmt)
 {
   bool success = true;
@@ -2415,25 +2434,6 @@ bool set_types_block_stmt(AstNode* stmt)
       break;
     default:
       assert(0);
-  }
-  return success;
-}
-
-bool set_types_block(AstNode* block)
-{
-  assert(KIND(block, eAstNode_block));
-  bool success = true;
-
-  for(ListItem* li = block->block.nodes.first;
-      li && success;
-      li = li->next)
-  {
-    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = set_types_block_stmt(stmt);
-  }
-  if(success)
-  {
-    block->ty = block->eval_ty = basic_type_void;
   }
   return success;
 }
@@ -2536,6 +2536,7 @@ bool set_types_module(AstNode* module)
 
 bool eval_types_expr(AstNode* expr);
 bool eval_types_type(AstNode* type);
+bool eval_types_block_stmt(AstNode* stmt);
 
 bool eval_types_array(AstNode* array)
 {
@@ -2546,14 +2547,22 @@ bool eval_types_array(AstNode* array)
   return success;
 }
 
+bool eval_types_pointer(AstNode* pointer)
+{
+  assert(KIND(pointer, eAstNode_pointer));
+  bool success = true;
+  success = eval_types_expr(pointer->pointer.pointee);
+  return success;
+}
+
 bool eval_types_type(AstNode* type)
 {
   bool success = true;
 
   switch(type->kind)
   {
-    case eAstNode_unr_expr:
-      assert(type->unr_expr.op == eOperator_pointer);
+    case eAstNode_pointer:
+      success = eval_types_pointer(type);
       break;
     case eAstNode_array:
       success = eval_types_array(type);
@@ -2715,8 +2724,6 @@ bool eval_types_unr_expr(AstNode* unr_expr)
 
   AstNode* operand = unr_expr->unr_expr.operand;
   eOperator op = unr_expr->unr_expr.op;
-
-  assert(op != eOperator_pointer);
 
   if(success = eval_types_expr(operand))
   {
@@ -2906,8 +2913,6 @@ bool eval_types_expr(AstNode* expr)
   return success;
 }
 
-bool eval_types_block_stmt(AstNode* stmt);
-
 bool eval_types_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
@@ -3065,6 +3070,10 @@ bool eval_types_module(AstNode* module)
 
 /*------------------       RESOLVE TYPES       -------------------- */
 
+bool resolve_types_expr(AstNode* expr);
+bool resolve_types_type(AstNode* type);
+bool resolve_types_block_stmt(AstNode* stmt);
+
 bool resolve_types_of_node(AstNode* node)
 {
   bool success = true;
@@ -3115,10 +3124,6 @@ bool resolve_types_formal_args(AstNode* arg_list)
   }
   return success;
 }
-
-bool resolve_types_block_stmt(AstNode* stmt);
-bool resolve_types_expr(AstNode* expr);
-bool resolve_types_type(AstNode* type);
 
 bool resolve_types_bin_expr(AstNode* bin_expr)
 {
@@ -3286,15 +3291,23 @@ bool resolve_types_array(AstNode* array)
   return success;
 }
 
+bool resolve_types_pointer(AstNode* pointer)
+{
+  assert(KIND(pointer, eAstNode_pointer));
+  bool success = true;
+
+  success = resolve_types_expr(pointer->pointer.pointee) && resolve_types_of_node(pointer);
+  return success;
+}
+
 bool resolve_types_type(AstNode* type)
 {
   bool success = true;
 
   switch(type->kind)
   {
-    case eAstNode_unr_expr:
-      assert(type->unr_expr.op == eOperator_pointer);
-      success = resolve_types_type(type->unr_expr.operand) && resolve_types_of_node(type);
+    case eAstNode_pointer:
+      success = resolve_types_pointer(type);
       break;
     case eAstNode_array:
       success = resolve_types_array(type);
@@ -3397,6 +3410,9 @@ bool resolve_types_module(AstNode* module)
 
 /*------------------       CHECK TYPES       -------------------- */
 
+bool check_types_expr(AstNode* expr);
+bool check_types_block_stmt(AstNode* stmt);
+
 bool check_types_var(AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
@@ -3423,9 +3439,6 @@ bool check_types_formal_args(AstNode* arg_list)
   }
   return success;
 }
-
-bool check_types_expr(AstNode* expr);
-bool check_types_block_stmt(AstNode* stmt);
 
 bool check_types_cast(AstNode* cast)
 {
@@ -3766,11 +3779,8 @@ bool check_types_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
   bool success = true;
-  success = check_types_expr(if_->if_.cond_expr) && check_types_block_stmt(if_->if_.body);
-  if(success && if_->if_.else_body)
-  {
-    success = check_types_block_stmt(if_->if_.else_body);
-  }
+  success = check_types_expr(if_->if_.cond_expr) && check_types_block_stmt(if_->if_.body) &&
+    (if_->if_.else_body ? check_types_block_stmt(if_->if_.else_body) : true);
   return success;
 }
 
@@ -3872,6 +3882,7 @@ bool check_types_module(AstNode* module)
 }
 
 /*------------------       IR       -------------------- */
+
 eIrOp conv_operator_to_ir_op(eOperator op)
 {
   eIrOp ir_op = eIrOp_None;

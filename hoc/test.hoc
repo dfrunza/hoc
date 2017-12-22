@@ -1,7 +1,4 @@
 void main()
 {
-  int b;
-  [3][2]int a;
-  b = a[b][1];
 }
 

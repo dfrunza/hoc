@@ -683,9 +683,8 @@ bool parse_pointer(TokenStream* input, AstNode* left_node, AstNode** node)
 
   if(input->token.kind == eToken_circumflex)
   {
-    AstNode* pointer = *node = new_ast_node(eAstNode_unr_expr, clone_source_loc(&input->src_loc));
-    pointer->unr_expr.op = eOperator_pointer;
-    pointer->unr_expr.operand = left_node;
+    AstNode* pointer = *node = new_ast_node(eAstNode_pointer, clone_source_loc(&input->src_loc));
+    pointer->pointer.pointee = left_node;
 
     if((success = get_next_token(input)) && input->token.kind == eToken_circumflex)
     {

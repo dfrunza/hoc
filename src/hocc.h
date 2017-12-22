@@ -541,15 +541,15 @@ typedef enum
   eIrOp_bit_not,
   eIrOp_bit_shift_left,
   eIrOp_bit_shift_right,
-  eIrOp_int_to_float,
-  eIrOp_float_to_int,
+  eIrOp_itof,
+  eIrOp_ftoi,
 
-  // op | arg1 | arg2 | result
-  eIrOp_index_right,   // result = arg1[arg2]
-  eIrOp_index_left,    // result[arg2] = arg1
-  eIrOp_pointer_right, // result = *arg1
-  eIrOp_pointer_left,  // *result = arg1
-  eIrOp_address_of,    // result = &arg1
+  // op | arg1 | arg2 | dest 
+  eIrOp_index_source,  // dest = arg1[arg2]
+  eIrOp_index_dest,    // dest[arg2] = arg1
+  eIrOp_deref_source,  // dest = *arg1
+  eIrOp_deref_dest,    // *dest = arg1
+  eIrOp_address_of,    // dest = &arg1
 }
 eIrOp;
 
@@ -597,7 +597,7 @@ typedef struct
   union
   {
     Symbol* data_obj;
-    IrConstant ir_const;
+    IrConstant const_;
   };
 }
 IrArg;
@@ -692,7 +692,7 @@ typedef struct AstNode
   Type* ty;
   Type* eval_ty;
   eModifier modifier;
-  IrArg ir_place;
+  IrArg place;
 
   Label* label_true;
   Label* label_false;
@@ -703,8 +703,8 @@ typedef struct AstNode
   {
     struct
     {
-      AstNode* left_expr;
-      AstNode* right_expr;
+      AstNode* dest_expr;
+      AstNode* source_expr;
     }
     assign;
 
@@ -725,8 +725,13 @@ typedef struct AstNode
 
     struct
     {
-      AstNode* expr;
-      AstNode* index_expr;
+      AstNode* array_expr;
+      AstNode* i_expr;
+      IrArg* array;
+      IrArg* offset;
+      IrArg* i_place;
+      Type* array_ty;
+      int ndim;
     }
     index;
 

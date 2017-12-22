@@ -270,6 +270,35 @@ Type* new_pointer_type(Type* pointee)
   return type;
 }
 
+int size_of_array_dim(Type* array_ty, int dim)
+{
+  assert(dim > 0);
+  assert(KIND(array_ty, eType_array));
+  assert(dim <= array_ty->array.ndim);
+
+  Type* ty = array_ty;
+  int size = array_ty->array.size;
+  for(int d = 2; d <= dim; d++)
+  {
+    ty = ty->array.elem;
+    assert(KIND(ty, eType_array));
+    size = ty->array.size;
+  }
+  return size;
+}
+
+int array_elem_width(Type* array_ty)
+{
+  assert(KIND(array_ty, eType_array));
+
+  Type* ty = array_ty->array.elem;
+  for(int d = 2; d <= array_ty->array.ndim; d++)
+  {
+    ty = ty->array.elem;
+  }
+  return ty->width;
+}
+
 bool types_are_equal(Type* type_a, Type* type_b)
 {
   bool are_equal = false;
@@ -646,13 +675,11 @@ Symbol* new_retvar(MemoryArena* arena, AstNode* proc)
   return sym;
 }
 
-Symbol* new_tempvar(MemoryArena* arena, Scope* scope, AstNode* ast_node)
+Symbol* new_tempvar(MemoryArena* arena, Scope* scope, Type* ty)
 {
   Symbol* sym = mem_push_struct(arena, Symbol);
   sym->name = new_tempvar_name("t_");
-  sym->src_loc = ast_node->src_loc;
-  sym->ast_node = ast_node;
-  sym->ty = ast_node->eval_ty;
+  sym->ty = ty;
   sym->scope = scope;
   sym->order_nr = scope->sym_order_nr++;
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
@@ -821,11 +848,10 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
   AstNode* arg_list = call->call.arg_list;
   if(call_expr->kind == eAstNode_id)
   {
-    AstNode* id = call->call.expr;
-    success = sym_id(sym_context, block, id) && sym_expr(sym_context, block, call_expr) && sym_actual_args(sym_context, block, arg_list);
+    success = sym_id(sym_context, block, call_expr) && sym_actual_args(sym_context, block, arg_list);
   }
   else
-    success = compile_error(call->src_loc, "unsupported call expr");
+    success = compile_error(call_expr->src_loc, "unsupported call expr");
   return success;
 }
 
@@ -835,7 +861,13 @@ bool sym_index(SymbolContext* sym_context, AstNode* block, AstNode* index)
   assert(KIND(index, eAstNode_index));
   bool success = true;
 
-  success = sym_expr(sym_context, block, index->index.expr) && sym_expr(sym_context, block, index->index.index_expr);
+  AstNode* array_expr = index->index.array_expr;
+  if(array_expr->kind == eAstNode_id || array_expr->kind == eAstNode_index)
+  {
+    success = sym_expr(sym_context, block, array_expr) && sym_expr(sym_context, block, index->index.i_expr);
+  }
+  else
+    success = compile_error(array_expr->src_loc, "unsupported index expr");
   return success;
 }
 
@@ -952,7 +984,7 @@ bool sym_assign(SymbolContext* sym_context, AstNode* block, AstNode* assign)
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
 
-  success = sym_expr(sym_context, block, assign->assign.left_expr) && sym_expr(sym_context, block, assign->assign.right_expr);
+  success = sym_expr(sym_context, block, assign->assign.dest_expr) && sym_expr(sym_context, block, assign->assign.source_expr);
   return success;
 }
 
@@ -2052,7 +2084,6 @@ bool set_types_array(AstNode* array)
   assert(KIND(array, eAstNode_array));
   bool success = true;
 
-  array->array.size = array->array.ndim = 0;
   if(success = set_types_expr(array->array.size_expr) && set_types_type(array->array.elem_expr))
   {
     AstNode* size_expr = array->array.size_expr;
@@ -2276,9 +2307,10 @@ bool set_types_index(AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
   bool success = true;
-  if(success = set_types_expr(index->index.expr) && set_types_expr(index->index.index_expr))
+
+  if(success = set_types_expr(index->index.array_expr) && set_types_expr(index->index.i_expr))
   {
-    index->ty = index->index.expr->eval_ty;
+    index->ty = index->index.array_expr->eval_ty;
     index->eval_ty = new_typevar();
   }
   return success;
@@ -2411,11 +2443,11 @@ bool set_types_assign(AstNode* assign)
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
 
-  AstNode* left_expr = assign->assign.left_expr;
-  AstNode* right_expr =assign->assign.right_expr;
-  if(success = set_types_expr(left_expr) && set_types_expr(right_expr))
+  AstNode* dest_expr = assign->assign.dest_expr;
+  AstNode* source_expr =assign->assign.source_expr;
+  if(success = set_types_expr(dest_expr) && set_types_expr(source_expr))
   {
-    assign->ty = assign->eval_ty = left_expr->eval_ty;
+    assign->ty = assign->eval_ty = dest_expr->eval_ty;
   }
   return success;
 }
@@ -2882,23 +2914,23 @@ bool eval_types_index(AstNode* index)
   assert(KIND(index, eAstNode_index));
   bool success = true;
 
-  AstNode* expr = index->index.expr;
-  AstNode* index_expr = index->index.index_expr;
+  AstNode* array_expr = index->index.array_expr;
+  AstNode* i_expr = index->index.i_expr;
 
-  if(success = eval_types_expr(expr) && eval_types_expr(index_expr))
+  if(success = eval_types_expr(array_expr) && eval_types_expr(i_expr))
   {
-    if(type_unif(index_expr->eval_ty, basic_type_int))
+    if(type_unif(i_expr->eval_ty, basic_type_int))
     {
-      if(expr->eval_ty->kind == eType_array)
+      if(array_expr->eval_ty->kind == eType_array)
       {
-        if(!type_unif(expr->eval_ty->array.elem, index->eval_ty))
+        if(!type_unif(array_expr->eval_ty->array.elem, index->eval_ty))
         {
           success = compile_error(index->src_loc, "type error (array index)");
         }
       }
-      else if(expr->eval_ty->kind == eType_typevar)
+      else if(array_expr->eval_ty->kind == eType_typevar)
       {
-        if(!type_unif(expr->eval_ty, new_array_type(0, 1, index->eval_ty)))
+        if(!type_unif(array_expr->eval_ty, new_array_type(0, 1, index->eval_ty)))
         {
           success = compile_error(index->src_loc, "type error (array index)");
         }
@@ -3018,7 +3050,7 @@ bool eval_types_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
-  success = eval_types_expr(assign->assign.left_expr) && eval_types_expr(assign->assign.right_expr);
+  success = eval_types_expr(assign->assign.dest_expr) && eval_types_expr(assign->assign.source_expr);
   return success;
 }
 
@@ -3225,7 +3257,7 @@ bool resolve_types_index(AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
   bool success = true;
-  success = resolve_types_expr(index->index.expr) && resolve_types_expr(index->index.index_expr) &&
+  success = resolve_types_expr(index->index.array_expr) && resolve_types_expr(index->index.i_expr) &&
     resolve_types_of_node(index);
   return success;
 }
@@ -3363,7 +3395,7 @@ bool resolve_types_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
-  success = resolve_types_expr(assign->assign.left_expr) && resolve_types_expr(assign->assign.right_expr) &&
+  success = resolve_types_expr(assign->assign.dest_expr) && resolve_types_expr(assign->assign.source_expr) &&
     resolve_types_of_node(assign);
   return success;
 }
@@ -3781,9 +3813,9 @@ bool check_types_assign(AstNode* assign)
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
 
-  AstNode* left_expr = assign->assign.left_expr;
-  AstNode* right_expr = assign->assign.right_expr;
-  if(!type_unif(left_expr->eval_ty, right_expr->eval_ty))
+  AstNode* dest_expr = assign->assign.dest_expr;
+  AstNode* source_expr = assign->assign.source_expr;
+  if(!type_unif(dest_expr->eval_ty, source_expr->eval_ty))
   {
     success = compile_error(assign->src_loc, "type error (assignment)");
   }
@@ -4094,19 +4126,7 @@ void ir_emit_return(IrContext* ir_context, IrArg* ret)
 
 void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr);
 void gen_ir_bool_expr(IrContext* ir_context, Scope* scope, AstNode* expr);
-void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt);
-
-void gen_ir_assign(IrContext* ir_context, Scope* scope, AstNode* assign)
-{
-  assert(KIND(assign, eAstNode_assign));
-
-  AstNode* left_expr = assign->assign.left_expr;
-  AstNode* right_expr = assign->assign.right_expr;
-
-  gen_ir_expr(ir_context, scope, left_expr);
-  gen_ir_expr(ir_context, scope, right_expr);
-  ir_emit_assign(ir_context, eIrOp_None, &right_expr->ir_place, 0, &left_expr->ir_place);
-}
+bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt);
 
 void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
 {
@@ -4136,9 +4156,9 @@ void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
     case eOperator_not_eq:
       gen_ir_expr(ir_context, scope, left_operand);
       gen_ir_expr(ir_context, scope, right_operand);
-      bin_expr->ir_place.kind = eIrArg_data_obj;
-      bin_expr->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, bin_expr);
-      ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &left_operand->ir_place, &right_operand->ir_place, &bin_expr->ir_place);
+      bin_expr->place.kind = eIrArg_data_obj;
+      bin_expr->place.data_obj = new_tempvar(ir_context->sym_arena, scope, bin_expr->eval_ty);
+      ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &left_operand->place, &right_operand->place, &bin_expr->place);
       break;
 
     default:
@@ -4149,8 +4169,8 @@ void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
 void gen_ir_id(IrContext* ir_context, Scope* scope, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
-  id->ir_place.kind = eIrArg_data_obj;
-  id->ir_place.data_obj = id->id.decl_sym;
+  id->place.kind = eIrArg_data_obj;
+  id->place.data_obj = id->id.decl_sym;
 }
 
 void gen_ir_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
@@ -4164,9 +4184,9 @@ void gen_ir_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
   {
     case eOperator_neg:
       gen_ir_expr(ir_context, scope, operand);
-      unr_expr->ir_place.kind = eIrArg_data_obj;
-      unr_expr->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, unr_expr);
-      ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &operand->ir_place, 0, &unr_expr->ir_place);
+      unr_expr->place.kind = eIrArg_data_obj;
+      unr_expr->place.data_obj = new_tempvar(ir_context->sym_arena, scope, unr_expr->eval_ty);
+      ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &operand->place, 0, &unr_expr->place);
       break;
 
     case eOperator_logic_not:
@@ -4182,28 +4202,28 @@ void gen_ir_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
 
-  lit->ir_place.kind = eIrArg_const;
-  IrConstant* ir_const = &lit->ir_place.ir_const;
+  lit->place.kind = eIrArg_const;
+  IrConstant* const_ = &lit->place.const_;
   switch(lit->lit.kind)
   {
     case eLiteral_int:
-      ir_const->kind = eIrConstant_int;
-      ir_const->int_val = lit->lit.int_val;
+      const_->kind = eIrConstant_int;
+      const_->int_val = lit->lit.int_val;
       break;
 
     case eLiteral_float:
-      ir_const->kind = eIrConstant_float;
-      ir_const->float_val = lit->lit.float_val;
+      const_->kind = eIrConstant_float;
+      const_->float_val = lit->lit.float_val;
       break;
 
     case eLiteral_bool:
-      ir_const->kind = eIrConstant_int;
-      ir_const->int_val = (int)lit->lit.bool_val;
+      const_->kind = eIrConstant_int;
+      const_->int_val = (int)lit->lit.bool_val;
       break;
 
     case eLiteral_char:
-      ir_const->kind = eIrConstant_char;
-      ir_const->char_val = lit->lit.char_val;
+      const_->kind = eIrConstant_char;
+      const_->char_val = lit->lit.char_val;
       break;
 
     default:
@@ -4249,8 +4269,8 @@ void gen_ir_call(IrContext* ir_context, Scope* scope, AstNode* call)
 
   if(!types_are_equal(call->eval_ty, basic_type_void))
   {
-    call->ir_place.kind = eIrArg_data_obj;
-    call->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, call);
+    call->place.kind = eIrArg_data_obj;
+    call->place.data_obj = new_tempvar(ir_context->sym_arena, scope, call->eval_ty);
   }
 
   AstNode* arg_list = call->call.arg_list;
@@ -4261,12 +4281,86 @@ void gen_ir_call(IrContext* ir_context, Scope* scope, AstNode* call)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    ir_emit_call_param(ir_context, &arg->ir_place);
+    ir_emit_call_param(ir_context, &arg->place);
     param_count++;
   }
 
   assert(KIND(call->call.expr, eAstNode_id));
   ir_emit_call(ir_context, call->call.expr->id.name, param_count);
+}
+
+void gen_ir_index(IrContext* ir_context, Scope* scope, AstNode* index)
+{
+  assert(KIND(index, eAstNode_index));
+  AstNode* array_expr = index->index.array_expr;
+  AstNode* i_expr = index->index.i_expr;
+
+  if(array_expr->kind == eAstNode_id)
+  {
+    gen_ir_id(ir_context, scope, array_expr);
+    index->index.array = &array_expr->place;
+    index->index.array_ty = array_expr->eval_ty;
+    gen_ir_expr(ir_context, scope, i_expr);
+    index->index.i_place = &i_expr->place;
+  }
+  else if(array_expr->kind == eAstNode_index)
+  {
+    gen_ir_index(ir_context, scope, array_expr);
+    index->index.array = array_expr->index.array;
+    index->index.array_ty = array_expr->index.array_ty;
+    gen_ir_expr(ir_context, scope, i_expr);
+
+    IrArg* t = index->index.i_place = mem_push_struct(arena, IrArg);
+    t->kind = eIrArg_data_obj;
+    t->data_obj = new_tempvar(arena, scope, basic_type_int);
+    IrArg* dim_size = mem_push_struct(arena, IrArg);
+    dim_size->kind = eIrArg_const;
+    dim_size->const_.int_val = size_of_array_dim(index->index.array_ty, index->index.ndim);
+    ir_emit_assign(ir_context, eIrOp_mul, array_expr->index.i_place, dim_size, t);
+    ir_emit_assign(ir_context, eIrOp_add, t, &i_expr->place, t);
+  }
+  else
+    assert(0);
+}
+
+void gen_ir_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* index)
+{
+  assert(KIND(index, eAstNode_index));
+  gen_ir_index(ir_context, scope, index);
+
+  IrArg* offset = index->index.offset = mem_push_struct(arena, IrArg);
+  offset->kind = eIrArg_data_obj;
+  offset->data_obj = new_tempvar(arena, scope, basic_type_int);
+  IrArg* width = mem_push_struct(arena, IrArg);
+  width->kind = eIrArg_const;
+  width->const_.int_val = array_elem_width(index->index.array_ty);
+  ir_emit_assign(ir_context, eIrOp_mul, index->index.i_place, width, offset);
+}
+
+bool gen_ir_assign(IrContext* ir_context, Scope* scope, AstNode* assign)
+{
+  assert(KIND(assign, eAstNode_assign));
+  bool success = true;
+
+  AstNode* dest_expr = assign->assign.dest_expr;
+  AstNode* source_expr = assign->assign.source_expr;
+
+  if(dest_expr->kind == eAstNode_id)
+  {
+    gen_ir_expr(ir_context, scope, dest_expr);
+    gen_ir_expr(ir_context, scope, source_expr);
+    ir_emit_assign(ir_context, eIrOp_None, &source_expr->place, 0, &dest_expr->place);
+  }
+  else if(dest_expr->kind == eAstNode_index)
+  {
+    gen_ir_index_with_offset(ir_context, scope, dest_expr);
+    gen_ir_expr(ir_context, scope, source_expr);
+    ir_emit_assign(ir_context, eIrOp_index_dest, &source_expr->place,
+                   dest_expr->index.offset, dest_expr->index.array);
+  }
+  else
+    success = compile_error(dest_expr->src_loc, "unsupported left-side expr. of assignment");
+  return success;
 }
 
 void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
@@ -4280,14 +4374,14 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         {
           expr->label_true = new_symbolic_label(arena);
           expr->label_false = new_symbolic_label(arena);
-          expr->ir_place.kind = eIrArg_data_obj;
-          expr->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, expr);
+          expr->place.kind = eIrArg_data_obj;
+          expr->place.data_obj = new_tempvar(ir_context->sym_arena, scope, expr->eval_ty);
           gen_ir_bool_expr(ir_context, scope, expr);
           ir_emit_label(ir_context, expr->label_true);
-          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, &expr->ir_place);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, &expr->place);
           ir_emit_goto(ir_context, make_numeric_label(arena, ir_context->next_stmt_nr + 2));
           ir_emit_label(ir_context, expr->label_false);
-          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, &expr->ir_place);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, &expr->place);
         }
         else
           gen_ir_bin_expr(ir_context, scope, expr);
@@ -4301,14 +4395,14 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         {
           expr->label_true = new_symbolic_label(arena);
           expr->label_false = new_symbolic_label(arena);
-          expr->ir_place.kind = eIrArg_data_obj;
-          expr->ir_place.data_obj = new_tempvar(ir_context->sym_arena, scope, expr);
+          expr->place.kind = eIrArg_data_obj;
+          expr->place.data_obj = new_tempvar(ir_context->sym_arena, scope, expr->eval_ty);
           gen_ir_bool_unr_expr(ir_context, scope, expr);
           ir_emit_label(ir_context, expr->label_true);
-          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, &expr->ir_place);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, &expr->place);
           ir_emit_goto(ir_context, make_numeric_label(arena, ir_context->next_stmt_nr + 2));
           ir_emit_label(ir_context, expr->label_false);
-          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, &expr->ir_place);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, &expr->place);
         }
         else
           gen_ir_unr_expr(ir_context, scope, expr);
@@ -4318,6 +4412,7 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     case eAstNode_id:
       gen_ir_id(ir_context, scope, expr);
       break;
+
     case eAstNode_lit:
       gen_ir_lit(ir_context, scope, expr);
       break;
@@ -4327,7 +4422,12 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
       break;
 
     case eAstNode_index:
-      //TODO
+      {
+        gen_ir_index_with_offset(ir_context, scope, expr);
+        expr->place.kind = eIrArg_data_obj;
+        expr->place.data_obj = new_tempvar(arena, scope, expr->eval_ty);
+        ir_emit_assign(ir_context, eIrOp_index_source, expr->index.array, expr->index.offset, &expr->place);
+      }
       break;
 
     default:
@@ -4335,9 +4435,10 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
   }
 }
 
-void gen_ir_block(IrContext* ir_context, Scope* scope, AstNode* block)
+bool gen_ir_block(IrContext* ir_context, Scope* scope, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
+  bool success = true;
 
   for(ListItem* li = block->block.nodes.first;
       li;
@@ -4346,6 +4447,7 @@ void gen_ir_block(IrContext* ir_context, Scope* scope, AstNode* block)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     gen_ir_block_stmt(ir_context, scope, stmt);
   }
+  return success;
 }
 
 void gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
@@ -4366,7 +4468,7 @@ void gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
     case eOperator_greater_eq:
       gen_ir_expr(ir_context, scope, left_operand);
       gen_ir_expr(ir_context, scope, right_operand);
-      ir_emit_cond_goto(ir_context, conv_operator_to_ir_op(op), &left_operand->ir_place, &right_operand->ir_place, bin_expr->label_true);
+      ir_emit_cond_goto(ir_context, conv_operator_to_ir_op(op), &left_operand->place, &right_operand->place, bin_expr->label_true);
       ir_emit_goto(ir_context, bin_expr->label_false);
       break;
 
@@ -4405,7 +4507,7 @@ void gen_ir_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   gen_ir_expr(ir_context, scope, id);
-  ir_emit_cond_goto(ir_context, eIrOp_eq, &id->ir_place, &ir_arg_bool_true, id->label_true);
+  ir_emit_cond_goto(ir_context, eIrOp_eq, &id->place, &ir_arg_bool_true, id->label_true);
   ir_emit_goto(ir_context, id->label_false);
 }
 
@@ -4506,29 +4608,32 @@ void gen_ir_return(IrContext* ir_context, Scope* scope, AstNode* ret)
   if(ret->ret.expr)
   {
     gen_ir_expr(ir_context, scope, ret->ret.expr);
-    ir_emit_return(ir_context, &ret->ret.expr->ir_place);
+    ir_emit_return(ir_context, &ret->ret.expr->place);
   }
   else
     ir_emit_return(ir_context, 0);
 }
 
-void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
+bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 {
+  bool success = true;
+
   switch(stmt->kind)
   {
     case eAstNode_assign:
-      gen_ir_assign(ir_context, scope, stmt);
+      success = gen_ir_assign(ir_context, scope, stmt);
       break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
     case eAstNode_id:
     case eAstNode_call:
+    case eAstNode_index:
     case eAstNode_lit:
       gen_ir_expr(ir_context, scope, stmt);
       break;
 
     case eAstNode_block:
-      gen_ir_block(ir_context, stmt->block.scope, stmt);
+      success = gen_ir_block(ir_context, stmt->block.scope, stmt);
       break;
 
     case eAstNode_if:
@@ -4547,10 +4652,6 @@ void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
       //FIXME
       break;
 
-    case eAstNode_index:
-      //TODO
-      break;
-
     case eAstNode_return:
       gen_ir_return(ir_context, scope, stmt);
       break;
@@ -4558,16 +4659,19 @@ void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     default:
       assert(0);
   }
+  return success;
 }
 
-void gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
+bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
+  bool success = true;
+
   AstNode* ret_type = proc->proc.ret_type;
   if(!types_are_equal(ret_type->eval_ty, basic_type_void))
   {
-    proc->ir_place.kind = eIrArg_data_obj;
-    proc->ir_place.data_obj = new_retvar(ir_context->sym_arena, proc);
+    proc->place.kind = eIrArg_data_obj;
+    proc->place.data_obj = new_retvar(ir_context->sym_arena, proc);
   }
   if((proc->modifier & eModifier_extern) != 0)
   {
@@ -4577,35 +4681,40 @@ void gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   {
     AstNode* body = proc->proc.body;
     assert(KIND(body, eAstNode_block));
-    gen_ir_block_stmt(ir_context, body->block.scope, body);
+    success = gen_ir_block_stmt(ir_context, body->block.scope, body);
   }
+  return success;
 }
 
-void gen_ir_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
+bool gen_ir_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 {
+  bool success = true;
   switch(stmt->kind)
   {
     case eAstNode_proc:
       ir_emit_label(ir_context, make_symbolic_label(arena, stmt->proc.name));
-      gen_ir_proc(ir_context, scope, stmt);
+      success = gen_ir_proc(ir_context, scope, stmt);
       break;
 
     default:
       assert(0);
   }
+  return success;
 }
 
-void gen_ir_module(IrContext* ir_context, AstNode* module)
+bool gen_ir_module(IrContext* ir_context, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
+  bool success = true;
 
   for(ListItem* li = module->module.nodes.first;
       li;
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    gen_ir_module_stmt(ir_context, module->module.scope, stmt);
+    success = gen_ir_module_stmt(ir_context, module->module.scope, stmt);
   }
+  return success;
 }
 
 void DEBUG_print_ir_op(String* text, eIrOp op)
@@ -4675,11 +4784,11 @@ void DEBUG_print_ir_op(String* text, eIrOp op)
     case eIrOp_bit_shift_right:
       str_printf(text, ">>");
       break;
-    case eIrOp_int_to_float:
-      str_printf(text, "int_to_float");
+    case eIrOp_itof:
+      str_printf(text, "itof");
       break;
-    case eIrOp_float_to_int:
-      str_printf(text, "float_to_int");
+    case eIrOp_ftoi:
+      str_printf(text, "ftoi");
       break;
 
     default:
@@ -4696,16 +4805,16 @@ void DEBUG_print_ir_arg(String* text, IrArg* arg)
       break;
 
     case eIrArg_const:
-      switch(arg->ir_const.kind)
+      switch(arg->const_.kind)
       {
         case eIrConstant_int:
-          str_printf(text, "%d", arg->ir_const.int_val);
+          str_printf(text, "%d", arg->const_.int_val);
           break;
         case eIrConstant_float:
-          str_printf(text, "%f", arg->ir_const.float_val);
+          str_printf(text, "%f", arg->const_.float_val);
           break;
         case eIrConstant_char:
-          str_printf(text, "%c", arg->ir_const.char_val);
+          str_printf(text, "%c", arg->const_.char_val);
           break;
         default:
           assert(0);
@@ -4764,12 +4873,29 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
 
           /* unr_ops */
           case eIrOp_neg:
-          case eIrOp_int_to_float:
-          case eIrOp_float_to_int:
+          case eIrOp_itof:
+          case eIrOp_ftoi:
             DEBUG_print_ir_arg(text, assign->result);
             str_printf(text, " = ");
             DEBUG_print_ir_op(text, assign->op);
             DEBUG_print_ir_arg(text, assign->arg1);
+            break;
+
+          case eIrOp_index_dest:
+            DEBUG_print_ir_arg(text, assign->result);
+            str_printf(text, "[");
+            DEBUG_print_ir_arg(text, assign->arg2);
+            str_printf(text, "] = ");
+            DEBUG_print_ir_arg(text, assign->arg1);
+            break;
+
+          case eIrOp_index_source:
+            DEBUG_print_ir_arg(text, assign->result);
+            str_printf(text, " = ");
+            DEBUG_print_ir_arg(text, assign->arg1);
+            str_printf(text, "[");
+            DEBUG_print_ir_arg(text, assign->arg2);
+            str_printf(text, "]");
             break;
 
           default:
@@ -4866,11 +4992,11 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   subst_list = new_list(arena, eList_type_pair);
 
   ir_arg_bool_true.kind = eIrArg_const;  
-  ir_arg_bool_true.ir_const.kind = eIrConstant_int;
-  ir_arg_bool_true.ir_const.int_val = 1;
+  ir_arg_bool_true.const_.kind = eIrConstant_int;
+  ir_arg_bool_true.const_.int_val = 1;
   ir_arg_bool_false.kind = eIrArg_const;  
-  ir_arg_bool_false.ir_const.kind = eIrConstant_int;
-  ir_arg_bool_false.ir_const.int_val = 0;
+  ir_arg_bool_false.const_.kind = eIrConstant_int;
+  ir_arg_bool_false.const_.int_val = 0;
 
   SymbolContext sym_context = {0};
   sym_context.arena = push_arena(&arena, SYMBOL_ARENA_SIZE);
@@ -4896,8 +5022,10 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   {
     return false;
   }
-
-  gen_ir_module(&ir_context, module);
+  if(!gen_ir_module(&ir_context, module))
+  {
+    return false;
+  }
   DEBUG_print_ir_code(&ir_context, "./out.ir");
 
 #if 0

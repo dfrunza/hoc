@@ -81,7 +81,7 @@ bool parse_call(TokenStream* input, AstNode* left_node, AstNode** node)
 bool parse_cast(TokenStream* input, AstNode** node);
 bool parse_rest_of_cast(TokenStream* input, AstNode* left_node, AstNode** node);
 
-bool parse_index(TokenStream* input, AstNode* left_node, AstNode** node)
+bool parse_index(TokenStream* input, AstNode* left_node, AstNode** node, int ndim)
 {
   *node = left_node;
   bool success = true;
@@ -89,15 +89,16 @@ bool parse_index(TokenStream* input, AstNode* left_node, AstNode** node)
   if(input->token.kind == eToken_open_bracket)
   {
     AstNode* index = *node = new_ast_node(eAstNode_index, clone_source_loc(&input->src_loc));
-    index->index.expr = left_node;
+    index->index.array_expr = left_node;
+    index->index.ndim = ndim;
 
-    if(success = get_next_token(input) && parse_expr(input, &index->index.index_expr))
+    if(success = get_next_token(input) && parse_expr(input, &index->index.i_expr))
     {
       if(input->token.kind == eToken_close_bracket)
       {
-        if(index->index.index_expr)
+        if(index->index.i_expr)
         {
-          success = get_next_token(input) && parse_index(input, *node, node);
+          success = get_next_token(input) && parse_index(input, *node, node, ndim+1);
         }
         else
           success = compile_error(&input->src_loc, "expression was expected at %s", get_token_printstr(&input->token));
@@ -371,14 +372,14 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
     case eToken_eq:
       {
         AstNode* assign = *node = new_ast_node(eAstNode_assign, clone_source_loc(&input->src_loc));
-        assign->assign.left_expr = left_node;
+        assign->assign.dest_expr = left_node;
 
-        AstNode* right_expr = 0;
-        if(success = get_next_token(input) && parse_expr(input, &right_expr))
+        AstNode* source_expr = 0;
+        if(success = get_next_token(input) && parse_expr(input, &source_expr))
         {
-          if(right_expr)
+          if(source_expr)
           {
-            switch(right_expr->kind)
+            switch(source_expr->kind)
             {
               case eAstNode_lit:
               case eAstNode_id:
@@ -386,10 +387,10 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
               case eAstNode_unr_expr:
               case eAstNode_call:
               case eAstNode_index:
-                assign->assign.right_expr = right_expr;
+                assign->assign.source_expr = source_expr;
                 break;
               default:
-                success = compile_error(right_expr->src_loc, "invalid operand in assignment expression");
+                success = compile_error(source_expr->src_loc, "invalid operand in assignment expression");
                 break;
             }
           }
@@ -566,25 +567,28 @@ bool parse_array(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
-  AstNode* array = *node = new_ast_node(eAstNode_array, clone_source_loc(&input->src_loc));
-  if(success = get_next_token(input) && parse_expr(input, &array->array.size_expr))
+  if(input->token.kind == eToken_open_bracket)
   {
-    if(input->token.kind == eToken_close_bracket)
+    AstNode* array = *node = new_ast_node(eAstNode_array, clone_source_loc(&input->src_loc));
+    if(success = get_next_token(input) && parse_expr(input, &array->array.size_expr))
     {
-      if(!array->array.size_expr)
+      if(input->token.kind == eToken_close_bracket)
       {
-        success = compile_error(&input->src_loc,  "expression was expected at `%s`", get_token_printstr(&input->token));
-      }
-      else if(success = get_next_token(input) && parse_rest_of_array(input, &array->array.elem_expr))
-      {
-        if(!array->array.elem_expr)
+        if(!array->array.size_expr)
         {
           success = compile_error(&input->src_loc,  "expression was expected at `%s`", get_token_printstr(&input->token));
         }
+        else if(success = get_next_token(input) && parse_rest_of_array(input, &array->array.elem_expr))
+        {
+          if(!array->array.elem_expr)
+          {
+            success = compile_error(&input->src_loc,  "expression was expected at `%s`", get_token_printstr(&input->token));
+          }
+        }
       }
+      else
+        success = compile_error(&input->src_loc,  "`]` was expected at `%s`", get_token_printstr(&input->token));
     }
-    else
-      success = compile_error(&input->src_loc,  "`]` was expected at `%s`", get_token_printstr(&input->token));
   }
   return success;
 }
@@ -615,7 +619,7 @@ bool parse_cast(TokenStream* input, AstNode** node)
       break;
 
     case eToken_circumflex:
-      success = parse_deref(input, node) && parse_index(input, *node, node);
+      success = parse_deref(input, node) && parse_index(input, *node, node, 1);
       break;
 
     case eToken_open_bracket:
@@ -623,7 +627,7 @@ bool parse_cast(TokenStream* input, AstNode** node)
       break;
 
     case eToken_id:
-      success = parse_id(input, node) && parse_pointer(input, *node, node) && parse_index(input, *node, node);
+      success = parse_id(input, node) && parse_pointer(input, *node, node) && parse_index(input, *node, node, 1);
       break;
 
     case eToken_void:
@@ -632,7 +636,7 @@ bool parse_cast(TokenStream* input, AstNode** node)
     case eToken_bool:
     case eToken_char:
     case eToken_auto:
-      success = parse_basic_type(input, node) && parse_pointer(input, *node, node) && parse_index(input, *node, node);
+      success = parse_basic_type(input, node) && parse_pointer(input, *node, node) && parse_index(input, *node, node, 1);
       break;
   }
   return success;
@@ -704,7 +708,7 @@ bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** no
       success = parse_call(input, left_node, node);
       break;
     case eToken_open_bracket:
-      success = parse_index(input, left_node, node);
+      success = parse_index(input, left_node, node, 1);
       break;
   }
   return success;

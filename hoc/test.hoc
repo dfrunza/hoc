@@ -1,7 +1,11 @@
 void main()
 {
-  [2]int A;
-  int a;
-  a = A[0];
+  [10][20]int A;
+  [30]int B;
+  int x;
+  int y;
+  int z;
+  int w;
+  B[x] = A[y][z];
 }
 

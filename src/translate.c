@@ -829,6 +829,16 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
   return success;
 }
 
+bool sym_index(SymbolContext* sym_context, AstNode* block, AstNode* index)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(index, eAstNode_index));
+  bool success = true;
+
+  success = sym_expr(sym_context, block, index->index.expr) && sym_expr(sym_context, block, index->index.index_expr);
+  return success;
+}
+
 bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
 {
   assert(KIND(block, eAstNode_block));
@@ -851,6 +861,9 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
     case eAstNode_basic_type:
     case eAstNode_lit:
     case eAstNode_str:
+      break;
+    case eAstNode_index:
+      success = sym_index(sym_context, block, expr);
       break;
     default:
       assert(0);
@@ -972,6 +985,9 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
       break;
     case eAstNode_basic_type:
     case eAstNode_empty:
+      break;
+    case eAstNode_index:
+      success = sym_index(sym_context, block, stmt);
       break;
     default:
       assert(0);
@@ -2016,6 +2032,8 @@ bool gen_x86(String* code, AstNode* node)
 
 bool set_types_expr(AstNode* expr);
 bool set_types_type(AstNode* type);
+bool set_types_block_stmt(AstNode* stmt);
+bool set_types_block(AstNode* block);
 
 bool set_types_array(AstNode* array)
 {
@@ -2244,6 +2262,18 @@ bool set_types_lit(AstNode* lit)
   return success;
 }
 
+bool set_types_index(AstNode* index)
+{
+  assert(KIND(index, eAstNode_index));
+  bool success = true;
+  if(success = set_types_expr(index->index.expr) && set_types_expr(index->index.index_expr))
+  {
+    index->ty = index->index.expr->eval_ty;
+    index->eval_ty = new_typevar();
+  }
+  return success;
+}
+
 bool set_types_expr(AstNode* expr)
 {
   bool success = true;
@@ -2274,6 +2304,9 @@ bool set_types_expr(AstNode* expr)
     case eAstNode_str:
       success = set_types_str(expr);
       break;
+    case eAstNode_index:
+      success = set_types_index(expr);
+      break;
     default:
       assert(0);
   }
@@ -2300,8 +2333,6 @@ bool set_types_return(AstNode* ret)
   }
   return success;
 }
-
-bool set_types_block_stmt(AstNode* stmt);
 
 bool set_types_if(AstNode* if_)
 {
@@ -2343,8 +2374,6 @@ bool set_types_while(AstNode* while_)
   return success;
 }
 
-bool set_types_block(AstNode* block);
-
 bool set_types_block_stmt(AstNode* stmt)
 {
   bool success = true;
@@ -2380,6 +2409,9 @@ bool set_types_block_stmt(AstNode* stmt)
       break;
     case eAstNode_while:
       success = set_types_while(stmt);
+      break;
+    case eAstNode_index:
+      success = set_types_index(stmt);
       break;
     default:
       assert(0);
@@ -2556,28 +2588,6 @@ bool eval_types_bin_expr(AstNode* bin_expr)
         if(!type_unif(bin_expr->eval_ty, left_operand->eval_ty))
         {
           success = compile_error(bin_expr->src_loc, "type error (cast op)");
-        }
-        break;
-
-      case eOperator_index:
-        if(type_unif(right_operand->eval_ty, basic_type_int))
-        {
-          if(left_operand->eval_ty->kind == eType_array)
-          {
-            if(!type_unif(left_operand->eval_ty->array.elem, bin_expr->eval_ty))
-            {
-              success = compile_error(bin_expr->src_loc, "type error (index op)");
-            }
-          }
-          else if(left_operand->eval_ty->kind == eType_typevar)
-          {
-            if(!type_unif(left_operand->eval_ty, new_array_type(0, 1, bin_expr->eval_ty)))
-            {
-              success = compile_error(bin_expr->src_loc, "type error (index op)");
-            }
-          }
-          else
-            success = compile_error(bin_expr->src_loc, "type error (index op)");
         }
         break;
 
@@ -2830,6 +2840,41 @@ bool eval_types_call(AstNode* call)
   return success;
 }
 
+bool eval_types_index(AstNode* index)
+{
+  assert(KIND(index, eAstNode_index));
+  bool success = true;
+
+  AstNode* expr = index->index.expr;
+  AstNode* index_expr = index->index.index_expr;
+
+  if(success = eval_types_expr(expr) && eval_types_expr(index_expr))
+  {
+    if(type_unif(index_expr->eval_ty, basic_type_int))
+    {
+      if(expr->eval_ty->kind == eType_array)
+      {
+        if(!type_unif(expr->eval_ty->array.elem, index->eval_ty))
+        {
+          success = compile_error(index->src_loc, "type error (array index)");
+        }
+      }
+      else if(expr->eval_ty->kind == eType_typevar)
+      {
+        if(!type_unif(expr->eval_ty, new_array_type(0, 1, index->eval_ty)))
+        {
+          success = compile_error(index->src_loc, "type error (array index)");
+        }
+      }
+      else
+        success = compile_error(index->src_loc, "type error (array index)");
+    }
+    else
+      success = compile_error(index->src_loc, "type error (array index)");
+  }
+  return success;
+}
+
 bool eval_types_expr(AstNode* expr)
 {
   bool success = true;
@@ -2847,6 +2892,9 @@ bool eval_types_expr(AstNode* expr)
       break;
     case eAstNode_call:
       success = eval_types_call(expr);
+      break;
+    case eAstNode_index:
+      success = eval_types_index(expr);
       break;
     case eAstNode_lit:
     case eAstNode_str:
@@ -2964,6 +3012,9 @@ bool eval_types_block_stmt(AstNode* stmt)
     case eAstNode_basic_type:
       success = eval_types_type(stmt);
       break;
+    case eAstNode_index:
+      success = eval_types_index(stmt);
+      break;
     default:
       assert(0);
   }
@@ -3041,7 +3092,7 @@ bool resolve_types_var(AstNode* var)
 
   if(success = resolve_types_of_node(var))
   {
-    var->var.decl_sym->ty = var->ty;
+    var->var.decl_sym->ty = var->eval_ty;
   }
   return success;
 }
@@ -3124,6 +3175,15 @@ bool resolve_types_call(AstNode* call)
   return success;
 }
 
+bool resolve_types_index(AstNode* index)
+{
+  assert(KIND(index, eAstNode_index));
+  bool success = true;
+  success = resolve_types_expr(index->index.expr) && resolve_types_expr(index->index.index_expr) &&
+    resolve_types_of_node(index);
+  return success;
+}
+
 bool resolve_types_expr(AstNode* expr)
 {
   bool success = true;
@@ -3145,6 +3205,9 @@ bool resolve_types_expr(AstNode* expr)
     case eAstNode_lit:
     case eAstNode_str:
     case eAstNode_basic_type:
+      break;
+    case eAstNode_index:
+      success = resolve_types_index(expr);
       break;
     default:
       assert(0);
@@ -3276,6 +3339,9 @@ bool resolve_types_block_stmt(AstNode* stmt)
       break;
     case eAstNode_basic_type:
       success = resolve_types_type(stmt);
+      break;
+    case eAstNode_index:
+      success = resolve_types_index(stmt);
       break;
     default:
       assert(0);
@@ -3551,17 +3617,6 @@ bool check_types_bin_expr(AstNode* bin_expr)
         assert(types_are_equal(left_ty, right_ty) && types_are_equal(ret_ty, left_ty));
         break;
 
-      case eOperator_index:
-        {
-          if(ret_ty->width > 0)
-          {
-            ;//ok
-          }
-          else
-            success = compile_error(bin_expr->src_loc, "type error (array index): size of type = 0");
-        }
-        break;
-
       default:
         assert(0);
     }
@@ -3644,6 +3699,21 @@ bool check_types_call(AstNode* call)
   return success;
 }
 
+bool check_types_index(AstNode* index)
+{
+  assert(KIND(index, eAstNode_index));
+  bool success = true;
+
+  if(index->eval_ty->width > 0)
+  {
+    ;//ok
+  }
+  else
+    success = compile_error(index->src_loc, "type error (array index): size of type = 0");
+
+  return success;
+}
+
 bool check_types_expr(AstNode* expr)
 {
   bool success = true;
@@ -3663,6 +3733,9 @@ bool check_types_expr(AstNode* expr)
     case eAstNode_lit:
     case eAstNode_str:
     case eAstNode_basic_type:
+      break;
+    case eAstNode_index:
+      success = check_types_index(expr);
       break;
     default:
       assert(0);
@@ -3747,6 +3820,9 @@ bool check_types_block_stmt(AstNode* stmt)
       break;
     case eAstNode_loop_ctrl:
     case eAstNode_empty:
+      break;
+    case eAstNode_index:
+      success = check_types_index(stmt);
       break;
     default:
       assert(0);
@@ -4169,6 +4245,10 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
       gen_ir_call(ir_context, scope, expr);
       break;
 
+    case eAstNode_index:
+      //TODO
+      break;
+
     default:
       assert(0);
   }
@@ -4381,6 +4461,10 @@ void gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 
     case eAstNode_str:
       //FIXME
+      break;
+
+    case eAstNode_index:
+      //TODO
       break;
 
     case eAstNode_return:

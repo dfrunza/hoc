@@ -240,7 +240,6 @@ typedef enum
   eOperator_address_of,
   eOperator_selector,
   eOperator_indirect_selector,
-  eOperator_index,
   eOperator_cast,
   eOperator_pointer,
   eOperator_Count,
@@ -296,9 +295,11 @@ char* get_operator_printstr(eOperator op)
       str = "++";
       break;
 #endif
+#if 0
     case eOperator_index:
       str = "[]";
       break;
+#endif
     case eOperator_eq:
       str = "==";
       break;
@@ -686,6 +687,7 @@ typedef enum
   eAstNode_empty,
   eAstNode_arg_list,
   eAstNode_array,
+  eAstNode_index,
 }
 eAstNode;
 
@@ -713,6 +715,13 @@ typedef struct AstNode
       int ndim;
     }
     array;
+
+    struct
+    {
+      AstNode* expr;
+      AstNode* index_expr;
+    }
+    index;
 
     struct
     {

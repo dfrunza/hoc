@@ -88,15 +88,14 @@ bool parse_index(TokenStream* input, AstNode* left_node, AstNode** node)
 
   if(input->token.kind == eToken_open_bracket)
   {
-    AstNode* index = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-    index->bin_expr.op = eOperator_index;
-    index->bin_expr.left_operand = left_node;
+    AstNode* index = *node = new_ast_node(eAstNode_index, clone_source_loc(&input->src_loc));
+    index->index.expr = left_node;
 
-    if(success = get_next_token(input) && parse_expr(input, &index->bin_expr.right_operand))
+    if(success = get_next_token(input) && parse_expr(input, &index->index.index_expr))
     {
       if(input->token.kind == eToken_close_bracket)
       {
-        if(index->bin_expr.right_operand)
+        if(index->index.index_expr)
         {
           success = get_next_token(input) && parse_index(input, *node, node);
         }
@@ -225,6 +224,7 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
               case eAstNode_bin_expr:
               case eAstNode_unr_expr:
               case eAstNode_call:
+              case eAstNode_index:
                 bin_expr->bin_expr.right_operand = right_operand;
                 success = parse_rest_of_factor(input, *node, node); // left-associativity
                 break;
@@ -333,6 +333,7 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
               case eAstNode_bin_expr:
               case eAstNode_unr_expr:
               case eAstNode_call:
+              case eAstNode_index:
                 bin_expr->bin_expr.right_operand = right_operand;
                 success = parse_rest_of_term(input, *node, node); // left-associativity
                 break;
@@ -385,6 +386,7 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
               case eAstNode_bin_expr:
               case eAstNode_unr_expr:
               case eAstNode_call:
+              case eAstNode_index:
                 bin_expr->bin_expr.right_operand = right_operand;
                 break;
               default:

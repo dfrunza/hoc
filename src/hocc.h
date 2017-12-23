@@ -821,6 +821,7 @@ typedef struct AstNode
       AstNode* body;
       Scope* scope;
       Symbol* decl_sym;
+      Symbol* ret_sym;
     }
     proc;
 

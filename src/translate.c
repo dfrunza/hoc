@@ -660,6 +660,7 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
   return result;
 }
 
+#if 0
 Symbol* new_retvar(MemoryArena* arena, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
@@ -674,6 +675,7 @@ Symbol* new_retvar(MemoryArena* arena, AstNode* proc)
   prepend_list_elem(&scope->decl_syms, sym, eList_symbol);
   return sym;
 }
+#endif
 
 Symbol* new_tempvar(MemoryArena* arena, Scope* scope, Type* ty)
 {
@@ -971,7 +973,8 @@ bool sym_return(SymbolContext* sym_context, AstNode* block, AstNode* ret)
   if(proc_scope)
   {
     ret->ret.proc = proc_scope->ast_node;
-    success = sym_expr(sym_context, block, ret->ret.expr);
+    if(ret->ret.expr)
+      success = sym_expr(sym_context, block, ret->ret.expr);
   }
   else
     success = compile_error(ret->src_loc, "unexpected `return`");
@@ -1114,6 +1117,7 @@ bool sym_module_proc(SymbolContext* sym_context, AstNode* proc)
   {
     proc->proc.decl_sym = add_decl_sym(sym_context->arena, proc->proc.name, sym_context->active_scope, proc);
     proc->proc.scope = begin_nested_scope(sym_context, eScope_proc, proc);
+    proc->proc.ret_sym = add_decl_sym(sym_context->arena, new_tempvar_name("r_"), proc->proc.scope, proc->proc.ret_type);
     success = sym_formal_args(sym_context, proc->proc.arg_list) && sym_proc_body(sym_context, proc);
     end_nested_scope(sym_context);
   }
@@ -3034,7 +3038,7 @@ bool eval_types_return(AstNode* ret)
   bool success = true;
 
   AstNode* ret_expr = ret->ret.expr;
-  if(success = eval_types_expr(ret_expr))
+  if(ret_expr && (success = eval_types_expr(ret_expr)))
   {
     AstNode* proc = ret->ret.proc;
     Type* proc_ty = KIND(proc->ty, eType_proc);
@@ -4271,12 +4275,9 @@ void gen_ir_call(IrContext* ir_context, Scope* scope, AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
 
-  if(!types_are_equal(call->eval_ty, basic_type_void))
-  {
-    IrArg* place = mem_push_struct(arena, IrArg);
-    place->kind = eIrArg_data_obj;
-    place->data_obj = new_tempvar(ir_context->sym_arena, scope, call->eval_ty);
-  }
+  IrArg* place = call->place = mem_push_struct(arena, IrArg);
+  place->kind = eIrArg_data_obj;
+  place->data_obj = new_tempvar(ir_context->sym_arena, scope, call->eval_ty);
 
   AstNode* arg_list = call->call.arg_list;
   gen_ir_actual_args(ir_context, scope, arg_list);
@@ -4360,6 +4361,7 @@ bool gen_ir_assign(IrContext* ir_context, Scope* scope, AstNode* assign)
   {
     gen_ir_index_with_offset(ir_context, scope, dest_expr);
     gen_ir_expr(ir_context, scope, source_expr);
+    dest_expr->place = dest_expr->index.place;
     ir_emit_assign(ir_context, eIrOp_index_dest, source_expr->place, dest_expr->index.offset, dest_expr->index.place);
   }
   else
@@ -4673,13 +4675,10 @@ bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
-  AstNode* ret_type = proc->proc.ret_type;
-  if(!types_are_equal(ret_type->eval_ty, basic_type_void))
-  {
-    IrArg* place = proc->place = mem_push_struct(arena, IrArg);
-    place->kind = eIrArg_data_obj;
-    place->data_obj = new_retvar(ir_context->sym_arena, proc);
-  }
+  IrArg* place = proc->place = mem_push_struct(arena, IrArg);
+  place->kind = eIrArg_data_obj;
+  place->data_obj = proc->proc.ret_sym;
+
   if((proc->modifier & eModifier_extern) != 0)
   {
     ;//TODO
@@ -4688,7 +4687,8 @@ bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   {
     AstNode* body = proc->proc.body;
     assert(KIND(body, eAstNode_block));
-    success = gen_ir_block_stmt(ir_context, body->block.scope, body);
+    if(success = gen_ir_block_stmt(ir_context, body->block.scope, body))
+      ir_emit_return(ir_context, 0);
   }
   return success;
 }

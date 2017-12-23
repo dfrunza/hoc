@@ -7,10 +7,11 @@ void main()
   int z;
   int w;
   if(B[12] > 123)
-    B[9] = 432;
+    B = foo();
 }
 
 [23]int foo()
 {
-
+  [2]int A;
+  return A;
 }

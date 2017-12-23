@@ -19,6 +19,25 @@ bool consume_semicolon(TokenStream* input)
 
 bool parse_actual_args(TokenStream* input, AstNode* call);
 bool parse_expr(TokenStream*, AstNode**);
+bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** node);
+bool parse_cast(TokenStream* input, AstNode** node);
+bool parse_rest_of_cast(TokenStream* input, AstNode* left_node, AstNode** node);
+
+bool is_valid_expr_operand(AstNode* node)
+{
+  bool valid = false;
+  switch(node->kind)
+  {
+    case eAstNode_lit:
+    case eAstNode_id:
+    case eAstNode_bin_expr:
+    case eAstNode_unr_expr:
+    case eAstNode_call:
+    case eAstNode_index:
+      valid = true;
+  }
+  return valid;
+}
 
 bool parse_rest_of_actual_args(TokenStream* input, AstNode* arg_list)
 {
@@ -48,8 +67,6 @@ bool parse_actual_args(TokenStream* input, AstNode* arg_list)
   return success;
 }
 
-bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** node);
-
 bool parse_call(TokenStream* input, AstNode* left_node, AstNode** node)
 {
   *node = left_node;
@@ -77,9 +94,6 @@ bool parse_call(TokenStream* input, AstNode* left_node, AstNode** node)
   }
   return success;
 }
-
-bool parse_cast(TokenStream* input, AstNode** node);
-bool parse_rest_of_cast(TokenStream* input, AstNode* left_node, AstNode** node);
 
 bool parse_index(TokenStream* input, AstNode* left_node, AstNode** node, int ndim)
 {
@@ -218,21 +232,13 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
         {
           if(right_operand)
           {
-            switch(right_operand->kind)
+            if(is_valid_expr_operand(right_operand))
             {
-              case eAstNode_lit:
-              case eAstNode_id:
-              case eAstNode_bin_expr:
-              case eAstNode_unr_expr:
-              case eAstNode_call:
-              case eAstNode_index:
-                bin_expr->bin_expr.right_operand = right_operand;
-                success = parse_rest_of_factor(input, *node, node); // left-associativity
-                break;
-              default:
-                success = compile_error(right_operand->src_loc, "invalid operand");
-                break;
+              bin_expr->bin_expr.right_operand = right_operand;
+              success = parse_rest_of_factor(input, *node, node); // left-associativity
             }
+            else
+              success = compile_error(right_operand->src_loc, "invalid operand");
           }
           else
             success = compile_error(&input->src_loc, "operand was expected at `%s`", get_token_printstr(&input->token));
@@ -327,21 +333,13 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
         {
           if(right_operand)
           {
-            switch(right_operand->kind)
+            if(is_valid_expr_operand(right_operand))
             {
-              case eAstNode_lit:
-              case eAstNode_id:
-              case eAstNode_bin_expr:
-              case eAstNode_unr_expr:
-              case eAstNode_call:
-              case eAstNode_index:
-                bin_expr->bin_expr.right_operand = right_operand;
-                success = parse_rest_of_term(input, *node, node); // left-associativity
-                break;
-              default:
-                success = compile_error(right_operand->src_loc, "invalid operand");
-                break;
+              bin_expr->bin_expr.right_operand = right_operand;
+              success = parse_rest_of_term(input, *node, node); // left-associativity
             }
+            else
+              success = compile_error(right_operand->src_loc, "invalid operand");
           }
           else
             success = compile_error(&input->src_loc, "operand was expected at `%s`", get_token_printstr(&input->token));
@@ -379,20 +377,10 @@ bool parse_rest_of_assignment(TokenStream* input, AstNode* left_node, AstNode** 
         {
           if(source_expr)
           {
-            switch(source_expr->kind)
-            {
-              case eAstNode_lit:
-              case eAstNode_id:
-              case eAstNode_bin_expr:
-              case eAstNode_unr_expr:
-              case eAstNode_call:
-              case eAstNode_index:
-                assign->assign.source_expr = source_expr;
-                break;
-              default:
-                success = compile_error(source_expr->src_loc, "invalid operand in assignment expression");
-                break;
-            }
+            if(is_valid_expr_operand(source_expr))
+              assign->assign.source_expr = source_expr;
+            else
+              success = compile_error(source_expr->src_loc, "invalid operand in assignment expression");
           }
           else
             success = compile_error(&input->src_loc, "operand was expected at `%s`", get_token_printstr(&input->token));
@@ -1026,9 +1014,16 @@ bool parse_return(TokenStream* input, AstNode** node)
   if(input->token.kind == eToken_return)
   {
     AstNode* ret = *node = new_ast_node(eAstNode_return, clone_source_loc(&input->src_loc));
-    if(success = get_next_token(input))
+    AstNode* ret_expr = 0;
+    if(success = get_next_token(input) && parse_expr(input, &ret_expr))
     {
-      success = parse_expr(input, &ret->ret.expr);
+      if(ret_expr)
+      {
+        if(is_valid_expr_operand(ret_expr))
+          ret->ret.expr = ret_expr;
+        else
+          success = compile_error(ret_expr->src_loc, "invalid return expression");
+      }
     }
   }
   return success;

@@ -1,9 +1,3 @@
 void main()
 {
-  int a;
-  float f;
-  bool b;
-  char c;
-  if(c <> (char):0)
-    a = 123;
 }

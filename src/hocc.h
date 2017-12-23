@@ -914,7 +914,6 @@ typedef struct Symbol
   Scope* scope;
   AstNode* ast_node;
   Type* ty;
-  Symbol* decl_sym;
   int data_loc;
   void* data;
   bool is_static_alloc;

@@ -886,6 +886,8 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
     case eAstNode_call:
       success = sym_call(sym_context, block, expr);
       break;
+    case eAstNode_pointer:
+    case eAstNode_array:
     case eAstNode_basic_type:
     case eAstNode_lit:
     case eAstNode_str:
@@ -2899,19 +2901,16 @@ bool eval_types_call(AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
   bool success = true;
-
-  AstNode* call_expr = call->call.expr;
-  AstNode* arg_list = call->call.arg_list;
-  assert(call_expr->kind == eAstNode_id);
-  if(success = eval_types_id(call_expr) && eval_types_actual_args(arg_list))
+  if(success = eval_types_id(call->call.expr) && eval_types_actual_args(call->call.arg_list))
   {
-    AstNode* proc = call->call.proc = call_expr->id.decl_ast;
-    Type* proc_ty = KIND(proc->ty, eType_proc);
-    Type* call_ty = KIND(call->ty, eType_proc);
-    if(!type_unif(proc_ty, call_ty))
+    AstNode* proc = call->call.proc = KIND(call->call.expr, eAstNode_id)->id.decl_ast;
+    if(proc->ty->kind == eType_proc)
     {
-      success = compile_error(call->src_loc, "type error (call argument types)");
+      if(!type_unif(proc->ty, call->ty))
+        success = compile_error(call->src_loc, "type error (call argument types)");
     }
+    else
+      success = compile_error(call->src_loc, "type error (call)");
   }
   return success;
 }
@@ -3590,9 +3589,9 @@ bool check_types_cast(AstNode* cast)
       }
       else if(types_are_equal(to_ty, basic_type_bool))
       {
-        // bool <- int
+        // bool <- int | pointer(T)
         success = types_are_equal(from_ty, basic_type_int) ||
-          types_are_equal(from_ty, basic_type_char);
+          (from_ty->kind == eType_pointer);
       }
       else if(to_ty->kind == eType_pointer)
       {
@@ -3709,10 +3708,11 @@ bool check_types_bin_expr(AstNode* bin_expr)
       case eOperator_eq:
       case eOperator_not_eq:
         {
-          if(types_are_equal(left_ty, basic_type_int)
-             || types_are_equal(left_ty, basic_type_char)
-             || types_are_equal(left_ty, basic_type_float)
-             && types_are_equal(left_ty, right_ty))
+          if(types_are_equal(left_ty, basic_type_int) ||
+             types_are_equal(left_ty, basic_type_char) ||
+             types_are_equal(left_ty, basic_type_float) ||
+             left_ty->kind == eType_pointer &&
+             types_are_equal(left_ty, right_ty))
           {
             ;//ok
             assert(types_are_equal(ret_ty, basic_type_bool));
@@ -4447,6 +4447,8 @@ void gen_ir_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
     {
       if(types_are_equal(from_expr->eval_ty, basic_type_int))
         cast_op = eIrOp_itob; // bool <- int
+      else if(from_expr->eval_ty->kind == eType_pointer)
+        cast_op = eIrOp_itob; // bool <- pointer(T)
       else
         assert(0);
     }

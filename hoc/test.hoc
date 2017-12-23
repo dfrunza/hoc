@@ -6,6 +6,11 @@ void main()
   int y;
   int z;
   int w;
-  B[x] = A[y][z];
+  if(B[12] > 123)
+    B[9] = 432;
 }
 
+[23]int foo()
+{
+
+}

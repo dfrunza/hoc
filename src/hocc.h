@@ -692,7 +692,7 @@ typedef struct AstNode
   Type* ty;
   Type* eval_ty;
   eModifier modifier;
-  IrArg place;
+  IrArg* place;
 
   Label* label_true;
   Label* label_false;
@@ -727,10 +727,10 @@ typedef struct AstNode
     {
       AstNode* array_expr;
       AstNode* i_expr;
-      IrArg* array;
-      IrArg* offset;
-      IrArg* i_place;
-      Type* array_ty;
+      IrArg* place;   // L.place
+      IrArg* offset;  // L.offset
+      IrArg* i_place; // Elist.place
+      Type* array_ty; // Elist.array
       int ndim;
     }
     index;

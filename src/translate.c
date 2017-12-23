@@ -4156,9 +4156,10 @@ void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
     case eOperator_not_eq:
       gen_ir_expr(ir_context, scope, left_operand);
       gen_ir_expr(ir_context, scope, right_operand);
-      bin_expr->place.kind = eIrArg_data_obj;
-      bin_expr->place.data_obj = new_tempvar(ir_context->sym_arena, scope, bin_expr->eval_ty);
-      ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &left_operand->place, &right_operand->place, &bin_expr->place);
+      IrArg* place = bin_expr->place = mem_push_struct(arena, IrArg);
+      place->kind = eIrArg_data_obj;
+      place->data_obj = new_tempvar(ir_context->sym_arena, scope, bin_expr->eval_ty);
+      ir_emit_assign(ir_context, conv_operator_to_ir_op(op), left_operand->place, right_operand->place, bin_expr->place);
       break;
 
     default:
@@ -4169,8 +4170,9 @@ void gen_ir_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
 void gen_ir_id(IrContext* ir_context, Scope* scope, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
-  id->place.kind = eIrArg_data_obj;
-  id->place.data_obj = id->id.decl_sym;
+  IrArg* place = id->place = mem_push_struct(arena, IrArg);
+  place->kind = eIrArg_data_obj;
+  place->data_obj = id->id.decl_sym;
 }
 
 void gen_ir_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
@@ -4184,9 +4186,10 @@ void gen_ir_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
   {
     case eOperator_neg:
       gen_ir_expr(ir_context, scope, operand);
-      unr_expr->place.kind = eIrArg_data_obj;
-      unr_expr->place.data_obj = new_tempvar(ir_context->sym_arena, scope, unr_expr->eval_ty);
-      ir_emit_assign(ir_context, conv_operator_to_ir_op(op), &operand->place, 0, &unr_expr->place);
+      IrArg* place = unr_expr->place = mem_push_struct(arena, IrArg);
+      place->kind = eIrArg_data_obj;
+      place->data_obj = new_tempvar(ir_context->sym_arena, scope, unr_expr->eval_ty);
+      ir_emit_assign(ir_context, conv_operator_to_ir_op(op), operand->place, 0, unr_expr->place);
       break;
 
     case eOperator_logic_not:
@@ -4202,8 +4205,9 @@ void gen_ir_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
 
-  lit->place.kind = eIrArg_const;
-  IrConstant* const_ = &lit->place.const_;
+  IrArg* place = lit->place = mem_push_struct(arena, IrArg);
+  place->kind = eIrArg_const;
+  IrConstant* const_ = &place->const_;
   switch(lit->lit.kind)
   {
     case eLiteral_int:
@@ -4269,8 +4273,9 @@ void gen_ir_call(IrContext* ir_context, Scope* scope, AstNode* call)
 
   if(!types_are_equal(call->eval_ty, basic_type_void))
   {
-    call->place.kind = eIrArg_data_obj;
-    call->place.data_obj = new_tempvar(ir_context->sym_arena, scope, call->eval_ty);
+    IrArg* place = mem_push_struct(arena, IrArg);
+    place->kind = eIrArg_data_obj;
+    place->data_obj = new_tempvar(ir_context->sym_arena, scope, call->eval_ty);
   }
 
   AstNode* arg_list = call->call.arg_list;
@@ -4281,7 +4286,7 @@ void gen_ir_call(IrContext* ir_context, Scope* scope, AstNode* call)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    ir_emit_call_param(ir_context, &arg->place);
+    ir_emit_call_param(ir_context, arg->place);
     param_count++;
   }
 
@@ -4298,15 +4303,15 @@ void gen_ir_index(IrContext* ir_context, Scope* scope, AstNode* index)
   if(array_expr->kind == eAstNode_id)
   {
     gen_ir_id(ir_context, scope, array_expr);
-    index->index.array = &array_expr->place;
+    index->index.place = array_expr->place;
     index->index.array_ty = array_expr->eval_ty;
     gen_ir_expr(ir_context, scope, i_expr);
-    index->index.i_place = &i_expr->place;
+    index->index.i_place = i_expr->place;
   }
   else if(array_expr->kind == eAstNode_index)
   {
     gen_ir_index(ir_context, scope, array_expr);
-    index->index.array = array_expr->index.array;
+    index->index.place = array_expr->index.place;
     index->index.array_ty = array_expr->index.array_ty;
     gen_ir_expr(ir_context, scope, i_expr);
 
@@ -4317,7 +4322,7 @@ void gen_ir_index(IrContext* ir_context, Scope* scope, AstNode* index)
     dim_size->kind = eIrArg_const;
     dim_size->const_.int_val = size_of_array_dim(index->index.array_ty, index->index.ndim);
     ir_emit_assign(ir_context, eIrOp_mul, array_expr->index.i_place, dim_size, t);
-    ir_emit_assign(ir_context, eIrOp_add, t, &i_expr->place, t);
+    ir_emit_assign(ir_context, eIrOp_add, t, i_expr->place, t);
   }
   else
     assert(0);
@@ -4349,17 +4354,16 @@ bool gen_ir_assign(IrContext* ir_context, Scope* scope, AstNode* assign)
   {
     gen_ir_expr(ir_context, scope, dest_expr);
     gen_ir_expr(ir_context, scope, source_expr);
-    ir_emit_assign(ir_context, eIrOp_None, &source_expr->place, 0, &dest_expr->place);
+    ir_emit_assign(ir_context, eIrOp_None, source_expr->place, 0, dest_expr->place);
   }
   else if(dest_expr->kind == eAstNode_index)
   {
     gen_ir_index_with_offset(ir_context, scope, dest_expr);
     gen_ir_expr(ir_context, scope, source_expr);
-    ir_emit_assign(ir_context, eIrOp_index_dest, &source_expr->place,
-                   dest_expr->index.offset, dest_expr->index.array);
+    ir_emit_assign(ir_context, eIrOp_index_dest, source_expr->place, dest_expr->index.offset, dest_expr->index.place);
   }
   else
-    success = compile_error(dest_expr->src_loc, "unsupported left-side expr. of assignment");
+    success = compile_error(dest_expr->src_loc, "unsupported expression on the left-side of assignment");
   return success;
 }
 
@@ -4374,14 +4378,15 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         {
           expr->label_true = new_symbolic_label(arena);
           expr->label_false = new_symbolic_label(arena);
-          expr->place.kind = eIrArg_data_obj;
-          expr->place.data_obj = new_tempvar(ir_context->sym_arena, scope, expr->eval_ty);
+          IrArg* place = expr->place = mem_push_struct(arena, IrArg);
+          place->kind = eIrArg_data_obj;
+          place->data_obj = new_tempvar(ir_context->sym_arena, scope, expr->eval_ty);
           gen_ir_bool_expr(ir_context, scope, expr);
           ir_emit_label(ir_context, expr->label_true);
-          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, &expr->place);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, expr->place);
           ir_emit_goto(ir_context, make_numeric_label(arena, ir_context->next_stmt_nr + 2));
           ir_emit_label(ir_context, expr->label_false);
-          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, &expr->place);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, expr->place);
         }
         else
           gen_ir_bin_expr(ir_context, scope, expr);
@@ -4395,14 +4400,14 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         {
           expr->label_true = new_symbolic_label(arena);
           expr->label_false = new_symbolic_label(arena);
-          expr->place.kind = eIrArg_data_obj;
-          expr->place.data_obj = new_tempvar(ir_context->sym_arena, scope, expr->eval_ty);
+          IrArg* place = expr->place = mem_push_struct(arena, IrArg);
+          place->data_obj = new_tempvar(ir_context->sym_arena, scope, expr->eval_ty);
           gen_ir_bool_unr_expr(ir_context, scope, expr);
           ir_emit_label(ir_context, expr->label_true);
-          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, &expr->place);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, expr->place);
           ir_emit_goto(ir_context, make_numeric_label(arena, ir_context->next_stmt_nr + 2));
           ir_emit_label(ir_context, expr->label_false);
-          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, &expr->place);
+          ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, expr->place);
         }
         else
           gen_ir_unr_expr(ir_context, scope, expr);
@@ -4424,9 +4429,10 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     case eAstNode_index:
       {
         gen_ir_index_with_offset(ir_context, scope, expr);
-        expr->place.kind = eIrArg_data_obj;
-        expr->place.data_obj = new_tempvar(arena, scope, expr->eval_ty);
-        ir_emit_assign(ir_context, eIrOp_index_source, expr->index.array, expr->index.offset, &expr->place);
+        IrArg* place = expr->place = mem_push_struct(arena, IrArg);
+        place->kind = eIrArg_data_obj;
+        place->data_obj = new_tempvar(arena, scope, expr->eval_ty);
+        ir_emit_assign(ir_context, eIrOp_index_source, expr->index.place, expr->index.offset, expr->place);
       }
       break;
 
@@ -4468,7 +4474,7 @@ void gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
     case eOperator_greater_eq:
       gen_ir_expr(ir_context, scope, left_operand);
       gen_ir_expr(ir_context, scope, right_operand);
-      ir_emit_cond_goto(ir_context, conv_operator_to_ir_op(op), &left_operand->place, &right_operand->place, bin_expr->label_true);
+      ir_emit_cond_goto(ir_context, conv_operator_to_ir_op(op), left_operand->place, right_operand->place, bin_expr->label_true);
       ir_emit_goto(ir_context, bin_expr->label_false);
       break;
 
@@ -4507,7 +4513,7 @@ void gen_ir_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   gen_ir_expr(ir_context, scope, id);
-  ir_emit_cond_goto(ir_context, eIrOp_eq, &id->place, &ir_arg_bool_true, id->label_true);
+  ir_emit_cond_goto(ir_context, eIrOp_eq, id->place, &ir_arg_bool_true, id->label_true);
   ir_emit_goto(ir_context, id->label_false);
 }
 
@@ -4608,7 +4614,7 @@ void gen_ir_return(IrContext* ir_context, Scope* scope, AstNode* ret)
   if(ret->ret.expr)
   {
     gen_ir_expr(ir_context, scope, ret->ret.expr);
-    ir_emit_return(ir_context, &ret->ret.expr->place);
+    ir_emit_return(ir_context, ret->ret.expr->place);
   }
   else
     ir_emit_return(ir_context, 0);
@@ -4670,8 +4676,9 @@ bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   AstNode* ret_type = proc->proc.ret_type;
   if(!types_are_equal(ret_type->eval_ty, basic_type_void))
   {
-    proc->place.kind = eIrArg_data_obj;
-    proc->place.data_obj = new_retvar(ir_context->sym_arena, proc);
+    IrArg* place = proc->place = mem_push_struct(arena, IrArg);
+    place->kind = eIrArg_data_obj;
+    place->data_obj = new_retvar(ir_context->sym_arena, proc);
   }
   if((proc->modifier & eModifier_extern) != 0)
   {

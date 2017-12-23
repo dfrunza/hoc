@@ -1,3 +1,7 @@
-void main()
+int main(int x, int^ z)
 {
+  int a;
+  int b;
+  int c;
+  a = b + c;
 }

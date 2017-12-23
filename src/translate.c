@@ -751,6 +751,15 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
   return result;
 }
 
+void alloc_data_area(Symbol* sym, Scope* scope)
+{
+  sym->data_loc = scope->data_offset;
+  int area_size = sym->ty->width;
+  if((area_size & (MACHINE_WORD_SIZE-1)) != 0)
+    area_size = (area_size + MACHINE_WORD_SIZE) & ~(MACHINE_WORD_SIZE-1);
+  scope->data_offset += area_size;
+}
+
 Symbol* new_tempvar(MemoryArena* arena, Scope* scope, Type* ty)
 {
   Symbol* sym = mem_push_struct(arena, Symbol);
@@ -758,6 +767,7 @@ Symbol* new_tempvar(MemoryArena* arena, Scope* scope, Type* ty)
   sym->ty = ty;
   sym->scope = scope;
   sym->order_nr = scope->sym_count++;
+  alloc_data_area(sym, scope);
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
   return sym;
 }
@@ -3574,6 +3584,7 @@ bool resolve_types_proc(AstNode* proc)
     && resolve_types_block_stmt(proc->proc.body) && resolve_types_of_node(proc))
   {
     proc->proc.decl_sym->ty = proc->eval_ty;
+    proc->proc.retvar->ty = proc->proc.ret_type->eval_ty;
   }
   return success;
 }
@@ -4489,7 +4500,8 @@ void gen_ir_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
   gen_ir_expr(ir_context, scope, from_expr);
   cast->place = from_expr->place;
 
-  if(types_are_equal(to_type->eval_ty, from_expr->eval_ty))
+  if(types_are_equal(to_type->eval_ty, from_expr->eval_ty) ||
+     ((to_type->eval_ty->kind == from_expr->eval_ty->kind) && (to_type->eval_ty->kind == eType_pointer)))
   {
     return;
   }
@@ -4819,7 +4831,7 @@ void gen_ir_return(IrContext* ir_context, Scope* scope, AstNode* ret)
 void gen_ir_var(IrContext* ir_context, Scope* scope, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
-  //Symbol* sym = var->var.decl_sym;
+  alloc_data_area(var->var.decl_sym, scope);
 }
 
 bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
@@ -4855,7 +4867,7 @@ bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
       gen_ir_var(ir_context, scope, stmt);
       break;
     case eAstNode_str:
-      //FIXME
+      fail("TODO");
       break;
     case eAstNode_return:
       gen_ir_return(ir_context, scope, stmt);
@@ -4864,6 +4876,18 @@ bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
       assert(0);
   }
   return success;
+}
+
+void gen_ir_formal_args(IrContext* ir_context, Scope* scope, AstNode* arg_list)
+{
+  assert(KIND(arg_list, eAstNode_arg_list));
+  for(ListItem* li = arg_list->arg_list.nodes.first;
+      li;
+      li = li->next)
+  {
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    gen_ir_var(ir_context, scope, arg);
+  }
 }
 
 bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
@@ -4877,14 +4901,18 @@ bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
 
   if((proc->modifier & eModifier_extern) != 0)
   {
-    ;//TODO
+    fail("TODO");
   }
   else
   {
     AstNode* body = proc->proc.body;
     assert(KIND(body, eAstNode_block));
+    alloc_data_area(proc->proc.retvar, proc->proc.scope);
+    gen_ir_formal_args(ir_context, proc->proc.scope, proc->proc.arg_list);
     if(success = gen_ir_block_stmt(ir_context, body->block.scope, body))
+    {
       ir_emit_return(ir_context, 0);
+    }
   }
   return success;
 }

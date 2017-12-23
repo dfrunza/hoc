@@ -21,7 +21,7 @@ bool parse_actual_args(TokenStream* input, AstNode* call);
 bool parse_expr(TokenStream*, AstNode**);
 bool parse_rest_of_selector(TokenStream* input, AstNode* left_node, AstNode** node);
 bool parse_cast(TokenStream* input, AstNode** node);
-bool parse_rest_of_cast(TokenStream* input, AstNode* left_node, AstNode** node);
+bool parse_deref(TokenStream* input, AstNode** node);
 
 bool is_valid_expr_operand(AstNode* node)
 {
@@ -451,7 +451,41 @@ bool parse_basic_type(TokenStream* input, AstNode** node)
   return success;
 }
 
-bool parse_deref(TokenStream* input, AstNode** node);
+bool parse_rest_of_cast(TokenStream* input, AstNode* left_node, AstNode** node)
+{
+  *node = left_node;
+  bool success = true;
+
+#if 0
+  AstNode* right_node = 0;
+  if((success = parse_unr_expr(input, &right_node)) && right_node)
+  {
+    AstNode* cast = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
+    cast->bin_expr.op = eOperator_cast;
+    cast->bin_expr.left_operand = left_node;
+    cast->bin_expr.right_operand = right_node;
+  }
+#else
+  switch(input->token.kind)
+  {
+    case eToken_colon:
+      {
+        AstNode* cast = *node = new_ast_node(eAstNode_cast, clone_source_loc(&input->src_loc));
+        cast->cast.to_type = left_node;
+
+        if(success = get_next_token(input) && parse_unr_expr(input, &cast->cast.from_expr))
+        {
+          if(!cast->cast.from_expr)
+          {
+            success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
+          }
+        }
+      }
+      break;
+  }
+#endif
+  return success;
+}
 
 bool parse_rest_of_deref(TokenStream* input, AstNode** node)
 {
@@ -582,7 +616,6 @@ bool parse_array(TokenStream* input, AstNode** node)
   return success;
 }
 
-
 bool parse_cast(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -628,42 +661,6 @@ bool parse_cast(TokenStream* input, AstNode** node)
       success = parse_basic_type(input, node) && parse_pointer(input, *node, node) && parse_index(input, *node, node, 1);
       break;
   }
-  return success;
-}
-
-bool parse_rest_of_cast(TokenStream* input, AstNode* left_node, AstNode** node)
-{
-  *node = left_node;
-  bool success = true;
-
-#if 0
-  AstNode* right_node = 0;
-  if((success = parse_unr_expr(input, &right_node)) && right_node)
-  {
-    AstNode* cast = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-    cast->bin_expr.op = eOperator_cast;
-    cast->bin_expr.left_operand = left_node;
-    cast->bin_expr.right_operand = right_node;
-  }
-#else
-  switch(input->token.kind)
-  {
-    case eToken_colon:
-      {
-        AstNode* cast = *node = new_ast_node(eAstNode_cast, clone_source_loc(&input->src_loc));
-        cast->cast.to_type = left_node;
-
-        if(success = get_next_token(input) && parse_unr_expr(input, &cast->cast.from_expr))
-        {
-          if(!cast->cast.from_expr)
-          {
-            success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
-          }
-        }
-      }
-      break;
-  }
-#endif
   return success;
 }
 

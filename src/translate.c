@@ -59,6 +59,97 @@ void DEBUG_print_arena_usage(MemoryArena* arena, char* tag)
   h_printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
 }
 
+char* get_operator_printstr(eOperator op)
+{
+  char* str = "???";
+  switch(op)
+  {
+    case eOperator_add:
+      str = "+";
+      break;
+    case eOperator_sub:
+      str = "-";
+      break;
+    case eOperator_mul:
+      str = "*";
+      break;
+    case eOperator_div:
+      str = "/";
+      break;
+    case eOperator_mod:
+      str = "mod";
+      break;
+    case eOperator_neg:
+      str = "-";
+      break;
+    case eOperator_deref:
+#if 0
+    case eOperator_pointer:
+#endif
+      str = "^";
+      break;
+    case eOperator_address_of:
+      str = "&";
+      break;
+    case eOperator_selector:
+      str = ".";
+      break;
+    case eOperator_indirect_selector:
+      str = "->";
+      break;
+#if 0
+    case eOperator_pre_decr:
+    case eOperator_post_decr:
+      str = "--";
+      break;
+    case eOperator_pre_incr:
+    case eOperator_post_incr:
+      str = "++";
+      break;
+#endif
+    case eOperator_eq:
+      str = "==";
+      break;
+    case eOperator_not_eq:
+      str = "<>";
+      break;
+    case eOperator_less:
+      str = "<";
+      break;
+    case eOperator_less_eq:
+      str = "<=";
+      break;
+    case eOperator_greater:
+      str = ">";
+      break;
+    case eOperator_greater_eq:
+      str = ">=";
+      break;
+    case eOperator_logic_and:
+      str = "and";
+      break;
+    case eOperator_logic_or:
+      str = "or";
+      break;
+    case eOperator_logic_not:
+      str = "not";
+      break;
+    case eOperator_bit_and:
+      str = "&";
+      break;
+    case eOperator_bit_or:
+      str = "|";
+      break;
+    case eOperator_bit_xor:
+      str = "~";
+      break;
+    case eOperator_bit_not:
+      str = "!";
+      break;
+  }
+  return str;
+}
+
 void make_type_printstr(String* str, Type* type)
 {
   if(type->kind == eType_basic)
@@ -666,7 +757,7 @@ Symbol* new_tempvar(MemoryArena* arena, Scope* scope, Type* ty)
   sym->name = new_tempvar_name("t_");
   sym->ty = ty;
   sym->scope = scope;
-  sym->order_nr = scope->sym_order_nr++;
+  sym->order_nr = scope->sym_count++;
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
   return sym;
 }
@@ -678,7 +769,7 @@ Symbol* add_decl_sym(MemoryArena* arena, char* name, Scope* scope, AstNode* ast_
   sym->src_loc = ast_node->src_loc;
   sym->scope = scope;
   sym->ast_node = ast_node;
-  sym->order_nr = scope->sym_order_nr++;
+  sym->order_nr = scope->sym_count++;
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
   return sym;
 }
@@ -688,7 +779,8 @@ Scope* begin_scope(SymbolContext* sym_context, eScope kind, AstNode* ast_node)
   Scope* scope = mem_push_struct(sym_context->arena, Scope);
   scope->kind = kind;
   scope->nesting_depth = sym_context->nesting_depth;
-  scope->sym_order_nr = 0;
+  scope->sym_count = 0;
+  scope->data_offset = 0;
   scope->encl_scope = sym_context->active_scope;
   scope->ast_node = ast_node;
   init_list(&scope->decl_syms, arena, eList_symbol);
@@ -784,7 +876,7 @@ bool sym_id(SymbolContext* sym_context, AstNode* block, AstNode* id)
   bool success = true;
   Scope* scope = sym_context->active_scope;
   id->id.scope = scope;
-  id->id.order_nr = scope->sym_order_nr++;
+  id->id.order_nr = scope->sym_count++;
   return success;
 }
 
@@ -4724,6 +4816,12 @@ void gen_ir_return(IrContext* ir_context, Scope* scope, AstNode* ret)
     ir_emit_return(ir_context, 0);
 }
 
+void gen_ir_var(IrContext* ir_context, Scope* scope, AstNode* var)
+{
+  assert(KIND(var, eAstNode_var));
+  //Symbol* sym = var->var.decl_sym;
+}
+
 bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 {
   bool success = true;
@@ -4754,7 +4852,7 @@ bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
       gen_ir_while(ir_context, scope, stmt);
       break;
     case eAstNode_var:
-      //TODO
+      gen_ir_var(ir_context, scope, stmt);
       break;
     case eAstNode_str:
       //FIXME
@@ -5099,8 +5197,11 @@ void DEBUG_print_ir_code(IrContext* ir_context, char* file_path)
     str_printfln(&text, "");
   }
 
+#if 0
   int text_len = str_len(&text);
   file_write_bytes(file_path, (uint8*)text.head, text_len);
+#endif
+  str_dump_to_file(&text, file_path);
   end_temp_memory(&arena);
 }
 

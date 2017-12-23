@@ -422,13 +422,6 @@ char* str_cap(String* str)
   return str->head;
 }
 
-bool str_dump_to_file(String* str, char* file_path)
-{
-  int char_count = str_len(str);
-  int bytes_written = file_write_bytes(file_path, (uint8*)str->head, str_len(str));
-  return (char_count == bytes_written);
-}
-
 void print_char(char buf[3], char raw_char)
 {
   if(raw_char == '\0')

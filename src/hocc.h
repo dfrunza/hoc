@@ -1,6 +1,6 @@
-#define ARENA_SIZE (3*MEGABYTE)
-#define SYMBOL_ARENA_SIZE (ARENA_SIZE / 4)
-#define IR_CODE_ARENA_SIZE (ARENA_SIZE / 4)
+#define ARENA_SIZE (5*MEGABYTE)
+#define SYMBOL_ARENA_SIZE (1*MEGABYTE)
+#define IR_CODE_ARENA_SIZE (1*MEGABYTE)
 #define BINIMAGE_SIGNATURE "HC"
 #define MACHINE_WORD_SIZE 4
 
@@ -27,6 +27,12 @@ typedef double float64;
 #define inline __inline
 
 typedef struct String String;
+typedef struct List List;
+typedef struct Type Type;
+typedef struct AstNode AstNode;
+typedef struct Symbol Symbol;
+typedef struct Scope Scope;
+typedef struct TypePair TypePair;
 
 typedef struct MemoryArena
 {
@@ -54,18 +60,8 @@ typedef struct String
 }
 String;
 
-#define countof(ARRAY)\
-  (sizeof(ARRAY)/sizeof(ARRAY[0]))
-
-#define KIND(VAR, KIND)\
-  (((VAR)->kind == KIND) ? (VAR) : 0)
-
-typedef struct List List;
-typedef struct Type Type;
-typedef struct AstNode AstNode;
-typedef struct Symbol Symbol;
-typedef struct Scope Scope;
-typedef struct TypePair TypePair;
+#define countof(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
+#define KIND(VAR, KIND) (((VAR)->kind == KIND) ? (VAR) : 0)
 
 void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes);
 
@@ -243,97 +239,6 @@ typedef enum
 }
 eOperator;
 
-char* get_operator_printstr(eOperator op)
-{
-  char* str = "???";
-  switch(op)
-  {
-    case eOperator_add:
-      str = "+";
-      break;
-    case eOperator_sub:
-      str = "-";
-      break;
-    case eOperator_mul:
-      str = "*";
-      break;
-    case eOperator_div:
-      str = "/";
-      break;
-    case eOperator_mod:
-      str = "mod";
-      break;
-    case eOperator_neg:
-      str = "-";
-      break;
-    case eOperator_deref:
-#if 0
-    case eOperator_pointer:
-#endif
-      str = "^";
-      break;
-    case eOperator_address_of:
-      str = "&";
-      break;
-    case eOperator_selector:
-      str = ".";
-      break;
-    case eOperator_indirect_selector:
-      str = "->";
-      break;
-#if 0
-    case eOperator_pre_decr:
-    case eOperator_post_decr:
-      str = "--";
-      break;
-    case eOperator_pre_incr:
-    case eOperator_post_incr:
-      str = "++";
-      break;
-#endif
-    case eOperator_eq:
-      str = "==";
-      break;
-    case eOperator_not_eq:
-      str = "<>";
-      break;
-    case eOperator_less:
-      str = "<";
-      break;
-    case eOperator_less_eq:
-      str = "<=";
-      break;
-    case eOperator_greater:
-      str = ">";
-      break;
-    case eOperator_greater_eq:
-      str = ">=";
-      break;
-    case eOperator_logic_and:
-      str = "and";
-      break;
-    case eOperator_logic_or:
-      str = "or";
-      break;
-    case eOperator_logic_not:
-      str = "not";
-      break;
-    case eOperator_bit_and:
-      str = "&";
-      break;
-    case eOperator_bit_or:
-      str = "|";
-      break;
-    case eOperator_bit_xor:
-      str = "~";
-      break;
-    case eOperator_bit_not:
-      str = "!";
-      break;
-  }
-  return str;
-}
-
 typedef enum
 {
   eLiteral_None,
@@ -396,16 +301,17 @@ typedef struct Scope
   eScope kind;
 
   int nesting_depth;
-  int sym_order_nr;
   struct Scope* encl_scope;
   AstNode* ast_node;
+  int sym_count;
+  int data_offset;
 
   List decl_syms;
 
-  int static_area_size;
-  int locals_area_size;
-  int ret_area_size;
-  int args_area_size;
+  //int static_area_size;
+  //int locals_area_size;
+  //int ret_area_size;
+  //int args_area_size;
 }
 Scope;
 
@@ -545,11 +451,11 @@ typedef enum
   eIrOp_btoi,
 
   // op | arg1 | arg2 | dest 
-  eIrOp_index_source,  // dest = arg1[arg2]
+  eIrOp_index_source,  // result = arg1[arg2]
   eIrOp_index_dest,    // dest[arg2] = arg1
-  eIrOp_deref_source,  // dest = *arg1
-  eIrOp_deref_dest,    // *dest = arg1
-  eIrOp_address_of,    // dest = &arg1
+  eIrOp_deref_source,  // result = *arg1
+  eIrOp_deref_dest,    // *result = arg1
+  eIrOp_address_of,    // result = &arg1
 }
 eIrOp;
 
@@ -916,7 +822,7 @@ typedef struct Symbol
   Type* ty;
   int data_loc;
   void* data;
-  bool is_static_alloc;
+//  bool is_static_alloc;
 }
 Symbol;
 

@@ -53,7 +53,7 @@ GOTO :end
 :end
 POPD
 
-cloc.exe %src_dir%\hocc.h %src_dir%\hocc.c %src_dir%\lib.c %src_dir%\platform.h %src_dir%\platform.c %src_dir%\translate.c ^
+cloc.exe %src_dir%\hocc.h %src_dir%\hocc.c %src_dir%\lib.c %src_dir%\platform.h %src_dir%\translate.c ^
   %src_dir%\lex.c %src_dir%\syntax.c 
 
 

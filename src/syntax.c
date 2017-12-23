@@ -34,6 +34,7 @@ bool is_valid_expr_operand(AstNode* node)
     case eAstNode_unr_expr:
     case eAstNode_call:
     case eAstNode_index:
+    case eAstNode_cast:
       valid = true;
   }
   return valid;
@@ -649,13 +650,12 @@ bool parse_rest_of_cast(TokenStream* input, AstNode* left_node, AstNode** node)
   {
     case eToken_colon:
       {
-        AstNode* cast = *node = new_ast_node(eAstNode_bin_expr, clone_source_loc(&input->src_loc));
-        cast->bin_expr.op = eOperator_cast;
-        cast->bin_expr.left_operand = left_node;
+        AstNode* cast = *node = new_ast_node(eAstNode_cast, clone_source_loc(&input->src_loc));
+        cast->cast.to_type = left_node;
 
-        if(success = get_next_token(input) && parse_unr_expr(input, &cast->bin_expr.right_operand))
+        if(success = get_next_token(input) && parse_unr_expr(input, &cast->cast.from_expr))
         {
-          if(!cast->bin_expr.right_operand)
+          if(!cast->cast.from_expr)
           {
             success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
           }

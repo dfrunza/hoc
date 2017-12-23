@@ -239,7 +239,6 @@ typedef enum
   eOperator_address_of,
   eOperator_selector,
   eOperator_indirect_selector,
-  eOperator_cast,
   eOperator_Count,
 }
 eOperator;
@@ -330,9 +329,6 @@ char* get_operator_printstr(eOperator op)
       break;
     case eOperator_bit_not:
       str = "!";
-      break;
-    case eOperator_cast:
-      str = ":";
       break;
   }
   return str;
@@ -542,7 +538,11 @@ typedef enum
   eIrOp_bit_shift_left,
   eIrOp_bit_shift_right,
   eIrOp_itof,
+  eIrOp_itoc,
+  eIrOp_itob,
   eIrOp_ftoi,
+  eIrOp_ctoi,
+  eIrOp_btoi,
 
   // op | arg1 | arg2 | dest 
   eIrOp_index_source,  // dest = arg1[arg2]
@@ -682,6 +682,7 @@ typedef enum
   eAstNode_index,
   eAstNode_pointer,
   eAstNode_assign,
+  eAstNode_cast,
 }
 eAstNode;
 
@@ -701,6 +702,13 @@ typedef struct AstNode
 
   union
   {
+    struct
+    {
+      AstNode* from_expr;
+      AstNode* to_type;
+    }
+    cast;
+
     struct
     {
       AstNode* dest_expr;
@@ -821,7 +829,7 @@ typedef struct AstNode
       AstNode* body;
       Scope* scope;
       Symbol* decl_sym;
-      Symbol* ret_sym;
+      Symbol* retvar;
     }
     proc;
 

@@ -660,23 +660,6 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
   return result;
 }
 
-#if 0
-Symbol* new_retvar(MemoryArena* arena, AstNode* proc)
-{
-  assert(KIND(proc, eAstNode_proc));
-  Scope* scope = proc->proc.scope;
-  Symbol* sym = mem_push_struct(arena, Symbol);
-  sym->name = new_tempvar_name("r_");
-  sym->src_loc = proc->src_loc;
-  sym->ast_node = proc;
-  sym->ty = proc->proc.ret_type->eval_ty;
-  sym->scope = scope;
-  sym->order_nr = scope->sym_order_nr++;
-  prepend_list_elem(&scope->decl_syms, sym, eList_symbol);
-  return sym;
-}
-#endif
-
 Symbol* new_tempvar(MemoryArena* arena, Scope* scope, Type* ty)
 {
   Symbol* sym = mem_push_struct(arena, Symbol);
@@ -873,6 +856,14 @@ bool sym_index(SymbolContext* sym_context, AstNode* block, AstNode* index)
   return success;
 }
 
+bool sym_cast(SymbolContext* sym_context, AstNode* block, AstNode* cast)
+{
+  assert(KIND(cast, eAstNode_cast));
+  bool success = true;
+  success = sym_expr(sym_context, block, cast->cast.to_type) && sym_expr(sym_context, block, cast->cast.from_expr);
+  return success;
+}
+
 bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
 {
   assert(KIND(block, eAstNode_block));
@@ -880,6 +871,9 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
 
   switch(expr->kind)
   {
+    case eAstNode_cast:
+      success = sym_cast(sym_context, block, expr);
+      break;
     case eAstNode_bin_expr:
       success = sym_bin_expr(sym_context, block, expr);
       break;
@@ -1017,6 +1011,9 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
     case eAstNode_assign:
       success = sym_assign(sym_context, block, stmt);
       break;
+    case eAstNode_cast:
+      success = sym_cast(sym_context, block, stmt);
+      break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
     case eAstNode_id:
@@ -1117,7 +1114,7 @@ bool sym_module_proc(SymbolContext* sym_context, AstNode* proc)
   {
     proc->proc.decl_sym = add_decl_sym(sym_context->arena, proc->proc.name, sym_context->active_scope, proc);
     proc->proc.scope = begin_nested_scope(sym_context, eScope_proc, proc);
-    proc->proc.ret_sym = add_decl_sym(sym_context->arena, new_tempvar_name("r_"), proc->proc.scope, proc->proc.ret_type);
+    proc->proc.retvar = add_decl_sym(sym_context->arena, new_tempvar_name("r_"), proc->proc.scope, proc->proc.ret_type);
     success = sym_formal_args(sym_context, proc->proc.arg_list) && sym_proc_body(sym_context, proc);
     end_nested_scope(sym_context);
   }
@@ -2191,16 +2188,8 @@ bool set_types_bin_expr(AstNode* bin_expr)
 
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
-  eOperator op = bin_expr->bin_expr.op;
 
-  if(op == eOperator_cast)
-  {
-    success = set_types_type(left_operand) && set_types_expr(right_operand);
-  }
-  else
-    success = set_types_expr(left_operand) && set_types_expr(right_operand);
-
-  if(success)
+  if(success = set_types_expr(left_operand) && set_types_expr(right_operand))
   {
     bin_expr->eval_ty = new_typevar();
     bin_expr->ty = new_proc_type(new_product_type(left_operand->eval_ty, right_operand->eval_ty), bin_expr->eval_ty);
@@ -2320,6 +2309,20 @@ bool set_types_index(AstNode* index)
   return success;
 }
 
+bool set_types_cast(AstNode* cast)
+{
+  assert(KIND(cast, eAstNode_cast));
+  bool success = true;
+  AstNode* to_type = cast->cast.to_type;
+  AstNode* from_expr = cast->cast.from_expr;
+  if(success = set_types_type(to_type) && set_types_expr(from_expr))
+  {
+    cast->eval_ty = to_type->eval_ty;
+    cast->ty = new_product_type(from_expr->eval_ty, cast->eval_ty);
+  }
+  return success;
+}
+
 bool set_types_expr(AstNode* expr)
 {
   bool success = true;
@@ -2331,6 +2334,9 @@ bool set_types_expr(AstNode* expr)
       break;
     case eAstNode_array:
       success = set_types_array(expr);
+      break;
+    case eAstNode_cast:
+      success = set_types_cast(expr);
       break;
     case eAstNode_bin_expr:
       success = set_types_bin_expr(expr);
@@ -2470,6 +2476,9 @@ bool set_types_block_stmt(AstNode* stmt)
       break;
     case eAstNode_assign:
       success = set_types_assign(stmt);
+      break;
+    case eAstNode_cast:
+      success = set_types_cast(stmt);
       break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
@@ -2639,6 +2648,14 @@ bool eval_types_type(AstNode* type)
   return success;
 }
 
+bool eval_types_cast(AstNode* cast)
+{
+  assert(KIND(cast, eAstNode_cast));
+  bool success = true;
+  success = eval_types_type(cast->cast.to_type) && eval_types_expr(cast->cast.from_expr);
+  return success;
+}
+
 bool eval_types_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
@@ -2648,24 +2665,10 @@ bool eval_types_bin_expr(AstNode* bin_expr)
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
   eOperator op = bin_expr->bin_expr.op;
 
-  if(op == eOperator_cast)
-  {
-    success = eval_types_type(left_operand) && eval_types_expr(right_operand);
-  }
-  else
-    success = eval_types_expr(left_operand) && eval_types_expr(right_operand);
-
-  if(success)
+  if(success = eval_types_expr(left_operand) && eval_types_expr(right_operand))
   {
     switch(op)
     {
-      case eOperator_cast:
-        if(!type_unif(bin_expr->eval_ty, left_operand->eval_ty))
-        {
-          success = compile_error(bin_expr->src_loc, "type error (cast op)");
-        }
-        break;
-
       case eOperator_bit_and:
       case eOperator_bit_or:
       case eOperator_bit_xor:
@@ -2954,6 +2957,9 @@ bool eval_types_expr(AstNode* expr)
 
   switch(expr->kind)
   {
+    case eAstNode_cast:
+      success = eval_types_cast(expr);
+      break;
     case eAstNode_bin_expr:
       success = eval_types_bin_expr(expr);
       break;
@@ -3066,6 +3072,9 @@ bool eval_types_block_stmt(AstNode* stmt)
   {
     case eAstNode_assign:
       success = eval_types_assign(stmt);
+      break;
+    case eAstNode_cast:
+      success = eval_types_cast(stmt);
       break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
@@ -3266,12 +3275,24 @@ bool resolve_types_index(AstNode* index)
   return success;
 }
 
+bool resolve_types_cast(AstNode* cast)
+{
+  assert(KIND(cast, eAstNode_cast));
+  bool success = true;
+  success = resolve_types_type(cast->cast.to_type) && resolve_types_expr(cast->cast.from_expr) &&
+    resolve_types_of_node(cast);
+  return success;
+}
+
 bool resolve_types_expr(AstNode* expr)
 {
   bool success = true;
 
   switch(expr->kind)
   {
+    case eAstNode_cast:
+      success = resolve_types_cast(expr);
+      break;
     case eAstNode_bin_expr:
       success = resolve_types_bin_expr(expr);
       break;
@@ -3413,6 +3434,9 @@ bool resolve_types_block_stmt(AstNode* stmt)
     case eAstNode_assign:
       success = resolve_types_assign(stmt);
       break;
+    case eAstNode_cast:
+      success = resolve_types_cast(stmt);
+      break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
     case eAstNode_id:
@@ -3531,64 +3555,54 @@ bool check_types_formal_args(AstNode* arg_list)
 
 bool check_types_cast(AstNode* cast)
 {
-  assert(KIND(cast, eAstNode_bin_expr)->bin_expr.op == eOperator_cast);
+  assert(KIND(cast, eAstNode_cast));
   bool success = true;
 
-  AstNode* right_operand = cast->bin_expr.right_operand;
+  AstNode* from_expr = cast->cast.from_expr;
+  AstNode* to_type = cast->cast.to_type;
 
-  if(success = check_types_expr(right_operand))
+  if(success = check_types_expr(from_expr))
   {
-    Type* expr_ty = KIND(cast->ty, eType_proc);
-    Type* operands_ty = expr_ty->proc.args;
-    assert(KIND(operands_ty, eType_product));
-    Type* left_ty = operands_ty->product.left;
-    Type* right_ty = operands_ty->product.right;
+    Type* from_ty = from_expr->eval_ty;
+    Type* to_ty = to_type->eval_ty;
 
-    if(!types_are_equal(left_ty, right_ty))
+    if(!types_are_equal(from_ty, to_ty))
     {
       success = false;
 
-      if(types_are_equal(left_ty, basic_type_int))
+      if(types_are_equal(to_ty, basic_type_int))
       {
-        // int <- float | bool | pointer | char
-        success = types_are_equal(right_ty, basic_type_float) ||
-          types_are_equal(right_ty, basic_type_bool) ||
-          types_are_equal(right_ty, basic_type_char) ||
-          (right_ty->kind == eType_pointer);
+        // int <- float | bool | pointer(T) | char
+        success = types_are_equal(from_ty, basic_type_float) ||
+          types_are_equal(from_ty, basic_type_bool) ||
+          types_are_equal(from_ty, basic_type_char) ||
+          (from_ty->kind == eType_pointer);
       }
-      else if(types_are_equal(left_ty, basic_type_char))
+      else if(types_are_equal(to_ty, basic_type_char))
       {
-        // char <- int | bool
-        success = types_are_equal(right_ty, basic_type_int) ||
-          types_are_equal(right_ty, basic_type_bool);
+        // char <- int
+        success = types_are_equal(from_ty, basic_type_int);
       }
-      else if(types_are_equal(left_ty, basic_type_float))
+      else if(types_are_equal(to_ty, basic_type_float))
       {
         // float <- int
-        success = types_are_equal(right_ty, basic_type_int);
+        success = types_are_equal(from_ty, basic_type_int);
       }
-      else if(types_are_equal(left_ty, basic_type_bool))
+      else if(types_are_equal(to_ty, basic_type_bool))
       {
-        // bool <- int | char
-        success = types_are_equal(right_ty, basic_type_int) ||
-          types_are_equal(right_ty, basic_type_char);
+        // bool <- int
+        success = types_are_equal(from_ty, basic_type_int) ||
+          types_are_equal(from_ty, basic_type_char);
       }
-      else if(left_ty->kind == eType_pointer)
+      else if(to_ty->kind == eType_pointer)
       {
-        // pointer <- pointer | array | int
-        success = (right_ty->kind == eType_pointer) ||
-          (right_ty->kind == eType_array) ||
-          types_are_equal(right_ty, basic_type_int);
+        // pointer(T) <- pointer(P) | int
+        success = (from_ty->kind == eType_pointer) ||
+          types_are_equal(from_ty, basic_type_int);
       }
-      else if(left_ty->kind == eType_array)
-      {
-        // array <- pointer | array
-        success = (right_ty->kind == eType_pointer) || (right_ty->kind == eType_array);
-      }
-
       if(!success)
       {
-        compile_error(cast->src_loc, "invalid cast `%s` <- `%s`", get_type_printstr(left_ty), get_type_printstr(right_ty));
+        compile_error(cast->src_loc, "invalid cast `%s` <- `%s`", get_type_printstr(to_ty), get_type_printstr(from_ty));
       }
     }
   }
@@ -3604,11 +3618,7 @@ bool check_types_bin_expr(AstNode* bin_expr)
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   eOperator op = bin_expr->bin_expr.op;
 
-  if(op == eOperator_cast)
-  {
-    success = check_types_cast(bin_expr);
-  }
-  else if(success = check_types_expr(left_operand) && check_types_expr(right_operand))
+  if(success = check_types_expr(left_operand) && check_types_expr(right_operand))
   {
     Type* expr_ty = KIND(bin_expr->ty, eType_proc);
     Type* operands_ty = expr_ty->proc.args;
@@ -3819,9 +3829,12 @@ bool check_types_assign(AstNode* assign)
 
   AstNode* dest_expr = assign->assign.dest_expr;
   AstNode* source_expr = assign->assign.source_expr;
-  if(!type_unif(dest_expr->eval_ty, source_expr->eval_ty))
+  if(success = check_types_expr(dest_expr) && check_types_expr(source_expr))
   {
-    success = compile_error(assign->src_loc, "type error (assignment)");
+    if(!type_unif(dest_expr->eval_ty, source_expr->eval_ty))
+    {
+      success = compile_error(assign->src_loc, "type error (assignment)");
+    }
   }
   return success;
 }
@@ -3834,6 +3847,9 @@ bool check_types_expr(AstNode* expr)
   {
     case eAstNode_assign:
       success = check_types_assign(expr);
+      break;
+    case eAstNode_cast:
+      success = check_types_cast(expr);
       break;
     case eAstNode_bin_expr:
       success = check_types_bin_expr(expr);
@@ -3909,6 +3925,9 @@ bool check_types_block_stmt(AstNode* stmt)
   {
     case eAstNode_assign:
       success = check_types_assign(stmt);
+      break;
+    case eAstNode_cast:
+      success = check_types_cast(stmt);
       break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
@@ -4369,6 +4388,72 @@ bool gen_ir_assign(IrContext* ir_context, Scope* scope, AstNode* assign)
   return success;
 }
 
+void gen_ir_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
+{
+  assert(KIND(cast, eAstNode_cast));
+  AstNode* to_type = cast->cast.to_type;
+  AstNode* from_expr = cast->cast.from_expr;
+
+  gen_ir_expr(ir_context, scope, from_expr);
+  cast->place = from_expr->place;
+
+  if(types_are_equal(to_type->eval_ty, from_expr->eval_ty))
+  {
+    return;
+  }
+  bool require_conv = true;
+  if(types_are_equal(to_type->eval_ty, basic_type_int))
+  {
+    // int <- pointer
+    require_conv = from_expr->eval_ty->kind != eType_pointer;
+  }
+  else if(to_type->eval_ty->kind == eType_pointer)
+  {
+    // pointer <- int
+    require_conv = !types_are_equal(from_expr->eval_ty, basic_type_int);
+  }
+  if(require_conv)
+  {
+    IrArg* place = cast->place = mem_push_struct(arena, IrArg);
+    place->kind = eIrArg_data_obj;
+    place->data_obj = new_tempvar(arena, scope, cast->eval_ty);
+    eIrOp cast_op = eIrOp_None;
+    if(types_are_equal(to_type->eval_ty, basic_type_int))
+    {
+      if(types_are_equal(from_expr->eval_ty, basic_type_float))
+        cast_op = eIrOp_ftoi; // int <- float
+      else if(types_are_equal(from_expr->eval_ty, basic_type_bool))
+        cast_op = eIrOp_btoi; // int <- bool
+      else if(types_are_equal(from_expr->eval_ty, basic_type_char))
+        cast_op = eIrOp_ctoi; // int <- char
+      else
+        assert(0);
+    }
+    else if(types_are_equal(to_type->eval_ty, basic_type_float))
+    {
+      if(types_are_equal(from_expr->eval_ty, basic_type_int))
+        cast_op = eIrOp_itof; // float <- int
+      else
+        assert(0);
+    }
+    else if(types_are_equal(to_type->eval_ty, basic_type_char))
+    {
+      if(types_are_equal(from_expr->eval_ty, basic_type_int))
+        cast_op = eIrOp_itoc; // char <- int
+      else
+        assert(0);
+    }
+    else if(types_are_equal(to_type->eval_ty, basic_type_bool))
+    {
+      if(types_are_equal(from_expr->eval_ty, basic_type_int))
+        cast_op = eIrOp_itob; // bool <- int
+      else
+        assert(0);
+    }
+    ir_emit_assign(ir_context, cast_op, from_expr->place, 0, cast->place);
+  }
+}
+
 void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
 {
   switch(expr->kind)
@@ -4436,6 +4521,10 @@ void gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         place->data_obj = new_tempvar(arena, scope, expr->eval_ty);
         ir_emit_assign(ir_context, eIrOp_index_source, expr->index.place, expr->index.offset, expr->place);
       }
+      break;
+
+    case eAstNode_cast:
+      gen_ir_cast(ir_context, scope, expr);
       break;
 
     default:
@@ -4519,6 +4608,14 @@ void gen_ir_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
   ir_emit_goto(ir_context, id->label_false);
 }
 
+void gen_ir_bool_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
+{
+  assert(KIND(cast, eAstNode_cast));
+  gen_ir_cast(ir_context, scope, cast);
+  ir_emit_cond_goto(ir_context, eIrOp_eq, cast->place, &ir_arg_bool_true, cast->label_true);
+  ir_emit_goto(ir_context, cast->label_false);
+}
+
 void gen_ir_bool_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
@@ -4547,6 +4644,9 @@ void gen_ir_bool_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
       break;
     case eAstNode_unr_expr:
       gen_ir_bool_unr_expr(ir_context, scope, expr);
+      break;
+    case eAstNode_cast:
+      gen_ir_bool_cast(ir_context, scope, expr);
       break;
     default:
       assert(0);
@@ -4631,6 +4731,9 @@ bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     case eAstNode_assign:
       success = gen_ir_assign(ir_context, scope, stmt);
       break;
+    case eAstNode_cast:
+      gen_ir_cast(ir_context, scope, stmt);
+      break;
     case eAstNode_bin_expr:
     case eAstNode_unr_expr:
     case eAstNode_id:
@@ -4639,31 +4742,24 @@ bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     case eAstNode_lit:
       gen_ir_expr(ir_context, scope, stmt);
       break;
-
     case eAstNode_block:
       success = gen_ir_block(ir_context, stmt->block.scope, stmt);
       break;
-
     case eAstNode_if:
       gen_ir_if(ir_context, scope, stmt);
       break;
-
     case eAstNode_while:
       gen_ir_while(ir_context, scope, stmt);
       break;
-
     case eAstNode_var:
       //TODO
       break;
-
     case eAstNode_str:
       //FIXME
       break;
-
     case eAstNode_return:
       gen_ir_return(ir_context, scope, stmt);
       break;
-
     default:
       assert(0);
   }
@@ -4677,7 +4773,7 @@ bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
 
   IrArg* place = proc->place = mem_push_struct(arena, IrArg);
   place->kind = eIrArg_data_obj;
-  place->data_obj = proc->proc.ret_sym;
+  place->data_obj = proc->proc.retvar;
 
   if((proc->modifier & eModifier_extern) != 0)
   {
@@ -4794,8 +4890,20 @@ void DEBUG_print_ir_op(String* text, eIrOp op)
     case eIrOp_itof:
       str_printf(text, "itof");
       break;
+    case eIrOp_itoc:
+      str_printf(text, "itoc");
+      break;
+    case eIrOp_itob:
+      str_printf(text, "itob");
+      break;
     case eIrOp_ftoi:
       str_printf(text, "ftoi");
+      break;
+    case eIrOp_ctoi:
+      str_printf(text, "ctoi");
+      break;
+    case eIrOp_btoi:
+      str_printf(text, "btoi");
       break;
 
     default:
@@ -4881,10 +4989,15 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
           /* unr_ops */
           case eIrOp_neg:
           case eIrOp_itof:
+          case eIrOp_itoc:
+          case eIrOp_itob:
           case eIrOp_ftoi:
+          case eIrOp_ctoi:
+          case eIrOp_btoi:
             DEBUG_print_ir_arg(text, assign->result);
             str_printf(text, " = ");
             DEBUG_print_ir_op(text, assign->op);
+            str_printf(text, " ");
             DEBUG_print_ir_arg(text, assign->arg1);
             break;
 

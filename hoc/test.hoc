@@ -1,17 +1,9 @@
 void main()
 {
-  [10][20]int A;
-  [30]int B;
-  int x;
-  int y;
-  int z;
-  int w;
-  if(B[12] > 123)
-    B = foo();
-}
-
-[23]int foo()
-{
-  [2]int A;
-  return A;
+  int a;
+  float f;
+  bool b;
+  char c;
+  if(c <> (char):0)
+    a = 123;
 }

@@ -597,11 +597,12 @@ bool parse_array(TokenStream* input, AstNode** node)
     {
       if(input->token.kind == eToken_close_bracket)
       {
+        /*
         if(!array->array.size_expr)
         {
           success = compile_error(&input->src_loc,  "expression was expected at `%s`", get_token_printstr(&input->token));
         }
-        else if(success = get_next_token(input) && parse_rest_of_array(input, &array->array.elem_expr))
+        else */if(success = get_next_token(input) && parse_rest_of_array(input, &array->array.elem_expr))
         {
           if(!array->array.elem_expr)
           {

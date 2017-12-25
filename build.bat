@@ -4,6 +4,7 @@ REM /wd4706       - assignment within conditional expression
 REM /wd4013       - undefined function (missing forward declaration)
 REM /wd4211       - nonstandard extension used (related to wd4013)
 REM /wd4306       - 'type cast' : conversion from 'uint8' to 'int32 *' of greater size
+REM /wd4459       - declaration X hides global declaration
 REM /Fo:<path>    - compile to object file
 REM /Fe:<path>    - compile to executable
 REM /c            - compile without linking
@@ -13,7 +14,7 @@ REM /W{n}         - warning output level (/W0 disable all warnings)
 REM /Wall         - display all warnings
 
 SET C_flags=/Od /W4 /nologo /MTd /Zo /Zi /Gm- /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
-                  /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306
+                  /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459
 SET L_flags=/incremental:no /opt:ref /subsystem:console
 
 IF NOT EXIST .\bin mkdir .\bin
@@ -26,10 +27,6 @@ SET src_dir=%cd%\..\src
 ..\ctime.exe ^
 cl %C_flags% %src_dir%\hocc.c /link %L_flags%
 IF %errorlevel% NEQ 0 GOTO :end
-
-REM ..\ctime.exe ^
-REM cl %C_flags% ..\vm.c /link %L_flags%
-REM if %errorlevel% neq 0 goto :end
 
 REM NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
 ECHO  Compiling: %hoc_file%.hoc

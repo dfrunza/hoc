@@ -45,7 +45,7 @@ typedef struct MemoryArena
 }
 MemoryArena;
 
-typedef struct
+typedef struct ArenaUsage
 {
   int total_avail;
   double in_use;
@@ -65,7 +65,7 @@ String;
 
 void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes);
 
-typedef struct
+typedef struct SourceLoc
 {
   char* file_path;
   int line_nr;
@@ -73,7 +73,7 @@ typedef struct
 }
 SourceLoc;
 
-typedef enum
+typedef enum eLabel
 {
   eLabel_None,
   eLabel_symbolic,
@@ -81,7 +81,7 @@ typedef enum
 }
 eLabel;
 
-typedef struct
+typedef struct Label
 {
   eLabel kind;
   union
@@ -92,7 +92,7 @@ typedef struct
 }
 Label;
 
-typedef enum
+typedef enum eToken
 {
   eToken_None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
@@ -172,7 +172,7 @@ typedef enum
 }
 eToken;
 
-typedef struct
+typedef struct Token
 {
   eToken kind;
   char* lexeme;
@@ -198,7 +198,7 @@ typedef struct TokenStream
 }
 TokenStream;
 
-typedef enum
+typedef enum eOperator
 {
   eOperator_None,
 
@@ -239,7 +239,7 @@ typedef enum
 }
 eOperator;
 
-typedef enum
+typedef enum eLiteral
 {
   eLiteral_None,
   eLiteral_int,
@@ -249,7 +249,7 @@ typedef enum
 }
 eLiteral;
 
-typedef enum
+typedef enum eScope
 {
   eScope_None = 0,
   eScope_module = 1 << 0,
@@ -260,7 +260,7 @@ typedef enum
 }
 eScope;
 
-typedef enum
+typedef enum eList
 {
   eList_None,
   eList_ast_node,
@@ -315,7 +315,7 @@ typedef struct Scope
 }
 Scope;
 
-typedef enum
+typedef enum eLoopCtrl
 {
   eLoopCtrl_None,
   eLoopCtrl_break,
@@ -323,14 +323,14 @@ typedef enum
 }
 eLoopCtrl;
 
-typedef enum
+typedef enum eModifier
 {
   eModifier_None,
   eModifier_extern,
 }
 eModifier;
 
-typedef enum
+typedef enum eType
 {
   eType_None,
   eType_typevar,
@@ -343,7 +343,7 @@ typedef enum
 }
 eType;
 
-typedef enum
+typedef enum eBasicType
 {
   eBasicType_None,
   eBasicType_void,
@@ -419,7 +419,7 @@ typedef struct TypePair
 }
 TypePair;
 
-typedef enum
+typedef enum eIrOp
 {
   eIrOp_None,
   eIrOp_add,
@@ -450,7 +450,7 @@ typedef enum
   eIrOp_ctoi,
   eIrOp_btoi,
 
-  // op | arg1 | arg2 | dest 
+  // op | arg1 | arg2 | dest
   eIrOp_index_source,  // result = arg1[arg2]
   eIrOp_index_dest,    // dest[arg2] = arg1
   eIrOp_deref_source,  // result = *arg1
@@ -459,7 +459,7 @@ typedef enum
 }
 eIrOp;
 
-typedef struct
+typedef struct IrContext
 {
   MemoryArena* ir_arena;
   MemoryArena* sym_arena;
@@ -469,7 +469,7 @@ typedef struct
 }
 IrContext;
 
-typedef enum
+typedef enum eIrConstant
 {
   eIrConstant_int,
   eIrConstant_float,
@@ -477,7 +477,7 @@ typedef enum
 }
 eIrConstant;
 
-typedef struct
+typedef struct IrConstant
 {
   eIrConstant kind;
   union
@@ -489,7 +489,7 @@ typedef struct
 }
 IrConstant;
 
-typedef enum
+typedef enum eIrArg
 {
   eIrArg_None,
   eIrArg_data_obj,
@@ -497,7 +497,7 @@ typedef enum
 }
 eIrArg;
 
-typedef struct
+typedef struct IrArg
 {
   eIrArg kind;
   union
@@ -508,7 +508,7 @@ typedef struct
 }
 IrArg;
 
-typedef enum
+typedef enum eIrStmt
 {
   eIrStmt_None,
   eIrStmt_assign,
@@ -521,7 +521,7 @@ typedef enum
 }
 eIrStmt;
 
-typedef struct
+typedef struct IrStmt
 {
   eIrStmt kind;
   int nr;
@@ -545,7 +545,7 @@ typedef struct
       IrArg* arg1;
       IrArg* arg2;
       Label* label;
-    } 
+    }
     cond_goto;
 
     struct IrStmt_call
@@ -558,7 +558,7 @@ typedef struct
 }
 IrStmt;
 
-typedef enum 
+typedef enum eAstNode
 {
   eAstNode_None,
   eAstNode_id,
@@ -726,7 +726,7 @@ typedef struct AstNode
       Label label;
     }
     while_;
-    
+
     struct
     {
       char* name;
@@ -826,7 +826,7 @@ typedef struct Symbol
 }
 Symbol;
 
-typedef struct
+typedef struct SymbolContext
 {
   List scopes;
   Scope* active_scope;

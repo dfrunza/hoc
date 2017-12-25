@@ -14,12 +14,12 @@ REM /GR-          - disable RTTI
 REM /W{n}         - warning output level (/W0 disable all warnings)
 REM /Wall         - display all warnings
 
-SET C_flags=/Od /W4 /nologo /MTd /Zo /Zi /Gm- /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
-                  /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459
-SET L_flags=/incremental:no /opt:ref /subsystem:console
-
 IF NOT EXIST .\bin mkdir .\bin
 PUSHD .\bin
+
+SET C_flags=/Od /I%cd%\.. /nologo /MTd /Zo /Zi /Gm- /GS- /Gs9999 /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
+/W4 /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459
+SET L_flags=/nodefaultlib /incremental:no /opt:ref /subsystem:console kernel32.lib
 
 SET hoc_file=test
 SET hoc_dir=%cd%\..\hoc

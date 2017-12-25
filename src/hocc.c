@@ -1,11 +1,19 @@
 #undef UNICODE
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <stdarg.h>
+#undef _UNICODE
 #define VC_EXTRALEAN
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <minicrt.h>
+#include <tchar.h>
+
+#include "minicrt/minicrt.h"
+#include "minicrt/mem.c"
+#include "minicrt/file.c"
+#include "minicrt/printf.c"
+#define PRINTF_SIZEONLY 1
+#include "minicrt/printf.c"
+#undef PRINTF_SIZEONLY
+#include "minicrt/string.c"
+#include "minicrt/ep_cons.c"
 
 #include "hocc.h"
 
@@ -23,11 +31,11 @@ MemoryArena* arena = 0;
 
 #define NUKE_FUNC
 
-size_t fwrite(const void *restrict buffer, size_t size, size_t count, FILE *restrict stream);
+size_t fwrite(const void *buffer, size_t size, size_t count, FILE *stream);
 int fflush(FILE *stream);
-int vsscanf(const char *restrict buffer, const char *restrict format, va_list vlist);
-int vsprintf(char *restrict buffer, const char *restrict format, va_list vlist);
-int vfprintf(FILE *restrict stream, const char *restrict format, va_list vlist);
+int vsscanf(const char *buffer, const char *format, va_list vlist);
+int vsprintf(char *buffer, const char *format, va_list vlist);
+int vfprintf(FILE *stream, const char *format, va_list vlist);
 
 int atexit(void (*func)(void))
 {

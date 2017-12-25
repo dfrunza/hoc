@@ -31,6 +31,25 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="minicrt/ep_cons.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="minicrt/file.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="minicrt/mem.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="minicrt/minicrt.h" />
+		<Unit filename="minicrt/printf.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="minicrt/printfsz.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="minicrt/string.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="src/hocc.c">
 			<Option compilerVar="CC" />
 		</Unit>

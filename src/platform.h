@@ -11,7 +11,7 @@ bool compile_error_(char* file, int line, SourceLoc* src_loc, char* message, ...
 #define compile_error(SRC, MESSAGE, ...) compile_error_(__FILE__, __LINE__, (SRC), (MESSAGE), ## __VA_ARGS__)
 
 void mem_zero_(void* mem, int len);
-int h_sscanf(char*, char*, ...);
+int h_vsscanf(char*, char*, ...);
 int h_vsprintf(char *buffer, char *format, va_list args);
 int h_printf(char *format, ...);
 int h_sprintf(char* buffer, char* format, ...);

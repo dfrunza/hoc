@@ -3040,21 +3040,21 @@ bool eval_types_index(AstNode* index)
       {
         if(!type_unif(array_expr->eval_ty->array.elem, index->eval_ty))
         {
-          success = compile_error(index->src_loc, "type error (array index)");
+          success = compile_error(index->src_loc, "type error (index)");
         }
       }
       else if(array_expr->eval_ty->kind == eType_typevar)
       {
         if(!type_unif(array_expr->eval_ty, new_array_type(0, 1, index->eval_ty)))
         {
-          success = compile_error(index->src_loc, "type error (array index)");
+          success = compile_error(index->src_loc, "type error (index)");
         }
       }
       else
-        success = compile_error(index->src_loc, "type error (array index)");
+        success = compile_error(index->src_loc, "type error (index)");
     }
     else
-      success = compile_error(index->src_loc, "type error (array index)");
+      success = compile_error(index->src_loc, "type error (index)");
   }
   return success;
 }

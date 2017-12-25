@@ -1,6 +1,5 @@
-void main()
+void main([]int A)
 {
-  [-1]int A;
   int a;
   a = A[5];
   /*

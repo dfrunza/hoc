@@ -1,6 +1,7 @@
 @ECHO off
-REM -----    MSVC   ------
 
+<<<<<<< HEAD
+=======
 REM /wd4706       - assignment within conditional expression
 REM /wd4013       - undefined function (missing forward declaration)
 REM /wd4211       - nonstandard extension used (related to wd4013)
@@ -14,19 +15,28 @@ REM /GR-          - disable RTTI
 REM /W{n}         - warning output level (/W0 disable all warnings)
 REM /Wall         - display all warnings
 
+SET C_flags=/Od /W4 /nologo /MTd /Zo /Zi /Gm- /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
+                  /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459
+SET L_flags=/incremental:no /opt:ref /subsystem:console
+
+>>>>>>> parent of f6f4eea... Migration to CodeBlocks/MinGW-GCC toolchain (1)
 IF NOT EXIST .\bin mkdir .\bin
 PUSHD .\bin
 
-SET C_flags=/Od /I%cd%\.. /nologo /MTd /Zo /Zi /Gm- /GS- /Gs9999 /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
-/W4 /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459
-SET L_flags=/nodefaultlib /incremental:no /opt:ref /subsystem:console kernel32.lib
+SET C_flags=-g -ggdb -I%cd%\..
+SET L_flags=
 
 SET hoc_file=test
 SET hoc_dir=%cd%\..\hoc
 SET src_dir=%cd%\..\src
 
 ..\ctime.exe ^
+<<<<<<< HEAD
+gcc -std=c99 -nostdlib -static %C_flags% %src_dir%\hocc.c ^
+-lkernel32 -lgcc -Wl,-e_mainCRTStartup -o hocc.exe
+=======
 cl %C_flags% %src_dir%\hocc.c /link %L_flags%
+>>>>>>> parent of f6f4eea... Migration to CodeBlocks/MinGW-GCC toolchain (1)
 IF %errorlevel% NEQ 0 GOTO :end
 
 REM NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.

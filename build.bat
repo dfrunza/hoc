@@ -1,11 +1,11 @@
 @ECHO off
 REM -----    GCC   ------
 
+SET C_flags=-g -ggdb
+SET L_flags=
+
 IF NOT EXIST .\bin mkdir .\bin
 PUSHD .\bin
-
-SET C_flags=-g -ggdb -I%cd%\..
-SET L_flags=
 
 SET hoc_file=test
 SET hoc_dir=%cd%\..\hoc
@@ -16,7 +16,7 @@ REM Include -lgcc at the end of your compiler command line to resolve this refer
 REM Calling __main is necessary, even when compiling C code, to allow linking C and C++ object code together.
 ..\ctime.exe ^
 gcc -std=c99 -nostdlib -static %C_flags% %src_dir%\hocc.c ^
--lkernel32 -lgcc -Wl,-e_mainCRTStartup -o hocc.exe
+-lminicrt -lkernel32 -lgcc -Wl,-e_mainCRTStartup -o hocc.exe
 IF %errorlevel% NEQ 0 GOTO :end
 
 REM NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.

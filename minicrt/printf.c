@@ -35,14 +35,22 @@
 
 #ifdef PRINTF_SIZEONLY
 
-#define PRINTF_FN vsprintf_size
+#ifdef UNICODE
+#define PRINTF_FN mini_vswprintf_size
+#else
+#define PRINTF_FN mini_vsprintf_size
+#endif
 
 #define PRINTF_DESTLENGTH() (1)
 #define PRINTF_PUSHCHAR(x)  dest_offset++,x;
 
 #else // PRINTF_SIZEONLY
 
-#define PRINTF_FN vsprintf_s
+#ifdef UNICODE
+#define PRINTF_FN mini_vswprintf_s
+#else
+#define PRINTF_FN mini_vsprintf_s
+#endif
 
 #define PRINTF_DESTLENGTH()  (dest_offset < len - 1)
 #define PRINTF_PUSHCHAR(x)   szDest[dest_offset++] = x;
@@ -135,7 +143,11 @@ PRINTF_FN(
                         }
 
                         if (!short_prefix && !long_prefix) {
+#ifdef UNICODE
+                            long_prefix = TRUE;
+#else
                             short_prefix = TRUE;
+#endif
                         }
 
                         if (element_len != (unsigned int)-1 && !leftalign) {
@@ -153,13 +165,21 @@ PRINTF_FN(
                         }
                         if (short_prefix) {
                             while (*short_str != '\0' && PRINTF_DESTLENGTH() && element_len) {
+#ifdef UNICODE
+                                PRINTF_PUSHCHAR(PRINTF_ANSI_TO_UNICODE(*short_str));
+#else
                                 PRINTF_PUSHCHAR(*short_str);
+#endif
                                 short_str++;
                                 element_len--;
                             }
                         } else if (long_prefix) {
                             while (*long_str != '\0' && PRINTF_DESTLENGTH() && element_len) {
+#ifdef UNICODE
+                                PRINTF_PUSHCHAR(*long_str);
+#else
                                 PRINTF_PUSHCHAR(PRINTF_UNICODE_TO_ANSI(*long_str));
+#endif
                                 long_str++;
                                 element_len--;
                             }
@@ -249,7 +269,7 @@ PRINTF_FN(
                     break;
                 default:
                     {
-                        LPTSTR szErr = "FMTERR";
+                        LPTSTR szErr = _T("FMTERR");
                         i = 0;
                         while (PRINTF_DESTLENGTH() && szErr[i] != '\0') {
                             PRINTF_PUSHCHAR(szErr[i++]);

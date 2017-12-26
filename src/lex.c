@@ -514,16 +514,16 @@ loop:
     {
       token->kind = eToken_float_val;
       token->float_val = mem_push_struct(arena, float);
-      h_vsscanf(digit_buf, "%f", token->float_val);
+      h_sscanf(digit_buf, "%f", token->float_val);
     }
     else
     {
       token->kind = eToken_int_val;
       token->int_val = mem_push_struct(arena, int);
       if(is_hex)
-        h_vsscanf(digit_buf, "%x", token->int_val);
+        h_sscanf(digit_buf, "%x", token->int_val);
       else
-        h_vsscanf(digit_buf, "%d", token->int_val);
+        h_sscanf(digit_buf, "%d", token->int_val);
     }
   }
   else if(c == '-')

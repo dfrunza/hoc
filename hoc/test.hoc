@@ -1,7 +1,10 @@
-void main()
+void main([]int A)
 {
-  []int A;
-  []int B;
+  int a;
+  a = A[5];
+  /*
+  [0]int A;
+  [0]int B;
 
   int prod; prod = 0;
   int i; i = 1;
@@ -10,4 +13,5 @@ void main()
     prod = prod + A[i]*B[i];
     i = i + 1;
   }
+  */
 }

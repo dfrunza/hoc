@@ -226,7 +226,7 @@ bool cstr_to_float(char* str, float* result)
   else
     return false;
 #else
-  if(h_vsscanf(str, "%f", result) != 1)
+  if(h_sscanf(str, "%f", result) != 1)
     return false;
 #endif
 

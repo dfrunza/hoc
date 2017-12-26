@@ -3,17 +3,25 @@
 #define VC_EXTRALEAN
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <tchar.h>
 
-#include "minicrt/minicrt.h"
-#include "minicrt/mem.c"
-#include "minicrt/file.c"
-#include "minicrt/printf.c"
-#define PRINTF_SIZEONLY 1
-#include "minicrt/printf.c"
-#undef PRINTF_SIZEONLY
-#include "minicrt/string.c"
-#include "minicrt/ep_cons.c"
+/*---------------------       CRT     ------------------------------*/
+#include "minicrt.h"
+
+#define HAVE_FWRITE 0
+size_t fwrite(const void *buffer, size_t size, size_t count, FILE *stream);
+#define HAVE_FFLUSH 0
+int fflush(FILE *stream);
+#define HAVE_VSSCANF 0
+int vsscanf(const char *buffer, const char *format, va_list vlist);
+
+#ifdef __MINGW32__
+int atexit(void (*func)(void))
+{
+  // TODO or not TODO?
+  return 0;
+}
+#endif
+/*------------------------------------------------------------------*/
 
 #include "hocc.h"
 
@@ -27,22 +35,6 @@ MemoryArena* arena = 0;
 #include "lib.c"
 #include "translate.c"
 
-/*---------------------       CRT     ------------------------------*/
-
-#define NUKE_FUNC
-
-size_t fwrite(const void *buffer, size_t size, size_t count, FILE *stream);
-int fflush(FILE *stream);
-int vsscanf(const char *buffer, const char *format, va_list vlist);
-int vsprintf(char *buffer, const char *format, va_list vlist);
-int vfprintf(FILE *stream, const char *format, va_list vlist);
-
-int atexit(void (*func)(void))
-{
-  return 0;
-}
-
-/*------------------------------------------------------------------*/
 
 void mem_zero_(void* mem, int len)
 {
@@ -128,7 +120,7 @@ int file_write_bytes(char* file_path, uint8* bytes, int count)
   FILE* h_file = fopen(file_path, "wb");
   if(h_file)
   {
-#ifndef NUKE_FUNC
+#if HAS_FWRITE
     bytes_written = (int)fwrite(bytes, 1, (size_t)count, h_file);
     fclose(h_file);
 #endif
@@ -190,7 +182,7 @@ int h_vsscanf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
-#ifndef NUKE_FUNC
+#if HAVE_VSSCANF
   int result = vsscanf(buffer, format, args);
 #else
   int result = 0;
@@ -201,22 +193,14 @@ int h_vsscanf(char* buffer, char* format, ...)
 
 int h_vsprintf(char* buffer, char* format, va_list args)
 {
-#ifndef NUKE_FUNC
-  return vsprintf(buffer, format, args);
-#else
-  return 0;
-#endif
+  return vsprintf_s(buffer, 1000, format, args);
 }
 
 int h_sprintf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
-#ifndef NUKE_FUNC
-  int result = vsprintf(buffer, format, args);
-#else
-  int result = 0;
-#endif
+  int result = vsprintf_s(buffer, 1000, format, args);
   va_end(args);
   return result;
 }
@@ -225,11 +209,7 @@ int h_printf(char* format, ...)
 {
   va_list args;
   va_start(args, format);
-#ifndef NUKE_FUNC
   int result = vfprintf(stdout, format, args);
-#else
-  int result = 0;
-#endif
   va_end(args);
   return result;
 }
@@ -247,9 +227,7 @@ bool compile_error_(char* file, int line, SourceLoc* src_loc, char* message, ...
 
   va_list args;
   va_start(args, message);
-#ifndef NUKE_FUNC
   vfprintf(stderr, message, args);
-#endif
   va_end(args);
 
   fprintf(stderr, "\n");
@@ -263,9 +241,9 @@ void assert_(char* message, char* file, int line)
     fprintf(stderr, "%s:%d: ", file, line);
     if(!message || message[0] == '\0')
       message = "";
-#ifndef NUKE_FUNC
     fprintf(stderr, "assert(%s)\n", message);
 
+#if HAVE_FFLUSH
     fflush(stderr);
 #endif
     *(int*)0 = 0;
@@ -281,13 +259,11 @@ void fail_(char* file, int line, char* message, ...)
 
   va_list args;
   va_start(args, message);
-#ifndef NUKE_FUNC
   vfprintf(stderr, message, args);
-#endif
   va_end(args);
 
-#ifndef NUKE_FUNC
   fprintf(stderr, "\n");
+#if HAVE_FFLUSH
   fflush(stderr);
 #endif
   *(int*)0 = 0;
@@ -302,13 +278,11 @@ bool error_(char* file, int line, char* message, ...)
 
   va_list args;
   va_start(args, message);
-#ifndef NUKE_FUNC
   vfprintf(stderr, message, args);
-#endif
   va_end(args);
 
-#ifndef NUKE_FUNC
   fprintf(stderr, "\n");
+#if HAVE_FFLUSH
   fflush(stderr);
 #endif
   return false;
@@ -358,7 +332,6 @@ bool make_out_file_names(OutFileNames* out_files, char* src_file_path)
   return success;
 }
 
-#if 1
 int main(int argc, char* argv[])
 {
   bool success = true;
@@ -404,5 +377,4 @@ int main(int argc, char* argv[])
 end:
   return success ? 0 : -1;
 }
-#endif
 

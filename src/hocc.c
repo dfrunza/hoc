@@ -1,10 +1,27 @@
 #undef UNICODE
 #undef _UNICODE
-#include <stdio.h>
-#include <stdarg.h>
 #define VC_EXTRALEAN
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+/*---------------------       CRT     ------------------------------*/
+#include "minicrt.h"
+
+#define HAVE_FWRITE 0
+size_t fwrite(const void *buffer, size_t size, size_t count, FILE *stream);
+#define HAVE_FFLUSH 0
+int fflush(FILE *stream);
+#define HAVE_VSSCANF 0
+int vsscanf(const char *buffer, const char *format, va_list vlist);
+
+#ifdef __MINGW32__
+int atexit(void (*func)(void))
+{
+  // TODO or not TODO?
+  return 0;
+}
+#endif
+/*------------------------------------------------------------------*/
 
 #include "hocc.h"
 
@@ -17,6 +34,7 @@ MemoryArena* arena = 0;
 #include "platform.h"
 #include "lib.c"
 #include "translate.c"
+
 
 void mem_zero_(void* mem, int len)
 {
@@ -102,8 +120,10 @@ int file_write_bytes(char* file_path, uint8* bytes, int count)
   FILE* h_file = fopen(file_path, "wb");
   if(h_file)
   {
+#if HAS_FWRITE
     bytes_written = (int)fwrite(bytes, 1, (size_t)count, h_file);
     fclose(h_file);
+#endif
   }
   return bytes_written;
 }
@@ -122,6 +142,7 @@ int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int allo
   FILE* file = fopen(file_path, "rb");
   if(file)
   {
+#if 0
     if(fseek(file, 0, SEEK_END) == 0)
     {
       byte_count = ftell(file);
@@ -141,6 +162,7 @@ int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int allo
     }
     else
       byte_count = -1;
+#endif
   }
   return byte_count;
 }
@@ -156,25 +178,29 @@ char* file_read_text(MemoryArena* arena, char* file_path)
   return text;
 }
 
-int h_sscanf(char* buffer, char* format, ...)
+int h_vsscanf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
+#if HAVE_VSSCANF
   int result = vsscanf(buffer, format, args);
+#else
+  int result = 0;
+#endif
   va_end(args);
   return result;
 }
 
 int h_vsprintf(char* buffer, char* format, va_list args)
 {
-  return vsprintf(buffer, format, args);
+  return vsprintf_s(buffer, 1000, format, args);
 }
 
 int h_sprintf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
-  int result = vsprintf(buffer, format, args);
+  int result = vsprintf_s(buffer, 1000, format, args);
   va_end(args);
   return result;
 }
@@ -217,7 +243,9 @@ void assert_(char* message, char* file, int line)
       message = "";
     fprintf(stderr, "assert(%s)\n", message);
 
+#if HAVE_FFLUSH
     fflush(stderr);
+#endif
     *(int*)0 = 0;
   }
 }
@@ -235,7 +263,9 @@ void fail_(char* file, int line, char* message, ...)
   va_end(args);
 
   fprintf(stderr, "\n");
+#if HAVE_FFLUSH
   fflush(stderr);
+#endif
   *(int*)0 = 0;
 }
 
@@ -252,7 +282,9 @@ bool error_(char* file, int line, char* message, ...)
   va_end(args);
 
   fprintf(stderr, "\n");
+#if HAVE_FFLUSH
   fflush(stderr);
+#endif
   return false;
 }
 

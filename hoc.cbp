@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="hoc" />
+		<Option makefile_is_custom="1" />
+		<Option execution_dir="W:/hoc" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/hocc" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="bin" />
+				<Option object_output="bin/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Option parameters="..\hoc\test.hoc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+				<MakeCommands>
+					<Build command="build.bat" />
+					<CompileFile command="" />
+					<Clean command="" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="" />
+					<SilentBuild command="build.bat &gt; $(CMD_NULL)" />
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="minicrt/ep_cons.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="minicrt/minicrt.h" />
+		<Unit filename="minicrt/printf.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="minicrt/string.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/hocc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/hocc.h" />
+		<Unit filename="src/lex.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/lib.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/platform.h" />
+		<Unit filename="src/syntax.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/translate.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<editor_config active="1" use_tabs="0" tab_indents="1" tab_width="2" indent="2" eol_mode="0" />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

@@ -4737,8 +4737,10 @@ bool gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
     case eOperator_greater_eq:
       {
         if(success = gen_ir_expr(ir_context, scope, left_operand) && gen_ir_expr(ir_context, scope, right_operand))
-          ir_emit_cond_goto(ir_context, negate_relop(conv_operator_to_ir_op(op)),
-                            left_operand->place, right_operand->place, bin_expr->label_false);
+        {
+          ir_emit_cond_goto(ir_context, conv_operator_to_ir_op(op), left_operand->place, right_operand->place, bin_expr->label_true);
+          ir_emit_goto(ir_context, bin_expr->label_false);
+        }
       }
       break;
 
@@ -4783,7 +4785,10 @@ bool gen_ir_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
   assert(KIND(id, eAstNode_id));
   bool success = true;
   if(success = gen_ir_expr(ir_context, scope, id))
-    ir_emit_cond_goto(ir_context, eIrOp_eq, id->place, &ir_arg_bool_false, id->label_false);
+  {
+    ir_emit_cond_goto(ir_context, eIrOp_eq, id->place, &ir_arg_bool_true, id->label_true);
+    ir_emit_goto(ir_context, id->label_false);
+  }
   return success;
 }
 
@@ -4792,7 +4797,10 @@ bool gen_ir_bool_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
   assert(KIND(cast, eAstNode_cast));
   bool success = true;
   if(success = gen_ir_cast(ir_context, scope, cast))
-    ir_emit_cond_goto(ir_context, eIrOp_eq, cast->place, &ir_arg_bool_false, cast->label_false);
+  {
+    ir_emit_cond_goto(ir_context, eIrOp_eq, cast->place, &ir_arg_bool_true, cast->label_true);
+    ir_emit_goto(ir_context, cast->label_false);
+  }
   return success;
 }
 

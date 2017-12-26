@@ -1,8 +1,21 @@
 @ECHO off
-REM -----    GCC   ------
 
-SET C_flags=-g -ggdb
-SET L_flags=
+REM /wd4706       - assignment within conditional expression
+REM /wd4013       - undefined function (missing forward declaration)
+REM /wd4211       - nonstandard extension used (related to wd4013)
+REM /wd4306       - 'type cast' : conversion from 'uint8' to 'int32 *' of greater size
+REM /wd4459       - declaration X hides global declaration
+REM /Fo:<path>    - compile to object file
+REM /Fe:<path>    - compile to executable
+REM /c            - compile without linking
+REM /EHa-         - disable exceptions
+REM /GR-          - disable RTTI
+REM /W{n}         - warning output level (/W0 disable all warnings)
+REM /Wall         - display all warnings
+
+SET C_flags=/Od /W4 /nologo /MTd /Zo /Zi /Gm- /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
+                  /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459
+SET L_flags=/incremental:no /opt:ref /subsystem:console
 
 IF NOT EXIST .\bin mkdir .\bin
 PUSHD .\bin
@@ -11,12 +24,8 @@ SET hoc_file=test
 SET hoc_dir=%cd%\..\hoc
 SET src_dir=%cd%\..\src
 
-REM If you use -nostdlib, you get an unresolved reference to __main, since it's defined in the standard GCC library.
-REM Include -lgcc at the end of your compiler command line to resolve this reference.
-REM Calling __main is necessary, even when compiling C code, to allow linking C and C++ object code together.
 ..\ctime.exe ^
-gcc -std=c99 -nostdlib -static %C_flags% %src_dir%\hocc.c ^
--lminicrt -lkernel32 -lgcc -Wl,-e_mainCRTStartup -o hocc.exe
+cl %C_flags% %src_dir%\hocc.c /link %L_flags%
 IF %errorlevel% NEQ 0 GOTO :end
 
 REM NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
@@ -35,13 +44,13 @@ REM cl %C_flags% ..\fp3.c /link %L_flags%
 GOTO :end
 
 :hocc_error
-ECHO hocc error
+ECHO %cd%(0) : hocc.exe error
 GOTO :end
 
 :end
 POPD
 
 cloc.exe %src_dir%\hocc.h %src_dir%\hocc.c %src_dir%\lib.c %src_dir%\platform.h %src_dir%\translate.c ^
-  %src_dir%\lex.c %src_dir%\syntax.c
+  %src_dir%\lex.c %src_dir%\syntax.c 
 
 

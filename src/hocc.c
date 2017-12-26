@@ -1,11 +1,10 @@
 #undef UNICODE
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <stdarg.h>
+#undef _UNICODE
+#include <stdio.h>
+#include <stdarg.h>
 #define VC_EXTRALEAN
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <minicrt.h>
 
 #include "hocc.h"
 
@@ -18,23 +17,6 @@ MemoryArena* arena = 0;
 #include "platform.h"
 #include "lib.c"
 #include "translate.c"
-
-/*---------------------       CRT     ------------------------------*/
-
-#define NUKE_FUNC
-
-size_t fwrite(const void *restrict buffer, size_t size, size_t count, FILE *restrict stream);
-int fflush(FILE *stream);
-int vsscanf(const char *restrict buffer, const char *restrict format, va_list vlist);
-int vsprintf(char *restrict buffer, const char *restrict format, va_list vlist);
-int vfprintf(FILE *restrict stream, const char *restrict format, va_list vlist);
-
-int atexit(void (*func)(void))
-{
-  return 0;
-}
-
-/*------------------------------------------------------------------*/
 
 void mem_zero_(void* mem, int len)
 {
@@ -120,10 +102,8 @@ int file_write_bytes(char* file_path, uint8* bytes, int count)
   FILE* h_file = fopen(file_path, "wb");
   if(h_file)
   {
-#ifndef NUKE_FUNC
     bytes_written = (int)fwrite(bytes, 1, (size_t)count, h_file);
     fclose(h_file);
-#endif
   }
   return bytes_written;
 }
@@ -142,7 +122,6 @@ int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int allo
   FILE* file = fopen(file_path, "rb");
   if(file)
   {
-#if 0
     if(fseek(file, 0, SEEK_END) == 0)
     {
       byte_count = ftell(file);
@@ -162,7 +141,6 @@ int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int allo
     }
     else
       byte_count = -1;
-#endif
   }
   return byte_count;
 }
@@ -178,37 +156,25 @@ char* file_read_text(MemoryArena* arena, char* file_path)
   return text;
 }
 
-int h_vsscanf(char* buffer, char* format, ...)
+int h_sscanf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
-#ifndef NUKE_FUNC
   int result = vsscanf(buffer, format, args);
-#else
-  int result = 0;
-#endif
   va_end(args);
   return result;
 }
 
 int h_vsprintf(char* buffer, char* format, va_list args)
 {
-#ifndef NUKE_FUNC
   return vsprintf(buffer, format, args);
-#else
-  return 0;
-#endif
 }
 
 int h_sprintf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
-#ifndef NUKE_FUNC
   int result = vsprintf(buffer, format, args);
-#else
-  int result = 0;
-#endif
   va_end(args);
   return result;
 }
@@ -217,11 +183,7 @@ int h_printf(char* format, ...)
 {
   va_list args;
   va_start(args, format);
-#ifndef NUKE_FUNC
   int result = vfprintf(stdout, format, args);
-#else
-  int result = 0;
-#endif
   va_end(args);
   return result;
 }
@@ -239,9 +201,7 @@ bool compile_error_(char* file, int line, SourceLoc* src_loc, char* message, ...
 
   va_list args;
   va_start(args, message);
-#ifndef NUKE_FUNC
   vfprintf(stderr, message, args);
-#endif
   va_end(args);
 
   fprintf(stderr, "\n");
@@ -255,11 +215,9 @@ void assert_(char* message, char* file, int line)
     fprintf(stderr, "%s:%d: ", file, line);
     if(!message || message[0] == '\0')
       message = "";
-#ifndef NUKE_FUNC
     fprintf(stderr, "assert(%s)\n", message);
 
     fflush(stderr);
-#endif
     *(int*)0 = 0;
   }
 }
@@ -273,15 +231,11 @@ void fail_(char* file, int line, char* message, ...)
 
   va_list args;
   va_start(args, message);
-#ifndef NUKE_FUNC
   vfprintf(stderr, message, args);
-#endif
   va_end(args);
 
-#ifndef NUKE_FUNC
   fprintf(stderr, "\n");
   fflush(stderr);
-#endif
   *(int*)0 = 0;
 }
 
@@ -294,15 +248,11 @@ bool error_(char* file, int line, char* message, ...)
 
   va_list args;
   va_start(args, message);
-#ifndef NUKE_FUNC
   vfprintf(stderr, message, args);
-#endif
   va_end(args);
 
-#ifndef NUKE_FUNC
   fprintf(stderr, "\n");
   fflush(stderr);
-#endif
   return false;
 }
 
@@ -350,7 +300,6 @@ bool make_out_file_names(OutFileNames* out_files, char* src_file_path)
   return success;
 }
 
-#if 1
 int main(int argc, char* argv[])
 {
   bool success = true;
@@ -396,5 +345,4 @@ int main(int argc, char* argv[])
 end:
   return success ? 0 : -1;
 }
-#endif
 

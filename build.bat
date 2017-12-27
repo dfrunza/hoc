@@ -27,28 +27,20 @@ SET hoc_file=test
 SET hoc_dir=%cd%\..\hoc
 SET src_dir=%cd%\..\src
 
-..\ctime.exe ^
+REM ..\ctime.exe ^
 cl %C_flags% %src_dir%\hocc.c /link %L_flags%
-IF %errorlevel% NEQ 0 GOTO :end
+IF %ERRORLEVEL% NEQ 0 GOTO :end
 
 REM NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
-ECHO  Compiling: %hoc_file%.hoc
-hocc %hoc_dir%\%hoc_file%.hoc > debug.txt
-IF %errorlevel% NEQ 0 GOTO :hocc_error
+ECHO %hoc_file%.hoc
+hocc %hoc_dir%\%hoc_file%.hoc
+IF %ERRORLEVEL% NEQ 0 GOTO :end
 
 REM /Cx     - preserve case in publics, externs
 REM /Zi     - add symbolic debug info
 REM /Fl     - generate listing
 REM ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
 REM /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
-
-REM cl %C_flags% ..\fp3.c /link %L_flags%
-
-GOTO :end
-
-:hocc_error
-ECHO %cd%:0: hocc error
-GOTO :end
 
 :end
 POPD

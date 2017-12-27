@@ -31,6 +31,7 @@ typedef struct AstNode AstNode;
 typedef struct Symbol Symbol;
 typedef struct Scope Scope;
 typedef struct TypePair TypePair;
+typedef struct IrStmt IrStmt;
 
 typedef struct MemoryArena
 {
@@ -142,6 +143,7 @@ typedef enum
   eToken_var,
   eToken_if,
   eToken_else,
+  eToken_do,
   eToken_while,
   eToken_proc,
   eToken_struct,
@@ -281,6 +283,7 @@ typedef struct ListItem
     Symbol* symbol;
     Scope* scope;
     TypePair* type_pair;
+    IrStmt* ir_stmt;
   };
   struct ListItem* next;
   struct ListItem* prev;
@@ -520,7 +523,7 @@ typedef enum
 }
 eIrStmt;
 
-typedef struct
+typedef struct IrStmt
 {
   eIrStmt kind;
   int nr;
@@ -578,6 +581,7 @@ typedef enum
   eAstNode_return,
   eAstNode_if,
   eAstNode_while,
+  eAstNode_do_while,
   eAstNode_loop_ctrl,
   eAstNode_enum_decl,
   eAstNode_struct_decl,
@@ -725,7 +729,7 @@ typedef struct AstNode
       Scope* scope;
       Label label;
     }
-    while_;
+    while_, do_while;
 
     struct
     {

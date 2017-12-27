@@ -3,6 +3,7 @@ Token keyword_list[] =
   {eToken_asm, "asm"},
   {eToken_if, "if"},
   {eToken_else, "else"},
+  {eToken_do, "do"},
   {eToken_while, "while"},
   {eToken_return, "return"},
   {eToken_break, "break"},
@@ -264,6 +265,9 @@ char* get_token_printstr(Token* token)
       break;
     case eToken_else:
       result = "else";
+      break;
+    case eToken_do:
+      result = "do";
       break;
     case eToken_while:
       result = "while";

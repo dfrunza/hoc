@@ -1022,6 +1022,18 @@ bool sym_if(SymbolContext* sym_context, AstNode* block, AstNode* if_)
   return success;
 }
 
+bool sym_do_while(SymbolContext* sym_context, AstNode* block, AstNode* do_while)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(do_while, eAstNode_do_while));
+  bool success = true;
+  do_while->do_while.scope = begin_nested_scope(sym_context, eScope_while, do_while);
+  success = sym_block_stmt(sym_context, block, do_while->do_while.body) &&
+    sym_expr(sym_context, block, do_while->do_while.cond_expr);
+  end_nested_scope(sym_context);
+  return success;
+}
+
 bool sym_while(SymbolContext* sym_context, AstNode* block, AstNode* while_)
 {
   assert(KIND(block, eAstNode_block));
@@ -1101,6 +1113,9 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
       break;
     case eAstNode_if:
       success = sym_if(sym_context, block, stmt);
+      break;
+    case eAstNode_do_while:
+      success = sym_do_while(sym_context, block, stmt);
       break;
     case eAstNode_while:
       success = sym_while(sym_context, block, stmt);
@@ -2524,19 +2539,29 @@ bool set_types_if(AstNode* if_)
   return success;
 }
 
+bool set_types_do_while(AstNode* do_while)
+{
+  assert(KIND(do_while, eAstNode_do_while));
+  bool success = true;
+  AstNode* body = do_while->do_while.body;
+  if(success = set_types_block_stmt(body) && set_types_expr(do_while->do_while.cond_expr))
+  {
+    do_while->ty = body->ty;
+    do_while->eval_ty = body->eval_ty;
+  }
+  return success;
+}
+
 bool set_types_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
 
-  if(success = set_types_expr(while_->while_.cond_expr))
+  AstNode* body = while_->while_.body;
+  if(success = set_types_expr(while_->while_.cond_expr) && set_types_block_stmt(body))
   {
-    AstNode* body = while_->while_.body;
-    if(success = set_types_block_stmt(body))
-    {
-      while_->ty = body->ty;
-      while_->eval_ty = body->eval_ty;
-    }
+    while_->ty = body->ty;
+    while_->eval_ty = body->eval_ty;
   }
   return success;
 }
@@ -2612,6 +2637,9 @@ bool set_types_block_stmt(AstNode* stmt)
       break;
     case eAstNode_if:
       success = set_types_if(stmt);
+      break;
+    case eAstNode_do_while:
+      success = set_types_do_while(stmt);
       break;
     case eAstNode_while:
       success = set_types_while(stmt);
@@ -3131,19 +3159,29 @@ bool eval_types_block(AstNode* block)
   return success;
 }
 
+bool eval_types_do_while(AstNode* do_while)
+{
+  assert(KIND(do_while, eAstNode_do_while));
+  bool success = true;
+  AstNode* cond_expr = do_while->do_while.cond_expr;
+  if(success = eval_types_block_stmt(do_while->do_while.body) && eval_types_expr(cond_expr))
+  {
+    if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+      success = compile_error(cond_expr->src_loc, "bool expression was expected");
+  }
+  return success;
+}
+
 bool eval_types_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
 
   AstNode* cond_expr = while_->while_.cond_expr;
-  AstNode* body = while_->while_.body;
-  if(success = eval_types_expr(cond_expr) && eval_types_block_stmt(body))
+  if(success = eval_types_expr(cond_expr) && eval_types_block_stmt(while_->while_.body))
   {
     if(!type_unif(cond_expr->eval_ty, basic_type_bool))
-    {
       success = compile_error(cond_expr->src_loc, "bool expression was expected");
-    }
   }
   return success;
 }
@@ -3196,6 +3234,9 @@ bool eval_types_block_stmt(AstNode* stmt)
       break;
     case eAstNode_if:
       success = eval_types_if(stmt);
+      break;
+    case eAstNode_do_while:
+      success = eval_types_do_while(stmt);
       break;
     case eAstNode_while:
       success = eval_types_while(stmt);
@@ -3481,12 +3522,21 @@ bool resolve_types_if(AstNode* if_)
   return success;
 }
 
+bool resolve_types_do_while(AstNode* do_while)
+{
+  assert(KIND(do_while, eAstNode_do_while));
+  bool success = true;
+  success = resolve_types_block_stmt(do_while->do_while.body) && resolve_types_expr(do_while->do_while.cond_expr) &&
+    resolve_types_of_node(do_while);
+  return success;
+}
+
 bool resolve_types_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
-  success = resolve_types_expr(while_->while_.cond_expr) && resolve_types_block_stmt(while_->while_.body)
-    && resolve_types_of_node(while_);
+  success = resolve_types_expr(while_->while_.cond_expr) && resolve_types_block_stmt(while_->while_.body) &&
+    resolve_types_of_node(while_);
   return success;
 }
 
@@ -3567,6 +3617,9 @@ bool resolve_types_block_stmt(AstNode* stmt)
       break;
     case eAstNode_if:
       success = resolve_types_if(stmt);
+      break;
+    case eAstNode_do_while:
+      success = resolve_types_do_while(stmt);
       break;
     case eAstNode_while:
       success = resolve_types_while(stmt);
@@ -3999,6 +4052,14 @@ bool check_types_return(AstNode* ret)
   return success;
 }
 
+bool check_types_do_while(AstNode* do_while)
+{
+  assert(KIND(do_while, eAstNode_do_while));
+  bool success = true;
+  success = check_types_block_stmt(do_while->do_while.body) && check_types_expr(do_while->do_while.cond_expr);
+  return success;
+}
+
 bool check_types_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
@@ -4056,6 +4117,9 @@ bool check_types_block_stmt(AstNode* stmt)
       break;
     case eAstNode_if:
       success = check_types_if(stmt);
+      break;
+    case eAstNode_do_while:
+      success = check_types_do_while(stmt);
       break;
     case eAstNode_while:
       success = check_types_while(stmt);
@@ -4743,8 +4807,10 @@ bool gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
     case eOperator_greater_eq:
       {
         if(success = gen_ir_expr(ir_context, scope, left_operand) && gen_ir_expr(ir_context, scope, right_operand))
-          ir_emit_cond_goto(ir_context, negate_relop(conv_operator_to_ir_op(op)),
-                            left_operand->place, right_operand->place, bin_expr->label_false);
+        {
+          ir_emit_cond_goto(ir_context, conv_operator_to_ir_op(op), left_operand->place, right_operand->place, bin_expr->label_true);
+          ir_emit_goto(ir_context, bin_expr->label_false);
+        }
       }
       break;
 
@@ -4789,7 +4855,10 @@ bool gen_ir_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
   assert(KIND(id, eAstNode_id));
   bool success = true;
   if(success = gen_ir_expr(ir_context, scope, id))
-    ir_emit_cond_goto(ir_context, eIrOp_not_eq, id->place, &ir_arg_bool_true, id->label_false);
+  {
+    ir_emit_cond_goto(ir_context, eIrOp_eq, id->place, &ir_arg_bool_true, id->label_true);
+    ir_emit_goto(ir_context, id->label_false);
+  }
   return success;
 }
 
@@ -4798,7 +4867,10 @@ bool gen_ir_bool_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
   assert(KIND(cast, eAstNode_cast));
   bool success = true;
   if(success = gen_ir_cast(ir_context, scope, cast))
-    ir_emit_cond_goto(ir_context, eIrOp_not_eq, cast->place, &ir_arg_bool_true, cast->label_false);
+  {
+    ir_emit_cond_goto(ir_context, eIrOp_eq, cast->place, &ir_arg_bool_true, cast->label_true);
+    ir_emit_goto(ir_context, cast->label_false);
+  }
   return success;
 }
 
@@ -4837,6 +4909,29 @@ bool gen_ir_bool_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
       break;
     default:
       assert(0);
+  }
+  return success;
+}
+
+bool gen_ir_do_while(IrContext* ir_context, Scope* scope, AstNode* do_while)
+{
+  assert(KIND(do_while, eAstNode_do_while));
+  bool success = true;
+  AstNode* cond_expr = do_while->do_while.cond_expr;
+  AstNode* body = do_while->do_while.body;
+
+  do_while->label_begin = new_symbolic_label(arena);
+  do_while->label_next = new_symbolic_label(arena);
+  cond_expr->label_true = do_while->label_begin;
+  cond_expr->label_false = new_symbolic_label(arena);
+  body->label_next = do_while->label_next;
+
+  ir_emit_label(ir_context, do_while->label_begin);
+  gen_ir_block_stmt(ir_context, scope, body);
+  ir_emit_label(ir_context, do_while->label_next);
+  if(success = gen_ir_bool_expr(ir_context, scope, cond_expr))
+  {
+    ir_emit_label(ir_context, cond_expr->label_false);
   }
   return success;
 }
@@ -4955,6 +5050,9 @@ bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     case eAstNode_if:
       success = gen_ir_if(ir_context, scope, stmt);
       break;
+    case eAstNode_do_while:
+      success = gen_ir_do_while(ir_context, scope, stmt);
+      break;
     case eAstNode_while:
       success = gen_ir_while(ir_context, scope, stmt);
       break;
@@ -4966,6 +5064,8 @@ bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
       break;
     case eAstNode_return:
       success = gen_ir_return(ir_context, scope, stmt);
+      break;
+    case eAstNode_empty:
       break;
     default:
       assert(0);
@@ -5393,7 +5493,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     int ir_stmt_count = ir_context.stmt_count;
     if(ir_stmt_count > 0)
     {
-      List* leaders = new_list(ir_context.ir_arena, eList_ir_stmt);
+      List* leaders = new_list(arena, eList_ir_stmt);
       ir_code[0].is_leader = true;
       append_list_elem(leaders, &ir_code[0], eList_ir_stmt);
       for(int i = 1; i < ir_stmt_count; i++)
@@ -5424,8 +5524,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
           }
         }
       }
+      breakpin();
     }
-    breakpin();
   }
 
 #if 0

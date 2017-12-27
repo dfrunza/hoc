@@ -971,6 +971,45 @@ bool parse_if(TokenStream* input, AstNode** node)
   return success;
 }
 
+bool parse_do_while(TokenStream* input, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+  if(input->token.kind == eToken_do)
+  {
+    AstNode* do_while = *node = new_ast_node(eAstNode_do_while, clone_source_loc(&input->src_loc));
+    if(success = get_next_token(input) && parse_block_stmt(input, &do_while->do_while.body))
+    {
+      if(input->token.kind == eToken_while)
+      {
+        if(success = get_next_token(input))
+        {
+          if(input->token.kind == eToken_open_parens)
+          {
+            if(success = get_next_token(input) && parse_expr(input, &do_while->do_while.cond_expr))
+            {
+              if(do_while->do_while.cond_expr)
+              {
+                if(input->token.kind == eToken_close_parens)
+                  success = get_next_token(input);
+                else
+                  success = compile_error(&input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
+              }
+              else
+                success = compile_error(&input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
+            }
+          }
+          else
+            success = compile_error(&input->src_loc, "`(` was expected at `%s`", get_token_printstr(&input->token));
+        }
+      }
+      else
+        success = compile_error(&input->src_loc, "`while` was expected at `%s`", get_token_printstr(&input->token));
+    }
+  }
+  return success;
+}
+
 bool parse_while(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -982,7 +1021,7 @@ bool parse_while(TokenStream* input, AstNode** node)
     {
       if(input->token.kind == eToken_open_parens)
       {
-        if(success = (get_next_token(input) && parse_expr(input, &while_->while_.cond_expr)))
+        if(success = get_next_token(input) && parse_expr(input, &while_->while_.cond_expr))
         {
           if(while_->while_.cond_expr)
           {
@@ -1066,6 +1105,9 @@ bool parse_block_stmt(TokenStream* input, AstNode** node)
       break;
     case eToken_if:
       success = parse_if(input, node);
+      break;
+    case eToken_do:
+      success = parse_do_while(input, node);
       break;
     case eToken_while:
       success = parse_while(input, node);

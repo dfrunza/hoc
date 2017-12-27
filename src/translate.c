@@ -2178,7 +2178,8 @@ bool gen_x86(String* code, AstNode* node)
 }
 #endif
 
-/*------------------       SET TYPES       -------------------- */
+//     SET TYPES
+//-----------------------------------------------------
 
 bool set_types_expr(AstNode* expr);
 bool set_types_type(AstNode* type);
@@ -2718,7 +2719,8 @@ bool set_types_module(AstNode* module)
   return success;
 }
 
-/*------------------       EVAL TYPES       -------------------- */
+//       EVAL TYPES
+//-----------------------------------------------------
 
 bool eval_types_expr(AstNode* expr);
 bool eval_types_type(AstNode* type);
@@ -3262,7 +3264,8 @@ bool eval_types_module(AstNode* module)
   return success;
 }
 
-/*------------------       RESOLVE TYPES       -------------------- */
+//       RESOLVE TYPES
+//-----------------------------------------------------
 
 bool resolve_types_expr(AstNode* expr);
 bool resolve_types_type(AstNode* type);
@@ -3630,7 +3633,8 @@ bool resolve_types_module(AstNode* module)
   return success;
 }
 
-/*------------------       CHECK TYPES       -------------------- */
+//          CHECK TYPES
+//-----------------------------------------------------
 
 bool check_types_expr(AstNode* expr);
 bool check_types_block_stmt(AstNode* stmt);
@@ -4115,7 +4119,8 @@ bool check_types_module(AstNode* module)
   return success;
 }
 
-/*------------------       IR       -------------------- */
+//       IR
+//-----------------------------------------------------
 
 eIrOp conv_operator_to_ir_op(eOperator op)
 {
@@ -4195,9 +4200,10 @@ void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, I
 void ir_emit_label(IrContext* ir_context, Label* label)
 {
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+  label->index = ir_context->stmt_count;
   ir_context->stmt_count++;
   stmt->kind = eIrStmt_label;
-  stmt->nr = ir_context->next_stmt_nr; // do not increment the 'next_stmt_nr' for label stmts
+  stmt->nr = ir_context->next_stmt_nr; // do not increment the 'next_stmt_nr' for labels
   stmt->label = label;
 }
 
@@ -4737,10 +4743,8 @@ bool gen_ir_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
     case eOperator_greater_eq:
       {
         if(success = gen_ir_expr(ir_context, scope, left_operand) && gen_ir_expr(ir_context, scope, right_operand))
-        {
-          ir_emit_cond_goto(ir_context, conv_operator_to_ir_op(op), left_operand->place, right_operand->place, bin_expr->label_true);
-          ir_emit_goto(ir_context, bin_expr->label_false);
-        }
+          ir_emit_cond_goto(ir_context, negate_relop(conv_operator_to_ir_op(op)),
+                            left_operand->place, right_operand->place, bin_expr->label_false);
       }
       break;
 
@@ -4785,10 +4789,7 @@ bool gen_ir_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
   assert(KIND(id, eAstNode_id));
   bool success = true;
   if(success = gen_ir_expr(ir_context, scope, id))
-  {
-    ir_emit_cond_goto(ir_context, eIrOp_eq, id->place, &ir_arg_bool_true, id->label_true);
-    ir_emit_goto(ir_context, id->label_false);
-  }
+    ir_emit_cond_goto(ir_context, eIrOp_not_eq, id->place, &ir_arg_bool_true, id->label_false);
   return success;
 }
 
@@ -4797,10 +4798,7 @@ bool gen_ir_bool_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
   assert(KIND(cast, eAstNode_cast));
   bool success = true;
   if(success = gen_ir_cast(ir_context, scope, cast))
-  {
-    ir_emit_cond_goto(ir_context, eIrOp_eq, cast->place, &ir_arg_bool_true, cast->label_true);
-    ir_emit_goto(ir_context, cast->label_false);
-  }
+    ir_emit_cond_goto(ir_context, eIrOp_not_eq, cast->place, &ir_arg_bool_true, cast->label_false);
   return success;
 }
 
@@ -5008,7 +5006,7 @@ bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
     gen_ir_formal_args(ir_context, proc->proc.scope, proc->proc.arg_list);
     if(success = gen_ir_block_stmt(ir_context, body->block.scope, body))
     {
-      ir_emit_return(ir_context, 0);
+      //ir_emit_return(ir_context, 0);
     }
   }
   return success;
@@ -5020,7 +5018,7 @@ bool gen_ir_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
   switch(stmt->kind)
   {
     case eAstNode_proc:
-      ir_emit_label(ir_context, make_symbolic_label(arena, stmt->proc.name));
+      //ir_emit_label(ir_context, make_symbolic_label(arena, stmt->proc.name));
       success = gen_ir_proc(ir_context, scope, stmt);
       break;
 
@@ -5330,6 +5328,20 @@ void DEBUG_print_ir_code(IrContext* ir_context, char* file_path)
   end_temp_memory(&arena);
 }
 
+IrStmt* get_nonlabel_ir_stmt(IrStmt* ir_code, int stmt_count, int at_index)
+{
+  IrStmt* result = 0;
+  for(int i = at_index;
+      i < stmt_count || (result = 0); // set the result to 0 if 'i >= count'
+      i++)
+  {
+    result = &ir_code[i];
+    if(result->kind != eIrStmt_label)
+      break;
+  }
+  return result;
+}
+
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 {
   basic_type_bool = new_basic_type(eBasicType_bool);
@@ -5347,12 +5359,12 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   ir_arg_bool_false.const_.int_val = 0;
 
   SymbolContext sym_context = {0};
-  sym_context.arena = push_arena(&arena, SYMBOL_ARENA_SIZE);
+  sym_context.arena = push_arena(&arena, 1*MEGABYTE);
   sym_context.nesting_depth = -1;
   init_list(&sym_context.scopes, sym_context.arena, eList_scope);
 
   IrContext ir_context = {0};
-  ir_context.ir_arena = push_arena(&arena, IR_CODE_ARENA_SIZE);
+  ir_context.ir_arena = push_arena(&arena, 1*MEGABYTE);
   ir_context.sym_arena = sym_context.arena;
   ir_context.stmt_count = 0;
 
@@ -5375,6 +5387,46 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     return false;
   }
   DEBUG_print_ir_code(&ir_context, "./out.ir");
+
+  {
+    IrStmt* ir_code = (IrStmt*)ir_context.ir_arena->base;
+    int ir_stmt_count = ir_context.stmt_count;
+    if(ir_stmt_count > 0)
+    {
+      List* leaders = new_list(ir_context.ir_arena, eList_ir_stmt);
+      ir_code[0].is_leader = true;
+      append_list_elem(leaders, &ir_code[0], eList_ir_stmt);
+      for(int i = 1; i < ir_stmt_count; i++)
+      {
+        IrStmt* stmt = &ir_code[i];
+        if(stmt->kind == eIrStmt_cond_goto || stmt->kind == eIrStmt_goto)
+        {
+          IrStmt* leader_stmt = 0;
+          if(i+1 < ir_stmt_count)
+          {
+            leader_stmt = get_nonlabel_ir_stmt(ir_code, ir_stmt_count, i+1);
+            if(leader_stmt && !leader_stmt->is_leader)
+            {
+              leader_stmt->is_leader = true;
+              append_list_elem(leaders, leader_stmt, eList_ir_stmt);
+            }
+          }
+          Label* target_label = 0;
+          if(stmt->kind == eIrStmt_cond_goto)
+            target_label = stmt->cond_goto.label;
+          else if(stmt->kind == eIrStmt_goto)
+            target_label = stmt->label;
+          leader_stmt = get_nonlabel_ir_stmt(ir_code, ir_stmt_count, target_label->index);
+          if(leader_stmt && !leader_stmt->is_leader)
+          {
+            leader_stmt->is_leader = true;
+            append_list_elem(leaders, leader_stmt, eList_ir_stmt);
+          }
+        }
+      }
+    }
+    breakpin();
+  }
 
 #if 0
   AstNode* module_body = module->module.body;

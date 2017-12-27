@@ -1,4 +1,6 @@
 @ECHO off
+REM        MSVC
+REM --------------------
 
 REM /wd4706       - assignment within conditional expression
 REM /wd4013       - undefined function (missing forward declaration)
@@ -10,10 +12,11 @@ REM /Fe:<path>    - compile to executable
 REM /c            - compile without linking
 REM /EHa-         - disable exceptions
 REM /GR-          - disable RTTI
+REM /GS-          - disable buffer security check
 REM /W{n}         - warning output level (/W0 disable all warnings)
 REM /Wall         - display all warnings
 
-SET C_flags=/Od /W4 /nologo /MTd /Zo /Zi /Gm- /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
+SET C_flags=/Od /W4 /nologo /MTd /Zo /Zi /Gm- /GS- /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
                   /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459
 SET L_flags=/incremental:no /opt:ref /subsystem:console
 
@@ -44,7 +47,7 @@ REM cl %C_flags% ..\fp3.c /link %L_flags%
 GOTO :end
 
 :hocc_error
-ECHO %cd%(0) : hocc.exe error
+ECHO %cd%:0: hocc error
 GOTO :end
 
 :end

@@ -1,6 +1,4 @@
 #define ARENA_SIZE (5*MEGABYTE)
-#define SYMBOL_ARENA_SIZE (1*MEGABYTE)
-#define IR_CODE_ARENA_SIZE (1*MEGABYTE)
 #define BINIMAGE_SIGNATURE "HC"
 #define MACHINE_WORD_SIZE 4
 
@@ -45,7 +43,7 @@ typedef struct MemoryArena
 }
 MemoryArena;
 
-typedef struct ArenaUsage
+typedef struct
 {
   int total_avail;
   double in_use;
@@ -73,7 +71,7 @@ typedef struct SourceLoc
 }
 SourceLoc;
 
-typedef enum eLabel
+typedef enum
 {
   eLabel_None,
   eLabel_symbolic,
@@ -84,6 +82,7 @@ eLabel;
 typedef struct Label
 {
   eLabel kind;
+  int index;
   union
   {
     char* name;
@@ -92,7 +91,7 @@ typedef struct Label
 }
 Label;
 
-typedef enum eToken
+typedef enum
 {
   eToken_None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
@@ -198,7 +197,7 @@ typedef struct TokenStream
 }
 TokenStream;
 
-typedef enum eOperator
+typedef enum
 {
   eOperator_None,
 
@@ -239,7 +238,7 @@ typedef enum eOperator
 }
 eOperator;
 
-typedef enum eLiteral
+typedef enum
 {
   eLiteral_None,
   eLiteral_int,
@@ -249,7 +248,7 @@ typedef enum eLiteral
 }
 eLiteral;
 
-typedef enum eScope
+typedef enum
 {
   eScope_None = 0,
   eScope_module = 1 << 0,
@@ -260,7 +259,7 @@ typedef enum eScope
 }
 eScope;
 
-typedef enum eList
+typedef enum
 {
   eList_None,
   eList_ast_node,
@@ -268,6 +267,7 @@ typedef enum eList
   eList_scope,
   eList_type_pair,
   eList_data_area,
+  eList_ir_stmt,
 }
 eList;
 
@@ -315,7 +315,7 @@ typedef struct Scope
 }
 Scope;
 
-typedef enum eLoopCtrl
+typedef enum
 {
   eLoopCtrl_None,
   eLoopCtrl_break,
@@ -323,14 +323,14 @@ typedef enum eLoopCtrl
 }
 eLoopCtrl;
 
-typedef enum eModifier
+typedef enum
 {
   eModifier_None,
   eModifier_extern,
 }
 eModifier;
 
-typedef enum eType
+typedef enum
 {
   eType_None,
   eType_typevar,
@@ -343,7 +343,7 @@ typedef enum eType
 }
 eType;
 
-typedef enum eBasicType
+typedef enum
 {
   eBasicType_None,
   eBasicType_void,
@@ -419,7 +419,7 @@ typedef struct TypePair
 }
 TypePair;
 
-typedef enum eIrOp
+typedef enum
 {
   eIrOp_None,
   eIrOp_add,
@@ -459,17 +459,16 @@ typedef enum eIrOp
 }
 eIrOp;
 
-typedef struct IrContext
+typedef struct
 {
   MemoryArena* ir_arena;
   MemoryArena* sym_arena;
-  MemoryArena* arena;
   int stmt_count;
   int next_stmt_nr;
 }
 IrContext;
 
-typedef enum eIrConstant
+typedef enum
 {
   eIrConstant_int,
   eIrConstant_float,
@@ -477,7 +476,7 @@ typedef enum eIrConstant
 }
 eIrConstant;
 
-typedef struct IrConstant
+typedef struct
 {
   eIrConstant kind;
   union
@@ -489,7 +488,7 @@ typedef struct IrConstant
 }
 IrConstant;
 
-typedef enum eIrArg
+typedef enum
 {
   eIrArg_None,
   eIrArg_data_obj,
@@ -497,7 +496,7 @@ typedef enum eIrArg
 }
 eIrArg;
 
-typedef struct IrArg
+typedef struct
 {
   eIrArg kind;
   union
@@ -508,7 +507,7 @@ typedef struct IrArg
 }
 IrArg;
 
-typedef enum eIrStmt
+typedef enum
 {
   eIrStmt_None,
   eIrStmt_assign,
@@ -521,10 +520,11 @@ typedef enum eIrStmt
 }
 eIrStmt;
 
-typedef struct IrStmt
+typedef struct
 {
   eIrStmt kind;
   int nr;
+  bool is_leader;
 
   union
   {
@@ -558,7 +558,7 @@ typedef struct IrStmt
 }
 IrStmt;
 
-typedef enum eAstNode
+typedef enum
 {
   eAstNode_None,
   eAstNode_id,
@@ -826,7 +826,7 @@ typedef struct Symbol
 }
 Symbol;
 
-typedef struct SymbolContext
+typedef struct
 {
   List scopes;
   Scope* active_scope;

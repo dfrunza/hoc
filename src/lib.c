@@ -1,3 +1,5 @@
+#define breakpin() for(int x = 0; x != 0; )
+
 bool char_is_letter(char ch)
 {
   return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z');

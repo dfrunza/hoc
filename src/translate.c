@@ -5450,25 +5450,30 @@ IrLeaderStmt* get_leader_stmt(List* leaders, int stmt_nr)
 
 void insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
 {
-#if 1
   ListItem* li = leaders->first;
   assert(li);
   IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
   assert(leader->stmt_nr == 0);
   for(;
-      li && (stmt_nr < leader->stmt_nr);
-      li = li->next, leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt)
+      li && (leader->stmt_nr < stmt_nr);
+      li = li->next, leader = (li ? KIND(li, eList_ir_leader_stmt)->ir_leader_stmt : 0))
   { }
-#else
-  ListItem* li = get_leader_stmt_item(leaders, stmt_nr);
-  IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
-#endif
-  if(stmt_nr > leader->stmt_nr)
+  if(leader)
+  {
+    if(leader->stmt_nr > stmt_nr)
+    {
+      IrLeaderStmt* new_elem = mem_push_struct(leaders->arena, IrLeaderStmt);
+      new_elem->stmt_nr = stmt_nr;
+      new_elem->stmt = stmt;
+      insert_elem_before(leaders, li, new_elem, eList_ir_leader_stmt);
+    }
+  }
+  else
   {
     IrLeaderStmt* new_elem = mem_push_struct(leaders->arena, IrLeaderStmt);
     new_elem->stmt_nr = stmt_nr;
     new_elem->stmt = stmt;
-    insert_elem_after(leaders, li, new_elem, eList_ir_leader_stmt);
+    append_list_elem(leaders, new_elem, eList_ir_leader_stmt);
   }
 }
 
@@ -5611,13 +5616,17 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
             append_list_elem(&bb->succ_list, leader->block, eList_basic_block);
             append_list_elem(&leader->block->pred_list, bb, eList_basic_block);
           }
+          if(last_stmt->kind != eIrStmt_goto)
+          {
+            append_list_elem(&bb->succ_list, bb_next, eList_basic_block);
+            append_list_elem(&bb_next->pred_list, bb, eList_basic_block);
+          }
         }
         else if(bb_next)
         {
           append_list_elem(&bb->succ_list, bb_next, eList_basic_block);
           append_list_elem(&bb_next->pred_list, bb, eList_basic_block);
         }
-        breakpoint();
       }
     }
   }

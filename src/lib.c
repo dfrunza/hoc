@@ -1,4 +1,4 @@
-#define breakpin() for(int x = 0; x != 0; )
+#define breakpoint() for(int x = 0; x != 0; )
 
 bool char_is_letter(char ch)
 {
@@ -513,6 +513,7 @@ void append_list_item(List* list, ListItem* item)
 
 void append_list_elem(List* list, void* elem, eList kind)
 {
+  assert(elem);
   ListItem* item = mem_push_struct(list->arena, ListItem);
   item->elem = elem;
   item->kind = kind;
@@ -589,6 +590,7 @@ void join_list_pair(List* list_a, List* list_b)
 
 void insert_item_before(List* list, ListItem* at_li, ListItem* new_li)
 {
+  assert(at_li);
   if(at_li->prev)
   {
     at_li->prev->next = new_li;
@@ -604,6 +606,7 @@ void insert_item_before(List* list, ListItem* at_li, ListItem* new_li)
 
 void insert_elem_before(List* list, ListItem* at_li, void* elem, eList kind)
 {
+  assert(at_li);
   ListItem* new_li = mem_push_struct(list->arena, ListItem);
   new_li->elem = elem;
   new_li->kind = kind;
@@ -612,6 +615,7 @@ void insert_elem_before(List* list, ListItem* at_li, void* elem, eList kind)
 
 void insert_item_after(List* list, ListItem* at_li, ListItem* new_li)
 {
+  assert(at_li);
   if(at_li->next)
   {
     at_li->next->prev = new_li;
@@ -627,6 +631,7 @@ void insert_item_after(List* list, ListItem* at_li, ListItem* new_li)
 
 void insert_elem_after(List* list, ListItem* at_li, void* elem, eList kind)
 {
+  assert(at_li);
   ListItem* new_li = mem_push_struct(list->arena, ListItem);
   new_li->elem = elem;
   new_li->kind = kind;

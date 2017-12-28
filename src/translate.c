@@ -5414,10 +5414,6 @@ void DEBUG_print_ir_code(IrContext* ir_context, char* file_path)
     str_printfln(&text, "");
   }
 
-#if 0
-  int text_len = str_len(&text);
-  file_write_bytes(file_path, (uint8*)text.head, text_len);
-#endif
   str_dump_to_file(&text, file_path);
   end_temp_memory(&arena);
 }
@@ -5426,7 +5422,7 @@ IrStmt* get_nonlabel_ir_stmt(IrStmt* ir_code, int stmt_count, int* index)
 {
   IrStmt* result = 0;
   for(int i = *index;
-      i < stmt_count || (result = 0); // set the result to 0 if 'i >= count'
+      i < stmt_count || (result = 0); // *set* the result to 0 if 'i >= count'
       i++)
   {
     result = &ir_code[i];
@@ -5439,21 +5435,40 @@ IrStmt* get_nonlabel_ir_stmt(IrStmt* ir_code, int stmt_count, int* index)
   return result;
 }
 
-// The function assumes that the set already contains the first (minimum index) leader statement.
+IrLeaderStmt* get_leader_stmt(List* leaders, int stmt_nr)
+{
+  ListItem* li = leaders->first;
+  assert(li);
+  IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
+  assert(leader->stmt_nr == 0);
+  for(;
+      li && (stmt_nr != leader->stmt_nr);
+      li = li->next, leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt)
+  { }
+  return leader->stmt_nr == stmt_nr ? leader : 0;
+}
+
 void insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
 {
-  ListItem* li = 0;
-  IrStmtLeader* e = 0;
-  for(li = leaders->first, e = KIND(li, eList_ir_stmt_leader)->ir_stmt_leader;
-      li && (stmt_nr < e->stmt_nr);
-      li = li->next, e = KIND(li, eList_ir_stmt_leader)->ir_stmt_leader)
+#if 1
+  ListItem* li = leaders->first;
+  assert(li);
+  IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
+  assert(leader->stmt_nr == 0);
+  for(;
+      li && (stmt_nr < leader->stmt_nr);
+      li = li->next, leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt)
   { }
-  if(stmt_nr > e->stmt_nr)
+#else
+  ListItem* li = get_leader_stmt_item(leaders, stmt_nr);
+  IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
+#endif
+  if(stmt_nr > leader->stmt_nr)
   {
-    IrStmtLeader* new_elem = mem_push_struct(leaders->arena, IrStmtLeader);
+    IrLeaderStmt* new_elem = mem_push_struct(leaders->arena, IrLeaderStmt);
     new_elem->stmt_nr = stmt_nr;
     new_elem->stmt = stmt;
-    insert_elem_after(leaders, li, new_elem, eList_ir_stmt_leader);
+    insert_elem_after(leaders, li, new_elem, eList_ir_leader_stmt);
   }
 }
 
@@ -5503,16 +5518,18 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   }
   DEBUG_print_ir_code(&ir_context, "./out.ir");
 
+  // Partition IR into basic blocks
+  List* basic_blocks = new_list(ir_context.ir_arena, eList_basic_block);
   {
     IrStmt* ir_code = (IrStmt*)ir_context.ir_arena->base;
     int ir_stmt_count = ir_context.stmt_count;
     if(ir_stmt_count > 0)
     {
-      List* leaders = new_list(arena, eList_ir_stmt_leader);
-      IrStmtLeader* first_leader = mem_push_struct(arena, IrStmtLeader);
+      List* leaders = new_list(arena, eList_ir_leader_stmt);
+      IrLeaderStmt* first_leader = mem_push_struct(arena, IrLeaderStmt);
       first_leader->stmt_nr = 0;
       first_leader->stmt = &ir_code[0];
-      append_list_elem(leaders, first_leader, eList_ir_stmt_leader);
+      append_list_elem(leaders, first_leader, eList_ir_leader_stmt);
       for(int i = 1; i < ir_stmt_count; i++)
       {
         IrStmt* stmt = &ir_code[i];
@@ -5531,6 +5548,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
             target_label = stmt->cond_goto.label;
           else if(stmt->kind == eIrStmt_goto)
             target_label = stmt->label;
+          else
+            assert(0);
           int stmt_nr = target_label->stmt_nr;
           nonlabel_stmt = get_nonlabel_ir_stmt(ir_code, ir_stmt_count, &stmt_nr);
           if(nonlabel_stmt)
@@ -5538,23 +5557,23 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         }
       }
       ///
-      List* basic_blocks = new_list(ir_context.ir_arena, eList_basic_block);
       for(ListItem* li = leaders->first;
           li;
           li = li->next)
       {
-        ListItem* li_next = li->next;
         int next_stmt_nr = ir_context.stmt_count;
-        if(li_next)
+        if(li->next)
         {
-          IrStmtLeader* leader_next = KIND(li_next, eList_ir_stmt_leader)->ir_stmt_leader;
+          IrLeaderStmt* leader_next = KIND(li->next, eList_ir_leader_stmt)->ir_leader_stmt;
           next_stmt_nr = leader_next->stmt_nr;
         }
-        IrStmtLeader* leader = KIND(li, eList_ir_stmt_leader)->ir_stmt_leader;
+        IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
         BasicBlock* block = mem_push_struct(ir_context.ir_arena, BasicBlock);
         append_list_elem(basic_blocks, block, eList_basic_block);
+        init_list(&block->pred_list, ir_context.ir_arena, eList_basic_block);
+        init_list(&block->succ_list, ir_context.ir_arena, eList_basic_block);
         leader->block = block;
-        block->leader = mem_push_array(ir_context.ir_arena, IrStmt*, next_stmt_nr - leader->stmt_nr);
+        block->stmt_array = mem_push_array(ir_context.ir_arena, IrStmt*, next_stmt_nr - leader->stmt_nr);
         block->stmt_count = 0;
         for(int i = leader->stmt_nr;
             i < next_stmt_nr;
@@ -5562,10 +5581,43 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         {
           IrStmt* stmt = &ir_code[i];
           if(stmt->kind != eIrStmt_label)
-            block->leader[block->stmt_count++] = stmt;
+            block->stmt_array[block->stmt_count++] = stmt;
         }
         assert(block->stmt_count > 0);
-        breakpin();
+      }
+      for(ListItem* li = basic_blocks->first;
+          li;
+          li = li->next)
+      {
+        BasicBlock* bb_next = 0;
+        if(li->next)
+          bb_next = KIND(li->next, eList_basic_block)->basic_block;
+        BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
+        IrStmt* last_stmt = bb->stmt_array[bb->stmt_count - 1];
+        if(last_stmt->kind == eIrStmt_goto || last_stmt->kind == eIrStmt_cond_goto)
+        {
+          Label* target_label = 0;
+          if(last_stmt->kind == eIrStmt_cond_goto)
+            target_label = last_stmt->cond_goto.label;
+          else if(last_stmt->kind == eIrStmt_goto)
+            target_label = last_stmt->label;
+          else
+            assert(0);
+          int stmt_nr = target_label->stmt_nr;
+          IrStmt* nonlabel_stmt = get_nonlabel_ir_stmt(ir_code, ir_stmt_count, &stmt_nr);
+          if(nonlabel_stmt)
+          {
+            IrLeaderStmt* leader = get_leader_stmt(leaders, stmt_nr);
+            append_list_elem(&bb->succ_list, leader->block, eList_basic_block);
+            append_list_elem(&leader->block->pred_list, bb, eList_basic_block);
+          }
+        }
+        else if(bb_next)
+        {
+          append_list_elem(&bb->succ_list, bb_next, eList_basic_block);
+          append_list_elem(&bb_next->pred_list, bb, eList_basic_block);
+        }
+        breakpoint();
       }
     }
   }

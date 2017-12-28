@@ -32,7 +32,7 @@ typedef struct Symbol Symbol;
 typedef struct Scope Scope;
 typedef struct TypePair TypePair;
 typedef struct IrStmt IrStmt;
-typedef struct IrStmtLeader IrStmtLeader;
+typedef struct IrLeaderStmt IrLeaderStmt;
 typedef struct BasicBlock BasicBlock;
 
 typedef struct MemoryArena
@@ -271,7 +271,7 @@ typedef enum
   eList_type_pair,
   eList_data_area,
   eList_ir_stmt,
-  eList_ir_stmt_leader,
+  eList_ir_leader_stmt,
   eList_basic_block,
 }
 eList;
@@ -286,7 +286,7 @@ typedef struct ListItem
     Scope* scope;
     TypePair* type_pair;
     IrStmt* ir_stmt;
-    IrStmtLeader* ir_stmt_leader;
+    IrLeaderStmt* ir_leader_stmt;
     BasicBlock* basic_block;
   };
   struct ListItem* next;
@@ -558,19 +558,19 @@ IrStmt;
 typedef struct BasicBlock
 {
   int stmt_count;
-  IrStmt** leader;
+  IrStmt** stmt_array;
   List pred_list;
   List succ_list;
 }
 BasicBlock;
 
-typedef struct IrStmtLeader
+typedef struct IrLeaderStmt
 {
   int stmt_nr;
   BasicBlock* block;
   IrStmt* stmt;
 }
-IrStmtLeader;
+IrLeaderStmt;
 
 typedef enum
 {

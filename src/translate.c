@@ -5615,6 +5615,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
             IrLeaderStmt* leader = get_leader_stmt(leaders, stmt_nr);
             append_list_elem(&bb->succ_list, leader->block, eList_basic_block);
             append_list_elem(&leader->block->pred_list, bb, eList_basic_block);
+            target_label->kind = eLabel_basic_block;
+            target_label->basic_block = leader->block;
           }
           if(last_stmt->kind != eIrStmt_goto)
           {
@@ -5629,6 +5631,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         }
       }
     }
+    breakpoint();
   }
 
 #if 0

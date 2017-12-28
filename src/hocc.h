@@ -79,6 +79,7 @@ typedef enum
   eLabel_None,
   eLabel_symbolic,
   eLabel_numeric,
+  eLabel_basic_block,
 }
 eLabel;
 
@@ -90,6 +91,7 @@ typedef struct Label
   {
     char* name;
     int num;
+    BasicBlock* basic_block;
   };
 }
 Label;
@@ -524,7 +526,6 @@ typedef struct IrStmt
     IrArg* param, *ret;
     union {
       Label* label;
-      //BasicBlock* block;
     };
 
     struct IrStmt_assign {
@@ -541,7 +542,6 @@ typedef struct IrStmt
       IrArg* arg2;
       union {
         Label* label;
-        //BasicBlock* block;
       };
     }
     cond_goto;

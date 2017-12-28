@@ -41,7 +41,7 @@ Label* make_numeric_label(MemoryArena* arena, int num)
 char* new_tempvar_name(char* label)
 {
   String str; str_init(&str, arena);
-  str_printf(&str, "$%s%d", label, tempvar_id++);
+  str_printf(&str, "%s%d", label, tempvar_id++);
   return str_cap(&str);
 }
 
@@ -203,7 +203,7 @@ void make_type_printstr(String* str, Type* type)
   }
   else if(type->kind == eType_typevar)
   {
-    str_printf(str, "$type%d", type->typevar.id);
+    str_printf(str, "type_%d", type->typevar.id);
   }
   else
     assert(0);
@@ -4254,7 +4254,6 @@ void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, I
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
   stmt->kind = eIrStmt_assign;
-  stmt->nr = ir_context->next_stmt_nr++;
   stmt->assign.op = op;
   stmt->assign.arg1 = arg1;
   stmt->assign.arg2 = arg2;
@@ -4264,10 +4263,9 @@ void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, I
 void ir_emit_label(IrContext* ir_context, Label* label)
 {
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
-  label->index = ir_context->stmt_count;
+  label->stmt_nr = ir_context->stmt_count;
   ir_context->stmt_count++;
   stmt->kind = eIrStmt_label;
-  stmt->nr = ir_context->next_stmt_nr; // do not increment the 'next_stmt_nr' for labels
   stmt->label = label;
 }
 
@@ -4276,7 +4274,6 @@ void ir_emit_cond_goto(IrContext* ir_context, eIrOp relop, IrArg* arg1, IrArg* a
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
   stmt->kind = eIrStmt_cond_goto;
-  stmt->nr = ir_context->next_stmt_nr++;
   stmt->cond_goto.relop = relop;
   stmt->cond_goto.arg1 = arg1;
   stmt->cond_goto.arg2 = arg2;
@@ -4294,7 +4291,6 @@ void ir_emit_goto(IrContext* ir_context, Label* label)
 
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
-  stmt->nr = ir_context->next_stmt_nr++;
   stmt->kind = eIrStmt_goto;
   stmt->label = label;
 }
@@ -4304,7 +4300,6 @@ void ir_emit_call_param(IrContext* ir_context, IrArg* param)
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
   stmt->kind = eIrStmt_param;
-  stmt->nr = ir_context->next_stmt_nr++;
   stmt->param = param;
 }
 
@@ -4312,7 +4307,6 @@ void ir_emit_call(IrContext* ir_context, char* proc_name, int param_count)
 {
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
-  stmt->nr = ir_context->next_stmt_nr++;
   stmt->kind = eIrStmt_call;
   stmt->call.name = proc_name;
   stmt->call.param_count = param_count;
@@ -4322,7 +4316,6 @@ void ir_emit_return(IrContext* ir_context, IrArg* ret)
 {
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   ir_context->stmt_count++;
-  stmt->nr = ir_context->next_stmt_nr++;
   stmt->kind = eIrStmt_return;
   stmt->ret = ret;
 }
@@ -4674,15 +4667,17 @@ bool gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         {
           expr->label_true = new_symbolic_label(arena);
           expr->label_false = new_symbolic_label(arena);
+          expr->label_next = new_symbolic_label(arena);
           IrArg* place = expr->place = mem_push_struct(arena, IrArg);
           place->kind = eIrArg_data_obj;
           place->data_obj = new_tempvar(ir_context->sym_arena, scope, expr->eval_ty);
           gen_ir_bool_expr(ir_context, scope, expr);
           ir_emit_label(ir_context, expr->label_true);
           ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, expr->place);
-          ir_emit_goto(ir_context, make_numeric_label(arena, ir_context->next_stmt_nr + 2));
+          ir_emit_goto(ir_context, expr->label_next);
           ir_emit_label(ir_context, expr->label_false);
           ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, expr->place);
+          ir_emit_label(ir_context, expr->label_next);
         }
         else
           gen_ir_bin_expr(ir_context, scope, expr);
@@ -4696,14 +4691,16 @@ bool gen_ir_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         {
           expr->label_true = new_symbolic_label(arena);
           expr->label_false = new_symbolic_label(arena);
+          expr->label_next = new_symbolic_label(arena);
           IrArg* place = expr->place = mem_push_struct(arena, IrArg);
           place->data_obj = new_tempvar(ir_context->sym_arena, scope, expr->eval_ty);
           gen_ir_bool_unr_expr(ir_context, scope, expr);
           ir_emit_label(ir_context, expr->label_true);
           ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, expr->place);
-          ir_emit_goto(ir_context, make_numeric_label(arena, ir_context->next_stmt_nr + 2));
+          ir_emit_goto(ir_context, expr->label_next);
           ir_emit_label(ir_context, expr->label_false);
           ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, expr->place);
+          ir_emit_label(ir_context, expr->label_next);
         }
         else
           gen_ir_unr_expr(ir_context, scope, expr);
@@ -5394,6 +5391,10 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
       }
       break;
 
+    case eIrStmt_label:
+      str_printf(text, "%s:", stmt->label->name);
+      break;
+
     default:
       str_printf(text, "???");
   }
@@ -5408,15 +5409,8 @@ void DEBUG_print_ir_code(IrContext* ir_context, char* file_path)
   for(int i = 0; i < ir_context->stmt_count; i++)
   {
     IrStmt* stmt = (IrStmt*)(ir_context->ir_arena->base) + i;
-    if(stmt->kind == eIrStmt_label)
-    {
-      str_printf(&text, "%6s:", stmt->label->name);
-    }
-    else
-    {
-      str_printf(&text, "%6d: ", stmt->nr);
-      DEBUG_print_ir_stmt(&text, stmt);
-    }
+    str_printf(&text, "%5d: ", i);
+    DEBUG_print_ir_stmt(&text, stmt);
     str_printfln(&text, "");
   }
 
@@ -5428,18 +5422,39 @@ void DEBUG_print_ir_code(IrContext* ir_context, char* file_path)
   end_temp_memory(&arena);
 }
 
-IrStmt* get_nonlabel_ir_stmt(IrStmt* ir_code, int stmt_count, int at_index)
+IrStmt* get_nonlabel_ir_stmt(IrStmt* ir_code, int stmt_count, int* index)
 {
   IrStmt* result = 0;
-  for(int i = at_index;
+  for(int i = *index;
       i < stmt_count || (result = 0); // set the result to 0 if 'i >= count'
       i++)
   {
     result = &ir_code[i];
     if(result->kind != eIrStmt_label)
+    {
+      *index = i;
       break;
+    }
   }
   return result;
+}
+
+// The function assumes that the set already contains the first (minimum index) leader statement.
+void insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
+{
+  ListItem* li = 0;
+  IrStmtLeader* e = 0;
+  for(li = leaders->first, e = KIND(li, eList_ir_stmt_leader)->ir_stmt_leader;
+      li && (stmt_nr < e->stmt_nr);
+      li = li->next, e = KIND(li, eList_ir_stmt_leader)->ir_stmt_leader)
+  { }
+  if(stmt_nr > e->stmt_nr)
+  {
+    IrStmtLeader* new_elem = mem_push_struct(leaders->arena, IrStmtLeader);
+    new_elem->stmt_nr = stmt_nr;
+    new_elem->stmt = stmt;
+    insert_elem_after(leaders, li, new_elem, eList_ir_stmt_leader);
+  }
 }
 
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
@@ -5493,38 +5508,65 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     int ir_stmt_count = ir_context.stmt_count;
     if(ir_stmt_count > 0)
     {
-      List* leaders = new_list(arena, eList_ir_stmt);
-      ir_code[0].is_leader = true;
-      append_list_elem(leaders, &ir_code[0], eList_ir_stmt);
+      List* leaders = new_list(arena, eList_ir_stmt_leader);
+      IrStmtLeader* first_leader = mem_push_struct(arena, IrStmtLeader);
+      first_leader->stmt_nr = 0;
+      first_leader->stmt = &ir_code[0];
+      append_list_elem(leaders, first_leader, eList_ir_stmt_leader);
       for(int i = 1; i < ir_stmt_count; i++)
       {
         IrStmt* stmt = &ir_code[i];
         if(stmt->kind == eIrStmt_cond_goto || stmt->kind == eIrStmt_goto)
         {
-          IrStmt* leader_stmt = 0;
+          IrStmt* nonlabel_stmt = 0;
           if(i+1 < ir_stmt_count)
           {
-            leader_stmt = get_nonlabel_ir_stmt(ir_code, ir_stmt_count, i+1);
-            if(leader_stmt && !leader_stmt->is_leader)
-            {
-              leader_stmt->is_leader = true;
-              append_list_elem(leaders, leader_stmt, eList_ir_stmt);
-            }
+            int stmt_nr = i+1;
+            nonlabel_stmt = get_nonlabel_ir_stmt(ir_code, ir_stmt_count, &stmt_nr);
+            if(nonlabel_stmt)
+              insert_leader_stmt(leaders, stmt_nr, nonlabel_stmt);
           }
           Label* target_label = 0;
           if(stmt->kind == eIrStmt_cond_goto)
             target_label = stmt->cond_goto.label;
           else if(stmt->kind == eIrStmt_goto)
             target_label = stmt->label;
-          leader_stmt = get_nonlabel_ir_stmt(ir_code, ir_stmt_count, target_label->index);
-          if(leader_stmt && !leader_stmt->is_leader)
-          {
-            leader_stmt->is_leader = true;
-            append_list_elem(leaders, leader_stmt, eList_ir_stmt);
-          }
+          int stmt_nr = target_label->stmt_nr;
+          nonlabel_stmt = get_nonlabel_ir_stmt(ir_code, ir_stmt_count, &stmt_nr);
+          if(nonlabel_stmt)
+            insert_leader_stmt(leaders, stmt_nr, nonlabel_stmt);
         }
       }
-      breakpin();
+      ///
+      List* basic_blocks = new_list(ir_context.ir_arena, eList_basic_block);
+      for(ListItem* li = leaders->first;
+          li;
+          li = li->next)
+      {
+        ListItem* li_next = li->next;
+        int next_stmt_nr = ir_context.stmt_count;
+        if(li_next)
+        {
+          IrStmtLeader* leader_next = KIND(li_next, eList_ir_stmt_leader)->ir_stmt_leader;
+          next_stmt_nr = leader_next->stmt_nr;
+        }
+        IrStmtLeader* leader = KIND(li, eList_ir_stmt_leader)->ir_stmt_leader;
+        BasicBlock* block = mem_push_struct(ir_context.ir_arena, BasicBlock);
+        append_list_elem(basic_blocks, block, eList_basic_block);
+        leader->block = block;
+        block->leader = mem_push_array(ir_context.ir_arena, IrStmt*, next_stmt_nr - leader->stmt_nr);
+        block->stmt_count = 0;
+        for(int i = leader->stmt_nr;
+            i < next_stmt_nr;
+            i++)
+        {
+          IrStmt* stmt = &ir_code[i];
+          if(stmt->kind != eIrStmt_label)
+            block->leader[block->stmt_count++] = stmt;
+        }
+        assert(block->stmt_count > 0);
+        breakpin();
+      }
     }
   }
 

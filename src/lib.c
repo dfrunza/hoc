@@ -490,7 +490,6 @@ void remove_list_item(List* list, ListItem* item)
     if(list->last)
       list->last->next = 0;
   }
-
   item->next = item->prev = 0;
 }
 
@@ -587,3 +586,61 @@ void join_list_pair(List* list_a, List* list_b)
   if(first_b_item)
     first_b_item->prev = last_a_item;
 }
+
+void insert_item_before(List* list, ListItem* at_li, ListItem* new_li)
+{
+  if(at_li->prev)
+  {
+    at_li->prev->next = new_li;
+    if(at_li->next)
+      at_li->next->prev = new_li;
+  }
+  if(at_li == list->first)
+    list->first = new_li;
+  new_li->next = at_li;
+  new_li->prev = at_li->prev;
+  at_li->prev = new_li;
+}
+
+void insert_elem_before(List* list, ListItem* at_li, void* elem, eList kind)
+{
+  ListItem* new_li = mem_push_struct(list->arena, ListItem);
+  new_li->elem = elem;
+  new_li->kind = kind;
+  insert_item_before(list, at_li, new_li);
+}
+
+void insert_item_after(List* list, ListItem* at_li, ListItem* new_li)
+{
+  if(at_li->next)
+  {
+    at_li->next->prev = new_li;
+    if(at_li->prev)
+      at_li->prev->next = new_li;
+  }
+  if(at_li == list->last)
+    list->last = new_li;
+  new_li->prev = at_li;
+  new_li->next = at_li->next;
+  at_li->next = new_li;
+}
+
+void insert_elem_after(List* list, ListItem* at_li, void* elem, eList kind)
+{
+  ListItem* new_li = mem_push_struct(list->arena, ListItem);
+  new_li->elem = elem;
+  new_li->kind = kind;
+  insert_item_after(list, at_li, new_li);
+}
+
+ListItem* remove_first_item(List* list)
+{
+  ListItem* result = 0;
+  if(list->first)
+  {
+    result = list->first;
+    list->first = list->first->next;
+  }
+  return result;
+}
+

@@ -17,7 +17,7 @@ REM /W{n}         - warning output level (/W0 disable all warnings)
 REM /Wall         - display all warnings
 
 SET C_flags=/Od /W4 /nologo /MTd /Zo /Zi /Gm- /GS- /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
-                  /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459
+            /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459
 SET L_flags=/incremental:no /opt:ref /subsystem:console
 
 IF NOT EXIST .\bin mkdir .\bin
@@ -39,8 +39,8 @@ IF %ERRORLEVEL% NEQ 0 GOTO :end
 REM /Cx     - preserve case in publics, externs
 REM /Zi     - add symbolic debug info
 REM /Fl     - generate listing
-REM ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
-REM /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
+ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
+   /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
 
 :end
 POPD

@@ -500,7 +500,7 @@ typedef struct
   eIrArg kind;
   union {
     Symbol* data_obj;
-    IrConstant const_;
+    IrConstant constant;
   };
 }
 IrArg;
@@ -571,6 +571,67 @@ typedef struct IrLeaderStmt
   IrStmt* stmt;
 }
 IrLeaderStmt;
+
+typedef enum
+{
+  eX86Instr_None,
+  eX86Instr_mov,
+}
+eX86Instr;
+
+typedef enum
+{
+  eX86Register_None,
+  eX86Register_eax,
+  eX86Register_ebx,
+  eX86Register_ecx,
+  eX86Register_edx,
+  eX86Register_ebp,
+  eX86Register_esp,
+  eX86Register_esi,
+  eX86Register_edi,
+  eX86Register_xmm0,
+  eX86Register_xmm1,
+  eX86Register_xmm2,
+  eX86Register_xmm3,
+  eX86Register_xmm4,
+  eX86Register_xmm5,
+  eX86Register_xmm6,
+  eX86Register_xmm7,
+}
+eX86Register;
+
+typedef enum
+{
+  eX86Operand_None,
+  eX86Operand_object,
+  eX86Operand_immediate,
+  eX86Operand_register,
+}
+eX86Operand;
+
+typedef struct X86Operand
+{
+  eX86Operand kind;
+  union {
+    Symbol* object;
+    IrConstant immediate;
+    eX86Register reg;
+  };
+}
+X86Operand;
+
+typedef struct X86Instr
+{
+  eX86Instr opcode;
+  union {
+    struct X86Instr_mov {
+      X86Operand dest;
+      X86Operand source;
+    } mov;
+  };
+}
+X86Instr;
 
 typedef enum
 {

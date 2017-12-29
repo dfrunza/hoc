@@ -4410,27 +4410,27 @@ void gen_ir_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
 
   IrArg* place = lit->place = mem_push_struct(arena, IrArg);
   place->kind = eIrArg_const;
-  IrConstant* const_ = &place->const_;
+  IrConstant* constant = &place->constant;
   switch(lit->lit.kind)
   {
     case eLiteral_int:
-      const_->kind = eIrConstant_int;
-      const_->int_val = lit->lit.int_val;
+      constant->kind = eIrConstant_int;
+      constant->int_val = lit->lit.int_val;
       break;
 
     case eLiteral_float:
-      const_->kind = eIrConstant_float;
-      const_->float_val = lit->lit.float_val;
+      constant->kind = eIrConstant_float;
+      constant->float_val = lit->lit.float_val;
       break;
 
     case eLiteral_bool:
-      const_->kind = eIrConstant_int;
-      const_->int_val = (int)lit->lit.bool_val;
+      constant->kind = eIrConstant_int;
+      constant->int_val = (int)lit->lit.bool_val;
       break;
 
     case eLiteral_char:
-      const_->kind = eIrConstant_char;
-      const_->char_val = lit->lit.char_val;
+      constant->kind = eIrConstant_char;
+      constant->char_val = lit->lit.char_val;
       break;
 
     default:
@@ -4525,7 +4525,7 @@ bool gen_ir_index(IrContext* ir_context, Scope* scope, AstNode* index)
       t->data_obj = new_tempvar(arena, scope, basic_type_int);
       IrArg* dim_size = mem_push_struct(arena, IrArg);
       dim_size->kind = eIrArg_const;
-      if(dim_size->const_.int_val = size_of_array_dim(index->index.array_ty, index->index.ndim) > 0)
+      if(dim_size->constant.int_val = size_of_array_dim(index->index.array_ty, index->index.ndim) > 0)
       {
         ir_emit_assign(ir_context, eIrOp_mul, array_expr->index.i_place, dim_size, t);
         ir_emit_assign(ir_context, eIrOp_add, t, i_expr->place, t);
@@ -4550,7 +4550,7 @@ bool gen_ir_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
     offset->data_obj = new_tempvar(arena, scope, basic_type_int);
     IrArg* width = mem_push_struct(arena, IrArg);
     width->kind = eIrArg_const;
-    width->const_.int_val = array_elem_width(index->index.array_ty);
+    width->constant.int_val = array_elem_width(index->index.array_ty);
     ir_emit_assign(ir_context, eIrOp_mul, index->index.i_place, width, offset);
   }
   return success;
@@ -5240,16 +5240,16 @@ void DEBUG_print_ir_arg(String* text, IrArg* arg)
       break;
 
     case eIrArg_const:
-      switch(arg->const_.kind)
+      switch(arg->constant.kind)
       {
         case eIrConstant_int:
-          str_printf(text, "%d", arg->const_.int_val);
+          str_printf(text, "%d", arg->constant.int_val);
           break;
         case eIrConstant_float:
-          str_printf(text, "%f", arg->const_.float_val);
+          str_printf(text, "%f", arg->constant.float_val);
           break;
         case eIrConstant_char:
-          str_printf(text, "%c", arg->const_.char_val);
+          str_printf(text, "%c", arg->constant.char_val);
           break;
         default:
           assert(0);
@@ -5477,6 +5477,88 @@ void insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
   }
 }
 
+void print_x86_operand(String* x86_text, X86Operand* operand)
+{
+  switch(operand->kind)
+  {
+    case eX86Operand_object:
+      {
+        Symbol* object = operand->object;
+        str_printf(x86_text, "DWORD PTR [ebp%+d]", -object->data_loc);
+      }
+      break;
+    case eX86Operand_register:
+      {
+        switch(operand->reg)
+        {
+          case eX86Register_eax:
+            str_printf(x86_text, "eax");
+            break;
+          case eX86Register_ebx:
+            str_printf(x86_text, "ebx");
+            break;
+          case eX86Register_ecx:
+            str_printf(x86_text, "ecx");
+            break;
+          case eX86Register_edx:
+            str_printf(x86_text, "edx");
+            break;
+          case eX86Register_ebp:
+            str_printf(x86_text, "ebp");
+            break;
+          case eX86Register_esp:
+            str_printf(x86_text, "esp");
+            break;
+          case eX86Register_esi:
+            str_printf(x86_text, "esi");
+            break;
+          case eX86Register_edi:
+            str_printf(x86_text, "edi");
+            break;
+          default:
+            assert(0);
+        }
+      }
+      break;
+    case eX86Operand_immediate:
+      {
+        switch(operand->immediate.kind)
+        {
+          case eIrConstant_int:
+            str_printf(x86_text, "%d", operand->immediate.int_val);
+            break;
+          case eIrConstant_float:
+            fail("todo");
+            break;
+          case eIrConstant_char:
+            fail("todo");
+            break;
+        }
+      }
+      break;
+    default:
+      assert(0);
+  }
+}
+
+void print_x86_instr(String* x86_text, X86Instr* instr)
+{
+  switch(instr->opcode)
+  {
+    case eX86Instr_mov:
+      {
+        str_printf(x86_text, "mov ");
+        print_x86_operand(x86_text, &instr->mov.dest);
+        str_printf(x86_text, ", ");
+        print_x86_operand(x86_text, &instr->mov.source);
+        str_printfln(x86_text, "");
+      }
+      break;
+    default:
+      assert(0);
+  }
+}
+
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 {
   basic_type_bool = new_basic_type(eBasicType_bool);
@@ -5487,11 +5569,11 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   subst_list = new_list(arena, eList_type_pair);
 
   ir_arg_bool_true.kind = eIrArg_const;
-  ir_arg_bool_true.const_.kind = eIrConstant_int;
-  ir_arg_bool_true.const_.int_val = 1;
+  ir_arg_bool_true.constant.kind = eIrConstant_int;
+  ir_arg_bool_true.constant.int_val = 1;
   ir_arg_bool_false.kind = eIrArg_const;
-  ir_arg_bool_false.const_.kind = eIrConstant_int;
-  ir_arg_bool_false.const_.int_val = 0;
+  ir_arg_bool_false.constant.kind = eIrConstant_int;
+  ir_arg_bool_false.constant.int_val = 0;
 
   SymbolContext sym_context = {0};
   sym_context.arena = push_arena(&arena, 1*MEGABYTE);
@@ -5524,8 +5606,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   DEBUG_print_ir_code(&ir_context, "./out.ir");
 
   // Partition IR into basic blocks
-  List* basic_blocks = new_list(ir_context.ir_arena, eList_basic_block);
   {
+    List* basic_blocks = new_list(ir_context.ir_arena, eList_basic_block);
     IrStmt* ir_code = (IrStmt*)ir_context.ir_arena->base;
     int ir_stmt_count = ir_context.stmt_count;
     if(ir_stmt_count > 0)
@@ -5631,8 +5713,65 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         }
       }
     }
-    breakpoint();
-  }
+    ///
+#if 0
+    for(ListItem* li = basic_blocks->first;
+        li;
+        li = li->next)
+    {
+      BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
+      IrStmt* stmt = bb->stmt_array[0];
+      if(stmt->kind == eIrStmt_assign)
+      {
+        eIrOp op = stmt->assign.op;
+        if(op == eIrOp_None)
+        {
+
+        }
+      }
+    }
+#endif
+    BasicBlock* bb = KIND(basic_blocks->first, eList_basic_block)->basic_block;
+    IrStmt* ir_stmt = bb->stmt_array[0];
+    assert(ir_stmt->kind == eIrStmt_assign);
+
+    X86Instr instr = {0};
+    instr.opcode = eX86Instr_mov;
+
+#if 0
+    X86Operand* dest = &instr.mov.dest;
+    dest->kind = eX86Operand_register;
+    dest->reg = eX86Register_eax;
+#endif
+    X86Operand* dest = &instr.mov.dest;
+    dest->kind = eX86Operand_object;
+    IrArg* result = ir_stmt->assign.result;
+    assert(result->kind == eIrArg_data_obj);
+    dest->object = result->data_obj;
+
+    X86Operand* source = &instr.mov.source;
+    source->kind = eX86Operand_immediate;
+    source->immediate.kind = eIrConstant_int;
+    source->immediate.int_val = 123;
+
+    str_init(x86_text, push_arena(&arena, 1*MEGABYTE));
+    str_printfln(x86_text, ".686");
+    str_printfln(x86_text, ".xmm");
+    str_printfln(x86_text, ".model flat, C");
+    str_printfln(x86_text, ".stack 4096");
+    str_printfln(x86_text, ".data");
+    str_printfln(x86_text, "static_area LABEL BYTE");
+    str_printfln(x86_text, ".code");
+    str_printfln(x86_text, "startup PROC");
+    str_printfln(x86_text, "push ebp");
+    str_printfln(x86_text, "mov ebp, esp");
+    print_x86_instr(x86_text, &instr);
+    str_printfln(x86_text, "mov esp, ebp");
+    str_printfln(x86_text, "pop ebp");
+    str_printfln(x86_text, "ret");
+    str_printfln(x86_text, "startup ENDP");
+    str_printfln(x86_text, "END");
+  };
 
 #if 0
   AstNode* module_body = module->module.body;

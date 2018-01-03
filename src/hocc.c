@@ -11,6 +11,7 @@
 bool DEBUG_enabled = true;
 bool DEBUG_zero_arena = true;
 bool DEBUG_check_arena_bounds = true;
+bool DEBUG_zero_struct = true;
 
 MemoryArena* arena = 0;
 
@@ -310,7 +311,7 @@ int main(int argc, char* argv[])
     goto end;
   }
   char* src_file_path = argv[1];
-  arena = new_arena(ARENA_SIZE);
+  arena = new_arena(10*MEGABYTE);
 
   char* hoc_text = file_read_text(arena, src_file_path);
 

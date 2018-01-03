@@ -2,6 +2,14 @@
 REM        MSVC
 REM --------------------
 
+SET base_dir=%cd%
+IF NOT EXIST .\bin mkdir .\bin
+PUSHD .\bin
+
+SET hoc_file=test
+SET hoc_dir=%base_dir%\hoc
+SET src_dir=%base_dir%\src
+
 REM /wd4706       - assignment within conditional expression
 REM /wd4013       - undefined function (missing forward declaration)
 REM /wd4211       - nonstandard extension used (related to wd4013)
@@ -19,13 +27,6 @@ REM /Wall         - display all warnings
 SET C_flags=/Od /W4 /nologo /MTd /Zo /Zi /Gm- /GS- /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
             /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459
 SET L_flags=/incremental:no /opt:ref /subsystem:console
-
-IF NOT EXIST .\bin mkdir .\bin
-PUSHD .\bin
-
-SET hoc_file=test
-SET hoc_dir=%cd%\..\hoc
-SET src_dir=%cd%\..\src
 
 REM ..\ctime.exe ^
 cl %C_flags% %src_dir%\hocc.c /link %L_flags%

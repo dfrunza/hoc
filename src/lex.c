@@ -151,7 +151,7 @@ char* install_escaped_str(EscapedStr* estr)
 
 char* get_token_printstr(Token* token)
 {
-  static char char_print_buf[3] = {0};
+  local_persist char char_print_buf[3] = {0};
   char* result = 0;
 
   switch(token->kind)

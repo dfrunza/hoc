@@ -106,11 +106,11 @@ void end_temp_memory(MemoryArena** arena)
   pop_arena(arena);
 }
 
-#define mem_push_struct(ARENA, TYPE) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), 1, true))
-#define mem_push_array(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT, true))
-#define mem_push_array_nz(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT, false))
+#define mem_push_struct(ARENA, TYPE) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), 1))
+#define mem_push_array(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT))
+#define mem_push_array_nz(ARENA, TYPE, COUNT) ((TYPE*)mem_push_struct_(ARENA, sizeof(TYPE), COUNT))
 
-void* mem_push_struct_(MemoryArena* arena, int elem_size, int count, bool zero_mem)
+void* mem_push_struct_(MemoryArena* arena, int elem_size, int count)
 {
   assert(count > 0);
 
@@ -121,7 +121,7 @@ void* mem_push_struct_(MemoryArena* arena, int elem_size, int count, bool zero_m
   {
     arena_check_bounds(arena);
   }
-  if(zero_mem)
+  if(DEBUG_zero_struct)
   {
     mem_zero_range(element, arena->free);
   }

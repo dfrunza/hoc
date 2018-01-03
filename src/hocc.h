@@ -1,4 +1,3 @@
-#define ARENA_SIZE (5*MEGABYTE)
 #define BINIMAGE_SIGNATURE "HC"
 #define MACHINE_WORD_SIZE 4
 
@@ -23,6 +22,8 @@ typedef double float64;
 #define false (bool)0
 #define true  (bool)1
 #define inline __inline
+#define local_persist static
+#define global_var static
 
 typedef struct String String;
 typedef struct List List;
@@ -73,28 +74,6 @@ typedef struct SourceLoc
   char* src_line;
 }
 SourceLoc;
-
-typedef enum
-{
-  eLabel_None,
-  eLabel_symbolic,
-  eLabel_numeric,
-  eLabel_basic_block,
-}
-eLabel;
-
-typedef struct Label
-{
-  eLabel kind;
-  int stmt_nr;
-  union
-  {
-    char* name;
-    int num;
-    BasicBlock* basic_block;
-  };
-}
-Label;
 
 typedef enum
 {
@@ -182,7 +161,8 @@ typedef struct Token
   eToken kind;
   char* lexeme;
 
-  union {
+  union
+  {
     int* int_val;
     float* float_val;
     char char_val;
@@ -281,7 +261,8 @@ eList;
 typedef struct ListItem
 {
   eList kind;
-  union {
+  union
+  {
     void* elem;
     AstNode* ast_node;
     Symbol* symbol;
@@ -370,42 +351,50 @@ typedef struct Type
   Type* repr_type; // representative member of the set of equivalent types
   int width;
 
-  union {
-    struct {
+  union
+  {
+    struct
+    {
       Type* type;
     }
     var;
 
-    struct {
+    struct
+    {
       eBasicType kind;
     }
     basic;
 
-    struct {
+    struct
+    {
       Type* pointee;
     }
     pointer;
 
-    struct {
+    struct
+    {
       Type* args;
       Type* ret;
     }
     proc;
 
-    struct {
+    struct
+    {
       Type* left;
       Type* right;
     }
     product;
 
-    struct {
+    struct
+    {
       int size;
       int ndim;
       Type* elem;
     }
     array;
 
-    struct {
+    struct
+    {
       int id;
     }
     typevar;
@@ -464,6 +453,7 @@ typedef struct
 {
   MemoryArena* ir_arena;
   MemoryArena* sym_arena;
+  IrStmt* stmt_array;
   int stmt_count;
 }
 IrContext;
@@ -476,10 +466,36 @@ typedef enum
 }
 eIrConstant;
 
+typedef enum
+{
+  eIrLabel_None,
+  eIrLabel_symbolic,
+  eIrLabel_numeric,
+  eIrLabel_basic_block,
+}
+eIrLabel;
+
+typedef struct IrLabel
+{
+  eIrLabel kind;
+  union
+  {
+    int stmt_nr;
+    BasicBlock* basic_block;
+  };
+  union
+  {
+    char* name;
+    int num;
+  };
+}
+IrLabel;
+
 typedef struct
 {
   eIrConstant kind;
-  union {
+  union
+  {
     int int_val;
     float float_val;
     char char_val;
@@ -490,16 +506,17 @@ IrConstant;
 typedef enum
 {
   eIrArg_None,
-  eIrArg_data_obj,
-  eIrArg_const,
+  eIrArg_object,
+  eIrArg_constant,
 }
 eIrArg;
 
 typedef struct
 {
   eIrArg kind;
-  union {
-    Symbol* data_obj;
+  union
+  {
+    Symbol* object;
     IrConstant constant;
   };
 }
@@ -515,6 +532,7 @@ typedef enum
   eIrStmt_param,
   eIrStmt_label,
   eIrStmt_return,
+  eIrStmt_nop,
 }
 eIrStmt;
 
@@ -522,13 +540,13 @@ typedef struct IrStmt
 {
   eIrStmt kind;
 
-  union {
+  union
+  {
     IrArg* param, *ret;
-    union {
-      Label* label;
-    };
+    IrLabel* label;
 
-    struct IrStmt_assign {
+    struct IrStmt_assign
+    {
       eIrOp op;
       IrArg* arg1;
       IrArg* arg2;
@@ -536,17 +554,17 @@ typedef struct IrStmt
     }
     assign;
 
-    struct IrStmt_cond_goto {
+    struct IrStmt_cond_goto
+    {
       eIrOp relop;
       IrArg* arg1;
       IrArg* arg2;
-      union {
-        Label* label;
-      };
+      IrLabel* label;
     }
     cond_goto;
 
-    struct IrStmt_call {
+    struct IrStmt_call
+    {
       char* name;
       int param_count;
     }
@@ -557,8 +575,9 @@ IrStmt;
 
 typedef struct BasicBlock
 {
-  int stmt_count;
+  char label[12];
   IrStmt** stmt_array;
+  int stmt_count;
   List pred_list;
   List succ_list;
 }
@@ -571,13 +590,6 @@ typedef struct IrLeaderStmt
   IrStmt* stmt;
 }
 IrLeaderStmt;
-
-typedef enum
-{
-  eX86Instr_None,
-  eX86Instr_mov,
-}
-eX86Instr;
 
 typedef enum
 {
@@ -604,34 +616,60 @@ eX86Register;
 typedef enum
 {
   eX86Operand_None,
-  eX86Operand_object,
-  eX86Operand_immediate,
+  eX86Operand_id,
+  eX86Operand_absolute,
+  eX86Operand_constant,
   eX86Operand_register,
+  eX86Operand_indexed,
+  eX86Operand_indirect,
 }
 eX86Operand;
 
 typedef struct X86Operand
 {
   eX86Operand kind;
-  union {
-    Symbol* object;
-    IrConstant immediate;
+  union
+  {
+    char* id;
+    int memory_location;
+    int constant;
     eX86Register reg;
+
+    struct
+    {
+      int constant;
+      eX86Register reg;
+    }
+    indexed;
   };
 }
 X86Operand;
 
-typedef struct X86Instr
+typedef enum
 {
-  eX86Instr opcode;
-  union {
-    struct X86Instr_mov {
-      X86Operand dest;
-      X86Operand source;
-    } mov;
+  eX86Stmt_None,
+  eX86Stmt_mov,
+  eX86Stmt_imul,
+  eX86Stmt_label,
+  eX86Stmt_jmp,
+  eX86Stmt_je,
+  eX86Stmt_nop,
+}
+eX86Stmt;
+
+typedef struct X86Stmt
+{
+  eX86Stmt kind;
+  union
+  {
+    struct
+    {
+      X86Operand* operand1;
+      X86Operand* operand2;
+    };
   };
 }
-X86Instr;
+X86Stmt;
 
 typedef enum
 {
@@ -677,30 +715,35 @@ typedef struct AstNode
   eModifier modifier;
   IrArg* place;
 
-  Label* label_true;
-  Label* label_false;
-  Label* label_next;
-  Label* label_begin;
+  IrLabel* label_true;
+  IrLabel* label_false;
+  IrLabel* label_next;
+  IrLabel* label_begin;
 
-  union {
-    struct {
+  union
+  {
+    struct
+    {
       AstNode* from_expr;
       AstNode* to_type;
     }
     cast;
 
-    struct {
+    struct
+    {
       AstNode* dest_expr;
       AstNode* source_expr;
     }
     assign;
 
-    struct {
+    struct
+    {
       AstNode* pointee;
     }
     pointer;
 
-    struct {
+    struct
+    {
       AstNode* size_expr;
       AstNode* elem_expr;
       int size;
@@ -708,7 +751,8 @@ typedef struct AstNode
     }
     array;
 
-    struct {
+    struct
+    {
       AstNode* array_expr;
       AstNode* i_expr;
       IrArg* place;   // L.place
@@ -719,17 +763,20 @@ typedef struct AstNode
     }
     index;
 
-    struct {
+    struct
+    {
       eBasicType kind;
     }
     basic_type;
 
-    struct {
+    struct
+    {
       List nodes;
     }
     arg_list;
 
-    struct {
+    struct
+    {
       char* name;
       AstNode* decl_ast;
       int order_nr;
@@ -738,20 +785,23 @@ typedef struct AstNode
     }
     id;
 
-    struct {
+    struct
+    {
       AstNode* left_operand;
       AstNode* right_operand;
       eOperator op;
     }
     bin_expr;
 
-    struct {
+    struct
+    {
       AstNode* operand;
       eOperator op;
     }
     unr_expr;
 
-    struct {
+    struct
+    {
       AstNode* expr;
       AstNode* arg_list;
       AstNode* proc;
@@ -765,29 +815,33 @@ typedef struct AstNode
     }
     ret;
 
-    struct {
+    struct
+    {
       eLoopCtrl kind;
       AstNode* loop;
       int nesting_depth;
     }
     loop_ctrl;
 
-    struct {
+    struct
+    {
       AstNode* cond_expr;
       AstNode* body;
       AstNode* else_body;
     }
     if_;
 
-    struct {
+    struct
+    {
       AstNode* cond_expr;
       AstNode* body;
       Scope* scope;
-      Label label;
+      IrLabel label;
     }
     while_, do_while;
 
-    struct {
+    struct
+    {
       char* name;
       AstNode* arg_list;
       AstNode* ret_type;
@@ -798,12 +852,14 @@ typedef struct AstNode
     }
     proc;
 
-    struct {
+    struct
+    {
       char* str_val;
     }
     str;
 
-    struct {
+    struct
+    {
       eLiteral kind;
       union
       {
@@ -815,14 +871,16 @@ typedef struct AstNode
     }
     lit;
 
-    struct {
+    struct
+    {
       char* name;
       AstNode* type;
       Symbol* decl_sym;
     }
     var;
 
-    struct {
+    struct
+    {
       char* file_path;
       AstNode* body;
       List nodes;
@@ -833,13 +891,15 @@ typedef struct AstNode
     }
     module;
 
-    struct {
+    struct
+    {
       char* file_path;
       AstNode* body;
     }
     include;
 
-    struct {
+    struct
+    {
       Scope* scope;
       List nodes;
       List vars;
@@ -847,7 +907,8 @@ typedef struct AstNode
     }
     block;
 
-    struct {
+    struct
+    {
       char* name;
       AstNode* id;
       List* members;
@@ -855,7 +916,8 @@ typedef struct AstNode
     enum_decl,
     union_decl, struct_decl; //record;
 
-    struct {
+    struct
+    {
       char* asm_text;
     }
     asm_block;

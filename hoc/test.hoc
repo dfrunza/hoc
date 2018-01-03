@@ -3,7 +3,6 @@ void main()
   []int A;
   []int B;
 
-  /*
   int prod; prod = 0;
   int i; i = 1;
   do
@@ -12,8 +11,8 @@ void main()
     i = i + 1;
   }
   while(i <= 20);
-  */
 
+  /*
   int a;
   int b;
   int prod; prod = 0;
@@ -23,5 +22,6 @@ void main()
     prod = prod + A[i]*B[i];
     i = i + 1;
   }
+  */
 }
 

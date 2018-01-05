@@ -753,11 +753,11 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
 
 void alloc_data_object(Symbol* sym, Scope* scope)
 {
-  sym->data_loc = scope->data_offset;
-  int area_size = sym->ty->width;
-  if((area_size & (MACHINE_WORD_SIZE-1)) != 0)
-    area_size = (area_size + MACHINE_WORD_SIZE) & ~(MACHINE_WORD_SIZE-1);
-  scope->data_offset += area_size;
+  sym->data_loc = scope->data_size;
+  sym->data_size = sym->ty->width;
+  if((sym->data_size & (MACHINE_WORD_SIZE-1)) != 0)
+    sym->data_size = (sym->data_size + MACHINE_WORD_SIZE) & ~(MACHINE_WORD_SIZE-1);
+  scope->data_size += sym->data_size;
 }
 
 Symbol* new_tempvar(MemoryArena* arena, Scope* scope, Type* ty)
@@ -790,7 +790,7 @@ Scope* begin_scope(SymbolContext* sym_context, eScope kind, AstNode* ast_node)
   scope->kind = kind;
   scope->nesting_depth = sym_context->nesting_depth;
   scope->sym_count = 0;
-  scope->data_offset = 0;
+  scope->data_size = 0;
   scope->encl_scope = sym_context->active_scope;
   scope->ast_node = ast_node;
   init_list(&scope->decl_syms, arena, eList_symbol);
@@ -5111,7 +5111,7 @@ bool gen_ir_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
     gen_ir_formal_args(ir_context, proc->proc.scope, proc->proc.arg_list);
     if(success = gen_ir_block_stmt(ir_context, body->block.scope, body))
     {
-      //ir_emit_return(ir_context, 0);
+      ir_emit_return(ir_context, 0);
     }
   }
   return success;
@@ -5123,8 +5123,12 @@ bool gen_ir_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
   switch(stmt->kind)
   {
     case eAstNode_proc:
-      //ir_emit_label(ir_context, make_symbolic_label(arena, stmt->proc.name));
+      ir_emit_label(ir_context, make_symbolic_label(arena, stmt->proc.name));
       success = gen_ir_proc(ir_context, scope, stmt);
+      break;
+
+    case eAstNode_var:
+      alloc_data_object(stmt->var.decl_sym, scope);
       break;
 
     default:
@@ -5491,70 +5495,61 @@ void insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
   }
 }
 
+void print_x86_register(String* x86_text, eX86Register R)
+{
+  switch(R)
+  {
+    case eX86Register_eax:
+      str_printf(x86_text, "eax");
+      break;
+    case eX86Register_ebx:
+      str_printf(x86_text, "ebx");
+      break;
+    case eX86Register_ecx:
+      str_printf(x86_text, "ecx");
+      break;
+    case eX86Register_edx:
+      str_printf(x86_text, "edx");
+      break;
+    case eX86Register_ebp:
+      str_printf(x86_text, "ebp");
+      break;
+    case eX86Register_esp:
+      str_printf(x86_text, "esp");
+      break;
+    case eX86Register_esi:
+      str_printf(x86_text, "esi");
+      break;
+    case eX86Register_edi:
+      str_printf(x86_text, "edi");
+      break;
+    default:
+      assert(0);
+  }
+}
+
 void print_x86_operand(String* x86_text, X86Operand* operand)
 {
   switch(operand->kind)
   {
-    case eX86Operand_object:
-      {
-        Symbol* object = operand->object;
-        str_printf(x86_text, "DWORD PTR [ebp%+d]", -(object->data_loc+4)/*FIXME:*/);
-      }
+    case eX86Operand_indexed:
+      str_printf(x86_text, "dword ptr [");
+      print_x86_operand(x86_text, operand->indexed.base);
+      str_printf(x86_text, "%+d]", operand->indexed.i);
       break;
+
     case eX86Operand_register:
-      {
-        switch(operand->reg)
-        {
-          case eX86Register_eax:
-            str_printf(x86_text, "eax");
-            break;
-          case eX86Register_ebx:
-            str_printf(x86_text, "ebx");
-            break;
-          case eX86Register_ecx:
-            str_printf(x86_text, "ecx");
-            break;
-          case eX86Register_edx:
-            str_printf(x86_text, "edx");
-            break;
-          case eX86Register_ebp:
-            str_printf(x86_text, "ebp");
-            break;
-          case eX86Register_esp:
-            str_printf(x86_text, "esp");
-            break;
-          case eX86Register_esi:
-            str_printf(x86_text, "esi");
-            break;
-          case eX86Register_edi:
-            str_printf(x86_text, "edi");
-            break;
-          default:
-            assert(0);
-        }
-      }
+      print_x86_register(x86_text, operand->reg);
       break;
+
     case eX86Operand_constant:
-      {
-        switch(operand->constant.kind)
-        {
-          case eIrConstant_int:
-            str_printf(x86_text, "%d", operand->constant.int_val);
-            break;
-          case eIrConstant_float:
-            fail("todo");
-            break;
-          case eIrConstant_char:
-            fail("todo");
-            break;
-        }
-      }
+      str_printf(x86_text, "%d", operand->constant);
       break;
+
     case eX86Operand_id:
-      {
-        str_printf(x86_text, "%s", operand->id);
-      }
+      str_printf(x86_text, "%s", operand->id);
       break;
+
     default:
       assert(0);
   }
@@ -5613,12 +5608,30 @@ X86Operand* ir_arg_to_x86_operand(MemoryArena* arena, IrArg* arg)
   switch(arg->kind)
   {
     case eIrArg_object:
-      x86_operand->kind = eX86Operand_object;
-      x86_operand->object = arg->object;
+      {
+        Symbol* object = arg->object;
+        x86_operand->kind = eX86Operand_indexed;
+        X86Operand* base = x86_operand->indexed.base = mem_push_struct(arena, X86Operand);
+        bool is_local = (object->scope->kind != eScope_module);
+        if(is_local)
+        {
+          base->kind = eX86Operand_register;
+          base->reg = eX86Register_ebp;
+          x86_operand->indexed.i = -(arg->object->data_loc + MACHINE_WORD_SIZE);
+        }
+        else
+        {
+          base->kind = eX86Operand_id;
+          base->id = "static_area";
+          x86_operand->indexed.i = arg->object->data_loc;
+        }
+      }
       break;
     case eIrArg_constant:
-      x86_operand->kind = eX86Operand_constant;
-      x86_operand->constant = arg->constant;
+      {
+        x86_operand->kind = eX86Operand_constant;
+        x86_operand->constant = arg->constant.int_val;
+      }
       break;
     default:
       assert(0);
@@ -5839,10 +5852,12 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 
                 case eIrOp_index_source:
                   {
+                    //TODO
+#if 0
                     X86Stmt* mov = mem_push_struct(x86_arena, X86Stmt);
                     x86_stmt_count++;
                     mov->kind = eX86Stmt_mov;
-                    mov->operand1 = ir_arg
+#endif
                   }
                   break;
               }
@@ -5894,9 +5909,25 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     str_printfln(x86_text, ".model flat, C");
     str_printfln(x86_text, ".stack 4096");
     str_printfln(x86_text, ".data");
-    str_printfln(x86_text, "static_area LABEL BYTE");
+    str_printfln(x86_text, "static_area label byte");
+
+    {
+      Scope* module_scope = module->module.scope;
+      for(ListItem* li = module_scope->decl_syms.first;
+          li;
+          li = li->next)
+      {
+        Symbol* object = KIND(li, eList_symbol)->symbol;
+        if(object->data_size > 0)
+        {
+          str_printfln(x86_text, "byte %d dup(?)", object->data_size);
+        }
+      }
+    }
+
     str_printfln(x86_text, ".code");
-    str_printfln(x86_text, "startup PROC");
+    str_printfln(x86_text, "public startup");
+    str_printfln(x86_text, "startup:");
     str_printfln(x86_text, "push ebp");
     str_printfln(x86_text, "mov ebp, esp");
 
@@ -5908,7 +5939,6 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     str_printfln(x86_text, "mov esp, ebp");
     str_printfln(x86_text, "pop ebp");
     str_printfln(x86_text, "ret");
-    str_printfln(x86_text, "startup ENDP");
     str_printfln(x86_text, "END");
   }
 

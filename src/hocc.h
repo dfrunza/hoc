@@ -294,14 +294,9 @@ typedef struct Scope
   struct Scope* encl_scope;
   AstNode* ast_node;
   int sym_count;
-  int data_offset;
+  int data_size;
 
   List decl_syms;
-
-  //int static_area_size;
-  //int locals_area_size;
-  //int ret_area_size;
-  //int args_area_size;
 }
 Scope;
 
@@ -472,6 +467,7 @@ typedef enum
   eIrLabel_symbolic,
   eIrLabel_numeric,
   eIrLabel_basic_block,
+  eIrLabel_entry_point,
 }
 eIrLabel;
 
@@ -617,11 +613,9 @@ typedef enum
 {
   eX86Operand_None,
   eX86Operand_id,
-  eX86Operand_absolute,
   eX86Operand_constant,
   eX86Operand_register,
   eX86Operand_indexed,
-  eX86Operand_indirect,
 }
 eX86Operand;
 
@@ -631,14 +625,13 @@ typedef struct X86Operand
   union
   {
     char* id;
-    int memory_location;
     int constant;
     eX86Register reg;
 
-    struct
+    struct X86Operand_indexed
     {
-      int constant;
-      eX86Register reg;
+      int i;
+      struct X86Operand* base;
     }
     indexed;
   };
@@ -934,6 +927,7 @@ typedef struct Symbol
   AstNode* ast_node;
   Type* ty;
   int data_loc;
+  int data_size;
   void* data;
 }
 Symbol;

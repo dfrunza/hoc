@@ -34,7 +34,9 @@ typedef struct Scope Scope;
 typedef struct TypePair TypePair;
 typedef struct IrStmt IrStmt;
 typedef struct IrLeaderStmt IrLeaderStmt;
+typedef struct IrLabel IrLabel;
 typedef struct BasicBlock BasicBlock;
+typedef struct StorageLocation StorageLocation;
 
 typedef struct MemoryArena
 {
@@ -254,7 +256,9 @@ typedef enum
   eList_data_area,
   eList_ir_stmt,
   eList_ir_leader_stmt,
+  eList_ir_label,
   eList_basic_block,
+  eList_storage_location,
 }
 eList;
 
@@ -270,7 +274,9 @@ typedef struct ListItem
     TypePair* type_pair;
     IrStmt* ir_stmt;
     IrLeaderStmt* ir_leader_stmt;
+    IrLabel* ir_label;
     BasicBlock* basic_block;
+    StorageLocation* storage_location;
   };
   struct ListItem* next;
   struct ListItem* prev;
@@ -435,9 +441,9 @@ typedef enum
   eIrOp_ctoi,
   eIrOp_btoi,
 
-  // op | arg1 | arg2 | dest
+  // op | arg1 | arg2 | result
   eIrOp_index_source,  // result = arg1[arg2]
-  eIrOp_index_dest,    // dest[arg2] = arg1
+  eIrOp_index_dest,    // result[arg2] = arg1
   eIrOp_deref_source,  // result = *arg1
   eIrOp_deref_dest,    // *result = arg1
   eIrOp_address_of,    // result = &arg1
@@ -450,6 +456,7 @@ typedef struct
   MemoryArena* sym_arena;
   IrStmt* stmt_array;
   int stmt_count;
+  List* label_list;
 }
 IrContext;
 
@@ -463,27 +470,22 @@ eIrConstant;
 
 typedef enum
 {
-  eIrLabel_None,
-  eIrLabel_symbolic,
-  eIrLabel_numeric,
-  eIrLabel_basic_block,
-  eIrLabel_entry_point,
+  eIrLabelTarget_None,
+  eIrLabelTarget_stmt_nr,
+//  eIrLabelTarget_basic_block,
 }
-eIrLabel;
+eIrLabelTarget;
 
 typedef struct IrLabel
 {
-  eIrLabel kind;
+  eIrLabelTarget kind;
+  struct IrLabel* primary;
   union
   {
     int stmt_nr;
-    BasicBlock* basic_block;
+//    BasicBlock* basic_block;
   };
-  union
-  {
-    char* name;
-    int num;
-  };
+  char* name;
 }
 IrLabel;
 
@@ -526,7 +528,6 @@ typedef enum
   eIrStmt_cond_goto,
   eIrStmt_call,
   eIrStmt_param,
-  eIrStmt_label,
   eIrStmt_return,
   eIrStmt_nop,
 }
@@ -535,11 +536,12 @@ eIrStmt;
 typedef struct IrStmt
 {
   eIrStmt kind;
+  IrLabel* label;
 
   union
   {
     IrArg* param, *ret;
-    IrLabel* label;
+    IrLabel* goto_label;
 
     struct IrStmt_assign
     {
@@ -571,7 +573,7 @@ IrStmt;
 
 typedef struct BasicBlock
 {
-  char label[12];
+  IrLabel* label;
   IrStmt** stmt_array;
   int stmt_count;
   List pred_list;
@@ -584,6 +586,7 @@ typedef struct IrLeaderStmt
   int stmt_nr;
   BasicBlock* block;
   IrStmt* stmt;
+  IrLabel* label;
 }
 IrLeaderStmt;
 
@@ -598,14 +601,7 @@ typedef enum
   eX86Register_esp,
   eX86Register_esi,
   eX86Register_edi,
-  eX86Register_xmm0,
-  eX86Register_xmm1,
-  eX86Register_xmm2,
-  eX86Register_xmm3,
-  eX86Register_xmm4,
-  eX86Register_xmm5,
-  eX86Register_xmm6,
-  eX86Register_xmm7,
+  eX86Register_Count,
 }
 eX86Register;
 
@@ -940,4 +936,49 @@ typedef struct
   MemoryArena* arena;
 }
 SymbolContext;
+
+typedef enum
+{
+  eStorageLocation_None,
+  eStorageLocation_memory,
+  eStorageLocation_reg,
+}
+eStorageLocation;
+
+typedef enum
+{
+  eMemoryStorage_None,
+  eMemoryStorage_stack,
+  eMemoryStorage_static,
+}
+eMemoryStorage;
+
+typedef struct StorageLocation
+{
+  eStorageLocation kind;
+  Symbol* object;
+
+  union
+  {
+    struct StorageLocation_reg
+    {
+      eX86Register reg;
+      List objects;
+    }
+    reg;
+
+    struct StorageLocation_memory
+    {
+      eMemoryStorage kind;
+      int loc;
+      union
+      {
+        eX86Register stack_base;
+        char* static_area;
+      };
+    }
+    memory;
+  };
+}
+StorageLocation;
 

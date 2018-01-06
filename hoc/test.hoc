@@ -1,10 +1,10 @@
-int b;
-
 void startup()
 {
-  int a;
-  a = 1;
-  b = 2;
+  int x;
+  int y;
+  int z;
+  x = y + z;
+
   /*
   []int A;
   []int B;

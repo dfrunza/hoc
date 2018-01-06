@@ -36,7 +36,8 @@ typedef struct IrStmt IrStmt;
 typedef struct IrLeaderStmt IrLeaderStmt;
 typedef struct IrLabel IrLabel;
 typedef struct BasicBlock BasicBlock;
-typedef struct StorageLocation StorageLocation;
+typedef struct RegDescriptor RegDescriptor;
+typedef struct AddressDescriptor AddressDescriptor;
 
 typedef struct MemoryArena
 {
@@ -258,7 +259,8 @@ typedef enum
   eList_ir_leader_stmt,
   eList_ir_label,
   eList_basic_block,
-  eList_storage_location,
+  eList_reg_descriptor,
+  eList_address_descriptor,
 }
 eList;
 
@@ -276,7 +278,8 @@ typedef struct ListItem
     IrLeaderStmt* ir_leader_stmt;
     IrLabel* ir_label;
     BasicBlock* basic_block;
-    StorageLocation* storage_location;
+    RegDescriptor* reg_descriptor;
+    AddressDescriptor* address_descriptor;
   };
   struct ListItem* next;
   struct ListItem* prev;
@@ -939,46 +942,30 @@ SymbolContext;
 
 typedef enum
 {
-  eStorageLocation_None,
-  eStorageLocation_memory,
-  eStorageLocation_reg,
+  eAddressDescriptor_None,
+  eAddressDescriptor_stack,
+  eAddressDescriptor_static,
 }
-eStorageLocation;
+eAddressDescriptor;
 
-typedef enum
+typedef struct RegDescriptor
 {
-  eMemoryStorage_None,
-  eMemoryStorage_stack,
-  eMemoryStorage_static,
-}
-eMemoryStorage;
-
-typedef struct StorageLocation
-{
-  eStorageLocation kind;
   Symbol* object;
+  eX86Register reg;
+}
+RegDescriptor;
 
+typedef struct AddressDescriptor
+{
+  eAddressDescriptor kind;
+
+  Symbol* object;
+  int loc;
   union
   {
-    struct StorageLocation_reg
-    {
-      eX86Register reg;
-      List objects;
-    }
-    reg;
-
-    struct StorageLocation_memory
-    {
-      eMemoryStorage kind;
-      int loc;
-      union
-      {
-        eX86Register stack_base;
-        char* static_area;
-      };
-    }
-    memory;
+    eX86Register stack_base;
+    char* static_area;
   };
 }
-StorageLocation;
+AddressDescriptor;
 

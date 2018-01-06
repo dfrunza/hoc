@@ -1,4 +1,5 @@
 #define breakpoint() for(int x = 0; x != 0; )
+#define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
 
 bool char_is_letter(char ch)
 {

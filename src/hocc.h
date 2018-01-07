@@ -36,7 +36,7 @@ typedef struct IrStmt IrStmt;
 typedef struct IrLeaderStmt IrLeaderStmt;
 typedef struct IrLabel IrLabel;
 typedef struct BasicBlock BasicBlock;
-typedef struct RegDescriptor RegDescriptor;
+typedef struct RegisterDescriptor RegisterDescriptor;
 typedef struct AddressDescriptor AddressDescriptor;
 
 typedef struct MemoryArena
@@ -259,8 +259,8 @@ typedef enum
   eList_ir_leader_stmt,
   eList_ir_label,
   eList_basic_block,
-  eList_reg_descriptor,
   eList_address_descriptor,
+  eList_register_descriptor,
 }
 eList;
 
@@ -278,7 +278,7 @@ typedef struct ListItem
     IrLeaderStmt* ir_leader_stmt;
     IrLabel* ir_label;
     BasicBlock* basic_block;
-    RegDescriptor* reg_descriptor;
+    RegisterDescriptor* register_descriptor;
     AddressDescriptor* address_descriptor;
   };
   struct ListItem* next;
@@ -639,19 +639,22 @@ X86Operand;
 
 typedef enum
 {
-  eX86Stmt_None,
-  eX86Stmt_mov,
-  eX86Stmt_imul,
-  eX86Stmt_label,
-  eX86Stmt_jmp,
-  eX86Stmt_je,
-  eX86Stmt_nop,
+  eX86StmtOpcode_None,
+  eX86StmtOpcode_mov,
+  eX86StmtOpcode_add,
+  eX86StmtOpcode_sub,
+  eX86StmtOpcode_imul,
+  eX86StmtOpcode_idiv,
+  eX86StmtOpcode_jmp,
+  eX86StmtOpcode_je,
+  eX86StmtOpcode_nop,
+  eX86StmtOpcode_label,
 }
-eX86Stmt;
+eX86StmtOpcode;
 
 typedef struct X86Stmt
 {
-  eX86Stmt kind;
+  eX86StmtOpcode opcode;
   union
   {
     struct
@@ -917,6 +920,14 @@ typedef struct AstNode
 }
 AstNode;
 
+typedef enum
+{
+  eStorageSpace_None,
+  eStorageSpace_stack,
+  eStorageSpace_static,
+}
+eStorageSpace;
+
 typedef struct Symbol
 {
   char* name;
@@ -925,6 +936,7 @@ typedef struct Symbol
   Scope* scope;
   AstNode* ast_node;
   Type* ty;
+  eStorageSpace storage_space;
   int data_loc;
   int data_size;
   void* data;
@@ -942,30 +954,38 @@ SymbolContext;
 
 typedef enum
 {
-  eAddressDescriptor_None,
-  eAddressDescriptor_stack,
-  eAddressDescriptor_static,
+  eObjectLocation_None = 0,
+  eObjectLocation_register = 1 << 0,
+  eObjectLocation_memory = 1 << 1,
 }
-eAddressDescriptor;
+eObjectLocation;
 
-typedef struct RegDescriptor
+typedef struct RegisterDescriptor
 {
   Symbol* object;
   eX86Register reg;
 }
-RegDescriptor;
+RegisterDescriptor;
+
+typedef struct RegisterDescriptor_Map
+{
+  MemoryArena* arena;
+  List descriptors;
+}
+RegisterDescriptor_Map;
 
 typedef struct AddressDescriptor
 {
-  eAddressDescriptor kind;
-
   Symbol* object;
-  int loc;
-  union
-  {
-    eX86Register stack_base;
-    char* static_area;
-  };
+  eObjectLocation location;
 }
 AddressDescriptor;
+
+typedef struct AddressDescriptor_Map
+{
+  MemoryArena* arena;
+  List descriptors;
+}
+AddressDescriptor_Map;
+
 

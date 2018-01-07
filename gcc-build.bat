@@ -2,6 +2,7 @@
 REM        GCC
 REM --------------------
 
+SET base_dir=%cd%
 IF NOT EXIST .\bin mkdir .\bin
 PUSHD .\bin
 
@@ -9,8 +10,8 @@ SET C_flags=-g -ggdb
 SET L_flags=
 
 SET hoc_file=test
-SET hoc_dir=%cd%\..\hoc
-SET src_dir=%cd%\..\src
+SET hoc_dir=%base_dir%\hoc
+SET src_dir=%base_dir%\src
 
 REM         Without CRT
 REM ---------------------------
@@ -32,8 +33,8 @@ IF %errorlevel% NEQ 0 GOTO :hocc_error
 REM /Cx     - preserve case in publics, externs
 REM /Zi     - add symbolic debug info
 REM /Fl     - generate listing
-REM ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
-REM /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
+ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
+   /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
 
 :end
 POPD

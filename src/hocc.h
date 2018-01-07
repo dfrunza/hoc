@@ -36,8 +36,7 @@ typedef struct IrStmt IrStmt;
 typedef struct IrLeaderStmt IrLeaderStmt;
 typedef struct IrLabel IrLabel;
 typedef struct BasicBlock BasicBlock;
-typedef struct RegisterDescriptor RegisterDescriptor;
-typedef struct AddressDescriptor AddressDescriptor;
+typedef struct LocationDescriptor_MapEntry LocationDescriptor_MapEntry;
 
 typedef struct MemoryArena
 {
@@ -259,8 +258,7 @@ typedef enum
   eList_ir_leader_stmt,
   eList_ir_label,
   eList_basic_block,
-  eList_address_descriptor,
-  eList_register_descriptor,
+  eList_Ldesc_map_entry,
 }
 eList;
 
@@ -278,8 +276,7 @@ typedef struct ListItem
     IrLeaderStmt* ir_leader_stmt;
     IrLabel* ir_label;
     BasicBlock* basic_block;
-    RegisterDescriptor* register_descriptor;
-    AddressDescriptor* address_descriptor;
+    LocationDescriptor_MapEntry* Ldesc_map_entry;
   };
   struct ListItem* next;
   struct ListItem* prev;
@@ -595,18 +592,19 @@ IrLeaderStmt;
 
 typedef enum
 {
-  eX86Register_None,
-  eX86Register_eax,
-  eX86Register_ebx,
-  eX86Register_ecx,
-  eX86Register_edx,
-  eX86Register_ebp,
-  eX86Register_esp,
-  eX86Register_esi,
-  eX86Register_edi,
-  eX86Register_Count,
+  eX86Location_None,
+  eX86Location_eax,
+  eX86Location_ebx,
+  eX86Location_ecx,
+  eX86Location_edx,
+  eX86Location_ebp,
+  eX86Location_esp,
+  eX86Location_esi,
+  eX86Location_edi,
+  eX86Location_memory,
+  eX86Location_Count,
 }
-eX86Register;
+eX86Location;
 
 typedef enum
 {
@@ -625,11 +623,11 @@ typedef struct X86Operand
   {
     char* id;
     int constant;
-    eX86Register reg;
+    eX86Location reg;
 
     struct X86Operand_indexed
     {
-      int i;
+      int offset;
       struct X86Operand* base;
     }
     indexed;
@@ -952,40 +950,19 @@ typedef struct
 }
 SymbolContext;
 
-typedef enum
-{
-  eObjectLocation_None = 0,
-  eObjectLocation_register = 1 << 0,
-  eObjectLocation_memory = 1 << 1,
-}
-eObjectLocation;
-
-typedef struct RegisterDescriptor
-{
-  Symbol* object;
-  eX86Register reg;
-}
-RegisterDescriptor;
-
-typedef struct RegisterDescriptor_Map
+typedef struct LocationDescriptor
 {
   MemoryArena* arena;
-  List descriptors;
+  List loc_entries;
+  List registers[eX86Location_Count];
 }
-RegisterDescriptor_Map;
+LocationDescriptor;
 
-typedef struct AddressDescriptor
+typedef struct LocationDescriptor_MapEntry
 {
   Symbol* object;
-  eObjectLocation location;
+  bool locations[eX86Location_Count];
 }
-AddressDescriptor;
-
-typedef struct AddressDescriptor_Map
-{
-  MemoryArena* arena;
-  List descriptors;
-}
-AddressDescriptor_Map;
+LocationDescriptor_MapEntry;
 
 

@@ -4593,32 +4593,32 @@ void insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
   }
 }
 
-void print_x86_register(String* x86_text, eX86Register R)
+void print_x86_register(String* x86_text, eX86Location R)
 {
   switch(R)
   {
-    case eX86Register_eax:
+    case eX86Location_eax:
       str_printf(x86_text, "eax");
       break;
-    case eX86Register_ebx:
+    case eX86Location_ebx:
       str_printf(x86_text, "ebx");
       break;
-    case eX86Register_ecx:
+    case eX86Location_ecx:
       str_printf(x86_text, "ecx");
       break;
-    case eX86Register_edx:
+    case eX86Location_edx:
       str_printf(x86_text, "edx");
       break;
-    case eX86Register_ebp:
+    case eX86Location_ebp:
       str_printf(x86_text, "ebp");
       break;
-    case eX86Register_esp:
+    case eX86Location_esp:
       str_printf(x86_text, "esp");
       break;
-    case eX86Register_esi:
+    case eX86Location_esi:
       str_printf(x86_text, "esi");
       break;
-    case eX86Register_edi:
+    case eX86Location_edi:
       str_printf(x86_text, "edi");
       break;
     default:
@@ -4633,7 +4633,7 @@ void print_x86_operand(String* x86_text, X86Operand* operand)
     case eX86Operand_indexed:
       str_printf(x86_text, "dword ptr [");
       print_x86_operand(x86_text, operand->indexed.base);
-      str_printf(x86_text, "%+d]", operand->indexed.i);
+      str_printf(x86_text, "%+d]", operand->indexed.offset);
       break;
 
     case eX86Operand_register:
@@ -4726,14 +4726,14 @@ X86Operand* ir_arg_to_x86_operand(MemoryArena* arena, IrArg* arg)
         if(is_local)
         {
           base->kind = eX86Operand_register;
-          base->reg = eX86Register_ebp;
-          x86_operand->indexed.i = -(arg->object->data_loc + MACHINE_WORD_SIZE);
+          base->reg = eX86Location_ebp;
+          x86_operand->indexed.offset = -(arg->object->data_loc + MACHINE_WORD_SIZE);
         }
         else
         {
           base->kind = eX86Operand_id;
           base->id = "static_area";
-          x86_operand->indexed.i = arg->object->data_loc;
+          x86_operand->indexed.offset = arg->object->data_loc;
         }
       }
       break;
@@ -4749,119 +4749,211 @@ X86Operand* ir_arg_to_x86_operand(MemoryArena* arena, IrArg* arg)
   return x86_operand;
 }
 
-void update_object_address(AddressDescriptor_Map* ad_map, Symbol* object, eObjectLocation loc)
+LocationDescriptor_MapEntry* new_object_location_entry(LocationDescriptor* Ldesc, Symbol* object, eX86Location loc)
 {
-  AddressDescriptor* ad = 0;
-  for(ListItem* li = ad_map->descriptors.first;
+  LocationDescriptor_MapEntry* map_entry = mem_push_struct(Ldesc->arena, LocationDescriptor_MapEntry);
+  map_entry->object = object;
+  map_entry->locations[loc] = true;
+  append_list_elem(&Ldesc->loc_entries, map_entry, eList_Ldesc_map_entry);
+
+  for(ListItem* li = Ldesc->registers[loc].first;
       li;
       li = li->next)
   {
-    ad = KIND(li, eList_address_descriptor)->address_descriptor;
-    if(ad->object == object)
-      break;
-    ad = 0;
+    assert(object != KIND(li, eList_symbol)->symbol);
   }
-  if(!ad)
-  {
-    ad = mem_push_struct(ad_map->arena, AddressDescriptor);
-    ad->object = object;
-    append_list_elem(&ad_map->descriptors, ad, eList_address_descriptor);
-  }
-  ad->location = loc;
+  append_list_elem(&Ldesc->registers[loc], object, eList_symbol);
+  return map_entry;
 }
 
-void put_object_in_register(RegisterDescriptor_Map* rd_map, Symbol* object, eX86Register reg)
+void put_object_in_register(LocationDescriptor* Ldesc, Symbol* object, eX86Location reg)
 {
-  RegisterDescriptor* rd = 0;
-  for(ListItem* li = rd_map->descriptors.first;
+  LocationDescriptor_MapEntry* map_entry = 0;
+  for(ListItem* li = Ldesc->loc_entries.first;
       li;
       li = li->next)
   {
-    rd = KIND(li, eList_register_descriptor)->register_descriptor;
-    if((rd->object == object) && (rd->reg == reg))
-      break;
-    rd = 0;
-  }
-  if(!rd)
-  {
-    rd = mem_push_struct(rd_map->arena, RegisterDescriptor);
-    rd->object = object;
-    rd->reg = reg;
-    append_list_elem(&rd_map->descriptors, rd, eList_register_descriptor);
-  }
-}
-
-eX86Register get_free_reg(RegisterDescriptor_Map* rd_map)
-{
-  eX86Register registers[eX86Register_Count-1] =
-  {
-    eX86Register_eax,
-    eX86Register_ebx,
-    eX86Register_ecx,
-    eX86Register_edx,
-    eX86Register_esi,
-    eX86Register_edi,
-  };
-
-  eX86Register reg = eX86Register_None;
-  RegisterDescriptor* rd = 0;
-  int r = -1;
-  do
-  {
-    r++;
-    for(ListItem* li = rd_map->descriptors.first;
-        li;
-        li = li->next)
+    map_entry = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
+    if(map_entry->object == object)
     {
-      rd = KIND(li, eList_register_descriptor)->register_descriptor;
-      if(rd->reg == (eX86Register)registers[r])
+      for(int l = eX86Location_eax; l <= eX86Location_memory; l++)
+      {
+        if(map_entry->locations[l] && (eX86Location)l != reg)
+          break;
+      }
+    }
+    map_entry = 0;
+  }
+  if(!map_entry)
+  {
+    new_object_location_entry(Ldesc, object, reg);
+  }
+}
+
+eX86Location get_free_reg(LocationDescriptor* Ldesc)
+{
+  eX86Location reg = eX86Location_None;
+
+  for(int l = eX86Location_eax; l < eX86Location_memory; l++)
+  {
+    reg = (eX86Location)l;
+    if(!reg || reg == eX86Location_ebp || reg == eX86Location_esp)
+      continue;
+    List* objects = &Ldesc->registers[l];
+    if(!objects->first)
+      break;
+    reg = 0;
+  }
+  return reg;
+}
+
+eX86Location lookup_object_location(LocationDescriptor* Ldesc, Symbol* object)
+{
+  LocationDescriptor_MapEntry* map_entry = 0;
+  for(ListItem* li = Ldesc->loc_entries.first;
+      li;
+      li = li->next)
+  {
+    map_entry = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
+    if(map_entry->object == object)
+      break;
+    map_entry = 0;
+  }
+
+  eX86Location loc = eX86Location_None;
+  if(map_entry)
+  {
+    for(int l = 0; l <= eX86Location_Count; l++)
+    {
+      if(map_entry->locations[l])
+      {
+        loc = (eX86Location)l;
         break;
-      rd = 0;
+      }
     }
   }
-  while(r < sizeof_array(registers) && rd);
-
-  if(!rd && r < sizeof_array(registers))
+  else
   {
-    reg = registers[r];
+    loc = eX86Location_memory;
+    new_object_location_entry(Ldesc, object, loc);
   }
-  return reg;
+  assert(loc);
+  return loc;
 }
 
-eX86Register lookup_object_in_register(RegisterDescriptor_Map* rd_map, Symbol* object)
+Symbol* lookup_other_object_in_register(LocationDescriptor* Ldesc, eX86Location reg, Symbol* object)
 {
-  eX86Register reg = eX86Register_None;
-  RegisterDescriptor* rd = 0;
-  for(ListItem* li = rd_map->descriptors.first;
+  Symbol* other_object = 0;
+
+  for(ListItem* li = Ldesc->registers[reg].first;
       li;
       li = li->next)
   {
-    rd = KIND(li, eList_register_descriptor)->register_descriptor;
-    if(rd->object == object)
+    Symbol* other_object = KIND(li, eList_symbol)->symbol;
+    if(other_object != object)
       break;
-    rd = 0;
+    other_object = 0;
   }
-  if(rd)
-  {
-    reg = rd->reg;
-  }
-  return reg;
+  return other_object;
 }
 
-RegisterDescriptor* lookup_other_object_in_register(RegisterDescriptor_Map* rd_map, eX86Register reg, Symbol* object)
+X86Operand* make_x86_register_operand(MemoryArena* arena, eX86Location reg)
 {
-  RegisterDescriptor* other_rd = 0;
+  assert(reg && reg != eX86Location_memory);
 
-  for(ListItem* li = rd_map->descriptors.first;
+  X86Operand* operand = mem_push_struct(arena, X86Operand);
+  operand->kind = eX86Operand_register;
+  operand->reg = reg;
+  return operand;
+}
+
+X86Operand* make_x86_memory_operand(MemoryArena* arena, Symbol* object)
+{
+  X86Operand* operand = mem_push_struct(arena, X86Operand);
+  operand->kind = eX86Operand_indexed;
+  X86Operand* base = operand->indexed.base = mem_push_struct(arena, X86Operand);
+  if(object->storage_space == eStorageSpace_stack)
+  {
+    base->kind = eX86Operand_register;
+    base->reg = eX86Location_ebp;
+    operand->indexed.offset = -(object->data_loc + MACHINE_WORD_SIZE);
+  }
+  else if(object->storage_space == eStorageSpace_static)
+  {
+    base->kind = eX86Operand_id;
+    base->id = "static_area";
+    base->indexed.offset = object->data_loc;
+  }
+  else
+    assert(0);
+  return operand;
+}
+
+X86Operand* make_x86_operand(MemoryArena* arena, Symbol* object, eX86Location loc)
+{
+  if(loc == eX86Location_memory)
+  {
+    return make_x86_memory_operand(arena, object);
+  }
+  else
+  {
+    return make_x86_register_operand(arena, loc);
+  }
+}
+
+void emit_x86_load_object_into_register(MemoryArena* x86_arena, int* x86_stmt_count, MemoryArena* gp_arena,
+                          LocationDescriptor* Ldesc, eX86Location dest_reg, Symbol* object)
+{
+  assert(dest_reg != eX86Location_memory);
+  eX86Location source_loc = eX86Location_None;
+
+  LocationDescriptor_MapEntry* map_entry = 0;
+  for(ListItem* li = Ldesc->loc_entries.first;
       li;
       li = li->next)
   {
-    other_rd = KIND(li, eList_register_descriptor)->register_descriptor;
-    if((other_rd->reg == reg) && (other_rd->object != object))
+    map_entry = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
+    if(map_entry->object == object)
       break;
-    other_rd = 0;
+    map_entry = 0;
   }
-  return other_rd;
+  if(map_entry)
+  {
+    if(!map_entry->locations[dest_reg])
+    {
+      for(int l = eX86Location_eax; l <= eX86Location_memory; l++)
+      {
+        if(map_entry->locations[l])
+        {
+          source_loc = (eX86Location)l;
+          break;
+        }
+      }
+      assert(source_loc);
+    }
+    else
+      source_loc = dest_reg;
+  }
+  else
+  {
+    source_loc = eX86Location_memory;
+    new_object_location_entry(Ldesc, object, source_loc);
+  }
+
+  if(source_loc != dest_reg)
+  {
+    X86Stmt* mov = mem_push_struct(x86_arena, X86Stmt);
+    (*x86_stmt_count)++;
+    mov->opcode = eX86StmtOpcode_mov;
+
+    mov->operand1 = make_x86_register_operand(gp_arena, dest_reg);
+    mov->operand2 = make_x86_operand(gp_arena, object, source_loc);
+
+    if(source_loc != eX86Location_memory)
+    {
+      put_object_in_register(Ldesc, object, source_loc);
+    }
+  }
 }
 
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
@@ -5054,18 +5146,19 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         mov->opcode = eX86StmtOpcode_mov;
         X86Operand* ebp = mov->operand1 = mem_push_struct(arena, X86Operand);
         ebp->kind = eX86Operand_register;
-        ebp->reg = eX86Register_ebp;
+        ebp->reg = eX86Location_ebp;
         X86Operand* esp = mov->operand2 = mem_push_struct(arena, X86Operand);
         esp->kind = eX86Operand_register;
-        esp->reg = eX86Register_esp;
+        esp->reg = eX86Location_esp;
       }
 
-      RegisterDescriptor_Map rd_map = {0};
-      rd_map.arena = arena;
-      init_list(&rd_map.descriptors, rd_map.arena, eList_register_descriptor);
-      AddressDescriptor_Map ad_map = {0};
-      ad_map.arena = arena;
-      init_list(&ad_map.descriptors, ad_map.arena, eList_address_descriptor);
+      LocationDescriptor Ldesc = {0};
+      Ldesc.arena = arena;
+      init_list(&Ldesc.loc_entries, Ldesc.arena, eList_Ldesc_map_entry);
+      for(int r = 0; r < eX86Location_Count; r++)
+      {
+        init_list(&Ldesc.registers[r], Ldesc.arena, eList_symbol);
+      }
 
       for(int i = 0; i < bb->stmt_count; i++)
       {
@@ -5074,29 +5167,30 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         {
           case eIrStmt_assign:
             {
-              eX86Register arg1_reg = eX86Register_None;
+              eX86Location arg1_loc = eX86Location_None;
 
               IrArg* arg1 = ir_stmt->assign.arg1;
               if(arg1->kind == eIrArg_object)
               {
-                arg1_reg = lookup_object_in_register(&rd_map, arg1->object);
-                if(arg1_reg == eX86Register_None || !lookup_other_object_in_register(&rd_map, arg1_reg, arg1->object))
+                arg1_loc = lookup_object_location(&Ldesc, arg1->object);
+                if(arg1_loc == eX86Location_memory || lookup_other_object_in_register(&Ldesc, arg1_loc, arg1->object))
                 {
-                  arg1_reg = get_free_reg(&rd_map);
+                  arg1_loc = get_free_reg(&Ldesc);
+                  if(arg1_loc)
+                  {
+                    emit_x86_load_object_into_register(x86_arena, &x86_stmt_count, arena, &Ldesc, arg1_loc, arg1->object);
+                  }
                 }
-                else
-                  assert(0);
               }
               else
                 assert(0);
 
-              if(ir_stmt->assign.op == eIrOp_None)
+              if(!ir_stmt->assign.op)
               {
-                if(arg1_reg != eX86Register_None)
+                if(arg1_loc)
                 {
                   IrArg* result = ir_stmt->assign.result;
-                  update_object_address(&ad_map, result->object, eObjectLocation_register);
-                  put_object_in_register(&rd_map, result->object, arg1_reg);
+                  put_object_in_register(&Ldesc, result->object, arg1_loc);
                 }
                 else
                   assert(0);
@@ -5124,65 +5218,22 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
                       IrArg* arg2 = ir_stmt->assign.arg2;
                       if(arg2->kind == eIrArg_object)
                       {
-                        eX86Register arg2_reg = lookup_object_in_register(&rd_map, arg2->object);
-                        if(arg2_reg)
+                        X86Stmt* op = mem_push_struct(x86_arena, X86Stmt);
+                        x86_stmt_count++;
+                        op->opcode = x86_opcode;
+
+                        op->operand1 = make_x86_operand(arena, arg1->object, arg1_loc);
+
+                        eX86Location arg2_loc = lookup_object_location(&Ldesc, arg2->object);
+                        if(arg1_loc != eX86Location_memory)
                         {
-                          if(arg1_reg)
-                          {
-                            X86Stmt* op = mem_push_struct(x86_arena, X86Stmt);
-                            x86_stmt_count++;
-                            op->opcode = x86_opcode;
-
-                            X86Operand* operand1 = op->operand1 = mem_push_struct(arena, X86Operand);
-                            operand1->kind = eX86Operand_register;
-                            operand1->reg = arg1_reg;
-
-                            X86Operand* operand2 = op->operand2 = mem_push_struct(arena, X86Operand);
-                            operand2->kind = eX86Operand_register;
-                            operand2->reg = arg2_reg;
-
-                            IrArg* result = ir_stmt->assign.result;
-                            update_object_address(&ad_map, result->object, eObjectLocation_register);
-                            put_object_in_register(&rd_map, result->object, arg1_reg);
-                          }
-                          else
-                            assert(0);
+                          op->operand2 = make_x86_operand(arena, arg2->object, arg2_loc);
                         }
                         else
-                        {
-                          if(arg1_reg)
-                          {
-                            X86Stmt* op = mem_push_struct(x86_arena, X86Stmt);
-                            x86_stmt_count++;
-                            op->opcode = x86_opcode;
+                          assert(0);
 
-                            X86Operand* operand1 = op->operand1 = mem_push_struct(arena, X86Operand);
-                            operand1->kind = eX86Operand_register;
-                            operand1->reg = arg1_reg;
-
-                            X86Operand* operand2 = op->operand2 = mem_push_struct(arena, X86Operand);
-                            operand2->kind = eX86Operand_indexed;
-                            X86Operand* base = operand2->indexed.base = mem_push_struct(arena, X86Operand);
-                            if(arg2->object->storage_space == eStorageSpace_stack)
-                            {
-                              base->kind = eX86Operand_register;
-                              base->reg = eX86Register_ebp;
-                              operand2->indexed.i = -(arg2->object->data_loc + MACHINE_WORD_SIZE);
-                            }
-                            else if(arg2->object->storage_space == eStorageSpace_static)
-                            {
-                              base->kind = eX86Operand_id;
-                              base->id = "static_area";
-                              operand2->indexed.i = arg2->object->data_loc;
-                            }
-                            else
-                              assert(0);
-
-                            IrArg* result = ir_stmt->assign.result;
-                            update_object_address(&ad_map, result->object, eObjectLocation_register);
-                            put_object_in_register(&rd_map, result->object, arg1_reg);
-                          }
-                        }
+                        IrArg* result = ir_stmt->assign.result;
+                        put_object_in_register(&Ldesc, result->object, arg1_loc);
                       }
                       else
                         assert(0);

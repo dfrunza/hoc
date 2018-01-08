@@ -757,6 +757,7 @@ Symbol* new_tempvar(MemoryArena* arena, Scope* scope, Type* ty)
   sym->ty = ty;
   sym->scope = scope;
   sym->order_nr = scope->sym_count++;
+  sym->storage_space = eStorageSpace_stack;
   alloc_data_object(sym, scope);
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
   return sym;
@@ -4630,10 +4631,10 @@ void print_x86_operand(String* x86_text, X86Operand* operand)
 {
   switch(operand->kind)
   {
-    case eX86Operand_indexed:
+    case eX86Operand_memory:
       str_printf(x86_text, "dword ptr [");
-      print_x86_operand(x86_text, operand->indexed.base);
-      str_printf(x86_text, "%+d]", operand->indexed.offset);
+      print_x86_operand(x86_text, operand->memory.base);
+      str_printf(x86_text, "%+d]", operand->memory.offset);
       break;
 
     case eX86Operand_register:
@@ -4738,7 +4739,7 @@ LocationDescriptor_MapEntry* new_object_location_entry(LocationDescriptor* Ldesc
   return map_entry;
 }
 
-void put_object_in_register(LocationDescriptor* Ldesc, Symbol* object, eX86Location reg)
+void delete_object_from_location(LocationDescriptor* Ldesc, Symbol* object, eX86Location loc)
 {
   LocationDescriptor_MapEntry* map_entry = 0;
   for(ListItem* li = Ldesc->loc_entries.first;
@@ -4747,18 +4748,59 @@ void put_object_in_register(LocationDescriptor* Ldesc, Symbol* object, eX86Locat
   {
     map_entry = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
     if(map_entry->object == object)
-    {
-      for(int l = eX86Location_eax; l < eX86Location_memory; l++)
-      {
-        if(map_entry->locations[l] && (eX86Location)l != reg)
-          break;
-      }
-    }
+      break;
     map_entry = 0;
   }
-  if(!map_entry)
+  if(map_entry)
   {
-    new_object_location_entry(Ldesc, object, reg);
+    if(map_entry->locations[loc])
+    {
+      map_entry->locations[loc] = false;
+
+      ListItem* li = Ldesc->registers[loc].first;
+      for(; li; li = li->next)
+      {
+        if(object == KIND(li, eList_symbol)->symbol)
+          break;
+      }
+      if(li)
+      {
+        remove_list_item(&Ldesc->registers[loc], li);
+      }
+    }
+  }
+}
+
+void put_object_in_location(LocationDescriptor* Ldesc, Symbol* object, eX86Location loc)
+{
+  LocationDescriptor_MapEntry* map_entry = 0;
+  for(ListItem* li = Ldesc->loc_entries.first;
+      li;
+      li = li->next)
+  {
+    map_entry = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
+    if(map_entry->object == object)
+      break;
+    map_entry = 0;
+  }
+  if(map_entry)
+  {
+    if(!map_entry->locations[loc])
+    {
+      map_entry->locations[loc] = true;
+      
+      for(ListItem* li = Ldesc->registers[loc].first;
+          li;
+          li = li->next)
+      {
+        assert(object != KIND(li, eList_symbol)->symbol);
+      }
+      append_list_elem(&Ldesc->registers[loc], object, eList_symbol);
+    }
+  }
+  else
+  {
+    new_object_location_entry(Ldesc, object, loc);
   }
 }
 
@@ -4842,19 +4884,19 @@ X86Operand* make_x86_register_operand(MemoryArena* arena, eX86Location reg)
 X86Operand* make_x86_memory_operand(MemoryArena* arena, Symbol* object)
 {
   X86Operand* operand = mem_push_struct(arena, X86Operand);
-  operand->kind = eX86Operand_indexed;
-  X86Operand* base = operand->indexed.base = mem_push_struct(arena, X86Operand);
+  operand->kind = eX86Operand_memory;
+  X86Operand* base = operand->memory.base = mem_push_struct(arena, X86Operand);
   if(object->storage_space == eStorageSpace_stack)
   {
     base->kind = eX86Operand_register;
     base->reg = eX86Location_ebp;
-    operand->indexed.offset = -(object->data_loc + MACHINE_WORD_SIZE);
+    operand->memory.offset = -(object->data_loc + MACHINE_WORD_SIZE);
   }
   else if(object->storage_space == eStorageSpace_static)
   {
     base->kind = eX86Operand_id;
     base->id = "static_area";
-    base->indexed.offset = object->data_loc;
+    base->memory.offset = object->data_loc;
   }
   else
     assert(0);
@@ -4863,11 +4905,12 @@ X86Operand* make_x86_memory_operand(MemoryArena* arena, Symbol* object)
 
 X86Operand* make_x86_operand(MemoryArena* arena, Symbol* object, eX86Location loc)
 {
+  assert(loc);
   if(loc == eX86Location_memory)
   {
     return make_x86_memory_operand(arena, object);
   }
-  else
+  else // it's a register location
   {
     return make_x86_register_operand(arena, loc);
   }
@@ -4875,7 +4918,7 @@ X86Operand* make_x86_operand(MemoryArena* arena, Symbol* object, eX86Location lo
 
 void emit_x86_load_object_into_register(X86Context* context, LocationDescriptor* Ldesc, eX86Location dest_reg, Symbol* object)
 {
-  assert(dest_reg != eX86Location_memory);
+  assert(dest_reg && dest_reg != eX86Location_memory);
   eX86Location source_loc = eX86Location_None;
 
   LocationDescriptor_MapEntry* map_entry = 0;
@@ -4910,6 +4953,7 @@ void emit_x86_load_object_into_register(X86Context* context, LocationDescriptor*
     source_loc = eX86Location_memory;
     new_object_location_entry(Ldesc, object, source_loc);
   }
+  assert(source_loc);
 
   if(source_loc != dest_reg)
   {
@@ -4917,12 +4961,16 @@ void emit_x86_load_object_into_register(X86Context* context, LocationDescriptor*
 
     mov->operand1 = make_x86_register_operand(context->gp_arena, dest_reg);
     mov->operand2 = make_x86_operand(context->gp_arena, object, source_loc);
-
-    if(source_loc != eX86Location_memory)
-    {
-      put_object_in_register(Ldesc, object, source_loc);
-    }
   }
+}
+
+void emit_x86_store_object_to_memory(X86Context* context, LocationDescriptor* Ldesc, eX86Location source_reg, Symbol* object)
+{
+  assert(source_reg && source_reg != eX86Location_memory);
+  X86Stmt* mov = new_x86_stmt(context, eX86StmtOpcode_mov);
+
+  mov->operand1 = make_x86_memory_operand(context->gp_arena, object);
+  mov->operand2 = make_x86_register_operand(context->gp_arena, source_reg);
 }
 
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
@@ -4993,13 +5041,17 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
           {
             goto_label = stmt->cond_goto.label;
             if(goto_label->primary)
+            {
               stmt->cond_goto.label = goto_label->primary;
+            }
           }
           else if(stmt->kind == eIrStmt_goto)
           {
             goto_label = stmt->goto_label;
             if(goto_label->primary)
+            {
               stmt->goto_label = goto_label->primary;
+            }
           }
           else
             assert(0);
@@ -5151,13 +5203,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 
               if(!ir_stmt->assign.op)
               {
-                if(arg1_loc)
-                {
-                  IrArg* result = ir_stmt->assign.result;
-                  put_object_in_register(&Ldesc, result->object, arg1_loc);
-                }
-                else
-                  assert(0);
+                IrArg* result = ir_stmt->assign.result;
+                put_object_in_location(&Ldesc, result->object, arg1_loc);
               }
               else
               {
@@ -5195,7 +5242,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
                           assert(0);
 
                         IrArg* result = ir_stmt->assign.result;
-                        put_object_in_register(&Ldesc, result->object, arg1_loc);
+                        put_object_in_location(&Ldesc, result->object, arg1_loc);
                       }
                       else
                         assert(0);
@@ -5247,7 +5294,18 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         }
       }
 
+      for(int r = 0; r < eX86Location_memory; r++)
+      {
+        eX86Location source_reg = (eX86Location)r;
+        for(ListItem* li = Ldesc.registers[r].first; li; )
+        {
+          Symbol* object = KIND(li, eList_symbol)->symbol;
+          li = li->next;
 
+          emit_x86_store_object_to_memory(&x86_context, &Ldesc, source_reg, object);
+          delete_object_from_location(&Ldesc, object, source_reg);
+        }
+      }
     }
 
     str_init(x86_text, push_arena(&arena, 1*MEGABYTE));

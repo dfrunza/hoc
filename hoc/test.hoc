@@ -4,7 +4,9 @@ void startup()
   int b;
   int c;
   int d;
-  d = (a-b) + (a-c);
+  d = a-b;
+  if(true)
+    c = a-c;
 
   /*
   []int A;

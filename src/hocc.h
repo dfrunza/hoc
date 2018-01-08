@@ -612,7 +612,7 @@ typedef enum
   eX86Operand_id,
   eX86Operand_constant,
   eX86Operand_register,
-  eX86Operand_indexed,
+  eX86Operand_memory,
 }
 eX86Operand;
 
@@ -625,12 +625,12 @@ typedef struct X86Operand
     int constant;
     eX86Location reg;
 
-    struct X86Operand_indexed
+    struct X86Operand_memory
     {
       int offset;
       struct X86Operand* base;
     }
-    indexed;
+    memory;
   };
 }
 X86Operand;

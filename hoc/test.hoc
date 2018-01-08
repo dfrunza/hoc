@@ -1,9 +1,10 @@
 void startup()
 {
-  int x;
-  int y;
-  int z;
-  x = y + z;
+  int a;
+  int b;
+  int c;
+  int d;
+  d = (a-b) + (a-c);
 
   /*
   []int A;

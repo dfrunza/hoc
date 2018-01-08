@@ -950,6 +950,15 @@ typedef struct
 }
 SymbolContext;
 
+typedef struct X86Context
+{
+  MemoryArena* stmt_arena;
+  MemoryArena* gp_arena;
+  X86Stmt* stmt_array;
+  int stmt_count;
+}
+X86Context;
+
 typedef struct LocationDescriptor
 {
   MemoryArena* arena;

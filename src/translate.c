@@ -4712,41 +4712,13 @@ void print_x86_stmt(String* x86_text, X86Stmt* stmt)
   }
 }
 
-X86Operand* ir_arg_to_x86_operand(MemoryArena* arena, IrArg* arg)
+X86Stmt* new_x86_stmt(X86Context* context, eX86StmtOpcode opcode)
 {
-  X86Operand* x86_operand = mem_push_struct(arena, X86Operand);
-  switch(arg->kind)
-  {
-    case eIrArg_object:
-      {
-        Symbol* object = arg->object;
-        x86_operand->kind = eX86Operand_indexed;
-        X86Operand* base = x86_operand->indexed.base = mem_push_struct(arena, X86Operand);
-        bool is_local = (object->scope->kind != eScope_module);
-        if(is_local)
-        {
-          base->kind = eX86Operand_register;
-          base->reg = eX86Location_ebp;
-          x86_operand->indexed.offset = -(arg->object->data_loc + MACHINE_WORD_SIZE);
-        }
-        else
-        {
-          base->kind = eX86Operand_id;
-          base->id = "static_area";
-          x86_operand->indexed.offset = arg->object->data_loc;
-        }
-      }
-      break;
-    case eIrArg_constant:
-      {
-        x86_operand->kind = eX86Operand_constant;
-        x86_operand->constant = arg->constant.int_val;
-      }
-      break;
-    default:
-      assert(0);
-  }
-  return x86_operand;
+  X86Stmt* stmt = mem_push_struct(context->stmt_arena, X86Stmt);
+  context->stmt_count++;
+  stmt->opcode = opcode;
+  stmt->operand1 = stmt->operand2 = 0;
+  return stmt;
 }
 
 LocationDescriptor_MapEntry* new_object_location_entry(LocationDescriptor* Ldesc, Symbol* object, eX86Location loc)
@@ -4776,7 +4748,7 @@ void put_object_in_register(LocationDescriptor* Ldesc, Symbol* object, eX86Locat
     map_entry = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
     if(map_entry->object == object)
     {
-      for(int l = eX86Location_eax; l <= eX86Location_memory; l++)
+      for(int l = eX86Location_eax; l < eX86Location_memory; l++)
       {
         if(map_entry->locations[l] && (eX86Location)l != reg)
           break;
@@ -4901,8 +4873,7 @@ X86Operand* make_x86_operand(MemoryArena* arena, Symbol* object, eX86Location lo
   }
 }
 
-void emit_x86_load_object_into_register(MemoryArena* x86_arena, int* x86_stmt_count, MemoryArena* gp_arena,
-                          LocationDescriptor* Ldesc, eX86Location dest_reg, Symbol* object)
+void emit_x86_load_object_into_register(X86Context* context, LocationDescriptor* Ldesc, eX86Location dest_reg, Symbol* object)
 {
   assert(dest_reg != eX86Location_memory);
   eX86Location source_loc = eX86Location_None;
@@ -4942,12 +4913,10 @@ void emit_x86_load_object_into_register(MemoryArena* x86_arena, int* x86_stmt_co
 
   if(source_loc != dest_reg)
   {
-    X86Stmt* mov = mem_push_struct(x86_arena, X86Stmt);
-    (*x86_stmt_count)++;
-    mov->opcode = eX86StmtOpcode_mov;
+    X86Stmt* mov = new_x86_stmt(context, eX86StmtOpcode_mov);
 
-    mov->operand1 = make_x86_register_operand(gp_arena, dest_reg);
-    mov->operand2 = make_x86_operand(gp_arena, object, source_loc);
+    mov->operand1 = make_x86_register_operand(context->gp_arena, dest_reg);
+    mov->operand2 = make_x86_operand(context->gp_arena, object, source_loc);
 
     if(source_loc != eX86Location_memory)
     {
@@ -5005,21 +4974,19 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   BasicBlock* entry_point = 0;
   // Partition IR into basic blocks
   {
-    IrStmt* stmt_array = ir_context.stmt_array;
-    int stmt_count = ir_context.stmt_count;
-    if(stmt_count > 0)
+    if(ir_context.stmt_count > 0)
     {
       List* leaders = new_list(arena, eList_ir_leader_stmt);
-      append_list_elem(leaders, new_leader_stmt(leaders->arena, 0, &stmt_array[0]), eList_ir_leader_stmt);
+      append_list_elem(leaders, new_leader_stmt(leaders->arena, 0, &ir_context.stmt_array[0]), eList_ir_leader_stmt);
 
-      for(int i = 1; i < stmt_count; i++)
+      for(int i = 1; i < ir_context.stmt_count; i++)
       {
-        IrStmt* stmt = &stmt_array[i];
+        IrStmt* stmt = &ir_context.stmt_array[i];
         if(stmt->kind == eIrStmt_cond_goto || stmt->kind == eIrStmt_goto)
         {
-          if(i+1 < stmt_count)
+          if(i+1 < ir_context.stmt_count)
           {
-            insert_leader_stmt(leaders, i+1, &stmt_array[i+1]);
+            insert_leader_stmt(leaders, i+1, &ir_context.stmt_array[i+1]);
           }
           IrLabel* goto_label = 0;
           if(stmt->kind == eIrStmt_cond_goto)
@@ -5036,7 +5003,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
           }
           else
             assert(0);
-          insert_leader_stmt(leaders, goto_label->stmt_nr, &stmt_array[goto_label->stmt_nr]);
+          insert_leader_stmt(leaders, goto_label->stmt_nr, &ir_context.stmt_array[goto_label->stmt_nr]);
         }
       }
       ///
@@ -5068,7 +5035,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
             i < next_stmt_nr;
             i++)
         {
-          block->stmt_array[block->stmt_count++] = &stmt_array[i];
+          block->stmt_array[block->stmt_count++] = &ir_context.stmt_array[i];
         }
         assert(block->stmt_count > 0);
       }
@@ -5121,9 +5088,10 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 
   // X86 Codegen
   {
-    MemoryArena* x86_arena = push_arena(&arena, 1*MEGABYTE);
-    X86Stmt* x86_stmt_array = (X86Stmt*)x86_arena->base;
-    int x86_stmt_count = 0;
+    X86Context x86_context = {0};
+    x86_context.stmt_arena = push_arena(&arena, 1*MEGABYTE);
+    x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
+    x86_context.gp_arena = arena;
 
     for(ListItem* li = basic_blocks->first;
         li;
@@ -5132,18 +5100,14 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
       BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
       if(bb->label)
       {
-        X86Stmt* label = mem_push_struct(x86_arena, X86Stmt);
-        x86_stmt_count++;
-        label->opcode = eX86StmtOpcode_label;
-        label->operand1 = mem_push_struct(arena, X86Operand);
-        label->operand1->kind = eX86Operand_id;
-        label->operand1->id = bb->label->name;
+        X86Stmt* label = new_x86_stmt(&x86_context, eX86StmtOpcode_label);
+        X86Operand* operand = label->operand1 = mem_push_struct(arena, X86Operand);
+        operand->kind = eX86Operand_id;
+        operand->id = bb->label->name;
       }
       if(bb == entry_point)
       {
-        X86Stmt* mov = mem_push_struct(x86_arena, X86Stmt);
-        x86_stmt_count++;
-        mov->opcode = eX86StmtOpcode_mov;
+        X86Stmt* mov = new_x86_stmt(&x86_context, eX86StmtOpcode_mov);
         X86Operand* ebp = mov->operand1 = mem_push_struct(arena, X86Operand);
         ebp->kind = eX86Operand_register;
         ebp->reg = eX86Location_ebp;
@@ -5178,7 +5142,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
                   arg1_loc = get_free_reg(&Ldesc);
                   if(arg1_loc)
                   {
-                    emit_x86_load_object_into_register(x86_arena, &x86_stmt_count, arena, &Ldesc, arg1_loc, arg1->object);
+                    emit_x86_load_object_into_register(&x86_context, &Ldesc, arg1_loc, arg1->object);
                   }
                 }
               }
@@ -5218,9 +5182,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
                       IrArg* arg2 = ir_stmt->assign.arg2;
                       if(arg2->kind == eIrArg_object)
                       {
-                        X86Stmt* op = mem_push_struct(x86_arena, X86Stmt);
-                        x86_stmt_count++;
-                        op->opcode = x86_opcode;
+                        X86Stmt* op = new_x86_stmt(&x86_context, x86_opcode);
 
                         op->operand1 = make_x86_operand(arena, arg1->object, arg1_loc);
 
@@ -5284,6 +5246,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
             break;
         }
       }
+
+
     }
 
     str_init(x86_text, push_arena(&arena, 1*MEGABYTE));
@@ -5311,9 +5275,9 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     str_printfln(x86_text, ".code");
     str_printfln(x86_text, "public startup");
 
-    for(int i = 0; i < x86_stmt_count; i++)
+    for(int i = 0; i < x86_context.stmt_count; i++)
     {
-      print_x86_stmt(x86_text, &x86_stmt_array[i]);
+      print_x86_stmt(x86_text, &x86_context.stmt_array[i]);
     }
 
     str_printfln(x86_text, "END");

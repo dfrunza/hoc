@@ -10,14 +10,13 @@ void startup()
   int d;
   int e;
   int f;
-  /*
   a = 0x123;
   b = 0x122;
   c = 0x121;
-  e = 0x120;
-  f = 0x119;
-  */
-  f = c+e + d-a + f;
+  d = 0x120;
+  e = 0x119;
+  f = 0x118;
+  f = (d-e) + (c-f);
   d = (a-b) + (a-c);
 
   /*

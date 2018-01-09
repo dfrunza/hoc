@@ -33,6 +33,7 @@ typedef struct Symbol Symbol;
 typedef struct Scope Scope;
 typedef struct TypePair TypePair;
 typedef struct IrStmt IrStmt;
+typedef struct IrArg IrArg;
 typedef struct IrLeaderStmt IrLeaderStmt;
 typedef struct IrLabel IrLabel;
 typedef struct BasicBlock BasicBlock;
@@ -255,6 +256,7 @@ typedef enum
   eList_type_pair,
   eList_data_area,
   eList_ir_stmt,
+  eList_ir_arg,
   eList_ir_leader_stmt,
   eList_ir_label,
   eList_basic_block,
@@ -273,6 +275,7 @@ typedef struct ListItem
     Scope* scope;
     TypePair* type_pair;
     IrStmt* ir_stmt;
+    IrArg* ir_arg;
     IrLeaderStmt* ir_leader_stmt;
     IrLabel* ir_label;
     BasicBlock* basic_block;
@@ -528,7 +531,7 @@ typedef enum
 }
 eX86Location;
 
-typedef struct
+typedef struct IrArg
 {
   eIrArg kind;
   eX86Location loc;
@@ -970,15 +973,16 @@ X86Context;
 
 typedef struct LocationDescriptor_MapEntry
 {
-  Symbol* object;
+  //Symbol* object;
+  IrArg* arg;
   bool locations[eX86Location_Count];
 }
 LocationDescriptor_MapEntry;
 
 typedef struct RegisterDescriptor_MapEntry
 {
-  List objects;
-  int object_count;
+  List occupants;
+  int occupant_count;
 }
 RegisterDescriptor_MapEntry;
 

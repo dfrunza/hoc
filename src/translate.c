@@ -758,7 +758,7 @@ Symbol* new_temp_object(MemoryArena* arena, Scope* scope, Type* ty)
   sym->scope = scope;
   sym->order_nr = scope->sym_count++;
   sym->storage_space = eStorageSpace_stack;
-  sym->next_use = StmtNr_None;
+  sym->next_use = NextUse_None;
   sym->is_temp = true;
   alloc_data_object(sym, scope);
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
@@ -774,7 +774,7 @@ Symbol* add_decl_sym(MemoryArena* arena, char* name, eStorageSpace storage_space
   sym->ast_node = ast_node;
   sym->order_nr = scope->sym_count++;
   sym->storage_space = storage_space;
-  sym->next_use = StmtNr_None;
+  sym->next_use = NextUse_None;
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
   return sym;
 }
@@ -4731,78 +4731,80 @@ X86Stmt* new_x86_stmt(X86Context* context, eX86StmtOpcode opcode)
 
 LocationDescriptor_MapEntry* new_object_location_entry(LocationDescriptor* Ldesc, Symbol* object, eX86Location loc)
 {
-  LocationDescriptor_MapEntry* map_entry = mem_push_struct(Ldesc->arena, LocationDescriptor_MapEntry);
-  map_entry->object = object;
-  map_entry->locations[loc] = true;
-  append_list_elem(&Ldesc->loc_entries, map_entry, eList_Ldesc_map_entry);
+  LocationDescriptor_MapEntry* loc_descript = mem_push_struct(Ldesc->arena, LocationDescriptor_MapEntry);
+  loc_descript->object = object;
+  loc_descript->locations[loc] = true;
+  append_list_elem(&Ldesc->loc_entries, loc_descript, eList_Ldesc_map_entry);
 
-  for(ListItem* li = Ldesc->registers[loc].first;
+  RegisterDescriptor_MapEntry* reg_entry = &Ldesc->registers[loc];
+  for(ListItem* li = reg_entry->objects.first;
       li;
       li = li->next)
   {
     assert(object != KIND(li, eList_symbol)->symbol);
   }
-  append_list_elem(&Ldesc->registers[loc], object, eList_symbol);
-  return map_entry;
+  append_list_elem(&reg_entry->objects, object, eList_symbol);
+  reg_entry->object_count++;
+  return loc_descript;
 }
 
 void delete_object_from_location(LocationDescriptor* Ldesc, Symbol* object, eX86Location loc)
 {
-  LocationDescriptor_MapEntry* map_entry = 0;
+  LocationDescriptor_MapEntry* loc_descript = 0;
   for(ListItem* li = Ldesc->loc_entries.first;
       li;
       li = li->next)
   {
-    map_entry = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
-    if(map_entry->object == object)
+    loc_descript = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
+    if(loc_descript->object == object)
       break;
-    map_entry = 0;
+    loc_descript = 0;
   }
-  if(map_entry)
+  if(loc_descript && loc_descript->locations[loc])
   {
-    if(map_entry->locations[loc])
-    {
-      map_entry->locations[loc] = false;
+    loc_descript->locations[loc] = false;
 
-      ListItem* li = Ldesc->registers[loc].first;
-      for(; li; li = li->next)
-      {
-        if(object == KIND(li, eList_symbol)->symbol)
-          break;
-      }
-      if(li)
-      {
-        remove_list_item(&Ldesc->registers[loc], li);
-      }
+    RegisterDescriptor_MapEntry* reg_descript = &Ldesc->registers[loc];
+    ListItem* li = reg_descript->objects.first;
+    for(; li; li = li->next)
+    {
+      if(object == KIND(li, eList_symbol)->symbol)
+        break;
+    }
+    if(li)
+    {
+      remove_list_item(&reg_descript->objects, li);
+      reg_descript->object_count--;
     }
   }
 }
 
 void put_object_in_location(LocationDescriptor* Ldesc, Symbol* object, eX86Location loc)
 {
-  LocationDescriptor_MapEntry* map_entry = 0;
+  LocationDescriptor_MapEntry* loc_descript = 0;
   for(ListItem* li = Ldesc->loc_entries.first;
       li;
       li = li->next)
   {
-    map_entry = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
-    if(map_entry->object == object)
+    loc_descript = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
+    if(loc_descript->object == object)
       break;
-    map_entry = 0;
+    loc_descript = 0;
   }
-  if(map_entry)
+  if(loc_descript)
   {
-    if(!map_entry->locations[loc])
+    if(!loc_descript->locations[loc])
     {
-      map_entry->locations[loc] = true;
+      loc_descript->locations[loc] = true;
       
-      for(ListItem* li = Ldesc->registers[loc].first;
+      RegisterDescriptor_MapEntry* reg_descript = &Ldesc->registers[loc];
+      for(ListItem* li = reg_descript->objects.first;
           li;
           li = li->next)
       {
         assert(object != KIND(li, eList_symbol)->symbol);
       }
-      append_list_elem(&Ldesc->registers[loc], object, eList_symbol);
+      append_list_elem(&reg_descript->objects, object, eList_symbol);
     }
   }
   else
@@ -4811,61 +4813,109 @@ void put_object_in_location(LocationDescriptor* Ldesc, Symbol* object, eX86Locat
   }
 }
 
-eX86Location get_free_reg(LocationDescriptor* Ldesc)
+bool register_occupants_all_in_memory(LocationDescriptor* Ldesc, eX86Location reg)
+{
+  bool result = false;
+  RegisterDescriptor_MapEntry* reg_descript = &Ldesc->registers[reg];
+  for(ListItem* li = reg_descript->objects.first;
+      li && !result;
+      li = li->next)
+  {
+    result = true;
+    Symbol* object = KIND(li, eList_symbol)->symbol;
+    LocationDescriptor_MapEntry* loc_descript = 0;
+    for(ListItem* ol = Ldesc->loc_entries.first;
+        ol;
+        ol = ol->next)
+    {
+      loc_descript = KIND(ol, eList_Ldesc_map_entry)->Ldesc_map_entry;
+      if(loc_descript->object == object)
+        break;
+      loc_descript = 0;
+    }
+    result &= loc_descript->locations[eX86Location_memory]; 
+  }
+  return result;
+}
+
+eX86Location find_register_min_occupants(LocationDescriptor* Ldesc, eX86Location exclude_loc)
 {
   eX86Location reg = eX86Location_None;
 
-  for(int l = eX86Location_eax; l < eX86Location_memory; l++)
+  int min_count = 1 << (sizeof(int)*8 - 2);
+  for(int l = eX86Location_None+1; l < eX86Location_memory; l++)
   {
-    reg = (eX86Location)l;
-    List* objects = &Ldesc->registers[l];
-    if(!objects->first)
-      break;
-    reg = 0;
+    RegisterDescriptor_MapEntry* reg_descript = &Ldesc->registers[l];
+    if(reg_descript->object_count < min_count && l != exclude_loc)
+    {
+      reg = (eX86Location)l;
+      min_count = reg_descript->object_count;
+    }
   }
-  assert(reg);
   return reg;
+}
+
+eX86Location find_free_register(LocationDescriptor* Ldesc)
+{
+  eX86Location reg = find_register_min_occupants(Ldesc, 0);
+  RegisterDescriptor_MapEntry* reg_descript = &Ldesc->registers[reg];
+  return reg_descript->object_count == 0 ? reg : eX86Location_None;
 }
 
 eX86Location lookup_object_location(LocationDescriptor* Ldesc, Symbol* object)
 {
-  LocationDescriptor_MapEntry* map_entry = 0;
+  LocationDescriptor_MapEntry* loc_descript = 0;
   for(ListItem* li = Ldesc->loc_entries.first;
       li;
       li = li->next)
   {
-    map_entry = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
-    if(map_entry->object == object)
+    loc_descript = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
+    if(loc_descript->object == object)
       break;
-    map_entry = 0;
+    loc_descript = 0;
   }
 
   eX86Location loc = eX86Location_None;
-  if(map_entry)
+  if(loc_descript)
   {
-    for(int l = 0; l <= eX86Location_Count; l++)
+    for(int l = 0; l < eX86Location_Count; l++)
     {
-      if(map_entry->locations[l])
+      if(loc_descript->locations[l])
       {
         loc = (eX86Location)l;
         break;
       }
     }
   }
-  else
-  {
-    loc = eX86Location_memory;
-    new_object_location_entry(Ldesc, object, loc);
-  }
-  assert(loc);
   return loc;
 }
 
-Symbol* lookup_other_object_in_register(LocationDescriptor* Ldesc, eX86Location reg, Symbol* object)
+inline bool is_register_location(eX86Location loc)
+{
+  return loc > eX86Location_None && loc < eX86Location_memory;
+}
+
+bool is_single_occupant_register(LocationDescriptor* Ldesc, eX86Location reg, Symbol* object)
+{
+  assert(is_register_location(reg));
+
+  bool result = false;
+  RegisterDescriptor_MapEntry* reg_descript = &Ldesc->registers[reg];
+  if(reg_descript->object_count == 1)
+  {
+    Symbol* other_object = KIND(reg_descript->objects.first, eList_symbol)->symbol;
+    result = (other_object == object);
+  }
+  return result;
+}
+
+#if 0
+bool other_occupant_in_register(LocationDescriptor* Ldesc, eX86Location reg, Symbol* object)
 {
   Symbol* other_object = 0;
 
-  for(ListItem* li = Ldesc->registers[reg].first;
+  RegisterDescriptor_MapEntry* reg_descript = &Ldesc->registers[reg];
+  for(ListItem* li = reg_descript->objects.first;
       li;
       li = li->next)
   {
@@ -4874,12 +4924,13 @@ Symbol* lookup_other_object_in_register(LocationDescriptor* Ldesc, eX86Location 
       break;
     other_object = 0;
   }
-  return other_object;
+  return other_object != 0;
 }
+#endif
 
 X86Operand* make_x86_register_operand(MemoryArena* arena, eX86Location reg)
 {
-  assert(reg && reg != eX86Location_memory);
+  assert(is_register_location(reg));
 
   X86Operand* operand = mem_push_struct(arena, X86Operand);
   operand->kind = eX86Operand_register;
@@ -4924,8 +4975,7 @@ X86Operand* make_x86_memory_operand(MemoryArena* arena, Symbol* object)
 
 X86Operand* make_x86_operand(MemoryArena* arena, Symbol* object, eX86Location loc)
 {
-  assert(loc);
-  if(loc == eX86Location_memory)
+  if(!loc || loc == eX86Location_memory)
   {
     return make_x86_memory_operand(arena, object);
   }
@@ -4937,26 +4987,26 @@ X86Operand* make_x86_operand(MemoryArena* arena, Symbol* object, eX86Location lo
 
 void emit_x86_load_object_into_register(X86Context* context, LocationDescriptor* Ldesc, eX86Location dest_reg, Symbol* object)
 {
-  assert(dest_reg && dest_reg != eX86Location_memory);
+  assert(is_register_location(dest_reg));
   eX86Location source_loc = eX86Location_None;
 
-  LocationDescriptor_MapEntry* map_entry = 0;
+  LocationDescriptor_MapEntry* loc_descript = 0;
   for(ListItem* li = Ldesc->loc_entries.first;
       li;
       li = li->next)
   {
-    map_entry = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
-    if(map_entry->object == object)
+    loc_descript = KIND(li, eList_Ldesc_map_entry)->Ldesc_map_entry;
+    if(loc_descript->object == object)
       break;
-    map_entry = 0;
+    loc_descript = 0;
   }
-  if(map_entry)
+  if(loc_descript)
   {
-    if(!map_entry->locations[dest_reg])
+    if(!loc_descript->locations[dest_reg])
     {
       for(int l = 0; l < eX86Location_Count; l++)
       {
-        if(map_entry->locations[l])
+        if(loc_descript->locations[l])
         {
           source_loc = (eX86Location)l;
           break;
@@ -4977,7 +5027,7 @@ void emit_x86_load_object_into_register(X86Context* context, LocationDescriptor*
   if(source_loc != dest_reg)
   {
     X86Stmt* mov = new_x86_stmt(context, eX86StmtOpcode_mov);
-
+    
     mov->operand1 = make_x86_register_operand(context->gp_arena, dest_reg);
     mov->operand2 = make_x86_operand(context->gp_arena, object, source_loc);
   }
@@ -4999,6 +5049,14 @@ void emit_x86_store_object_to_memory(X86Context* context, LocationDescriptor* Ld
 
   mov->operand1 = make_x86_memory_operand(context->gp_arena, object);
   mov->operand2 = make_x86_register_operand(context->gp_arena, source_reg);
+}
+
+void emit_x86_store_constant_to_memory(X86Context* context, LocationDescriptor* Ldesc, IrConstant* constant, Symbol* object)
+{
+  X86Stmt* mov = new_x86_stmt(context, eX86StmtOpcode_mov);
+
+  mov->operand1 = make_x86_memory_operand(context->gp_arena, object);
+  mov->operand2 = make_x86_constant_operand(context->gp_arena, constant);
 }
 
 eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op)
@@ -5024,24 +5082,79 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op)
   return x86_opcode;
 }
 
-struct ResultLoadLocation
-{
-  eX86Location result_reg;
-  eX86Location prev_loc;
-};
-
 // getreg() pag. 538, Sec. 9.6
-struct ResultLoadLocation get_register_for_result(LocationDescriptor* Ldesc, IrArg* result)
+void get_register_for_result(LocationDescriptor* Ldesc, IrArg* result, IrArg* arg1, IrArg* arg2)
 {
-  struct ResultLoadLocation loc = {0};
-  loc.prev_loc = lookup_object_location(Ldesc, result->object);
-  loc.result_reg = loc.prev_loc;
-  if(loc.result_reg == eX86Location_memory ||
-     lookup_other_object_in_register(Ldesc, loc.result_reg, result->object) || result->next_use != StmtNr_None)
+#if 0
+  IrArg* dest = arg1;
+  if(dest->kind == eIrArg_constant)
   {
-    loc.result_reg = get_free_reg(Ldesc);
+    dest = result;
   }
-  return loc;
+  assert(dest->kind == eIrArg_object);
+#endif
+
+  if(arg1->kind == eIrArg_object)
+  {
+    arg1->loc = lookup_object_location(Ldesc, arg1->object);
+
+    if(is_register_location(arg1->loc) &&
+       !is_single_occupant_register(Ldesc, arg1->loc, arg1->object) &&
+       (arg1->object->is_temp && arg1->next_use == NextUse_None))
+    {
+      delete_object_from_location(Ldesc, arg1->object, arg1->loc);
+      result->loc = arg1->loc;
+    }
+    else 
+    {
+      result->loc = lookup_object_location(Ldesc, result->object);
+
+      if(is_register_location(result->loc) &&
+         !is_single_occupant_register(Ldesc, result->loc, result->object))
+      {
+        ;//ok
+      }
+      else if(!(result->loc = find_free_register(Ldesc)))
+      {
+        if(result->next_use != NextUse_None)
+        {
+          for(int l = eX86Location_None+1; l < eX86Location_memory; l++)
+          {
+            result->loc = (eX86Location)l;
+            if(register_occupants_all_in_memory(Ldesc, result->loc))
+              break;
+            result->loc = eX86Location_None;
+          }
+          if(!result->loc)
+          {
+            arg2->loc = eX86Location_None;
+            if(arg2->kind == eIrArg_object)
+            {
+              arg2->loc = lookup_object_location(Ldesc, arg2->object);
+            }
+            result->loc = find_register_min_occupants(Ldesc, arg2->loc);
+          }
+          assert(result->loc);
+
+          RegisterDescriptor_MapEntry* reg_descript = &Ldesc->registers[result->loc];
+          for(ListItem* li = reg_descript->objects.first;
+              li;
+              li = li->next)
+          {
+            Symbol* object = KIND(li, eList_symbol)->symbol;
+            delete_object_from_location(Ldesc, object, result->loc);
+            //TODO: For each object at this location which is live or has next-use then store it to memory
+          }
+        }
+        else
+        {
+          result->loc = eX86Location_memory;
+        }
+      }
+    }
+  }
+  else
+    assert(0);
 }
 
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
@@ -5213,7 +5326,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
           IrArg* result = stmt->assign.result;
           Symbol* object = KIND(result, eIrArg_object)->object;
           result->next_use = object->next_use;
-          object->next_use = StmtNr_None;
+          object->next_use = NextUse_None;
 
           IrArg* arg1 = stmt->assign.arg1;
           if(arg1->kind == eIrArg_object)
@@ -5270,7 +5383,9 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
       init_list(&Ldesc.loc_entries, Ldesc.arena, eList_Ldesc_map_entry);
       for(int r = 0; r < eX86Location_Count; r++)
       {
-        init_list(&Ldesc.registers[r], Ldesc.arena, eList_symbol);
+        RegisterDescriptor_MapEntry* reg_descript = &Ldesc.registers[r];
+        reg_descript->object_count = 0;
+        init_list(&reg_descript->objects, Ldesc.arena, eList_symbol);
       }
 
       for(int i = 0; i < bb->stmt_count; i++)
@@ -5280,90 +5395,80 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         {
           case eIrStmt_assign:
             {
-              if(ir_stmt->assign.op)
+              eIrOp op = ir_stmt->assign.op;
+              IrArg* result = ir_stmt->assign.result;
+              IrArg* arg1 = ir_stmt->assign.arg1;
+              IrArg* arg2 = ir_stmt->assign.arg2;
+              if(op)
               {
-                IrArg* arg1 = ir_stmt->assign.arg1;
-                IrArg* arg2 = ir_stmt->assign.arg2;
-
                 if(arg1->kind == eIrArg_object && arg2->kind == eIrArg_object)
                 {
-                  struct ResultLoadLocation loc = get_register_for_result(&Ldesc, arg1);
-                  if(loc.prev_loc != loc.result_reg)
+                  get_register_for_result(&Ldesc, result, arg1, arg2);
+                  if(arg1->loc != result->loc && is_register_location(result->loc))
                   {
-                    emit_x86_load_object_into_register(&x86_context, &Ldesc, loc.result_reg, arg1->object);
+                    emit_x86_load_object_into_register(&x86_context, &Ldesc, result->loc, arg1->object);
                   }
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_operand(arena, arg1->object, loc.result_reg);
+                  op->operand1 = make_x86_operand(arena, arg1->object, result->loc);
                   op->operand2 = make_x86_operand(arena, arg2->object, lookup_object_location(&Ldesc, arg2->object));
 
-                  IrArg* result = ir_stmt->assign.result;
-                  put_object_in_location(&Ldesc, KIND(result, eIrArg_object)->object, loc.result_reg);
+                  put_object_in_location(&Ldesc, result->object, result->loc);
                 }
                 else if(arg1->kind == eIrArg_object && arg2->kind == eIrArg_constant)
                 {
-                  struct ResultLoadLocation loc = get_register_for_result(&Ldesc, arg1);
-                  if(loc.prev_loc != loc.result_reg)
+                  get_register_for_result(&Ldesc, result, arg1, arg2);
+                  if(arg1->loc != result->loc && is_register_location(result->loc))
                   {
-                    emit_x86_load_object_into_register(&x86_context, &Ldesc, loc.result_reg, arg1->object);
+                    emit_x86_load_object_into_register(&x86_context, &Ldesc, result->loc, arg1->object);
                   }
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_operand(arena, arg1->object, loc.result_reg);
+                  op->operand1 = make_x86_operand(arena, arg1->object, result->loc);
                   op->operand2 = make_x86_constant_operand(arena, &arg2->constant);
 
-                  IrArg* result = ir_stmt->assign.result;
-                  put_object_in_location(&Ldesc, KIND(result, eIrArg_object)->object, loc.result_reg);
+                  put_object_in_location(&Ldesc, result->object, result->loc);
                 }
                 else if(arg1->kind == eIrArg_constant && arg2->kind == eIrArg_object)
                 {
-                  struct ResultLoadLocation loc = get_register_for_result(&Ldesc, arg2);
-                  if(loc.prev_loc != loc.result_reg)
+                  get_register_for_result(&Ldesc, result, arg2, arg1);
+                  if(arg2->loc != result->loc && is_register_location(result->loc))
                   {
-                    emit_x86_load_object_into_register(&x86_context, &Ldesc, loc.result_reg, arg2->object);
+                    emit_x86_load_object_into_register(&x86_context, &Ldesc, result->loc, arg2->object);
                   }
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_operand(arena, arg2->object, loc.result_reg);
+                  op->operand1 = make_x86_operand(arena, arg2->object, result->loc);
                   op->operand2 = make_x86_constant_operand(arena, &arg1->constant);
 
-                  IrArg* result = ir_stmt->assign.result;
-                  put_object_in_location(&Ldesc, KIND(result, eIrArg_object)->object, loc.result_reg);
+                  put_object_in_location(&Ldesc, result->object, result->loc);
                 }
                 else if(arg1->kind == eIrArg_constant && arg2->kind == eIrArg_constant)
                 {
-                  IrArg* result = ir_stmt->assign.result;
-                  assert(KIND(result, eIrArg_object));
-                  struct ResultLoadLocation loc = get_register_for_result(&Ldesc, result);
-                  emit_x86_load_constant_into_register(&x86_context, loc.result_reg, &arg1->constant);
+                  get_register_for_result(&Ldesc, result, arg1, arg2);
+                  emit_x86_load_constant_into_register(&x86_context, result->loc, &arg1->constant);
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_register_operand(arena, loc.result_reg);
+                  op->operand1 = make_x86_register_operand(arena, result->loc);
                   op->operand2 = make_x86_constant_operand(arena, &arg2->constant);
 
-                  put_object_in_location(&Ldesc, result->object, loc.result_reg);
+                  put_object_in_location(&Ldesc, result->object, result->loc);
                 }
                 else
                   assert(0);
               }
               else // !assign.op
               {
-                IrArg* arg1 = ir_stmt->assign.arg1;
-
                 if(arg1->kind == eIrArg_object)
                 {
                   eX86Location arg1_reg = lookup_object_location(&Ldesc, arg1->object);
-                  IrArg* result = ir_stmt->assign.result;
-                  put_object_in_location(&Ldesc, KIND(result, eIrArg_object)->object, arg1_reg);
+                  put_object_in_location(&Ldesc, result->object, arg1_reg);
                 }
                 else if(arg1->kind == eIrArg_constant)
                 {
-                  IrArg* result = ir_stmt->assign.result;
-                  assert(KIND(result, eIrArg_object));
-                  struct ResultLoadLocation loc = get_register_for_result(&Ldesc, result);
-                  emit_x86_load_constant_into_register(&x86_context, loc.result_reg, &arg1->constant);
-
-                  put_object_in_location(&Ldesc, result->object, loc.result_reg);
+                  get_register_for_result(&Ldesc, result, arg1, arg2);
+                  emit_x86_load_constant_into_register(&x86_context, result->loc, &arg1->constant);
+                  put_object_in_location(&Ldesc, result->object, result->loc);
                 }
                 else
                   assert(0);
@@ -5412,7 +5517,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
       for(int r = 0; r < eX86Location_memory; r++)
       {
         eX86Location source_reg = (eX86Location)r;
-        for(ListItem* li = Ldesc.registers[r].first; li; )
+        RegisterDescriptor_MapEntry* reg_descript = &Ldesc.registers[r];
+        for(ListItem* li = reg_descript->objects.first; li; )
         {
           Symbol* object = KIND(li, eList_symbol)->symbol;
           li = li->next;

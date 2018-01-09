@@ -237,12 +237,12 @@ eLiteral;
 
 typedef enum
 {
-  eScope_None = 0,
-  eScope_module = 1 << 0,
-  eScope_proc = 1 << 1,
-  eScope_while = 1 << 2,
-  eScope_block = 1 << 3,
-  eScope_struct = 1 << 4,
+  eScope_None,
+  eScope_module,
+  eScope_proc,
+  eScope_while,
+  eScope_block,
+  eScope_struct,
 }
 eScope;
 
@@ -501,8 +501,8 @@ typedef struct
 }
 IrConstant;
 
-typedef int StmtNr;
-global_var StmtNr StmtNr_None = -1;
+typedef int NextUse;
+global_var NextUse NextUse_None = -1;
 
 typedef enum
 {
@@ -512,10 +512,27 @@ typedef enum
 }
 eIrArg;
 
+typedef enum
+{
+  eX86Location_None,
+  eX86Location_eax,
+  eX86Location_ebx,
+  eX86Location_ecx,
+  eX86Location_edx,
+  eX86Location_esi,
+  eX86Location_edi,
+  eX86Location_memory,
+  eX86Location_ebp,
+  eX86Location_esp,
+  eX86Location_Count,
+}
+eX86Location;
+
 typedef struct
 {
   eIrArg kind;
-  StmtNr next_use;
+  eX86Location loc;
+  NextUse next_use;
   union
   {
     Symbol* object;
@@ -593,22 +610,6 @@ typedef struct IrLeaderStmt
   IrLabel* label;
 }
 IrLeaderStmt;
-
-typedef enum
-{
-  eX86Location_None,
-  eX86Location_eax,
-  eX86Location_ebx,
-  eX86Location_ecx,
-  eX86Location_edx,
-  eX86Location_esi,
-  eX86Location_edi,
-  eX86Location_memory,
-  eX86Location_ebp,
-  eX86Location_esp,
-  eX86Location_Count,
-}
-eX86Location;
 
 typedef enum
 {
@@ -945,7 +946,7 @@ typedef struct Symbol
   void* data;
 
   bool is_temp;
-  StmtNr next_use;
+  NextUse next_use;
 }
 Symbol;
 
@@ -967,14 +968,6 @@ typedef struct X86Context
 }
 X86Context;
 
-typedef struct LocationDescriptor
-{
-  MemoryArena* arena;
-  List loc_entries;
-  List registers[eX86Location_Count];
-}
-LocationDescriptor;
-
 typedef struct LocationDescriptor_MapEntry
 {
   Symbol* object;
@@ -982,4 +975,17 @@ typedef struct LocationDescriptor_MapEntry
 }
 LocationDescriptor_MapEntry;
 
+typedef struct RegisterDescriptor_MapEntry
+{
+  List objects;
+  int object_count;
+}
+RegisterDescriptor_MapEntry;
 
+typedef struct LocationDescriptor
+{
+  MemoryArena* arena;
+  List loc_entries;
+  RegisterDescriptor_MapEntry registers[eX86Location_Count];
+}
+LocationDescriptor;

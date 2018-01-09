@@ -1,11 +1,17 @@
+int x;
+int y;
+[4]int A;
+
 void startup()
 {
   int a;
   int b;
   int c;
   int d;
-  a = 23;
-  b = 434 + a + 555;
+  a = 0x123;
+  b = 0x122;
+  c = 0x121;
+  d = (a-b) + (a-c);
 
   /*
   []int A;

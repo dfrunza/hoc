@@ -501,6 +501,9 @@ typedef struct
 }
 IrConstant;
 
+typedef int StmtNr;
+global_var StmtNr StmtNr_None = -1;
+
 typedef enum
 {
   eIrArg_None,
@@ -512,6 +515,7 @@ eIrArg;
 typedef struct
 {
   eIrArg kind;
+  StmtNr next_use;
   union
   {
     Symbol* object;
@@ -597,11 +601,11 @@ typedef enum
   eX86Location_ebx,
   eX86Location_ecx,
   eX86Location_edx,
-  eX86Location_ebp,
-  eX86Location_esp,
   eX86Location_esi,
   eX86Location_edi,
   eX86Location_memory,
+  eX86Location_ebp,
+  eX86Location_esp,
   eX86Location_Count,
 }
 eX86Location;
@@ -934,10 +938,14 @@ typedef struct Symbol
   Scope* scope;
   AstNode* ast_node;
   Type* ty;
+
   eStorageSpace storage_space;
   int data_loc;
   int data_size;
   void* data;
+
+  bool is_temp;
+  StmtNr next_use;
 }
 Symbol;
 

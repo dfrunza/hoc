@@ -5024,18 +5024,24 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op)
   return x86_opcode;
 }
 
-// getreg() pag. 538, Sec. 9.6
-bool get_register_for_result(LocationDescriptor* Ldesc, IrArg* result, eX86Location* result_reg_)
+struct ResultLoadLocation
 {
-  eX86Location result_reg = lookup_object_location(Ldesc, result->object);
-  eX86Location prev_reg = result_reg;
-  if(result_reg == eX86Location_memory ||
-     lookup_other_object_in_register(Ldesc, result_reg, result->object) || result->next_use != StmtNr_None)
+  eX86Location result_reg;
+  eX86Location prev_loc;
+};
+
+// getreg() pag. 538, Sec. 9.6
+struct ResultLoadLocation get_register_for_result(LocationDescriptor* Ldesc, IrArg* result)
+{
+  struct ResultLoadLocation loc = {0};
+  loc.prev_loc = lookup_object_location(Ldesc, result->object);
+  loc.result_reg = loc.prev_loc;
+  if(loc.result_reg == eX86Location_memory ||
+     lookup_other_object_in_register(Ldesc, loc.result_reg, result->object) || result->next_use != StmtNr_None)
   {
-    result_reg = get_free_reg(Ldesc);
+    loc.result_reg = get_free_reg(Ldesc);
   }
-  *result_reg_ = result_reg;
-  return (result_reg == prev_reg);
+  return loc;
 }
 
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
@@ -5281,62 +5287,61 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 
                 if(arg1->kind == eIrArg_object && arg2->kind == eIrArg_object)
                 {
-                  eX86Location result_reg = eX86Location_None;
-                  if(get_register_for_result(&Ldesc, arg1, &result_reg))
+                  struct ResultLoadLocation loc = get_register_for_result(&Ldesc, arg1);
+                  if(loc.prev_loc != loc.result_reg)
                   {
-                    emit_x86_load_object_into_register(&x86_context, &Ldesc, result_reg, arg1->object);
+                    emit_x86_load_object_into_register(&x86_context, &Ldesc, loc.result_reg, arg1->object);
                   }
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_operand(arena, arg1->object, result_reg);
+                  op->operand1 = make_x86_operand(arena, arg1->object, loc.result_reg);
                   op->operand2 = make_x86_operand(arena, arg2->object, lookup_object_location(&Ldesc, arg2->object));
 
                   IrArg* result = ir_stmt->assign.result;
-                  put_object_in_location(&Ldesc, KIND(result, eIrArg_object)->object, result_reg);
+                  put_object_in_location(&Ldesc, KIND(result, eIrArg_object)->object, loc.result_reg);
                 }
                 else if(arg1->kind == eIrArg_object && arg2->kind == eIrArg_constant)
                 {
-                  eX86Location result_reg = eX86Location_None;
-                  if(get_register_for_result(&Ldesc, arg1, &result_reg))
+                  struct ResultLoadLocation loc = get_register_for_result(&Ldesc, arg1);
+                  if(loc.prev_loc != loc.result_reg)
                   {
-                    emit_x86_load_object_into_register(&x86_context, &Ldesc, result_reg, arg1->object);
+                    emit_x86_load_object_into_register(&x86_context, &Ldesc, loc.result_reg, arg1->object);
                   }
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_operand(arena, arg1->object, result_reg);
+                  op->operand1 = make_x86_operand(arena, arg1->object, loc.result_reg);
                   op->operand2 = make_x86_constant_operand(arena, &arg2->constant);
 
                   IrArg* result = ir_stmt->assign.result;
-                  put_object_in_location(&Ldesc, KIND(result, eIrArg_object)->object, result_reg);
+                  put_object_in_location(&Ldesc, KIND(result, eIrArg_object)->object, loc.result_reg);
                 }
                 else if(arg1->kind == eIrArg_constant && arg2->kind == eIrArg_object)
                 {
-                  eX86Location result_reg = eX86Location_None;
-                  if(get_register_for_result(&Ldesc, arg2, &result_reg))
+                  struct ResultLoadLocation loc = get_register_for_result(&Ldesc, arg2);
+                  if(loc.prev_loc != loc.result_reg)
                   {
-                    emit_x86_load_object_into_register(&x86_context, &Ldesc, result_reg, arg2->object);
+                    emit_x86_load_object_into_register(&x86_context, &Ldesc, loc.result_reg, arg2->object);
                   }
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_operand(arena, arg2->object, result_reg);
+                  op->operand1 = make_x86_operand(arena, arg2->object, loc.result_reg);
                   op->operand2 = make_x86_constant_operand(arena, &arg1->constant);
 
                   IrArg* result = ir_stmt->assign.result;
-                  put_object_in_location(&Ldesc, KIND(result, eIrArg_object)->object, result_reg);
+                  put_object_in_location(&Ldesc, KIND(result, eIrArg_object)->object, loc.result_reg);
                 }
                 else if(arg1->kind == eIrArg_constant && arg2->kind == eIrArg_constant)
                 {
                   IrArg* result = ir_stmt->assign.result;
                   assert(KIND(result, eIrArg_object));
-                  eX86Location result_reg = eX86Location_None;
-                  get_register_for_result(&Ldesc, result, &result_reg);
-                  emit_x86_load_constant_into_register(&x86_context, result_reg, &arg1->constant);
+                  struct ResultLoadLocation loc = get_register_for_result(&Ldesc, result);
+                  emit_x86_load_constant_into_register(&x86_context, loc.result_reg, &arg1->constant);
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_register_operand(arena, result_reg);
+                  op->operand1 = make_x86_register_operand(arena, loc.result_reg);
                   op->operand2 = make_x86_constant_operand(arena, &arg2->constant);
 
-                  put_object_in_location(&Ldesc, result->object, result_reg);
+                  put_object_in_location(&Ldesc, result->object, loc.result_reg);
                 }
                 else
                   assert(0);
@@ -5355,11 +5360,10 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
                 {
                   IrArg* result = ir_stmt->assign.result;
                   assert(KIND(result, eIrArg_object));
-                  eX86Location result_reg = eX86Location_None;
-                  get_register_for_result(&Ldesc, result, &result_reg);
-                  emit_x86_load_constant_into_register(&x86_context, result_reg, &arg1->constant);
+                  struct ResultLoadLocation loc = get_register_for_result(&Ldesc, result);
+                  emit_x86_load_constant_into_register(&x86_context, loc.result_reg, &arg1->constant);
 
-                  put_object_in_location(&Ldesc, result->object, result_reg);
+                  put_object_in_location(&Ldesc, result->object, loc.result_reg);
                 }
                 else
                   assert(0);

@@ -1,5 +1,6 @@
 #define breakpoint() for(int x = 0; x != 0; )
 #define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
+#define max_int() ~(1 << (sizeof(int)*8 - 1))
 
 bool char_is_letter(char ch)
 {
@@ -456,9 +457,8 @@ void init_list(List* list, MemoryArena* arena, eList kind)
 {
   list->kind = kind;
   list->arena = arena;
-  list->kind = kind;
-  list->arena = arena;
   list->first = list->last = 0;
+  list->count = 0;
 }
 
 List* new_list(MemoryArena* arena, eList kind)
@@ -492,6 +492,8 @@ void remove_list_item(List* list, ListItem* item)
       list->last->next = 0;
   }
   item->next = item->prev = 0;
+
+  list->count--;
 }
 
 void append_list_item(List* list, ListItem* item)
@@ -510,6 +512,8 @@ void append_list_item(List* list, ListItem* item)
     list->first = list->last = item;
     item->next = item->prev = 0;
   }
+
+  list->count++;
 }
 
 void append_list_elem(List* list, void* elem, eList kind)
@@ -537,6 +541,8 @@ void prepend_list_item(List* list, ListItem* item)
     list->first = list->last = item;
     item->next = item->prev = 0;
   }
+
+  list->count++;
 }
 
 void prepend_list_elem(List* list, void* elem, eList kind)
@@ -575,6 +581,8 @@ void replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
   }
   else
     list_b->last = list_a->last;
+
+  list_b->count += list_a->count - 1;
 }
 
 void join_list_pair(List* list_a, List* list_b)
@@ -587,6 +595,8 @@ void join_list_pair(List* list_a, List* list_b)
 
   if(first_b_item)
     first_b_item->prev = last_a_item;
+
+  list_a->count += list_b->count;
 }
 
 void insert_item_before(List* list, ListItem* at_li, ListItem* new_li)
@@ -603,6 +613,8 @@ void insert_item_before(List* list, ListItem* at_li, ListItem* new_li)
   new_li->next = at_li;
   new_li->prev = at_li->prev;
   at_li->prev = new_li;
+
+  list->count++;
 }
 
 void insert_elem_before(List* list, ListItem* at_li, void* elem, eList kind)
@@ -628,6 +640,8 @@ void insert_item_after(List* list, ListItem* at_li, ListItem* new_li)
   new_li->prev = at_li;
   new_li->next = at_li->next;
   at_li->next = new_li;
+
+  list->count++;
 }
 
 void insert_elem_after(List* list, ListItem* at_li, void* elem, eList kind)
@@ -646,6 +660,7 @@ ListItem* remove_first_item(List* list)
   {
     result = list->first;
     list->first = list->first->next;
+    list->count--;
   }
   return result;
 }

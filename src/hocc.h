@@ -254,13 +254,11 @@ typedef enum
   eList_symbol,
   eList_scope,
   eList_type_pair,
-  eList_data_area,
   eList_ir_stmt,
   eList_ir_arg,
   eList_ir_leader_stmt,
   eList_ir_label,
   eList_basic_block,
-  eList_Ldesc_map_entry,
 }
 eList;
 
@@ -279,7 +277,6 @@ typedef struct ListItem
     IrLeaderStmt* ir_leader_stmt;
     IrLabel* ir_label;
     BasicBlock* basic_block;
-    LocationDescriptor_MapEntry* Ldesc_map_entry;
   };
   struct ListItem* next;
   struct ListItem* prev;
@@ -289,6 +286,7 @@ ListItem;
 typedef struct List
 {
   eList kind;
+  int count;
   ListItem* first;
   ListItem* last;
   MemoryArena* arena;
@@ -934,6 +932,13 @@ typedef enum
 }
 eStorageSpace;
 
+// for natvis
+typedef struct ObjectLocations
+{
+  bool L[eX86Location_Count];
+}
+ObjectLocations;
+
 typedef struct Symbol
 {
   char* name;
@@ -950,6 +955,7 @@ typedef struct Symbol
 
   bool is_temp;
   NextUse next_use;
+  ObjectLocations locations;
 }
 Symbol;
 
@@ -968,28 +974,7 @@ typedef struct X86Context
   MemoryArena* gp_arena;
   X86Stmt* stmt_array;
   int stmt_count;
+  List registers[eX86Location_Count];
 }
 X86Context;
 
-typedef struct LocationDescriptor_MapEntry
-{
-  //Symbol* object;
-  IrArg* arg;
-  bool locations[eX86Location_Count];
-}
-LocationDescriptor_MapEntry;
-
-typedef struct RegisterDescriptor_MapEntry
-{
-  List occupants;
-  int occupant_count;
-}
-RegisterDescriptor_MapEntry;
-
-typedef struct LocationDescriptor
-{
-  MemoryArena* arena;
-  List loc_entries;
-  RegisterDescriptor_MapEntry registers[eX86Location_Count];
-}
-LocationDescriptor;

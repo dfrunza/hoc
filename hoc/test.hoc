@@ -6,23 +6,10 @@ void startup()
 {
   int a;
   int b;
-  int c;
-  int d;
-  int e;
-  int f;
-  int g;
-  int h;
-  a=101;
-  b=102;
-  c=103;
-  d=104;
-  e=a+b;
-  f=a-b;
-  g=105;
-  h=106;
-  a = (a*a);
-  g = g+g+g+g+g;
-
+  a = 1;
+  b = 2;
+  if(a < b)
+    a = 111;
   /*
   []int A;
   []int B;

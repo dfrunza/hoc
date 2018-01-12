@@ -4,7 +4,7 @@
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
-typedef unsigned int bool;
+typedef int bool;
 
 typedef char int8;
 typedef short int16;

@@ -20,7 +20,7 @@ void startup()
   f=a-b;
   g=105;
   h=106;
-  a = (a-a);
+  a = (a*a);
   g = g+g+g+g+g;
 
   /*

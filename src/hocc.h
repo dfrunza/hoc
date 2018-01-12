@@ -929,13 +929,6 @@ typedef enum
 }
 eStorageSpace;
 
-// for natvis
-typedef struct ObjectLocations
-{
-  bool L[eX86Location_Count];
-}
-ObjectLocations;
-
 typedef struct Symbol
 {
   char* name;
@@ -953,7 +946,13 @@ typedef struct Symbol
   bool is_live;
   bool is_temp;
   NextUse next_use;
-  ObjectLocations locations;
+
+  // for natvis
+  struct Symbol_locations
+  {
+    bool _[eX86Location_Count];
+  }
+  locations;
 }
 Symbol;
 
@@ -966,20 +965,19 @@ typedef struct
 }
 SymbolContext;
 
-// for natvis
-typedef struct RegisterOccupants
-{
-  List R[eX86Location_Count];
-}
-RegisterOccupants;
-
 typedef struct X86Context
 {
   MemoryArena* stmt_arena;
   MemoryArena* gp_arena;
   X86Stmt* stmt_array;
   int stmt_count;
-  RegisterOccupants registers;
+
+  // for natvis
+  struct X86Context_registers
+  {
+    List _[eX86Location_Count];
+  }
+  registers;
 }
 X86Context;
 

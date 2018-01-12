@@ -4740,9 +4740,9 @@ X86Stmt* new_x86_stmt(X86Context* context, eX86StmtOpcode opcode)
 
 void new_object_location_entry(X86Context* context, Symbol* object, eX86Location loc)
 {
-  object->locations.L[loc] = true;
+  object->locations._[loc] = true;
 
-  List* occupants = &context->registers.R[loc];
+  List* occupants = &context->registers._[loc];
   for(ListItem* li = occupants->first;
       li;
       li = li->next)
@@ -4754,11 +4754,11 @@ void new_object_location_entry(X86Context* context, Symbol* object, eX86Location
 
 void delete_object_from_location(X86Context* context, Symbol* object, eX86Location loc)
 {
-  if(object->locations.L[loc])
+  if(object->locations._[loc])
   {
-    object->locations.L[loc] = false;
+    object->locations._[loc] = false;
 
-    List* occupants = &context->registers.R[loc];
+    List* occupants = &context->registers._[loc];
     ListItem* li = occupants->first;
     for(; li; li = li->next)
     {
@@ -4774,9 +4774,9 @@ void delete_object_from_location(X86Context* context, Symbol* object, eX86Locati
 
 void put_object_in_location(X86Context* context, Symbol* object, eX86Location loc)
 {
-  if(object->locations.L[loc])
+  if(object->locations._[loc])
   {
-    List* occupants = &context->registers.R[loc];
+    List* occupants = &context->registers._[loc];
     ListItem* li = occupants->first;
     for(; li; li = li->next)
     {
@@ -4798,13 +4798,13 @@ void put_object_in_location(X86Context* context, Symbol* object, eX86Location lo
 bool register_occupants_all_in_memory(X86Context* context, eX86Location reg)
 {
   bool result = true;
-  List* occupants = &context->registers.R[reg];
+  List* occupants = &context->registers._[reg];
   for(ListItem* li = occupants->first;
       li && result;
       li = li->next)
   {
     Symbol* object = KIND(li, eList_symbol)->symbol;
-    result &= object->locations.L[eX86Location_memory]; 
+    result &= object->locations._[eX86Location_memory]; 
   }
   return result;
 }
@@ -4815,7 +4815,7 @@ eX86Location find_free_register(X86Context* context)
 
   for(int l = eX86Location_None+1; l < eX86Location_memory; l++)
   {
-    List* occupants = &context->registers.R[l];
+    List* occupants = &context->registers._[l];
     if(occupants->count == 0)
     {
       reg = (eX86Location)l;
@@ -4831,7 +4831,7 @@ eX86Location lookup_object_location(Symbol* object)
   eX86Location loc = eX86Location_None;
   for(int l = 0; l < eX86Location_Count; l++)
   {
-    if(object->locations.L[l])
+    if(object->locations._[l])
     {
       loc = (eX86Location)l;
       break;
@@ -4850,7 +4850,7 @@ bool is_single_occupant_register(X86Context* context, eX86Location reg, Symbol* 
   assert(is_register_location(reg));
 
   bool result = false;
-  List* occupants = &context->registers.R[reg];
+  List* occupants = &context->registers._[reg];
   if(occupants->count == 1)
   {
     Symbol* single_object = KIND(occupants->first, eList_symbol)->symbol;
@@ -4923,7 +4923,7 @@ void x86_emit_load_object_into_register(X86Context* context, eX86Location dest_r
 
   if(source_loc)
   {
-    if(object->locations.L[dest_reg])
+    if(object->locations._[dest_reg])
     {
       source_loc = dest_reg;
     }
@@ -5073,7 +5073,7 @@ eX86Location get_location_to_hold_result(X86Context* context, IrArg* result, eIr
             int min_count = max_int();
             for(int l = eX86Location_None+1; l < eX86Location_memory; l++)
             {
-              List* occupants = &context->registers.R[l];
+              List* occupants = &context->registers._[l];
               if(occupants->count < min_count && l != arg2_loc)
               {
                 free_reg = (eX86Location)l;
@@ -5084,7 +5084,7 @@ eX86Location get_location_to_hold_result(X86Context* context, IrArg* result, eIr
           assert(free_reg);
           loc = free_reg;
 
-          List* occupants = &context->registers.R[free_reg];
+          List* occupants = &context->registers._[free_reg];
           for(ListItem* li = occupants->first;
               li;
               li = li->next)
@@ -5333,7 +5333,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     x86_context.gp_arena = arena;
     for(int r = 0; r < eX86Location_Count; r++)
     {
-      List* occupants = &x86_context.registers.R[r];
+      List* occupants = &x86_context.registers._[r];
       init_list(occupants, x86_context.gp_arena, eList_symbol);
     }
 
@@ -5497,7 +5497,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
       for(int r = eX86Location_None+1; r < eX86Location_memory; r++)
       {
         eX86Location source_reg = (eX86Location)r;
-        List* occupants = &x86_context.registers.R[r];
+        List* occupants = &x86_context.registers._[r];
         for(ListItem* li = occupants->first; li; )
         {
           Symbol* object = KIND(li, eList_symbol)->symbol;

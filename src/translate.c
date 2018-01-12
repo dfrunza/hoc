@@ -760,6 +760,7 @@ Symbol* new_temp_object(MemoryArena* arena, Scope* scope, Type* ty)
   sym->storage_space = eStorageSpace_stack;
   sym->next_use = NextUse_None;
   sym->is_temp = true;
+  sym->is_live = false;
   alloc_data_object(sym, scope);
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
   return sym;
@@ -775,6 +776,8 @@ Symbol* add_decl_sym(MemoryArena* arena, char* name, eStorageSpace storage_space
   sym->order_nr = scope->sym_count++;
   sym->storage_space = storage_space;
   sym->next_use = NextUse_None;
+  sym->is_temp = false;
+  sym->is_live = true;
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
   return sym;
 }
@@ -3368,9 +3371,15 @@ void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, I
   stmt->kind = eIrStmt_assign;
   stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
   stmt->assign.op = op;
-  stmt->assign.arg1 = arg1;
-  stmt->assign.arg2 = arg2;
-  stmt->assign.result = result;
+  stmt->assign.arg1 = mem_push_struct(arena, IrArg);
+  *stmt->assign.arg1 = *arg1;
+  if(arg2)
+  {
+    stmt->assign.arg2 = mem_push_struct(arena, IrArg);
+    *stmt->assign.arg2 = *arg2;
+  }
+  stmt->assign.result = mem_push_struct(arena, IrArg);
+  *stmt->assign.result = *result;
   ir_context->stmt_count++;
 }
 
@@ -4729,31 +4738,31 @@ X86Stmt* new_x86_stmt(X86Context* context, eX86StmtOpcode opcode)
   return stmt;
 }
 
-void new_object_location_entry(X86Context* context, IrArg* arg, eX86Location loc)
+void new_object_location_entry(X86Context* context, Symbol* object, eX86Location loc)
 {
-  arg->object->locations.L[loc] = true;
+  object->locations.L[loc] = true;
 
-  List* occupants = &context->registers[loc];
+  List* occupants = &context->registers.R[loc];
   for(ListItem* li = occupants->first;
       li;
       li = li->next)
   {
-    assert(arg->object != KIND(li, eList_ir_arg)->ir_arg->object);
+    assert(object != KIND(li, eList_symbol)->symbol);
   }
-  append_list_elem(occupants, arg, eList_ir_arg);
+  append_list_elem(occupants, object, eList_symbol);
 }
 
-void delete_object_from_location(X86Context* context, IrArg* arg, eX86Location loc)
+void delete_object_from_location(X86Context* context, Symbol* object, eX86Location loc)
 {
-  if(arg->object->locations.L[loc])
+  if(object->locations.L[loc])
   {
-    arg->object->locations.L[loc] = false;
+    object->locations.L[loc] = false;
 
-    List* occupants = &context->registers[loc];
+    List* occupants = &context->registers.R[loc];
     ListItem* li = occupants->first;
     for(; li; li = li->next)
     {
-      if(arg->object == KIND(li, eList_ir_arg)->ir_arg->object)
+      if(object == KIND(li, eList_symbol)->symbol)
         break;
     }
     if(li)
@@ -4763,39 +4772,39 @@ void delete_object_from_location(X86Context* context, IrArg* arg, eX86Location l
   }
 }
 
-void put_object_in_location(X86Context* context, IrArg* arg, eX86Location loc)
+void put_object_in_location(X86Context* context, Symbol* object, eX86Location loc)
 {
-  if(arg->object->locations.L[loc])
+  if(object->locations.L[loc])
   {
-    List* occupants = &context->registers[loc];
+    List* occupants = &context->registers.R[loc];
     ListItem* li = occupants->first;
     for(; li; li = li->next)
     {
-      if(arg->object == KIND(li, eList_ir_arg)->ir_arg->object)
+      if(object == KIND(li, eList_symbol)->symbol)
         break;
     }
     assert(li);
     if(li)
     {
-      li->ir_arg = arg;
+      li->symbol = object;
     }
   }
   else
   {
-    new_object_location_entry(context, arg, loc);
+    new_object_location_entry(context, object, loc);
   }
 }
 
 bool register_occupants_all_in_memory(X86Context* context, eX86Location reg)
 {
   bool result = true;
-  List* occupants = &context->registers[reg];
+  List* occupants = &context->registers.R[reg];
   for(ListItem* li = occupants->first;
       li && result;
       li = li->next)
   {
-    IrArg* arg = KIND(li, eList_ir_arg)->ir_arg;
-    result &= arg->object->locations.L[eX86Location_memory]; 
+    Symbol* object = KIND(li, eList_symbol)->symbol;
+    result &= object->locations.L[eX86Location_memory]; 
   }
   return result;
 }
@@ -4806,7 +4815,7 @@ eX86Location find_free_register(X86Context* context)
 
   for(int l = eX86Location_None+1; l < eX86Location_memory; l++)
   {
-    List* occupants = &context->registers[l];
+    List* occupants = &context->registers.R[l];
     if(occupants->count == 0)
     {
       reg = (eX86Location)l;
@@ -4817,35 +4826,35 @@ eX86Location find_free_register(X86Context* context)
   return reg;
 }
 
-eX86Location lookup_object_location(X86Context* context, IrArg* arg)
+eX86Location lookup_object_location(Symbol* object)
 {
   eX86Location loc = eX86Location_None;
   for(int l = 0; l < eX86Location_Count; l++)
   {
-    if(arg->object->locations.L[l])
+    if(object->locations.L[l])
     {
       loc = (eX86Location)l;
       break;
     }
   }
-  return arg->loc = loc;
+  return loc;
 }
 
-inline bool is_register_location(eX86Location loc)
+bool is_register_location(eX86Location loc)
 {
   return loc > eX86Location_None && loc < eX86Location_memory;
 }
 
-bool is_single_occupant_register(X86Context* context, eX86Location reg, IrArg* arg)
+bool is_single_occupant_register(X86Context* context, eX86Location reg, Symbol* object)
 {
   assert(is_register_location(reg));
 
   bool result = false;
-  List* occupants = &context->registers[reg];
+  List* occupants = &context->registers.R[reg];
   if(occupants->count == 1)
   {
-    IrArg* single_arg = KIND(occupants->first, eList_ir_arg)->ir_arg;
-    result = (single_arg->object == arg->object);
+    Symbol* single_object = KIND(occupants->first, eList_symbol)->symbol;
+    result = (single_object == object);
   }
   return result;
 }
@@ -4908,7 +4917,7 @@ X86Operand* make_x86_operand(MemoryArena* arena, Symbol* object, eX86Location lo
   }
 }
 
-void emit_x86_load_object_into_register(X86Context* context, eX86Location dest_reg, eX86Location source_loc, Symbol* object)
+void x86_emit_load_object_into_register(X86Context* context, eX86Location dest_reg, eX86Location source_loc, Symbol* object)
 {
   assert(is_register_location(dest_reg));
 
@@ -4921,7 +4930,6 @@ void emit_x86_load_object_into_register(X86Context* context, eX86Location dest_r
   }
   else
   {
-    compile_error(object->src_loc, "uninitialized var `%s`", object->name);
     source_loc = eX86Location_memory;
   }
   assert(source_loc);
@@ -4935,18 +4943,28 @@ void emit_x86_load_object_into_register(X86Context* context, eX86Location dest_r
   }
 }
 
-void emit_x86_load_constant_into_register(X86Context* context, eX86Location dest_reg, IrConstant* constant)
+void x86_emit_load_constant_into_register(X86Context* context, eX86Location dest_reg, IrConstant* constant)
 {
-  assert(dest_reg && dest_reg != eX86Location_memory);
+  assert(is_register_location(dest_reg));
+
   X86Stmt* mov = new_x86_stmt(context, eX86StmtOpcode_mov);
 
   mov->operand1 = make_x86_register_operand(context->gp_arena, dest_reg);
   mov->operand2 = make_x86_constant_operand(context->gp_arena, constant);
 }
 
-void emit_x86_store_object_to_memory(X86Context* context, eX86Location source_reg, Symbol* object)
+void x86_emit_store_constant_to_memory(X86Context* context, IrConstant* constant, Symbol* object)
+{
+  X86Stmt* mov = new_x86_stmt(context, eX86StmtOpcode_mov);
+
+  mov->operand1 = make_x86_memory_operand(context->gp_arena, object);
+  mov->operand2 = make_x86_constant_operand(context->gp_arena, constant);
+}
+
+void x86_emit_store_object_to_memory(X86Context* context, eX86Location source_reg, Symbol* object)
 {
   assert(source_reg && source_reg != eX86Location_memory);
+
   X86Stmt* mov = new_x86_stmt(context, eX86StmtOpcode_mov);
 
   mov->operand1 = make_x86_memory_operand(context->gp_arena, object);
@@ -4977,86 +4995,135 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op)
 }
 
 // getreg() pag. 538, Sec. 9.6
-void get_register_for_result(X86Context* context, IrArg* result, IrArg* arg1, IrArg* arg2)
+eX86Location get_location_to_hold_result(X86Context* context, IrArg* result, eIrOp op, IrArg* arg1, IrArg* arg2)
 {
-  bool arg1_register_available = false;
+  eX86Location loc = eX86Location_None;
+
   if(arg1->kind == eIrArg_object)
   {
-    lookup_object_location(context, arg1);
+    eX86Location arg1_loc = lookup_object_location(arg1->object);
 
-    if(is_register_location(arg1->loc) &&
-       !is_single_occupant_register(context, arg1->loc, arg1) &&
-       (arg1->object->is_temp && arg1->next_use == NextUse_None))
+    if(is_register_location(arg1_loc))
     {
-      delete_object_from_location(context, arg1, arg1->loc);
-      result->loc = arg1->loc;
-      arg1_register_available = true;
+      if(op == eIrOp_None)
+      {
+        if(is_single_occupant_register(context, arg1_loc, arg1->object) &&
+           (!arg1->is_live && arg1->next_use == NextUse_None))
+        {
+          loc = arg1_loc;
+          delete_object_from_location(context, arg1->object, arg1_loc);
+        }
+        else
+        {
+          eX86Location result_loc = lookup_object_location(result->object);
+          if(is_register_location(result_loc) &&
+             is_single_occupant_register(context, result_loc, result->object))
+          {
+            loc = result_loc;
+          }
+        }
+      }
+      else
+      {
+        if(is_single_occupant_register(context, arg1_loc, arg1->object) &&
+           (!arg1->is_live && arg1->next_use == NextUse_None))
+        {
+          loc = arg1_loc;
+          delete_object_from_location(context, arg1->object, arg1_loc);
+        }
+      }
     }
   }
-  if(!arg1_register_available)
-  {
-    lookup_object_location(context, result);
 
-    if(is_register_location(result->loc) &&
-        !is_single_occupant_register(context, result->loc, result))
+  if(!loc)
+  {
+    eX86Location result_loc = lookup_object_location(result->object);
+
+    if(is_register_location(result_loc) &&
+       is_single_occupant_register(context, result_loc, result->object))
     {
-      ;//ok
+      loc = result_loc;
     }
     else
     {
-      result->loc = find_free_register(context);
-      if(!result->loc)
+      eX86Location free_reg = find_free_register(context);
+      if(free_reg)
+      {
+        loc = free_reg;
+      }
+      else
       {
         if(result->next_use != NextUse_None)
         {
           for(int l = eX86Location_None+1; l < eX86Location_memory; l++)
           {
-            result->loc = (eX86Location)l;
-            if(register_occupants_all_in_memory(context, result->loc))
+            free_reg = (eX86Location)l;
+            if(register_occupants_all_in_memory(context, free_reg))
               break;
-            result->loc = eX86Location_None;
+            free_reg = eX86Location_None;
           }
-          if(!result->loc)
+          if(!free_reg)
           {
-            arg2->loc = eX86Location_None;
-            if(arg2->kind == eIrArg_object)
+            eX86Location arg2_loc = eX86Location_None;
+            if(arg2 && arg2->kind == eIrArg_object)
             {
-              lookup_object_location(context, arg2);
+              arg2_loc = lookup_object_location(arg2->object);
             }
 
             int min_count = max_int();
             for(int l = eX86Location_None+1; l < eX86Location_memory; l++)
             {
-              List* occupants = &context->registers[l];
-              if(occupants->count < min_count && l != arg2->loc)
+              List* occupants = &context->registers.R[l];
+              if(occupants->count < min_count && l != arg2_loc)
               {
-                result->loc = (eX86Location)l;
+                free_reg = (eX86Location)l;
                 min_count = occupants->count;
               }
             }
           }
-          assert(result->loc);
+          assert(free_reg);
+          loc = free_reg;
 
-          List* occupants = &context->registers[result->loc];
+          List* occupants = &context->registers.R[free_reg];
           for(ListItem* li = occupants->first;
               li;
               li = li->next)
           {
-            IrArg* arg = KIND(li, eList_ir_arg)->ir_arg;
-            delete_object_from_location(context, arg, result->loc);
-            if(!arg->object->is_temp || arg->next_use != NextUse_None)
+            Symbol* object = KIND(li, eList_symbol)->symbol;
+            delete_object_from_location(context, object, free_reg);
+            if(object->is_live)
             {
-              emit_x86_store_object_to_memory(context, result->loc, arg->object);
-              put_object_in_location(context, arg, eX86Location_memory);
+              x86_emit_store_object_to_memory(context, free_reg, object);
+              put_object_in_location(context, object, eX86Location_memory);
             }
           }
         }
         else
         {
-          result->loc = eX86Location_memory;
+          loc = eX86Location_memory;
         }
       }
     }
+  }
+  assert(loc);
+  return loc;
+}
+
+void update_object_live_info(IrArg* result, IrArg* arg1, IrArg* arg2)
+{
+  result->object->is_live = result->is_live;
+  result->object->next_use = result->next_use;
+
+  if(arg1->kind == eIrArg_object)
+  {
+    arg1->object->is_live = arg1->is_live;
+    arg1->object->next_use = arg1->next_use;
+  }
+
+  if(arg2 && arg2->kind == eIrArg_object)
+  {
+    arg2->object->is_live = arg2->is_live;
+    arg2->object->next_use = arg2->next_use;
   }
 }
 
@@ -5220,6 +5287,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         append_list_elem(&bb->succ_list, bb_next, eList_basic_block);
         append_list_elem(&bb_next->pred_list, bb, eList_basic_block);
       }
+
       // next-use information
       for(int i = bb->stmt_count - 1; i >=0 ; i--)
       {
@@ -5228,14 +5296,18 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         {
           IrArg* result = stmt->assign.result;
           Symbol* object = KIND(result, eIrArg_object)->object;
+          result->is_live = object->is_live;
           result->next_use = object->next_use;
+          object->is_live = object->is_temp ? false : true;
           object->next_use = NextUse_None;
 
           IrArg* arg1 = stmt->assign.arg1;
           if(arg1->kind == eIrArg_object)
           {
             Symbol* object = arg1->object;
+            arg1->is_live = object->is_live;
             arg1->next_use = object->next_use;
+            object->is_live = true;
             object->next_use = i;
           }
 
@@ -5243,7 +5315,9 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
           if(arg2 && arg2->kind == eIrArg_object)
           {
             Symbol* object = arg2->object;
+            arg2->is_live = object->is_live;
             arg2->next_use = object->next_use;
+            object->is_live = true;
             object->next_use = i;
           }
         }
@@ -5259,8 +5333,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     x86_context.gp_arena = arena;
     for(int r = 0; r < eX86Location_Count; r++)
     {
-      List* occupants = &x86_context.registers[r];
-      init_list(occupants, x86_context.gp_arena, eList_ir_arg);
+      List* occupants = &x86_context.registers.R[r];
+      init_list(occupants, x86_context.gp_arena, eList_symbol);
     }
 
     for(ListItem* li = basic_blocks->first;
@@ -5298,56 +5372,54 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
               IrArg* arg1 = ir_stmt->assign.arg1;
               IrArg* arg2 = ir_stmt->assign.arg2;
 
+              update_object_live_info(result, arg1, arg2);
+              eX86Location result_loc = eX86Location_None;
+
               if(op)
               {
                 if(arg1->kind == eIrArg_object && arg2->kind == eIrArg_object)
                 {
-                  get_register_for_result(&x86_context, result, arg1, arg2);
-                  if(arg1->loc != result->loc && is_register_location(result->loc))
+                  eX86Location arg1_loc = lookup_object_location(arg1->object);
+                  result_loc = get_location_to_hold_result(&x86_context, result, op, arg1, arg2);
+                  if(arg1_loc != result_loc && is_register_location(result_loc))
                   {
-                    emit_x86_load_object_into_register(&x86_context, result->loc, arg1->loc, arg1->object);
+                    x86_emit_load_object_into_register(&x86_context, result_loc, arg1_loc, arg1->object);
                   }
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_operand(arena, arg1->object, result->loc);
-                  op->operand2 = make_x86_operand(arena, arg2->object, lookup_object_location(&x86_context, arg2));
-                  put_object_in_location(&x86_context, result, result->loc);
+                  op->operand1 = make_x86_operand(arena, arg1->object, result_loc);
+                  op->operand2 = make_x86_operand(arena, arg2->object, lookup_object_location(arg2->object));
                 }
                 else if(arg1->kind == eIrArg_object && arg2->kind == eIrArg_constant)
                 {
-                  get_register_for_result(&x86_context, result, arg1, arg2);
-                  if(arg1->loc != result->loc && is_register_location(result->loc))
+                  eX86Location arg1_loc = lookup_object_location(arg1->object);
+                  result_loc = get_location_to_hold_result(&x86_context, result, op, arg1, arg2);
+                  if(arg1_loc != result_loc && is_register_location(result_loc))
                   {
-                    emit_x86_load_object_into_register(&x86_context, result->loc, arg1->loc, arg1->object);
+                    x86_emit_load_object_into_register(&x86_context, result_loc, arg1_loc, arg1->object);
                   }
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_operand(arena, arg1->object, result->loc);
+                  op->operand1 = make_x86_operand(arena, arg1->object, result_loc);
                   op->operand2 = make_x86_constant_operand(arena, &arg2->constant);
-                  put_object_in_location(&x86_context, result, result->loc);
                 }
                 else if(arg1->kind == eIrArg_constant && arg2->kind == eIrArg_object)
                 {
-                  get_register_for_result(&x86_context, result, arg2, arg1);
-                  if(arg2->loc != result->loc && is_register_location(result->loc))
-                  {
-                    emit_x86_load_object_into_register(&x86_context, result->loc, arg2->loc, arg2->object);
-                  }
+                  result_loc = get_location_to_hold_result(&x86_context, result, op, arg1, arg2);
+                  x86_emit_load_constant_into_register(&x86_context, result_loc, &arg1->constant);
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_operand(arena, arg2->object, result->loc);
-                  op->operand2 = make_x86_constant_operand(arena, &arg1->constant);
-                  put_object_in_location(&x86_context, result, result->loc);
+                  op->operand1 = make_x86_operand(arena, arg1->object, result_loc);
+                  op->operand2 = make_x86_operand(arena, arg2->object, lookup_object_location(arg2->object));
                 }
                 else if(arg1->kind == eIrArg_constant && arg2->kind == eIrArg_constant)
                 {
-                  get_register_for_result(&x86_context, result, arg1, arg2);
-                  emit_x86_load_constant_into_register(&x86_context, result->loc, &arg1->constant);
+                  result_loc = get_location_to_hold_result(&x86_context, result, op, arg1, arg2);
+                  x86_emit_load_constant_into_register(&x86_context, result_loc, &arg1->constant);
 
                   X86Stmt* op = new_x86_stmt(&x86_context, conv_ir_op_to_x86_opcode(ir_stmt->assign.op));
-                  op->operand1 = make_x86_register_operand(arena, result->loc);
+                  op->operand1 = make_x86_register_operand(arena, result_loc);
                   op->operand2 = make_x86_constant_operand(arena, &arg2->constant);
-                  put_object_in_location(&x86_context, result, result->loc);
                 }
                 else
                   assert(0);
@@ -5356,18 +5428,31 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
               {
                 if(arg1->kind == eIrArg_object)
                 {
-                  eX86Location arg1_reg = lookup_object_location(&x86_context, arg1);
-                  put_object_in_location(&x86_context, result, arg1_reg);
+                  result_loc = get_location_to_hold_result(&x86_context, result, op, arg1, arg2);
+
+                  eX86Location current_result_loc = lookup_object_location(result->object);
+                  if(is_register_location(current_result_loc))
+                  {
+                    delete_object_from_location(&x86_context, result->object, current_result_loc);
+                  }
+                  put_object_in_location(&x86_context, result->object, result_loc);
                 }
                 else if(arg1->kind == eIrArg_constant)
                 {
-                  get_register_for_result(&x86_context, result, arg1, arg2);
-                  emit_x86_load_constant_into_register(&x86_context, result->loc, &arg1->constant);
-                  put_object_in_location(&x86_context, result, result->loc);
+                  result_loc = get_location_to_hold_result(&x86_context, result, op, arg1, arg2);
+                  if(is_register_location(result_loc))
+                  {
+                    x86_emit_load_constant_into_register(&x86_context, result_loc, &arg1->constant);
+                  }
+                  else if(result_loc == eX86Location_memory)
+                  {
+                    x86_emit_store_constant_to_memory(&x86_context, &arg1->constant, result->object);
+                  }
                 }
                 else
                   assert(0);
               }
+              put_object_in_location(&x86_context, result->object, result_loc);
             }
             break;
 
@@ -5409,21 +5494,21 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
         }
       }
 
-      for(int r = 0; r < eX86Location_memory; r++)
+      for(int r = eX86Location_None+1; r < eX86Location_memory; r++)
       {
         eX86Location source_reg = (eX86Location)r;
-        List* occupants = &x86_context.registers[r];
+        List* occupants = &x86_context.registers.R[r];
         for(ListItem* li = occupants->first; li; )
         {
-          IrArg* arg = KIND(li, eList_ir_arg)->ir_arg;
+          Symbol* object = KIND(li, eList_symbol)->symbol;
           li = li->next;
 
-          if(!arg->object->is_temp)
+          if(object->is_live)
           {
-            emit_x86_store_object_to_memory(&x86_context, source_reg, arg->object);
-            put_object_in_location(&x86_context, arg, eX86Location_memory);
+            x86_emit_store_object_to_memory(&x86_context, source_reg, object);
+            put_object_in_location(&x86_context, object, eX86Location_memory);
           }
-          delete_object_from_location(&x86_context, arg, source_reg);
+          delete_object_from_location(&x86_context, object, source_reg);
         }
       }
     }

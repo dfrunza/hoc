@@ -10,14 +10,18 @@ void startup()
   int d;
   int e;
   int f;
-  a = 0x123;
-  b = 0x122;
-  c = 0x121;
-  d = 0x120;
-  e = 0x119;
-  f = 0x118;
-  f = (d-e) + (c-f);
-  d = (a-b) + (a-c);
+  int g;
+  int h;
+  a=101;
+  b=102;
+  c=103;
+  d=104;
+  e=a+b;
+  f=a-b;
+  g=105;
+  h=106;
+  a = (a-a);
+  g = g+g+g+g+g;
 
   /*
   []int A;

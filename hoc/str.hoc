@@ -75,12 +75,13 @@ char^ int_to_str(char^ buf, int buf_len, int i)
   return buf[buf_i];
 }
 
-void init_intbuf(int^ buf, int len, int val)
+void init_intbuf([]int buf, int len, int val)
 {
   int i; i = 0;
   while(i < len)
   {
-    ^(buf + (int^):(i * 4)) = val;
+    /*^(buf + (int^):(i * 4)) = val;*/
+    buf[i] = val;
     i = i + 1;
   }
 }

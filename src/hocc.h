@@ -21,7 +21,6 @@ typedef double float64;
 #define MEGABYTE (1024*KILOBYTE)
 #define false (bool)0
 #define true  (bool)1
-#define inline __inline
 #define local_persist static
 #define global_var static
 
@@ -255,7 +254,6 @@ typedef enum
   eList_scope,
   eList_type_pair,
   eList_ir_stmt,
-  eList_ir_arg,
   eList_ir_leader_stmt,
   eList_ir_label,
   eList_basic_block,
@@ -273,7 +271,6 @@ typedef struct ListItem
     Scope* scope;
     TypePair* type_pair;
     IrStmt* ir_stmt;
-    IrArg* ir_arg;
     IrLeaderStmt* ir_leader_stmt;
     IrLabel* ir_label;
     BasicBlock* basic_block;
@@ -532,7 +529,7 @@ eX86Location;
 typedef struct IrArg
 {
   eIrArg kind;
-  eX86Location loc;
+  bool is_live;
   NextUse next_use;
   union
   {
@@ -953,6 +950,7 @@ typedef struct Symbol
   int data_size;
   void* data;
 
+  bool is_live;
   bool is_temp;
   NextUse next_use;
   ObjectLocations locations;
@@ -968,13 +966,20 @@ typedef struct
 }
 SymbolContext;
 
+// for natvis
+typedef struct RegisterOccupants
+{
+  List R[eX86Location_Count];
+}
+RegisterOccupants;
+
 typedef struct X86Context
 {
   MemoryArena* stmt_arena;
   MemoryArena* gp_arena;
   X86Stmt* stmt_array;
   int stmt_count;
-  List registers[eX86Location_Count];
+  RegisterOccupants registers;
 }
 X86Context;
 

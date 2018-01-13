@@ -565,6 +565,7 @@ typedef struct IrStmt
     struct IrStmt_assign
     {
       eIrOp op;
+      eBasicType op_type;
       IrArg* arg1;
       IrArg* arg2;
       IrArg* result;
@@ -574,6 +575,7 @@ typedef struct IrStmt
     struct IrStmt_cond_goto
     {
       eIrOp relop;
+      eBasicType op_type;
       IrArg* arg1;
       IrArg* arg2;
       IrLabel* label;
@@ -642,12 +644,24 @@ typedef enum
 {
   eX86StmtOpcode_None,
   eX86StmtOpcode_mov,
+  eX86StmtOpcode_movss,
   eX86StmtOpcode_add,
+  eX86StmtOpcode_addss,
   eX86StmtOpcode_sub,
+  eX86StmtOpcode_subss,
   eX86StmtOpcode_imul,
+  eX86StmtOpcode_mulss,
   eX86StmtOpcode_idiv,
+  eX86StmtOpcode_divss,
+  eX86StmtOpcode_cmp,
+  eX86StmtOpcode_cmpss,
+  eX86StmtOpcode_jz,
+  eX86StmtOpcode_jnz,
+  eX86StmtOpcode_jl,
+  eX86StmtOpcode_jle,
+  eX86StmtOpcode_jg,
+  eX86StmtOpcode_jge,
   eX86StmtOpcode_jmp,
-  eX86StmtOpcode_je,
   eX86StmtOpcode_nop,
   eX86StmtOpcode_label,
 }
@@ -656,14 +670,8 @@ eX86StmtOpcode;
 typedef struct X86Stmt
 {
   eX86StmtOpcode opcode;
-  union
-  {
-    struct
-    {
-      X86Operand* operand1;
-      X86Operand* operand2;
-    };
-  };
+  X86Operand* operand1;
+  X86Operand* operand2;
 }
 X86Stmt;
 
@@ -965,6 +973,18 @@ typedef struct
 }
 SymbolContext;
 
+typedef enum
+{
+  eX86CmpResult_None,
+  eX86CmpResult_greater,
+  eX86CmpResult_greater_eq,
+  eX86CmpResult_less,
+  eX86CmpResult_less_eq,
+  eX86CmpResult_eq,
+  eX86CmpResult_not_eq,
+}
+eX86CmpResult;
+
 typedef struct X86Context
 {
   MemoryArena* stmt_arena;
@@ -978,6 +998,10 @@ typedef struct X86Context
     List _[eX86Location_Count];
   }
   registers;
+
+  eX86CmpResult cmp_result;
+  IrArg* cmp_arg1;
+  IrArg* cmp_arg2;
 }
 X86Context;
 

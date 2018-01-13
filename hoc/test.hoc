@@ -6,10 +6,14 @@ void startup()
 {
   int a;
   int b;
-  a = 1;
+  a = 3;
   b = 2;
-  if(a < b)
-    a = 111;
+  do
+  {
+    a = a + b;
+  }
+  while(a < 10);
+
   /*
   []int A;
   []int B;

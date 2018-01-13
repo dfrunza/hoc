@@ -4660,8 +4660,8 @@ bool gen_ir_do_while(IrContext* ir_context, Scope* scope, AstNode* do_while)
   
   do_while->label_begin = new_label(arena);
   do_while->label_next = new_label(arena);
-  cond_expr->label_true = do_while->label_begin;
-  cond_expr->label_false = new_label(arena);
+  do_while->label_true = cond_expr->label_true = do_while->label_begin;
+  do_while->label_false = cond_expr->label_false = new_label(arena);
   body->label_next = do_while->label_next;
   
   ir_emit_label(ir_context, do_while->label_begin);
@@ -4834,6 +4834,22 @@ bool gen_ir_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     break;
     
     case eAstNode_empty:
+    break;
+
+    case eAstNode_loop_ctrl:
+    {
+      AstNode* loop = stmt->loop_ctrl.loop;
+      if(stmt->loop_ctrl.kind == eLoopCtrl_break)
+      {
+        ir_emit_goto(ir_context, loop->label_false);
+      }
+      else if(stmt->loop_ctrl.kind == eLoopCtrl_continue)
+      {
+        ir_emit_goto(ir_context, loop->label_next);
+      }
+      else
+        assert(0);
+    }
     break;
     
     default:

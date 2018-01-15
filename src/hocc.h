@@ -23,6 +23,7 @@ typedef double float64;
 #define true  (bool)1
 #define local_persist static
 #define global_var static
+#define internal static
 
 typedef struct String String;
 typedef struct List List;

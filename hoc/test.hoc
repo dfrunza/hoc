@@ -19,12 +19,11 @@ void startup()
   b = 5;
   a = a + b;
   i = 0;
-  do
+  while(((i + b) < 8) and (i < a))
   {
     a = a + 5;
     i = i + 1;
   }
-  while(((i + b) < 8) and (i < a));
 
   /*
   []int A;

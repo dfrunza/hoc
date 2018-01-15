@@ -5535,17 +5535,20 @@ X86Stmt* x86_new_stmt(X86Context* context, eX86StmtOpcode opcode)
   return stmt;
 }
 
-inline bool is_object_in_memory(Symbol* object)
+internal inline
+bool is_object_in_memory(Symbol* object)
 {
   return object->locations._[eX86Location_memory];
 }
 
-inline bool is_object_in_location(Symbol* object, eX86Location loc)
+internal inline
+bool is_object_in_location(Symbol* object, eX86Location loc)
 {
   return object->locations._[loc];
 }
 
-inline void set_object_in_location(Symbol* object, eX86Location loc, bool in_loc)
+internal inline
+void set_object_in_location(Symbol* object, eX86Location loc, bool in_loc)
 {
   object->locations._[loc] = in_loc;
 }
@@ -5664,7 +5667,8 @@ eX86Location lookup_object_location(Symbol* object)
   return loc;
 }
 
-inline bool is_register_location(eX86Location loc)
+internal inline
+bool is_register_location(eX86Location loc)
 {
   return loc > eX86Location_None && loc < eX86Location_memory;
 }
@@ -6173,47 +6177,21 @@ eX86Location select_register(X86Context* context, IrStmt* stmt)
   return dest_loc;
 }
 
-void update_object_live_info(IrStmt* stmt)
+void update_object_live_info(IrArg* result, IrArg* arg1, IrArg* arg2)
 {
-  if(stmt->kind == eIrStmt_assign)
+  result->object->is_live = result->is_live;
+  result->object->next_use = result->next_use;
+
+  if(arg1->kind == eIrArg_object)
   {
-    struct IrStmt_assign* assign = &stmt->assign;
-    IrArg* result = assign->result;
-    IrArg* arg1 = assign->arg1;
-    IrArg* arg2 = assign->arg2;
-
-    result->object->is_live = result->is_live;
-    result->object->next_use = result->next_use;
-
-    if(arg1->kind == eIrArg_object)
-    {
-      arg1->object->is_live = arg1->is_live;
-      arg1->object->next_use = arg1->next_use;
-    }
-
-    if(arg2 && arg2->kind == eIrArg_object)
-    {
-      arg2->object->is_live = arg2->is_live;
-      arg2->object->next_use = arg2->next_use;
-    }
+    arg1->object->is_live = arg1->is_live;
+    arg1->object->next_use = arg1->next_use;
   }
-  else if(stmt->kind == eIrStmt_cond_goto)
+
+  if(arg2 && arg2->kind == eIrArg_object)
   {
-    struct IrStmt_cond_goto* cond_goto = &stmt->cond_goto;
-    IrArg* arg1 = cond_goto->arg1;
-    IrArg* arg2 = cond_goto->arg2;
-
-    if(arg1->kind == eIrArg_object)
-    {
-      arg1->object->is_live = arg1->is_live;
-      arg1->object->next_use = arg1->next_use;
-    }
-
-    if(arg2 && arg2->kind == eIrArg_object)
-    {
-      arg2->object->is_live = arg2->is_live;
-      arg2->object->next_use = arg2->next_use;
-    }
+    arg2->object->is_live = arg2->is_live;
+    arg2->object->next_use = arg2->next_use;
   }
 }
 
@@ -6466,7 +6444,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
             IrArg* arg1 = ir_stmt->assign.arg1;
             IrArg* arg2 = ir_stmt->assign.arg2;
             
-            update_object_live_info(ir_stmt);
+            update_object_live_info(result, arg1, arg2);
 
             if(assign->op)
             {
@@ -6601,6 +6579,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
           
           case eIrStmt_goto:
           {
+            save_all_registers_to_memory(&x86_context, false);
+
             X86Stmt* jump_stmt = x86_new_stmt(&x86_context, eX86StmtOpcode_jmp);
             jump_stmt->operand1 = x86_make_id_operand(arena, ir_stmt->goto_label->name);
           }
@@ -6612,7 +6592,6 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
             IrArg* arg1 = ir_stmt->cond_goto.arg1;
             IrArg* arg2 = ir_stmt->cond_goto.arg2;
             
-            update_object_live_info(ir_stmt);
             save_all_registers_to_memory(&x86_context, false);
 
             eX86StmtOpcode cmp_opcode = eX86StmtOpcode_None;

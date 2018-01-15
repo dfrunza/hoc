@@ -6,17 +6,19 @@ void startup()
 {
   int a;
   int b;
+  int c;
+  int d;
+  int e;
+  int f;
+  int g;
+  int h;
+  int i;
+  int j;
+
   a = 3;
-  b = 2;
-  do
-  {
-    if(a < 2)
-    {
-      continue;
-    }
-    a = a + b;
-  }
-  while(a < 10);
+  d = a;
+  e = 5;
+  d = e;
 
   /*
   []int A;

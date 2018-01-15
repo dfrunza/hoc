@@ -24,7 +24,7 @@ void startup()
     a = a + 5;
     i = i + 1;
   }
-  while(i < 2);
+  while(((i + b) < 8) and (i < a));
 
   /*
   []int A;

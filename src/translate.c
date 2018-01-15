@@ -5962,7 +5962,10 @@ void save_register_to_memory(X86Context* context, eX86Location reg, bool free_re
   for(ListItem* li = occupants->first; li; li = li->next)
   {
     Symbol* object = KIND(li, eList_symbol)->symbol;
-    save_object_to_memory(context, reg, object);
+    if(object->is_live)
+    {
+      save_object_to_memory(context, reg, object);
+    }
 
     if(free_reg)
     {
@@ -6170,21 +6173,47 @@ eX86Location select_register(X86Context* context, IrStmt* stmt)
   return dest_loc;
 }
 
-void update_object_live_info(IrArg* result, IrArg* arg1, IrArg* arg2)
+void update_object_live_info(IrStmt* stmt)
 {
-  result->object->is_live = result->is_live;
-  result->object->next_use = result->next_use;
-  
-  if(arg1->kind == eIrArg_object)
+  if(stmt->kind == eIrStmt_assign)
   {
-    arg1->object->is_live = arg1->is_live;
-    arg1->object->next_use = arg1->next_use;
+    struct IrStmt_assign* assign = &stmt->assign;
+    IrArg* result = assign->result;
+    IrArg* arg1 = assign->arg1;
+    IrArg* arg2 = assign->arg2;
+
+    result->object->is_live = result->is_live;
+    result->object->next_use = result->next_use;
+
+    if(arg1->kind == eIrArg_object)
+    {
+      arg1->object->is_live = arg1->is_live;
+      arg1->object->next_use = arg1->next_use;
+    }
+
+    if(arg2 && arg2->kind == eIrArg_object)
+    {
+      arg2->object->is_live = arg2->is_live;
+      arg2->object->next_use = arg2->next_use;
+    }
   }
-  
-  if(arg2 && arg2->kind == eIrArg_object)
+  else if(stmt->kind == eIrStmt_cond_goto)
   {
-    arg2->object->is_live = arg2->is_live;
-    arg2->object->next_use = arg2->next_use;
+    struct IrStmt_cond_goto* cond_goto = &stmt->cond_goto;
+    IrArg* arg1 = cond_goto->arg1;
+    IrArg* arg2 = cond_goto->arg2;
+
+    if(arg1->kind == eIrArg_object)
+    {
+      arg1->object->is_live = arg1->is_live;
+      arg1->object->next_use = arg1->next_use;
+    }
+
+    if(arg2 && arg2->kind == eIrArg_object)
+    {
+      arg2->object->is_live = arg2->is_live;
+      arg2->object->next_use = arg2->next_use;
+    }
   }
 }
 
@@ -6437,7 +6466,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
             IrArg* arg1 = ir_stmt->assign.arg1;
             IrArg* arg2 = ir_stmt->assign.arg2;
             
-            update_object_live_info(result, arg1, arg2);
+            update_object_live_info(ir_stmt);
 
             if(assign->op)
             {
@@ -6583,6 +6612,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
             IrArg* arg1 = ir_stmt->cond_goto.arg1;
             IrArg* arg2 = ir_stmt->cond_goto.arg2;
             
+            update_object_live_info(ir_stmt);
             save_all_registers_to_memory(&x86_context, false);
 
             eX86StmtOpcode cmp_opcode = eX86StmtOpcode_None;

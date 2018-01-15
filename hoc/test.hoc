@@ -16,9 +16,8 @@ void startup()
   int j;
 
   a = 3;
-  d = a;
-  e = 5;
-  d = e;
+  b = 5;
+  c = a+b;
 
   /*
   []int A;

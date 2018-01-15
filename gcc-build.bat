@@ -28,7 +28,7 @@ IF %errorlevel% NEQ 0 GOTO :end
 REM NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
 ECHO %hoc_file%.hoc
 hocc %hoc_dir%\%hoc_file%.hoc > debug.txt
-IF %errorlevel% NEQ 0 GOTO :hocc_error
+IF %errorlevel% NEQ 0 GOTO :end
 
 REM /Cx     - preserve case in publics, externs
 REM /Zi     - add symbolic debug info

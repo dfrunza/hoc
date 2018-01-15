@@ -17,7 +17,14 @@ void startup()
 
   a = 3;
   b = 5;
-  c = a+b;
+  a = a + b;
+  i = 0;
+  do
+  {
+    a = a + 5;
+    i = i + 1;
+  }
+  while(i < 2);
 
   /*
   []int A;

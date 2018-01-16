@@ -6,7 +6,7 @@ SET base_dir=%cd%
 IF NOT EXIST .\bin mkdir .\bin
 PUSHD .\bin
 
-SET C_flags=-g -ggdb
+SET C_flags=-g -ggdb -Winline
 SET L_flags=
 
 SET hoc_file=test

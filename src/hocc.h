@@ -218,6 +218,7 @@ typedef enum
   eOperator_bit_shift_left,
   eOperator_bit_shift_right,
 
+  /* misc */
   eOperator_deref,
   eOperator_address_of,
   eOperator_selector,
@@ -412,12 +413,24 @@ TypePair;
 typedef enum
 {
   eIrOp_None,
+
+  /* arith ops */
   eIrOp_add,
   eIrOp_sub,
   eIrOp_mul,
   eIrOp_div,
   eIrOp_mod,
   eIrOp_neg,
+
+  /* bit ops */
+  eIrOp_bit_and,
+  eIrOp_bit_or,
+  eIrOp_bit_xor,
+  eIrOp_bit_not,
+  eIrOp_bit_shift_left,
+  eIrOp_bit_shift_right,
+
+  /* relational ops */
   eIrOp_eq,
   eIrOp_not_eq,
   eIrOp_less,
@@ -427,12 +440,8 @@ typedef enum
   eIrOp_logic_and,
   eIrOp_logic_or,
   eIrOp_logic_not,
-  eIrOp_bit_and,
-  eIrOp_bit_or,
-  eIrOp_bit_xor,
-  eIrOp_bit_not,
-  eIrOp_bit_shift_left,
-  eIrOp_bit_shift_right,
+  
+  /* conv funcs */
   eIrOp_itof,
   eIrOp_itoc,
   eIrOp_itob,
@@ -448,6 +457,30 @@ typedef enum
   eIrOp_address_of,    // result = &arg1
 }
 eIrOp;
+
+internal inline
+bool is_ir_op_arithmetic(eIrOp op)
+{
+  return op >= eIrOp_add && op <= eIrOp_neg;
+}
+
+internal inline
+bool is_ir_op_relational(eIrOp op)
+{
+  return op >= eIrOp_eq && op <= eIrOp_logic_not;
+}
+
+internal inline
+bool is_ir_op_conv_func(eIrOp op)
+{
+  return op >= eIrOp_itof && op <= eIrOp_btoi;
+}
+
+internal inline
+bool is_ir_op_bitwise_op(eIrOp op)
+{
+  return op >= eIrOp_bit_and && op <= eIrOp_bit_shift_right;
+}
 
 typedef struct
 {
@@ -619,6 +652,8 @@ typedef enum
   eX86Operand_constant,
   eX86Operand_register,
   eX86Operand_memory,
+  eX86Operand_address,
+  eX86Operand_indexed,
 }
 eX86Operand;
 
@@ -633,10 +668,17 @@ typedef struct X86Operand
 
     struct X86Operand_memory
     {
-      int offset;
       struct X86Operand* base;
+      int offset;
     }
-    memory;
+    memory, address;
+
+    struct X86Operand_indexed
+    {
+      struct X86Operand* base;
+      struct X86Operand* offset;
+    }
+    indexed;
   };
 }
 X86Operand;
@@ -644,6 +686,7 @@ X86Operand;
 typedef enum
 {
   eX86StmtOpcode_None,
+  eX86StmtOpcode_lea,
   eX86StmtOpcode_mov,
   eX86StmtOpcode_movss,
   eX86StmtOpcode_add,
@@ -974,18 +1017,6 @@ typedef struct
 }
 SymbolContext;
 
-typedef enum
-{
-  eX86CmpResult_None,
-  eX86CmpResult_greater,
-  eX86CmpResult_greater_eq,
-  eX86CmpResult_less,
-  eX86CmpResult_less_eq,
-  eX86CmpResult_eq,
-  eX86CmpResult_not_eq,
-}
-eX86CmpResult;
-
 typedef struct X86Context
 {
   MemoryArena* stmt_arena;
@@ -999,10 +1030,6 @@ typedef struct X86Context
     List _[eX86Location_Count];
   }
   registers;
-
-  eX86CmpResult cmp_result;
-  IrArg* cmp_arg1;
-  IrArg* cmp_arg2;
 }
 X86Context;
 

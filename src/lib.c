@@ -665,3 +665,8 @@ ListItem* remove_first_item(List* list)
   return result;
 }
 
+void clear_list(List* list)
+{
+  list->first = list->last = 0;
+  list->count = 0;
+}

@@ -1474,6 +1474,7 @@ bool parse_module_stmt(TokenStream* input, AstNode** node)
                 proc->proc.ret_type = ret_type;
                 proc->proc.name = name;
                 proc->modifier = modifier;
+
                 if(success = get_next_token(input))
                 {
                   AstNode* arg_list = proc->proc.arg_list = new_ast_node(eAstNode_arg_list, clone_source_loc(&input->src_loc));
@@ -1515,6 +1516,7 @@ bool parse_module_stmts(TokenStream* input, AstNode* module)
   assert(KIND(module, eAstNode_module));
   bool success = true;
   AstNode* stmt = 0;
+
   if(success = parse_module_stmt(input, &stmt))
   {
     if(stmt)
@@ -1523,16 +1525,33 @@ bool parse_module_stmts(TokenStream* input, AstNode* module)
       switch(stmt->kind)
       {
         case eAstNode_proc:
-          append_list_elem(&module->module.procs, stmt, eList_ast_node);
-          break;
+        {
+          if(cstr_match(stmt->proc.name, "startup"))
+          {
+            module->module.entry_point = stmt;
+          }
+          else
+          {
+            append_list_elem(&module->module.procs, stmt, eList_ast_node);
+          }
+        }
+        break;
+
         case eAstNode_var:
+        {
           append_list_elem(&module->module.vars, stmt, eList_ast_node);
-          break;
+        }
+        break;
+          
         case eAstNode_include:
+        {
           append_list_elem(&module->module.includes, stmt, eList_ast_node);
-          break;
+        }
+        break;
+
         case eAstNode_empty:
           break;
+
         default:
           assert(0);
       }

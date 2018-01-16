@@ -37,7 +37,6 @@ typedef struct IrArg IrArg;
 typedef struct IrLeaderStmt IrLeaderStmt;
 typedef struct IrLabel IrLabel;
 typedef struct BasicBlock BasicBlock;
-typedef struct LocationDescriptor_MapEntry LocationDescriptor_MapEntry;
 
 typedef struct MemoryArena
 {
@@ -489,6 +488,8 @@ typedef struct
   IrStmt* stmt_array;
   int stmt_count;
   List* label_list;
+
+  int total_stmt_count;
 }
 IrContext;
 
@@ -686,6 +687,7 @@ X86Operand;
 typedef enum
 {
   eX86StmtOpcode_None,
+  eX86StmtOpcode_push,
   eX86StmtOpcode_lea,
   eX86StmtOpcode_mov,
   eX86StmtOpcode_movss,
@@ -708,6 +710,7 @@ typedef enum
   eX86StmtOpcode_jmp,
   eX86StmtOpcode_nop,
   eX86StmtOpcode_label,
+  eX86StmtOpcode_ret,
 }
 eX86StmtOpcode;
 
@@ -897,6 +900,10 @@ typedef struct AstNode
       Scope* scope;
       Symbol* decl_sym;
       Symbol* retvar;
+
+      IrStmt* ir_stmt_array;
+      int ir_stmt_count;
+      List* basic_blocks;
     }
     proc;
 
@@ -936,6 +943,7 @@ typedef struct AstNode
       List vars;
       List includes;
       Scope* scope;
+      AstNode* entry_point;
     }
     module;
 

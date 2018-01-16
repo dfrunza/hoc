@@ -1,12 +1,10 @@
 int x;
 int y;
-[4][4]int A;
+[2]int A;
+[2]int B;
 
 void startup()
 {
-  [2]int A;
-  [2]int B;
-
   A[0] = 100;
   A[1] = 110;
   B[0] = 200;

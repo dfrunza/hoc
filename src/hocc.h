@@ -240,6 +240,7 @@ typedef enum
   eScope_None,
   eScope_module,
   eScope_proc,
+  eScope_call,
   eScope_while,
   eScope_block,
   eScope_struct,
@@ -453,6 +454,8 @@ typedef enum
   eIrOp_deref_source,  // result = *arg1
   eIrOp_deref_dest,    // *result = arg1
   eIrOp_address_of,    // result = &arg1
+
+  eIrOp_param,
 }
 eIrOp;
 
@@ -564,6 +567,7 @@ eX86Location;
 typedef struct IrArg
 {
   eIrArg kind;
+
   bool is_live;
   NextUse next_use;
   union
@@ -594,7 +598,7 @@ typedef struct IrStmt
 
   union
   {
-    IrArg* param, *ret;
+    IrArg* param;
     IrLabel* goto_label;
 
     struct IrStmt_assign
@@ -610,7 +614,7 @@ typedef struct IrStmt
     struct IrStmt_cond_goto
     {
       eIrOp relop;
-      eBasicType op_type;
+      eBasicType relop_type;
       IrArg* arg1;
       IrArg* arg2;
       IrLabel* label;
@@ -619,7 +623,9 @@ typedef struct IrStmt
 
     struct IrStmt_call
     {
-      IrLabel* proc_label;
+      AstNode* proc;
+      IrArg* retvar;
+      IrArg** params;
       int param_count;
     }
     call;
@@ -672,7 +678,7 @@ typedef struct X86Operand
       struct X86Operand* base;
       int offset;
     }
-    memory, address;
+    memory;
 
     struct X86Operand_indexed
     {
@@ -750,7 +756,7 @@ typedef enum
   eAstNode_struct_decl,
   eAstNode_union_decl,
   eAstNode_empty,
-  eAstNode_arg_list,
+  eAstNode_node_list,
   eAstNode_array,
   eAstNode_index,
   eAstNode_pointer,
@@ -822,11 +828,7 @@ typedef struct AstNode
     }
     basic_type;
 
-    struct
-    {
-      List nodes;
-    }
-    arg_list;
+    List node_list;
 
     struct
     {
@@ -856,12 +858,18 @@ typedef struct AstNode
     struct
     {
       AstNode* expr;
-      AstNode* arg_list;
+      AstNode* args;
       AstNode* proc;
+
+      Scope* scope;
+      Symbol* retvar;
+      Symbol** object_args;
+      int arg_count;
     }
     call;
 
-    struct {
+    struct
+    {
       AstNode* expr;
       AstNode* proc;
       int nesting_depth;
@@ -895,14 +903,15 @@ typedef struct AstNode
     struct
     {
       char* name;
-      AstNode* arg_list;
+      AstNode* args;
       AstNode* ret_type;
       AstNode* body;
       Scope* scope;
       Symbol* decl_sym;
       Symbol* retvar;
 
-      IrLabel label;
+      IrLabel label_start;
+      IrLabel label_return;
       IrStmt* ir_stmt_array;
       int ir_stmt_count;
       List* basic_blocks;
@@ -985,11 +994,15 @@ AstNode;
 typedef enum
 {
   eStorageSpace_None,
-  eStorageSpace_stack,
+  eStorageSpace_local,
+  eStorageSpace_param,
+  eStorageSpace_arg,
   eStorageSpace_static,
 }
 eStorageSpace;
 
+//FIXME: Discriminate symbols by kind : var, proc, etc.
+//The proc symbol needs to have a ref to the retvar symbol and to the args.
 typedef struct Symbol
 {
   char* name;

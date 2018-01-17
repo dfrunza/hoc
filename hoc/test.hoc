@@ -1,24 +1,22 @@
 int x;
 int y;
-[2]int A;
-[2]int B;
 
-void add_int()
+int add_int(int a, int b)
 {
-  int c;
-  c = x+y;
+  return a+b;
 }
 
 void startup()
 {
-  x = 12;
-  y = 65;
-
-  add_int();
-
-  x = x*y;
+  A[0] = 12;
+  A[1] = 23;
+  x = add_int(A[0], A[1]);
 }
 
+[2]int A;
+[2]int B;
+
+/*
 void foo()
 {
   int prod; prod = 0;
@@ -30,4 +28,5 @@ void foo()
     i = i + 1;
   }
 }
+*/
 

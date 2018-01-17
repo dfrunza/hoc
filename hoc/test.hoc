@@ -3,25 +3,22 @@ int y;
 [2]int A;
 [2]int B;
 
-void bar()
+void add_int(int a, int b)
 {
-  int prod; prod = 0;
-  int i; i = 0;
-
-  do
-  {
-    prod = prod + A[i]*B[i];
-    i = i + 1;
-  }
-  while(i < 2);
+  int c;
+  c = a+b;
 }
 
 void startup()
 {
-  A[0] = 100;
-  A[1] = 110;
-  B[0] = 200;
-  B[1] = 210;
+  int a;
+  int b;
+  a = 4;
+  b = 6;
+
+  add_int(5, 2);
+
+  a = a+b;
 }
 
 void foo()

@@ -1530,10 +1530,7 @@ bool parse_module_stmts(TokenStream* input, AstNode* module)
           {
             module->module.entry_point = stmt;
           }
-          else
-          {
-            append_list_elem(&module->module.procs, stmt, eList_ast_node);
-          }
+          append_list_elem(&module->module.procs, stmt, eList_ast_node);
         }
         break;
 

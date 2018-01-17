@@ -687,6 +687,7 @@ X86Operand;
 typedef enum
 {
   eX86StmtOpcode_None,
+  eX86StmtOpcode_pop,
   eX86StmtOpcode_push,
   eX86StmtOpcode_lea,
   eX86StmtOpcode_mov,

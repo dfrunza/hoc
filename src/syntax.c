@@ -1526,10 +1526,6 @@ bool parse_module_stmts(TokenStream* input, AstNode* module)
       {
         case eAstNode_proc:
         {
-          if(cstr_match(stmt->proc.name, "startup"))
-          {
-            module->module.entry_point = stmt;
-          }
           append_list_elem(&module->module.procs, stmt, eList_ast_node);
         }
         break;

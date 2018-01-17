@@ -1,5 +1,4 @@
 #define BINIMAGE_SIGNATURE "HC"
-#define MACHINE_WORD_SIZE 4
 
 typedef unsigned char uchar;
 typedef unsigned short ushort;
@@ -489,6 +488,7 @@ typedef struct
   int stmt_count;
   List* label_list;
 
+  int data_alignment;
   int total_stmt_count;
 }
 IrContext;
@@ -619,7 +619,7 @@ typedef struct IrStmt
 
     struct IrStmt_call
     {
-      char* name;
+      IrLabel* proc_label;
       int param_count;
     }
     call;
@@ -687,6 +687,7 @@ X86Operand;
 typedef enum
 {
   eX86StmtOpcode_None,
+  eX86StmtOpcode_call,
   eX86StmtOpcode_pop,
   eX86StmtOpcode_push,
   eX86StmtOpcode_lea,
@@ -888,7 +889,6 @@ typedef struct AstNode
       AstNode* cond_expr;
       AstNode* body;
       Scope* scope;
-      IrLabel label;
     }
     while_, do_while;
 
@@ -902,6 +902,7 @@ typedef struct AstNode
       Symbol* decl_sym;
       Symbol* retvar;
 
+      IrLabel label;
       IrStmt* ir_stmt_array;
       int ir_stmt_count;
       List* basic_blocks;
@@ -944,7 +945,6 @@ typedef struct AstNode
       List vars;
       List includes;
       Scope* scope;
-      AstNode* entry_point;
     }
     module;
 
@@ -1032,6 +1032,8 @@ typedef struct X86Context
   MemoryArena* gp_arena;
   X86Stmt* stmt_array;
   int stmt_count;
+
+  int machine_word_size; // = stack width
 
   // for natvis
   struct X86Context_registers

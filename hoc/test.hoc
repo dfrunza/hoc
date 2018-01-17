@@ -3,22 +3,20 @@ int y;
 [2]int A;
 [2]int B;
 
-void add_int(int a, int b)
+void add_int()
 {
   int c;
-  c = a+b;
+  c = x+y;
 }
 
 void startup()
 {
-  int a;
-  int b;
-  a = 4;
-  b = 6;
+  x = 12;
+  y = 65;
 
-  add_int(5, 2);
+  add_int();
 
-  a = a+b;
+  x = x*y;
 }
 
 void foo()

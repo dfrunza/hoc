@@ -1,17 +1,7 @@
-int x;
-int y;
-
-int add_int(int a, int b)
-{
-  return a+b;
-}
-
 void startup()
 {
-  int z;
-  x = 10;
-  y = 20;
-  z = add_int(x, y);
+  [2]char s;
+  s[0] = 'a';
 }
 
 /*

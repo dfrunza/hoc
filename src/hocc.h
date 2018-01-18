@@ -865,7 +865,7 @@ typedef struct AstNode
       AstNode* args;
       AstNode* proc;
 
-      Scope* scope;
+      Scope* param_scope;
       Symbol* retvar;
     }
     call;
@@ -908,7 +908,8 @@ typedef struct AstNode
       AstNode* args;
       AstNode* ret_type;
       AstNode* body;
-      Scope* scope;
+      Scope* arg_scope;
+      Scope* body_scope;
       Symbol* decl_sym;
       Symbol* retvar;
 

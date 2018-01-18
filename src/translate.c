@@ -1082,9 +1082,9 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
   {
     if(success = sym_id(sym_context, block, call_expr) && sym_actual_args(sym_context, block, args))
     {
-      call->call.scope = begin_scope(sym_context, eScope_call, call);
+      call->call.param_scope = begin_scope(sym_context, eScope_call, call);
       call->call.retvar = add_decl_sym(sym_context->arena, new_tempvar_name("p_"),
-                                       eStorageSpace_param, call->call.scope, call);
+                                       eStorageSpace_param, call->call.param_scope, call);
 
       for(ListItem* li = args->node_list.first;
           li;
@@ -1092,7 +1092,7 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
       {
         AstNode* arg = KIND(li, eList_ast_node)->ast_node;
         arg->actual_arg.param = add_decl_sym(sym_context->arena, new_tempvar_name("p_"),
-                                             eStorageSpace_param, call->call.scope, arg);
+                                             eStorageSpace_param, call->call.param_scope, arg);
       }
 
       end_scope(sym_context);
@@ -1394,7 +1394,9 @@ bool sym_proc_body(SymbolContext* sym_context, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
+
   AstNode* body = proc->proc.body;
+
   if(proc->modifier == eModifier_extern)
   {
     if(body->kind != eAstNode_empty)
@@ -1450,10 +1452,15 @@ bool sym_module_proc(SymbolContext* sym_context, AstNode* proc)
   {
     proc->proc.decl_sym = add_decl_sym(sym_context->arena, proc->proc.name,
                                        eStorageSpace_None, sym_context->active_scope, proc);
-    proc->proc.scope = begin_nested_scope(sym_context, eScope_proc, proc);
+    proc->proc.arg_scope = begin_nested_scope(sym_context, eScope_proc, proc);
     proc->proc.retvar = add_decl_sym(sym_context->arena, new_tempvar_name("r_"),
-                                     eStorageSpace_arg, proc->proc.scope, proc->proc.ret_type);
-    success = sym_formal_args(sym_context, proc->proc.args) && sym_proc_body(sym_context, proc);
+                                     eStorageSpace_arg, proc->proc.arg_scope, proc->proc.ret_type);
+
+    if(success = sym_formal_args(sym_context, proc->proc.args) && sym_proc_body(sym_context, proc))
+    {
+      AstNode* body = proc->proc.body;
+      proc->proc.body_scope = body->block.scope;
+    }
     end_nested_scope(sym_context);
   }
   return success;
@@ -4275,9 +4282,9 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    alloc_data_object(arg->actual_arg.param, call->call.scope, ir_context->data_alignment);
+    alloc_data_object(arg->actual_arg.param, call->call.param_scope, ir_context->data_alignment);
   }
-  alloc_data_object(call->call.retvar, call->call.scope, ir_context->data_alignment);
+  alloc_data_object(call->call.retvar, call->call.param_scope, ir_context->data_alignment);
 
   ir_emit_call(ir_context, call->call.proc);
 }
@@ -5019,8 +5026,8 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
     AstNode* body = proc->proc.body;
     assert(KIND(body, eAstNode_block));
 
-    ir_gen_formal_args(ir_context, proc->proc.scope, proc->proc.args);
-    alloc_data_object(proc->proc.retvar, proc->proc.scope, ir_context->data_alignment);
+    ir_gen_formal_args(ir_context, proc->proc.arg_scope, proc->proc.args);
+    alloc_data_object(proc->proc.retvar, proc->proc.arg_scope, ir_context->data_alignment);
 
     IrLabel* label_start = &proc->proc.label_start;
     label_start->name = proc->proc.name;
@@ -5925,6 +5932,7 @@ X86Operand* x86_make_register_operand(MemoryArena* arena, eX86Location reg)
 }
 
 //FIXME: Delete this and use x86_make_constant_operand_2() instead
+#if 1
 X86Operand* x86_make_constant_operand(MemoryArena* arena, IrConstant* constant)
 {
   X86Operand* operand = mem_push_struct(arena, X86Operand);
@@ -5937,6 +5945,7 @@ X86Operand* x86_make_constant_operand(MemoryArena* arena, IrConstant* constant)
     assert(0);
   return operand;
 }
+#endif
 
 X86Operand* x86_make_constant_operand_2(MemoryArena* arena, int constant)
 {
@@ -7077,28 +7086,17 @@ void x86_gen_cond_goto_stmt(X86Context* context, IrStmt* ir_stmt)
   else assert(0);
 }
 
-internal inline
-int get_proc_frame_size(AstNode* proc)
-{
-  int frame_size = 0;
-
-  AstNode* body = proc->proc.body;
-  frame_size = body->block.scope->data_size;
-
-  return frame_size;
-}
-
 void x86_gen_call_stmt(X86Context* context, IrStmt* ir_stmt)
 {
   AstNode* proc = ir_stmt->call.proc;
-  Scope* param_scope = proc->proc.scope;
+  Scope* arg_scope = proc->proc.arg_scope;
   
   save_all_registers_to_memory(context, true);
 
   /* sub esp, #param_size */
   X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_sub);
   stmt->operand1 = x86_make_register_operand(arena, eX86Location_esp);
-  stmt->operand2 = x86_make_constant_operand_2(arena, param_scope->data_size);
+  stmt->operand2 = x86_make_constant_operand_2(arena, arg_scope->data_size);
 
   /* call #proc_name */
   stmt = x86_new_stmt(context, eX86StmtOpcode_call);
@@ -7107,7 +7105,7 @@ void x86_gen_call_stmt(X86Context* context, IrStmt* ir_stmt)
   /* add esp, #param_size */
   stmt = x86_new_stmt(context, eX86StmtOpcode_add);
   stmt->operand1 = x86_make_register_operand(arena, eX86Location_esp);
-  stmt->operand2 = x86_make_constant_operand_2(arena, param_scope->data_size);
+  stmt->operand2 = x86_make_constant_operand_2(arena, arg_scope->data_size);
 }
 
 void x86_gen_return_stmt(X86Context* context, IrStmt* return_stmt)
@@ -7183,9 +7181,10 @@ void x86_gen_proc(X86Context* context, AstNode* proc)
   stmt->operand2 = x86_make_register_operand(arena, eX86Location_esp);
 
   /* sub esp, #frame_size */
+  Scope* body_scope = proc->proc.body_scope;
   stmt = x86_new_stmt(context, eX86StmtOpcode_sub);
   stmt->operand1 = x86_make_register_operand(arena, eX86Location_esp);
-  stmt->operand2 = x86_make_constant_operand_2(arena, get_proc_frame_size(proc));
+  stmt->operand2 = x86_make_constant_operand_2(arena, body_scope->data_size);
 
   x86_gen_basic_block(context, first_bb);
   save_all_registers_to_memory(context, true);

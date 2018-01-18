@@ -840,7 +840,7 @@ Scope* find_scope(Scope* active_scope, eScope kind)
   Scope* scope = active_scope;
   while(scope)
   {
-    if((scope->kind & kind) != 0)
+    if(scope->kind == kind)
       break;
     scope = scope->encl_scope;
   }
@@ -929,6 +929,7 @@ Symbol* add_decl_sym(MemoryArena* arena, char* name, eStorageSpace storage_space
 Scope* begin_scope(SymbolContext* sym_context, eScope kind, AstNode* ast_node)
 {
   Scope* scope = mem_push_struct(sym_context->arena, Scope);
+
   scope->kind = kind;
   scope->nesting_depth = sym_context->nesting_depth;
   scope->sym_count = 0;
@@ -938,6 +939,7 @@ Scope* begin_scope(SymbolContext* sym_context, eScope kind, AstNode* ast_node)
   init_list(&scope->decl_syms, arena, eList_symbol);
   sym_context->active_scope = scope;
   append_list_elem(&sym_context->scopes, scope, eList_scope);
+
   return scope;
 }
 
@@ -1009,8 +1011,8 @@ bool sym_var(SymbolContext* sym_context, AstNode* block, AstNode* var)
   bool success = true;
   
   Symbol* decl_sym = lookup_decl_sym(var->var.name, sym_context->active_scope);
-  Scope* proc_scope = find_scope(sym_context->active_scope, eScope_proc);
-  if(decl_sym && (decl_sym->scope == sym_context->active_scope || decl_sym->scope == proc_scope))
+  Scope* arg_scope = find_scope(sym_context->active_scope, eScope_args);
+  if(decl_sym && (decl_sym->scope == sym_context->active_scope || decl_sym->scope == arg_scope))
   {
     success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
     compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
@@ -1082,7 +1084,7 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
   {
     if(success = sym_id(sym_context, block, call_expr) && sym_actual_args(sym_context, block, args))
     {
-      call->call.param_scope = begin_scope(sym_context, eScope_call, call);
+      call->call.param_scope = begin_scope(sym_context, eScope_params, call);
       call->call.retvar = add_decl_sym(sym_context->arena, new_tempvar_name("p_"),
                                        eStorageSpace_param, call->call.param_scope, call);
 
@@ -1209,10 +1211,12 @@ bool sym_do_while(SymbolContext* sym_context, AstNode* block, AstNode* do_while)
   assert(KIND(block, eAstNode_block));
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
+
   do_while->do_while.scope = begin_nested_scope(sym_context, eScope_while, do_while);
   success = sym_block_stmt(sym_context, block, do_while->do_while.body) &&
     sym_expr(sym_context, block, do_while->do_while.cond_expr);
   end_nested_scope(sym_context);
+
   return success;
 }
 
@@ -1264,6 +1268,8 @@ bool sym_return(SymbolContext* sym_context, AstNode* block, AstNode* ret)
   Scope* proc_scope = find_scope(sym_context->active_scope, eScope_proc);
   if(proc_scope)
   {
+    assert(KIND(proc_scope->ast_node, eAstNode_proc));
+
     ret->ret.proc = proc_scope->ast_node;
     if(ret->ret.expr)
     {
@@ -1426,13 +1432,13 @@ bool sym_formal_args(SymbolContext* sym_context, AstNode* args)
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
-  Scope* proc_scope = find_scope(sym_context->active_scope, eScope_proc);
+  Scope* args_scope = find_scope(sym_context->active_scope, eScope_args);
   for(ListItem* li = args->node_list.first;
       li && success;
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = sym_formal_arg(sym_context, proc_scope, arg);
+    success = sym_formal_arg(sym_context, args_scope, arg);
   }
   return success;
 }
@@ -1452,15 +1458,19 @@ bool sym_module_proc(SymbolContext* sym_context, AstNode* proc)
   {
     proc->proc.decl_sym = add_decl_sym(sym_context->arena, proc->proc.name,
                                        eStorageSpace_None, sym_context->active_scope, proc);
-    proc->proc.arg_scope = begin_nested_scope(sym_context, eScope_proc, proc);
+    proc->proc.arg_scope = begin_nested_scope(sym_context, eScope_args, proc);
     proc->proc.retvar = add_decl_sym(sym_context->arena, new_tempvar_name("r_"),
                                      eStorageSpace_arg, proc->proc.arg_scope, proc->proc.ret_type);
+
+    proc->proc.scope = begin_scope(sym_context, eScope_proc, proc);
 
     if(success = sym_formal_args(sym_context, proc->proc.args) && sym_proc_body(sym_context, proc))
     {
       AstNode* body = proc->proc.body;
       proc->proc.body_scope = body->block.scope;
     }
+
+    end_scope(sym_context);
     end_nested_scope(sym_context);
   }
   return success;
@@ -4016,10 +4026,15 @@ void ir_emit_label(IrContext* ir_context, IrLabel* label)
       break;
     prim_label = 0;
   }
+
   if(prim_label)
+  {
     label->primary = prim_label;
+  }
   else
+  {
     append_list_elem(ir_context->label_list, label, eList_ir_label);
+  }
 }
 
 void ir_emit_nop(IrContext* ir_context)
@@ -5455,7 +5470,9 @@ IrLeaderStmt* new_leader_stmt(MemoryArena* arena, int stmt_nr, IrStmt* stmt)
   new_elem->stmt = stmt;
   IrLabel* label = new_elem->label = stmt->label;
   if(label && label->primary)
+  {
     new_elem->label = label->primary;
+  }
   return new_elem;
 }
 
@@ -6504,44 +6521,55 @@ void update_object_live_info(IrArg* result, IrArg* arg1, IrArg* arg2)
   }
 }
 
+IrLabel* normalize_jump_target_labels(MemoryArena* ir_arena, IrStmt* stmt)
+{
+  IrLabel* target_label = 0;
+  if(stmt->kind == eIrStmt_cond_goto)
+  {
+    target_label = stmt->cond_goto.label;
+    if(target_label->primary)
+    {
+      stmt->cond_goto.label = target_label->primary;
+      target_label = stmt->cond_goto.label;
+    }
+  }
+  else if(stmt->kind == eIrStmt_goto)
+  {
+    target_label = stmt->goto_label;
+    if(target_label->primary)
+    {
+      stmt->goto_label = target_label->primary;
+      target_label = stmt->goto_label;
+    }
+  }
+  return target_label;
+}
+
 void partition_to_basic_blocks(MemoryArena* ir_arena, AstNode* proc)
 {
   if(proc->proc.ir_stmt_count > 0)
   {
     List* leaders = new_list(arena, eList_ir_leader_stmt);
-    append_list_elem(leaders, new_leader_stmt(leaders->arena, 0, &proc->proc.ir_stmt_array[0]), eList_ir_leader_stmt);
+
+    IrStmt* stmt_array = proc->proc.ir_stmt_array;
+    int stmt_count = proc->proc.ir_stmt_count;
+
+    IrStmt* stmt = &stmt_array[0];
+    normalize_jump_target_labels(ir_arena, stmt);
+    append_list_elem(leaders, new_leader_stmt(leaders->arena, 0, stmt), eList_ir_leader_stmt);
     
     for(int i = 1; i < proc->proc.ir_stmt_count; i++)
     {
-      IrStmt* stmt = &proc->proc.ir_stmt_array[i];
+      stmt = &stmt_array[i];
       if(stmt->kind == eIrStmt_cond_goto || stmt->kind == eIrStmt_goto)
       {
-        start_new_basic_block(leaders, i+1, proc->proc.ir_stmt_array, proc->proc.ir_stmt_count);
-
-        IrLabel* goto_label = 0;
-        if(stmt->kind == eIrStmt_cond_goto)
-        {
-          goto_label = stmt->cond_goto.label;
-          if(goto_label->primary)
-          {
-            stmt->cond_goto.label = goto_label->primary;
-          }
-        }
-        else if(stmt->kind == eIrStmt_goto)
-        {
-          goto_label = stmt->goto_label;
-          if(goto_label->primary)
-          {
-            stmt->goto_label = goto_label->primary;
-          }
-        }
-        else assert(0);
-
-        start_new_basic_block(leaders, goto_label->stmt_nr, proc->proc.ir_stmt_array, proc->proc.ir_stmt_count);
+        start_new_basic_block(leaders, i+1, stmt_array, stmt_count);
+        IrLabel* target_label = normalize_jump_target_labels(ir_arena, stmt);
+        start_new_basic_block(leaders, target_label->stmt_nr, stmt_array, stmt_count);
       }
       else if(stmt->kind == eIrStmt_call || stmt->kind == eIrStmt_return)
       {
-        start_new_basic_block(leaders, i+1, proc->proc.ir_stmt_array, proc->proc.ir_stmt_count);
+        start_new_basic_block(leaders, i+1, stmt_array, stmt_count);
       }
     }
 

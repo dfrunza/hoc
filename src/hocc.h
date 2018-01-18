@@ -240,7 +240,8 @@ typedef enum
   eScope_None,
   eScope_module,
   eScope_proc,
-  eScope_call,
+  eScope_args,
+  eScope_params,
   eScope_while,
   eScope_block,
   eScope_struct,
@@ -908,6 +909,8 @@ typedef struct AstNode
       AstNode* args;
       AstNode* ret_type;
       AstNode* body;
+
+      Scope* scope;
       Scope* arg_scope;
       Scope* body_scope;
       Symbol* decl_sym;

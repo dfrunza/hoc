@@ -598,7 +598,6 @@ typedef struct IrStmt
 
   union
   {
-    IrArg* param;
     IrLabel* goto_label;
 
     struct IrStmt_assign
@@ -624,9 +623,6 @@ typedef struct IrStmt
     struct IrStmt_call
     {
       AstNode* proc;
-      IrArg* retvar;
-      IrArg** params;
-      int param_count;
     }
     call;
   };
@@ -762,6 +758,7 @@ typedef enum
   eAstNode_pointer,
   eAstNode_assign,
   eAstNode_cast,
+  eAstNode_actual_arg,
 }
 eAstNode;
 
@@ -781,6 +778,15 @@ typedef struct AstNode
 
   union
   {
+    List node_list;
+
+    struct
+    {
+      AstNode* expr;
+      Symbol* param;
+    }
+    actual_arg;
+    
     struct
     {
       AstNode* from_expr;
@@ -828,8 +834,6 @@ typedef struct AstNode
     }
     basic_type;
 
-    List node_list;
-
     struct
     {
       char* name;
@@ -863,8 +867,6 @@ typedef struct AstNode
 
       Scope* scope;
       Symbol* retvar;
-      Symbol** object_args;
-      int arg_count;
     }
     call;
 

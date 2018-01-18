@@ -56,12 +56,15 @@ bool parse_actual_args(TokenStream* input, AstNode* args)
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
 
-  AstNode* arg = 0;
-  if(success = parse_expr(input, &arg))
+  AstNode* expr = 0;
+  if(success = parse_expr(input, &expr))
   {
-    if(arg)
+    if(expr)
     {
-      append_list_elem(&args->node_list, arg, eList_ast_node);
+      AstNode* actual_arg = new_ast_node(eAstNode_actual_arg, clone_source_loc(&input->src_loc));
+      actual_arg->actual_arg.expr = expr;
+
+      append_list_elem(&args->node_list, actual_arg, eList_ast_node);
       success = parse_rest_of_actual_args(input, args);
     }
   }

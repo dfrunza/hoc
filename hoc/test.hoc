@@ -8,15 +8,16 @@ int add_int(int a, int b)
 
 void startup()
 {
-  A[0] = 12;
-  A[1] = 23;
-  x = add_int(A[0], A[1]);
+  int z;
+  x = 10;
+  y = 20;
+  z = add_int(x, y);
 }
 
+/*
 [2]int A;
 [2]int B;
 
-/*
 void foo()
 {
   int prod; prod = 0;

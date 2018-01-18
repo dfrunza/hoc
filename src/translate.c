@@ -1064,7 +1064,7 @@ bool sym_actual_args(SymbolContext* sym_context, AstNode* block, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = sym_expr(sym_context, block, arg);
+    success = sym_expr(sym_context, block, arg->actual_arg.expr);
   }
   return success;
 }
@@ -1077,6 +1077,7 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
   
   AstNode* call_expr = call->call.expr;
   AstNode* args = call->call.args;
+
   if(call_expr->kind == eAstNode_id)
   {
     if(success = sym_id(sym_context, block, call_expr) && sym_actual_args(sym_context, block, args))
@@ -1084,22 +1085,14 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
       call->call.scope = begin_scope(sym_context, eScope_call, call);
       call->call.retvar = add_decl_sym(sym_context->arena, new_tempvar_name("p_"),
                                        eStorageSpace_param, call->call.scope, call);
-      call->call.arg_count = args->node_list.count;
-      if(call->call.arg_count > 0)
-      {
-        call->call.object_args = mem_push_array(sym_context->arena, Symbol*, call->call.arg_count);
-      }
-      else
-        assert(call->call.arg_count == 0);
 
-      int i = 0;
       for(ListItem* li = args->node_list.first;
-          li && (i < call->call.arg_count);
-          li = li->next, i++)
+          li;
+          li = li->next)
       {
         AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-        call->call.object_args[i] = add_decl_sym(sym_context->arena, new_tempvar_name("p_"),
-                                                 eStorageSpace_param, call->call.scope, arg);
+        arg->actual_arg.param = add_decl_sym(sym_context->arena, new_tempvar_name("p_"),
+                                             eStorageSpace_param, call->call.scope, arg);
       }
 
       end_scope(sym_context);
@@ -1107,7 +1100,7 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
   }
   else
   {
-    success = compile_error(call_expr->src_loc, "unsupported call expr");
+    success = compile_error(call_expr->src_loc, "unsupported call expression");
   }
   return success;
 }
@@ -1185,7 +1178,7 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
       success = sym_index(sym_context, block, expr);
     }
     break;
-    
+
     default:
     assert(0);
   }
@@ -1688,12 +1681,29 @@ bool set_types_unr_expr(AstNode* unr_expr)
   return success;
 }
 
+bool set_types_actual_arg(AstNode* actual_arg)
+{
+  assert(KIND(actual_arg, eAstNode_actual_arg));
+  bool success = true;
+
+  AstNode* expr = actual_arg->actual_arg.expr;
+  if(success = set_types_expr(expr))
+  {
+    actual_arg->eval_ty = expr->eval_ty;
+    actual_arg->ty = expr->ty;
+  }
+
+  return success;
+}
+
 bool set_types_id(AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   bool success = true;
+
   id->ty = new_typevar();
   id->eval_ty = new_typevar();
+
   return success;
 }
 
@@ -1881,6 +1891,12 @@ bool set_types_expr(AstNode* expr)
     case eAstNode_index:
     {
       success = set_types_index(expr);
+    }
+    break;
+
+    case eAstNode_actual_arg:
+    {
+      success = set_types_actual_arg(expr);
     }
     break;
     
@@ -2478,7 +2494,7 @@ bool eval_types_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = eval_types_expr(arg);
+    success = eval_types_expr(arg->actual_arg.expr);
   }
   return success;
 }
@@ -2903,7 +2919,10 @@ bool resolve_types_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = resolve_types_expr(arg);
+    if(success = resolve_types_expr(arg->actual_arg.expr))
+    {
+      arg->eval_ty = arg->actual_arg.expr->eval_ty;
+    }
   }
   if(success)
   {
@@ -2925,13 +2944,12 @@ bool resolve_types_call(AstNode* call)
     call->call.retvar->ty = call->eval_ty;
 
     AstNode* args = call->call.args;
-    int i = 0;
     for(ListItem* li = args->node_list.first;
-        li && (i < call->call.arg_count);
-        li = li->next, i++)
+        li;
+        li = li->next)
     {
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      call->call.object_args[i]->ty = arg->eval_ty;
+      arg->actual_arg.param->ty = arg->eval_ty;
     }
   }
   return success;
@@ -3545,7 +3563,7 @@ bool check_types_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = check_types_expr(arg);
+    success = check_types_expr(arg->actual_arg.expr);
   }
   return success;
 }
@@ -3554,7 +3572,9 @@ bool check_types_call(AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
   bool success = true;
+
   success = check_types_actual_args(call->call.args);
+
   return success;
 }
 
@@ -4026,24 +4046,12 @@ void ir_emit_goto(IrContext* ir_context, IrLabel* goto_label)
   ir_context->stmt_count++;
 }
 
-void ir_emit_call_arg(IrContext* ir_context, IrArg* param)
-{
-  IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
-  stmt->kind = eIrStmt_param;
-  stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
-  stmt->param = param;
-  ir_context->stmt_count++;
-}
-
-void ir_emit_call(IrContext* ir_context, AstNode* proc, IrArg* retvar, IrArg** params, int param_count)
+void ir_emit_call(IrContext* ir_context, AstNode* proc)
 {
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   stmt->kind = eIrStmt_call;
   stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
   stmt->call.proc = proc;
-  stmt->call.retvar = retvar;
-  stmt->call.params = params;
-  stmt->call.param_count = param_count;
   ir_context->stmt_count++;
 }
 
@@ -4238,7 +4246,15 @@ bool ir_gen_actual_args(IrContext* ir_context, Scope* scope, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = ir_gen_expr(ir_context, scope, arg);
+    AstNode* expr = arg->actual_arg.expr;
+    if(success = ir_gen_expr(ir_context, scope, expr))
+    {
+      IrArg* place = arg->place = mem_push_struct(arena, IrArg);
+      place->kind = eIrArg_object;
+      place->object = arg->actual_arg.param;
+
+      ir_emit_assign(ir_context, eIrOp_None, eBasicType_None, expr->place, 0, place);
+    }
   }
   return success;
 }
@@ -4254,27 +4270,16 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
   AstNode* args = call->call.args;
   ir_gen_actual_args(ir_context, scope, args);
 
-  for(int i = 0; i < call->call.arg_count; i++)
+  for(ListItem* li = args->node_list.first;
+      li;
+      li = li->next)
   {
-    alloc_data_object(call->call.object_args[i], call->call.scope, ir_context->data_alignment);
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    alloc_data_object(arg->actual_arg.param, call->call.scope, ir_context->data_alignment);
   }
   alloc_data_object(call->call.retvar, call->call.scope, ir_context->data_alignment);
 
-  IrArg** ir_args = mem_push_array(arena, IrArg*, call->call.arg_count);
-
-  int i = 0;
-  for(ListItem* li = args->node_list.first;
-      li && (i < call->call.arg_count);
-      li = li->next, i++)
-  {
-    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    IrArg* arg_place = ir_args[i] = mem_push_struct(arena, IrArg);
-    arg_place->kind = eIrArg_object;
-    arg_place->object = call->call.object_args[i];
-    ir_emit_assign(ir_context, eIrOp_None, eBasicType_None, arg->place, 0, arg_place);
-  }
-
-  ir_emit_call(ir_context, call->call.proc, call->place, ir_args, call->call.arg_count);
+  ir_emit_call(ir_context, call->call.proc);
 }
 
 bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
@@ -5353,30 +5358,12 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
     }
     break;
     
-    case eIrStmt_param:
-    {
-      str_printf(text, "param ");
-      DEBUG_print_ir_arg(text, stmt->param);
-    }
-    break;
-    
     case eIrStmt_call:
     {
       struct IrStmt_call* call = &stmt->call;
       AstNode* proc = call->proc;
 
-      str_printf(text, "%s(", proc->label_begin->name);
-      for(int i = 0; i < call->param_count; i++)
-      {
-        DEBUG_print_ir_arg(text, call->params[i]);
-
-        if(i < call->param_count-1)
-        {
-          str_printf(text, ", ");
-        }
-      }
-      str_printf(text, ") -> ");
-      DEBUG_print_ir_arg(text, call->retvar);
+      str_printf(text, "call %s", proc->label_begin->name);
     }
     break;
     

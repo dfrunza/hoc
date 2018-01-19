@@ -496,8 +496,7 @@ bool types_are_equal(Type* type_a, Type* type_b)
       }
       break;
       
-      default:
-      assert(0);
+      default: assert(0);
     }
   }
   return are_equal;
@@ -549,8 +548,7 @@ int compute_type_width(Type* type)
         }
         break;
         
-        default:
-        assert(0);
+        default: assert(0);
       }
     }
     break;
@@ -567,8 +565,7 @@ int compute_type_width(Type* type)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return type->width;
 }
@@ -669,8 +666,7 @@ bool type_unif(Type* type_a, Type* type_b)
           }
           break;
           
-          default:
-          assert(0);
+          default: assert(0);
         }
       }
     }
@@ -761,8 +757,7 @@ Type* type_subst(List* subst_list, Type* type)
       }
       break;
       
-      default:
-      assert(0);
+      default: assert(0);
     }
   }
   return subst;
@@ -817,8 +812,7 @@ bool resolve_type(Type* type, Type** resolved_type)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   
   if(success)
@@ -1181,8 +1175,7 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
     }
     break;
 
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -1375,8 +1368,7 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -1525,8 +1517,7 @@ bool sym_module(SymbolContext* sym_context, AstNode* module)
       case eAstNode_include:
       break;
       
-      default:
-      assert(0);
+      default: assert(0);
     }
   }
   end_nested_scope(sym_context);
@@ -1643,13 +1634,14 @@ bool set_types_type(AstNode* type)
       }
       break;
       
-      default:
-      assert(0);
+      default: assert(0);
     }
     break;
     
     default:
-    success = compile_error(type->src_loc, "invalid type expression");
+    {
+      success = compile_error(type->src_loc, "invalid type expression");
+    }
   }
   return success;
 }
@@ -1805,8 +1797,7 @@ bool set_types_lit(AstNode* lit)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   lit->ty = lit->eval_ty = ty;
   return success;
@@ -1917,8 +1908,7 @@ bool set_types_expr(AstNode* expr)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -2110,8 +2100,7 @@ bool set_types_block_stmt(AstNode* stmt)
     }
     break;
 
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -2198,8 +2187,7 @@ bool set_types_module_stmt(AstNode* stmt)
     }
     break;
 
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -2293,56 +2281,67 @@ bool eval_types_bin_expr(AstNode* bin_expr)
       case eOperator_bit_and:
       case eOperator_bit_or:
       case eOperator_bit_xor:
-      if(type_unif(left_operand->eval_ty, right_operand->eval_ty) && type_unif(left_operand->eval_ty, basic_type_int))
       {
-        ;//ok
+        if(type_unif(left_operand->eval_ty, right_operand->eval_ty) && type_unif(left_operand->eval_ty, basic_type_int))
+        {
+          ;//ok
+        }
+        else
+          success = compile_error(bin_expr->src_loc, "type error (bitwise op)");
       }
-      else
-        success = compile_error(bin_expr->src_loc, "type error (bitwise op)");
       break;
       
       case eOperator_bit_shift_left:
       case eOperator_bit_shift_right:
-      if(type_unif(left_operand->eval_ty, basic_type_int) && type_unif(right_operand->eval_ty, basic_type_char))
       {
-        ;//ok
+        if(type_unif(left_operand->eval_ty, basic_type_int) && type_unif(right_operand->eval_ty, basic_type_char))
+        {
+          ;//ok
+        }
+        else
+          success = compile_error(bin_expr->src_loc, "type error (bitwise op)");
       }
-      else
-        success = compile_error(bin_expr->src_loc, "type error (bitwise op)");
       break;
       
       default:
-      if(type_unif(left_operand->eval_ty, right_operand->eval_ty))
       {
-        switch(bin_expr->bin_expr.op)
+        if(type_unif(left_operand->eval_ty, right_operand->eval_ty))
         {
-          case eOperator_less:
-          case eOperator_less_eq:
-          case eOperator_greater:
-          case eOperator_greater_eq:
-          case eOperator_eq:
-          case eOperator_not_eq:
-          case eOperator_logic_and:
-          case eOperator_logic_or:
-          case eOperator_logic_not:
-          if(!type_unif(bin_expr->eval_ty, basic_type_bool))
+          switch(bin_expr->bin_expr.op)
           {
-            success = compile_error(bin_expr->src_loc, "type error (bin expr)");
+            case eOperator_less:
+            case eOperator_less_eq:
+            case eOperator_greater:
+            case eOperator_greater_eq:
+            case eOperator_eq:
+            case eOperator_not_eq:
+            case eOperator_logic_and:
+            case eOperator_logic_or:
+            case eOperator_logic_not:
+            {
+              if(!type_unif(bin_expr->eval_ty, basic_type_bool))
+              {
+                success = compile_error(bin_expr->src_loc, "type error (bin expr)");
+              }
+            }
+            break;
+
+            default:
+            {
+              if(!type_unif(bin_expr->eval_ty, left_operand->eval_ty))
+              {
+                success = compile_error(bin_expr->src_loc, "type error (bin expr)");
+              }
+            }
+            break;
           }
-          break;
-          
-          default:
-          if(!type_unif(bin_expr->eval_ty, left_operand->eval_ty))
-          {
-            success = compile_error(bin_expr->src_loc, "type error (bin expr)");
-          }
-          break;
         }
+        else
+          success = compile_error(bin_expr->src_loc, "type error (bin expr)");
       }
-      else
-        success = compile_error(bin_expr->src_loc, "type error (bin expr)");
       break;
     }
+
     if(success)
     {
       Type* bin_expr_ty = KIND(bin_expr->ty, eType_proc);
@@ -2379,26 +2378,31 @@ bool eval_types_id(AstNode* id)
       switch(decl_ast->ty->kind)
       {
         case eType_var:
-        if((id->id.decl_sym->scope == id->id.scope) && (id->id.decl_sym->order_nr > id->id.order_nr))
-        {
-          success = compile_error(id->src_loc, "var `%s` must be declared before its use", id->id.name);
-        }
-        else
-        {
-          if(!type_unif(decl_ast->ty->var.type, id->eval_ty))
           {
-            success = compile_error(id->src_loc, "type error (var id)");
+            if((id->id.decl_sym->scope == id->id.scope) && (id->id.decl_sym->order_nr > id->id.order_nr))
+            {
+              success = compile_error(id->src_loc, "var `%s` must be declared before its use", id->id.name);
+            }
+            else
+            {
+              if(!type_unif(decl_ast->ty->var.type, id->eval_ty))
+              {
+                success = compile_error(id->src_loc, "type error (var id)");
+              }
+            }
+          }
+        break;
+        
+        case eType_proc:
+        {
+          if(!type_unif(decl_ast->ty->proc.ret, id->eval_ty))
+          {
+            success = compile_error(id->src_loc, "type error (proc id)");
           }
         }
         break;
-        case eType_proc:
-        if(!type_unif(decl_ast->ty->proc.ret, id->eval_ty))
-        {
-          success = compile_error(id->src_loc, "type error (proc id)");
-        }
-        break;
-        default:
-        assert(0);
+
+        default: assert(0);
       }
     }
     else
@@ -2459,9 +2463,9 @@ bool eval_types_unr_expr(AstNode* unr_expr)
       }
       break;
       
-      default:
-      assert(0);
+      default: assert(0);
     }
+
     if(success)
     {
       Type* unr_expr_ty = KIND(unr_expr->ty, eType_proc);
@@ -2620,8 +2624,7 @@ bool eval_types_expr(AstNode* expr)
     case eAstNode_basic_type:
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -2791,8 +2794,7 @@ bool eval_types_block_stmt(AstNode* stmt)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -2822,8 +2824,7 @@ bool eval_types_module_stmt(AstNode* stmt)
     case eAstNode_include:
     break;
 
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -3037,8 +3038,7 @@ bool resolve_types_expr(AstNode* expr)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -3246,8 +3246,7 @@ bool resolve_types_block_stmt(AstNode* stmt)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -3284,8 +3283,7 @@ bool resolve_types_module_stmt(AstNode* stmt)
     case eAstNode_include:
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -3511,8 +3509,7 @@ bool check_types_bin_expr(AstNode* bin_expr)
       }
       break;
       
-      default:
-      assert(0);
+      default: assert(0);
     }
   }
   return success;
@@ -3675,8 +3672,7 @@ bool check_types_expr(AstNode* expr)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -3807,8 +3803,7 @@ bool check_types_block_stmt(AstNode* stmt)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -3839,8 +3834,7 @@ bool check_types_module_stmt(AstNode* stmt)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -3970,8 +3964,7 @@ eIrOp conv_operator_to_ir_op(eOperator op)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return ir_op;
 }
@@ -3991,14 +3984,15 @@ IrLabel* get_label_at(List* label_list, int stmt_nr)
   return label;
 }
 
-void ir_emit_assign(IrContext* ir_context, eIrOp op, eBasicType op_type, IrArg* arg1, IrArg* arg2, IrArg* result)
+void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, IrArg* result)
 {
   assert(result->kind == eIrArg_object);
+
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   stmt->kind = eIrStmt_assign;
   stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
+
   stmt->assign.op = op;
-  stmt->assign.op_type = op_type;
   stmt->assign.arg1 = mem_push_struct(arena, IrArg);
   *stmt->assign.arg1 = *arg1;
   if(arg2)
@@ -4008,6 +4002,7 @@ void ir_emit_assign(IrContext* ir_context, eIrOp op, eBasicType op_type, IrArg* 
   }
   stmt->assign.result = mem_push_struct(arena, IrArg);
   *stmt->assign.result = *result;
+
   ir_context->stmt_count++;
 }
 
@@ -4040,22 +4035,25 @@ void ir_emit_label(IrContext* ir_context, IrLabel* label)
 void ir_emit_nop(IrContext* ir_context)
 {
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
+
   *stmt = (IrStmt){0};
   stmt->kind = eIrStmt_nop;
   stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
+
   ir_context->stmt_count++;
 }
 
-void ir_emit_cond_goto(IrContext* ir_context, eIrOp relop, eBasicType relop_type, IrArg* arg1, IrArg* arg2, IrLabel* label)
+void ir_emit_cond_goto(IrContext* ir_context, eIrOp relop, IrArg* arg1, IrArg* arg2, IrLabel* label)
 {
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   stmt->kind = eIrStmt_cond_goto;
   stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
+
   stmt->cond_goto.relop = relop;
-  stmt->cond_goto.relop_type = relop_type;
   stmt->cond_goto.arg1 = arg1;
   stmt->cond_goto.arg2 = arg2;
   stmt->cond_goto.label = label;
+
   ir_context->stmt_count++;
 }
 
@@ -4065,6 +4063,7 @@ void ir_emit_goto(IrContext* ir_context, IrLabel* goto_label)
   stmt->kind = eIrStmt_goto;
   stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
   stmt->goto_label = goto_label;
+
   ir_context->stmt_count++;
 }
 
@@ -4074,6 +4073,7 @@ void ir_emit_call(IrContext* ir_context, AstNode* proc)
   stmt->kind = eIrStmt_call;
   stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
   stmt->call.proc = proc;
+
   ir_context->stmt_count++;
 }
 
@@ -4082,6 +4082,7 @@ void ir_emit_return(IrContext* ir_context)
   IrStmt* stmt = mem_push_struct(ir_context->ir_arena, IrStmt);
   stmt->kind = eIrStmt_return;
   stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
+
   ir_context->stmt_count++;
 }
 
@@ -4134,15 +4135,12 @@ bool ir_gen_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
         place->object = new_temp_object(ir_context->sym_arena, scope, bin_expr->eval_ty, bin_expr->src_loc, ir_context->data_alignment);
 
         assert(bin_expr->eval_ty->kind == eType_basic);
-        eBasicType op_type = KIND(left_operand->eval_ty, eType_basic)->basic.kind;
-        ir_emit_assign(ir_context, conv_operator_to_ir_op(op), op_type,
-                        left_operand->place, right_operand->place, bin_expr->place);
+        ir_emit_assign(ir_context, conv_operator_to_ir_op(op), left_operand->place, right_operand->place, bin_expr->place);
       }
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -4174,8 +4172,7 @@ bool ir_gen_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
         place->object = new_temp_object(ir_context->sym_arena, scope, unr_expr->eval_ty, unr_expr->src_loc, ir_context->data_alignment);
 
         assert(operand->eval_ty->kind == eType_basic);
-        eBasicType op_type = KIND(operand->eval_ty, eType_basic)->basic.kind;
-        ir_emit_assign(ir_context, conv_operator_to_ir_op(op), op_type, operand->place, 0, unr_expr->place);
+        ir_emit_assign(ir_context, conv_operator_to_ir_op(op), operand->place, 0, unr_expr->place);
       }
     }
     break;
@@ -4186,8 +4183,7 @@ bool ir_gen_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -4229,8 +4225,7 @@ void ir_gen_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
 }
 
@@ -4252,8 +4247,7 @@ bool ir_gen_bool_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -4275,7 +4269,7 @@ bool ir_gen_actual_args(IrContext* ir_context, Scope* scope, AstNode* args)
       place->kind = eIrArg_object;
       place->object = arg->actual_arg.param;
 
-      ir_emit_assign(ir_context, eIrOp_None, eBasicType_None, expr->place, 0, place);
+      ir_emit_assign(ir_context, eIrOp_None, expr->place, 0, place);
     }
   }
   return success;
@@ -4328,9 +4322,9 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
       index->index.place = array_expr->index.place;
       index->index.array_ty = array_expr->index.array_ty;
       
-      IrArg* t = index->index.i_place = mem_push_struct(arena, IrArg);
-      t->kind = eIrArg_object;
-      t->object = new_temp_object(arena, scope, basic_type_int, index->src_loc, ir_context->data_alignment);
+      IrArg* offset = index->index.i_place = mem_push_struct(arena, IrArg);
+      offset->kind = eIrArg_object;
+      offset->object = new_temp_object(arena, scope, basic_type_int, index->src_loc, ir_context->data_alignment);
 
       IrArg* dim_size = mem_push_struct(arena, IrArg);
       dim_size->kind = eIrArg_constant;
@@ -4338,15 +4332,15 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
 
       if(dim_size->constant.int_val = size_of_array_dim(index->index.array_ty, index->index.ndim) > 0)
       {
-        ir_emit_assign(ir_context, eIrOp_mul, eBasicType_int, array_expr->index.i_place, dim_size, t);
-        ir_emit_assign(ir_context, eIrOp_add, eBasicType_int, t, i_expr->place, t);
+        ir_emit_assign(ir_context, eIrOp_mul, array_expr->index.i_place, dim_size, offset);
+        ir_emit_assign(ir_context, eIrOp_add, offset, i_expr->place, offset);
       }
       else
         success = compile_error(i_expr->src_loc, "array dim size = 0");
     }
   }
-  else
-    assert(0);
+  else assert(0);
+
   return success;
 }
 
@@ -4365,7 +4359,7 @@ bool ir_gen_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
     width->constant.kind = eIrConstant_int;
     width->constant.int_val = array_elem_width(index->index.array_ty);
 
-    ir_emit_assign(ir_context, eIrOp_mul, eBasicType_int, index->index.i_place, width, offset);
+    ir_emit_assign(ir_context, eIrOp_mul, index->index.i_place, width, offset);
   }
   return success;
 }
@@ -4382,7 +4376,7 @@ bool ir_gen_assign(IrContext* ir_context, Scope* scope, AstNode* assign)
   {
     if(success = ir_gen_expr(ir_context, scope, dest_expr) && ir_gen_expr(ir_context, scope, source_expr))
     {
-      ir_emit_assign(ir_context, eIrOp_None, eBasicType_None, source_expr->place, 0, dest_expr->place);
+      ir_emit_assign(ir_context, eIrOp_None, source_expr->place, 0, dest_expr->place);
     }
   }
   else if(dest_expr->kind == eAstNode_index)
@@ -4390,7 +4384,7 @@ bool ir_gen_assign(IrContext* ir_context, Scope* scope, AstNode* assign)
     if(success = ir_gen_index_with_offset(ir_context, scope, dest_expr) && ir_gen_expr(ir_context, scope, source_expr))
     {
       dest_expr->place = dest_expr->index.place;
-      ir_emit_assign(ir_context, eIrOp_index_dest, eBasicType_None, source_expr->place, dest_expr->index.offset, dest_expr->index.place);
+      ir_emit_assign(ir_context, eIrOp_index_dest, source_expr->place, dest_expr->index.offset, dest_expr->index.place);
     }
   }
   else
@@ -4467,7 +4461,7 @@ bool ir_gen_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
         else
           assert(0);
       }
-      ir_emit_assign(ir_context, cast_op, eBasicType_None, from_expr->place, 0, cast->place);
+      ir_emit_assign(ir_context, cast_op, from_expr->place, 0, cast->place);
     }
   }
   return success;
@@ -4494,10 +4488,10 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         ir_gen_bool_expr(ir_context, scope, expr);
         
         ir_emit_label(ir_context, expr->label_true);
-        ir_emit_assign(ir_context, eIrOp_None, eBasicType_None, &ir_arg_bool_true, 0, expr->place);
+        ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, expr->place);
         ir_emit_goto(ir_context, expr->label_next);
         ir_emit_label(ir_context, expr->label_false);
-        ir_emit_assign(ir_context, eIrOp_None, eBasicType_None, &ir_arg_bool_false, 0, expr->place);
+        ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, expr->place);
         ir_emit_label(ir_context, expr->label_next);
       }
       else
@@ -4519,10 +4513,10 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         ir_gen_bool_unr_expr(ir_context, scope, expr);
 
         ir_emit_label(ir_context, expr->label_true);
-        ir_emit_assign(ir_context, eIrOp_None, eBasicType_None, &ir_arg_bool_true, 0, expr->place);
+        ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_true, 0, expr->place);
         ir_emit_goto(ir_context, expr->label_next);
         ir_emit_label(ir_context, expr->label_false);
-        ir_emit_assign(ir_context, eIrOp_None, eBasicType_None, &ir_arg_bool_false, 0, expr->place);
+        ir_emit_assign(ir_context, eIrOp_None, &ir_arg_bool_false, 0, expr->place);
         ir_emit_label(ir_context, expr->label_next);
       }
       else
@@ -4556,7 +4550,7 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         place->kind = eIrArg_object;
         place->object = new_temp_object(arena, scope, expr->eval_ty, expr->src_loc, ir_context->data_alignment);
 
-        ir_emit_assign(ir_context, eIrOp_index_source, eBasicType_None, expr->index.place, expr->index.offset, expr->place);
+        ir_emit_assign(ir_context, eIrOp_index_source, expr->index.place, expr->index.offset, expr->place);
       }
     }
     break;
@@ -4567,8 +4561,7 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -4629,8 +4622,7 @@ eOperator negate_relop(eOperator op)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return result;
 }
@@ -4655,8 +4647,7 @@ bool ir_gen_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
     {
       if(success = ir_gen_expr(ir_context, scope, left_operand) && ir_gen_expr(ir_context, scope, right_operand))
       {
-        eBasicType op_type = KIND(left_operand->eval_ty, eType_basic)->basic.kind;
-        ir_emit_cond_goto(ir_context, conv_operator_to_ir_op(op), op_type, left_operand->place, right_operand->place, bin_expr->label_true);
+        ir_emit_cond_goto(ir_context, conv_operator_to_ir_op(op), left_operand->place, right_operand->place, bin_expr->label_true);
         ir_emit_goto(ir_context, bin_expr->label_false);
       }
     }
@@ -4696,8 +4687,7 @@ bool ir_gen_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -4708,7 +4698,7 @@ bool ir_gen_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
   bool success = true;
   if(success = ir_gen_expr(ir_context, scope, id))
   {
-    ir_emit_cond_goto(ir_context, eIrOp_eq, eBasicType_int, id->place, &ir_arg_bool_true, id->label_true);
+    ir_emit_cond_goto(ir_context, eIrOp_eq, id->place, &ir_arg_bool_true, id->label_true);
     ir_emit_goto(ir_context, id->label_false);
   }
   return success;
@@ -4720,7 +4710,7 @@ bool ir_gen_bool_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
   bool success = true;
   if(success = ir_gen_cast(ir_context, scope, cast))
   {
-    ir_emit_cond_goto(ir_context, eIrOp_eq, eBasicType_int, cast->place, &ir_arg_bool_true, cast->label_true);
+    ir_emit_cond_goto(ir_context, eIrOp_eq, cast->place, &ir_arg_bool_true, cast->label_true);
     ir_emit_goto(ir_context, cast->label_false);
   }
   return success;
@@ -4774,8 +4764,7 @@ bool ir_gen_bool_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -4891,7 +4880,7 @@ bool ir_gen_return(IrContext* ir_context, Scope* scope, AstNode* ret)
       retvar->kind = eIrArg_object;
       retvar->object = proc->proc.retvar;
 
-      ir_emit_assign(ir_context, eIrOp_None, eBasicType_None, ret_expr->place, 0, retvar);
+      ir_emit_assign(ir_context, eIrOp_None, ret_expr->place, 0, retvar);
     }
   }
 
@@ -5005,8 +4994,7 @@ bool ir_gen_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -5087,8 +5075,7 @@ bool ir_gen_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }
@@ -5105,7 +5092,7 @@ bool ir_gen_module(IrContext* ir_context, AstNode* module)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = ir_gen_module_stmt(ir_context, module->module.scope, stmt);
   }
-  //ir_emit_nop(ir_context);
+
   return success;
 }
 
@@ -5221,8 +5208,7 @@ void DEBUG_print_ir_op(String* text, eIrOp op)
     str_printf(text, "btoi");
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
 }
 
@@ -5237,33 +5223,35 @@ void DEBUG_print_ir_arg(String* text, IrArg* arg)
     break;
     
     case eIrArg_constant:
-    switch(arg->constant.kind)
     {
-      case eIrConstant_int:
+      switch(arg->constant.kind)
       {
-        str_printf(text, "%d", arg->constant.int_val);
+        case eIrConstant_int:
+        {
+          str_printf(text, "%d", arg->constant.int_val);
+        }
+        break;
+
+        case eIrConstant_float:
+        {
+          str_printf(text, "%f", arg->constant.float_val);
+        }
+        break;
+
+        case eIrConstant_char:
+        {
+          char buf[3] = {0};
+          print_char(buf, arg->constant.char_val);
+          str_printf(text, "'%s'", buf);
+        }
+        break;
+
+        default: assert(0);
       }
-      break;
-      
-      case eIrConstant_float:
-      {
-        str_printf(text, "%f", arg->constant.float_val);
-      }
-      break;
-      
-      case eIrConstant_char:
-      {
-        str_printf(text, "%c", arg->constant.char_val);
-      }
-      break;
-      
-      default:
-      assert(0);
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
 }
 
@@ -5355,8 +5343,7 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         }
         break;
         
-        default:
-        assert(0);
+        default: assert(0);
       }
     }
     break;
@@ -5564,23 +5551,46 @@ void x86_print_register(String* text, eX86Location R)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
 }
 
-void x86_print_operand(String* text, X86Operand* operand)
+char* x86_get_size_directive(eX86Type x86_type)
+{
+  char* directv = "";
+
+  switch(x86_type)
+  {
+    case eX86Type_None:
+    break;
+
+    case eX86Type_int8:
+      directv = "byte";
+    break;
+
+    case eX86Type_int32:
+    case eX86Type_float32:
+      directv = "dword";
+    break;
+
+    default: assert(0);
+  }
+
+  return directv;
+}
+
+void x86_print_operand(String* text, eX86Type x86_type, X86Operand* operand)
 {
   switch(operand->kind)
   {
     case eX86Operand_indexed:
     {
-      str_printf(text, "dword ptr [");
-      x86_print_operand(text, operand->indexed.base);
+      str_printf(text, "%s ptr [", x86_get_size_directive(x86_type));
+      x86_print_operand(text, x86_type, operand->indexed.base);
       if(operand->indexed.offset)
       {
         str_printf(text, "+");
-        x86_print_operand(text, operand->indexed.offset);
+        x86_print_operand(text, x86_type, operand->indexed.offset);
       }
       str_printf(text, "]");
     }
@@ -5588,8 +5598,8 @@ void x86_print_operand(String* text, X86Operand* operand)
 
     case eX86Operand_memory:
     {
-      str_printf(text, "dword ptr [");
-      x86_print_operand(text, operand->memory.base);
+      str_printf(text, "%s ptr [", x86_get_size_directive(x86_type));
+      x86_print_operand(text, x86_type, operand->memory.base);
       str_printf(text, "%+d]", operand->memory.offset);
     }
     break;
@@ -5597,7 +5607,7 @@ void x86_print_operand(String* text, X86Operand* operand)
     case eX86Operand_address:
     {
       str_printf(text, "[");
-      x86_print_operand(text, operand->memory.base);
+      x86_print_operand(text, x86_type, operand->memory.base);
       str_printf(text, "%+d]", operand->memory.offset);
     }
     break;
@@ -5610,7 +5620,7 @@ void x86_print_operand(String* text, X86Operand* operand)
     
     case eX86Operand_constant:
     {
-      str_printf(text, "%d", operand->constant);
+      str_printf(text, "0%xh", operand->constant);
     }
     break;
     
@@ -5620,8 +5630,7 @@ void x86_print_operand(String* text, X86Operand* operand)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
 }
 
@@ -5752,8 +5761,7 @@ void x86_print_opcode(String* text, eX86StmtOpcode opcode)
     }
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
 }
 
@@ -5762,7 +5770,7 @@ void x86_print_stmt(String* text, X86Stmt* stmt)
   x86_print_opcode(text, stmt->opcode);
   if(stmt->operand1)
   {
-    x86_print_operand(text, stmt->operand1);
+    x86_print_operand(text, stmt->type, stmt->operand1);
     if(stmt->opcode == eX86StmtOpcode_label)
     {
       str_printf(text, ":");
@@ -5771,17 +5779,19 @@ void x86_print_stmt(String* text, X86Stmt* stmt)
   if(stmt->operand2)
   {
     str_printf(text, ", ");
-    x86_print_operand(text, stmt->operand2);
+    x86_print_operand(text, stmt->type, stmt->operand2);
   }
   str_printfln(text, "");
 }
 
-X86Stmt* x86_new_stmt(X86Context* context, eX86StmtOpcode opcode)
+X86Stmt* x86_new_stmt(X86Context* context, eX86Type type, eX86StmtOpcode opcode)
 {
   X86Stmt* stmt = mem_push_struct(context->stmt_arena, X86Stmt);
   context->stmt_count++;
   stmt->opcode = opcode;
+  stmt->type = type;
   stmt->operand1 = stmt->operand2 = 0;
+
   return stmt;
 }
 
@@ -5948,23 +5958,7 @@ X86Operand* x86_make_register_operand(MemoryArena* arena, eX86Location reg)
   return operand;
 }
 
-//FIXME: Delete this and use x86_make_constant_operand_2() instead
-#if 1
-X86Operand* x86_make_constant_operand(MemoryArena* arena, IrConstant* constant)
-{
-  X86Operand* operand = mem_push_struct(arena, X86Operand);
-  if(constant->kind == eIrConstant_int)
-  {
-    operand->kind = eX86Operand_constant;
-    operand->constant = constant->int_val;
-  }
-  else
-    assert(0);
-  return operand;
-}
-#endif
-
-X86Operand* x86_make_constant_operand_2(MemoryArena* arena, int constant)
+X86Operand* x86_make_constant_operand(MemoryArena* arena, int constant)
 {
   X86Operand* operand = mem_push_struct(arena, X86Operand);
   operand->kind = eX86Operand_constant;
@@ -5972,9 +5966,50 @@ X86Operand* x86_make_constant_operand_2(MemoryArena* arena, int constant)
   return operand;
 }
 
+int x86_conv_ir_constant_to_int(IrConstant* ir_const)
+{
+  int x86_const = 0;
+
+  switch(ir_const->kind)
+  {
+    case eIrConstant_int:
+    {
+      x86_const = ir_const->int_val;
+    }
+    break;
+
+    case eIrConstant_float:
+    {
+      union BitcastF32ToI32
+      {
+        float32 float32_val;
+        int32 int32_val;
+      };
+
+      union BitcastF32ToI32 val = {0};
+      val.float32_val = ir_const->float_val;
+
+      x86_const = val.int32_val;
+    }
+    break;
+
+    case eIrConstant_char:
+    {
+      x86_const = ir_const->char_val;
+    }
+    break;
+
+    default: assert(0);
+  }
+
+  return x86_const;
+}
+
+// X86 stack grows downwards
 void x86_set_memory_base_and_offset(X86Context* context, struct X86Operand_memory* memory, Symbol* object)
 {
-  // X86 stack grows downwards
+  memory->base = mem_push_struct(context->gp_arena, X86Operand);
+
   switch(object->storage_space)
   {
     case eStorageSpace_local:
@@ -6012,8 +6047,7 @@ void x86_set_memory_base_and_offset(X86Context* context, struct X86Operand_memor
     }
     break;
 
-    default:
-    assert(0);
+    default: assert(0);
   }
 }
 
@@ -6022,7 +6056,6 @@ X86Operand* x86_make_memory_operand(X86Context* context, Symbol* object)
   X86Operand* operand = mem_push_struct(context->gp_arena, X86Operand);
   operand->kind = eX86Operand_memory;
 
-  operand->memory.base = mem_push_struct(context->gp_arena, X86Operand);
   x86_set_memory_base_and_offset(context, &operand->memory, object);
 
   return operand;
@@ -6033,7 +6066,6 @@ X86Operand* x86_make_address_operand(X86Context* context, Symbol* object)
   X86Operand* operand = mem_push_struct(context->gp_arena, X86Operand);
   operand->kind = eX86Operand_address;
 
-  operand->memory.base = mem_push_struct(context->gp_arena, X86Operand);
   x86_set_memory_base_and_offset(context, &operand->memory, object);
 
   return operand;
@@ -6070,69 +6102,70 @@ X86Operand* x86_make_id_operand(MemoryArena* arena, char* id)
   return operand;
 }
 
-void x86_load_object_into_register(X86Context* context, eX86Location dest_reg, eX86Location source_loc, Symbol* object)
+void x86_load_object_into_register(X86Context* context, eX86Type x86_type, eX86Location dest_reg, eX86Location source_loc, Symbol* object)
 {
   assert(is_register_location(dest_reg));
   
   if(!is_object_in_location(object, dest_reg))
   {
-    X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+    X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
     
     stmt->operand1 = x86_make_register_operand(context->gp_arena, dest_reg);
     stmt->operand2 = x86_make_object_operand(context, object, source_loc);
   }
 }
 
-void x86_load_constant_into_register(X86Context* context, eX86Location dest_reg, IrConstant* constant)
+void x86_load_constant_into_register(X86Context* context, eX86Type x86_type, eX86Location dest_reg, IrConstant* constant)
 {
   assert(is_register_location(dest_reg));
   
-  X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+  X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
   
   stmt->operand1 = x86_make_register_operand(context->gp_arena, dest_reg);
-  stmt->operand2 = x86_make_constant_operand(context->gp_arena, constant);
+  stmt->operand2 = x86_make_constant_operand(context->gp_arena, x86_conv_ir_constant_to_int(constant));
 }
 
-void x86_store_constant_to_memory(X86Context* context, IrConstant* constant, Symbol* object)
+void x86_store_constant_to_memory(X86Context* context, eX86Type x86_type, IrConstant* constant, Symbol* object)
 {
-  X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+  X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
   
   stmt->operand1 = x86_make_memory_operand(context, object);
-  stmt->operand2 = x86_make_constant_operand(context->gp_arena, constant);
+  stmt->operand2 = x86_make_constant_operand(context->gp_arena, x86_conv_ir_constant_to_int(constant));
 }
 
-void x86_store_object_to_memory(X86Context* context, eX86Location source_reg, Symbol* object)
+void x86_store_object_to_memory(X86Context* context, eX86Type x86_type, eX86Location source_reg, Symbol* object)
 {
   assert(is_register_location(source_reg));
   
-  X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+  X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
   
   stmt->operand1 = x86_make_memory_operand(context, object);
   stmt->operand2 = x86_make_register_operand(context->gp_arena, source_reg);
 }
 
-void x86_load_memory_address(X86Context* context, eX86Location dest_reg, Symbol* object)
+void x86_load_memory_address(X86Context* context, eX86Type x86_type, eX86Location dest_reg, Symbol* object)
 {
   assert(is_register_location(dest_reg));
 
-  X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_lea);
+  X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_lea);
 
   stmt->operand1 = x86_make_register_operand(context->gp_arena, dest_reg);
   stmt->operand2 = x86_make_address_operand(context, object);
 }
 
-eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
+eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eX86Type x86_type)
 {
   eX86StmtOpcode x86_opcode = eX86StmtOpcode_None;
+
   switch(ir_op)
   {
     case eIrOp_add:
     {
-      if(op_type == eBasicType_int)
+      if(x86_type == eX86Type_int32)
       {
         x86_opcode = eX86StmtOpcode_add;
       }
-      else if(op_type == eBasicType_float)
+      else if(x86_type == eX86Type_float32)
       {
         x86_opcode = eX86StmtOpcode_addss;
       }
@@ -6143,11 +6176,11 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
     
     case eIrOp_sub:
     {
-      if(op_type == eBasicType_int)
+      if(x86_type == eX86Type_int32)
       {
         x86_opcode = eX86StmtOpcode_sub;
       }
-      else if(op_type == eBasicType_float)
+      else if(x86_type == eX86Type_float32)
       {
         x86_opcode = eX86StmtOpcode_subss;
       }
@@ -6158,11 +6191,11 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
     
     case eIrOp_mul:
     {
-      if(op_type == eBasicType_int)
+      if(x86_type == eX86Type_int32)
       {
         x86_opcode = eX86StmtOpcode_imul;
       }
-      else if(op_type == eBasicType_float)
+      else if(x86_type == eX86Type_float32)
       {
         x86_opcode = eX86StmtOpcode_mulss;
       }
@@ -6173,11 +6206,11 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
     
     case eIrOp_div:
     {
-      if(op_type == eBasicType_int)
+      if(x86_type == eX86Type_int32)
       {
         x86_opcode = eX86StmtOpcode_idiv;
       }
-      else if(op_type == eBasicType_float)
+      else if(x86_type == eX86Type_float32)
       {
         x86_opcode = eX86StmtOpcode_divss;
       }
@@ -6188,7 +6221,7 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
 
     case eIrOp_less:
       {
-        if(op_type == eBasicType_int)
+        if(x86_type == eX86Type_int32)
         {
           x86_opcode = eX86StmtOpcode_jl;
         }
@@ -6199,7 +6232,7 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
 
     case eIrOp_less_eq:
       {
-        if(op_type == eBasicType_int)
+        if(x86_type == eX86Type_int32)
         {
           x86_opcode = eX86StmtOpcode_jle;
         }
@@ -6210,7 +6243,7 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
 
     case eIrOp_greater:
       {
-        if(op_type == eBasicType_int)
+        if(x86_type == eX86Type_int32)
         {
           x86_opcode = eX86StmtOpcode_jg;
         }
@@ -6221,7 +6254,7 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
 
     case eIrOp_greater_eq:
       {
-        if(op_type == eBasicType_int)
+        if(x86_type == eX86Type_int32)
         {
           x86_opcode = eX86StmtOpcode_jge;
         }
@@ -6232,7 +6265,7 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
 
     case eIrOp_eq:
       {
-        if(op_type == eBasicType_int)
+        if(x86_type == eX86Type_int32)
         {
           x86_opcode = eX86StmtOpcode_jz;
         }
@@ -6243,7 +6276,7 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
 
     case eIrOp_not_eq:
       {
-        if(op_type == eBasicType_int)
+        if(x86_type == eX86Type_int32)
         {
           x86_opcode = eX86StmtOpcode_jnz;
         }
@@ -6252,8 +6285,7 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eBasicType op_type)
       }
       break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return x86_opcode;
 }
@@ -6283,13 +6315,13 @@ eX86Location find_least_used_register(X86Context* context, Symbol* exclude_objec
   return min_reg;
 }
 
-void save_object_to_memory(X86Context* context, eX86Location reg, Symbol* object)
+void save_object_to_memory(X86Context* context, eX86Type x86_type, eX86Location reg, Symbol* object)
 {
   assert(is_register_location(reg));
 
   if(!is_object_in_memory(object))
   {
-    x86_store_object_to_memory(context, reg, object);
+    x86_store_object_to_memory(context, x86_type, reg, object);
     add_object_to_location(context, object, eX86Location_memory);
   }
 }
@@ -6304,7 +6336,7 @@ void save_register_to_memory(X86Context* context, eX86Location reg, bool free_re
     Symbol* object = KIND(li, eList_symbol)->symbol;
     if(object->is_live)
     {
-      save_object_to_memory(context, reg, object);
+      save_object_to_memory(context, eX86Type_int32, reg, object);
     }
 
     if(free_reg)
@@ -6316,7 +6348,7 @@ void save_register_to_memory(X86Context* context, eX86Location reg, bool free_re
   }
 }
 
-eX86Location get_best_available_register(X86Context* context, IrStmt* stmt)
+eX86Location get_best_available_register(X86Context* context, eX86Type x86_type, IrStmt* stmt)
 {
   eX86Location best_reg = eX86Location_None;
 
@@ -6368,8 +6400,7 @@ eX86Location get_best_available_register(X86Context* context, IrStmt* stmt)
         best_reg = find_least_used_register(context, 0);
         save_register_to_memory(context, best_reg, true);
       }
-      else
-        assert(0);
+      else assert(0);
     }
   }
 
@@ -6409,7 +6440,7 @@ void save_all_registers_to_memory(X86Context* context, bool free_reg)
 }
 
 // getreg() pag. 538, Sec. 9.6
-eX86Location select_result_register(X86Context* context, IrStmt* ir_stmt)
+eX86Location select_result_register(X86Context* context, eX86Type x86_type, IrStmt* ir_stmt)
 {
   eX86Location dest_loc = eX86Location_None;
 
@@ -6433,8 +6464,8 @@ eX86Location select_result_register(X86Context* context, IrStmt* ir_stmt)
         }
         else
         {
-          dest_loc = get_best_available_register(context, ir_stmt);
-          x86_load_object_into_register(context, dest_loc, arg1_loc, arg1->object);
+          dest_loc = get_best_available_register(context, x86_type, ir_stmt);
+          x86_load_object_into_register(context, x86_type, dest_loc, arg1_loc, arg1->object);
         }
       }
       else if(arg1->kind == eIrArg_constant)
@@ -6447,8 +6478,8 @@ eX86Location select_result_register(X86Context* context, IrStmt* ir_stmt)
         }
         else
         {
-          dest_loc = get_best_available_register(context, ir_stmt);
-          x86_load_constant_into_register(context, dest_loc, &arg1->constant);
+          dest_loc = get_best_available_register(context, x86_type, ir_stmt);
+          x86_load_constant_into_register(context, x86_type, dest_loc, &arg1->constant);
         }
       }
       else assert(0);
@@ -6469,7 +6500,7 @@ eX86Location select_result_register(X86Context* context, IrStmt* ir_stmt)
         }
         else
         {
-          dest_loc = get_best_available_register(context, ir_stmt);
+          dest_loc = get_best_available_register(context, x86_type, ir_stmt);
         }
       }
     }
@@ -6488,14 +6519,14 @@ eX86Location select_result_register(X86Context* context, IrStmt* ir_stmt)
       }
       else
       {
-        dest_loc = get_best_available_register(context, ir_stmt);
-        x86_load_object_into_register(context, dest_loc, arg1_loc, arg1->object);
+        dest_loc = get_best_available_register(context, x86_type, ir_stmt);
+        x86_load_object_into_register(context, x86_type, dest_loc, arg1_loc, arg1->object);
       }
     }
     else
     {
-      dest_loc = get_best_available_register(context, ir_stmt);
-      x86_load_constant_into_register(context, dest_loc, &arg1->constant);
+      dest_loc = get_best_available_register(context, x86_type, ir_stmt);
+      x86_load_constant_into_register(context, x86_type, dest_loc, &arg1->constant);
     }
   }
   else assert(0);
@@ -6702,7 +6733,499 @@ void partition_to_basic_blocks(MemoryArena* ir_arena, AstNode* proc)
   }
 }
 
-void x86_gen_assign_stmt(X86Context* context, IrStmt* ir_stmt)
+// result = arg1[arg2]
+void x86_gen_assign_index_source_stmt(X86Context* context, eX86Type x86_type, IrStmt* ir_stmt)
+{
+  IrArg* result = ir_stmt->assign.result;
+  IrArg* arg1 = ir_stmt->assign.arg1;
+  IrArg* arg2 = ir_stmt->assign.arg2;
+
+  assert(arg1->kind == eIrArg_object);
+
+  eX86Location address_reg = get_best_available_register(context, x86_type, ir_stmt);
+  x86_load_memory_address(context, x86_type, address_reg, arg1->object);
+
+  if(arg2->kind == eIrArg_object)
+  {
+    eX86Location arg2_loc = lookup_object_location(arg2->object);
+    if(is_register_location(arg2_loc))
+    {
+      X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+      mov_stmt->operand1 = x86_make_register_operand(arena, address_reg);
+      mov_stmt->operand2 = x86_make_indexed_operand(arena,
+                                                    x86_make_register_operand(arena, address_reg),
+                                                    x86_make_register_operand(arena, arg2_loc));
+
+      set_exclusive_object_location(context, result->object, address_reg);
+    }
+    else // !is_register_location(arg2_loc)
+    {
+      X86Stmt* add_offset_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_add);
+      add_offset_stmt->operand1 = x86_make_register_operand(arena, address_reg);
+      add_offset_stmt->operand2 = x86_make_object_operand(context, arg2->object, arg2_loc);
+
+      X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+      mov_stmt->operand1 = x86_make_register_operand(arena, address_reg);
+      mov_stmt->operand2 = x86_make_indexed_operand(arena,
+                                                    x86_make_register_operand(arena, address_reg),
+                                                    0);
+
+      set_exclusive_object_location(context, result->object, address_reg);
+    }
+  }
+  else if(arg2->kind == eIrArg_constant)
+  {
+    X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+    mov_stmt->operand1 = x86_make_register_operand(arena, address_reg);
+    mov_stmt->operand2 = x86_make_indexed_operand(arena,
+                                                  x86_make_register_operand(arena, address_reg),
+                                                  x86_make_constant_operand(arena, x86_conv_ir_constant_to_int(&arg2->constant)));
+  }
+  else assert(0);
+}
+
+// result[arg2] = arg1
+void x86_gen_assign_index_dest_stmt(X86Context* context, eX86Type x86_type, IrStmt* ir_stmt)
+{
+  IrArg* result = ir_stmt->assign.result;
+  IrArg* arg1 = ir_stmt->assign.arg1;
+  IrArg* arg2 = ir_stmt->assign.arg2;
+
+  assert(result->kind == eIrArg_object);
+
+  eX86Location address_reg = get_best_available_register(context, x86_type, ir_stmt);
+  x86_load_memory_address(context, x86_type, address_reg, result->object);
+
+  if(arg2->kind == eIrArg_object && arg1->kind == eIrArg_object)
+  {
+    eX86Location arg1_loc = lookup_object_location(arg1->object);
+    eX86Location arg2_loc = lookup_object_location(arg2->object);
+
+    if(is_register_location(arg2_loc) && is_register_location(arg1_loc))
+    {
+      X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+      mov_stmt->operand1 = x86_make_indexed_operand(arena,
+                                                    x86_make_register_operand(arena, address_reg),
+                                                    x86_make_register_operand(arena, arg2_loc));
+      mov_stmt->operand2 = x86_make_register_operand(arena, arg1_loc);
+    }
+    else if(is_register_location(arg2_loc) && !is_register_location(arg1_loc))
+    {
+      if(arg2->next_use != NextUse_None || arg2->is_live)
+      {
+        save_object_to_memory(context, x86_type, arg2_loc, arg2->object);
+      }
+      delete_object_from_location(context, arg2->object, arg2_loc);
+
+      X86Stmt* add_offset_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_add);
+      add_offset_stmt->operand1 = x86_make_register_operand(arena, arg2_loc);
+      add_offset_stmt->operand2 = x86_make_register_operand(arena, address_reg);
+
+      x86_load_object_into_register(context, x86_type, address_reg, arg1_loc, arg1->object);
+      add_object_to_location(context, arg1->object, arg1_loc);
+
+      X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+      mov_stmt->operand1 = x86_make_indexed_operand(arena,
+                                                    x86_make_register_operand(arena, arg2_loc),
+                                                    0);
+      mov_stmt->operand2 = x86_make_register_operand(arena, address_reg);
+
+      if(arg2->next_use != NextUse_None)
+      {
+        x86_load_object_into_register(context, x86_type, arg2_loc, eX86Location_memory, arg2->object);
+        add_object_to_location(context, arg2->object, arg2_loc);
+      }
+    }
+    else if(!is_register_location(arg2_loc))
+    {
+      X86Stmt* add_offset_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_add);
+      add_offset_stmt->operand1 = x86_make_register_operand(arena, address_reg);
+      add_offset_stmt->operand2 = x86_make_object_operand(context, arg2->object, arg2_loc);
+
+      eX86Location arg1_loc = lookup_object_location(arg1->object);
+
+      if(!is_register_location(arg1_loc))
+      {
+        arg1_loc = get_best_available_register(context, x86_type, ir_stmt);
+        x86_load_object_into_register(context, x86_type, arg1_loc, eX86Location_memory, arg1->object);
+        add_object_to_location(context, arg1->object, arg1_loc);
+      }
+
+      X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+      mov_stmt->operand1 = x86_make_indexed_operand(arena,
+                                                    x86_make_register_operand(arena, address_reg),
+                                                    0);
+      mov_stmt->operand2 = x86_make_register_operand(arena, arg1_loc);
+    }
+  }
+  else if(arg2->kind == eIrArg_object && arg1->kind == eIrArg_constant)
+  {
+    eX86Location arg2_loc = lookup_object_location(arg2->object);
+
+    if(!is_register_location(arg2_loc))
+    {
+      arg2_loc = get_best_available_register(context, x86_type, ir_stmt);
+      x86_load_object_into_register(context, x86_type, arg2_loc, eX86Location_memory, arg2->object);
+      add_object_to_location(context, arg2->object, arg2_loc);
+    }
+
+    X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+    mov_stmt->operand1 = x86_make_indexed_operand(arena,
+                                                  x86_make_register_operand(arena, address_reg),
+                                                  x86_make_register_operand(arena, arg2_loc));
+    mov_stmt->operand2 = x86_make_constant_operand(arena, x86_conv_ir_constant_to_int(&arg1->constant));
+  }
+  else if(arg2->kind == eIrArg_constant && arg1->kind == eIrArg_object)
+  {
+    eX86Location arg1_loc = lookup_object_location(arg1->object);
+
+    if(!is_register_location(arg1_loc))
+    {
+      arg1_loc = get_best_available_register(context, x86_type, ir_stmt);
+      x86_load_object_into_register(context, x86_type, arg1_loc, eX86Location_memory, arg1->object);
+      add_object_to_location(context, arg1->object, arg1_loc);
+    }
+
+    X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+    mov_stmt->operand1 = x86_make_indexed_operand(arena,
+                                                  x86_make_register_operand(arena, address_reg),
+                                                  x86_make_constant_operand(arena, x86_conv_ir_constant_to_int(&arg2->constant)));
+    mov_stmt->operand2 = x86_make_register_operand(arena, arg1_loc);
+  }
+  else if(arg2->kind == eIrArg_constant && arg1->kind == eIrArg_constant)
+  {
+    X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+    mov_stmt->operand1 = x86_make_indexed_operand(arena,
+                                                  x86_make_register_operand(arena, address_reg),
+                                                  x86_make_constant_operand(arena, x86_conv_ir_constant_to_int(&arg2->constant)));
+    mov_stmt->operand2 = x86_make_constant_operand(arena, x86_conv_ir_constant_to_int(&arg1->constant));
+  }
+  else assert(0);
+}
+
+// result = ^arg1
+void x86_gen_assign_deref_source_stmt(X86Context* context, eX86Type x86_type, IrStmt* ir_stmt)
+{
+  IrArg* result = ir_stmt->assign.result;
+  IrArg* arg1 = ir_stmt->assign.arg1;
+
+  /*FIXME: Not tested. */
+  assert(arg1->kind == eIrArg_object);
+
+  eX86Location address_reg = get_best_available_register(context, x86_type, ir_stmt);
+  x86_load_memory_address(context, x86_type, address_reg, arg1->object);
+
+  X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+  mov_stmt->operand1 = x86_make_register_operand(arena, address_reg);
+  mov_stmt->operand2 = x86_make_indexed_operand(arena,
+                                                x86_make_register_operand(arena, address_reg),
+                                                0);
+
+  set_exclusive_object_location(context, result->object, address_reg);
+}
+
+// ^result = arg1
+void x86_gen_assign_deref_dest_stmt(X86Context* context, eX86Type x86_type, IrStmt* ir_stmt)
+{
+  IrArg* result = ir_stmt->assign.result;
+  IrArg* arg1 = ir_stmt->assign.arg1;
+
+  /*FIXME: Not tested. */
+  assert(result->kind == eIrArg_object);
+
+  eX86Location address_reg = get_best_available_register(context, x86_type, ir_stmt);
+  x86_load_memory_address(context, x86_type, address_reg, result->object);
+
+  if(arg1->kind == eIrArg_object)
+  {
+    eX86Location arg1_loc = lookup_object_location(arg1->object);
+
+    if(!is_register_location(arg1_loc))
+    {
+      arg1_loc = get_best_available_register(context, x86_type, ir_stmt);
+      x86_load_object_into_register(context, x86_type, arg1_loc, eX86Location_memory, arg1->object);
+      add_object_to_location(context, arg1->object, arg1_loc);
+    }
+
+    X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+    mov_stmt->operand1 = x86_make_indexed_operand(arena,
+                                                  x86_make_register_operand(arena, address_reg),
+                                                  0);
+    mov_stmt->operand2 = x86_make_register_operand(arena, arg1_loc);
+  }
+  else if(arg1->kind == eIrArg_constant)
+  {
+    X86Stmt* mov_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+    mov_stmt->operand1 = x86_make_indexed_operand(arena,
+                                                  x86_make_register_operand(arena, address_reg),
+                                                  0);
+    mov_stmt->operand2 = x86_make_constant_operand(arena, x86_conv_ir_constant_to_int(&arg1->constant));
+  }
+  else assert(0);
+}
+
+// result = &arg1
+void x86_gen_assign_address_of_stmt(X86Context* context, eX86Type x86_type, IrStmt* ir_stmt)
+{
+  IrArg* result = ir_stmt->assign.result;
+  IrArg* arg1 = ir_stmt->assign.arg1;
+
+  /*FIXME: Not tested. */
+  assert(arg1->kind == eIrArg_object);
+
+  eX86Location arg1_loc = lookup_object_location(arg1->object);
+  eX86Location address_reg = eX86Location_None;
+
+  if(is_register_location(arg1_loc)
+     && is_single_occupant_register(context, arg1_loc, arg1->object)
+     && (arg1->next_use == NextUse_None && !arg1->is_live))
+  {
+    delete_object_from_location(context, arg1->object, arg1_loc);
+    address_reg = arg1_loc;
+  }
+
+  if(!address_reg)
+  {
+    address_reg = get_best_available_register(context, x86_type, ir_stmt);
+  }
+
+  x86_load_memory_address(context, x86_type, address_reg, arg1->object);
+  set_exclusive_object_location(context, result->object, address_reg);
+}
+
+void x86_gen_assign_binexpr_stmt(X86Context* context, eX86Type x86_type, IrStmt* ir_stmt)
+{
+  struct IrStmt_assign* assign = &ir_stmt->assign;
+  IrArg* result = ir_stmt->assign.result;
+  IrArg* arg1 = ir_stmt->assign.arg1;
+  IrArg* arg2 = ir_stmt->assign.arg2;
+
+  eX86Location store_reg = select_result_register(context, x86_type, ir_stmt);
+
+  if(arg1->kind == eIrArg_object)
+  {
+    X86Stmt* x86_stmt = x86_new_stmt(context, x86_type, conv_ir_op_to_x86_opcode(assign->op, x86_type));
+    x86_stmt->operand1 = x86_make_object_operand(context, arg1->object, store_reg);
+
+    if(arg2->kind == eIrArg_object)
+    {
+      x86_stmt->operand2 = x86_make_object_operand(context, arg2->object, lookup_object_location(arg2->object));
+    }
+    else if(arg2->kind == eIrArg_constant)
+    {
+      x86_stmt->operand2 = x86_make_constant_operand(arena, x86_conv_ir_constant_to_int(&arg2->constant));
+    }
+    else assert(0);
+  }
+  else if(arg1->kind == eIrArg_constant)
+  {
+    X86Stmt* x86_stmt = x86_new_stmt(context, x86_type, conv_ir_op_to_x86_opcode(assign->op, x86_type));
+    x86_stmt->operand1 = x86_make_register_operand(arena, store_reg);
+
+    if(arg2->kind == eIrArg_object)
+    {
+      x86_stmt->operand2 = x86_make_object_operand(context, arg2->object, lookup_object_location(arg2->object));
+    }
+    else if(arg2->kind == eIrArg_constant)
+    {
+      x86_stmt->operand2 = x86_make_constant_operand(arena, x86_conv_ir_constant_to_int(&arg2->constant));
+    }
+    else assert(0);
+  }
+  else assert(0);
+
+  set_exclusive_object_location(context, result->object, store_reg);
+  discard_all_assign_args(context, assign, store_reg);
+}
+
+void x86_gen_assign_simple_stmt(X86Context* context, eX86Type x86_type, IrStmt* ir_stmt)
+{
+  struct IrStmt_assign* assign = &ir_stmt->assign;
+  IrArg* result = ir_stmt->assign.result;
+  IrArg* arg1 = ir_stmt->assign.arg1;
+
+  if(arg1->kind == eIrArg_object)
+  {
+    eX86Location arg1_loc = lookup_object_location(arg1->object);
+    if(is_register_location(arg1_loc))
+    {
+      set_exclusive_object_location(context, result->object, arg1_loc);
+      discard_all_assign_args(context, assign, arg1_loc);
+    }
+    else
+    {
+      if(result->next_use == NextUse_None)
+      {
+        eX86Location result_loc = lookup_object_location(result->object);
+        if(is_register_location(result_loc))
+        {
+          if(is_single_occupant_register(context, result_loc, result->object))
+          {
+            x86_load_object_into_register(context, x86_type, result_loc, eX86Location_memory, arg1->object);
+            x86_store_object_to_memory(context, x86_type, result_loc, result->object);
+          }
+        }
+        else
+        {
+          eX86Location store_reg = select_result_register(context, x86_type, ir_stmt);
+          x86_load_object_into_register(context, x86_type, store_reg, eX86Location_memory, arg1->object);
+          x86_store_object_to_memory(context, x86_type, store_reg, result->object);
+        }
+        set_exclusive_object_location(context, result->object, eX86Location_memory);
+      }
+      else
+      {
+        eX86Location store_reg = select_result_register(context, x86_type, ir_stmt);
+        x86_load_object_into_register(context, x86_type, store_reg, eX86Location_memory, arg1->object);
+        set_exclusive_object_location(context, result->object, store_reg);
+      }
+    }
+  }
+  else if(arg1->kind == eIrArg_constant)
+  {
+    if(result->next_use == NextUse_None)
+    {
+      x86_store_constant_to_memory(context, x86_type, &arg1->constant, result->object);
+      set_exclusive_object_location(context, result->object, eX86Location_memory);
+    }
+    else
+    {
+      eX86Location result_loc = lookup_object_location(result->object);
+      if(is_register_location(result_loc)
+         && is_single_occupant_register(context, result_loc, result->object))
+      {
+        x86_load_constant_into_register(context, x86_type, result_loc, &arg1->constant);
+        set_exclusive_object_location(context, result->object, result_loc);
+      }
+      else
+      {
+        eX86Location store_loc = select_result_register(context, x86_type, ir_stmt);
+        if(is_register_location(store_loc))
+        {
+          x86_load_constant_into_register(context, x86_type, store_loc, &arg1->constant);
+        }
+        else if(is_memory_location(store_loc))
+        {
+          x86_store_constant_to_memory(context, x86_type, &arg1->constant, result->object);
+        }
+        else assert(0);
+
+        set_exclusive_object_location(context, result->object, store_loc);
+      }
+    }
+  }
+  else assert(0);
+}
+
+eX86Type conv_object_type_to_x86_type(Type* type)
+{
+  assert(type->kind == eType_basic);
+
+  eX86Type x86_type = eX86Type_None;
+  eBasicType basic_type = type->basic.kind;
+
+  switch(basic_type)
+  {
+    case eBasicType_int:
+      x86_type = eX86Type_int32;
+    break;
+
+    case eBasicType_char:
+      x86_type = eX86Type_int8;
+    break;
+
+    case eBasicType_float:
+      x86_type = eX86Type_float32;
+    break;
+
+    default: assert(0);
+  }
+
+  return x86_type;
+}
+
+eX86Type x86_get_stmt_type(IrStmt* ir_stmt)
+{
+  eX86Type x86_type = eX86Type_None;
+
+  IrArg* result = ir_stmt->assign.result;
+  IrArg* arg1 = ir_stmt->assign.arg1;
+  IrArg* arg2 = ir_stmt->assign.arg2;
+
+  switch(ir_stmt->kind)
+  {
+    case eIrStmt_assign:
+    {
+      if(ir_stmt->assign.op)
+      {
+        switch(ir_stmt->assign.op)
+        {
+          case eIrOp_index_source:
+            // result = arg1[arg2]
+            x86_type = conv_object_type_to_x86_type(result->object->ty);
+            break;
+
+          case eIrOp_index_dest:
+            // result[arg2] = arg1
+            x86_type = conv_object_type_to_x86_type(arg1->object->ty);
+            break;
+
+          case eIrOp_deref_source:
+            // result = ^arg1
+            x86_type = conv_object_type_to_x86_type(result->object->ty);
+            break;
+
+          case eIrOp_deref_dest:
+            // ^result = arg1
+            x86_type = conv_object_type_to_x86_type(arg1->object->ty);
+            break;
+
+          case eIrOp_address_of:
+            // result = &arg1
+            x86_type = conv_object_type_to_x86_type(result->object->ty);
+            break;
+
+          default:
+            {
+              if(arg2)
+              {
+                // result = arg1 op arg2
+                x86_type = conv_object_type_to_x86_type(result->object->ty);
+              }
+              else
+              {
+                // result = op arg1
+                fail("TODO");
+              }
+            }
+        }
+      }
+      else
+      {
+        // result = arg1
+        x86_type = conv_object_type_to_x86_type(result->object->ty);
+      }
+    }
+    break;
+
+    case eIrStmt_cond_goto:
+    {
+      x86_type = conv_object_type_to_x86_type(arg1->object->ty);
+    }
+    break;
+
+    case eIrStmt_goto:
+    case eIrStmt_call:
+    case eIrStmt_return:
+    break;
+
+    default: assert(0);
+  }
+
+  return x86_type;
+}
+
+void x86_gen_assign_stmt(X86Context* context, eX86Type x86_type, IrStmt* ir_stmt)
 {
   struct IrStmt_assign* assign = &ir_stmt->assign;
   IrArg* result = ir_stmt->assign.result;
@@ -6713,359 +7236,49 @@ void x86_gen_assign_stmt(X86Context* context, IrStmt* ir_stmt)
 
   if(assign->op)
   {
-    if(assign->op == eIrOp_index_source) // result = arg1[arg2]
+    if(assign->op == eIrOp_index_source)
     {
-      assert(arg1->kind == eIrArg_object);
-
-      eX86Location address_reg = get_best_available_register(context, ir_stmt);
-      x86_load_memory_address(context, address_reg, arg1->object);
-
-      if(arg2->kind == eIrArg_object)
-      {
-        eX86Location arg2_loc = lookup_object_location(arg2->object);
-        if(is_register_location(arg2_loc))
-        {
-          X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-          mov_stmt->operand1 = x86_make_register_operand(arena, address_reg);
-          mov_stmt->operand2 = x86_make_indexed_operand(arena,
-                                                        x86_make_register_operand(arena, address_reg),
-                                                        x86_make_register_operand(arena, arg2_loc));
-
-          set_exclusive_object_location(context, result->object, address_reg);
-        }
-        else // !is_register_location(arg2_loc)
-        {
-          X86Stmt* add_offset_stmt = x86_new_stmt(context, eX86StmtOpcode_add);
-          add_offset_stmt->operand1 = x86_make_register_operand(arena, address_reg);
-          add_offset_stmt->operand2 = x86_make_object_operand(context, arg2->object, arg2_loc);
-
-          X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-          mov_stmt->operand1 = x86_make_register_operand(arena, address_reg);
-          mov_stmt->operand2 = x86_make_indexed_operand(arena,
-                                                        x86_make_register_operand(arena, address_reg),
-                                                        0);
-
-          set_exclusive_object_location(context, result->object, address_reg);
-        }
-      }
-      else if(arg2->kind == eIrArg_constant)
-      {
-        X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-        mov_stmt->operand1 = x86_make_register_operand(arena, address_reg);
-        mov_stmt->operand2 = x86_make_indexed_operand(arena,
-                                                      x86_make_register_operand(arena, address_reg),
-                                                      x86_make_constant_operand(arena, &arg2->constant));
-      }
-      else assert(0);
+      // result = arg1[arg2]
+      x86_gen_assign_index_source_stmt(context, x86_type, ir_stmt);
     }
-    else if(assign->op == eIrOp_index_dest) // result[arg2] = arg1
+    else if(assign->op == eIrOp_index_dest)
     {
-      assert(result->kind == eIrArg_object);
-
-      eX86Location address_reg = get_best_available_register(context, ir_stmt);
-      x86_load_memory_address(context, address_reg, result->object);
-
-      if(arg2->kind == eIrArg_object && arg1->kind == eIrArg_object)
-      {
-        eX86Location arg1_loc = lookup_object_location(arg1->object);
-        eX86Location arg2_loc = lookup_object_location(arg2->object);
-
-        if(is_register_location(arg2_loc) && is_register_location(arg1_loc))
-        {
-          X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-          mov_stmt->operand1 = x86_make_indexed_operand(arena,
-                                                        x86_make_register_operand(arena, address_reg),
-                                                        x86_make_register_operand(arena, arg2_loc));
-          mov_stmt->operand2 = x86_make_register_operand(arena, arg1_loc);
-        }
-        else if(is_register_location(arg2_loc) && !is_register_location(arg1_loc))
-        {
-          if(arg2->next_use != NextUse_None || arg2->is_live)
-          {
-            save_object_to_memory(context, arg2_loc, arg2->object);
-          }
-          delete_object_from_location(context, arg2->object, arg2_loc);
-
-          X86Stmt* add_offset_stmt = x86_new_stmt(context, eX86StmtOpcode_add);
-          add_offset_stmt->operand1 = x86_make_register_operand(arena, arg2_loc);
-          add_offset_stmt->operand2 = x86_make_register_operand(arena, address_reg);
-
-          x86_load_object_into_register(context, address_reg, arg1_loc, arg1->object);
-          add_object_to_location(context, arg1->object, arg1_loc);
-
-          X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-          mov_stmt->operand1 = x86_make_indexed_operand(arena,
-                                                        x86_make_register_operand(arena, arg2_loc),
-                                                        0);
-          mov_stmt->operand2 = x86_make_register_operand(arena, address_reg);
-
-          if(arg2->next_use != NextUse_None)
-          {
-            x86_load_object_into_register(context, arg2_loc, eX86Location_memory, arg2->object);
-            add_object_to_location(context, arg2->object, arg2_loc);
-          }
-        }
-        else if(!is_register_location(arg2_loc))
-        {
-          X86Stmt* add_offset_stmt = x86_new_stmt(context, eX86StmtOpcode_add);
-          add_offset_stmt->operand1 = x86_make_register_operand(arena, address_reg);
-          add_offset_stmt->operand2 = x86_make_object_operand(context, arg2->object, arg2_loc);
-
-          eX86Location arg1_loc = lookup_object_location(arg1->object);
-
-          if(!is_register_location(arg1_loc))
-          {
-            arg1_loc = get_best_available_register(context, ir_stmt);
-            x86_load_object_into_register(context, arg1_loc, eX86Location_memory, arg1->object);
-            add_object_to_location(context, arg1->object, arg1_loc);
-          }
-
-          X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-          mov_stmt->operand1 = x86_make_indexed_operand(arena,
-                                                        x86_make_register_operand(arena, address_reg),
-                                                        0);
-          mov_stmt->operand2 = x86_make_register_operand(arena, arg1_loc);
-        }
-      }
-      else if(arg2->kind == eIrArg_object && arg1->kind == eIrArg_constant)
-      {
-        eX86Location arg2_loc = lookup_object_location(arg2->object);
-
-        if(!is_register_location(arg2_loc))
-        {
-          arg2_loc = get_best_available_register(context, ir_stmt);
-          x86_load_object_into_register(context, arg2_loc, eX86Location_memory, arg2->object);
-          add_object_to_location(context, arg2->object, arg2_loc);
-        }
-
-        X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-        mov_stmt->operand1 = x86_make_indexed_operand(arena,
-                                                      x86_make_register_operand(arena, address_reg),
-                                                      x86_make_register_operand(arena, arg2_loc));
-        mov_stmt->operand2 = x86_make_constant_operand(arena, &arg1->constant);
-      }
-      else if(arg2->kind == eIrArg_constant && arg1->kind == eIrArg_object)
-      {
-        eX86Location arg1_loc = lookup_object_location(arg1->object);
-
-        if(!is_register_location(arg1_loc))
-        {
-          arg1_loc = get_best_available_register(context, ir_stmt);
-          x86_load_object_into_register(context, arg1_loc, eX86Location_memory, arg1->object);
-          add_object_to_location(context, arg1->object, arg1_loc);
-        }
-
-        X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-        mov_stmt->operand1 = x86_make_indexed_operand(arena,
-                                                      x86_make_register_operand(arena, address_reg),
-                                                      x86_make_constant_operand(arena, &arg2->constant));
-        mov_stmt->operand2 = x86_make_register_operand(arena, arg1_loc);
-      }
-      else if(arg2->kind == eIrArg_constant && arg1->kind == eIrArg_constant)
-      {
-        X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-        mov_stmt->operand1 = x86_make_indexed_operand(arena,
-                                                      x86_make_register_operand(arena, address_reg),
-                                                      x86_make_constant_operand(arena, &arg2->constant));
-        mov_stmt->operand2 = x86_make_constant_operand(arena, &arg1->constant);
-      }
-      else assert(0);
+      // result[arg2] = arg1
+      x86_gen_assign_index_dest_stmt(context, x86_type, ir_stmt);
     }
-    else if(assign->op == eIrOp_deref_source) // result = ^arg1
+    else if(assign->op == eIrOp_deref_source)
     {
-      /*FIXME: Not tested. */
-      assert(arg1->kind == eIrArg_object);
-
-      eX86Location address_reg = get_best_available_register(context, ir_stmt);
-      x86_load_memory_address(context, address_reg, arg1->object);
-
-      X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-      mov_stmt->operand1 = x86_make_register_operand(arena, address_reg);
-      mov_stmt->operand2 = x86_make_indexed_operand(arena,
-                                                    x86_make_register_operand(arena, address_reg),
-                                                    0);
-
-      set_exclusive_object_location(context, result->object, address_reg);
+      // result = ^arg1
+      x86_gen_assign_deref_source_stmt(context, x86_type, ir_stmt);
     }
-    else if(assign->op == eIrOp_deref_dest) // ^result = arg1
+    else if(assign->op == eIrOp_deref_dest)
     {
-      /*FIXME: Not tested. */
-      assert(result->kind == eIrArg_object);
-
-      eX86Location address_reg = get_best_available_register(context, ir_stmt);
-      x86_load_memory_address(context, address_reg, result->object);
-
-      if(arg1->kind == eIrArg_object)
-      {
-        eX86Location arg1_loc = lookup_object_location(arg1->object);
-
-        if(!is_register_location(arg1_loc))
-        {
-          arg1_loc = get_best_available_register(context, ir_stmt);
-          x86_load_object_into_register(context, arg1_loc, eX86Location_memory, arg1->object);
-          add_object_to_location(context, arg1->object, arg1_loc);
-        }
-
-        X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-        mov_stmt->operand1 = x86_make_indexed_operand(arena,
-                                                      x86_make_register_operand(arena, address_reg),
-                                                      0);
-        mov_stmt->operand2 = x86_make_register_operand(arena, arg1_loc);
-      }
-      else if(arg1->kind == eIrArg_constant)
-      {
-        X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-        mov_stmt->operand1 = x86_make_indexed_operand(arena,
-                                                      x86_make_register_operand(arena, address_reg),
-                                                      0);
-        mov_stmt->operand2 = x86_make_constant_operand(arena, &arg1->constant);
-      }
-      else assert(0);
+      // ^result = arg1
+      x86_gen_assign_deref_dest_stmt(context, x86_type, ir_stmt);
     }
-    else if(assign->op == eIrOp_address_of) // result = &arg1
+    else if(assign->op == eIrOp_address_of)
     {
-      /*FIXME: Not tested. */
-      assert(arg1->kind == eIrArg_object);
-
-      eX86Location arg1_loc = lookup_object_location(arg1->object);
-      eX86Location address_reg = eX86Location_None;
-
-      if(is_register_location(arg1_loc)
-         && is_single_occupant_register(context, arg1_loc, arg1->object)
-         && (arg1->next_use == NextUse_None && !arg1->is_live))
-      {
-        delete_object_from_location(context, arg1->object, arg1_loc);
-        address_reg = arg1_loc;
-      }
-
-      if(!address_reg)
-      {
-        address_reg = get_best_available_register(context, ir_stmt);
-      }
-
-      x86_load_memory_address(context, address_reg, arg1->object);
-      set_exclusive_object_location(context, result->object, address_reg);
+      // result = &arg1
+      x86_gen_assign_address_of_stmt(context, x86_type, ir_stmt);
     }
-    else // result = arg1 op arg2   |   result = op arg1
+    else
     {
-      if(arg2) // result = arg1 op arg2
+      if(arg2)
       {
-        eX86Location store_reg = select_result_register(context, ir_stmt);
-
-        if(arg1->kind == eIrArg_object)
-        {
-          X86Stmt* x86_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(assign->op, assign->op_type));
-          x86_stmt->operand1 = x86_make_object_operand(context, arg1->object, store_reg);
-
-          if(arg2->kind == eIrArg_object)
-          {
-            x86_stmt->operand2 = x86_make_object_operand(context, arg2->object, lookup_object_location(arg2->object));
-          }
-          else if(arg2->kind == eIrArg_constant)
-          {
-            x86_stmt->operand2 = x86_make_constant_operand(arena, &arg2->constant);
-          }
-          else assert(0);
-        }
-        else if(arg1->kind == eIrArg_constant)
-        {
-          X86Stmt* x86_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(assign->op, assign->op_type));
-          x86_stmt->operand1 = x86_make_register_operand(arena, store_reg);
-
-          if(arg2->kind == eIrArg_object)
-          {
-            x86_stmt->operand2 = x86_make_object_operand(context, arg2->object, lookup_object_location(arg2->object));
-          }
-          else if(arg2->kind == eIrArg_constant)
-          {
-            x86_stmt->operand2 = x86_make_constant_operand(arena, &arg2->constant);
-          }
-          else assert(0);
-        }
-        else assert(0);
-
-        set_exclusive_object_location(context, result->object, store_reg);
-        discard_all_assign_args(context, assign, store_reg);
+        // result = arg1 op arg2
+        x86_gen_assign_binexpr_stmt(context, x86_type, ir_stmt);
       }
-      else // result = op arg1
+      else
       {
+        // result = op arg1
         fail("TODO");
       }
     }
   }
-  else // result = arg1
+  else
   {
-    if(arg1->kind == eIrArg_object)
-    {
-      eX86Location arg1_loc = lookup_object_location(arg1->object);
-      if(is_register_location(arg1_loc))
-      {
-        set_exclusive_object_location(context, result->object, arg1_loc);
-        discard_all_assign_args(context, assign, arg1_loc);
-      }
-      else
-      {
-        if(result->next_use == NextUse_None)
-        {
-          eX86Location result_loc = lookup_object_location(result->object);
-          if(is_register_location(result_loc))
-          {
-            if(is_single_occupant_register(context, result_loc, result->object))
-            {
-              x86_load_object_into_register(context, result_loc, eX86Location_memory, arg1->object);
-              x86_store_object_to_memory(context, result_loc, result->object);
-            }
-          }
-          else
-          {
-            eX86Location store_reg = select_result_register(context, ir_stmt);
-            x86_load_object_into_register(context, store_reg, eX86Location_memory, arg1->object);
-            x86_store_object_to_memory(context, store_reg, result->object);
-          }
-          set_exclusive_object_location(context, result->object, eX86Location_memory);
-        }
-        else
-        {
-          eX86Location store_reg = select_result_register(context, ir_stmt);
-          x86_load_object_into_register(context, store_reg, eX86Location_memory, arg1->object);
-          set_exclusive_object_location(context, result->object, store_reg);
-        }
-      }
-    }
-    else if(arg1->kind == eIrArg_constant)
-    {
-      if(result->next_use == NextUse_None)
-      {
-        x86_store_constant_to_memory(context, &arg1->constant, result->object);
-        set_exclusive_object_location(context, result->object, eX86Location_memory);
-      }
-      else
-      {
-        eX86Location result_loc = lookup_object_location(result->object);
-        if(is_register_location(result_loc)
-           && is_single_occupant_register(context, result_loc, result->object))
-        {
-          x86_load_constant_into_register(context, result_loc, &arg1->constant);
-          set_exclusive_object_location(context, result->object, result_loc);
-        }
-        else
-        {
-          eX86Location store_loc = select_result_register(context, ir_stmt);
-          if(is_register_location(store_loc))
-          {
-            x86_load_constant_into_register(context, store_loc, &arg1->constant);
-          }
-          else if(is_memory_location(store_loc))
-          {
-            x86_store_constant_to_memory(context, &arg1->constant, result->object);
-          }
-          else assert(0);
-
-          set_exclusive_object_location(context, result->object, store_loc);
-        }
-      }
-    }
-    else assert(0);
+    // result = arg1
+    x86_gen_assign_simple_stmt(context, x86_type, ir_stmt);
   }
 }
 
@@ -7074,12 +7287,12 @@ void x86_gen_goto_stmt(X86Context* context, IrStmt* ir_stmt)
 {
   save_all_registers_to_memory(context, false);
 
-  X86Stmt* jump_stmt = x86_new_stmt(context, eX86StmtOpcode_jmp);
+  X86Stmt* jump_stmt = x86_new_stmt(context, eX86Type_None, eX86StmtOpcode_jmp);
   jump_stmt->operand1 = x86_make_id_operand(arena, ir_stmt->goto_label->name);
 }
 
 // if arg1 relop arg2 goto L
-void x86_gen_cond_goto_stmt(X86Context* context, IrStmt* ir_stmt)
+void x86_gen_cond_goto_stmt(X86Context* context, eX86Type x86_type, IrStmt* ir_stmt)
 {
   struct IrStmt_cond_goto* cond_goto = &ir_stmt->cond_goto;
   IrArg* arg1 = ir_stmt->cond_goto.arg1;
@@ -7087,11 +7300,11 @@ void x86_gen_cond_goto_stmt(X86Context* context, IrStmt* ir_stmt)
 
   save_all_registers_to_memory(context, false);
 
-  if(cond_goto->relop_type == eBasicType_int)
+  if(x86_type == eX86Type_int32)
   {
-    eX86Location dest_loc = select_result_register(context, ir_stmt);
+    eX86Location dest_loc = select_result_register(context, x86_type, ir_stmt);
 
-    X86Stmt* cmp_stmt = x86_new_stmt(context, eX86StmtOpcode_cmp);
+    X86Stmt* cmp_stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_cmp);
     cmp_stmt->operand1 = x86_make_object_operand(context, arg1->object, dest_loc);
 
     if(arg2->kind == eIrArg_object)
@@ -7100,14 +7313,14 @@ void x86_gen_cond_goto_stmt(X86Context* context, IrStmt* ir_stmt)
     }
     else if(arg2->kind == eIrArg_constant)
     {
-      cmp_stmt->operand2 = x86_make_constant_operand(arena, &arg2->constant);
+      cmp_stmt->operand2 = x86_make_constant_operand(arena, x86_conv_ir_constant_to_int(&arg2->constant));
     }
     else assert(0);
 
-    X86Stmt* jump_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(cond_goto->relop, cond_goto->relop_type));
+    X86Stmt* jump_stmt = x86_new_stmt(context, x86_type, conv_ir_op_to_x86_opcode(cond_goto->relop, x86_type));
     jump_stmt->operand1 = x86_make_id_operand(arena, cond_goto->label->name);
   }
-  else if(cond_goto->relop_type == eBasicType_float)
+  else if(x86_type == eX86Type_float32)
   {
     fail("TODO");
   }
@@ -7122,25 +7335,18 @@ void x86_gen_call_stmt(X86Context* context, IrStmt* ir_stmt)
   save_all_registers_to_memory(context, true);
 
   /* sub esp, #param_size */
-  X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_sub);
+  X86Stmt* stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_sub);
   stmt->operand1 = x86_make_register_operand(arena, eX86Location_esp);
-  stmt->operand2 = x86_make_constant_operand_2(arena, arg_scope->data_size);
+  stmt->operand2 = x86_make_constant_operand(arena, arg_scope->data_size);
 
   /* call #proc_name */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_call);
+  stmt = x86_new_stmt(context, eX86Type_None, eX86StmtOpcode_call);
   stmt->operand1 = x86_make_id_operand(arena, proc->label_begin->name);
 
   /* add esp, #param_size */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_add);
+  stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_add);
   stmt->operand1 = x86_make_register_operand(arena, eX86Location_esp);
-  stmt->operand2 = x86_make_constant_operand_2(arena, arg_scope->data_size);
-}
-
-void x86_gen_return_stmt(X86Context* context, IrStmt* return_stmt)
-{
-  /* ret */
-  //x86_new_stmt(context, eX86StmtOpcode_ret);
-  //FIXME:
+  stmt->operand2 = x86_make_constant_operand(arena, arg_scope->data_size);
 }
 
 void x86_gen_basic_block(X86Context* context, BasicBlock* bb)
@@ -7148,23 +7354,27 @@ void x86_gen_basic_block(X86Context* context, BasicBlock* bb)
   for(int i = 0; i < bb->stmt_count; i++)
   {
     IrStmt* ir_stmt = bb->stmt_array[i];
+    eX86Type x86_type = x86_get_stmt_type(ir_stmt);
+
     switch(ir_stmt->kind)
     {
       case eIrStmt_assign:
       {
-        x86_gen_assign_stmt(context, ir_stmt);
+        x86_gen_assign_stmt(context, x86_type, ir_stmt);
       }
       break;
 
       case eIrStmt_goto:
       {
+        // goto L
         x86_gen_goto_stmt(context, ir_stmt);
       }
       break;
 
       case eIrStmt_cond_goto: 
       {
-        x86_gen_cond_goto_stmt(context, ir_stmt);
+        // if arg1 relop arg2 goto L
+        x86_gen_cond_goto_stmt(context, x86_type, ir_stmt);
       }
       break;
 
@@ -7175,15 +7385,10 @@ void x86_gen_basic_block(X86Context* context, BasicBlock* bb)
       break;
 
       case eIrStmt_return:
-      {
-        x86_gen_return_stmt(context, ir_stmt);
-      }
+      case eIrStmt_nop:
       break;
 
-      case eIrStmt_nop:
-      {
-      }
-      break;
+      default: assert(0);
     }
   }
 }
@@ -7191,28 +7396,27 @@ void x86_gen_basic_block(X86Context* context, BasicBlock* bb)
 void x86_gen_proc(X86Context* context, AstNode* proc)
 {
   List* basic_blocks = proc->proc.basic_blocks;
-
   ListItem* li = basic_blocks->first;
   BasicBlock* first_bb = KIND(li, eList_basic_block)->basic_block;
 
   /* #proc_name: */
-  X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_label);
+  X86Stmt* stmt = x86_new_stmt(context, eX86Type_None, eX86StmtOpcode_label);
   stmt->operand1 = x86_make_id_operand(arena, first_bb->label->name);
 
   /* push ebp */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_push);
+  stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_push);
   stmt->operand1 = x86_make_register_operand(arena, eX86Location_ebp);
 
   /* mov ebp, esp */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+  stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_mov);
   stmt->operand1 = x86_make_register_operand(arena, eX86Location_ebp);
   stmt->operand2 = x86_make_register_operand(arena, eX86Location_esp);
 
   /* sub esp, #frame_size */
   Scope* body_scope = proc->proc.body_scope;
-  stmt = x86_new_stmt(context, eX86StmtOpcode_sub);
+  stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_sub);
   stmt->operand1 = x86_make_register_operand(arena, eX86Location_esp);
-  stmt->operand2 = x86_make_constant_operand_2(arena, body_scope->data_size);
+  stmt->operand2 = x86_make_constant_operand(arena, body_scope->data_size);
 
   x86_gen_basic_block(context, first_bb);
   save_all_registers_to_memory(context, true);
@@ -7225,7 +7429,7 @@ void x86_gen_proc(X86Context* context, AstNode* proc)
 
     if(bb->label)
     {
-      X86Stmt* label_stmt = x86_new_stmt(context, eX86StmtOpcode_label);
+      X86Stmt* label_stmt = x86_new_stmt(context, eX86Type_None, eX86StmtOpcode_label);
       label_stmt->operand1 = x86_make_id_operand(arena, bb->label->name);
     }
 
@@ -7234,16 +7438,16 @@ void x86_gen_proc(X86Context* context, AstNode* proc)
   }
 
   /* mov esp, ebp */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+  stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_mov);
   stmt->operand1 = x86_make_register_operand(arena, eX86Location_esp);
   stmt->operand2 = x86_make_register_operand(arena, eX86Location_ebp);
 
   /* pop ebp */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_pop);
+  stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_pop);
   stmt->operand1 = x86_make_register_operand(arena, eX86Location_ebp);
 
   /* ret */
-  x86_new_stmt(context, eX86StmtOpcode_ret);
+  x86_new_stmt(context, eX86Type_None, eX86StmtOpcode_ret);
 }
 
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
@@ -7683,8 +7887,7 @@ void gen_x86_load_rvalue(String* code, AstNode* node)
         str_printfln(code, "push %d", node->lit.char_val);
         break;
         
-        default:
-        assert(0);
+        default: assert(0);
       }
     }
     break;
@@ -8300,8 +8503,7 @@ bool gen_x86(String* code, AstNode* node)
         }
         break;
         
-        default:
-        assert(0);
+        default: assert(0);
       }
     }
     break;
@@ -8430,8 +8632,7 @@ bool gen_x86(String* code, AstNode* node)
     str_append(code, node->asm_block.asm_text);
     break;
     
-    default:
-    assert(0);
+    default: assert(0);
   }
   return success;
 }

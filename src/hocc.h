@@ -505,6 +505,18 @@ typedef enum
 }
 eIrConstant;
 
+typedef struct
+{
+  eIrConstant kind;
+  union
+  {
+    int int_val;
+    float float_val;
+    char char_val;
+  };
+}
+IrConstant;
+
 typedef enum
 {
   eIrLabelTarget_None,
@@ -525,18 +537,6 @@ typedef struct IrLabel
   char* name;
 }
 IrLabel;
-
-typedef struct
-{
-  eIrConstant kind;
-  union
-  {
-    int int_val;
-    float float_val;
-    char char_val;
-  };
-}
-IrConstant;
 
 typedef int NextUse;
 global_var NextUse NextUse_None = -1;
@@ -604,7 +604,6 @@ typedef struct IrStmt
     struct IrStmt_assign
     {
       eIrOp op;
-      eBasicType op_type;
       IrArg* arg1;
       IrArg* arg2;
       IrArg* result;
@@ -614,7 +613,6 @@ typedef struct IrStmt
     struct IrStmt_cond_goto
     {
       eIrOp relop;
-      eBasicType relop_type;
       IrArg* arg1;
       IrArg* arg2;
       IrLabel* label;
@@ -664,6 +662,8 @@ eX86Operand;
 typedef struct X86Operand
 {
   eX86Operand kind;
+  int size; // in bytes
+
   union
   {
     char* id;
@@ -686,6 +686,15 @@ typedef struct X86Operand
   };
 }
 X86Operand;
+
+typedef enum
+{
+  eX86Type_None,
+  eX86Type_int8,
+  eX86Type_int32,
+  eX86Type_float32,
+}
+eX86Type;
 
 typedef enum
 {
@@ -722,6 +731,7 @@ eX86StmtOpcode;
 typedef struct X86Stmt
 {
   eX86StmtOpcode opcode;
+  eX86Type type;
   X86Operand* operand1;
   X86Operand* operand2;
 }

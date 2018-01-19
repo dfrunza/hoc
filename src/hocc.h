@@ -533,19 +533,52 @@ eIrArg;
 
 typedef enum
 {
+  eX86Type_None,
+  eX86Type_int8,
+  eX86Type_int32,
+  eX86Type_float32,
+}
+eX86Type;
+
+typedef enum
+{
   eX86Location_None,
+
   eX86Location_eax,
   eX86Location_ebx,
   eX86Location_ecx,
   eX86Location_edx,
   eX86Location_esi,
   eX86Location_edi,
+
+  eX86Location_al,
+  eX86Location_ah,
+  eX86Location_bl,
+  eX86Location_bh,
+  eX86Location_cl,
+  eX86Location_ch,
+  eX86Location_dl,
+  eX86Location_dh,
+
   eX86Location_memory,
   eX86Location_ebp,
   eX86Location_esp,
+
   eX86Location_Count,
 }
 eX86Location;
+
+typedef struct X86Location
+{
+  eX86Location kind;
+  eX86Type type;
+
+  struct X86Location* parent_loc;
+  struct X86Location* sub_loc[2];
+
+  List occupants;
+}
+X86Location;
 
 typedef struct IrArg
 {
@@ -572,6 +605,7 @@ typedef struct IrStmt
 {
   eIrStmt kind;
   IrLabel* label;
+  eX86Type type;
 
   union
   {
@@ -638,13 +672,12 @@ eX86Operand;
 typedef struct X86Operand
 {
   eX86Operand kind;
-  int size; // in bytes
 
   union
   {
     char* id;
     int constant;
-    eX86Location reg;
+    X86Location* reg;
 
     struct X86Operand_memory
     {
@@ -662,15 +695,6 @@ typedef struct X86Operand
   };
 }
 X86Operand;
-
-typedef enum
-{
-  eX86Type_None,
-  eX86Type_int8,
-  eX86Type_int32,
-  eX86Type_float32,
-}
-eX86Type;
 
 typedef enum
 {
@@ -1080,12 +1104,39 @@ typedef struct X86Context
 
   int machine_word_size; // = stack width
 
+  struct
+  {
+    X86Location eax;
+    X86Location ebx;
+    X86Location ecx;
+    X86Location edx;
+    X86Location esi;
+    X86Location edi;
+
+    X86Location ebp;
+    X86Location esp;
+
+    X86Location al;
+    X86Location ah;
+    X86Location bl;
+    X86Location bh;
+    X86Location cl;
+    X86Location ch;
+    X86Location dl;
+    X86Location dh;
+  };
+
+  X86Location memory;
+  X86Location* registers[14];
+
+#if 0
   // for natvis
   struct X86Context_registers
   {
-    List _[eX86Location_Count];
+    X86Location _[eX86Location_Count];
   }
   registers;
+#endif
 }
 X86Context;
 

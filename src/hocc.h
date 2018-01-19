@@ -926,6 +926,7 @@ typedef struct AstNode
         bool bool_val;
         char char_val;
       };
+      Symbol* constant;
     }
     lit;
 

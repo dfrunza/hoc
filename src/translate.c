@@ -884,7 +884,7 @@ Symbol* new_temp_object(MemoryArena* arena, Scope* scope, Type* ty, SourceLoc* s
 {
   Symbol* sym = mem_push_struct(arena, Symbol);
 
-  sym->name = new_tempvar_name("t_");
+  sym->name = new_tempvar_name("temp_");
   sym->src_loc = src_loc;
   sym->ty = ty;
   sym->scope = scope;
@@ -900,7 +900,7 @@ Symbol* new_temp_object(MemoryArena* arena, Scope* scope, Type* ty, SourceLoc* s
   return sym;
 }
 
-Symbol* new_const_object(MemoryArena* arena, Scope* scope, Type* ty, SourceLoc* src_loc)
+Symbol* new_const_object(MemoryArena* arena, Type* ty, SourceLoc* src_loc)
 {
   Symbol* sym = mem_push_struct(arena, Symbol);
 
@@ -908,7 +908,7 @@ Symbol* new_const_object(MemoryArena* arena, Scope* scope, Type* ty, SourceLoc* 
   sym->name = new_tempvar_name("const_");
   sym->src_loc = src_loc;
   sym->ty = ty;
-  sym->scope = scope;
+  sym->scope = 0;
   sym->order_nr = 0;
   sym->storage_space = eStorageSpace_constant;
   sym->next_use = NextUse_None;
@@ -1037,14 +1037,49 @@ bool sym_var(SymbolContext* sym_context, AstNode* block, AstNode* var)
   return success;
 }
 
+bool sym_lit(SymbolContext* sym_context, AstNode* block, AstNode* lit)
+{
+  assert(KIND(block, eAstNode_block));
+  assert(KIND(lit, eAstNode_lit));
+  bool success = true;
+
+  Symbol* constant = lit->lit.constant = new_const_object(sym_context->arena, lit->eval_ty, lit->src_loc);
+  constant->kind = eSymbol_constant;
+
+  switch(lit->lit.kind)
+  {
+    case eLiteral_int:
+      constant->int_val = lit->lit.int_val;
+    break;
+    
+    case eLiteral_float:
+      constant->float_val = lit->lit.float_val;
+    break;
+    
+    case eLiteral_bool:
+      constant->int_val = (int)lit->lit.bool_val;
+    break;
+    
+    case eLiteral_char:
+      constant->char_val = lit->lit.char_val;
+    break;
+    
+    default: assert(0);
+  }
+
+  return success;
+}
+
 bool sym_id(SymbolContext* sym_context, AstNode* block, AstNode* id)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(id, eAstNode_id));
   bool success = true;
+
   Scope* scope = sym_context->active_scope;
   id->id.scope = scope;
   id->id.order_nr = scope->sym_count++;
+
   return success;
 }
 
@@ -1070,6 +1105,7 @@ bool sym_unr_expr(SymbolContext* sym_context, AstNode* block, AstNode* unr_expr)
 
 bool sym_actual_args(SymbolContext* sym_context, AstNode* block, AstNode* args)
 {
+  assert(KIND(block, eAstNode_block));
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
@@ -1097,7 +1133,7 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
     if(success = sym_id(sym_context, block, call_expr) && sym_actual_args(sym_context, block, args))
     {
       call->call.param_scope = begin_scope(sym_context, eScope_params, call);
-      call->call.retvar = add_decl_sym(sym_context->arena, new_tempvar_name("p_"),
+      call->call.retvar = add_decl_sym(sym_context->arena, new_tempvar_name("ret_"),
                                        eStorageSpace_param, call->call.param_scope, call);
 
       for(ListItem* li = args->node_list.first;
@@ -1105,7 +1141,7 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
           li = li->next)
       {
         AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-        arg->actual_arg.param = add_decl_sym(sym_context->arena, new_tempvar_name("p_"),
+        arg->actual_arg.param = add_decl_sym(sym_context->arena, new_tempvar_name("param_"),
                                              eStorageSpace_param, call->call.param_scope, arg);
       }
 
@@ -1137,7 +1173,9 @@ bool sym_index(SymbolContext* sym_context, AstNode* block, AstNode* index)
 
 bool sym_cast(SymbolContext* sym_context, AstNode* block, AstNode* cast)
 {
+  assert(KIND(block, eAstNode_block));
   assert(KIND(cast, eAstNode_cast));
+
   bool success = true;
   success = sym_expr(sym_context, block, cast->cast.to_type) && sym_expr(sym_context, block, cast->cast.from_expr);
   return success;
@@ -1183,8 +1221,13 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
     case eAstNode_pointer:
     case eAstNode_array:
     case eAstNode_basic_type:
-    case eAstNode_lit:
     case eAstNode_str:
+    break;
+
+    case eAstNode_lit:
+    {
+      success = sym_lit(sym_context, block, expr);
+    }
     break;
     
     case eAstNode_index:
@@ -1818,6 +1861,7 @@ bool set_types_lit(AstNode* lit)
     default: assert(0);
   }
   lit->ty = lit->eval_ty = ty;
+
   return success;
 }
 
@@ -2898,6 +2942,20 @@ bool resolve_types_var(AstNode* var)
   {
     var->var.decl_sym->ty = var->eval_ty;
   }
+
+  return success;
+}
+
+bool resolve_types_lit(AstNode* lit)
+{
+  assert(KIND(lit, eAstNode_lit));
+  bool success = true;
+
+  if(success = resolve_types_of_node(lit))
+  {
+    lit->lit.constant->ty = lit->eval_ty;
+  }
+
   return success;
 }
 
@@ -3046,6 +3104,11 @@ bool resolve_types_expr(AstNode* expr)
     break;
     
     case eAstNode_lit:
+    {
+      success = resolve_types_lit(expr);
+    }
+    break;
+
     case eAstNode_str:
     case eAstNode_basic_type:
     break;
@@ -4218,31 +4281,7 @@ void ir_gen_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
   
-  Symbol* constant = new_temp_object(ir_context->sym_arena, scope, lit->eval_ty, lit->src_loc, ir_context->data_alignment);
-  constant->kind = eSymbol_constant;
-
-  lit->place = ir_new_arg_existing_object(ir_context, constant);
-
-  switch(lit->lit.kind)
-  {
-    case eLiteral_int:
-      constant->int_val = lit->lit.int_val;
-    break;
-    
-    case eLiteral_float:
-      constant->float_val = lit->lit.float_val;
-    break;
-    
-    case eLiteral_bool:
-      constant->int_val = (int)lit->lit.bool_val;
-    break;
-    
-    case eLiteral_char:
-      constant->char_val = lit->lit.char_val;
-    break;
-    
-    default: assert(0);
-  }
+  lit->place = ir_new_arg_existing_object(ir_context, lit->lit.constant);
 }
 
 bool ir_gen_bool_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
@@ -4336,7 +4375,7 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
       
       IrArg* offset = index->index.i_place = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
-      Symbol* size_constant = new_const_object(ir_context->sym_arena, scope, basic_type_int, index->src_loc);
+      Symbol* size_constant = new_const_object(ir_context->sym_arena, basic_type_int, index->src_loc);
       int size_val = size_constant->int_val = size_of_array_dim(index->index.array_ty, index->index.ndim);
       IrArg* dim_size = ir_new_arg_existing_object(ir_context, size_constant);
 
@@ -4362,7 +4401,7 @@ bool ir_gen_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
   {
     IrArg* offset = index->index.offset = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
-    Symbol* width_constant = new_const_object(ir_context->sym_arena, scope, basic_type_int, index->src_loc);
+    Symbol* width_constant = new_const_object(ir_context->sym_arena, basic_type_int, index->src_loc);
     width_constant->int_val = array_elem_width(index->index.array_ty);
     IrArg* width = ir_new_arg_existing_object(ir_context, width_constant);
 
@@ -7377,6 +7416,12 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   sym_context.arena = push_arena(&arena, 1*MEGABYTE);
   sym_context.nesting_depth = -1;
   init_list(&sym_context.scopes, sym_context.arena, eList_scope);
+
+  bool_true = new_const_object(sym_context.arena, basic_type_int, 0);
+  bool_true->int_val = 1;
+
+  bool_false = new_const_object(sym_context.arena, basic_type_int, 0);
+  bool_false->int_val = 0;
   
   IrContext ir_context = {0};
   ir_context.stmt_arena = push_arena(&arena, 1*MEGABYTE);
@@ -7401,12 +7446,6 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   {
     return false;
   }
-
-  bool_true = new_const_object(ir_context.sym_arena, module->module.scope, basic_type_int, module->src_loc);
-  bool_true->int_val = 1;
-
-  bool_false = new_const_object(ir_context.sym_arena, module->module.scope, basic_type_int, module->src_loc);
-  bool_false->int_val = 0;
 
   // X86 Codegen
   {

@@ -1,12 +1,9 @@
-[2]char s;
+char c;
 int i;
 
 void startup()
 {
-  s[0] = 'A';
-  s[1] = 'B';
-
-  s[0] = 'C';
+  c = 'A';
 }
 
 /*

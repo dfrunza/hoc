@@ -486,8 +486,10 @@ bool is_ir_op_bitwise_op(eIrOp op)
 
 typedef struct
 {
-  MemoryArena* ir_arena;
+  MemoryArena* stmt_arena;
   MemoryArena* sym_arena;
+  MemoryArena* gp_arena;
+
   IrStmt* stmt_array;
   int stmt_count;
   List* label_list;
@@ -496,26 +498,6 @@ typedef struct
   int total_stmt_count;
 }
 IrContext;
-
-typedef enum
-{
-  eIrConstant_int,
-  eIrConstant_float,
-  eIrConstant_char,
-}
-eIrConstant;
-
-typedef struct
-{
-  eIrConstant kind;
-  union
-  {
-    int int_val;
-    float float_val;
-    char char_val;
-  };
-}
-IrConstant;
 
 typedef enum
 {
@@ -567,15 +549,9 @@ eX86Location;
 
 typedef struct IrArg
 {
-  eIrArg kind;
-
   bool is_live;
   NextUse next_use;
-  union
-  {
-    Symbol* object;
-    IrConstant constant;
-  };
+  Symbol* object;
 }
 IrArg;
 
@@ -1010,17 +986,49 @@ AstNode;
 typedef enum
 {
   eStorageSpace_None,
-  eStorageSpace_local,
-  eStorageSpace_param,
-  eStorageSpace_arg,
-  eStorageSpace_static,
+  eStorageSpace_constant, // immediate
+  eStorageSpace_local, // vars and temps
+  eStorageSpace_param, // param at the call site
+  eStorageSpace_arg, // formal arg to proc
+  eStorageSpace_static, // module-level vars
 }
 eStorageSpace;
+
+typedef enum
+{
+  eSymbol_None,
+  eSymbol_constant,
+}
+eSymbol;
+
+#if 0
+typedef enum
+{
+  eIrConstant_int,
+  eIrConstant_float,
+  eIrConstant_char,
+}
+eIrConstant;
+
+typedef struct
+{
+  eIrConstant kind;
+  union
+  {
+    int int_val;
+    float float_val;
+    char char_val;
+  };
+}
+IrConstant;
+#endif
 
 //FIXME: Discriminate symbols by kind : var, proc, etc.
 //The proc symbol needs to have a ref to the retvar symbol and to the args.
 typedef struct Symbol
 {
+  eSymbol kind;
+
   char* name;
   int order_nr;
   SourceLoc* src_loc;
@@ -1032,6 +1040,13 @@ typedef struct Symbol
   int data_loc;
   int data_size;
   void* data;
+
+  union
+  {
+    int int_val;
+    float float_val;
+    char char_val;
+  };
 
   bool is_live;
   bool is_temp;

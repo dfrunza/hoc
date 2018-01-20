@@ -5644,6 +5644,44 @@ void x86_print_register(String* text, X86Location* reg)
 {
   switch(reg->kind)
   {
+    /* 8-bit */
+    case eX86Location_al:
+    {
+      str_printf(text, "al");
+    }
+    break;
+
+    case eX86Location_ah:
+    {
+      str_printf(text, "ah");
+    }
+    break;
+
+    case eX86Location_bl:
+    {
+      str_printf(text, "bl");
+    }
+    break;
+
+    case eX86Location_bh:
+    {
+      str_printf(text, "bh");
+    }
+    break;
+
+    case eX86Location_cl:
+    {
+      str_printf(text, "ch");
+    }
+    break;
+
+    case eX86Location_dl:
+    {
+      str_printf(text, "dh");
+    }
+    break;
+
+    /* 32-bit */
     case eX86Location_eax:
     {
       str_printf(text, "eax");
@@ -6039,14 +6077,6 @@ void set_exclusive_object_location(X86Context* context, Symbol* object, X86Locat
   delete_object_from_location(context, object, &context->memory);
 
   add_object_to_location(context, object, loc);
-
-#if 0
-  for(int l = eX86Location_None+1; l < eX86Location_Count; l++)
-  {
-    delete_object_from_location(context, object, l);
-  }
-  add_object_to_location(context, object, loc_kind);
-#endif
 }
 
 bool register_occupants_all_in_memory(X86Context* context, X86Location* reg)
@@ -6116,30 +6146,15 @@ X86Location* find_free_register(X86Context* context, eX86Type type)
   for(int i = 0; i < sizeof_array(context->registers); i++)
   {
     reg = context->registers[i];
-    List* occupants = &reg->occupants;
+    if(reg->type == type)
+    {
+      List* occupants = &reg->occupants;
 
-    if(occupants->count == 0)
-      break;
+      if(occupants->count == 0)
+        break;
+    }
     reg = 0;
   }
-
-#if 0
-  eX86Location reg = eX86Location_None;
-  
-  for(int r = eX86Location_None+1; r < eX86Location_memory; r++)
-  {
-    List* occupants = &context->registers._[r];
-
-    int reg_width = x86_get_register_width(r);
-    int type_width = x86_get_type_width(type);
-
-    if(occupants->count == 0 && (reg_width == type_width))
-    {
-      reg = r;
-      break;
-    }
-  }
-#endif
   
   return reg;
 }
@@ -6156,17 +6171,13 @@ X86Location* lookup_object_location(X86Context* context, Symbol* object)
     loc = 0;
   }
 
-#if 0
-  eX86Location loc = eX86Location_None;
-  for(int l = eX86Location_None+1; l < eX86Location_Count; l++)
+  if(!loc)
   {
-    if(is_object_in_location(object, l))
+    if(is_object_in_location(object, &context->memory))
     {
-      loc = l;
-      break;
+      loc = &context->memory;
     }
   }
-#endif
 
   return loc;
 }
@@ -6554,26 +6565,6 @@ X86Location* find_least_used_register(X86Context* context, Symbol* exclude_objec
     }
   }
 
-#if 0
-  eX86Location min_reg = eX86Location_None;
-  for(int r = eX86Location_None+1; r < eX86Location_memory; r++)
-  {
-    List* occupants = &context->registers._[r];
-    if(occupants->count < min_count)
-    {
-      if(exclude_object && is_object_in_location(exclude_object, r))
-      {
-        ;//continue
-      }
-      else
-      {
-        min_reg = r;
-        min_count = occupants->count;
-      }
-    }
-  }
-#endif
-
   return min_reg;
 }
 
@@ -6611,11 +6602,11 @@ void save_register_to_memory(X86Context* context, X86Location* reg, bool free_re
   }
 }
 
-X86Location* get_best_available_register(X86Context* context, IrStmt* stmt)
+X86Location* get_best_available_register(X86Context* context, eX86Type type, IrStmt* stmt)
 {
   X86Location* best_reg = 0;
 
-  X86Location* free_reg = find_free_register(context, stmt->type);
+  X86Location* free_reg = find_free_register(context, type);
   if(free_reg)
   {
     best_reg = free_reg;
@@ -6698,12 +6689,6 @@ void save_all_registers_to_memory(X86Context* context, bool free_reg)
     X86Location* reg = context->registers[i];
     save_register_to_memory(context, reg, free_reg);
   }
-#if 0
-  for(int r = eX86Location_None+1; r < eX86Location_memory; r++)
-  {
-    save_register_to_memory(context, r, free_reg);
-  }
-#endif
 }
 
 // getreg() pag. 538, Sec. 9.6
@@ -6730,7 +6715,7 @@ X86Location* select_result_register(X86Context* context, IrStmt* ir_stmt)
       }
       else
       {
-        dest_loc = get_best_available_register(context, ir_stmt);
+        dest_loc = get_best_available_register(context, ir_stmt->type, ir_stmt);
         x86_load_object_into_register(context, ir_stmt->type, dest_loc, arg1_loc, arg1->object);
       }
     }
@@ -6745,7 +6730,7 @@ X86Location* select_result_register(X86Context* context, IrStmt* ir_stmt)
       }
       else
       {
-        dest_loc = get_best_available_register(context, ir_stmt);
+        dest_loc = get_best_available_register(context, ir_stmt->type, ir_stmt);
       }
     }
   }
@@ -6762,7 +6747,7 @@ X86Location* select_result_register(X86Context* context, IrStmt* ir_stmt)
     }
     else
     {
-      dest_loc = get_best_available_register(context, ir_stmt);
+      dest_loc = get_best_available_register(context, ir_stmt->type, ir_stmt);
       x86_load_object_into_register(context, ir_stmt->type, dest_loc, arg1_loc, arg1->object);
     }
   }
@@ -6964,7 +6949,7 @@ void x86_gen_assign_index_source_stmt(X86Context* context, IrStmt* ir_stmt)
   IrArg* arg1 = ir_stmt->assign.arg1;
   IrArg* arg2 = ir_stmt->assign.arg2;
 
-  X86Location* address_reg = get_best_available_register(context, ir_stmt);
+  X86Location* address_reg = get_best_available_register(context, ir_stmt->type, ir_stmt);
   x86_load_memory_address(context, ir_stmt->type, address_reg, arg1->object);
 
   X86Location* arg2_loc = lookup_object_location(context, arg2->object);
@@ -7002,8 +6987,8 @@ void x86_gen_assign_index_dest_stmt(X86Context* context, IrStmt* ir_stmt)
   IrArg* arg1 = ir_stmt->assign.arg1;
   IrArg* arg2 = ir_stmt->assign.arg2;
 
-  X86Location* address_reg = get_best_available_register(context, ir_stmt);
-  x86_load_memory_address(context, ir_stmt->type, address_reg, result->object);
+  X86Location* address_reg = get_best_available_register(context, eX86Type_int32, ir_stmt);
+  x86_load_memory_address(context, eX86Type_int32, address_reg, result->object);
 
   X86Location* arg1_loc = lookup_object_location(context, arg1->object);
   X86Location* arg2_loc = lookup_object_location(context, arg2->object);
@@ -7024,12 +7009,12 @@ void x86_gen_assign_index_dest_stmt(X86Context* context, IrStmt* ir_stmt)
     }
     delete_object_from_location(context, arg2->object, arg2_loc);
 
-    X86Stmt* add_offset_stmt = x86_new_stmt(context, ir_stmt->type, eX86StmtOpcode_add);
+    X86Stmt* add_offset_stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_add);
     add_offset_stmt->operand1 = x86_make_register_operand(arena, arg2_loc);
     add_offset_stmt->operand2 = x86_make_register_operand(arena, address_reg);
 
     x86_load_object_into_register(context, ir_stmt->type, address_reg, arg1_loc, arg1->object);
-    add_object_to_location(context, arg1->object, arg1_loc);
+    add_object_to_location(context, arg1->object, address_reg);
 
     X86Stmt* mov_stmt = x86_new_stmt(context, ir_stmt->type, eX86StmtOpcode_mov);
     mov_stmt->operand1 = x86_make_indexed_operand(arena,
@@ -7053,7 +7038,7 @@ void x86_gen_assign_index_dest_stmt(X86Context* context, IrStmt* ir_stmt)
 
     if(!is_register_location(arg1_loc))
     {
-      arg1_loc = get_best_available_register(context, ir_stmt);
+      arg1_loc = get_best_available_register(context, ir_stmt->type, ir_stmt);
       x86_load_object_into_register(context, ir_stmt->type, arg1_loc, &context->memory, arg1->object);
       add_object_to_location(context, arg1->object, arg1_loc);
     }
@@ -7123,7 +7108,7 @@ void x86_gen_assign_deref_source_stmt(X86Context* context, IrStmt* ir_stmt)
 
   /*FIXME: Not tested. */
 
-  X86Location* address_reg = get_best_available_register(context, ir_stmt);
+  X86Location* address_reg = get_best_available_register(context, eX86Type_int32, ir_stmt);
   x86_load_memory_address(context, ir_stmt->type, address_reg, arg1->object);
 
   X86Stmt* mov_stmt = x86_new_stmt(context, ir_stmt->type, eX86StmtOpcode_mov);
@@ -7143,14 +7128,14 @@ void x86_gen_assign_deref_dest_stmt(X86Context* context, IrStmt* ir_stmt)
 
   /*FIXME: Not tested. */
 
-  X86Location* address_reg = get_best_available_register(context, ir_stmt);
+  X86Location* address_reg = get_best_available_register(context, eX86Type_int32, ir_stmt);
   x86_load_memory_address(context, ir_stmt->type, address_reg, result->object);
 
   X86Location* arg1_loc = lookup_object_location(context, arg1->object);
 
   if(!is_register_location(arg1_loc))
   {
-    arg1_loc = get_best_available_register(context, ir_stmt);
+    arg1_loc = get_best_available_register(context, ir_stmt->type, ir_stmt);
     x86_load_object_into_register(context, ir_stmt->type, arg1_loc, &context->memory, arg1->object);
     add_object_to_location(context, arg1->object, arg1_loc);
   }
@@ -7195,7 +7180,7 @@ void x86_gen_assign_address_of_stmt(X86Context* context, IrStmt* ir_stmt)
 
   if(!address_reg)
   {
-    address_reg = get_best_available_register(context, ir_stmt);
+    address_reg = get_best_available_register(context, eX86Type_int32, ir_stmt);
   }
 
   x86_load_memory_address(context, ir_stmt->type, address_reg, arg1->object);
@@ -7721,16 +7706,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     x86_context.stmt_arena = push_arena(&arena, 1*MEGABYTE);
     x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
     x86_context.machine_word_size = 4;
-
     x86_init_registers(&x86_context);
-
-#if 0
-    for(int r = 0; r < eX86Location_Count; r++)
-    {
-      List* occupants = &x86_context.registers._[r];
-      init_list(occupants, arena, eList_symbol);
-    }
-#endif
     
     List* procs = &module->module.procs;
     for(ListItem* li = procs->first;

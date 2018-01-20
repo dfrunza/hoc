@@ -1026,28 +1026,6 @@ typedef enum
 }
 eSymbol;
 
-#if 0
-typedef enum
-{
-  eIrConstant_int,
-  eIrConstant_float,
-  eIrConstant_char,
-}
-eIrConstant;
-
-typedef struct
-{
-  eIrConstant kind;
-  union
-  {
-    int int_val;
-    float float_val;
-    char char_val;
-  };
-}
-IrConstant;
-#endif
-
 //FIXME: Discriminate symbols by kind : var, proc, etc.
 //The proc symbol needs to have a ref to the retvar symbol and to the args.
 typedef struct Symbol
@@ -1128,15 +1106,6 @@ typedef struct X86Context
 
   X86Location memory;
   X86Location* registers[14];
-
-#if 0
-  // for natvis
-  struct X86Context_registers
-  {
-    X86Location _[eX86Location_Count];
-  }
-  registers;
-#endif
 }
 X86Context;
 

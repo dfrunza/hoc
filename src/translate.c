@@ -770,10 +770,16 @@ bool resolve_type(Type* type, Type** resolved_type)
   switch(type->kind)
   {
     case eType_typevar:
-    type = get_type_repr(type);
-    if(type->kind == eType_typevar)
     {
-      success = false;
+      type = get_type_repr(type);
+      if(type->kind == eType_typevar)
+      {
+        success = false;
+      }
+      else
+      {
+        success = resolve_type(type, &type);
+      }
     }
     break;
     
@@ -3944,107 +3950,77 @@ eIrOp conv_operator_to_ir_op(eOperator op)
   switch(op)
   {
     case eOperator_add:
-    {
       ir_op = eIrOp_add;
-    }
     break;
     
     case eOperator_sub:
-    {
       ir_op = eIrOp_sub;
-    }
     break;
     
     case eOperator_mul:
-    {
       ir_op = eIrOp_mul;
-    }
     break;
     
     case eOperator_div:
-    {
       ir_op = eIrOp_div;
-    }
     break;
 
     case eOperator_mod:
-    {
       ir_op = eIrOp_mod;
-    }
     break;
     
     case eOperator_neg:
-    {
       ir_op = eIrOp_neg;
-    }
     break;
     
     case eOperator_bit_and:
-    {
       ir_op = eIrOp_bit_and;
-    }
     break;
     
     case eOperator_bit_or:
-    {
       ir_op = eIrOp_bit_or;
-    }
     break;
     
     case eOperator_bit_xor:
-    {
       ir_op = eIrOp_bit_xor;
-    }
     break;
     
     case eOperator_bit_shift_left:
-    {
       ir_op = eIrOp_bit_shift_left;
-    }
     break;
     
     case eOperator_bit_shift_right:
-    {
       ir_op = eIrOp_bit_shift_right;
-    }
     break;
     
     case eOperator_less:
-    {
       ir_op = eIrOp_less;
-    }
     break;
     
     case eOperator_less_eq:
-    {
       ir_op = eIrOp_less_eq;
-    }
     break;
     
     case eOperator_greater:
-    {
       ir_op = eIrOp_greater;
-    }
     break;
     
     case eOperator_greater_eq:
-    {
       ir_op = eIrOp_greater_eq;
-    }
     break;
     
     case eOperator_eq:
-    {
       ir_op = eIrOp_eq;
-    }
     break;
     
     case eOperator_not_eq:
-    {
       ir_op = eIrOp_not_eq;
-    }
     break;
     
+    case eOperator_address_of:
+      ir_op = eIrOp_address_of;
+    break;
+
     default: assert(0);
   }
   return ir_op;
@@ -4369,8 +4345,6 @@ bool ir_gen_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
       if(success = ir_gen_expr(ir_context, scope, operand))
       {
         unr_expr->place = ir_new_arg_temp_object(ir_context, scope, unr_expr->eval_ty, unr_expr->src_loc);
-
-        assert(operand->eval_ty->kind == eType_basic);
         ir_emit_assign(ir_context, conv_operator_to_ir_op(op), operand->place, 0, unr_expr->place);
       }
     }
@@ -4379,6 +4353,16 @@ bool ir_gen_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
     case eOperator_logic_not:
     {
       fail("todo");
+    }
+    break;
+
+    case eOperator_address_of:
+    {
+      if(success = ir_gen_expr(ir_context, scope, operand))
+      {
+        unr_expr->place = ir_new_arg_temp_object(ir_context, scope, unr_expr->eval_ty, unr_expr->src_loc);
+        ir_emit_assign(ir_context, conv_operator_to_ir_op(op), operand->place, 0, unr_expr->place);
+      }
     }
     break;
     

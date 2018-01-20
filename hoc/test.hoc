@@ -1,9 +1,13 @@
 int i;
+char c;
 
 void startup()
 {
-  int^ p;
-  p = &i;
+  char^ p;
+  char j;
+  p = &c;
+  ^p = 'A';
+  j = ^p;
 }
 
 /*

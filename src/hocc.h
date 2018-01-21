@@ -232,6 +232,7 @@ typedef enum
   eLiteral_float,
   eLiteral_bool,
   eLiteral_char,
+  eLiteral_str,
 }
 eLiteral;
 
@@ -300,7 +301,7 @@ typedef struct Scope
   struct Scope* encl_scope;
   AstNode* ast_node;
   int sym_count;
-  int data_size;
+  int allocd_size; // aligned
 
   List decl_syms;
 }
@@ -605,7 +606,6 @@ typedef struct IrStmt
 {
   eIrStmt kind;
   IrLabel* label;
-  eX86Type type;
 
   union
   {
@@ -753,7 +753,6 @@ typedef enum
   eAstNode_call,
   eAstNode_basic_type,
   eAstNode_lit,
-  eAstNode_str,
   eAstNode_return,
   eAstNode_if,
   eAstNode_while,
@@ -949,6 +948,7 @@ typedef struct AstNode
         float float_val;
         bool bool_val;
         char char_val;
+        char* str_val;
       };
       Symbol* constant;
     }
@@ -1041,7 +1041,7 @@ typedef struct Symbol
 
   eStorageSpace storage_space;
   int data_loc;
-  int data_size;
+  int allocd_size; // aligned
   void* data;
 
   union
@@ -1049,6 +1049,7 @@ typedef struct Symbol
     int int_val;
     float float_val;
     char char_val;
+    char* str_val;
   };
 
   bool is_live;

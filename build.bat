@@ -16,6 +16,7 @@ REM /wd4211       - nonstandard extension used (related to wd4013)
 REM /wd4306       - 'type cast' : conversion from 'uint8' to 'int32 *' of greater size
 REM /wd4459       - declaration hides global declaration
 REM /wd4456       - declaration hides previous local declaration
+REM /FC           - display full path of source code files passed to cl.exe in diagnostic text
 REM /Fo:<path>    - compile to object file
 REM /Fe:<path>    - compile to executable
 REM /c            - compile without linking

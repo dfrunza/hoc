@@ -5,6 +5,7 @@ global_var Type* basic_type_int;
 global_var Type* basic_type_char;
 global_var Type* basic_type_float;
 global_var Type* basic_type_void;
+global_var Type* basic_type_str;
 global_var List* subst_list;
 global_var int typevar_id = 1;
 
@@ -877,13 +878,13 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
 
 void alloc_data_object(Symbol* sym, Scope* scope, int alignment)
 {
-  sym->data_loc = scope->data_size;
-  sym->data_size = sym->ty->width;
-  if((sym->data_size & (alignment-1)) != 0)
+  sym->data_loc = scope->allocd_size;
+  sym->allocd_size = sym->ty->width;
+  if((sym->allocd_size & (alignment-1)) != 0)
   {
-    sym->data_size = (sym->data_size + alignment) & ~(alignment-1);
+    sym->allocd_size = (sym->allocd_size + alignment) & ~(alignment-1);
   }
-  scope->data_size += sym->data_size;
+  scope->allocd_size += sym->allocd_size;
 }
 
 Symbol* new_temp_object(MemoryArena* arena, Scope* scope, Type* ty, SourceLoc* src_loc, int alignment)
@@ -901,6 +902,26 @@ Symbol* new_temp_object(MemoryArena* arena, Scope* scope, Type* ty, SourceLoc* s
   sym->is_live = false;
 
   alloc_data_object(sym, scope, alignment);
+  append_list_elem(&scope->decl_syms, sym, eList_symbol);
+
+  return sym;
+}
+
+Symbol* new_str_object(MemoryArena* arena, Type* ty, Scope* scope, SourceLoc* src_loc)
+{
+  Symbol* sym = mem_push_struct(arena, Symbol);
+
+  sym->kind = eSymbol_constant;
+  sym->name = new_tempvar_name("str_");
+  sym->src_loc = src_loc;
+  sym->ty = ty;
+  sym->scope = scope;
+  sym->order_nr = 0;
+  sym->storage_space = eStorageSpace_static;
+  sym->next_use = NextUse_None;
+  sym->is_temp = false;
+  sym->is_live = false;
+
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
 
   return sym;
@@ -951,7 +972,7 @@ Scope* begin_scope(SymbolContext* sym_context, eScope kind, AstNode* ast_node)
   scope->kind = kind;
   scope->nesting_depth = sym_context->nesting_depth;
   scope->sym_count = 0;
-  scope->data_size = 0;
+  scope->allocd_size = 0;
   scope->encl_scope = sym_context->active_scope;
   scope->ast_node = ast_node;
   init_list(&scope->decl_syms, arena, eList_symbol);
@@ -1049,25 +1070,46 @@ bool sym_lit(SymbolContext* sym_context, AstNode* block, AstNode* lit)
   assert(KIND(lit, eAstNode_lit));
   bool success = true;
 
-  Symbol* constant = lit->lit.constant = new_const_object(sym_context->arena, lit->eval_ty, lit->src_loc);
-  constant->kind = eSymbol_constant;
-
   switch(lit->lit.kind)
   {
     case eLiteral_int:
-      constant->int_val = lit->lit.int_val;
-    break;
-    
     case eLiteral_float:
-      constant->float_val = lit->lit.float_val;
-    break;
-    
     case eLiteral_bool:
-      constant->int_val = (int)lit->lit.bool_val;
-    break;
-    
     case eLiteral_char:
-      constant->char_val = lit->lit.char_val;
+    {
+      Symbol* constant = lit->lit.constant = new_const_object(sym_context->arena, lit->eval_ty, lit->src_loc);
+
+      switch(lit->lit.kind)
+      {
+        case eLiteral_int:
+          constant->int_val = lit->lit.int_val;
+          break;
+
+        case eLiteral_float:
+          constant->float_val = lit->lit.float_val;
+          break;
+
+        case eLiteral_bool:
+          constant->int_val = (int)lit->lit.bool_val;
+          break;
+
+        case eLiteral_char:
+          constant->char_val = lit->lit.char_val;
+          break;
+
+        default: assert(0);
+      }
+    }
+    break;
+
+    case eLiteral_str:
+    {
+      Scope* module_scope = find_scope(sym_context->active_scope, eScope_module);
+      Symbol* constant = lit->lit.constant = new_str_object(sym_context->arena, lit->eval_ty, module_scope, lit->src_loc);
+
+      constant->str_val = lit->lit.str_val;
+      constant->data = constant->str_val;
+    }
     break;
     
     default: assert(0);
@@ -1227,7 +1269,6 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
     case eAstNode_pointer:
     case eAstNode_array:
     case eAstNode_basic_type:
-    case eAstNode_str:
     break;
 
     case eAstNode_lit:
@@ -1407,7 +1448,6 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
-    case eAstNode_str:
     {
       success = sym_expr(sym_context, block, stmt);
     }
@@ -1824,14 +1864,6 @@ bool set_types_call(AstNode* call)
   return success;
 }
 
-bool set_types_str(AstNode* str)
-{
-  assert(KIND(str, eAstNode_str));
-  bool success = true;
-  str->ty = str->eval_ty = new_array_type(0/*TODO*/, 1, basic_type_char);
-  return success;
-}
-
 bool set_types_lit(AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
@@ -1861,6 +1893,12 @@ bool set_types_lit(AstNode* lit)
     case eLiteral_bool:
     {
       ty = basic_type_bool;
+    }
+    break;
+
+    case eLiteral_str:
+    {
+      ty = new_array_type(cstr_len(lit->lit.str_val)+1, 1, basic_type_char);
     }
     break;
     
@@ -1955,12 +1993,6 @@ bool set_types_expr(AstNode* expr)
     case eAstNode_basic_type:
     {
       success = set_types_type(expr);
-    }
-    break;
-    
-    case eAstNode_str:
-    {
-      success = set_types_str(expr);
     }
     break;
     
@@ -2120,7 +2152,6 @@ bool set_types_block_stmt(AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
-    case eAstNode_str:
     {
       success = set_types_expr(stmt);
     }
@@ -2688,7 +2719,6 @@ bool eval_types_expr(AstNode* expr)
     break;
     
     case eAstNode_lit:
-    case eAstNode_str:
     case eAstNode_basic_type:
     break;
     
@@ -2809,7 +2839,6 @@ bool eval_types_block_stmt(AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
-    case eAstNode_str:
     {
       success = eval_types_expr(stmt);
     }
@@ -3115,7 +3144,6 @@ bool resolve_types_expr(AstNode* expr)
     }
     break;
 
-    case eAstNode_str:
     case eAstNode_basic_type:
     break;
     
@@ -3275,7 +3303,6 @@ bool resolve_types_block_stmt(AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
-    case eAstNode_str:
     {
       success = resolve_types_expr(stmt);
     }
@@ -3749,7 +3776,6 @@ bool check_types_expr(AstNode* expr)
     
     case eAstNode_id:
     case eAstNode_lit:
-    case eAstNode_str:
     case eAstNode_basic_type:
     break;
     
@@ -3838,7 +3864,6 @@ bool check_types_block_stmt(AstNode* stmt)
     case eAstNode_id:
     case eAstNode_call:
     case eAstNode_lit:
-    case eAstNode_str:
     {
       success = check_types_expr(stmt);
     }
@@ -4030,6 +4055,52 @@ eIrOp conv_operator_to_ir_op(eOperator op)
   return ir_op;
 }
 
+eOperator negate_relop(eOperator op)
+{
+  eOperator result = eOperator_None;
+  switch(op)
+  {
+    case eOperator_eq:
+    {
+      result = eOperator_not_eq;
+    }
+    break;
+    
+    case eOperator_not_eq:
+    {
+      result = eOperator_eq;
+    }
+    break;
+    
+    case eOperator_less:
+    {
+      result = eOperator_greater_eq;
+    }
+    break;
+    
+    case eOperator_less_eq:
+    {
+      result = eOperator_greater;
+    }
+    break;
+    
+    case eOperator_greater:
+    {
+      result = eOperator_less_eq;
+    }
+    break;
+    
+    case eOperator_greater_eq:
+    {
+      result = eOperator_less;
+    }
+    break;
+    
+    default: assert(0);
+  }
+  return result;
+}
+
 IrLabel* get_label_at(List* label_list, int stmt_nr)
 {
   IrLabel* label = 0;
@@ -4055,6 +4126,7 @@ eX86Type conv_object_type_to_x86_type(Type* type)
 
     switch(basic_type)
     {
+      case eBasicType_bool:
       case eBasicType_int:
         x86_type = eX86Type_int32;
         break;
@@ -4176,8 +4248,6 @@ void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, I
   }
   stmt->assign.result = mem_push_struct(arena, IrArg);
   *stmt->assign.result = *result;
-
-  stmt->type = x86_get_stmt_type(stmt);
 
   ir_context->stmt_count++;
 }
@@ -4396,7 +4466,13 @@ void ir_gen_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
   
-  lit->place = ir_new_arg_existing_object(ir_context, lit->lit.constant);
+  Symbol* object = lit->lit.constant;
+  if(types_are_equal(object->ty, basic_type_str))
+  {
+    alloc_data_object(object, object->scope, ir_context->data_alignment);
+  }
+
+  lit->place = ir_new_arg_existing_object(ir_context, object);
 }
 
 bool ir_gen_bool_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
@@ -4599,36 +4675,46 @@ bool ir_gen_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
       if(types_are_equal(to_type->eval_ty, basic_type_int))
       {
         if(types_are_equal(from_expr->eval_ty, basic_type_float))
+        {
           cast_op = eIrOp_ftoi; // int <- float
+        }
         else if(types_are_equal(from_expr->eval_ty, basic_type_bool))
+        {
           cast_op = eIrOp_btoi; // int <- bool
+        }
         else if(types_are_equal(from_expr->eval_ty, basic_type_char))
+        {
           cast_op = eIrOp_ctoi; // int <- char
-        else
-          assert(0);
+        }
+        else assert(0);
       }
       else if(types_are_equal(to_type->eval_ty, basic_type_float))
       {
         if(types_are_equal(from_expr->eval_ty, basic_type_int))
+        {
           cast_op = eIrOp_itof; // float <- int
-        else
-          assert(0);
+        }
+        else assert(0);
       }
       else if(types_are_equal(to_type->eval_ty, basic_type_char))
       {
         if(types_are_equal(from_expr->eval_ty, basic_type_int))
+        {
           cast_op = eIrOp_itoc; // char <- int
-        else
-          assert(0);
+        }
+        else assert(0);
       }
       else if(types_are_equal(to_type->eval_ty, basic_type_bool))
       {
         if(types_are_equal(from_expr->eval_ty, basic_type_int))
+        {
           cast_op = eIrOp_itob; // bool <- int
+        }
         else if(from_expr->eval_ty->kind == eType_pointer)
+        {
           cast_op = eIrOp_itob; // bool <- pointer(T)
-        else
-          assert(0);
+        }
+        else assert(0);
       }
       ir_emit_assign(ir_context, cast_op, from_expr->place, 0, cast->place);
     }
@@ -4745,52 +4831,6 @@ bool ir_gen_block(IrContext* ir_context, Scope* scope, AstNode* block)
     ir_gen_block_stmt(ir_context, scope, stmt);
   }
   return success;
-}
-
-eOperator negate_relop(eOperator op)
-{
-  eOperator result = eOperator_None;
-  switch(op)
-  {
-    case eOperator_eq:
-    {
-      result = eOperator_not_eq;
-    }
-    break;
-    
-    case eOperator_not_eq:
-    {
-      result = eOperator_eq;
-    }
-    break;
-    
-    case eOperator_less:
-    {
-      result = eOperator_greater_eq;
-    }
-    break;
-    
-    case eOperator_less_eq:
-    {
-      result = eOperator_greater;
-    }
-    break;
-    
-    case eOperator_greater:
-    {
-      result = eOperator_less_eq;
-    }
-    break;
-    
-    case eOperator_greater_eq:
-    {
-      result = eOperator_less;
-    }
-    break;
-    
-    default: assert(0);
-  }
-  return result;
 }
 
 bool ir_gen_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
@@ -5138,12 +5178,6 @@ bool ir_gen_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     }
     break;
     
-    case eAstNode_str:
-    {
-      fail("TODO");
-    }
-    break;
-    
     case eAstNode_return:
     {
       success = ir_gen_return(ir_context, scope, stmt);
@@ -5389,7 +5423,7 @@ void DEBUG_print_ir_arg(String* text, IrArg* arg)
     
     case eSymbol_constant:
     {
-      if(types_are_equal(object->ty, basic_type_int))
+      if(types_are_equal(object->ty, basic_type_int) || types_are_equal(object->ty, basic_type_bool))
       {
         str_printf(text, "%d", object->int_val);
       }
@@ -5402,6 +5436,10 @@ void DEBUG_print_ir_arg(String* text, IrArg* arg)
         char buf[3] = {0};
         print_char(buf, object->char_val);
         str_printf(text, "'%s'", buf);
+      }
+      else if(types_are_equal(object->ty, basic_type_str))
+      {
+        str_printf(text, "\"%s\"", object->str_val);
       }
       else assert(0);
     }
@@ -5792,9 +5830,6 @@ char* x86_get_size_directive(eX86Type x86_type)
 
   switch(x86_type)
   {
-    case eX86Type_None:
-    break;
-
     case eX86Type_int8:
       directv = "byte";
     break;
@@ -6350,7 +6385,7 @@ int x86_conv_constant_to_int(Symbol* constant)
 
   int x86_const = 0;
 
-  if(types_are_equal(constant->ty, basic_type_int))
+  if(types_are_equal(constant->ty, basic_type_int) || types_are_equal(constant->ty, basic_type_bool))
   {
     x86_const = constant->int_val;
   }
@@ -6387,7 +6422,7 @@ void x86_set_memory_base_and_offset(X86Context* context, struct X86Operand_memor
     {
       memory->base->kind = eX86Operand_register;
       memory->base->reg = &context->ebp;
-      memory->offset = -(object->data_loc + object->data_size); 
+      memory->offset = -(object->data_loc + object->allocd_size); 
     }
     break;
 
@@ -6403,7 +6438,7 @@ void x86_set_memory_base_and_offset(X86Context* context, struct X86Operand_memor
     {
       memory->base->kind = eX86Operand_register;
       memory->base->reg = &context->esp;
-      memory->offset = -(object->data_loc + object->data_size);
+      memory->offset = -(object->data_loc + object->allocd_size);
     }
     break;
 
@@ -6412,9 +6447,9 @@ void x86_set_memory_base_and_offset(X86Context* context, struct X86Operand_memor
       memory->base->kind = eX86Operand_register;
       memory->base->reg = &context->ebp;
 
-      int scope_data_size = object->scope->data_size;
+      int scope_allocd_size = object->scope->allocd_size;
       int machine_area_size = 2*context->machine_word_size; // instruction_pointer + frame_pointer
-      memory->offset = (scope_data_size + machine_area_size) - (object->data_loc + object->data_size);
+      memory->offset = (scope_allocd_size + machine_area_size) - (object->data_loc + object->allocd_size);
     }
     break;
 
@@ -6463,7 +6498,14 @@ X86Operand* x86_make_object_operand(X86Context* context, Symbol* object, X86Loca
   {
     if(object->kind == eSymbol_constant)
     {
-      return x86_make_constant_operand(arena, x86_conv_constant_to_int(object));
+      if(types_are_equal(object->ty, basic_type_str))
+      {
+        return x86_make_memory_operand(context, object);
+      }
+      else
+      {
+        return x86_make_constant_operand(arena, x86_conv_constant_to_int(object));
+      }
     }
     else
     {
@@ -6493,6 +6535,29 @@ void x86_load_object_into_register(X86Context* context, X86Location* dest_reg, X
   }
 }
 
+void x86_store_object_to_memory(X86Context* context, X86Location* source_reg, Symbol* object)
+{
+  assert(is_register_location(source_reg));
+  
+  if(object->ty->kind != eType_array)
+  {
+    X86Stmt* stmt = x86_new_stmt(context, conv_object_type_to_x86_type(object->ty), eX86StmtOpcode_mov);
+
+    stmt->operand1 = x86_make_memory_operand(context, object);
+    stmt->operand2 = x86_make_register_operand(arena, source_reg);
+  }
+}
+
+void x86_load_memory_address(X86Context* context, X86Location* dest_reg, Symbol* object)
+{
+  assert(is_register_location(dest_reg));
+
+  X86Stmt* stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_lea);
+
+  stmt->operand1 = x86_make_register_operand(arena, dest_reg);
+  stmt->operand2 = x86_make_address_operand(context, object);
+}
+
 #if 0
 void x86_load_constant_into_register(X86Context* context, eX86Type x86_type, eX86Location dest_reg, Symbol* constant)
 {
@@ -6512,26 +6577,6 @@ void x86_store_constant_to_memory(X86Context* context, eX86Type x86_type, Symbol
   stmt->operand2 = x86_make_constant_operand(arena, x86_conv_constant_to_int(constant));
 }
 #endif
-
-void x86_store_object_to_memory(X86Context* context, X86Location* source_reg, Symbol* object)
-{
-  assert(is_register_location(source_reg));
-  
-  X86Stmt* stmt = x86_new_stmt(context, conv_object_type_to_x86_type(object->ty), eX86StmtOpcode_mov);
-  
-  stmt->operand1 = x86_make_memory_operand(context, object);
-  stmt->operand2 = x86_make_register_operand(arena, source_reg);
-}
-
-void x86_load_memory_address(X86Context* context, X86Location* dest_reg, Symbol* object)
-{
-  assert(is_register_location(dest_reg));
-
-  X86Stmt* stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_lea);
-
-  stmt->operand1 = x86_make_register_operand(arena, dest_reg);
-  stmt->operand2 = x86_make_address_operand(context, object);
-}
 
 eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eX86Type x86_type)
 {
@@ -6717,7 +6762,7 @@ void save_register_to_memory(X86Context* context, X86Location* reg, bool free_re
     ListItem* li_next = li->next;
 
     Symbol* object = KIND(li, eList_symbol)->symbol;
-    if(object->is_live && object->ty->kind != eType_array)
+    if(object->is_live)
     {
       save_object_to_memory(context, reg, object);
     }
@@ -7114,7 +7159,7 @@ void x86_gen_assign_index_source(X86Context* context, IrStmt* ir_stmt)
     add_object_to_location(context, arg2->object, arg2_loc);
   }
 
-  X86Stmt* mov_stmt = x86_new_stmt(context, ir_stmt->type, eX86StmtOpcode_mov);
+  X86Stmt* mov_stmt = x86_new_stmt(context, conv_object_type_to_x86_type(result->object->ty), eX86StmtOpcode_mov);
   mov_stmt->operand1 = x86_make_register_operand(arena, result_loc);
   mov_stmt->operand2 = x86_make_indexed_operand(arena,
                                                 x86_make_register_operand(arena, arg1_loc),
@@ -7154,9 +7199,9 @@ void x86_gen_assign_index_dest(X86Context* context, IrStmt* ir_stmt)
     add_object_to_location(context, arg2->object, arg2_loc);
   }
 
-  X86Stmt* mov_stmt = x86_new_stmt(context, ir_stmt->type, eX86StmtOpcode_mov);
+  X86Stmt* mov_stmt = x86_new_stmt(context, conv_object_type_to_x86_type(arg1->object->ty), eX86StmtOpcode_mov);
   mov_stmt->operand1 = x86_make_indexed_operand(arena,
-                                                x86_make_register_operand(arena, result_loc),
+                                                x86_make_register_operand(arena, result_loc/*, object->ty*/),
                                                 x86_make_register_operand(arena, arg2_loc));
   mov_stmt->operand2 = x86_make_register_operand(arena, arg1_loc);
 }
@@ -7172,7 +7217,7 @@ void x86_gen_assign_deref_source(X86Context* context, IrStmt* ir_stmt)
   if(!is_register_location(arg1_loc))
   {
     arg1_loc = get_best_available_register(context, arg1->object, ir_stmt);
-    x86_load_memory_address(context, arg1_loc, arg1->object);
+    x86_load_object_into_register(context, arg1_loc, &context->memory, arg1->object);
     add_object_to_location(context, arg1->object, arg1_loc);
   }
 
@@ -7184,7 +7229,7 @@ void x86_gen_assign_deref_source(X86Context* context, IrStmt* ir_stmt)
     add_object_to_location(context, result->object, result_loc);
   }
 
-  X86Stmt* mov_stmt = x86_new_stmt(context, ir_stmt->type, eX86StmtOpcode_mov);
+  X86Stmt* mov_stmt = x86_new_stmt(context, conv_object_type_to_x86_type(result->object->ty), eX86StmtOpcode_mov);
   mov_stmt->operand1 = x86_make_register_operand(arena, result_loc);
   mov_stmt->operand2 = x86_make_indexed_operand(arena,
                                                 x86_make_register_operand(arena, arg1_loc),
@@ -7204,7 +7249,7 @@ void x86_gen_assign_deref_dest(X86Context* context, IrStmt* ir_stmt)
   if(!is_register_location(result_loc))
   {
     result_loc = get_best_available_register(context, result->object, ir_stmt);
-    x86_load_memory_address(context, result_loc, result->object);
+    x86_load_object_into_register(context, result_loc, &context->memory, result->object);
     add_object_to_location(context, result->object, result_loc);
   }
 
@@ -7217,7 +7262,7 @@ void x86_gen_assign_deref_dest(X86Context* context, IrStmt* ir_stmt)
     add_object_to_location(context, arg1->object, arg1_loc);
   }
 
-  X86Stmt* mov_stmt = x86_new_stmt(context, ir_stmt->type, eX86StmtOpcode_mov);
+  X86Stmt* mov_stmt = x86_new_stmt(context, conv_object_type_to_x86_type(arg1->object->ty), eX86StmtOpcode_mov);
   mov_stmt->operand1 = x86_make_indexed_operand(arena,
                                                 x86_make_register_operand(arena, result_loc),
                                                 0);
@@ -7291,7 +7336,8 @@ void x86_gen_assign_binexpr(X86Context* context, IrStmt* ir_stmt)
   X86Location* arg1_loc = lookup_object_location(context, arg1->object);
   x86_load_object_into_register(context, store_reg, arg1_loc, arg1->object);
 
-  X86Stmt* x86_stmt = x86_new_stmt(context, ir_stmt->type, conv_ir_op_to_x86_opcode(assign->op, ir_stmt->type));
+  eX86Type stmt_type = conv_object_type_to_x86_type(result->object->ty);
+  X86Stmt* x86_stmt = x86_new_stmt(context, stmt_type, conv_ir_op_to_x86_opcode(assign->op, stmt_type));
   x86_stmt->operand1 = x86_make_object_operand(context, arg1->object, store_reg);
   x86_stmt->operand2 = x86_make_object_operand(context, arg2->object, lookup_object_location(context, arg2->object));
 
@@ -7374,18 +7420,20 @@ void x86_gen_cond_goto(X86Context* context, IrStmt* ir_stmt)
 
   save_all_registers_to_memory(context, false);
 
-  if(ir_stmt->type == eX86Type_int32)
+  if(types_are_equal(arg1->object->ty, basic_type_int) || types_are_equal(arg1->object->ty, basic_type_bool))
   {
     X86Location* dest_loc = select_result_register(context, ir_stmt);
 
-    X86Stmt* cmp_stmt = x86_new_stmt(context, ir_stmt->type, eX86StmtOpcode_cmp);
+    eX86Type stmt_type = conv_object_type_to_x86_type(arg1->object->ty);
+
+    X86Stmt* cmp_stmt = x86_new_stmt(context, stmt_type, eX86StmtOpcode_cmp);
     cmp_stmt->operand1 = x86_make_object_operand(context, arg1->object, dest_loc);
     cmp_stmt->operand2 = x86_make_object_operand(context, arg2->object, lookup_object_location(context, arg2->object));
 
-    X86Stmt* jump_stmt = x86_new_stmt(context, ir_stmt->type, conv_ir_op_to_x86_opcode(cond_goto->relop, ir_stmt->type));
+    X86Stmt* jump_stmt = x86_new_stmt(context, stmt_type, conv_ir_op_to_x86_opcode(cond_goto->relop, stmt_type));
     jump_stmt->operand1 = x86_make_id_operand(arena, cond_goto->label->name);
   }
-  else if(ir_stmt->type == eX86Type_float32)
+  else if(types_are_equal(arg1->object->ty, basic_type_float))
   {
     fail("TODO");
   }
@@ -7402,7 +7450,7 @@ void x86_gen_call(X86Context* context, IrStmt* ir_stmt)
   /* sub esp, #param_size */
   X86Stmt* stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_sub);
   stmt->operand1 = x86_make_register_operand(arena, &context->esp);
-  stmt->operand2 = x86_make_constant_operand(arena, arg_scope->data_size);
+  stmt->operand2 = x86_make_constant_operand(arena, arg_scope->allocd_size);
 
   /* call #proc_name */
   stmt = x86_new_stmt(context, eX86Type_None, eX86StmtOpcode_call);
@@ -7411,7 +7459,7 @@ void x86_gen_call(X86Context* context, IrStmt* ir_stmt)
   /* add esp, #param_size */
   stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_add);
   stmt->operand1 = x86_make_register_operand(arena, &context->esp);
-  stmt->operand2 = x86_make_constant_operand(arena, arg_scope->data_size);
+  stmt->operand2 = x86_make_constant_operand(arena, arg_scope->allocd_size);
 }
 
 void x86_gen_basic_block(X86Context* context, BasicBlock* bb)
@@ -7480,7 +7528,7 @@ void x86_gen_proc(X86Context* context, AstNode* proc)
   Scope* body_scope = proc->proc.body_scope;
   stmt = x86_new_stmt(context, eX86Type_int32, eX86StmtOpcode_sub);
   stmt->operand1 = x86_make_register_operand(arena, &context->esp);
-  stmt->operand2 = x86_make_constant_operand(arena, body_scope->data_size);
+  stmt->operand2 = x86_make_constant_operand(arena, body_scope->allocd_size);
 
   x86_gen_basic_block(context, first_bb);
   save_all_registers_to_memory(context, true);
@@ -7652,6 +7700,48 @@ void x86_init_registers(X86Context* context)
   init_list(&loc->occupants, arena, eList_symbol);
 }
 
+void x86_write_static_data_text(String* text, Scope* scope)
+{
+  for(ListItem* li = scope->decl_syms.first;
+      li;
+      li = li->next)
+  {
+    Symbol* object = KIND(li, eList_symbol)->symbol;
+    if(object->storage_space == eStorageSpace_static && object->allocd_size > 0)
+    {
+      if(object->data)
+      {
+        str_printf(text, "byte ");
+
+        uint8* p_data = (uint8*)object->data;
+        int i;
+        int data_size = object->ty->width;
+        for(i = 0; i < data_size - 1; i++)
+        {
+          str_printf(text, "0%xh,", p_data[i]);
+        }
+
+        if(i < data_size)
+        {
+          str_printf(text, "0%xh", p_data[i]);
+        }
+
+        str_printfln(text, "");
+
+        int padding_size = object->allocd_size - data_size;
+        if(padding_size > 0)
+        {
+          str_printfln(text, "byte %d dup(?)", padding_size);
+        }
+      }
+      else
+      {
+        str_printfln(text, "byte %d dup(?)", object->allocd_size);
+      }
+    }
+  }
+}
+
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 {
   basic_type_bool = new_basic_type(eBasicType_bool);
@@ -7659,6 +7749,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   basic_type_char = new_basic_type(eBasicType_char);
   basic_type_float = new_basic_type(eBasicType_float);
   basic_type_void = new_basic_type(eBasicType_void);
+  basic_type_str = new_array_type(0, 1, basic_type_char);
   subst_list = new_list(arena, eList_type_pair);
   
   SymbolContext sym_context = {0};
@@ -7726,18 +7817,8 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     str_printfln(x86_text, "static_area label byte");
     str_printfln(x86_text, "align %d", ir_context.data_alignment);
     
-    Scope* module_scope = module->module.scope;
-    for(ListItem* li = module_scope->decl_syms.first;
-        li;
-        li = li->next)
-    {
-      Symbol* object = KIND(li, eList_symbol)->symbol;
-      if(object->data_size > 0)
-      {
-        str_printfln(x86_text, "byte %d dup(?)", object->data_size);
-      }
-    }
-    
+    x86_write_static_data_text(x86_text, module->module.scope);
+
     str_printfln(x86_text, ".code");
     str_printfln(x86_text, "public startup");
     

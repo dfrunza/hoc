@@ -6045,9 +6045,9 @@ X86Location* x86_get_location(X86Context* context, eX86Location loc_kind)
   }
   else
   {
-    for(int i = 0; i < sizeof_array(context->registers); i++)
+    for(int i = 0; i < sizeof_array(context->registers._); i++)
     {
-      loc = context->registers[i];
+      loc = context->registers._[i];
       if(loc->kind == loc_kind)
         break;
       loc = 0;
@@ -6113,9 +6113,9 @@ void add_object_to_location(X86Context* context, Symbol* object, X86Location* lo
 
 void set_exclusive_object_location(X86Context* context, Symbol* object, X86Location* loc)
 {
-  for(int i = 0; i < sizeof_array(context->registers); i++)
+  for(int i = 0; i < sizeof_array(context->registers._); i++)
   {
-    delete_object_from_location(context, object, context->registers[i]);
+    delete_object_from_location(context, object, context->registers._[i]);
   }
   delete_object_from_location(context, object, &context->memory);
 
@@ -6182,19 +6182,95 @@ int x86_get_register_width(X86Location* reg)
   return width;
 }
 
+bool is_parent_register_free(X86Location* reg)
+{
+  bool is_free = true;
+
+  List* occupants = &reg->occupants;
+
+  if(occupants->count == 0)
+  {
+    if(reg->parent_loc)
+    {
+      is_free = is_parent_register_free(reg->parent_loc);
+    }
+  }
+  else
+  {
+    is_free = false;
+  }
+
+  return is_free;
+}
+
+bool is_sub_register_free(X86Location* reg)
+{
+  bool is_free = true;
+
+  List* occupants = &reg->occupants;
+
+  if(occupants->count == 0)
+  {
+    if(reg->sub_loc[0])
+    {
+      is_free = is_sub_register_free(reg->sub_loc[0]);
+    }
+
+    if(is_free && reg->sub_loc[1])
+    {
+      is_free = is_sub_register_free(reg->sub_loc[1]);
+    }
+  }
+  else
+  {
+    is_free = false;
+  }
+
+  return is_free;
+}
+
+bool is_register_free(X86Location* reg)
+{
+  bool is_free = true;
+
+  List* occupants = &reg->occupants;
+
+  if(occupants->count == 0)
+  {
+    if(reg->parent_loc)
+    {
+      is_free = is_parent_register_free(reg->parent_loc);
+    }
+
+    if(is_free && reg->sub_loc[0])
+    {
+      is_free = is_sub_register_free(reg->sub_loc[0]);
+    }
+
+    if(is_free && reg->sub_loc[1])
+    {
+      is_free = is_sub_register_free(reg->sub_loc[1]);
+    }
+  }
+  else
+  {
+    is_free = false;
+  }
+
+  return is_free;
+}
+
 X86Location* find_free_register(X86Context* context, Symbol* object)
 {
   X86Location* reg = 0;
   eX86Type x86_type = conv_object_type_to_x86_type(object->ty);
 
-  for(int i = 0; i < sizeof_array(context->registers); i++)
+  for(int i = 0; i < sizeof_array(context->registers._); i++)
   {
-    reg = context->registers[i];
+    reg = context->registers._[i];
     if(reg->type == x86_type)
     {
-      List* occupants = &reg->occupants;
-
-      if(occupants->count == 0)
+      if(is_register_free(reg))
         break;
     }
     reg = 0;
@@ -6207,9 +6283,9 @@ X86Location* lookup_object_location(X86Context* context, Symbol* object)
 {
   X86Location* loc = 0;
 
-  for(int i = 0; i < sizeof_array(context->registers); i++)
+  for(int i = 0; i < sizeof_array(context->registers._); i++)
   {
-    loc = context->registers[i];
+    loc = context->registers._[i];
     if(is_object_in_location(object, loc))
       break;
     loc = 0;
@@ -6590,9 +6666,9 @@ X86Location* find_least_used_register(X86Context* context, Symbol* exclude_objec
   X86Location* min_reg = 0;
 
   int min_count = max_int();
-  for(int i = 0; i < sizeof_array(context->registers); i++)
+  for(int i = 0; i < sizeof_array(context->registers._); i++)
   {
-    X86Location* reg = context->registers[i];
+    X86Location* reg = context->registers._[i];
     List* occupants = &reg->occupants;
 
     if(occupants->count < min_count)
@@ -6657,9 +6733,9 @@ X86Location* get_best_available_register(X86Context* context, Symbol* object, Ir
   }
   else
   {
-    for(int i = 0; i < sizeof_array(context->registers); i++)
+    for(int i = 0; i < sizeof_array(context->registers._); i++)
     {
-      best_reg = context->registers[i];
+      best_reg = context->registers._[i];
       if(register_occupants_all_in_memory(context, best_reg))
         break;
       best_reg = 0;
@@ -6728,9 +6804,9 @@ void discard_all_assign_args(X86Context* context, struct IrStmt_assign* assign, 
 
 void save_all_registers_to_memory(X86Context* context, bool free_reg)
 {
-  for(int i = 0; i < sizeof_array(context->registers); i++)
+  for(int i = 0; i < sizeof_array(context->registers._); i++)
   {
-    X86Location* reg = context->registers[i];
+    X86Location* reg = context->registers._[i];
     save_register_to_memory(context, reg, free_reg);
   }
 }
@@ -7470,7 +7546,7 @@ void x86_init_registers(X86Context* context)
   X86Location* loc = &context->eax;
   loc->kind = eX86Location_eax;
   loc->type = eX86Type_int32;
-  context->registers[register_count++] = loc;
+  context->registers._[register_count++] = loc;
   init_list(&loc->occupants, arena, eList_symbol);
 
   /* al */
@@ -7479,7 +7555,7 @@ void x86_init_registers(X86Context* context)
   sub_loc->parent_loc = loc;
   sub_loc->kind = eX86Location_al;
   sub_loc->type = eX86Type_int8;
-  context->registers[register_count++] = sub_loc;
+  context->registers._[register_count++] = sub_loc;
   init_list(&sub_loc->occupants, arena, eList_symbol);
 
   /* ah */
@@ -7488,14 +7564,14 @@ void x86_init_registers(X86Context* context)
   sub_loc->parent_loc = loc;
   sub_loc->kind = eX86Location_ah;
   sub_loc->type = eX86Type_int8;
-  context->registers[register_count++] = sub_loc;
+  context->registers._[register_count++] = sub_loc;
   init_list(&sub_loc->occupants, arena, eList_symbol);
 
   /* ebx */
   loc = &context->ebx;
   loc->kind = eX86Location_ebx;
   loc->type = eX86Type_int32;
-  context->registers[register_count++] = loc;
+  context->registers._[register_count++] = loc;
   init_list(&loc->occupants, arena, eList_symbol);
 
   /* bl */
@@ -7504,7 +7580,7 @@ void x86_init_registers(X86Context* context)
   sub_loc->parent_loc = loc;
   sub_loc->kind = eX86Location_bl;
   sub_loc->type = eX86Type_int8;
-  context->registers[register_count++] = sub_loc;
+  context->registers._[register_count++] = sub_loc;
   init_list(&sub_loc->occupants, arena, eList_symbol);
 
   /* bh */
@@ -7513,14 +7589,14 @@ void x86_init_registers(X86Context* context)
   sub_loc->parent_loc = loc;
   sub_loc->kind = eX86Location_bh;
   sub_loc->type = eX86Type_int8;
-  context->registers[register_count++] = sub_loc;
+  context->registers._[register_count++] = sub_loc;
   init_list(&sub_loc->occupants, arena, eList_symbol);
 
   /* ecx */
   loc = &context->ecx;
   loc->kind = eX86Location_ecx;
   loc->type = eX86Type_int32;
-  context->registers[register_count++] = loc;
+  context->registers._[register_count++] = loc;
   init_list(&loc->occupants, arena, eList_symbol);
 
   /* cl */
@@ -7529,7 +7605,7 @@ void x86_init_registers(X86Context* context)
   sub_loc->parent_loc = loc;
   sub_loc->kind = eX86Location_cl;
   sub_loc->type = eX86Type_int8;
-  context->registers[register_count++] = sub_loc;
+  context->registers._[register_count++] = sub_loc;
   init_list(&sub_loc->occupants, arena, eList_symbol);
 
   /* ch */
@@ -7538,14 +7614,14 @@ void x86_init_registers(X86Context* context)
   sub_loc->parent_loc = loc;
   sub_loc->kind = eX86Location_ch;
   sub_loc->type = eX86Type_int8;
-  context->registers[register_count++] = sub_loc;
+  context->registers._[register_count++] = sub_loc;
   init_list(&sub_loc->occupants, arena, eList_symbol);
 
   /* edx */
   loc = &context->edx;
   loc->kind = eX86Location_edx;
   loc->type = eX86Type_int32;
-  context->registers[register_count++] = loc;
+  context->registers._[register_count++] = loc;
   init_list(&loc->occupants, arena, eList_symbol);
 
   /* dl */
@@ -7554,7 +7630,7 @@ void x86_init_registers(X86Context* context)
   sub_loc->parent_loc = loc;
   sub_loc->kind = eX86Location_dl;
   sub_loc->type = eX86Type_int8;
-  context->registers[register_count++] = sub_loc;
+  context->registers._[register_count++] = sub_loc;
   init_list(&sub_loc->occupants, arena, eList_symbol);
 
   /* dh */
@@ -7563,21 +7639,21 @@ void x86_init_registers(X86Context* context)
   sub_loc->parent_loc = loc;
   sub_loc->kind = eX86Location_dh;
   sub_loc->type = eX86Type_int8;
-  context->registers[register_count++] = sub_loc;
+  context->registers._[register_count++] = sub_loc;
   init_list(&sub_loc->occupants, arena, eList_symbol);
 
   /* esi */
   loc = &context->esi;
   loc->kind = eX86Location_esi;
   loc->type = eX86Type_int32;
-  context->registers[register_count++] = loc;
+  context->registers._[register_count++] = loc;
   init_list(&loc->occupants, arena, eList_symbol);
 
   /* edi */
   loc = &context->edi;
   loc->kind = eX86Location_edi;
   loc->type = eX86Type_int32;
-  context->registers[register_count++] = loc;
+  context->registers._[register_count++] = loc;
   init_list(&loc->occupants, arena, eList_symbol);
 
   /* memory */

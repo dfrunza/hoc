@@ -1105,7 +1105,13 @@ typedef struct X86Context
   };
 
   X86Location memory;
-  X86Location* registers[14];
+
+  // for natvis
+  struct X86Context_registers
+  {
+    X86Location* _[14];
+  }
+  registers;
 }
 X86Context;
 

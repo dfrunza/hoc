@@ -1,13 +1,11 @@
-int i;
-char c;
+[3]char s;
 
 void startup()
 {
-  char^ p;
-  char j;
-  p = &c;
-  ^p = 'A';
-  j = ^p;
+  s[0] = 'A';
+  s[1] = 'B';
+
+  s[0] = 'C';
 }
 
 /*

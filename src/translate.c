@@ -2337,6 +2337,7 @@ bool eval_types_pointer(AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode_pointer));
   bool success = true;
+
   success = eval_types_expr(pointer->pointer.pointee);
   return success;
 }
@@ -2558,21 +2559,7 @@ bool eval_types_unr_expr(AstNode* unr_expr)
       
       case eOperator_address_of:
       {
-        if(operand->eval_ty->kind == eType_array)
-        {
-          // ptr(array(T)) = ptr(T)
-          Type* operand_ty = operand->eval_ty;
-          success = type_unif(unr_expr->eval_ty, new_pointer_type(operand_ty->array.elem));
-        }
-        else
-        {
-          success = type_unif(unr_expr->eval_ty, new_pointer_type(operand->eval_ty));
-        }
-
-        if(!success)
-        {
-          compile_error(unr_expr->src_loc, "type error (unr expr)");
-        }
+        ; // skip
       }
       break;
       
@@ -2637,21 +2624,8 @@ bool eval_types_call(AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
   bool success = true;
-  if(success = eval_types_id(call->call.expr) && eval_types_actual_args(call->call.args))
-  {
-    AstNode* proc = call->call.proc = KIND(call->call.expr, eAstNode_id)->id.decl_ast;
-    if(proc->ty->kind == eType_proc)
-    {
-      if(!type_unif(proc->ty, call->ty))
-      {
-        success = compile_error(call->src_loc, "type error (call argument types)");
-      }
-    }
-    else
-    {
-      success = compile_error(call->src_loc, "type error (call)");
-    }
-  }
+
+  success = eval_types_id(call->call.expr) && eval_types_actual_args(call->call.args);
   return success;
 }
 
@@ -2756,11 +2730,14 @@ bool eval_types_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
+
   AstNode* cond_expr = do_while->do_while.cond_expr;
   if(success = eval_types_block_stmt(do_while->do_while.body) && eval_types_expr(cond_expr))
   {
     if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+    {
       success = compile_error(cond_expr->src_loc, "bool expression was expected");
+    }
   }
   return success;
 }
@@ -2774,7 +2751,9 @@ bool eval_types_while(AstNode* while_)
   if(success = eval_types_expr(cond_expr) && eval_types_block_stmt(while_->while_.body))
   {
     if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+    {
       success = compile_error(cond_expr->src_loc, "bool expression was expected");
+    }
   }
   return success;
 }
@@ -2889,8 +2868,10 @@ bool eval_types_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
+
   success = eval_types_formal_args(proc->proc.args) && eval_types_block_stmt(proc->proc.body)
     && eval_types_type(proc->proc.ret_type);
+
   return success;
 }
 
@@ -3006,8 +2987,10 @@ bool resolve_types_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
+
   success = resolve_types_expr(bin_expr->bin_expr.left_operand) &&
     resolve_types_expr(bin_expr->bin_expr.right_operand) && resolve_types_of_node(bin_expr);
+
   return success;
 }
 
@@ -3015,7 +2998,37 @@ bool resolve_types_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
-  success = resolve_types_expr(unr_expr->unr_expr.operand) && resolve_types_of_node(unr_expr);
+
+  if(success = resolve_types_expr(unr_expr->unr_expr.operand))
+  {
+    AstNode* operand = unr_expr->unr_expr.operand;
+    eOperator op = unr_expr->unr_expr.op;
+
+    if(op == eOperator_address_of)
+    {
+      if(operand->eval_ty->kind == eType_array)
+      {
+        // ptr(array(T)) = ptr(T)
+        Type* operand_ty = operand->eval_ty;
+        success = type_unif(unr_expr->eval_ty, new_pointer_type(operand_ty->array.elem));
+      }
+      else
+      {
+        success = type_unif(unr_expr->eval_ty, new_pointer_type(operand->eval_ty));
+      }
+
+      if(!success)
+      {
+        compile_error(unr_expr->src_loc, "type error (unr expr)");
+      }
+    }
+  }
+  
+  if(success)
+  {
+    success = resolve_types_of_node(unr_expr);
+  }
+
   return success;
 }
 
@@ -3023,6 +3036,7 @@ bool resolve_types_id(AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   bool success = true;
+
   success = resolve_types_of_node(id);
   return success;
 }
@@ -3042,6 +3056,7 @@ bool resolve_types_actual_args(AstNode* args)
       arg->eval_ty = arg->actual_arg.expr->eval_ty;
     }
   }
+
   if(success)
   {
     success = resolve_types_of_node(args);
@@ -3056,11 +3071,8 @@ bool resolve_types_call(AstNode* call)
 
   bool success = true;
 
-  if(success = resolve_types_id(call->call.expr) && resolve_types_actual_args(call->call.args)
-    && resolve_types_of_node(call))
+  if(success = resolve_types_id(call->call.expr) && resolve_types_actual_args(call->call.args))
   {
-    call->call.retvar->ty = call->eval_ty;
-
     AstNode* args = call->call.args;
     for(ListItem* li = args->node_list.first;
         li;
@@ -3069,7 +3081,26 @@ bool resolve_types_call(AstNode* call)
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
       arg->actual_arg.param->ty = arg->eval_ty;
     }
+
+    AstNode* proc = call->call.proc = KIND(call->call.expr, eAstNode_id)->id.decl_ast;
+    if(proc->ty->kind == eType_proc)
+    {
+      if(!type_unif(proc->ty, call->ty))
+      {
+        success = compile_error(call->src_loc, "type error (call argument types)");
+      }
+    }
+    else
+    {
+      success = compile_error(call->src_loc, "type error (call)");
+    }
   }
+
+  if(success && (success = resolve_types_of_node(call)))
+  {
+    call->call.retvar->ty = call->eval_ty;
+  }
+
   return success;
 }
 
@@ -3110,7 +3141,7 @@ bool resolve_types_index(AstNode* index)
 
   if(success)
   {
-    resolve_types_of_node(index);
+    success = resolve_types_of_node(index);
   }
 
   return success;
@@ -3195,6 +3226,7 @@ bool resolve_types_block(AstNode* block)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = resolve_types_block_stmt(stmt);
   }
+
   if(success)
   {
     success = resolve_types_of_node(block);
@@ -3206,13 +3238,15 @@ bool resolve_types_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode_return));
   bool success = true;
+
   if(ret->ret.expr)
   {
     success = resolve_types_expr(ret->ret.expr);
   }
+
   if(success)
   {
-    resolve_types_of_node(ret);
+    success = resolve_types_of_node(ret);
   }
   return success;
 }
@@ -3227,6 +3261,7 @@ bool resolve_types_if(AstNode* if_)
     {
       success = resolve_types_block_stmt(if_->if_.else_body);
     }
+
     if(success)
     {
       success = resolve_types_of_node(if_);
@@ -3239,8 +3274,10 @@ bool resolve_types_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
+
   success = resolve_types_block_stmt(do_while->do_while.body) && resolve_types_expr(do_while->do_while.cond_expr) &&
     resolve_types_of_node(do_while);
+
   return success;
 }
 
@@ -3248,8 +3285,10 @@ bool resolve_types_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
+
   success = resolve_types_expr(while_->while_.cond_expr) && resolve_types_block_stmt(while_->while_.body) &&
     resolve_types_of_node(while_);
+
   return success;
 }
 
@@ -3260,6 +3299,7 @@ bool resolve_types_array(AstNode* array)
   
   success = resolve_types_expr(array->array.size_expr) &&
     resolve_types_type(array->array.elem_expr) && resolve_types_of_node(array);
+
   return success;
 }
 
@@ -3269,6 +3309,7 @@ bool resolve_types_pointer(AstNode* pointer)
   bool success = true;
   
   success = resolve_types_expr(pointer->pointer.pointee) && resolve_types_of_node(pointer);
+
   return success;
 }
 
@@ -3300,8 +3341,10 @@ bool resolve_types_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
+
   success = resolve_types_expr(assign->assign.dest_expr) && resolve_types_expr(assign->assign.source_expr) &&
     resolve_types_of_node(assign);
+
   return success;
 }
 
@@ -3394,12 +3437,14 @@ bool resolve_types_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
+
   if(success = resolve_types_formal_args(proc->proc.args) && resolve_types_type(proc->proc.ret_type)
      && resolve_types_block_stmt(proc->proc.body) && resolve_types_of_node(proc))
   {
     proc->proc.decl_sym->ty = proc->eval_ty;
     proc->proc.retvar->ty = proc->proc.ret_type->eval_ty;
   }
+
   return success;
 }
 
@@ -3439,6 +3484,7 @@ bool resolve_types_module(AstNode* module)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = resolve_types_module_stmt(stmt);
   }
+
   return success;
 }
 
@@ -3718,6 +3764,7 @@ bool check_types_actual_args(AstNode* args)
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = check_types_expr(arg->actual_arg.expr);
   }
+
   return success;
 }
 
@@ -3753,6 +3800,7 @@ bool check_types_assign(AstNode* assign)
   
   AstNode* dest_expr = assign->assign.dest_expr;
   AstNode* source_expr = assign->assign.source_expr;
+
   if(success = check_types_expr(dest_expr) && check_types_expr(source_expr))
   {
     if(!type_unif(dest_expr->eval_ty, source_expr->eval_ty))
@@ -3760,6 +3808,7 @@ bool check_types_assign(AstNode* assign)
       success = compile_error(assign->src_loc, "type error (assignment)");
     }
   }
+
   return success;
 }
 
@@ -3819,6 +3868,7 @@ bool check_types_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode_return));
   bool success = true;
+
   if(ret->ret.expr)
   {
     success = check_types_expr(ret->ret.expr);
@@ -3830,7 +3880,9 @@ bool check_types_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
+
   success = check_types_block_stmt(do_while->do_while.body) && check_types_expr(do_while->do_while.cond_expr);
+
   return success;
 }
 
@@ -3838,6 +3890,7 @@ bool check_types_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
+
   success = check_types_expr(while_->while_.cond_expr) && check_types_block_stmt(while_->while_.body);
   return success;
 }
@@ -3846,8 +3899,10 @@ bool check_types_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
   bool success = true;
+  
   success = check_types_expr(if_->if_.cond_expr) && check_types_block_stmt(if_->if_.body) &&
     (if_->if_.else_body ? check_types_block_stmt(if_->if_.else_body) : true);
+
   return success;
 }
 
@@ -3863,6 +3918,7 @@ bool check_types_block(AstNode* block)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = check_types_block_stmt(stmt);
   }
+
   return success;
 }
 
@@ -3949,7 +4005,9 @@ bool check_types_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
+
   success = check_types_formal_args(proc->proc.args) && check_types_block_stmt(proc->proc.body);
+
   return success;
 }
 
@@ -3988,6 +4046,7 @@ bool check_types_module(AstNode* module)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = check_types_module_stmt(stmt);
   }
+
   return success;
 }
 

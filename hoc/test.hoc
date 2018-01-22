@@ -8,6 +8,10 @@ void startup()
   B[0] = 0x4;
   B[1] = 0x5;
   p = foo();
+  []int S;
+  S = &A;
+  S[0] = 0x99;
+
 /*
   s = &"AB";
   s[0] = 'X';

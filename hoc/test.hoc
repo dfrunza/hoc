@@ -1,15 +1,24 @@
-[1]char s;
+char^ s;
+int p;
 
 void startup()
 {
-  s = "AB";
+  A[0] = 0x2;
+  A[1] = 0x3;
+  B[0] = 0x4;
+  B[1] = 0x5;
+  p = foo();
+/*
+  s = &"AB";
+  s[0] = 'X';
+  s[1] = 'Y';
+*/
 }
 
-/*
 [2]int A;
 [2]int B;
 
-void foo()
+int foo()
 {
   int prod; prod = 0;
   int i; i = 0;
@@ -19,6 +28,9 @@ void foo()
     prod = prod + A[i]*B[i];
     i = i + 1;
   }
+
+  return prod;
 }
+/*
 */
 

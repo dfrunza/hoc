@@ -1661,15 +1661,24 @@ bool set_types_array(AstNode* array)
       else
         success = compile_error(size_expr->src_loc, "array size must be an int literal");
     }
+
     if(success)
     {
       array->array.ndim = 1;
       array->array.size = size;
+
       AstNode* elem_expr = array->array.elem_expr;
       if(elem_expr->kind == eAstNode_array)
+      {
         array->array.ndim += elem_expr->array.ndim;
+      }
       
-      array->ty = array->eval_ty = new_array_type(array->array.size, array->array.ndim, array->array.elem_expr->ty);
+      array->ty = array->eval_ty = new_array_type(array->array.size, array->array.ndim, elem_expr->ty);
+
+      if(size == 0)
+      {
+        array->ty = array->eval_ty = new_pointer_type(elem_expr->ty);
+      }
     }
   }
   return success;
@@ -2469,6 +2478,7 @@ bool eval_types_id(AstNode* id)
     else
       success = compile_error(id->src_loc, "unknown id `%s`", id->id.name);
   }
+
   if(success)
   {
     AstNode* decl_ast = id->id.decl_ast;
@@ -2547,18 +2557,22 @@ bool eval_types_unr_expr(AstNode* unr_expr)
       break;
       
       case eOperator_address_of:
-      if(operand->eval_ty->kind == eType_array)
       {
-        // ptr(T) == ptr(array(T))
-        success = type_unif(unr_expr->eval_ty, new_pointer_type(operand->eval_ty->array.elem));
-      }
-      else
-      {
-        success = type_unif(unr_expr->eval_ty, new_pointer_type(operand->eval_ty));
-      }
-      if(!success)
-      {
-        compile_error(unr_expr->src_loc, "type error (unr expr)");
+        if(operand->eval_ty->kind == eType_array)
+        {
+          // ptr(array(T)) = ptr(T)
+          Type* operand_ty = operand->eval_ty;
+          success = type_unif(unr_expr->eval_ty, new_pointer_type(operand_ty->array.elem));
+        }
+        else
+        {
+          success = type_unif(unr_expr->eval_ty, new_pointer_type(operand->eval_ty));
+        }
+
+        if(!success)
+        {
+          compile_error(unr_expr->src_loc, "type error (unr expr)");
+        }
       }
       break;
       
@@ -2646,33 +2660,8 @@ bool eval_types_index(AstNode* index)
   assert(KIND(index, eAstNode_index));
   bool success = true;
   
-  AstNode* array_expr = index->index.array_expr;
-  AstNode* i_expr = index->index.i_expr;
-  
-  if(success = eval_types_expr(array_expr) && eval_types_expr(i_expr))
-  {
-    if(type_unif(i_expr->eval_ty, basic_type_int))
-    {
-      if(array_expr->eval_ty->kind == eType_array)
-      {
-        if(!type_unif(array_expr->eval_ty->array.elem, index->eval_ty))
-        {
-          success = compile_error(index->src_loc, "type error (index)");
-        }
-      }
-      else if(array_expr->eval_ty->kind == eType_typevar)
-      {
-        if(!type_unif(array_expr->eval_ty, new_array_type(0, 1, index->eval_ty)))
-        {
-          success = compile_error(index->src_loc, "type error (index)");
-        }
-      }
-      else
-        success = compile_error(index->src_loc, "type error (index)");
-    }
-    else
-      success = compile_error(index->src_loc, "type error (index)");
-  }
+  success = eval_types_expr(index->index.array_expr) && eval_types_expr(index->index.i_expr);
+
   return success;
 }
 
@@ -3088,8 +3077,42 @@ bool resolve_types_index(AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
   bool success = true;
-  success = resolve_types_expr(index->index.array_expr) && resolve_types_expr(index->index.i_expr) &&
+
+  AstNode* array_expr = index->index.array_expr;
+  AstNode* i_expr = index->index.i_expr;
+
+  if(success = resolve_types_expr(array_expr) && resolve_types_expr(i_expr))
+  {
+    if(type_unif(i_expr->eval_ty, basic_type_int))
+    {
+      Type* array_ty = array_expr->eval_ty;
+
+      if(array_ty->kind == eType_array)
+      {
+        if(!type_unif(array_ty->array.elem, index->eval_ty))
+        {
+          success = compile_error(index->src_loc, "type error (index)");
+        }
+      }
+      else if(array_ty->kind == eType_pointer)
+      {
+        if(!type_unif(array_ty->pointer.pointee, index->eval_ty))
+        {
+          success = compile_error(index->src_loc, "type error (index)");
+        }
+      }
+      else
+        success = compile_error(index->src_loc, "type error (index)");
+    }
+    else
+      success = compile_error(index->src_loc, "type error (index)");
+  }
+
+  if(success)
+  {
     resolve_types_of_node(index);
+  }
+
   return success;
 }
 
@@ -3097,8 +3120,10 @@ bool resolve_types_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
   bool success = true;
+
   success = resolve_types_type(cast->cast.to_type) && resolve_types_expr(cast->cast.from_expr) &&
     resolve_types_of_node(cast);
+
   return success;
 }
 
@@ -4547,11 +4572,22 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
   AstNode* array_expr = index->index.array_expr;
   AstNode* i_expr = index->index.i_expr;
   
+  Type* array_ty = array_expr->eval_ty;
+  if(array_ty->kind == eType_array)
+  {
+    index->index.array_ty = array_ty;
+  }
+  else if(array_ty->kind == eType_pointer)
+  {
+    index->index.array_ty = new_array_type(0, 1, array_ty->pointer.pointee);
+  }
+  else assert(0);
+
   if(array_expr->kind == eAstNode_id)
   {
     ir_gen_id(ir_context, array_expr);
     index->index.place = array_expr->place;
-    index->index.array_ty = array_expr->eval_ty;
+
     if(success = ir_gen_expr(ir_context, scope, i_expr))
     {
       index->index.i_place = i_expr->place;
@@ -4562,8 +4598,7 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
     if(success = ir_gen_index(ir_context, scope, array_expr) && ir_gen_expr(ir_context, scope, i_expr))
     {
       index->index.place = array_expr->index.place;
-      index->index.array_ty = array_expr->index.array_ty;
-      
+
       IrArg* offset = index->index.i_place = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
       Symbol* size_constant = new_const_object(ir_context->sym_arena, basic_type_int, index->src_loc);
@@ -6304,18 +6339,26 @@ bool is_register_free(X86Location* reg)
   return is_free;
 }
 
+bool object_fits_into_register(Symbol* object, X86Location* reg)
+{
+  bool result = false;
+
+  eX86Type x86_type = conv_object_type_to_x86_type(object->ty);
+  result = (x86_type == reg->type);
+
+  return result;
+}
+
 X86Location* find_free_register(X86Context* context, Symbol* object)
 {
   X86Location* reg = 0;
-  eX86Type x86_type = conv_object_type_to_x86_type(object->ty);
 
   for(int i = 0; i < sizeof_array(context->registers._); i++)
   {
     reg = context->registers._[i];
-    if(reg->type == x86_type)
+    if(is_register_free(reg) && object_fits_into_register(object, reg))
     {
-      if(is_register_free(reg))
-        break;
+      break;
     }
     reg = 0;
   }
@@ -6715,7 +6758,7 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, eX86Type x86_type)
   return x86_opcode;
 }
 
-X86Location* find_least_used_register(X86Context* context, Symbol* exclude_object)
+X86Location* find_least_used_register(X86Context* context, Symbol* object, IrStmt* stmt)
 {
   X86Location* min_reg = 0;
 
@@ -6723,18 +6766,37 @@ X86Location* find_least_used_register(X86Context* context, Symbol* exclude_objec
   for(int i = 0; i < sizeof_array(context->registers._); i++)
   {
     X86Location* reg = context->registers._[i];
-    List* occupants = &reg->occupants;
 
-    if(occupants->count < min_count)
+    if(object_fits_into_register(object, reg))
     {
-      if(exclude_object && is_object_in_location(exclude_object, reg))
+      List* occupants = &reg->occupants;
+
+      if(occupants->count < min_count)
       {
-        ;//skip
-      }
-      else
-      {
-        min_reg = reg;
-        min_count = occupants->count;
+        bool exclude = false;
+
+        if(stmt->kind == eIrStmt_assign)
+        {
+          IrArg* result = stmt->assign.result;
+          IrArg* arg1 = stmt->assign.arg1;
+          IrArg* arg2 = stmt->assign.arg2;
+
+          exclude = is_object_in_location(result->object, reg) || is_object_in_location(arg1->object, reg)
+            || (arg2 && is_object_in_location(arg2->object, reg));
+        }
+        else if(stmt->kind == eIrStmt_cond_goto)
+        {
+          IrArg* arg1 = stmt->assign.arg1;
+          IrArg* arg2 = stmt->assign.arg2;
+
+          exclude = is_object_in_location(arg1->object, reg) || is_object_in_location(arg2->object, reg);
+        }
+
+        if(!exclude)
+        {
+          min_reg = reg;
+          min_count = occupants->count;
+        }
       }
     }
   }
@@ -6787,13 +6849,15 @@ X86Location* get_best_available_register(X86Context* context, Symbol* object, Ir
   }
   else
   {
+#if 0
     for(int i = 0; i < sizeof_array(context->registers._); i++)
     {
       best_reg = context->registers._[i];
-      if(register_occupants_all_in_memory(context, best_reg))
+      if(object_fits_into_register(object, best_reg) && register_occupants_all_in_memory(context, best_reg))
         break;
       best_reg = 0;
     }
+#endif
 
     if(best_reg)
     {
@@ -6801,34 +6865,8 @@ X86Location* get_best_available_register(X86Context* context, Symbol* object, Ir
     }
     else
     {
-      if(stmt->kind == eIrStmt_assign)
-      {
-        struct IrStmt_assign* assign = &stmt->assign;
-
-        X86Location* result_loc = lookup_object_location(context, assign->result->object);
-        if(is_register_location(result_loc)
-           && is_single_occupant_register(context, result_loc, assign->result->object))
-        {
-          best_reg = result_loc;
-        }
-        else
-        {
-          Symbol* exclude_object = 0;
-          if(assign->arg2)
-          {
-            exclude_object = assign->arg2->object;
-          }
-
-          best_reg = find_least_used_register(context, exclude_object);
-          save_register_to_memory(context, best_reg, true);
-        }
-      }
-      else if(stmt->kind == eIrStmt_cond_goto)
-      {
-        best_reg = find_least_used_register(context, 0);
-        save_register_to_memory(context, best_reg, true);
-      }
-      else assert(0);
+      best_reg = find_least_used_register(context, object, stmt);
+      save_register_to_memory(context, best_reg, true);
     }
   }
 
@@ -7187,6 +7225,7 @@ void x86_gen_assign_index_dest(X86Context* context, IrStmt* ir_stmt)
   if(!is_register_location(arg1_loc))
   {
     arg1_loc = get_best_available_register(context, arg1->object, ir_stmt);
+    assert(arg1_loc != result_loc);
     x86_load_object_into_register(context, arg1_loc, &context->memory, arg1->object);
     add_object_to_location(context, arg1->object, arg1_loc);
   }
@@ -7195,6 +7234,7 @@ void x86_gen_assign_index_dest(X86Context* context, IrStmt* ir_stmt)
   if(!is_register_location(arg2_loc))
   {
     arg2_loc = get_best_available_register(context, arg2->object, ir_stmt);
+    assert(arg2_loc != result_loc && arg2_loc != arg1_loc);
     x86_load_object_into_register(context, arg2_loc, &context->memory, arg2->object);
     add_object_to_location(context, arg2->object, arg2_loc);
   }

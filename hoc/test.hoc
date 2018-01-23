@@ -1,19 +1,20 @@
-char^ s;
+char^ p_s;
 int p;
 
 void startup()
 {
-  s = &"AB";
-  s[0] = 'X';
-  s[1] = 'Y';
-/*
-*/
+  A[0] = 0x2;
+  A[1] = 0x5;
+  B[0] = 0x7;
+  B[1] = 0x9;
+
+  int r;
+  r = foo();
 }
 
-[4]int A;
+[2]int A;
 [2]int B;
 
-/*
 int foo()
 {
   int prod; prod = 0;
@@ -27,5 +28,6 @@ int foo()
 
   return prod;
 }
+/*
 */
 

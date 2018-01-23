@@ -1063,7 +1063,7 @@ typedef struct Symbol
   // for natvis
   struct Symbol_locations
   {
-    bool _[eX86Location_Count];
+    X86Location* _[eX86Location_Count];
   }
   locations;
 }

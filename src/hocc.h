@@ -522,7 +522,6 @@ typedef struct IrLabel
 IrLabel;
 
 typedef int NextUse;
-global_var NextUse NextUse_None = -1;
 
 typedef enum
 {
@@ -531,15 +530,6 @@ typedef enum
   eIrArg_constant,
 }
 eIrArg;
-
-typedef enum
-{
-  eX86Type_None,
-  eX86Type_int8,
-  eX86Type_int32,
-  eX86Type_float32,
-}
-eX86Type;
 
 typedef enum
 {
@@ -572,7 +562,7 @@ eX86Location;
 typedef struct X86Location
 {
   eX86Location kind;
-  eX86Type type;
+  Type* type;
 
   struct X86Location* parent_loc;
   struct X86Location* sub_loc[2];
@@ -665,9 +655,17 @@ typedef enum
   eX86Operand_register,
   eX86Operand_memory,
   eX86Operand_address,
-  eX86Operand_indexed,
 }
 eX86Operand;
+
+typedef enum
+{
+  eX86Constant_None,
+  eX86Constant_int,
+  eX86Constant_float,
+  eX86Constant_char,
+}
+eX86Constant;
 
 typedef struct X86Operand
 {
@@ -676,22 +674,28 @@ typedef struct X86Operand
   union
   {
     char* id;
-    int constant;
     X86Location* reg;
 
-    struct X86Operand_memory
+    struct X86Operand_index
     {
-      struct X86Operand* base;
-      int offset;
-    }
-    memory;
-
-    struct X86Operand_indexed
-    {
+      Type* type;
       struct X86Operand* base;
       struct X86Operand* offset;
     }
-    indexed;
+    index;
+
+    struct X86Operand_constant
+    {
+      eX86Constant kind;
+
+      union
+      {
+        int int_val;
+        float float_val;
+        char char_val;
+      };
+    }
+    constant;
   };
 }
 X86Operand;
@@ -731,7 +735,7 @@ eX86StmtOpcode;
 typedef struct X86Stmt
 {
   eX86StmtOpcode opcode;
-  eX86Type type;
+//  eX86Type type;
   X86Operand* operand1;
   X86Operand* operand2;
 }

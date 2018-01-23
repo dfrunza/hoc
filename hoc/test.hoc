@@ -3,25 +3,17 @@ int p;
 
 void startup()
 {
-  A[0] = 0x2;
-  A[1] = 0x3;
-  B[0] = 0x4;
-  B[1] = 0x5;
-  p = foo();
-  []int S;
-  S = &A;
-  S[0] = 0x99;
-
-/*
   s = &"AB";
   s[0] = 'X';
   s[1] = 'Y';
+/*
 */
 }
 
-[2]int A;
+[4]int A;
 [2]int B;
 
+/*
 int foo()
 {
   int prod; prod = 0;
@@ -35,6 +27,5 @@ int foo()
 
   return prod;
 }
-/*
 */
 

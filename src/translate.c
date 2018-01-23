@@ -63,39 +63,27 @@ char* get_operator_printstr(eOperator op)
   switch(op)
   {
     case eOperator_add:
-    {
       str = "+";
-    }
     break;
     
     case eOperator_sub:
-    {
       str = "-";
-    }
     break;
     
     case eOperator_mul:
-    {
       str = "*";
-    }
     break;
     
     case eOperator_div:
-    {
       str = "/";
-    }
     break;
     
     case eOperator_mod:
-    {
       str = "mod";
-    }
     break;
     
     case eOperator_neg:
-    {
       str = "-";
-    }
     break;
     
     case eOperator_deref:
@@ -106,21 +94,15 @@ char* get_operator_printstr(eOperator op)
     break;
     
     case eOperator_address_of:
-    {
       str = "&";
-    }
     break;
     
     case eOperator_selector:
-    {
       str = ".";
-    }
     break;
     
     case eOperator_indirect_selector:
-    {
       str = "->";
-    }
     break;
 #if 0
     case eOperator_pre_decr:
@@ -134,81 +116,55 @@ char* get_operator_printstr(eOperator op)
     break;
 #endif
     case eOperator_eq:
-    {
       str = "==";
-    }
     break;
     
     case eOperator_not_eq:
-    {
       str = "<>";
-    }
     break;
     
     case eOperator_less:
-    {
       str = "<";
-    }
     break;
     
     case eOperator_less_eq:
-    {
       str = "<=";
-    }
     break;
     
     case eOperator_greater:
-    {
       str = ">";
-    }
     break;
     
     case eOperator_greater_eq:
-    {
       str = ">=";
-    }
     break;
     
     case eOperator_logic_and:
-    {
       str = "and";
-    }
     break;
     
     case eOperator_logic_or:
-    {
       str = "or";
-    }
     break;
     
     case eOperator_logic_not:
-    {
       str = "not";
-    }
     break;
     
     case eOperator_bit_and:
-    {
       str = "&";
-    }
     break;
     
     case eOperator_bit_or:
-    {
       str = "|";
-    }
     break;
     
     case eOperator_bit_xor:
-    {
       str = "~";
-    }
     break;
     
     case eOperator_bit_not:
-    {
       str = "!";
-    }
     break;
   }
   return str;
@@ -216,61 +172,77 @@ char* get_operator_printstr(eOperator op)
 
 void make_type_printstr(String* str, Type* type)
 {
-  if(type->kind == eType_basic)
+  switch(type->kind)
   {
-    if(type->basic.kind == eBasicType_bool)
-      str_append(str, "bool");
-    else if(type->basic.kind == eBasicType_int)
-      str_append(str, "int");
-    else if(type->basic.kind == eBasicType_float)
-      str_append(str, "float");
-    else if(type->basic.kind == eBasicType_char)
-      str_append(str, "char");
-    else if(type->basic.kind == eBasicType_void)
-      str_append(str, "void");
-    else if(type->basic.kind == eBasicType_auto)
-      str_append(str, "auto");
-    else
-      assert(0);
+    case eType_basic:
+    {
+      if(type->basic.kind == eBasicType_bool)
+        str_append(str, "bool");
+      else if(type->basic.kind == eBasicType_int)
+        str_append(str, "int");
+      else if(type->basic.kind == eBasicType_float)
+        str_append(str, "float");
+      else if(type->basic.kind == eBasicType_char)
+        str_append(str, "char");
+      else if(type->basic.kind == eBasicType_void)
+        str_append(str, "void");
+      else if(type->basic.kind == eBasicType_auto)
+        str_append(str, "auto");
+      else
+        assert(0);
+    }
+    break;
+
+    case eType_pointer:
+    {
+      make_type_printstr(str, type->pointer.pointee);
+      str_append(str, "^");
+    }
+    break;
+
+    case eType_array:
+    {
+      str_append(str, "(");
+      if(type->array.size >= 0)
+        str_printf(str, "[%d]", type->array.size);
+      else
+        str_append(str, "[]");
+      make_type_printstr(str, type->array.elem);
+      str_append(str, ")");
+    }
+    break;
+
+    case eType_product:
+    {
+      make_type_printstr(str, type->product.left);
+      str_append(str, ", ");
+      make_type_printstr(str, type->product.right);
+    }
+    break;
+
+    case eType_proc:
+    {
+      make_type_printstr(str, type->proc.ret);
+      str_append(str, " (");
+      make_type_printstr(str, type->proc.args);
+      str_append(str, ")");
+    }
+    break;
+
+    case eType_var:
+    {
+      make_type_printstr(str, type->var.type);
+    }
+    break;
+
+    case eType_typevar:
+    {
+      str_printf(str, "type_%d", type->typevar.id);
+    }
+    break;
+
+    default: assert(0);
   }
-  else if(type->kind == eType_pointer)
-  {
-    make_type_printstr(str, type->pointer.pointee);
-    str_append(str, "^");
-  }
-  else if(type->kind == eType_array)
-  {
-    str_append(str, "(");
-    if(type->array.size >= 0)
-      str_printf(str, "[%d]", type->array.size);
-    else
-      str_append(str, "[]");
-    make_type_printstr(str, type->array.elem);
-    str_append(str, ")");
-  }
-  else if(type->kind == eType_product)
-  {
-    make_type_printstr(str, type->product.left);
-    str_append(str, ", ");
-    make_type_printstr(str, type->product.right);
-  }
-  else if(type->kind == eType_proc)
-  {
-    make_type_printstr(str, type->proc.ret);
-    str_append(str, " (");
-    make_type_printstr(str, type->proc.args);
-    str_append(str, ")");
-  }
-  else if(type->kind == eType_var)
-  {
-    make_type_printstr(str, type->var.type);
-  }
-  else if(type->kind == eType_typevar)
-  {
-    str_printf(str, "type_%d", type->typevar.id);
-  }
-  else
-    assert(0);
 }
 
 #if 0/*>>>*/
@@ -370,6 +342,7 @@ Type* new_var_type(Type* var_type)
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_var;
   type->var.type = var_type;
+
   return type;
 }
 
@@ -378,6 +351,7 @@ Type* new_basic_type(eBasicType kind)
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_basic;
   type->basic.kind = kind;
+  
   return type;
 }
 
@@ -387,6 +361,7 @@ Type* new_proc_type(Type* args, Type* ret)
   type->kind = eType_proc;
   type->proc.args = args;
   type->proc.ret = ret;
+
   return type;
 }
 
@@ -395,6 +370,7 @@ Type* new_typevar()
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_typevar;
   type->typevar.id = typevar_id++;
+
   return type;
 }
 
@@ -404,6 +380,7 @@ Type* new_product_type(Type* left, Type* right)
   type->kind = eType_product;
   type->product.left = left;
   type->product.right = right;
+
   return type;
 }
 
@@ -414,6 +391,7 @@ Type* new_array_type(int size, int ndim, Type* elem)
   type->array.size = size;
   type->array.ndim = ndim;
   type->array.elem = elem;
+
   return type;
 }
 
@@ -422,6 +400,7 @@ Type* new_pointer_type(Type* pointee)
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_pointer;
   type->pointer.pointee = pointee;
+
   return type;
 }
 
@@ -439,6 +418,7 @@ int size_of_array_dim(Type* array_ty, int dim)
     assert(KIND(ty, eType_array));
     size = ty->array.size;
   }
+
   return size;
 }
 
@@ -451,6 +431,7 @@ int array_elem_width(Type* array_ty)
   {
     ty = ty->array.elem;
   }
+
   return ty->width;
 }
 
@@ -577,6 +558,7 @@ Type* copy_type(Type* type)
 {
   Type* copy = mem_push_struct(arena, Type);
   *copy = *type;
+
   return copy;
 }
 
@@ -588,6 +570,7 @@ Type* get_type_repr(Type* type)
     type = type->repr_type;
     result = type;
   }
+
   return result;
 }
 
@@ -683,6 +666,7 @@ TypePair* new_type_pair(Type* key, Type* value)
   TypePair* pair = mem_push_struct(arena, TypePair);
   pair->key = key;
   pair->value = value;
+
   return pair;
 }
 
@@ -700,6 +684,7 @@ TypePair* find_pair(List* subst_list, Type* type)
       break;
     }
   }
+
   return result;
 }
 
@@ -763,6 +748,7 @@ Type* type_subst(List* subst_list, Type* type)
       default: assert(0);
     }
   }
+
   return subst;
 }
 
@@ -828,6 +814,7 @@ bool resolve_type(Type* type, Type** resolved_type)
   {
     *resolved_type = type;
   }
+
   return success;
 }
 
@@ -835,6 +822,7 @@ char* get_type_printstr(Type* type)
 {
   String str; str_init(&str, arena);
   make_type_printstr(&str, type);
+
   return str_cap(&str);
 }
 
@@ -847,6 +835,7 @@ Scope* find_scope(Scope* active_scope, eScope kind)
       break;
     scope = scope->encl_scope;
   }
+
   return scope;
 }
 
@@ -864,6 +853,7 @@ Symbol* lookup_sym(char* name, List* symbols)
     }
     li = li->prev;
   }
+
   return result;
 }
 
@@ -875,6 +865,7 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
     result = lookup_sym(name, &scope->decl_syms);
     scope = scope->encl_scope;
   }
+
   return result;
 }
 
@@ -887,6 +878,14 @@ void alloc_data_object(Symbol* sym, Scope* scope, int alignment)
     sym->allocd_size = (sym->allocd_size + alignment) & ~(alignment-1);
   }
   scope->allocd_size += sym->allocd_size;
+}
+
+void init_object_locations(Symbol* object)
+{
+  for(int i = 0; i < sizeof_array(object->locations._); i++)
+  {
+    object->locations._[i] = 0;
+  }
 }
 
 Symbol* new_temp_object(MemoryArena* arena, Scope* scope, Type* ty, SourceLoc* src_loc, int alignment)
@@ -902,6 +901,7 @@ Symbol* new_temp_object(MemoryArena* arena, Scope* scope, Type* ty, SourceLoc* s
   sym->next_use = NextUse_None;
   sym->is_temp = true;
   sym->is_live = false;
+  init_object_locations(sym);
 
   alloc_data_object(sym, scope, alignment);
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
@@ -923,6 +923,7 @@ Symbol* new_str_object(MemoryArena* arena, Type* ty, Scope* scope, SourceLoc* sr
   sym->next_use = NextUse_None;
   sym->is_temp = false;
   sym->is_live = false;
+  init_object_locations(sym);
 
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
 
@@ -943,6 +944,7 @@ Symbol* new_const_object(MemoryArena* arena, Type* ty, SourceLoc* src_loc)
   sym->next_use = NextUse_None;
   sym->is_temp = false;
   sym->is_live = false;
+  init_object_locations(sym);
 
   return sym;
 }
@@ -961,45 +963,46 @@ Symbol* add_decl_sym(MemoryArena* arena, char* name, eStorageSpace storage_space
   sym->next_use = NextUse_None;
   sym->is_temp = false;
   sym->is_live = true;
+  init_object_locations(sym);
 
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
 
   return sym;
 }
 
-Scope* begin_scope(SymbolContext* sym_context, eScope kind, AstNode* ast_node)
+Scope* begin_scope(SymbolContext* context, eScope kind, AstNode* ast_node)
 {
-  Scope* scope = mem_push_struct(sym_context->arena, Scope);
+  Scope* scope = mem_push_struct(context->sym_arena, Scope);
 
   scope->kind = kind;
-  scope->nesting_depth = sym_context->nesting_depth;
+  scope->nesting_depth = context->nesting_depth;
   scope->sym_count = 0;
   scope->allocd_size = 0;
-  scope->encl_scope = sym_context->active_scope;
+  scope->encl_scope = context->active_scope;
   scope->ast_node = ast_node;
   init_list(&scope->decl_syms, arena, eList_symbol);
-  sym_context->active_scope = scope;
-  append_list_elem(&sym_context->scopes, scope, eList_scope);
+  context->active_scope = scope;
+  append_list_elem(&context->scopes, scope, eList_scope);
 
   return scope;
 }
 
-void end_scope(SymbolContext* sym_context)
+void end_scope(SymbolContext* context)
 {
-  Scope* scope = sym_context->active_scope;
-  sym_context->active_scope = scope->encl_scope;
+  Scope* scope = context->active_scope;
+  context->active_scope = scope->encl_scope;
 }
 
-Scope* begin_nested_scope(SymbolContext* sym_context, eScope kind, AstNode* ast_node)
+Scope* begin_nested_scope(SymbolContext* context, eScope kind, AstNode* ast_node)
 {
-  sym_context->nesting_depth++;
-  return begin_scope(sym_context, kind, ast_node);
+  context->nesting_depth++;
+  return begin_scope(context, kind, ast_node);
 }
 
-void end_nested_scope(SymbolContext* sym_context)
+void end_nested_scope(SymbolContext* context)
 {
-  end_scope(sym_context);
-  sym_context->nesting_depth--;
+  end_scope(context);
+  context->nesting_depth--;
 }
 
 
@@ -1024,9 +1027,9 @@ void process_includes(List* include_list, List* module_list, ListItem* module_li
 }
 #endif
 
-bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr);
+bool sym_expr(SymbolContext* context, AstNode* block, AstNode* expr);
 
-bool sym_formal_arg(SymbolContext* sym_context, Scope* proc_scope, AstNode* arg)
+bool sym_formal_arg(SymbolContext* context, Scope* proc_scope, AstNode* arg)
 {
   assert(KIND(arg, eAstNode_var));
   bool success = true;
@@ -1039,34 +1042,36 @@ bool sym_formal_arg(SymbolContext* sym_context, Scope* proc_scope, AstNode* arg)
   }
   else
   {
-    arg->var.decl_sym = add_decl_sym(sym_context->arena, arg->var.name,
+    arg->var.decl_sym = add_decl_sym(context->sym_arena, arg->var.name,
                                      eStorageSpace_arg, proc_scope, arg);
   }
+
   return success;
 }
 
-bool sym_var(SymbolContext* sym_context, AstNode* block, AstNode* var)
+bool sym_var(SymbolContext* context, AstNode* block, AstNode* var)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
-  Symbol* decl_sym = lookup_decl_sym(var->var.name, sym_context->active_scope);
-  Scope* arg_scope = find_scope(sym_context->active_scope, eScope_args);
-  if(decl_sym && (decl_sym->scope == sym_context->active_scope || decl_sym->scope == arg_scope))
+  Symbol* decl_sym = lookup_decl_sym(var->var.name, context->active_scope);
+  Scope* arg_scope = find_scope(context->active_scope, eScope_args);
+  if(decl_sym && (decl_sym->scope == context->active_scope || decl_sym->scope == arg_scope))
   {
     success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
     compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
   }
   else
   {
-    var->var.decl_sym = add_decl_sym(sym_context->arena, var->var.name,
-                                     eStorageSpace_local, sym_context->active_scope, var);
+    var->var.decl_sym = add_decl_sym(context->sym_arena, var->var.name,
+                                     eStorageSpace_local, context->active_scope, var);
   }
+
   return success;
 }
 
-bool sym_lit(SymbolContext* sym_context, AstNode* block, AstNode* lit)
+bool sym_lit(SymbolContext* context, AstNode* block, AstNode* lit)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(lit, eAstNode_lit));
@@ -1079,7 +1084,7 @@ bool sym_lit(SymbolContext* sym_context, AstNode* block, AstNode* lit)
     case eLiteral_bool:
     case eLiteral_char:
     {
-      Symbol* constant = lit->lit.constant = new_const_object(sym_context->arena, lit->eval_ty, lit->src_loc);
+      Symbol* constant = lit->lit.constant = new_const_object(context->sym_arena, lit->eval_ty, lit->src_loc);
 
       switch(lit->lit.kind)
       {
@@ -1106,8 +1111,8 @@ bool sym_lit(SymbolContext* sym_context, AstNode* block, AstNode* lit)
 
     case eLiteral_str:
     {
-      Scope* module_scope = find_scope(sym_context->active_scope, eScope_module);
-      Symbol* constant = lit->lit.constant = new_str_object(sym_context->arena, lit->eval_ty, module_scope, lit->src_loc);
+      Scope* module_scope = find_scope(context->active_scope, eScope_module);
+      Symbol* constant = lit->lit.constant = new_str_object(context->sym_arena, lit->eval_ty, module_scope, lit->src_loc);
 
       constant->str_val = lit->lit.str_val;
       constant->data = constant->str_val;
@@ -1120,40 +1125,43 @@ bool sym_lit(SymbolContext* sym_context, AstNode* block, AstNode* lit)
   return success;
 }
 
-bool sym_id(SymbolContext* sym_context, AstNode* block, AstNode* id)
+bool sym_id(SymbolContext* context, AstNode* block, AstNode* id)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(id, eAstNode_id));
   bool success = true;
 
-  Scope* scope = sym_context->active_scope;
+  Scope* scope = context->active_scope;
   id->id.scope = scope;
   id->id.order_nr = scope->sym_count++;
 
   return success;
 }
 
-bool sym_bin_expr(SymbolContext* sym_context, AstNode* block, AstNode* bin_expr)
+bool sym_bin_expr(SymbolContext* context, AstNode* block, AstNode* bin_expr)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
   
-  success = sym_expr(sym_context, block, bin_expr->bin_expr.left_operand)
-    && sym_expr(sym_context, block, bin_expr->bin_expr.right_operand);
+  success = sym_expr(context, block, bin_expr->bin_expr.left_operand)
+    && sym_expr(context, block, bin_expr->bin_expr.right_operand);
+
   return success;
 }
 
-bool sym_unr_expr(SymbolContext* sym_context, AstNode* block, AstNode* unr_expr)
+bool sym_unr_expr(SymbolContext* context, AstNode* block, AstNode* unr_expr)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(unr_expr, eAstNode_unr_expr));
+
   bool success = true;
-  success = sym_expr(sym_context, block, unr_expr->unr_expr.operand);
+  success = sym_expr(context, block, unr_expr->unr_expr.operand);
+
   return success;
 }
 
-bool sym_actual_args(SymbolContext* sym_context, AstNode* block, AstNode* args)
+bool sym_actual_args(SymbolContext* context, AstNode* block, AstNode* args)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(args, eAstNode_node_list));
@@ -1164,12 +1172,13 @@ bool sym_actual_args(SymbolContext* sym_context, AstNode* block, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = sym_expr(sym_context, block, arg->actual_arg.expr);
+    success = sym_expr(context, block, arg->actual_arg.expr);
   }
+
   return success;
 }
 
-bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
+bool sym_call(SymbolContext* context, AstNode* block, AstNode* call)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(call, eAstNode_call));
@@ -1180,10 +1189,10 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
 
   if(call_expr->kind == eAstNode_id)
   {
-    if(success = sym_id(sym_context, block, call_expr) && sym_actual_args(sym_context, block, args))
+    if(success = sym_id(context, block, call_expr) && sym_actual_args(context, block, args))
     {
-      call->call.param_scope = begin_scope(sym_context, eScope_params, call);
-      call->call.retvar = add_decl_sym(sym_context->arena, new_tempvar_name("ret_"),
+      call->call.param_scope = begin_scope(context, eScope_params, call);
+      call->call.retvar = add_decl_sym(context->sym_arena, new_tempvar_name("ret_"),
                                        eStorageSpace_param, call->call.param_scope, call);
 
       for(ListItem* li = args->node_list.first;
@@ -1191,21 +1200,22 @@ bool sym_call(SymbolContext* sym_context, AstNode* block, AstNode* call)
           li = li->next)
       {
         AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-        arg->actual_arg.param = add_decl_sym(sym_context->arena, new_tempvar_name("param_"),
+        arg->actual_arg.param = add_decl_sym(context->sym_arena, new_tempvar_name("param_"),
                                              eStorageSpace_param, call->call.param_scope, arg);
       }
 
-      end_scope(sym_context);
+      end_scope(context);
     }
   }
   else
   {
     success = compile_error(call_expr->src_loc, "unsupported call expression");
   }
+
   return success;
 }
 
-bool sym_index(SymbolContext* sym_context, AstNode* block, AstNode* index)
+bool sym_index(SymbolContext* context, AstNode* block, AstNode* index)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(index, eAstNode_index));
@@ -1214,24 +1224,25 @@ bool sym_index(SymbolContext* sym_context, AstNode* block, AstNode* index)
   AstNode* array_expr = index->index.array_expr;
   if(array_expr->kind == eAstNode_id || array_expr->kind == eAstNode_index)
   {
-    success = sym_expr(sym_context, block, array_expr) && sym_expr(sym_context, block, index->index.i_expr);
+    success = sym_expr(context, block, array_expr) && sym_expr(context, block, index->index.i_expr);
   }
   else
     success = compile_error(array_expr->src_loc, "unsupported index expr");
+
   return success;
 }
 
-bool sym_cast(SymbolContext* sym_context, AstNode* block, AstNode* cast)
+bool sym_cast(SymbolContext* context, AstNode* block, AstNode* cast)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(cast, eAstNode_cast));
 
   bool success = true;
-  success = sym_expr(sym_context, block, cast->cast.to_type) && sym_expr(sym_context, block, cast->cast.from_expr);
+  success = sym_expr(context, block, cast->cast.to_type) && sym_expr(context, block, cast->cast.from_expr);
   return success;
 }
 
-bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
+bool sym_expr(SymbolContext* context, AstNode* block, AstNode* expr)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -1240,31 +1251,31 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
   {
     case eAstNode_cast:
     {
-      success = sym_cast(sym_context, block, expr);
+      success = sym_cast(context, block, expr);
     }
     break;
     
     case eAstNode_bin_expr:
     {
-      success = sym_bin_expr(sym_context, block, expr);
+      success = sym_bin_expr(context, block, expr);
     }
     break;
     
     case eAstNode_unr_expr:
     {
-      success = sym_unr_expr(sym_context, block, expr);
+      success = sym_unr_expr(context, block, expr);
     }
     break;
     
     case eAstNode_id:
     {
-      success = sym_id(sym_context, block, expr);
+      success = sym_id(context, block, expr);
     }
     break;
     
     case eAstNode_call:
     {
-      success = sym_call(sym_context, block, expr);
+      success = sym_call(context, block, expr);
     }
     break;
     
@@ -1275,13 +1286,13 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
 
     case eAstNode_lit:
     {
-      success = sym_lit(sym_context, block, expr);
+      success = sym_lit(context, block, expr);
     }
     break;
     
     case eAstNode_index:
     {
-      success = sym_index(sym_context, block, expr);
+      success = sym_index(context, block, expr);
     }
     break;
 
@@ -1290,60 +1301,61 @@ bool sym_expr(SymbolContext* sym_context, AstNode* block, AstNode* expr)
   return success;
 }
 
-bool sym_block(SymbolContext* sym_context, AstNode* block);
-bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt);
+bool sym_block(SymbolContext* context, AstNode* block);
+bool sym_block_stmt(SymbolContext* context, AstNode* block, AstNode* stmt);
 
-bool sym_if(SymbolContext* sym_context, AstNode* block, AstNode* if_)
+bool sym_if(SymbolContext* context, AstNode* block, AstNode* if_)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(if_, eAstNode_if));
   bool success = true;
   
-  if(success = sym_expr(sym_context, block, if_->if_.cond_expr) && sym_block_stmt(sym_context, block, if_->if_.body))
+  if(success = sym_expr(context, block, if_->if_.cond_expr) && sym_block_stmt(context, block, if_->if_.body))
   {
     if(success && if_->if_.else_body)
     {
-      success = sym_block_stmt(sym_context, block, if_->if_.else_body);
+      success = sym_block_stmt(context, block, if_->if_.else_body);
     }
   }
+
   return success;
 }
 
-bool sym_do_while(SymbolContext* sym_context, AstNode* block, AstNode* do_while)
+bool sym_do_while(SymbolContext* context, AstNode* block, AstNode* do_while)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
-  do_while->do_while.scope = begin_nested_scope(sym_context, eScope_while, do_while);
-  success = sym_block_stmt(sym_context, block, do_while->do_while.body) &&
-    sym_expr(sym_context, block, do_while->do_while.cond_expr);
-  end_nested_scope(sym_context);
+  do_while->do_while.scope = begin_nested_scope(context, eScope_while, do_while);
+  success = sym_block_stmt(context, block, do_while->do_while.body) &&
+    sym_expr(context, block, do_while->do_while.cond_expr);
+  end_nested_scope(context);
 
   return success;
 }
 
-bool sym_while(SymbolContext* sym_context, AstNode* block, AstNode* while_)
+bool sym_while(SymbolContext* context, AstNode* block, AstNode* while_)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(while_, eAstNode_while));
   bool success = true;
   
-  if(success = sym_expr(sym_context, block, while_->while_.cond_expr))
+  if(success = sym_expr(context, block, while_->while_.cond_expr))
   {
-    while_->while_.scope = begin_nested_scope(sym_context, eScope_while, while_);
-    success = sym_block_stmt(sym_context, block, while_->while_.body);
-    end_nested_scope(sym_context);
+    while_->while_.scope = begin_nested_scope(context, eScope_while, while_);
+    success = sym_block_stmt(context, block, while_->while_.body);
+    end_nested_scope(context);
   }
   return success;
 }
 
-bool sym_loop_ctrl(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
+bool sym_loop_ctrl(SymbolContext* context, AstNode* block, AstNode* stmt)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
   
-  Scope* loop_scope = find_scope(sym_context->active_scope, eScope_while);
+  Scope* loop_scope = find_scope(context->active_scope, eScope_while);
   if(loop_scope)
   {
     stmt->loop_ctrl.loop = loop_scope->ast_node;
@@ -1357,18 +1369,20 @@ bool sym_loop_ctrl(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
       keyword = "continue";
     else
       assert(0);
+
     success = compile_error(stmt->src_loc, "unexpected `%s`", keyword);
   }
+
   return success;
 }
 
-bool sym_return(SymbolContext* sym_context, AstNode* block, AstNode* ret)
+bool sym_return(SymbolContext* context, AstNode* block, AstNode* ret)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(ret, eAstNode_return));
   bool success = true;
   
-  Scope* proc_scope = find_scope(sym_context->active_scope, eScope_proc);
+  Scope* proc_scope = find_scope(context->active_scope, eScope_proc);
   if(proc_scope)
   {
     assert(KIND(proc_scope->ast_node, eAstNode_proc));
@@ -1376,25 +1390,27 @@ bool sym_return(SymbolContext* sym_context, AstNode* block, AstNode* ret)
     ret->ret.proc = proc_scope->ast_node;
     if(ret->ret.expr)
     {
-      success = sym_expr(sym_context, block, ret->ret.expr);
+      success = sym_expr(context, block, ret->ret.expr);
     }
   }
   else
     success = compile_error(ret->src_loc, "unexpected `return`");
+
   return success;
 }
 
-bool sym_assign(SymbolContext* sym_context, AstNode* block, AstNode* assign)
+bool sym_assign(SymbolContext* context, AstNode* block, AstNode* assign)
 {
   assert(KIND(block, eAstNode_block));
   assert(KIND(assign, eAstNode_assign));
+
   bool success = true;
+  success = sym_expr(context, block, assign->assign.dest_expr) && sym_expr(context, block, assign->assign.source_expr);
   
-  success = sym_expr(sym_context, block, assign->assign.dest_expr) && sym_expr(sym_context, block, assign->assign.source_expr);
   return success;
 }
 
-bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
+bool sym_block_stmt(SymbolContext* context, AstNode* block, AstNode* stmt)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -1403,45 +1419,45 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
   {
     case eAstNode_var:
     {
-      success = sym_var(sym_context, block, stmt);
+      success = sym_var(context, block, stmt);
     }
     break;
     
     case eAstNode_if:
     {
-      success = sym_if(sym_context, block, stmt);
+      success = sym_if(context, block, stmt);
     }
     break;
     
     case eAstNode_do_while:
     {
-      success = sym_do_while(sym_context, block, stmt);
+      success = sym_do_while(context, block, stmt);
     }
     break;
     
     case eAstNode_while:
     {
-      success = sym_while(sym_context, block, stmt);
+      success = sym_while(context, block, stmt);
     }
     break;
     
     case eAstNode_block:
     {
-      stmt->block.scope = begin_nested_scope(sym_context, eScope_block, stmt);
-      success = sym_block(sym_context, stmt);
-      end_nested_scope(sym_context);
+      stmt->block.scope = begin_nested_scope(context, eScope_block, stmt);
+      success = sym_block(context, stmt);
+      end_nested_scope(context);
     }
     break;
     
     case eAstNode_assign:
     {
-      success = sym_assign(sym_context, block, stmt);
+      success = sym_assign(context, block, stmt);
     }
     break;
     
     case eAstNode_cast:
     {
-      success = sym_cast(sym_context, block, stmt);
+      success = sym_cast(context, block, stmt);
     }
     break;
     
@@ -1451,19 +1467,19 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
     case eAstNode_call:
     case eAstNode_lit:
     {
-      success = sym_expr(sym_context, block, stmt);
+      success = sym_expr(context, block, stmt);
     }
     break;
     
     case eAstNode_loop_ctrl:
     {
-      success = sym_loop_ctrl(sym_context, block, stmt);
+      success = sym_loop_ctrl(context, block, stmt);
     }
     break;
     
     case eAstNode_return:
     {
-      success = sym_return(sym_context, block, stmt);
+      success = sym_return(context, block, stmt);
     }
     break;
     
@@ -1473,7 +1489,7 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
     
     case eAstNode_index:
     {
-      success = sym_index(sym_context, block, stmt);
+      success = sym_index(context, block, stmt);
     }
     break;
     
@@ -1482,7 +1498,7 @@ bool sym_block_stmt(SymbolContext* sym_context, AstNode* block, AstNode* stmt)
   return success;
 }
 
-bool sym_block(SymbolContext* sym_context, AstNode* block)
+bool sym_block(SymbolContext* context, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -1492,12 +1508,13 @@ bool sym_block(SymbolContext* sym_context, AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = sym_block_stmt(sym_context, block, stmt);
+    success = sym_block_stmt(context, block, stmt);
   }
+
   return success;
 }
 
-bool sym_proc_body(SymbolContext* sym_context, AstNode* proc)
+bool sym_proc_body(SymbolContext* context, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
@@ -1515,9 +1532,9 @@ bool sym_proc_body(SymbolContext* sym_context, AstNode* proc)
   {
     if(body->kind == eAstNode_block)
     {
-      body->block.scope = begin_scope(sym_context, eScope_block, body);
-      success = sym_block(sym_context, body);
-      end_scope(sym_context);
+      body->block.scope = begin_scope(context, eScope_block, body);
+      success = sym_block(context, body);
+      end_scope(context);
     }
     else if(body->kind == eAstNode_empty)
     {
@@ -1525,84 +1542,88 @@ bool sym_proc_body(SymbolContext* sym_context, AstNode* proc)
     }
     else assert(0);
   }
+
   return success;
 }
 
-bool sym_formal_args(SymbolContext* sym_context, AstNode* args)
+bool sym_formal_args(SymbolContext* context, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
-  Scope* args_scope = find_scope(sym_context->active_scope, eScope_args);
+  Scope* args_scope = find_scope(context->active_scope, eScope_args);
   for(ListItem* li = args->node_list.first;
       li && success;
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = sym_formal_arg(sym_context, args_scope, arg);
+    success = sym_formal_arg(context, args_scope, arg);
   }
+
   return success;
 }
 
-bool sym_module_proc(SymbolContext* sym_context, AstNode* proc)
+bool sym_module_proc(SymbolContext* context, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
   
-  Symbol* decl_sym = lookup_decl_sym(proc->proc.name, sym_context->active_scope);
-  if(decl_sym && (decl_sym->scope == sym_context->active_scope))
+  Symbol* decl_sym = lookup_decl_sym(proc->proc.name, context->active_scope);
+  if(decl_sym && (decl_sym->scope == context->active_scope))
   {
     success = compile_error(proc->src_loc, "name `%s` has already been declared", proc->proc.name);
     compile_error(decl_sym->src_loc, "see the declaration of `%s`", proc->proc.name);
   }
   else
   {
-    proc->proc.decl_sym = add_decl_sym(sym_context->arena, proc->proc.name,
-                                       eStorageSpace_None, sym_context->active_scope, proc);
-    proc->proc.arg_scope = begin_nested_scope(sym_context, eScope_args, proc);
-    proc->proc.retvar = add_decl_sym(sym_context->arena, new_tempvar_name("ret_"),
+    proc->proc.decl_sym = add_decl_sym(context->sym_arena, proc->proc.name,
+                                       eStorageSpace_None, context->active_scope, proc);
+    proc->proc.arg_scope = begin_nested_scope(context, eScope_args, proc);
+    proc->proc.retvar = add_decl_sym(context->sym_arena, new_tempvar_name("ret_"),
                                      eStorageSpace_arg, proc->proc.arg_scope, proc->proc.ret_type);
 
-    proc->proc.scope = begin_scope(sym_context, eScope_proc, proc);
+    proc->proc.scope = begin_scope(context, eScope_proc, proc);
 
-    if(success = sym_formal_args(sym_context, proc->proc.args) && sym_proc_body(sym_context, proc))
+    if(success = sym_formal_args(context, proc->proc.args) && sym_proc_body(context, proc))
     {
       AstNode* body = proc->proc.body;
       proc->proc.body_scope = body->block.scope;
     }
 
-    end_scope(sym_context);
-    end_nested_scope(sym_context);
+    end_scope(context);
+    end_nested_scope(context);
   }
+
   return success;
 }
 
-bool sym_module_var(SymbolContext* sym_context, AstNode* module, AstNode* var)
+bool sym_module_var(SymbolContext* context, AstNode* module, AstNode* var)
 {
   assert(KIND(module, eAstNode_module));
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
-  Symbol* decl_sym = lookup_decl_sym(var->var.name, sym_context->active_scope);
-  if(decl_sym && (decl_sym->scope == sym_context->active_scope))
+  Symbol* decl_sym = lookup_decl_sym(var->var.name, context->active_scope);
+  if(decl_sym && (decl_sym->scope == context->active_scope))
   {
     success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
     compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
   }
   else
   {
-    var->var.decl_sym = add_decl_sym(sym_context->arena, var->var.name,
-                                     eStorageSpace_static, sym_context->active_scope, var);
+    var->var.decl_sym = add_decl_sym(context->sym_arena, var->var.name,
+                                     eStorageSpace_static, context->active_scope, var);
   }
+
   return success;
 }
 
-bool sym_module(SymbolContext* sym_context, AstNode* module)
+bool sym_module(SymbolContext* context, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
   
-  module->module.scope = begin_nested_scope(sym_context, eScope_module, module);
+  module->module.scope = begin_nested_scope(context, eScope_module, module);
   
   for(ListItem* li = module->module.nodes.first;
       li && success;
@@ -1613,13 +1634,13 @@ bool sym_module(SymbolContext* sym_context, AstNode* module)
     {
       case eAstNode_var:
       {
-        success = sym_module_var(sym_context, module, stmt);
+        success = sym_module_var(context, module, stmt);
       }
       break;
       
       case eAstNode_proc:
       {
-        success = sym_module_proc(sym_context, stmt);
+        success = sym_module_proc(context, stmt);
       }
       break;
       
@@ -1629,9 +1650,11 @@ bool sym_module(SymbolContext* sym_context, AstNode* module)
       default: assert(0);
     }
   }
-  end_nested_scope(sym_context);
-  assert(sym_context->active_scope == 0);
-  assert(sym_context->nesting_depth == -1);
+  end_nested_scope(context);
+
+  assert(context->active_scope == 0);
+  assert(context->nesting_depth == -1);
+
   return success;
 }
 
@@ -1683,6 +1706,7 @@ bool set_types_array(AstNode* array)
       }
     }
   }
+
   return success;
 }
 
@@ -1761,6 +1785,7 @@ bool set_types_type(AstNode* type)
       success = compile_error(type->src_loc, "invalid type expression");
     }
   }
+
   return success;
 }
 
@@ -1775,6 +1800,7 @@ bool set_types_var(AstNode* var)
     var->ty = new_var_type(type->ty);
     var->eval_ty = type->ty;
   }
+
   return success;
 }
 
@@ -1791,6 +1817,7 @@ bool set_types_bin_expr(AstNode* bin_expr)
     bin_expr->eval_ty = new_typevar();
     bin_expr->ty = new_proc_type(new_product_type(left_operand->eval_ty, right_operand->eval_ty), bin_expr->eval_ty);
   }
+
   return success;
 }
 
@@ -1805,6 +1832,7 @@ bool set_types_unr_expr(AstNode* unr_expr)
     unr_expr->eval_ty = new_typevar();
     unr_expr->ty = new_proc_type(operand->eval_ty, unr_expr->eval_ty);
   }
+
   return success;
 }
 
@@ -1848,10 +1876,12 @@ bool set_types_actual_args(AstNode* args)
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = set_types_expr(arg);
   }
+
   if(success)
   {
     args->ty = args->eval_ty = make_type_of_args(args);
   }
+
   return success;
 }
 
@@ -1872,6 +1902,7 @@ bool set_types_call(AstNode* call)
   }
   else
     success = compile_error(call->src_loc, "unsupported call expr");
+
   return success;
 }
 
@@ -1930,6 +1961,7 @@ bool set_types_index(AstNode* index)
     index->ty = index->index.array_expr->eval_ty;
     index->eval_ty = new_typevar();
   }
+
   return success;
 }
 
@@ -1937,6 +1969,7 @@ bool set_types_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
   bool success = true;
+
   AstNode* to_type = cast->cast.to_type;
   AstNode* from_expr = cast->cast.from_expr;
   if(success = set_types_type(to_type) && set_types_expr(from_expr))
@@ -1944,6 +1977,7 @@ bool set_types_cast(AstNode* cast)
     cast->eval_ty = to_type->eval_ty;
     cast->ty = new_product_type(from_expr->eval_ty, cast->eval_ty);
   }
+
   return success;
 }
 
@@ -2042,6 +2076,7 @@ bool set_types_return(AstNode* ret)
   {
     ret->ty = ret->eval_ty = basic_type_void;
   }
+
   return success;
 }
 
@@ -2065,6 +2100,7 @@ bool set_types_if(AstNode* if_)
       }
     }
   }
+
   return success;
 }
 
@@ -2072,12 +2108,14 @@ bool set_types_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
+
   AstNode* body = do_while->do_while.body;
   if(success = set_types_block_stmt(body) && set_types_expr(do_while->do_while.cond_expr))
   {
     do_while->ty = body->ty;
     do_while->eval_ty = body->eval_ty;
   }
+
   return success;
 }
 
@@ -2092,6 +2130,7 @@ bool set_types_while(AstNode* while_)
     while_->ty = body->ty;
     while_->eval_ty = body->eval_ty;
   }
+
   return success;
 }
 
@@ -2107,10 +2146,12 @@ bool set_types_block(AstNode* block)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = set_types_block_stmt(stmt);
   }
+
   if(success)
   {
     block->ty = block->eval_ty = basic_type_void;
   }
+
   return success;
 }
 
@@ -2125,6 +2166,7 @@ bool set_types_assign(AstNode* assign)
   {
     assign->ty = assign->eval_ty = dest_expr->eval_ty;
   }
+
   return success;
 }
 
@@ -2212,6 +2254,7 @@ bool set_types_block_stmt(AstNode* stmt)
 
     default: assert(0);
   }
+
   return success;
 }
 
@@ -2250,6 +2293,7 @@ bool set_types_formal_args(AstNode* args)
   {
     args->ty = args->eval_ty = make_type_of_args(args);
   }
+
   return success;
 }
 
@@ -2270,6 +2314,7 @@ bool set_types_proc(AstNode* proc)
       success = set_types_block(proc->proc.body);
     }
   }
+
   return success;
 }
 
@@ -2299,6 +2344,7 @@ bool set_types_module_stmt(AstNode* stmt)
 
     default: assert(0);
   }
+
   return success;
 }
 
@@ -2316,6 +2362,7 @@ bool set_types_module(AstNode* module)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = set_types_module_stmt(stmt);
   }
+
   return success;
 }
 
@@ -2338,9 +2385,10 @@ bool eval_types_array(AstNode* array)
 bool eval_types_pointer(AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode_pointer));
-  bool success = true;
 
+  bool success = true;
   success = eval_types_expr(pointer->pointer.pointee);
+
   return success;
 }
 
@@ -2365,14 +2413,17 @@ bool eval_types_type(AstNode* type)
     case eAstNode_basic_type:
     break;
   }
+
   return success;
 }
 
 bool eval_types_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
+
   bool success = true;
   success = eval_types_type(cast->cast.to_type) && eval_types_expr(cast->cast.from_expr);
+
   return success;
 }
 
@@ -2462,6 +2513,7 @@ bool eval_types_bin_expr(AstNode* bin_expr)
       }
     }
   }
+
   return success;
 }
 
@@ -2520,6 +2572,7 @@ bool eval_types_id(AstNode* id)
     else
       success = compile_error(id->src_loc, "type error (id)");
   }
+
   return success;
 }
 
@@ -2577,6 +2630,7 @@ bool eval_types_unr_expr(AstNode* unr_expr)
       }
     }
   }
+
   return success;
 }
 
@@ -2589,6 +2643,7 @@ bool eval_types_var(AstNode* var)
   {
     success = compile_error(var->src_loc, "type error (var)");
   }
+
   return success;
 }
 
@@ -2604,6 +2659,7 @@ bool eval_types_formal_args(AstNode* args)
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = eval_types_var(arg);
   }
+
   return success;
 }
 
@@ -2619,23 +2675,25 @@ bool eval_types_actual_args(AstNode* args)
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = eval_types_expr(arg->actual_arg.expr);
   }
+
   return success;
 }
 
 bool eval_types_call(AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
-  bool success = true;
 
+  bool success = true;
   success = eval_types_id(call->call.expr) && eval_types_actual_args(call->call.args);
+
   return success;
 }
 
 bool eval_types_index(AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
+
   bool success = true;
-  
   success = eval_types_expr(index->index.array_expr) && eval_types_expr(index->index.i_expr);
 
   return success;
@@ -2710,6 +2768,7 @@ bool eval_types_if(AstNode* if_)
       success = compile_error(cond_expr->src_loc, "bool expression was expected");
     }
   }
+
   return success;
 }
 
@@ -2725,6 +2784,7 @@ bool eval_types_block(AstNode* block)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = eval_types_block_stmt(stmt);
   }
+
   return success;
 }
 
@@ -2757,6 +2817,7 @@ bool eval_types_while(AstNode* while_)
       success = compile_error(cond_expr->src_loc, "bool expression was expected");
     }
   }
+
   return success;
 }
 
@@ -2775,6 +2836,7 @@ bool eval_types_return(AstNode* ret)
       success = compile_error(ret->src_loc, "type error (return)");
     }
   }
+
   return success;
 }
 
@@ -2863,6 +2925,7 @@ bool eval_types_block_stmt(AstNode* stmt)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -2910,6 +2973,7 @@ bool eval_types_module(AstNode* module)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = eval_types_module_stmt(stmt);
   }
+
   return success;
 }
 
@@ -3063,6 +3127,7 @@ bool resolve_types_actual_args(AstNode* args)
   {
     success = resolve_types_of_node(args);
   }
+
   return success;
 }
 
@@ -3213,6 +3278,7 @@ bool resolve_types_expr(AstNode* expr)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -3233,6 +3299,7 @@ bool resolve_types_block(AstNode* block)
   {
     success = resolve_types_of_node(block);
   }
+
   return success;
 }
 
@@ -3250,6 +3317,7 @@ bool resolve_types_return(AstNode* ret)
   {
     success = resolve_types_of_node(ret);
   }
+
   return success;
 }
 
@@ -3257,6 +3325,7 @@ bool resolve_types_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
   bool success = true;
+
   if(success = resolve_types_expr(if_->if_.cond_expr) && resolve_types_block_stmt(if_->if_.body))
   {
     if(if_->if_.else_body)
@@ -3269,6 +3338,7 @@ bool resolve_types_if(AstNode* if_)
       success = resolve_types_of_node(if_);
     }
   }
+
   return success;
 }
 
@@ -3336,6 +3406,7 @@ bool resolve_types_type(AstNode* type)
     case eAstNode_basic_type:
     break;
   }
+
   return success;
 }
 
@@ -3432,6 +3503,7 @@ bool resolve_types_block_stmt(AstNode* stmt)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -3471,6 +3543,7 @@ bool resolve_types_module_stmt(AstNode* stmt)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -3505,6 +3578,7 @@ bool check_types_var(AstNode* var)
   {
     success = compile_error(var->src_loc, "type of var cannot be `void`");
   }
+
   return success;
 }
 
@@ -3520,6 +3594,7 @@ bool check_types_formal_args(AstNode* args)
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = check_types_var(arg);
   }
+
   return success;
 }
 
@@ -3576,6 +3651,7 @@ bool check_types_cast(AstNode* cast)
       }
     }
   }
+
   return success;
 }
 
@@ -3699,6 +3775,7 @@ bool check_types_bin_expr(AstNode* bin_expr)
       default: assert(0);
     }
   }
+
   return success;
 }
 
@@ -3751,6 +3828,7 @@ bool check_types_unr_expr(AstNode* unr_expr)
       break;
     }
   }
+
   return success;
 }
 
@@ -3773,8 +3851,8 @@ bool check_types_actual_args(AstNode* args)
 bool check_types_call(AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
-  bool success = true;
 
+  bool success = true;
   success = check_types_actual_args(call->call.args);
 
   return success;
@@ -3863,6 +3941,7 @@ bool check_types_expr(AstNode* expr)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -3875,6 +3954,7 @@ bool check_types_return(AstNode* ret)
   {
     success = check_types_expr(ret->ret.expr);
   }
+
   return success;
 }
 
@@ -4000,6 +4080,7 @@ bool check_types_block_stmt(AstNode* stmt)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -4033,6 +4114,7 @@ bool check_types_module_stmt(AstNode* stmt)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -4138,6 +4220,7 @@ eIrOp conv_operator_to_ir_op(eOperator op)
 
     default: assert(0);
   }
+
   return ir_op;
 }
 
@@ -4184,6 +4267,7 @@ eOperator negate_relop(eOperator op)
     
     default: assert(0);
   }
+
   return result;
 }
 
@@ -4199,128 +4283,9 @@ IrLabel* get_label_at(List* label_list, int stmt_nr)
       break;
     label = 0;
   }
+
   return label;
 }
-
-#if 0
-eX86Type conv_object_type_to_x86_type(Type* type)
-{
-  eX86Type x86_type = eX86Type_None;
-
-  if(type->kind == eType_basic)
-  {
-    eBasicType basic_type = type->basic.kind;
-
-    switch(basic_type)
-    {
-      case eBasicType_bool:
-      case eBasicType_int:
-        x86_type = eX86Type_int32;
-        break;
-
-      case eBasicType_char:
-        x86_type = eX86Type_int8;
-        break;
-
-      case eBasicType_float:
-        x86_type = eX86Type_float32;
-        break;
-
-      default: assert(0);
-    }
-  }
-  else if(type->kind == eType_pointer || type->kind == eType_array)
-  {
-    x86_type = eX86Type_int32;
-  }
-  else assert(0);
-
-  return x86_type;
-}
-#endif
-
-#if 0
-eX86Type x86_get_stmt_type(IrStmt* ir_stmt)
-{
-  eX86Type x86_type = eX86Type_None;
-
-  IrArg* result = ir_stmt->assign.result;
-  IrArg* arg1 = ir_stmt->assign.arg1;
-  IrArg* arg2 = ir_stmt->assign.arg2;
-
-  switch(ir_stmt->kind)
-  {
-    case eIrStmt_assign:
-    {
-      if(ir_stmt->assign.op)
-      {
-        switch(ir_stmt->assign.op)
-        {
-          case eIrOp_index_source:
-            // result = arg1[arg2]
-            x86_type = conv_object_type_to_x86_type(result->object->ty);
-            break;
-
-          case eIrOp_index_dest:
-            // result[arg2] = arg1
-            x86_type = conv_object_type_to_x86_type(arg1->object->ty);
-            break;
-
-          case eIrOp_deref_source:
-            // result = ^arg1
-            x86_type = conv_object_type_to_x86_type(result->object->ty);
-            break;
-
-          case eIrOp_deref_dest:
-            // ^result = arg1
-            x86_type = conv_object_type_to_x86_type(arg1->object->ty);
-            break;
-
-          case eIrOp_address_of:
-            // result = &arg1
-            x86_type = conv_object_type_to_x86_type(result->object->ty);
-            break;
-
-          default:
-            {
-              if(arg2)
-              {
-                // result = arg1 op arg2
-                x86_type = conv_object_type_to_x86_type(result->object->ty);
-              }
-              else
-              {
-                // result = op arg1
-                fail("TODO");
-              }
-            }
-        }
-      }
-      else
-      {
-        // result = arg1
-        x86_type = conv_object_type_to_x86_type(result->object->ty);
-      }
-    }
-    break;
-
-    case eIrStmt_cond_goto:
-    {
-      x86_type = conv_object_type_to_x86_type(arg1->object->ty);
-    }
-    break;
-
-    case eIrStmt_goto:
-    case eIrStmt_call:
-    case eIrStmt_return:
-    break;
-
-    default: assert(0);
-  }
-
-  return x86_type;
-}
-#endif
 
 void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, IrArg* result)
 {
@@ -4492,6 +4457,7 @@ bool ir_gen_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -4549,6 +4515,7 @@ bool ir_gen_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -4606,6 +4573,7 @@ bool ir_gen_actual_args(IrContext* ir_context, Scope* scope, AstNode* args)
       ir_emit_assign(ir_context, eIrOp_None, expr->place, 0, place);
     }
   }
+
   return success;
 }
 
@@ -4638,7 +4606,6 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
   AstNode* array_expr = index->index.array_expr;
   AstNode* i_expr = index->index.i_expr;
   
-#if 1
   Type* array_ty = array_expr->eval_ty;
   if(array_ty->kind == eType_array)
   {
@@ -4649,17 +4616,11 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
     index->index.array_ty = new_array_type(0, 1, array_ty->pointer.pointee);
   }
   else assert(0);
-#endif
 
   if(array_expr->kind == eAstNode_id)
   {
     ir_gen_id(ir_context, array_expr);
-#if 1
     index->index.place = array_expr->place;
-#else
-    IrArg* base = index->index.place = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
-    ir_emit_assign(ir_context, eIrOp_address_of, array_expr->place, 0, base);
-#endif
 
     if(success = ir_gen_expr(ir_context, scope, i_expr))
     {
@@ -4696,6 +4657,7 @@ bool ir_gen_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
 {
   assert(KIND(index, eAstNode_index));
   bool success = true;
+
   if(success = ir_gen_index(ir_context, scope, index))
   {
     IrArg* offset = index->index.offset = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
@@ -4706,6 +4668,7 @@ bool ir_gen_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
 
     ir_emit_assign(ir_context, eIrOp_mul, index->index.i_place, width, offset);
   }
+
   return success;
 }
 
@@ -4827,6 +4790,7 @@ bool ir_gen_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
       ir_emit_assign(ir_context, cast_op, from_expr->place, 0, cast->place);
     }
   }
+
   return success;
 }
 
@@ -4923,6 +4887,7 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -4938,6 +4903,7 @@ bool ir_gen_block(IrContext* ir_context, Scope* scope, AstNode* block)
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     ir_gen_block_stmt(ir_context, scope, stmt);
   }
+
   return success;
 }
 
@@ -5003,6 +4969,7 @@ bool ir_gen_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -5010,11 +4977,13 @@ bool ir_gen_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   bool success = true;
+
   if(success = ir_gen_expr(ir_context, scope, id))
   {
     ir_emit_cond_goto(ir_context, eIrOp_eq, id->place, ir_new_arg_existing_object(ir_context, bool_true), id->label_true);
     ir_emit_goto(ir_context, id->label_false);
   }
+
   return success;
 }
 
@@ -5022,11 +4991,13 @@ bool ir_gen_bool_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
   bool success = true;
+
   if(success = ir_gen_cast(ir_context, scope, cast))
   {
     ir_emit_cond_goto(ir_context, eIrOp_eq, cast->place, ir_new_arg_existing_object(ir_context, bool_true), cast->label_true);
     ir_emit_goto(ir_context, cast->label_false);
   }
+
   return success;
 }
 
@@ -5047,6 +5018,7 @@ void ir_gen_bool_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
 bool ir_gen_bool_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
 {
   bool success = true;
+
   switch(expr->kind)
   {
     case eAstNode_id:
@@ -5081,6 +5053,7 @@ bool ir_gen_bool_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -5088,6 +5061,7 @@ bool ir_gen_do_while(IrContext* ir_context, Scope* scope, AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
+
   AstNode* cond_expr = do_while->do_while.cond_expr;
   AstNode* body = do_while->do_while.body;
   
@@ -5104,6 +5078,7 @@ bool ir_gen_do_while(IrContext* ir_context, Scope* scope, AstNode* do_while)
   {
     ir_emit_label(ir_context, cond_expr->label_false);
   }
+
   return success;
 }
 
@@ -5129,6 +5104,7 @@ bool ir_gen_while(IrContext* ir_context, Scope* scope, AstNode* while_)
     ir_emit_goto(ir_context, while_->label_begin);
     ir_emit_label(ir_context, while_->label_next);
   }
+
   return success;
 }
 
@@ -5181,7 +5157,6 @@ bool ir_gen_if(IrContext* ir_context, Scope* scope, AstNode* if_)
 bool ir_gen_return(IrContext* ir_context, Scope* scope, AstNode* ret)
 {
   assert(KIND(ret, eAstNode_return));
-
   bool success = true;
 
   AstNode* ret_expr = ret->ret.expr;
@@ -5303,6 +5278,7 @@ bool ir_gen_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -5382,6 +5358,7 @@ bool ir_gen_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     
     default: assert(0);
   }
+
   return success;
 }
 
@@ -5406,111 +5383,111 @@ void DEBUG_print_ir_op(String* text, eIrOp op)
   switch(op)
   {
     case eIrOp_add:
-    str_printf(text, "+");
+      str_printf(text, "+");
     break;
     
     case eIrOp_sub:
-    str_printf(text, "-");
+      str_printf(text, "-");
     break;
     
     case eIrOp_mul:
-    str_printf(text, "*");
+      str_printf(text, "*");
     break;
     
     case eIrOp_div:
-    str_printf(text, "/");
+      str_printf(text, "/");
     break;
     
     case eIrOp_mod:
-    str_printf(text, "mod");
+      str_printf(text, "mod");
     break;
     
     case eIrOp_neg:
-    str_printf(text, "-");
+      str_printf(text, "-");
     break;
     
     case eIrOp_eq:
-    str_printf(text, "==");
+      str_printf(text, "==");
     break;
     
     case eIrOp_not_eq:
-    str_printf(text, "<>");
+      str_printf(text, "<>");
     break;
     
     case eIrOp_less:
-    str_printf(text, "<");
+      str_printf(text, "<");
     break;
     
     case eIrOp_less_eq:
-    str_printf(text, "<=");
+      str_printf(text, "<=");
     break;
     
     case eIrOp_greater:
-    str_printf(text, ">");
+      str_printf(text, ">");
     break;
     
     case eIrOp_greater_eq:
-    str_printf(text, ">=");
+      str_printf(text, ">=");
     break;
     
     case eIrOp_logic_and:
-    str_printf(text, "and");
+      str_printf(text, "and");
     break;
     
     case eIrOp_logic_or:
-    str_printf(text, "or");
+      str_printf(text, "or");
     break;
     
     case eIrOp_logic_not:
-    str_printf(text, "not");
+      str_printf(text, "not");
     break;
     
     case eIrOp_bit_and:
-    str_printf(text, "&");
+      str_printf(text, "&");
     break;
     
     case eIrOp_bit_or:
-    str_printf(text, "|");
+      str_printf(text, "|");
     break;
     
     case eIrOp_bit_xor:
-    str_printf(text, "~");
+      str_printf(text, "~");
     break;
     
     case eIrOp_bit_not:
-    str_printf(text, "!");
+      str_printf(text, "!");
     break;
     
     case eIrOp_bit_shift_left:
-    str_printf(text, "<<");
+      str_printf(text, "<<");
     break;
     
     case eIrOp_bit_shift_right:
-    str_printf(text, ">>");
+      str_printf(text, ">>");
     break;
     
     case eIrOp_itof:
-    str_printf(text, "itof");
+      str_printf(text, "itof");
     break;
     
     case eIrOp_itoc:
-    str_printf(text, "itoc");
+      str_printf(text, "itoc");
     break;
     
     case eIrOp_itob:
-    str_printf(text, "itob");
+      str_printf(text, "itob");
     break;
     
     case eIrOp_ftoi:
-    str_printf(text, "ftoi");
+      str_printf(text, "ftoi");
     break;
     
     case eIrOp_ctoi:
-    str_printf(text, "ctoi");
+      str_printf(text, "ctoi");
     break;
     
     case eIrOp_btoi:
-    str_printf(text, "btoi");
+      str_printf(text, "btoi");
     break;
     
     default: assert(0);
@@ -5787,6 +5764,7 @@ IrLeaderStmt* new_leader_stmt(MemoryArena* arena, int stmt_nr, IrStmt* stmt)
   {
     new_elem->label = label->primary;
   }
+
   return new_elem;
 }
 
@@ -5832,100 +5810,68 @@ void x86_print_register(String* text, X86Location* reg)
   {
     /* 8-bit */
     case eX86Location_al:
-    {
       str_printf(text, "al");
-    }
     break;
 
     case eX86Location_ah:
-    {
       str_printf(text, "ah");
-    }
     break;
 
     case eX86Location_bl:
-    {
       str_printf(text, "bl");
-    }
     break;
 
     case eX86Location_bh:
-    {
       str_printf(text, "bh");
-    }
     break;
 
     case eX86Location_cl:
-    {
       str_printf(text, "cl");
-    }
     break;
 
     case eX86Location_ch:
-    {
       str_printf(text, "ch");
-    }
     break;
 
     case eX86Location_dl:
-    {
       str_printf(text, "dl");
-    }
     break;
 
     case eX86Location_dh:
-    {
       str_printf(text, "dh");
-    }
     break;
 
     /* 32-bit */
     case eX86Location_eax:
-    {
       str_printf(text, "eax");
-    }
     break;
     
     case eX86Location_ebx:
-    {
       str_printf(text, "ebx");
-    }
     break;
     
     case eX86Location_ecx:
-    {
       str_printf(text, "ecx");
-    }
     break;
     
     case eX86Location_edx:
-    {
       str_printf(text, "edx");
-    }
     break;
     
     case eX86Location_ebp:
-    {
       str_printf(text, "ebp");
-    }
     break;
     
     case eX86Location_esp:
-    {
       str_printf(text, "esp");
-    }
     break;
     
     case eX86Location_esi:
-    {
       str_printf(text, "esi");
-    }
     break;
     
     case eX86Location_edi:
-    {
       str_printf(text, "edi");
-    }
     break;
     
     default: assert(0);
@@ -6041,126 +5987,86 @@ void x86_print_opcode(String* text, eX86StmtOpcode opcode)
   switch(opcode)
   {
     case eX86StmtOpcode_call:
-    {
       str_printf(text, "call ");
-    }
     break;
 
     case eX86StmtOpcode_pop:
-    {
       str_printf(text, "pop ");
-    }
     break;
 
     case eX86StmtOpcode_push:
-    {
       str_printf(text, "push ");
-    }
     break;
 
     case eX86StmtOpcode_lea:
-    {
       str_printf(text, "lea ");
-    }
     break;
 
     case eX86StmtOpcode_mov:
-    {
       str_printf(text, "mov ");
-    }
     break;
     
     case eX86StmtOpcode_add:
-    {
       str_printf(text, "add ");
-    }
     break;
     
     case eX86StmtOpcode_sub:
-    {
       str_printf(text, "sub ");
-    }
     break;
     
     case eX86StmtOpcode_imul:
-    {
       str_printf(text, "imul ");
-    }
     break;
     
     case eX86StmtOpcode_idiv:
-    {
       str_printf(text, "idiv ");
-    }
     break;
 
     case eX86StmtOpcode_cmp:
-    {
       str_printf(text, "cmp ");
-    }
     break;
 
     case eX86StmtOpcode_cmpss:
-    {
       str_printf(text, "cmpss ");
-    }
     break;
     
     case eX86StmtOpcode_jz:
-    {
       str_printf(text, "jz ");
-    }
     break;
     
     case eX86StmtOpcode_jnz:
-    {
       str_printf(text, "jnz ");
-    }
     break;
     
     case eX86StmtOpcode_jl:
-    {
       str_printf(text, "jl ");
-    }
     break;
     
     case eX86StmtOpcode_jle:
-    {
       str_printf(text, "jle ");
-    }
     break;
     
     case eX86StmtOpcode_jg:
-    {
       str_printf(text, "jg ");
-    }
     break;
     
     case eX86StmtOpcode_jge:
-    {
       str_printf(text, "jge ");
-    }
     break;
     
     case eX86StmtOpcode_jmp:
-    {
       str_printf(text, "jmp ");
-    }
     break;
     
     case eX86StmtOpcode_label:
     break;
     
     case eX86StmtOpcode_nop:
-    {
-      //      str_printfln(text, "nop");
-    }
+      //str_printfln(text, "nop");
     break;
     
     case eX86StmtOpcode_ret:
-    {
       str_printf(text, "ret ");
-    }
     break;
     
     default: assert(0);
@@ -7004,6 +6910,7 @@ void update_object_live_info(IrArg* result, IrArg* arg1, IrArg* arg2)
 IrLabel* normalize_jump_target_labels(IrStmt* stmt)
 {
   IrLabel* target_label = 0;
+
   if(stmt->kind == eIrStmt_cond_goto)
   {
     target_label = stmt->cond_goto.label;
@@ -7022,6 +6929,7 @@ IrLabel* normalize_jump_target_labels(IrStmt* stmt)
       target_label = stmt->goto_label;
     }
   }
+
   return target_label;
 }
 
@@ -7456,7 +7364,7 @@ void x86_gen_assign(X86Context* context, IrStmt* ir_stmt)
   }
 
   // IMPORTANT: The updated live-info is used in the find_least_used_register() function.
-  // The update must be done *here* the stmt has been processed, so that the when the next statement is processed,
+  // The update must be done *here*, so that the when the next statement is processed,
   // a particular object will have the live-info of the previous last statement it appeared in.
   // As a bonus consequence, the objects of 'result', 'arg1' and 'arg2' are automatically excluded from the find_least_used_register() search function.
   update_object_live_info(result, arg1, arg2);
@@ -7805,6 +7713,43 @@ void x86_write_static_data_text(String* text, Scope* scope)
   }
 }
 
+void x86_gen(IrContext* ir_context, X86Context* x86_context, AstNode* module, String* x86_text)
+{
+  List* procs = &module->module.procs;
+  for(ListItem* li = procs->first;
+      li;
+      li = li->next)
+  {
+    AstNode* proc = KIND(li, eList_ast_node)->ast_node;
+
+    partition_to_basic_blocks(ir_context->stmt_arena, proc);
+    x86_gen_proc(x86_context, proc);
+  }
+
+  DEBUG_print_ir_code(arena, &module->module.procs, "./out.ir");
+
+  str_init(x86_text, push_arena(&arena, 1*MEGABYTE));
+  str_printfln(x86_text, ".686");
+  str_printfln(x86_text, ".xmm");
+  str_printfln(x86_text, ".model flat, C");
+  str_printfln(x86_text, ".stack 4096");
+  str_printfln(x86_text, ".data");
+  str_printfln(x86_text, "static_area label byte");
+  str_printfln(x86_text, "align %d", ir_context->data_alignment);
+
+  x86_write_static_data_text(x86_text, module->module.scope);
+
+  str_printfln(x86_text, ".code");
+  str_printfln(x86_text, "public startup");
+
+  for(int i = 0; i < x86_context->stmt_count; i++)
+  {
+    x86_print_stmt(x86_text, &x86_context->stmt_array[i]);
+  }
+
+  str_printfln(x86_text, "end");
+}
+
 bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 {
   basic_type_bool = new_basic_type(eBasicType_bool);
@@ -7816,21 +7761,21 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   subst_list = new_list(arena, eList_type_pair);
   
   SymbolContext sym_context = {0};
-  sym_context.arena = push_arena(&arena, 1*MEGABYTE);
+  sym_context.sym_arena = push_arena(&arena, 1*MEGABYTE);
   sym_context.nesting_depth = -1;
-  init_list(&sym_context.scopes, sym_context.arena, eList_scope);
+  init_list(&sym_context.scopes, sym_context.sym_arena, eList_scope);
 
-  bool_true = new_const_object(sym_context.arena, basic_type_int, 0);
+  bool_true = new_const_object(sym_context.sym_arena, basic_type_int, 0);
   bool_true->int_val = 1;
 
-  bool_false = new_const_object(sym_context.arena, basic_type_int, 0);
+  bool_false = new_const_object(sym_context.sym_arena, basic_type_int, 0);
   bool_false->int_val = 0;
   
   IrContext ir_context = {0};
   ir_context.stmt_arena = push_arena(&arena, 1*MEGABYTE);
   ir_context.stmt_array = (IrStmt*)ir_context.stmt_arena->base;
   ir_context.stmt_count = 0;
-  ir_context.sym_arena = sym_context.arena;
+  ir_context.sym_arena = sym_context.sym_arena;
   ir_context.label_list = new_list(arena, eList_ir_label);
   ir_context.data_alignment = 4;
   
@@ -7850,1130 +7795,14 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     return false;
   }
 
-  // X86 Codegen
-  {
-    X86Context x86_context = {0};
-    x86_context.stmt_arena = push_arena(&arena, 1*MEGABYTE);
-    x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
-    x86_context.machine_word_size = 4;
-    x86_init_registers(&x86_context);
-    
-    List* procs = &module->module.procs;
-    for(ListItem* li = procs->first;
-        li;
-        li = li->next)
-    {
-      AstNode* proc = KIND(li, eList_ast_node)->ast_node;
+  X86Context x86_context = {0};
+  x86_context.stmt_arena = push_arena(&arena, 1*MEGABYTE);
+  x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
+  x86_context.machine_word_size = 4;
+  x86_init_registers(&x86_context);
 
-      partition_to_basic_blocks(ir_context.stmt_arena, proc);
-      x86_gen_proc(&x86_context, proc);
-    }
+  x86_gen(&ir_context, &x86_context, module, x86_text);
 
-    DEBUG_print_ir_code(arena, &module->module.procs, "./out.ir");
-
-    str_init(x86_text, push_arena(&arena, 1*MEGABYTE));
-    str_printfln(x86_text, ".686");
-    str_printfln(x86_text, ".xmm");
-    str_printfln(x86_text, ".model flat, C");
-    str_printfln(x86_text, ".stack 4096");
-    str_printfln(x86_text, ".data");
-    str_printfln(x86_text, "static_area label byte");
-    str_printfln(x86_text, "align %d", ir_context.data_alignment);
-    
-    x86_write_static_data_text(x86_text, module->module.scope);
-
-    str_printfln(x86_text, ".code");
-    str_printfln(x86_text, "public startup");
-    
-    for(int i = 0; i < x86_context.stmt_count; i++)
-    {
-      x86_print_stmt(x86_text, &x86_context.stmt_array[i]);
-    }
-    
-    str_printfln(x86_text, "end");
-  }
-  
-  
-  //           Old X86 codegen
-  //---------------------------------------------------
-#if 0
-  for(ListItem* li = symbol_table->scopes->first;
-      li;
-      li = li->next)
-  {
-    Scope* scope = KIND(li, eList_scope)->scope;
-    int offset = 0;
-    for(ListItem* li = scope->decls[eSymbol_var]->first;
-        li;
-        li = li->next)
-    {
-      Symbol* symbol = KIND(li, eList_symbol)->symbol;
-      if(symbol->is_static_alloc)
-      {
-        symbol->data_loc = offset;
-        offset += symbol->ty->width;
-        scope->static_area_size += symbol->ty->width;
-      }
-      else
-      {
-        offset += symbol->ty->width;
-        symbol->data_loc = -offset;
-        scope->locals_area_size += symbol->ty->width;
-      }
-    }
-    
-    offset = 3*MACHINE_WORD_SIZE;
-    for(ListItem* li = scope->decls[eSymbol_formal_arg]->first;
-        li;
-        li = li->next)
-    {
-      Symbol* symbol = KIND(li, eList_symbol)->symbol;
-      symbol->data_loc = offset;
-      offset += symbol->ty->width;
-      scope->args_area_size += symbol->ty->width;
-    }
-    
-    for(ListItem* li = scope->decls[eSymbol_ret_var]->first;
-        li;
-        li = li->next)
-    {
-      Symbol* symbol = KIND(li, eList_symbol)->symbol;
-      symbol->data_loc = offset;
-      offset += symbol->ty->width;
-      scope->ret_area_size += symbol->ty->width;
-    }
-    
-    //FIXME: This piece of code feels awfully out of place.
-    for(ListItem* li = scope->decls[eSymbol_extern_proc]->first;
-        li;
-        li = li->next)
-    {
-      Symbol* decl_sym = KIND(li, eList_symbol)->symbol;
-      AstNode* proc = decl_sym->ast_node;
-      assert(proc->kind == eAstNode_proc);
-      assert(proc->proc.is_extern);
-      
-      int args_size = compute_type_width(decl_sym->ty->proc.args);
-      char* label = proc->proc.label;
-      String decorated_label; str_init(&decorated_label, arena);
-      str_printf(&decorated_label, "%s@%d", label, args_size);
-      proc->proc.label = str_cap(&decorated_label);
-    }
-  }
-  
-  str_init(x86_text, push_arena(&arena, X86_CODE_ARENA_SIZE));
-  str_printfln(x86_text, ".686");
-  str_printfln(x86_text, ".XMM");
-  str_printfln(x86_text, ".MODEL flat, C");
-  str_printfln(x86_text, ".STACK 4096");
-  
-  str_printfln(x86_text, ".DATA");
-  str_printfln(x86_text, "static_area LABEL BYTE");
-  Scope* module_scope = module->module.scope;
-  for(ListItem* li = module_scope->decls[eSymbol_var]->first;
-      li;
-      li = li->next)
-  {
-    Symbol* symbol = KIND(li, eList_symbol)->symbol;
-    int data_size = symbol->ty->width;
-    if(symbol->data)
-    {
-      str_printf(x86_text, "BYTE ");
-      uint8* p_data = (uint8*)symbol->data;
-      int i;
-      for(i = 0; i < data_size - 1; i++)
-      {
-        str_printf(x86_text, "0%xh,", p_data[i]);
-      }
-      if(i < data_size)
-      {
-        str_printf(x86_text, "0%xh", p_data[i]);
-      }
-      str_printfln(x86_text, "");
-    }
-    else
-    {
-      str_printfln(x86_text, "BYTE %d DUP(?) ; %s", data_size, symbol->name);
-    }
-  }
-  
-  str_printfln(x86_text, ".CODE");
-  
-  IrLabel label;
-  str_printfln(x86_text, "_rt_module_prologue PROC");
-  str_printfln(x86_text, "pop ebx ;return address");
-  str_printfln(x86_text, "push esp ;access link");
-  str_printfln(x86_text, "sub esp, %d ;dummy IP", MACHINE_WORD_SIZE);
-  str_printfln(x86_text, "push ebp");
-  str_printfln(x86_text, "mov ebp, esp");
-  str_printfln(x86_text, "push ebx");
-  str_printfln(x86_text, "ret");
-  str_printfln(x86_text, "_rt_module_prologue ENDP");
-  
-  str_printfln(x86_text, "_rt_block_prologue PROC");
-  str_printfln(x86_text, "pop ebx ;return address");
-  str_printfln(x86_text, "push ebp");
-  str_printfln(x86_text, "add dword ptr [esp], %d ;access link", 2*MACHINE_WORD_SIZE);
-  str_printfln(x86_text, "sub esp, %d ;dummy IP", MACHINE_WORD_SIZE);
-  str_printfln(x86_text, "push ebp");
-  str_printfln(x86_text, "mov ebp, esp");
-  str_printfln(x86_text, "push ebx");
-  str_printfln(x86_text, "ret");
-  str_printfln(x86_text, "_rt_block_prologue ENDP");
-  
-  str_printfln(x86_text, "_rt_load PROC");
-  str_printfln(x86_text, "pop ebx ;return address");
-  str_printfln(x86_text, "pop ecx ;byte count");
-  str_printfln(x86_text, "mov esi, dword ptr [esp]");
-  str_printfln(x86_text, "mov edi, esp");
-  str_printfln(x86_text, "rep movs byte ptr [edi], byte ptr [esi]");
-  str_printfln(x86_text, "push ebx");
-  str_printfln(x86_text, "ret");
-  str_printfln(x86_text, "_rt_load ENDP");
-  
-  str_printfln(x86_text, "_rt_store PROC");
-  str_printfln(x86_text, "pop ebx ;return address;");
-  str_printfln(x86_text, "pop ecx");
-  str_printfln(x86_text, "pop edi");
-  str_printfln(x86_text, "mov esi, esp");
-  str_printfln(x86_text, "rep movs byte ptr [edi], byte ptr [esi]");
-  str_printfln(x86_text, "push ebx");
-  str_printfln(x86_text, "ret");
-  str_printfln(x86_text, "_rt_store ENDP");
-  
-  str_printfln(x86_text, "_rt_leave_frame PROC");
-  str_printfln(x86_text, "pop ebx ;return address;");
-  label = new_gen_label();
-  str_printfln(x86_text, "pop ecx ;depth");
-  str_printfln(x86_text, "%s$loop:", label.name);
-  str_printfln(x86_text, "mov esp, ebp");
-  str_printfln(x86_text, "pop ebp");
-  str_printfln(x86_text, "loop %s$loop", label.name);
-  str_printfln(x86_text, "push ebx");
-  str_printfln(x86_text, "ret");
-  str_printfln(x86_text, "_rt_leave_frame ENDP");
-  
-  str_printfln(x86_text, "_rt_load_access_link PROC");
-  str_printfln(x86_text, "pop ebx ;return address;");
-  str_printfln(x86_text, "pop ecx ;declaration scope offset");
-  str_printfln(x86_text, "mov esi, dword ptr [esp]");
-  label = new_gen_label();
-  str_printfln(x86_text, "%s$loop:", label.name);
-  str_printfln(x86_text, "mov esi, dword ptr[esi]");
-  str_printfln(x86_text, "loop %s$loop", label.name);
-  str_printfln(x86_text, "mov dword ptr [esp], esi");
-  str_printfln(x86_text, "push ebx");
-  str_printfln(x86_text, "ret");
-  str_printfln(x86_text, "_rt_load_access_link ENDP");
-  
-  if(!gen_x86(x86_text, module))
-  {
-    return false;
-  }
-  str_printfln(x86_text, "END");
-#endif
-  
   return true;
 }
-
-//           Old X86 codegen
-//---------------------------------------------------
-#if 0
-void gen_x86_leave_frame(String* code, int depth)
-{
-  if(depth > 0)
-  {
-    str_printfln(code, "push %d", depth);
-    str_printfln(code, "call _rt_leave_frame");
-  }
-  else if(depth == 0)
-  {
-    str_printfln(code, "mov esp, ebp");
-    str_printfln(code, "pop ebp");
-  }
-  else
-    assert(0);
-}
-
-void gen_x86_load_lvalue(String* code, AstNode* node)
-{
-  switch(node->kind)
-  {
-#if 0
-    case eAstNode_var_occur:
-    {
-      Symbol* occur_sym = node->var_occur.occur_sym;
-      Symbol* decl_sym = occur_sym->decl;
-      
-      if(decl_sym->is_static_alloc)
-      {
-        assert(decl_sym->data_loc >=0 );
-        str_printfln(code, "push OFFSET(static_area) + %d", decl_sym->data_loc);
-      }
-      else
-      {
-        str_printfln(code, "push ebp");
-        
-        int decl_scope_offset = occur_sym->scope->nesting_depth - decl_sym->scope->nesting_depth;
-        if(decl_scope_offset > 0)
-        {
-          // Non-local
-          str_printfln(code, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
-          str_printfln(code, "push %d", decl_scope_offset);
-          str_printfln(code, "call _rt_load_access_link");
-          
-          // Load the FP by taking the offset relative to the Access Link
-          str_printfln(code, "sub dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
-        }
-        else if(decl_scope_offset < 0)
-          assert(0);
-        
-        if(decl_sym->data_loc >= 0)
-        {
-          str_printfln(code, "add dword ptr [esp], %d", decl_sym->data_loc);
-        }
-        else
-        {
-          str_printfln(code, "sub dword ptr [esp], %d", -decl_sym->data_loc);
-        }
-      }
-    }
-    break;
-#endif
-    
-    case eAstNode_unr_expr:
-    {
-      AstNode* operand = node->unr_expr.operand;
-      if(node->unr_expr.op == eOperator_deref)
-      {
-        assert(operand->ty->kind == eType_pointer);
-        gen_x86_load_rvalue(code, operand);
-      }
-      else
-        assert(0);
-    }
-    break;
-    
-    case eAstNode_bin_expr:
-    {
-      AstNode* left_operand = node->bin_expr.left_operand;
-      AstNode* right_operand = node->bin_expr.right_operand;
-      
-      if(node->bin_expr.op == eOperator_indexer)
-      {
-        gen_x86_load_lvalue(code, left_operand);
-        gen_x86_load_rvalue(code, right_operand);
-        
-        str_printfln(code, "pop eax");
-        str_printfln(code, "mov ebx, %d", node->eval_ty->width);
-        str_printfln(code, "imul ebx");
-        
-        str_printfln(code, "add dword ptr [esp], eax");
-      }
-      else
-        assert(0);
-    }
-    break;
-    
-    default:
-    assert(0);
-  }
-}
-
-void gen_x86_load_rvalue(String* code, AstNode* node)
-{
-  switch(node->kind)
-  {
-#if 0
-    case eAstNode_var_occur:
-    {
-      Type* type = ATTR(node, type, eval_type);
-      gen_x86_load_lvalue(code, node);
-      str_printfln(code, "push %d", type->width);
-      str_printfln(code, "call _rt_load");
-    }
-    break;
-#endif
-    
-    case eAstNode_call:
-    gen_x86(code, node);
-    break;
-    
-    case eAstNode_lit:
-    {
-      switch(node->lit.kind)
-      {
-        case eLiteral_int:
-        str_printfln(code, "push %d", node->lit.int_val);
-        break;
-        case eLiteral_bool:
-        str_printfln(code, "push %d", node->lit.bool_val);
-        break;
-        case eLiteral_float:
-        {
-          union BitcastF32ToI32
-          {
-            float32 float32_val;
-            int32 int32_val;
-          };
-          
-          union BitcastF32ToI32 val = {0};
-          val.float32_val = node->lit.float_val;
-          str_printfln(code, "push %xh ; %f", val.int32_val, val.float32_val);
-        }
-        break;
-        case eLiteral_char:
-        str_printfln(code, "push %d", node->lit.char_val);
-        break;
-        
-        default: assert(0);
-      }
-    }
-    break;
-    
-    case eAstNode_bin_expr:
-    {
-      if(node->bin_expr.op == eOperator_indexer)
-      {
-        gen_x86_load_lvalue(code, node);
-        str_printfln(code, "push %d", node->eval_ty->width);
-        str_printfln(code, "call _rt_load");
-      }
-      else
-      {
-        gen_x86(code, node);
-      }
-    }
-    break;
-    
-    case eAstNode_unr_expr:
-    {
-      AstNode* operand = node->unr_expr.operand;
-      
-      if(node->unr_expr.op == eOperator_address_of)
-      {
-#if 0
-        if(operand->kind == eAstNode_var_occur)
-        {
-          gen_x86_load_lvalue(code, operand);
-        }
-        else
-#endif
-        {
-          gen_x86_load_rvalue(code, operand);
-        }
-      }
-      else if(node->unr_expr.op == eOperator_deref)
-      {
-        gen_x86_load_lvalue(code, node);
-        str_printfln(code, "push %d", node->eval_ty->width);
-        str_printfln(code, "call _rt_load");
-      }
-      else
-      {
-        gen_x86(code, node);
-      }
-    }
-    break;
-  }
-}
-
-bool gen_x86(String* code, AstNode* node)
-{
-  bool success = true;
-  
-  switch(node->kind)
-  {
-    case eAstNode_module:
-    {
-      Scope* module_scope = node->scope;
-#if 0
-      for(ListItem* li = module_scope->decls[eSymbol_extern_proc]->first;
-          li;
-          li = li->next)
-      {
-        Symbol* decl_sym = KIND(li, eList_symbol)->symbol;
-        gen_x86(code, decl_sym->ast_node);
-      }
-#endif
-      for(ListItem* li = module_scope->decls[eSymbol_proc].first;
-          li;
-          li = li->next)
-      {
-        Symbol* decl_sym = KIND(li, eList_symbol)->symbol;
-        gen_x86(code, decl_sym->ast_node);
-      }
-      
-      AstNode* body = node->module.body;
-      Scope* body_scope = body->block.scope;
-      
-      str_printfln(code, "startup PROC");
-      str_printfln(code, "call _rt_module_prologue");
-      str_printfln(code, "sub esp, %d ;alloc locals", body_scope->locals_area_size);
-      for(ListItem* li = body->block.stmts.first;
-          li;
-          li = li->next)
-      {
-        AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-        gen_x86(code, stmt);
-      }
-      gen_x86_leave_frame(code, 0);
-      str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE); // access link + dummy IP
-      str_printfln(code, "ret");
-      str_printfln(code, "startup ENDP");
-    }
-    break;
-    
-    case eAstNode_proc:
-    {
-      Scope* proc_scope = node->scope;
-      
-#if 0
-      char* label = node->proc.label;
-      if(node->proc.is_extern)
-      {
-        str_printfln(code, "EXTERN %s:PROC", label);
-      }
-      else
-#endif
-      {
-#if 0
-        for(ListItem* li = proc_scope->decls[eSymbol_extern_proc]->first;
-            li;
-            li = li->next)
-        {
-          Symbol* decl_sym = KIND(li, eList_symbol)->symbol;
-          gen_x86(code, decl_sym->ast_node);
-        }
-#endif
-        for(ListItem* li = proc_scope->decls[eSymbol_proc].first;
-            li;
-            li = li->next)
-        {
-          Symbol* decl_sym = KIND(li, eList_symbol)->symbol;
-          gen_x86(code, decl_sym->ast_node);
-        }
-        
-        AstNode* body = node->proc.body;
-        Scope* body_scope = body->block.scope;
-        str_printfln(code, "%s PROC", node->proc.name);
-        str_printfln(code, "push ebp");
-        str_printfln(code, "mov ebp, esp");
-        str_printfln(code, "sub esp, %d ;alloc locals", body_scope->locals_area_size);
-        for(ListItem* li = body->block.stmts.first;
-            li;
-            li = li->next)
-        {
-          AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-          gen_x86(code, stmt);
-        }
-        gen_x86_leave_frame(code, 0);
-        str_printfln(code, "ret");
-        str_printfln(code, "%s ENDP", node->proc.name);
-      }
-    }
-    break;
-    
-    case eAstNode_block:
-    {
-      Scope* scope = node->block.scope;
-      
-      str_printfln(code, "call _rt_block_prologue");
-      str_printfln(code, "sub esp, %d", scope->locals_area_size);
-      for(ListItem* li = node->block.stmts.first;
-          li;
-          li = li->next)
-      {
-        AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-        gen_x86(code, stmt);
-      }
-      gen_x86_leave_frame(code, 0);
-      str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE); // access link + dummy IP
-    }
-    break;
-    
-    case eAstNode_call:
-    {
-      AstNode* proc = node->call.proc;
-      Scope* callee_scope = proc->scope;
-      //        char* label = proc->proc.label;
-      
-      str_printfln(code, ";%s()", node->proc.name);
-      str_printfln(code, "sub esp, %d ;alloc ret", callee_scope->ret_area_size);
-      for(ListItem* li = node->call.actual_args.last;
-          li;
-          li = li->prev)
-      {
-        gen_x86_load_rvalue(code, KIND(li, eList_ast_node)->ast_node);
-      }
-      
-#if 0
-      if(proc->proc.is_extern)
-      {
-        str_printfln(code, "call %s", node->proc.name);
-        
-        if(callee_scope->ret_area_size == MACHINE_WORD_SIZE)
-        {
-          str_printfln(code, "mov dword ptr [esp], eax ; save the return value");
-        }
-        else if(callee_scope->ret_area_size != 0)
-          assert(0); //FIXME: don't know what to do
-      }
-      else
-#endif
-      {
-        Symbol* occur_sym = node->occur_sym;
-        Scope* caller_scope = occur_sym->scope;
-        
-        str_printfln(code, "push ebp");
-        str_printfln(code, "add dword ptr [esp], %d", 2*MACHINE_WORD_SIZE);
-        
-        int callee_depth_offset = caller_scope->nesting_depth - callee_scope->nesting_depth;
-        if(callee_depth_offset >= 0)
-        {
-          str_printfln(code, "push %d", callee_depth_offset + 1);
-          str_printfln(code, "call _rt_load_access_link");
-        }
-        
-        str_printfln(code, "call %s", node->proc.name);
-        str_printfln(code, "add esp, %d ;dealloc args", MACHINE_WORD_SIZE + callee_scope->args_area_size);
-      }
-    }
-    break;
-    
-    case eAstNode_stmt:
-    {
-      AstNode* actual_stmt = node->stmt.stmt;
-      gen_x86(code, actual_stmt);
-      str_printfln(code, "add esp, %d", actual_stmt->eval_ty->width);
-    }
-    break;
-    
-    case eAstNode_bin_expr:
-    {
-      AstNode* left_operand = node->bin_expr.left_operand;
-      AstNode* right_operand = node->bin_expr.right_operand;
-      
-      switch(node->bin_expr.op)
-      {
-        case eOperator_assign:
-        {
-          gen_x86_load_rvalue(code, right_operand);
-          gen_x86_load_lvalue(code, left_operand);
-          str_printfln(code, "push %d", node->eval_ty->width);
-          str_printfln(code, "call _rt_store");
-        }
-        break;
-        
-        case eOperator_add:
-        {
-          gen_x86_load_rvalue(code, left_operand);
-          gen_x86_load_rvalue(code, right_operand);
-          
-          if(types_are_equal(node->eval_ty, basic_type_int) || node->eval_ty->kind == eType_pointer)
-          {
-            str_printfln(code, "pop eax");
-            str_printfln(code, "add dword ptr [esp], eax");
-          }
-          else if(types_are_equal(node->eval_ty, basic_type_float))
-          {
-            str_printfln(code, "movss xmm0, dword ptr [esp]");
-            str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
-            str_printfln(code, "addss xmm0, dword ptr [esp]");
-            str_printfln(code, "movss dword ptr [esp], xmm0");
-          }
-          else
-            assert(0);
-        }
-        break;
-        
-        case eOperator_sub:
-        {
-          if(types_are_equal(node->eval_ty, basic_type_int) || node->eval_ty->kind == eType_pointer)
-          {
-            gen_x86_load_rvalue(code, left_operand);
-            gen_x86_load_rvalue(code, right_operand);
-            
-            str_printfln(code, "pop eax");
-            str_printfln(code, "sub dword ptr [esp], eax");
-          }
-          else if(types_are_equal(node->eval_ty, basic_type_float))
-          {
-            gen_x86_load_rvalue(code, right_operand);
-            gen_x86_load_rvalue(code, left_operand);
-            
-            str_printfln(code, "movss xmm0, dword ptr [esp]");
-            str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
-            str_printfln(code, "subss xmm0, dword ptr [esp]");
-            str_printfln(code, "movss dword ptr [esp], xmm0");
-          }
-          else
-            assert(0);
-        }
-        break;
-        
-        case eOperator_mul:
-        {
-          gen_x86_load_rvalue(code, right_operand);
-          gen_x86_load_rvalue(code, left_operand);
-          
-          if(types_are_equal(node->eval_ty, basic_type_int) || node->eval_ty->kind == eType_pointer)
-          {
-            str_printfln(code, "pop eax");
-            str_printfln(code, "imul dword ptr [esp]");
-            str_printfln(code, "mov dword ptr [esp], eax");
-          }
-          else if(types_are_equal(node->eval_ty, basic_type_float))
-          {
-            str_printfln(code, "movss xmm0, dword ptr [esp]");
-            str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
-            str_printfln(code, "mulss xmm0, dword ptr [esp]");
-            str_printfln(code, "movss dword ptr [esp], xmm0");
-          }
-          else
-            assert(0);
-        }
-        break;
-        
-        case eOperator_div:
-        {
-          gen_x86_load_rvalue(code, right_operand);
-          gen_x86_load_rvalue(code, left_operand);
-          
-          if(types_are_equal(node->eval_ty, basic_type_int) || node->eval_ty->kind == eType_pointer)
-          {
-            str_printfln(code, "pop eax");
-            str_printfln(code, "cdq"); // extend EAX into EDX
-            str_printfln(code, "idiv dword ptr [esp]");
-            str_printfln(code, "mov dword ptr [esp], eax");
-          }
-          else if(types_are_equal(node->eval_ty, basic_type_float))
-          {
-            str_printfln(code, "movss xmm0, dword ptr [esp]");
-            str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
-            str_printfln(code, "divss xmm0, dword ptr [esp]");
-            str_printfln(code, "movss dword ptr [esp], xmm0");
-          }
-          else
-            assert(0);
-        }
-        break;
-        
-        case eOperator_mod:
-        {
-          gen_x86_load_rvalue(code, right_operand);
-          gen_x86_load_rvalue(code, left_operand);
-          
-          if(types_are_equal(node->eval_ty, basic_type_int) || node->eval_ty->kind == eType_pointer)
-          {
-            str_printfln(code, "pop eax");
-            str_printfln(code, "cdq"); // extend EAX into EDX
-            str_printfln(code, "idiv dword ptr [esp]");
-            str_printfln(code, "mov dword ptr [esp], edx");
-          }
-          else
-            assert(0);
-        }
-        break;
-        
-        case eOperator_eq:
-        case eOperator_not_eq:
-        {
-          gen_x86_load_rvalue(code, left_operand);
-          gen_x86_load_rvalue(code, right_operand);
-          
-          if(types_are_equal(left_operand->eval_ty, basic_type_char) || types_are_equal(left_operand->eval_ty, basic_type_int))
-          {
-            if(types_are_equal(left_operand->eval_ty, basic_type_int))
-            {
-              str_printfln(code, "pop eax");
-              str_printfln(code, "pop ebx");
-            }
-            else if(types_are_equal(left_operand->eval_ty, basic_type_char))
-            {
-              str_printfln(code, "movzx eax, byte ptr [esp]");
-              str_printfln(code, "movzx ebx, byte ptr [esp+%d]", MACHINE_WORD_SIZE);
-              str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE);
-            }
-            
-            str_printfln(code, "cmp ebx, eax");
-          }
-          else if(types_are_equal(left_operand->eval_ty, basic_type_float))
-          {
-            str_printfln(code, "movss xmm0, dword ptr [esp]");
-            str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
-            str_printfln(code, "comiss xmm0, dword ptr [esp]");
-          }
-          else
-            assert(0);
-          
-          IrLabel label = new_gen_label();
-          str_printfln(code, "push 1");
-          if(node->bin_expr.op == eOperator_eq)
-          {
-            str_printfln(code, "jz %s$cmp_eq", label.name);
-            str_printfln(code, "xor dword ptr [esp], 1");
-            str_printfln(code, "%s$cmp_eq:", label.name);
-          }
-          else if(node->bin_expr.op == eOperator_not_eq)
-          {
-            str_printfln(code, "jnz %s$cmp_not_eq", label.name);
-            str_printfln(code, "xor dword ptr [esp], 1");
-            str_printfln(code, "%s$cmp_not_eq:", label.name);
-          }
-          else
-            assert(0);
-          //TODO: Do we need to explicitly handle the case when at least one of floating point operands is NaN,
-          //or is there going to be some kind of CPU exception that will halt the program?
-        }
-        break;
-        
-        case eOperator_less:
-        case eOperator_greater:
-        case eOperator_less_eq:
-        case eOperator_greater_eq:
-        {
-          if(types_are_equal(left_operand->eval_ty, basic_type_char) || types_are_equal(left_operand->eval_ty, basic_type_int))
-          {
-            gen_x86_load_rvalue(code, left_operand);
-            gen_x86_load_rvalue(code, right_operand);
-            
-            if(types_are_equal(left_operand->eval_ty, basic_type_int))
-            {
-              str_printfln(code, "pop eax");
-              str_printfln(code, "pop ebx");
-            }
-            else if(types_are_equal(left_operand->eval_ty, basic_type_char))
-            {
-              str_printfln(code, "movzx eax, byte ptr [esp]");
-              str_printfln(code, "movzx ebx, byte ptr [esp+%d]", MACHINE_WORD_SIZE);
-              str_printfln(code, "add esp, %d", 2*MACHINE_WORD_SIZE);
-            }
-            
-            str_printfln(code, "cmp ebx, eax");
-            
-            IrLabel label = new_gen_label();
-            str_printfln(code, "push 1");
-            if(node->bin_expr.op == eOperator_less)
-            {
-              str_printfln(code, "jl %s$cmp_less", label.name);
-              str_printfln(code, "xor dword ptr [esp], 1");
-              str_printfln(code, "%s$cmp_less:", label.name);
-            }
-            else if(node->bin_expr.op == eOperator_less_eq)
-            {
-              str_printfln(code, "jle %s$cmp_less_eq", label.name);
-              str_printfln(code, "xor dword ptr [esp], 1");
-              str_printfln(code, "%s$cmp_less_eq:", label.name);
-            }
-            else if(node->bin_expr.op == eOperator_greater)
-            {
-              str_printfln(code, "jg %s$cmp_greater", label.name);
-              str_printfln(code, "xor dword ptr [esp], 1");
-              str_printfln(code, "%s$cmp_greater:", label.name);
-            }
-            else if(node->bin_expr.op == eOperator_greater_eq)
-            {
-              str_printfln(code, "jge %s$cmp_greater_eq", label.name);
-              str_printfln(code, "xor dword ptr [esp], 1");
-              str_printfln(code, "%s$cmp_greater_eq:", label.name);
-            }
-            else
-              assert(0);
-          }
-          else if(types_are_equal(left_operand->eval_ty, basic_type_float))
-          {
-            if(node->bin_expr.op == eOperator_less)
-            {
-              gen_x86_load_rvalue(code, right_operand);
-              gen_x86_load_rvalue(code, left_operand);
-              str_printfln(code, "movss xmm0, dword ptr [esp]");
-              str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
-              str_printfln(code, "cmpss xmm0, dword ptr [esp], 1");
-            }
-            else if(node->bin_expr.op == eOperator_less_eq)
-            {
-              gen_x86_load_rvalue(code, right_operand);
-              gen_x86_load_rvalue(code, left_operand);
-              str_printfln(code, "movss xmm0, dword ptr [esp]");
-              str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
-              str_printfln(code, "cmpss xmm0, dword ptr [esp], 2");
-            }
-            else if(node->bin_expr.op == eOperator_greater)
-            {
-              gen_x86_load_rvalue(code, left_operand);
-              gen_x86_load_rvalue(code, right_operand);
-              str_printfln(code, "movss xmm0, dword ptr [esp]");
-              str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
-              str_printfln(code, "cmpss xmm0, dword ptr [esp], 1");
-            }
-            else if(node->bin_expr.op == eOperator_greater_eq)
-            {
-              gen_x86_load_rvalue(code, left_operand);
-              gen_x86_load_rvalue(code, right_operand);
-              str_printfln(code, "movss xmm0, dword ptr [esp]");
-              str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
-              str_printfln(code, "cmpss xmm0, dword ptr [esp], 2");
-            }
-            else
-              assert(0);
-            //TODO: Do we need to explicitly handle the case when at least one of floating point operands is NaN,
-            //or is there going to be some kind of CPU exception that will halt the program?
-            
-            str_printfln(code, "movss dword ptr [esp], xmm0");
-          }
-          else
-            assert(0);
-        }
-        break;
-        
-        case eOperator_logic_and:
-        case eOperator_logic_or:
-        {
-          gen_x86_load_rvalue(code, left_operand);
-          
-          IrLabel label = new_gen_label();
-          str_printfln(code, "pop eax");
-          if(node->bin_expr.op == eOperator_logic_and)
-          {
-            str_printfln(code, "and eax, 1");
-            str_printfln(code, "jz %s$logic_end", label.name);
-          }
-          else if(node->bin_expr.op == eOperator_logic_or)
-          {
-            str_printfln(code, "or eax, 0");
-            str_printfln(code, "jnz %s$logic_end", label.name);
-          }
-          else
-            assert(0);
-          
-          gen_x86_load_rvalue(code, right_operand);
-          
-          str_printfln(code, "pop eax");
-          if(node->bin_expr.op == eOperator_logic_and)
-          {
-            str_printfln(code, "and eax, 1");
-            str_printfln(code, "jz %s$logic_end", label.name);
-          }
-          else if(node->bin_expr.op == eOperator_logic_or)
-          {
-            str_printfln(code, "or eax, 0");
-            str_printfln(code, "jnz %s$logic_end", label.name);
-          }
-          else
-            assert(0);
-          
-          str_printfln(code, "%s$logic_end:", label.name);
-          str_printfln(code, "push eax");
-        }
-        break;
-        
-        case eOperator_bit_and:
-        case eOperator_bit_or:
-        case eOperator_bit_xor:
-        {
-          gen_x86_load_rvalue(code, left_operand);
-          gen_x86_load_rvalue(code, right_operand);
-          
-          str_printfln(code, "pop eax");
-          if(node->bin_expr.op == eOperator_bit_and)
-          {
-            str_printfln(code, "and dword ptr [esp], eax");
-          }
-          else if(node->bin_expr.op == eOperator_bit_or)
-          {
-            str_printfln(code, "or dword ptr [esp], eax");
-          }
-          else if(node->bin_expr.op == eOperator_bit_xor)
-          {
-            str_printfln(code, "xor dword ptr [esp], eax");
-          }
-          else
-            assert(0);
-        }
-        break;
-        
-        case eOperator_bit_shift_left:
-        case eOperator_bit_shift_right:
-        {
-          gen_x86_load_rvalue(code, left_operand);
-          gen_x86_load_rvalue(code, right_operand);
-          
-          str_printfln(code, "mov cl, byte ptr [esp]");
-          str_printfln(code, "add esp, %d", MACHINE_WORD_SIZE);
-          
-          if(node->bin_expr.op == eOperator_bit_shift_left)
-          {
-            str_printfln(code, "shl dword ptr [esp], cl");
-          }
-          else if(node->bin_expr.op == eOperator_bit_shift_right)
-          {
-            str_printfln(code, "shr dword ptr [esp], cl");
-          }
-          else
-            assert(0);
-        }
-        break;
-        
-        case eOperator_cast:
-        {
-          gen_x86_load_rvalue(code, right_operand);
-          
-          if(types_are_equal(left_operand->eval_ty, basic_type_int)
-             && types_are_equal(right_operand->eval_ty, basic_type_float))
-          {
-            // int <- float
-            str_printfln(code, "cvttss2si eax, dword ptr [esp]");
-            str_printfln(code, "mov dword ptr [esp], eax");
-          }
-          if(types_are_equal(left_operand->eval_ty, basic_type_float)
-             && types_are_equal(right_operand->eval_ty, basic_type_int))
-          {
-            // float <- int
-            str_printfln(code, "cvtsi2ss xmm0, dword ptr [esp]");
-            str_printfln(code, "movss dword ptr [esp], xmm0");
-          }
-        }
-        break;
-        
-        case eOperator_indexer:
-        {
-          gen_x86_load_rvalue(code, node);
-        }
-        break;
-        
-        default: assert(0);
-      }
-    }
-    break;
-    
-    case eAstNode_unr_expr:
-    {
-      AstNode* operand = node->unr_expr.operand;
-      
-      if(node->unr_expr.op == eOperator_address_of)
-      {
-        gen_x86_load_rvalue(code, node);
-      }
-      else if(node->unr_expr.op == eOperator_neg)
-      {
-        gen_x86_load_rvalue(code, operand);
-        
-        if(types_are_equal(operand->eval_ty, basic_type_int))
-        {
-          str_printfln(code, "neg dword ptr [esp]");
-        }
-        else if(types_are_equal(operand->eval_ty, basic_type_float))
-        {
-          str_printfln(code, "xor dword ptr [esp], %xh", 0x80000000);
-        }
-        else
-          assert(0);
-      }
-      else if(node->unr_expr.op == eOperator_logic_not)
-      {
-        assert(0);
-      }
-      else if(node->unr_expr.op == eOperator_deref)
-      {
-        gen_x86_load_rvalue(code, node);
-      }
-      else
-        assert(0);
-    }
-    break;
-    
-    case eAstNode_while:
-    {
-      IrLabel label = node->while_.label = new_gen_label();
-      str_printfln(code, "%s$while_eval:", label.name);
-      gen_x86_load_rvalue(code, node->while_.cond_expr);
-      
-      str_printfln(code, "pop eax");
-      str_printfln(code, "and eax, 1");
-      str_printfln(code, "jz %s$while_break", label.name);
-      
-      if(node->while_.body)
-      {
-        gen_x86(code, node->while_.body);
-      }
-      
-      str_printfln(code, "jmp %s$while_eval", label.name);
-      str_printfln(code, "%s$while_break:", label.name);
-    }
-    break;
-    
-    case eAstNode_if:
-    {
-      gen_x86_load_rvalue(code, node->if_.cond_expr);
-      
-      str_printfln(code, "pop eax");
-      str_printfln(code, "and eax, 1");
-      
-      IrLabel label = new_gen_label();
-      if(node->if_.else_body)
-      {
-        str_printfln(code, "jz %s$if_else", label.name);
-      }
-      else
-      {
-        str_printfln(code, "jz %s$if_end", label.name);
-      }
-      
-      gen_x86(code, node->if_.body);
-      str_printfln(code, "jmp %s$if_end", label.name);
-      
-      if(node->if_.else_body)
-      {
-        str_printfln(code, "%s$if_else:", label.name);
-        gen_x86(code, node->if_.else_body);
-      }
-      
-      str_printfln(code, "%s$if_end:", label.name);
-    }
-    break;
-    
-    case eAstNode_return:
-    {
-      if(node->ret.expr)
-      {
-        gen_x86(code, node->ret.expr);
-      }
-      gen_x86_leave_frame(code, node->ret.nesting_depth);
-      str_printfln(code, "ret");
-    }
-    break;
-    
-    case eAstNode_loop_ctrl:
-    {
-      AstNode* loop = node->loop_ctrl.loop;
-      gen_x86_leave_frame(code, node->loop_ctrl.nesting_depth);
-      IrLabel* label = 0;
-      if(loop->kind == eAstNode_while)
-      {
-        label = &loop->while_.label;
-        if(node->loop_ctrl.kind == eLoopCtrl_break)
-          str_printfln(code, "jmp %s$while_break", label->name);
-        else if(node->loop_ctrl.kind == eLoopCtrl_continue)
-          str_printfln(code, "jmp %s$while_eval", label->name);
-        else
-          assert(0);
-      }
-      else
-        assert(0);
-    }
-    break;
-    
-    case eAstNode_empty:
-    break; // skip
-    
-    case eAstNode_asm_block:
-    str_append(code, node->asm_block.asm_text);
-    break;
-    
-    default: assert(0);
-  }
-  return success;
-}
-#endif
 

@@ -67,9 +67,14 @@ char* path_find_leaf(char* file_path)
   while(p_char && *p_char)
   {
     while(*p_char && *p_char != '\\')
+    {
       p_char++;
+    }
+
     if(*p_char == '\\')
+    {
       leaf = ++p_char;
+    }
   }
   return leaf;
 }
@@ -195,10 +200,14 @@ bool compile_error_(char* file, int line, SourceLoc* src_loc, char* message, ...
   cstr_copy(filename_buf, file);
 
   if(src_loc && src_loc->line_nr >= 0)
+  {
     fprintf(stderr, "%s:%d: (%s:%d) ", src_loc->file_path, src_loc->line_nr,
             path_make_leaf(filename_buf, false), line);
+  }
   else
+  {
     fprintf(stderr, "%s:%d: ", file, line);
+  }
 
   va_list args;
   va_start(args, message);
@@ -215,7 +224,9 @@ void assert_(char* message, char* file, int line)
   {
     fprintf(stderr, "%s:%d: ", file, line);
     if(!message || message[0] == '\0')
+    {
       message = "";
+    }
     fprintf(stderr, "assert(%s)\n", message);
 
     fflush(stderr);
@@ -245,7 +256,9 @@ bool error_(char* file, int line, char* message, ...)
   fprintf(stderr, "%s:%d: ", file, line);
 
   if(!message || message[0] == '\0')
+  {
     message = "error";
+  }
 
   va_list args;
   va_start(args, message);
@@ -310,6 +323,7 @@ int main(int argc, char* argv[])
     success = error("missing argument : input source file");
     goto end;
   }
+
   char* src_file_path = argv[1];
   arena = new_arena(10*MEGABYTE);
 
@@ -320,18 +334,21 @@ int main(int argc, char* argv[])
     success = error("could not read source file `%s`", src_file_path);
     goto end;
   }
+
   OutFileNames out_files = {0};
   if(!make_out_file_names(&out_files, src_file_path))
   {
     success = false;
     goto end;
   }
+
   String x86_text = {0};
   if(!translate(out_files.source.name, src_file_path, hoc_text, &x86_text))
   {
     success = error("program could not be translated");
     goto end;
   }
+
   int x86_text_len = str_len(&x86_text);
   int bytes_written = file_write_bytes(out_files.h_asm.name, (uint8*)x86_text.head, x86_text_len);
   if(bytes_written != x86_text_len)
@@ -343,6 +360,7 @@ int main(int argc, char* argv[])
 #if 0
   getc(stdin);
 #endif
+
 end:
   return success ? 0 : -1;
 }

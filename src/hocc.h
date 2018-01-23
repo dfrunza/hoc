@@ -489,7 +489,6 @@ typedef struct
 {
   MemoryArena* stmt_arena;
   MemoryArena* sym_arena;
-  MemoryArena* gp_arena;
 
   IrStmt* stmt_array;
   int stmt_count;
@@ -1074,14 +1073,13 @@ typedef struct
   List scopes;
   Scope* active_scope;
   int nesting_depth;
-  MemoryArena* arena;
+  MemoryArena* sym_arena;
 }
 SymbolContext;
 
 typedef struct X86Context
 {
   MemoryArena* stmt_arena;
-  MemoryArena* gp_arena;
   X86Stmt* stmt_array;
   int stmt_count;
 

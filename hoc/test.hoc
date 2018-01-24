@@ -1,27 +1,10 @@
-[10]char buf;
-[]char s;
-char c;
+extern int GetStdHandle(int device_id);
 
 void startup()
 {
-  s = int_to_str(&buf, 10, -123);
-  c = ^s;
-
-  /*
-  A[0] = 1;
-  A[1] = 2;
-  B[0] = 3;
-  B[1] = 4;
-
-  p = foo(&A, &B);
-  */
 }
 
-[]char foo([]char buf)
-{
-  return buf + (char^):1;
-}
-
+/*
 int abs(int a)
 {
   if(a < 0)
@@ -87,7 +70,6 @@ void digit_to_char([]char buf, int pos, int digit)
 
   return buf + (char^):buf_i;
 }
-/*
 */
 
 /*

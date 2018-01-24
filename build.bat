@@ -42,6 +42,7 @@ IF %ERRORLEVEL% NEQ 0 GOTO :end
 REM /Cx     - preserve case in publics, externs
 REM /Zi     - add symbolic debug info
 REM /Fl     - generate listing
+REM /c      - assemble without linking
 ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
    /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
 

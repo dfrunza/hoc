@@ -701,41 +701,42 @@ X86Operand;
 
 typedef enum
 {
-  eX86StmtOpcode_None,
-  eX86StmtOpcode_call,
-  eX86StmtOpcode_pop,
-  eX86StmtOpcode_push,
-  eX86StmtOpcode_lea,
-  eX86StmtOpcode_mov,
-  eX86StmtOpcode_movss,
-  eX86StmtOpcode_add,
-  eX86StmtOpcode_addss,
-  eX86StmtOpcode_sub,
-  eX86StmtOpcode_subss,
-  eX86StmtOpcode_imul,
-  eX86StmtOpcode_mulss,
-  eX86StmtOpcode_idiv,
-  eX86StmtOpcode_cdq,
-  eX86StmtOpcode_divss,
-  eX86StmtOpcode_neg,
-  eX86StmtOpcode_cmp,
-  eX86StmtOpcode_cmpss,
-  eX86StmtOpcode_jz,
-  eX86StmtOpcode_jnz,
-  eX86StmtOpcode_jl,
-  eX86StmtOpcode_jle,
-  eX86StmtOpcode_jg,
-  eX86StmtOpcode_jge,
-  eX86StmtOpcode_jmp,
-  eX86StmtOpcode_nop,
-  eX86StmtOpcode_label,
-  eX86StmtOpcode_ret,
+  eX86Stmt_None,
+  eX86Stmt_call,
+  eX86Stmt_pop,
+  eX86Stmt_push,
+  eX86Stmt_lea,
+  eX86Stmt_mov,
+  eX86Stmt_movss,
+  eX86Stmt_add,
+  eX86Stmt_addss,
+  eX86Stmt_sub,
+  eX86Stmt_subss,
+  eX86Stmt_imul,
+  eX86Stmt_mulss,
+  eX86Stmt_idiv,
+  eX86Stmt_cdq,
+  eX86Stmt_divss,
+  eX86Stmt_neg,
+  eX86Stmt_cmp,
+  eX86Stmt_cmpss,
+  eX86Stmt_jz,
+  eX86Stmt_jnz,
+  eX86Stmt_jl,
+  eX86Stmt_jle,
+  eX86Stmt_jg,
+  eX86Stmt_jge,
+  eX86Stmt_jmp,
+  eX86Stmt_nop,
+  eX86Stmt_label,
+  eX86Stmt_extern_proc,
+  eX86Stmt_ret,
 }
-eX86StmtOpcode;
+eX86Stmt;
 
 typedef struct X86Stmt
 {
-  eX86StmtOpcode opcode;
+  eX86Stmt opcode;
   X86Operand* operand1;
   X86Operand* operand2;
 }
@@ -919,12 +920,13 @@ typedef struct AstNode
     struct
     {
       char* name;
+      char* decorated_name;
       AstNode* args;
       AstNode* ret_type;
       AstNode* body;
 
       Scope* scope;
-      Scope* arg_scope;
+      Scope* preamble_scope;
       Scope* body_scope;
       Symbol* decl_sym;
       Symbol* retvar;

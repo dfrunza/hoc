@@ -176,98 +176,95 @@ void x86_print_operand(String* text, X86Operand* operand)
   }
 }
 
-void x86_print_opcode(String* text, eX86StmtOpcode opcode)
+void x86_print_opcode(String* text, eX86Stmt opcode)
 {
   switch(opcode)
   {
-    case eX86StmtOpcode_call:
+    case eX86Stmt_call:
       str_printf(text, "call ");
     break;
 
-    case eX86StmtOpcode_pop:
+    case eX86Stmt_pop:
       str_printf(text, "pop ");
     break;
 
-    case eX86StmtOpcode_push:
+    case eX86Stmt_push:
       str_printf(text, "push ");
     break;
 
-    case eX86StmtOpcode_lea:
+    case eX86Stmt_lea:
       str_printf(text, "lea ");
     break;
 
-    case eX86StmtOpcode_mov:
+    case eX86Stmt_mov:
       str_printf(text, "mov ");
     break;
     
-    case eX86StmtOpcode_add:
+    case eX86Stmt_add:
       str_printf(text, "add ");
     break;
     
-    case eX86StmtOpcode_sub:
+    case eX86Stmt_sub:
       str_printf(text, "sub ");
     break;
     
-    case eX86StmtOpcode_imul:
+    case eX86Stmt_imul:
       str_printf(text, "imul ");
     break;
     
-    case eX86StmtOpcode_idiv:
+    case eX86Stmt_idiv:
       str_printf(text, "idiv ");
     break;
     
-    case eX86StmtOpcode_neg:
+    case eX86Stmt_neg:
       str_printf(text, "neg ");
     break;
 
-    case eX86StmtOpcode_cmp:
+    case eX86Stmt_cmp:
       str_printf(text, "cmp ");
     break;
 
-    case eX86StmtOpcode_cmpss:
+    case eX86Stmt_cmpss:
       str_printf(text, "cmpss ");
     break;
     
-    case eX86StmtOpcode_jz:
+    case eX86Stmt_jz:
       str_printf(text, "jz ");
     break;
     
-    case eX86StmtOpcode_jnz:
+    case eX86Stmt_jnz:
       str_printf(text, "jnz ");
     break;
     
-    case eX86StmtOpcode_jl:
+    case eX86Stmt_jl:
       str_printf(text, "jl ");
     break;
     
-    case eX86StmtOpcode_jle:
+    case eX86Stmt_jle:
       str_printf(text, "jle ");
     break;
     
-    case eX86StmtOpcode_jg:
+    case eX86Stmt_jg:
       str_printf(text, "jg ");
     break;
     
-    case eX86StmtOpcode_jge:
+    case eX86Stmt_jge:
       str_printf(text, "jge ");
     break;
     
-    case eX86StmtOpcode_jmp:
+    case eX86Stmt_jmp:
       str_printf(text, "jmp ");
     break;
     
-    case eX86StmtOpcode_label:
-    break;
-    
-    case eX86StmtOpcode_nop:
+    case eX86Stmt_nop:
       //str_printfln(text, "nop");
     break;
     
-    case eX86StmtOpcode_ret:
+    case eX86Stmt_ret:
       str_printf(text, "ret ");
     break;
 
-    case eX86StmtOpcode_cdq:
+    case eX86Stmt_cdq:
       str_printf(text, "cdq");
     break;
     
@@ -277,26 +274,43 @@ void x86_print_opcode(String* text, eX86StmtOpcode opcode)
 
 void x86_print_stmt(String* text, X86Stmt* stmt)
 {
-  x86_print_opcode(text, stmt->opcode);
-  if(stmt->operand1)
+  switch(stmt->opcode)
   {
-    x86_print_operand(text, stmt->operand1);
-    if(stmt->opcode == eX86StmtOpcode_label)
+    case eX86Stmt_label:
     {
+      x86_print_operand(text, stmt->operand1);
       str_printf(text, ":");
     }
-  }
+    break;
 
-  if(stmt->operand2)
-  {
-    str_printf(text, ", ");
-    x86_print_operand(text, stmt->operand2);
+    case eX86Stmt_extern_proc:
+    {
+      str_printf(text, "extern ");
+      x86_print_operand(text, stmt->operand1);
+      str_printf(text, ":proc");
+    }
+    break;
+
+    default:
+    {
+      x86_print_opcode(text, stmt->opcode);
+      if(stmt->operand1)
+      {
+        x86_print_operand(text, stmt->operand1);
+      }
+
+      if(stmt->operand2)
+      {
+        str_printf(text, ", ");
+        x86_print_operand(text, stmt->operand2);
+      }
+    }
   }
 
   str_printfln(text, "");
 }
 
-X86Stmt* x86_new_stmt(X86Context* context, eX86StmtOpcode opcode)
+X86Stmt* x86_new_stmt(X86Context* context, eX86Stmt opcode)
 {
   X86Stmt* stmt = mem_push_struct(context->stmt_arena, X86Stmt);
   context->stmt_count++;
@@ -800,7 +814,7 @@ void x86_load_object_value(X86Context* context, Symbol* object, X86Location* des
   
   if(!is_object_in_location(object, dest_loc))
   {
-    X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+    X86Stmt* stmt = x86_new_stmt(context, eX86Stmt_mov);
     
     stmt->operand1 = x86_make_register_operand(context, dest_loc);
     stmt->operand2 = x86_make_object_operand(context, object);
@@ -813,7 +827,7 @@ void x86_load_object_address(X86Context* context, Symbol* object, X86Location* d
 
   if(!is_object_in_location(object, dest_loc))
   {
-    X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_lea);
+    X86Stmt* stmt = x86_new_stmt(context, eX86Stmt_lea);
 
     stmt->operand1 = x86_make_register_operand(context, dest_loc);
     stmt->operand2 = x86_make_object_address_operand(context, object);
@@ -842,7 +856,7 @@ void x86_store_object(X86Context* context, Symbol* object)
   {
     X86Location* object_loc = lookup_object_location(context, object);
 
-    X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+    X86Stmt* stmt = x86_new_stmt(context, eX86Stmt_mov);
 
     stmt->operand1 = x86_make_object_memory_operand(context, object);
     stmt->operand2 = x86_make_register_operand(context, object_loc);
@@ -854,7 +868,7 @@ void x86_load_constant_into_register(X86Context* context, eX86Type x86_type, eX8
 {
   assert(is_register_location(dest_loc));
   
-  X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+  X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86Stmt_mov);
   
   stmt->operand1 = x86_make_register_operand(arena, dest_loc);
   stmt->operand2 = x86_make_constant_operand(arena, x86_conv_constant_to_int(constant));
@@ -862,16 +876,16 @@ void x86_load_constant_into_register(X86Context* context, eX86Type x86_type, eX8
 
 void x86_store_constant_to_memory(X86Context* context, eX86Type x86_type, Symbol* constant, Symbol* object)
 {
-  X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86StmtOpcode_mov);
+  X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86Stmt_mov);
   
   stmt->operand1 = x86_make_memory_operand(context, object);
   stmt->operand2 = x86_make_constant_operand(arena, x86_conv_constant_to_int(constant));
 }
 #endif
 
-eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
+eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
 {
-  eX86StmtOpcode x86_opcode = eX86StmtOpcode_None;
+  eX86Stmt x86_opcode = eX86Stmt_None;
 
   if(types_are_equal(type, basic_type_int) || types_are_equal(type, basic_type_bool)
      || types_are_equal(type, basic_type_char)
@@ -880,47 +894,47 @@ eX86StmtOpcode conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
     switch(ir_op)
     {
       case eIrOp_add:
-        x86_opcode = eX86StmtOpcode_add;
+        x86_opcode = eX86Stmt_add;
       break;
 
       case eIrOp_sub:
-        x86_opcode = eX86StmtOpcode_sub;
+        x86_opcode = eX86Stmt_sub;
       break;
 
       case eIrOp_mul:
-        x86_opcode = eX86StmtOpcode_imul;
+        x86_opcode = eX86Stmt_imul;
       break;
 
       case eIrOp_div:
-        x86_opcode = eX86StmtOpcode_idiv;
+        x86_opcode = eX86Stmt_idiv;
       break;
 
       case eIrOp_less:
-        x86_opcode = eX86StmtOpcode_jl;
+        x86_opcode = eX86Stmt_jl;
       break;
 
       case eIrOp_less_eq:
-        x86_opcode = eX86StmtOpcode_jle;
+        x86_opcode = eX86Stmt_jle;
       break;
 
       case eIrOp_greater:
-        x86_opcode = eX86StmtOpcode_jg;
+        x86_opcode = eX86Stmt_jg;
       break;
 
       case eIrOp_greater_eq:
-        x86_opcode = eX86StmtOpcode_jge;
+        x86_opcode = eX86Stmt_jge;
       break;
 
       case eIrOp_eq:
-        x86_opcode = eX86StmtOpcode_jz;
+        x86_opcode = eX86Stmt_jz;
       break;
 
       case eIrOp_not_eq:
-        x86_opcode = eX86StmtOpcode_jnz;
+        x86_opcode = eX86Stmt_jnz;
       break;
 
       case eIrOp_neg:
-        x86_opcode = eX86StmtOpcode_neg;
+        x86_opcode = eX86Stmt_neg;
       break;
 
       case eIrOp_mod:
@@ -1095,7 +1109,7 @@ void x86_gen_divmod_op(X86Context* context, IrStmt* ir_stmt)
     }
     set_exclusive_object_location(context, arg1->object, dividend_loc);
 
-    X86Stmt* x86_stmt = x86_new_stmt(context, eX86StmtOpcode_cdq);
+    X86Stmt* x86_stmt = x86_new_stmt(context, eX86Stmt_cdq);
 
     X86Location* divisor_loc = lookup_object_location(context, arg2->object);
     if(!is_register_location(context, divisor_loc))
@@ -1104,7 +1118,7 @@ void x86_gen_divmod_op(X86Context* context, IrStmt* ir_stmt)
       x86_load_object(context, arg2->object, divisor_loc);
     }
 
-    x86_stmt = x86_new_stmt(context, eX86StmtOpcode_idiv);
+    x86_stmt = x86_new_stmt(context, eX86Stmt_idiv);
     x86_stmt->operand1 = x86_make_object_operand(context, arg2->object);
 
     if(assign->op == eIrOp_div)
@@ -1153,7 +1167,7 @@ void x86_gen_index_source(X86Context* context, IrStmt* ir_stmt)
     x86_load_object(context, arg2->object, arg2_loc);
   }
 
-  X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+  X86Stmt* mov_stmt = x86_new_stmt(context, eX86Stmt_mov);
   mov_stmt->operand1 = x86_make_register_operand(context, result_loc);
   mov_stmt->operand2 = x86_make_memory_operand(result->object->ty,
                                                x86_make_register_operand(context, arg1_loc),
@@ -1192,7 +1206,7 @@ void x86_gen_index_dest(X86Context* context, IrStmt* ir_stmt)
     x86_load_object(context, arg2->object, arg2_loc);
   }
 
-  X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+  X86Stmt* mov_stmt = x86_new_stmt(context, eX86Stmt_mov);
   mov_stmt->operand1 = x86_make_memory_operand(arg1->object->ty,
                                                x86_make_register_operand(context, result_loc),
                                                x86_make_register_operand(context, arg2_loc));
@@ -1218,7 +1232,7 @@ void x86_gen_deref_source(X86Context* context, IrStmt* ir_stmt)
     x86_load_object(context, arg1->object, arg1_loc);
   }
   
-  X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+  X86Stmt* mov_stmt = x86_new_stmt(context, eX86Stmt_mov);
   mov_stmt->operand1 = x86_make_register_operand(context, result_loc);
   mov_stmt->operand2 = x86_make_memory_operand(result->object->ty,
                                                x86_make_register_operand(context, arg1_loc),
@@ -1247,7 +1261,7 @@ void x86_gen_deref_dest(X86Context* context, IrStmt* ir_stmt)
     x86_load_object(context, arg1->object, arg1_loc);
   }
 
-  X86Stmt* mov_stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
+  X86Stmt* mov_stmt = x86_new_stmt(context, eX86Stmt_mov);
   mov_stmt->operand1 = x86_make_memory_operand(arg1->object->ty,
                                                x86_make_register_operand(context, result_loc),
                                                0);
@@ -1440,7 +1454,7 @@ void x86_gen_goto(X86Context* context, IrStmt* ir_stmt)
 {
   save_all_registers(context, false);
 
-  X86Stmt* jump_stmt = x86_new_stmt(context, eX86StmtOpcode_jmp);
+  X86Stmt* jump_stmt = x86_new_stmt(context, eX86Stmt_jmp);
   jump_stmt->operand1 = x86_make_id_operand(ir_stmt->goto_label->name);
 }
 
@@ -1463,7 +1477,7 @@ void x86_gen_cond_goto(X86Context* context, IrStmt* ir_stmt)
       x86_load_object(context, arg1->object, loc);
     }
 
-    X86Stmt* cmp_stmt = x86_new_stmt(context, eX86StmtOpcode_cmp);
+    X86Stmt* cmp_stmt = x86_new_stmt(context, eX86Stmt_cmp);
 
     cmp_stmt->operand1 = x86_make_object_operand(context, arg1->object);
     cmp_stmt->operand2 = x86_make_object_operand(context, arg2->object);
@@ -1481,23 +1495,23 @@ void x86_gen_cond_goto(X86Context* context, IrStmt* ir_stmt)
 void x86_gen_call(X86Context* context, IrStmt* ir_stmt)
 {
   AstNode* proc = ir_stmt->call.proc;
-  Scope* arg_scope = proc->proc.arg_scope;
+  Scope* preamble_scope = proc->proc.preamble_scope;
   
   save_all_registers(context, true);
 
   /* sub esp, #param_size */
-  X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_sub);
+  X86Stmt* stmt = x86_new_stmt(context, eX86Stmt_sub);
   stmt->operand1 = x86_make_register_operand(context, &context->esp);
-  stmt->operand2 = x86_make_int_constant_operand(arg_scope->allocd_size);
+  stmt->operand2 = x86_make_int_constant_operand(preamble_scope->allocd_size);
 
   /* call #proc_name */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_call);
+  stmt = x86_new_stmt(context, eX86Stmt_call);
   stmt->operand1 = x86_make_id_operand(proc->label_begin->name);
 
   /* add esp, #param_size */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_add);
+  stmt = x86_new_stmt(context, eX86Stmt_add);
   stmt->operand1 = x86_make_register_operand(context, &context->esp);
-  stmt->operand2 = x86_make_int_constant_operand(arg_scope->allocd_size);
+  stmt->operand2 = x86_make_int_constant_operand(preamble_scope->allocd_size);
 }
 
 void x86_gen_basic_block(X86Context* context, BasicBlock* bb)
@@ -1543,61 +1557,75 @@ void x86_gen_basic_block(X86Context* context, BasicBlock* bb)
   }
 }
 
+void x86_gen_extern_proc(X86Context* context, AstNode* proc)
+{
+  /* extern #proc_name:proc */
+  X86Stmt* stmt = x86_new_stmt(context, eX86Stmt_extern_proc);
+  stmt->operand1 = x86_make_id_operand(proc->proc.decorated_name);
+}
+
 void x86_gen_proc(X86Context* context, AstNode* proc)
 {
-  List* basic_blocks = proc->proc.basic_blocks;
-  ListItem* li = basic_blocks->first;
-  BasicBlock* first_bb = KIND(li, eList_basic_block)->basic_block;
-
-  /* #proc_name: */
-  X86Stmt* stmt = x86_new_stmt(context, eX86StmtOpcode_label);
-  stmt->operand1 = x86_make_id_operand(first_bb->label->name);
-
-  /* push ebp */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_push);
-  stmt->operand1 = x86_make_register_operand(context, &context->ebp);
-
-  /* mov ebp, esp */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-  stmt->operand1 = x86_make_register_operand(context, &context->ebp);
-  stmt->operand2 = x86_make_register_operand(context, &context->esp);
-
-  /* sub esp, #frame_size */
-  Scope* body_scope = proc->proc.body_scope;
-  stmt = x86_new_stmt(context, eX86StmtOpcode_sub);
-  stmt->operand1 = x86_make_register_operand(context, &context->esp);
-  stmt->operand2 = x86_make_int_constant_operand(body_scope->allocd_size);
-
-  x86_gen_basic_block(context, first_bb);
-  save_all_registers(context, true);
-
-  for(li = li->next;
-      li;
-      li = li->next)
+  if((proc->modifier & eModifier_extern) != 0)
   {
-    BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
+    x86_gen_extern_proc(context, proc);
+  }
+  else
+  {
+    List* basic_blocks = proc->proc.basic_blocks;
+    ListItem* li = basic_blocks->first;
+    BasicBlock* first_bb = KIND(li, eList_basic_block)->basic_block;
 
-    if(bb->label)
+    /* #proc_name: */
+    X86Stmt* stmt = x86_new_stmt(context, eX86Stmt_label);
+    stmt->operand1 = x86_make_id_operand(proc->proc.name);
+
+    /* push ebp */
+    stmt = x86_new_stmt(context, eX86Stmt_push);
+    stmt->operand1 = x86_make_register_operand(context, &context->ebp);
+
+    /* mov ebp, esp */
+    stmt = x86_new_stmt(context, eX86Stmt_mov);
+    stmt->operand1 = x86_make_register_operand(context, &context->ebp);
+    stmt->operand2 = x86_make_register_operand(context, &context->esp);
+
+    /* sub esp, #frame_size */
+    Scope* body_scope = proc->proc.body_scope;
+    stmt = x86_new_stmt(context, eX86Stmt_sub);
+    stmt->operand1 = x86_make_register_operand(context, &context->esp);
+    stmt->operand2 = x86_make_int_constant_operand(body_scope->allocd_size);
+
+    x86_gen_basic_block(context, first_bb);
+    save_all_registers(context, true);
+
+    for(li = li->next;
+        li;
+        li = li->next)
     {
-      X86Stmt* label_stmt = x86_new_stmt(context, eX86StmtOpcode_label);
-      label_stmt->operand1 = x86_make_id_operand(bb->label->name);
+      BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
+
+      if(bb->label)
+      {
+        X86Stmt* label_stmt = x86_new_stmt(context, eX86Stmt_label);
+        label_stmt->operand1 = x86_make_id_operand(bb->label->name);
+      }
+
+      x86_gen_basic_block(context, bb);
+      save_all_registers(context, true);
     }
 
-    x86_gen_basic_block(context, bb);
-    save_all_registers(context, true);
+    /* mov esp, ebp */
+    stmt = x86_new_stmt(context, eX86Stmt_mov);
+    stmt->operand1 = x86_make_register_operand(context, &context->esp);
+    stmt->operand2 = x86_make_register_operand(context, &context->ebp);
+
+    /* pop ebp */
+    stmt = x86_new_stmt(context, eX86Stmt_pop);
+    stmt->operand1 = x86_make_register_operand(context, &context->ebp);
+
+    /* ret */
+    x86_new_stmt(context, eX86Stmt_ret);
   }
-
-  /* mov esp, ebp */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_mov);
-  stmt->operand1 = x86_make_register_operand(context, &context->esp);
-  stmt->operand2 = x86_make_register_operand(context, &context->ebp);
-
-  /* pop ebp */
-  stmt = x86_new_stmt(context, eX86StmtOpcode_pop);
-  stmt->operand1 = x86_make_register_operand(context, &context->ebp);
-
-  /* ret */
-  x86_new_stmt(context, eX86StmtOpcode_ret);
 }
 
 void x86_init_registers(X86Context* context)

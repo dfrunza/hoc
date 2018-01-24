@@ -1156,24 +1156,45 @@ void ir_gen_formal_args(IrContext* ir_context, Scope* scope, AstNode* args)
   }
 }
 
+int get_proc_arg_size(AstNode* args)
+{
+  assert(KIND(args, eAstNode_node_list));
+  int size = 0;
+
+  for(ListItem* li = args->node_list.first;
+      li;
+      li = li->next)
+  {
+    AstNode* var = KIND(li, eList_ast_node)->ast_node;
+    Symbol* arg_object = var->var.decl_sym;
+    size += get_type_width(arg_object->ty);
+  }
+
+  return size;
+}
+
 bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
   
   proc->place = ir_new_arg_existing_object(ir_context, proc->proc.retvar);
-  
+
   if((proc->modifier & eModifier_extern) != 0)
   {
-    fail("TODO");
+    int arg_size = get_proc_arg_size(proc->proc.args);
+    char* name = proc->proc.name;
+    String decorated_label; str_init(&decorated_label, arena);
+    str_printf(&decorated_label, "%s@%d", name, arg_size);
+    proc->proc.decorated_name = str_cap(&decorated_label);
   }
   else
   {
     AstNode* body = proc->proc.body;
     assert(KIND(body, eAstNode_block));
 
-    ir_gen_formal_args(ir_context, proc->proc.arg_scope, proc->proc.args);
-    alloc_data_object(proc->proc.retvar, proc->proc.arg_scope, ir_context->data_alignment);
+    ir_gen_formal_args(ir_context, proc->proc.preamble_scope, proc->proc.args);
+    alloc_data_object(proc->proc.retvar, proc->proc.preamble_scope, ir_context->data_alignment);
 
     IrLabel* label_start = &proc->proc.label_start;
     label_start->name = proc->proc.name;
@@ -1589,13 +1610,20 @@ void DEBUG_print_ir_code(MemoryArena* arena, List* procs, char* file_path)
   {
     AstNode* proc = KIND(li, eList_ast_node)->ast_node;
 
-    List* basic_blocks = proc->proc.basic_blocks;
-    for(ListItem* li = basic_blocks->first;
-        li;
-        li = li->next)
+    if((proc->modifier & eModifier_extern) != 0)
     {
-      BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
-      DEBUG_print_basic_block(arena, &text, bb);
+      ;//ok
+    }
+    else
+    {
+      List* basic_blocks = proc->proc.basic_blocks;
+      for(ListItem* li = basic_blocks->first;
+          li;
+          li = li->next)
+      {
+        BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
+        DEBUG_print_basic_block(arena, &text, bb);
+      }
     }
   }
 

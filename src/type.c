@@ -147,25 +147,25 @@ bool types_are_equal(Type* type_a, Type* type_b)
   return are_equal;
 }
 
-int compute_type_width(Type* type)
+int get_type_width(Type* type)
 {
   switch(type->kind)
   {
     case eType_array:
     {
-      type->width = type->array.size * compute_type_width(type->array.elem);
+      type->width = type->array.size * get_type_width(type->array.elem);
     }
     break;
     
     case eType_product:
     {
-      type->width = compute_type_width(type->product.left) + compute_type_width(type->product.right);
+      type->width = get_type_width(type->product.left) + get_type_width(type->product.right);
     }
     break;
     
     case eType_proc:
     {
-      type->width = compute_type_width(type->proc.ret) + compute_type_width(type->proc.args);
+      type->width = get_type_width(type->proc.ret) + get_type_width(type->proc.args);
     }
     break;
     
@@ -206,7 +206,7 @@ int compute_type_width(Type* type)
     
     case eType_var:
     {
-      type->width = compute_type_width(type->var.type);
+      type->width = get_type_width(type->var.type);
     }
     break;
     
@@ -1890,10 +1890,10 @@ bool resolve_types_of_node(AstNode* node)
   
   if(success = resolve_type(node->ty, &node->ty))
   {
-    compute_type_width(node->ty);
+    get_type_width(node->ty);
     if(success = resolve_type(node->eval_ty, &node->eval_ty))
     {
-      compute_type_width(node->eval_ty);
+      get_type_width(node->eval_ty);
     }
     else
       success = compile_error(node->src_loc, "type error (unresolved type)");

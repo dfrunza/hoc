@@ -1,7 +1,34 @@
 extern int GetStdHandle(int device_id);
+extern void ExitProcess(int code);
+extern char^ GetCommandLineA();
+extern void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
+
+int stdout;
+int stdin; 
 
 void startup()
 {
+  stdout = GetStdHandle(-11/*STD_OUTPUT_HANDLE*/);
+  stdin = GetStdHandle(-10/*STD_INPUT_HANDLE*/);
+
+  print_str(&"Hello World!");
+}
+
+int strlen([]char str)
+{
+  int len; len = 0;
+  while(str[len] <> '\0')
+  {
+    len = len + 1;
+  }
+  return len;
+}
+
+void print_str(char^ str)
+{
+  int len; len = strlen(str);
+  int chars_written_count; chars_written_count = 0;
+  WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
 }
 
 /*

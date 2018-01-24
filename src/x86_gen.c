@@ -1494,24 +1494,38 @@ void x86_gen_cond_goto(X86Context* context, IrStmt* ir_stmt)
 
 void x86_gen_call(X86Context* context, IrStmt* ir_stmt)
 {
-  AstNode* proc = ir_stmt->call.proc;
-  Scope* preamble_scope = proc->proc.preamble_scope;
-  
+  struct IrStmt_call* call = &ir_stmt->call;
   save_all_registers(context, true);
 
   /* sub esp, #param_size */
   X86Stmt* stmt = x86_new_stmt(context, eX86Stmt_sub);
   stmt->operand1 = x86_make_register_operand(context, &context->esp);
-  stmt->operand2 = x86_make_int_constant_operand(preamble_scope->allocd_size);
+  stmt->operand2 = x86_make_int_constant_operand(call->param_scope->allocd_size);
 
   /* call #proc_name */
   stmt = x86_new_stmt(context, eX86Stmt_call);
-  stmt->operand1 = x86_make_id_operand(proc->label_begin->name);
 
-  /* add esp, #param_size */
-  stmt = x86_new_stmt(context, eX86Stmt_add);
-  stmt->operand1 = x86_make_register_operand(context, &context->esp);
-  stmt->operand2 = x86_make_int_constant_operand(preamble_scope->allocd_size);
+  stmt->operand1 = x86_make_id_operand(call->name);
+
+  if(call->is_extern)
+  {
+    /* add esp, #retvar_size */
+    stmt = x86_new_stmt(context, eX86Stmt_add);
+    stmt->operand1 = x86_make_register_operand(context, &context->esp);
+    stmt->operand2 = x86_make_int_constant_operand(call->retvar->allocd_size);
+
+    if(!types_are_equal(call->retvar->ty, basic_type_void))
+    {
+      set_exclusive_object_location(context, call->retvar, &context->eax);
+    }
+  }
+  else
+  {
+    /* add esp, #param_size */
+    stmt = x86_new_stmt(context, eX86Stmt_add);
+    stmt->operand1 = x86_make_register_operand(context, &context->esp);
+    stmt->operand2 = x86_make_int_constant_operand(call->param_scope->allocd_size);
+  }
 }
 
 void x86_gen_basic_block(X86Context* context, BasicBlock* bb)

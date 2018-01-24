@@ -620,7 +620,10 @@ typedef struct IrStmt
 
     struct IrStmt_call
     {
-      AstNode* proc;
+      char* name;
+      Scope* param_scope;
+      Symbol* retvar;
+      bool is_extern;
     }
     call;
   };

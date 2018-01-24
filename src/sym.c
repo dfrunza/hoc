@@ -692,6 +692,12 @@ bool sym_block(SymbolContext* context, AstNode* block)
   return success;
 }
 
+static inline
+bool is_extern_proc(AstNode* proc)
+{
+  return (proc->modifier & eModifier_extern) != 0;
+}
+
 bool sym_proc_body(SymbolContext* context, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
@@ -699,7 +705,7 @@ bool sym_proc_body(SymbolContext* context, AstNode* proc)
 
   AstNode* body = proc->proc.body;
 
-  if(proc->modifier == eModifier_extern)
+  if(is_extern_proc(proc))
   {
     if(body->kind != eAstNode_empty)
     {
@@ -760,7 +766,7 @@ bool sym_module_proc(SymbolContext* context, AstNode* proc)
     proc->proc.retvar = add_decl_sym(context->sym_arena, new_tempvar_name("ret_"),
                                      eStorageSpace_arg, proc->proc.preamble_scope, proc->proc.ret_type);
 
-    if((proc->modifier & eModifier_extern) != 0)
+    if(is_extern_proc(proc))
     {
       success = sym_formal_args(context, proc->proc.args) && sym_expr(context, proc->proc.ret_type);
     }

@@ -231,12 +231,15 @@ void ir_emit_goto(IrContext* ir_context, IrLabel* goto_label)
   ir_context->stmt_count++;
 }
 
-void ir_emit_call(IrContext* ir_context, AstNode* proc)
+void ir_emit_call(IrContext* ir_context, char* name, Scope* param_scope, Symbol* retvar, bool is_extern)
 {
   IrStmt* stmt = mem_push_struct(ir_context->stmt_arena, IrStmt);
   stmt->kind = eIrStmt_call;
   stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
-  stmt->call.proc = proc;
+  stmt->call.name = name;
+  stmt->call.param_scope = param_scope;
+  stmt->call.retvar = retvar;
+  stmt->call.is_extern = is_extern;
 
   ir_context->stmt_count++;
 }
@@ -442,22 +445,41 @@ bool ir_gen_actual_args(IrContext* ir_context, Scope* scope, AstNode* args)
 void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
+  AstNode* proc = call->call.proc;
   
   call->place = ir_new_arg_existing_object(ir_context, call->call.retvar);
 
   AstNode* args = call->call.args;
   ir_gen_actual_args(ir_context, scope, args);
 
-  for(ListItem* li = args->node_list.first;
-      li;
-      li = li->next)
+  if(is_extern_proc(proc))
   {
-    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    alloc_data_object(arg->actual_arg.param, call->call.param_scope, ir_context->data_alignment);
-  }
-  alloc_data_object(call->call.retvar, call->call.param_scope, ir_context->data_alignment);
+    // right-to-left (stdcall)
+    alloc_data_object(call->call.retvar, call->call.param_scope, ir_context->data_alignment);
+    for(ListItem* li = args->node_list.last;
+        li;
+        li = li->prev)
+    {
+      AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+      alloc_data_object(arg->actual_arg.param, call->call.param_scope, ir_context->data_alignment);
+    }
 
-  ir_emit_call(ir_context, call->call.proc);
+    ir_emit_call(ir_context, proc->proc.decorated_name, call->call.param_scope, call->call.retvar, true);
+  }
+  else
+  {
+    // left-to-right
+    for(ListItem* li = args->node_list.first;
+        li;
+        li = li->next)
+    {
+      AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+      alloc_data_object(arg->actual_arg.param, call->call.param_scope, ir_context->data_alignment);
+    }
+    alloc_data_object(call->call.retvar, call->call.param_scope, ir_context->data_alignment);
+
+    ir_emit_call(ir_context, proc->proc.name, call->call.param_scope, call->call.retvar, false);
+  }
 }
 
 bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
@@ -1180,13 +1202,16 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   
   proc->place = ir_new_arg_existing_object(ir_context, proc->proc.retvar);
 
-  if((proc->modifier & eModifier_extern) != 0)
+  if(is_extern_proc(proc))
   {
     int arg_size = get_proc_arg_size(proc->proc.args);
     char* name = proc->proc.name;
     String decorated_label; str_init(&decorated_label, arena);
     str_printf(&decorated_label, "%s@%d", name, arg_size);
     proc->proc.decorated_name = str_cap(&decorated_label);
+
+    ir_gen_formal_args(ir_context, proc->proc.preamble_scope, proc->proc.args);
+    alloc_data_object(proc->proc.retvar, proc->proc.preamble_scope, ir_context->data_alignment);
   }
   else
   {
@@ -1557,9 +1582,7 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
     case eIrStmt_call:
     {
       struct IrStmt_call* call = &stmt->call;
-      AstNode* proc = call->proc;
-
-      str_printf(text, "call %s", proc->label_begin->name);
+      str_printf(text, "call %s", call->name);
     }
     break;
     
@@ -1610,7 +1633,7 @@ void DEBUG_print_ir_code(MemoryArena* arena, List* procs, char* file_path)
   {
     AstNode* proc = KIND(li, eList_ast_node)->ast_node;
 
-    if((proc->modifier & eModifier_extern) != 0)
+    if(is_extern_proc(proc))
     {
       ;//ok
     }

@@ -1,4 +1,5 @@
 extern int GetStdHandle(int device_id);
+extern void ExitProcess(int code);
 extern char^ GetCommandLineA();
 extern void^ VirtualAlloc(void^ address, int alloc_size, int alloc_var, int protect_flags);
 extern void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
@@ -30,7 +31,7 @@ int stdin_read(char^ buf, int buf_size)
   return bytes_read_count;
 }
 
-int startup()
+void startup()
 {
   stdout = GetStdHandle(-11/*STD_OUTPUT_HANDLE*/);
   stdin = GetStdHandle(-10/*STD_INPUT_HANDLE*/);

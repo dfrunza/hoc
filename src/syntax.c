@@ -1,3 +1,124 @@
+char* get_operator_printstr(eOperator op)
+{
+  char* str = "???";
+  switch(op)
+  {
+    case eOperator_add:
+      str = "+";
+    break;
+    
+    case eOperator_sub:
+      str = "-";
+    break;
+    
+    case eOperator_mul:
+      str = "*";
+    break;
+    
+    case eOperator_div:
+      str = "/";
+    break;
+    
+    case eOperator_mod:
+      str = "mod";
+    break;
+    
+    case eOperator_neg:
+      str = "-";
+    break;
+    
+    case eOperator_deref:
+#if 0
+    case eOperator_pointer:
+#endif
+    str = "^";
+    break;
+    
+    case eOperator_address_of:
+      str = "&";
+    break;
+    
+    case eOperator_selector:
+      str = ".";
+    break;
+    
+    case eOperator_indirect_selector:
+      str = "->";
+    break;
+#if 0
+    case eOperator_pre_decr:
+    case eOperator_post_decr:
+    str = "--";
+    break;
+    
+    case eOperator_pre_incr:
+    case eOperator_post_incr:
+    str = "++";
+    break;
+#endif
+    case eOperator_eq:
+      str = "==";
+    break;
+    
+    case eOperator_not_eq:
+      str = "<>";
+    break;
+    
+    case eOperator_less:
+      str = "<";
+    break;
+    
+    case eOperator_less_eq:
+      str = "<=";
+    break;
+    
+    case eOperator_greater:
+      str = ">";
+    break;
+    
+    case eOperator_greater_eq:
+      str = ">=";
+    break;
+    
+    case eOperator_logic_and:
+      str = "and";
+    break;
+    
+    case eOperator_logic_or:
+      str = "or";
+    break;
+    
+    case eOperator_logic_not:
+      str = "not";
+    break;
+    
+    case eOperator_bit_and:
+      str = "&";
+    break;
+    
+    case eOperator_bit_or:
+      str = "|";
+    break;
+    
+    case eOperator_bit_xor:
+      str = "~";
+    break;
+    
+    case eOperator_bit_not:
+      str = "!";
+    break;
+  }
+  return str;
+}
+
+AstNode* new_ast_node(eAstNode kind, SourceLoc* src_loc)
+{
+  AstNode* node = mem_push_struct(arena, AstNode);
+  node->src_loc = src_loc;
+  node->kind = kind;
+  return node;
+}
+
 SourceLoc* clone_source_loc(SourceLoc* src_loc)
 {
   SourceLoc* clone = mem_push_struct(arena, SourceLoc);

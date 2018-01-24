@@ -1029,7 +1029,7 @@ void process_includes(List* include_list, List* module_list, ListItem* module_li
 
 bool sym_expr(SymbolContext* context, AstNode* block, AstNode* expr);
 
-bool sym_formal_arg(SymbolContext* context, Scope* proc_scope, AstNode* arg)
+bool sym_formal_arg(SymbolContext* context, AstNode* block, Scope* proc_scope, AstNode* arg)
 {
   assert(KIND(arg, eAstNode_var));
   bool success = true;
@@ -1044,6 +1044,7 @@ bool sym_formal_arg(SymbolContext* context, Scope* proc_scope, AstNode* arg)
   {
     arg->var.decl_sym = add_decl_sym(context->sym_arena, arg->var.name,
                                      eStorageSpace_arg, proc_scope, arg);
+    success = sym_expr(context, block, arg->var.type);
   }
 
   return success;
@@ -1066,6 +1067,7 @@ bool sym_var(SymbolContext* context, AstNode* block, AstNode* var)
   {
     var->var.decl_sym = add_decl_sym(context->sym_arena, var->var.name,
                                      eStorageSpace_local, context->active_scope, var);
+    success = sym_expr(context, block, var->var.type);
   }
 
   return success;
@@ -1242,6 +1244,22 @@ bool sym_cast(SymbolContext* context, AstNode* block, AstNode* cast)
   return success;
 }
 
+bool sym_array(SymbolContext* context, AstNode* array)
+{
+  assert(KIND(array, eAstNode_array));
+  bool success = true;
+
+  AstNode* size_expr = array->array.size_expr;
+  if(size_expr->kind == eAstNode_lit)
+  {
+    Symbol* size_const = size_expr->lit.constant = new_const_object(context->sym_arena, size_expr->eval_ty, size_expr->src_loc);
+    size_const->int_val = size_expr->lit.int_val;
+  }
+  else assert(0);
+
+  return success;
+}
+
 bool sym_expr(SymbolContext* context, AstNode* block, AstNode* expr)
 {
   assert(KIND(block, eAstNode_block));
@@ -1278,9 +1296,14 @@ bool sym_expr(SymbolContext* context, AstNode* block, AstNode* expr)
       success = sym_call(context, block, expr);
     }
     break;
-    
-    case eAstNode_pointer:
+
     case eAstNode_array:
+    {
+      success = sym_array(context, expr);
+    }
+    break;
+
+    case eAstNode_pointer:
     case eAstNode_basic_type:
     break;
 
@@ -1546,7 +1569,7 @@ bool sym_proc_body(SymbolContext* context, AstNode* proc)
   return success;
 }
 
-bool sym_formal_args(SymbolContext* context, AstNode* args)
+bool sym_formal_args(SymbolContext* context, AstNode* block, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -1557,7 +1580,7 @@ bool sym_formal_args(SymbolContext* context, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = sym_formal_arg(context, args_scope, arg);
+    success = sym_formal_arg(context, block, args_scope, arg);
   }
 
   return success;
@@ -1584,7 +1607,8 @@ bool sym_module_proc(SymbolContext* context, AstNode* proc)
 
     proc->proc.scope = begin_scope(context, eScope_proc, proc);
 
-    if(success = sym_formal_args(context, proc->proc.args) && sym_proc_body(context, proc))
+    if(success = sym_formal_args(context, proc->proc.body, proc->proc.args)
+       && sym_expr(context, proc->proc.body, proc->proc.ret_type) && sym_proc_body(context, proc))
     {
       AstNode* body = proc->proc.body;
       proc->proc.body_scope = body->block.scope;
@@ -1670,22 +1694,18 @@ bool set_types_array(AstNode* array)
   assert(KIND(array, eAstNode_array));
   bool success = true;
   
-  if(success = (array->array.size_expr ? set_types_expr(array->array.size_expr) : true) &&
-     set_types_type(array->array.elem_expr))
+  if(success = set_types_expr(array->array.size_expr) && set_types_type(array->array.elem_expr))
   {
     int size = 0;
     AstNode* size_expr = array->array.size_expr;
-    if(size_expr)
+    if(size_expr->kind == eAstNode_lit && size_expr->lit.kind == eLiteral_int)
     {
-      if(size_expr->kind == eAstNode_lit && size_expr->lit.kind == eLiteral_int)
-      {
-        size = size_expr->lit.int_val;
-        if(size < 0)
-          success = compile_error(size_expr->src_loc, "array size must be greater than 0");
-      }
-      else
-        success = compile_error(size_expr->src_loc, "array size must be an int literal");
+      size = size_expr->lit.int_val;
+      if(size < 0)
+        success = compile_error(size_expr->src_loc, "array size must be greater than 0");
     }
+    else
+      success = compile_error(size_expr->src_loc, "array size must be an int literal");
 
     if(success)
     {

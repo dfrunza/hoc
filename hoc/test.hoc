@@ -1,15 +1,12 @@
-[]char p_s;
-int p;
+[10]char buf;
+[]char s;
 char c;
 
 void startup()
 {
-  int a;
-  int b;
-  int c;
-  a = 23;
-  b = a / 10;
-  b = a mod 10;
+  s = int_to_str(&buf, 10, -123);
+  c = ^s;
+
   /*
   A[0] = 1;
   A[1] = 2;
@@ -20,7 +17,11 @@ void startup()
   */
 }
 
-/*
+[]char foo([]char buf)
+{
+  return buf + (char^):1;
+}
+
 int abs(int a)
 {
   if(a < 0)
@@ -54,7 +55,7 @@ void digit_to_char([]char buf, int pos, int digit)
     buf[pos] = '?';
 }
 
-char^ int_to_str(char^ buf, int buf_len, int i)
+[]char int_to_str([]char buf, int buf_len, int i)
 {
   int buf_i; buf_i = buf_len - 1;
   buf[buf_i] = '\0';
@@ -84,8 +85,9 @@ char^ int_to_str(char^ buf, int buf_len, int i)
     buf[buf_i] = '-';
   }
 
-  return &buf[buf_i];
+  return buf + (char^):buf_i;
 }
+/*
 */
 
 /*

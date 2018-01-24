@@ -603,6 +603,13 @@ bool parse_array(TokenStream* input, AstNode** node)
     {
       if(input->token.kind == eToken_close_bracket)
       {
+        if(!array->array.size_expr)
+        {
+          AstNode* size_zero = array->array.size_expr = new_ast_node(eAstNode_lit, clone_source_loc(&input->src_loc));
+          size_zero->lit.kind = eLiteral_int;
+          size_zero->lit.int_val = 0;
+        }
+
         if(success = get_next_token(input) && parse_rest_of_array(input, &array->array.elem_expr))
         {
           if(!array->array.elem_expr)

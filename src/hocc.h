@@ -563,8 +563,8 @@ typedef struct X86Location
   eX86Location kind;
   Type* type;
 
-  struct X86Location* parent_loc;
-  struct X86Location* sub_loc[2];
+  struct X86Location* parent;
+  struct X86Location* sub[2];
 
   List occupants;
 }
@@ -715,7 +715,9 @@ typedef enum
   eX86StmtOpcode_imul,
   eX86StmtOpcode_mulss,
   eX86StmtOpcode_idiv,
+  eX86StmtOpcode_cdq,
   eX86StmtOpcode_divss,
+  eX86StmtOpcode_neg,
   eX86StmtOpcode_cmp,
   eX86StmtOpcode_cmpss,
   eX86StmtOpcode_jz,
@@ -734,7 +736,6 @@ eX86StmtOpcode;
 typedef struct X86Stmt
 {
   eX86StmtOpcode opcode;
-//  eX86Type type;
   X86Operand* operand1;
   X86Operand* operand2;
 }

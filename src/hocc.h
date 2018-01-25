@@ -485,20 +485,6 @@ bool is_ir_op_bitwise_op(eIrOp op)
   return op >= eIrOp_bit_and && op <= eIrOp_bit_shift_right;
 }
 
-typedef struct IrContext
-{
-  MemoryArena* stmt_arena;
-  MemoryArena* sym_arena;
-
-  IrStmt* stmt_array;
-  int stmt_count;
-  List* label_list;
-
-  int data_alignment;
-  int total_stmt_count;
-}
-IrContext;
-
 typedef enum eIrLabelTarget
 {
   eIrLabelTarget_None,
@@ -553,6 +539,15 @@ typedef enum eX86Location
   eX86Location_memory,
   eX86Location_ebp,
   eX86Location_esp,
+
+  eX86Location_xmm0,
+  eX86Location_xmm1,
+  eX86Location_xmm2,
+  eX86Location_xmm3,
+  eX86Location_xmm4,
+  eX86Location_xmm5,
+  eX86Location_xmm6,
+  eX86Location_xmm7,
 
   eX86Location_Count,
 }
@@ -1077,11 +1072,30 @@ Symbol;
 typedef struct SymbolContext
 {
   List scopes;
+  Scope* module_scope;
   Scope* active_scope;
   int nesting_depth;
   MemoryArena* sym_arena;
+  int data_alignment;
 }
 SymbolContext;
+
+typedef struct IrContext
+{
+  MemoryArena* stmt_arena;
+  SymbolContext* sym_context;
+
+  IrStmt* stmt_array;
+  int stmt_count;
+  List* label_list;
+
+  int data_alignment;
+  int total_stmt_count;
+
+  Symbol* bool_true;
+  Symbol* bool_false;
+}
+IrContext;
 
 typedef struct X86Context
 {
@@ -1111,6 +1125,15 @@ typedef struct X86Context
     X86Location ch;
     X86Location dl;
     X86Location dh;
+
+    X86Location xmm0;
+    X86Location xmm1;
+    X86Location xmm2;
+    X86Location xmm3;
+    X86Location xmm4;
+    X86Location xmm5;
+    X86Location xmm6;
+    X86Location xmm7;
   };
 
   X86Location memory;
@@ -1118,9 +1141,10 @@ typedef struct X86Context
   // for natvis
   struct X86Context_registers
   {
-    X86Location* _[14];
+    X86Location* _[30];
   }
   registers;
+  int register_count;
 }
 X86Context;
 

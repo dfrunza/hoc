@@ -11,9 +11,6 @@ global_var int typevar_id = 1;
 
 global_var int last_label_id;
 
-global_var Symbol* bool_true;
-global_var Symbol* bool_false;
-
 global_var NextUse NextUse_None = max_int(); // infinity
 
 void gen_label_name(MemoryArena* arena, IrLabel* label)
@@ -146,17 +143,11 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   sym_context.nesting_depth = -1;
   init_list(&sym_context.scopes, sym_context.sym_arena, eList_scope);
 
-  bool_true = new_const_object(sym_context.sym_arena, basic_type_int, 0);
-  bool_true->int_val = 1;
-
-  bool_false = new_const_object(sym_context.sym_arena, basic_type_int, 0);
-  bool_false->int_val = 0;
-
   IrContext ir_context = {0};
   ir_context.stmt_arena = push_arena(&arena, 1*MEGABYTE);
   ir_context.stmt_array = (IrStmt*)ir_context.stmt_arena->base;
   ir_context.stmt_count = 0;
-  ir_context.sym_arena = sym_context.sym_arena;
+  ir_context.sym_context = &sym_context;
   ir_context.label_list = new_list(arena, eList_ir_label);
   ir_context.data_alignment = 4;
 

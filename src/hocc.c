@@ -210,12 +210,12 @@ bool compile_error_(char* file, int line, SourceLoc* src_loc, char* message, ...
 
   if(src_loc && src_loc->line_nr >= 0)
   {
-    fprintf(stderr, "%s(%d): (%s:%d) error : ", src_loc->file_path, src_loc->line_nr,
+    fprintf(stderr, "%s:%d: (%s:%d) error : ", src_loc->file_path, src_loc->line_nr,
             path_make_leaf(filename_buf, false), line);
   }
   else
   {
-    fprintf(stderr, "%s(%d): error : ", file, line);
+    fprintf(stderr, "%s:%d: error : ", file, line);
   }
 
   va_list args;
@@ -232,7 +232,7 @@ void assert_(char* message, char* file, int line)
 {
   if(DEBUG_enabled)
   {
-    fprintf(stderr, "%s(%d): error : ", file, line);
+    fprintf(stderr, "%s:%d: ", file, line);
     if(!message || message[0] == '\0')
     {
       message = "";
@@ -246,11 +246,11 @@ void assert_(char* message, char* file, int line)
 
 void fail_(char* file, int line, char* message, ...)
 {
-  fprintf(stderr, "%s(%d): error : ", file, line);
+  fprintf(stderr, "%s:%d: fail : ", file, line);
 
   if(!message || message[0] == '\0')
   {
-    message = "fail";
+    message = "";
   }
 
   va_list args;
@@ -265,7 +265,7 @@ void fail_(char* file, int line, char* message, ...)
 
 bool error_(char* file, int line, char* message, ...)
 {
-  fprintf(stderr, "%s(%d): ", file, line);
+  fprintf(stderr, "%s:%d: error : ", file, line);
 
   if(!message || message[0] == '\0')
   {

@@ -41,17 +41,6 @@ Symbol* lookup_decl_sym(char* name, Scope* scope)
   return result;
 }
 
-void alloc_data_object(Symbol* sym, Scope* scope, int alignment)
-{
-  sym->data_loc = scope->allocd_size;
-  sym->allocd_size = sym->ty->width;
-  if((sym->allocd_size & (alignment-1)) != 0)
-  {
-    sym->allocd_size = (sym->allocd_size + alignment) & ~(alignment-1);
-  }
-  scope->allocd_size += sym->allocd_size;
-}
-
 void init_object_locations(Symbol* object)
 {
   for(int i = 0; i < sizeof_array(object->locations._); i++)
@@ -60,9 +49,31 @@ void init_object_locations(Symbol* object)
   }
 }
 
-Symbol* new_temp_object(MemoryArena* arena, Scope* scope, Type* ty, SourceLoc* src_loc, int alignment)
+Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_loc)
 {
-  Symbol* sym = mem_push_struct(arena, Symbol);
+  Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
+  Scope* module_scope = sym_context->module_scope;
+
+  sym->kind = eSymbol_constant;
+  sym->name = new_tempvar_name("const_");
+  sym->src_loc = src_loc;
+  sym->ty = ty;
+  sym->scope = module_scope;
+  sym->order_nr = 0;
+  sym->storage_space = eStorageSpace_static;
+  sym->next_use = NextUse_None;
+  sym->is_temp = false;
+  sym->is_live = false;
+  init_object_locations(sym);
+
+  append_list_elem(&module_scope->decl_syms, sym, eList_symbol);
+
+  return sym;
+}
+
+Symbol* new_temp_object(SymbolContext* sym_context, Scope* scope, Type* ty, SourceLoc* src_loc)
+{
+  Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
 
   sym->name = new_tempvar_name("temp_");
   sym->src_loc = src_loc;
@@ -75,48 +86,7 @@ Symbol* new_temp_object(MemoryArena* arena, Scope* scope, Type* ty, SourceLoc* s
   sym->is_live = false;
   init_object_locations(sym);
 
-  alloc_data_object(sym, scope, alignment);
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
-
-  return sym;
-}
-
-Symbol* new_str_object(MemoryArena* arena, Type* ty, Scope* scope, SourceLoc* src_loc)
-{
-  Symbol* sym = mem_push_struct(arena, Symbol);
-
-  sym->kind = eSymbol_constant;
-  sym->name = new_tempvar_name("str_");
-  sym->src_loc = src_loc;
-  sym->ty = ty;
-  sym->scope = scope;
-  sym->order_nr = 0;
-  sym->storage_space = eStorageSpace_static;
-  sym->next_use = NextUse_None;
-  sym->is_temp = false;
-  sym->is_live = false;
-  init_object_locations(sym);
-
-  append_list_elem(&scope->decl_syms, sym, eList_symbol);
-
-  return sym;
-}
-
-Symbol* new_const_object(MemoryArena* arena, Type* ty, SourceLoc* src_loc)
-{
-  Symbol* sym = mem_push_struct(arena, Symbol);
-
-  sym->kind = eSymbol_constant;
-  sym->name = new_tempvar_name("const_");
-  sym->src_loc = src_loc;
-  sym->ty = ty;
-  sym->scope = 0;
-  sym->order_nr = 0;
-  sym->storage_space = eStorageSpace_constant;
-  sym->next_use = NextUse_None;
-  sym->is_temp = false;
-  sym->is_live = false;
-  init_object_locations(sym);
 
   return sym;
 }
@@ -249,48 +219,45 @@ bool sym_lit(SymbolContext* context, AstNode* lit)
   assert(KIND(lit, eAstNode_lit));
   bool success = true;
 
+  Symbol* constant = lit->lit.constant = new_const_object(context, lit->eval_ty, lit->src_loc);
+
   switch(lit->lit.kind)
   {
     case eLiteral_int:
-    case eLiteral_float:
-    case eLiteral_bool:
-    case eLiteral_char:
     {
-      Symbol* constant = lit->lit.constant = new_const_object(context->sym_arena, lit->eval_ty, lit->src_loc);
-
-      switch(lit->lit.kind)
-      {
-        case eLiteral_int:
-          constant->int_val = lit->lit.int_val;
-        break;
-
-        case eLiteral_float:
-          constant->float_val = lit->lit.float_val;
-        break;
-
-        case eLiteral_bool:
-          constant->int_val = (int)lit->lit.bool_val;
-        break;
-
-        case eLiteral_char:
-          constant->char_val = lit->lit.char_val;
-        break;
-
-        default: assert(0);
-      }
+      constant->int_val = lit->lit.int_val;
+      constant->data = &constant->int_val;
     }
     break;
 
+    case eLiteral_float:
+    {
+      constant->float_val = lit->lit.float_val;
+      constant->data = &constant->float_val;
+    }
+    break;
+
+    case eLiteral_bool:
+    {
+      constant->int_val = (int)lit->lit.bool_val;
+      constant->data = &constant->int_val;
+    }
+    break;
+
+    case eLiteral_char:
+    {
+      constant->char_val = lit->lit.char_val;
+      constant->data = &constant->char_val;
+    }
+    break;
+    
     case eLiteral_str:
     {
-      Scope* module_scope = find_scope(context->active_scope, eScope_module);
-      Symbol* constant = lit->lit.constant = new_str_object(context->sym_arena, lit->eval_ty, module_scope, lit->src_loc);
-
       constant->str_val = lit->lit.str_val;
       constant->data = constant->str_val;
     }
     break;
-    
+
     default: assert(0);
   }
 
@@ -415,7 +382,7 @@ bool sym_array(SymbolContext* context, AstNode* array)
   AstNode* size_expr = array->array.size_expr;
   if(size_expr->kind == eAstNode_lit)
   {
-    Symbol* size_const = size_expr->lit.constant = new_const_object(context->sym_arena, size_expr->eval_ty, size_expr->src_loc);
+    Symbol* size_const = size_expr->lit.constant = new_const_object(context, size_expr->eval_ty, size_expr->src_loc);
     size_const->int_val = size_expr->lit.int_val;
   }
   else assert(0);
@@ -817,6 +784,7 @@ bool sym_module(SymbolContext* context, AstNode* module)
   bool success = true;
   
   module->module.scope = begin_nested_scope(context, eScope_module, module);
+  context->module_scope = module->module.scope;
   
   for(ListItem* li = module->module.nodes.first;
       li && success;

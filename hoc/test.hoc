@@ -9,6 +9,7 @@ int stdin;
 void startup()
 {
   float f;
+  f = 1.23 * 2.87;
   /*
   stdout = GetStdHandle(-11);
   stdin = GetStdHandle(-10);

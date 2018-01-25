@@ -39,6 +39,13 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="hoc/fibo.hoc" />
+		<Unit filename="hoc/fizzbuzz.hoc" />
+		<Unit filename="hoc/math.hoc" />
+		<Unit filename="hoc/sort.hoc" />
+		<Unit filename="hoc/std.hoc" />
+		<Unit filename="hoc/str.hoc" />
+		<Unit filename="hoc/test.hoc" />
 		<Unit filename="src/hocc.c">
 			<Option compilerVar="CC" />
 		</Unit>

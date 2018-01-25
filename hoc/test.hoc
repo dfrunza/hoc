@@ -4,16 +4,23 @@ extern char^ GetCommandLineA();
 extern void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
 
 int stdout;
-int stdin; 
+int stdin;
 
 void startup()
 {
-  stdout = GetStdHandle(-11/*STD_OUTPUT_HANDLE*/);
-  stdin = GetStdHandle(-10/*STD_INPUT_HANDLE*/);
+  float f;
+  /*
+  stdout = GetStdHandle(-11);
+  stdin = GetStdHandle(-10);
 
-  print_str(&"Hello World!");
+  [10]char buf;
+  []char s;
+  s = int_to_str(&buf, 10, 123);
+  print_str(s);
+  */
 }
 
+/*
 int strlen([]char str)
 {
   int len; len = 0;
@@ -24,14 +31,13 @@ int strlen([]char str)
   return len;
 }
 
-void print_str(char^ str)
+void print_str([]char str)
 {
   int len; len = strlen(str);
   int chars_written_count; chars_written_count = 0;
   WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
 }
 
-/*
 int abs(int a)
 {
   if(a < 0)
@@ -100,11 +106,6 @@ void digit_to_char([]char buf, int pos, int digit)
 */
 
 /*
-char bar([]char s)
-{
-  return s[1];
-}
-
 [2]int A;
 [2]int B;
 

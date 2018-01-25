@@ -8,11 +8,11 @@ int strlen([]char str)
   return len;
 }
 
-void print_str(char^ str)
+void print_str([]char str)
 {
   int len; len = strlen(str);
   int chars_written_count; chars_written_count = 0;
-  /*WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);*/
+  WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
 }
 
 void digit_to_char([]char buf, int pos, int digit)

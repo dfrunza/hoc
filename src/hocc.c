@@ -32,6 +32,7 @@ MemoryArena* new_arena(int size)
   arena->base = (uint8*)arena + sizeof(MemoryArena);
   arena->free = arena->base;
   arena->cap = arena->free + size;
+
   return arena;
 }
 
@@ -76,6 +77,7 @@ char* path_find_leaf(char* file_path)
       leaf = ++p_char;
     }
   }
+
   return leaf;
 }
 
@@ -91,6 +93,7 @@ char* path_make_leaf(char* file_path, bool with_extension)
       p_char++;
     *p_char = '\0';
   }
+
   return leaf;
 }
 
@@ -111,6 +114,7 @@ int file_write_bytes(char* file_path, uint8* bytes, int count)
     bytes_written = (int)fwrite(bytes, 1, (size_t)count, h_file);
     fclose(h_file);
   }
+
   return bytes_written;
 }
 
@@ -148,6 +152,7 @@ int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int allo
     else
       byte_count = -1;
   }
+
   return byte_count;
 }
 
@@ -159,6 +164,7 @@ char* file_read_text(MemoryArena* arena, char* file_path)
   {
     text[byte_count] = '\0'; // NULL terminator
   }
+
   return text;
 }
 
@@ -168,6 +174,7 @@ int h_sscanf(char* buffer, char* format, ...)
   va_start(args, format);
   int result = vsscanf(buffer, format, args);
   va_end(args);
+
   return result;
 }
 
@@ -182,6 +189,7 @@ int h_sprintf(char* buffer, char* format, ...)
   va_start(args, format);
   int result = vsprintf(buffer, format, args);
   va_end(args);
+
   return result;
 }
 
@@ -191,6 +199,7 @@ int h_printf(char* format, ...)
   va_start(args, format);
   int result = vfprintf(stdout, format, args);
   va_end(args);
+
   return result;
 }
 
@@ -201,12 +210,12 @@ bool compile_error_(char* file, int line, SourceLoc* src_loc, char* message, ...
 
   if(src_loc && src_loc->line_nr >= 0)
   {
-    fprintf(stderr, "%s:%d: (%s:%d) ", src_loc->file_path, src_loc->line_nr,
+    fprintf(stderr, "%s(%d): (%s:%d) error : ", src_loc->file_path, src_loc->line_nr,
             path_make_leaf(filename_buf, false), line);
   }
   else
   {
-    fprintf(stderr, "%s:%d: ", file, line);
+    fprintf(stderr, "%s(%d): error : ", file, line);
   }
 
   va_list args;
@@ -215,6 +224,7 @@ bool compile_error_(char* file, int line, SourceLoc* src_loc, char* message, ...
   va_end(args);
 
   fprintf(stderr, "\n");
+
   return false;
 }
 
@@ -222,7 +232,7 @@ void assert_(char* message, char* file, int line)
 {
   if(DEBUG_enabled)
   {
-    fprintf(stderr, "%s:%d: ", file, line);
+    fprintf(stderr, "%s(%d): error : ", file, line);
     if(!message || message[0] == '\0')
     {
       message = "";
@@ -236,10 +246,12 @@ void assert_(char* message, char* file, int line)
 
 void fail_(char* file, int line, char* message, ...)
 {
-  fprintf(stderr, "%s:%d: ", file, line);
+  fprintf(stderr, "%s(%d): error : ", file, line);
 
   if(!message || message[0] == '\0')
+  {
     message = "fail";
+  }
 
   va_list args;
   va_start(args, message);
@@ -253,11 +265,11 @@ void fail_(char* file, int line, char* message, ...)
 
 bool error_(char* file, int line, char* message, ...)
 {
-  fprintf(stderr, "%s:%d: ", file, line);
+  fprintf(stderr, "%s(%d): ", file, line);
 
   if(!message || message[0] == '\0')
   {
-    message = "error";
+    message = "";
   }
 
   va_list args;
@@ -267,6 +279,7 @@ bool error_(char* file, int line, char* message, ...)
 
   fprintf(stderr, "\n");
   fflush(stderr);
+
   return false;
 }
 

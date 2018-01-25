@@ -42,12 +42,12 @@ void DEBUG_print_line(String* str, int indent_level, char* message, ...)
   {
     str_append(str, "  ");
   }
-  
+
   va_list varargs;
   va_start(varargs, message);
   str_printf_va(str, message, varargs);
   va_end(varargs);
-  
+
   str_append(str, "\n");
 }
 
@@ -57,13 +57,13 @@ void DEBUG_print_type(String* str, int indent_level, char* tag, Type* type)
   {
     str_append(str, "  ");
   }
-  
+
   if(tag)
   {
     str_append(str, tag);
     str_append(str, ": ");
   }
-  
+
   make_type_printstr(str, type);
   str_append(str, "\n");
 }
@@ -94,7 +94,7 @@ void DEBUG_print_ast_node(String* str, int indent_level, char* tag, AstNode* nod
     }
 #endif
     ++indent_level;
-    
+
     /* Example usage
        DEBUG_print_line(str, indent_level, "name: `%s`", node->proc.name);
        DEBUG_print_ast_node(str, indent_level, "id", node);
@@ -112,7 +112,7 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
       DEBUG_print_line(str, indent_level, tag);
       ++indent_level;
     }
-    
+
     for(ListItem* li = nodes->first;
         li;
         li = li->next)
@@ -140,7 +140,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   basic_type_void = new_basic_type(eBasicType_void);
   basic_type_str = new_array_type(0, 1, basic_type_char);
   subst_list = new_list(arena, eList_type_pair);
-  
+
   SymbolContext sym_context = {0};
   sym_context.sym_arena = push_arena(&arena, 1*MEGABYTE);
   sym_context.nesting_depth = -1;
@@ -151,7 +151,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
 
   bool_false = new_const_object(sym_context.sym_arena, basic_type_int, 0);
   bool_false->int_val = 0;
-  
+
   IrContext ir_context = {0};
   ir_context.stmt_arena = push_arena(&arena, 1*MEGABYTE);
   ir_context.stmt_array = (IrStmt*)ir_context.stmt_arena->base;
@@ -159,11 +159,11 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   ir_context.sym_arena = sym_context.sym_arena;
   ir_context.label_list = new_list(arena, eList_ir_label);
   ir_context.data_alignment = 4;
-  
+
   TokenStream token_stream = {0};
   init_token_stream(&token_stream, hoc_text, file_path);
   get_next_token(&token_stream);
-  
+
   AstNode* module = 0;
   if(!(parse_module(&token_stream, &module) &&
        sym_module(&sym_context, module) &&

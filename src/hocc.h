@@ -76,7 +76,7 @@ typedef struct SourceLoc
 }
 SourceLoc;
 
-typedef enum
+typedef enum eToken
 {
   eToken_None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
@@ -183,7 +183,7 @@ typedef struct TokenStream
 }
 TokenStream;
 
-typedef enum
+typedef enum eOperator
 {
   eOperator_None,
 
@@ -225,7 +225,7 @@ typedef enum
 }
 eOperator;
 
-typedef enum
+typedef enum eLiteral
 {
   eLiteral_None,
   eLiteral_int,
@@ -236,7 +236,7 @@ typedef enum
 }
 eLiteral;
 
-typedef enum
+typedef enum eScope
 {
   eScope_None,
   eScope_module,
@@ -249,7 +249,7 @@ typedef enum
 }
 eScope;
 
-typedef enum
+typedef enum eList
 {
   eList_None,
   eList_ast_node,
@@ -307,7 +307,7 @@ typedef struct Scope
 }
 Scope;
 
-typedef enum
+typedef enum eLoopCtrl
 {
   eLoopCtrl_None,
   eLoopCtrl_break,
@@ -315,14 +315,14 @@ typedef enum
 }
 eLoopCtrl;
 
-typedef enum
+typedef enum eModifier
 {
   eModifier_None,
   eModifier_extern,
 }
 eModifier;
 
-typedef enum
+typedef enum eType
 {
   eType_None,
   eType_typevar,
@@ -335,7 +335,7 @@ typedef enum
 }
 eType;
 
-typedef enum
+typedef enum eBasicType
 {
   eBasicType_None,
   eBasicType_void,
@@ -411,7 +411,7 @@ typedef struct TypePair
 }
 TypePair;
 
-typedef enum
+typedef enum eIrOp
 {
   eIrOp_None,
 
@@ -441,7 +441,7 @@ typedef enum
   eIrOp_logic_and,
   eIrOp_logic_or,
   eIrOp_logic_not,
-  
+
   /* conv funcs */
   eIrOp_itof,
   eIrOp_itoc,
@@ -485,7 +485,7 @@ bool is_ir_op_bitwise_op(eIrOp op)
   return op >= eIrOp_bit_and && op <= eIrOp_bit_shift_right;
 }
 
-typedef struct
+typedef struct IrContext
 {
   MemoryArena* stmt_arena;
   MemoryArena* sym_arena;
@@ -499,7 +499,7 @@ typedef struct
 }
 IrContext;
 
-typedef enum
+typedef enum eIrLabelTarget
 {
   eIrLabelTarget_None,
   eIrLabelTarget_stmt_nr,
@@ -522,7 +522,7 @@ IrLabel;
 
 typedef int NextUse;
 
-typedef enum
+typedef enum eIrArg
 {
   eIrArg_None,
   eIrArg_object,
@@ -530,7 +530,7 @@ typedef enum
 }
 eIrArg;
 
-typedef enum
+typedef enum eX86Location
 {
   eX86Location_None,
 
@@ -578,7 +578,7 @@ typedef struct IrArg
 }
 IrArg;
 
-typedef enum
+typedef enum eIrStmt
 {
   eIrStmt_None,
   eIrStmt_assign,
@@ -649,7 +649,7 @@ typedef struct IrLeaderStmt
 }
 IrLeaderStmt;
 
-typedef enum
+typedef enum eX86Operand
 {
   eX86Operand_None,
   eX86Operand_id,
@@ -660,7 +660,7 @@ typedef enum
 }
 eX86Operand;
 
-typedef enum
+typedef enum eX86Constant
 {
   eX86Constant_None,
   eX86Constant_int,
@@ -702,7 +702,7 @@ typedef struct X86Operand
 }
 X86Operand;
 
-typedef enum
+typedef enum eX86Stmt
 {
   eX86Stmt_None,
   eX86Stmt_call,
@@ -745,7 +745,7 @@ typedef struct X86Stmt
 }
 X86Stmt;
 
-typedef enum
+typedef enum eAstNode
 {
   eAstNode_None,
   eAstNode_id,
@@ -804,7 +804,7 @@ typedef struct AstNode
       Symbol* param;
     }
     actual_arg;
-    
+
     struct
     {
       AstNode* from_expr;
@@ -1017,7 +1017,7 @@ typedef struct AstNode
 }
 AstNode;
 
-typedef enum
+typedef enum eStorageSpace
 {
   eStorageSpace_None,
   eStorageSpace_constant, // immediate
@@ -1028,7 +1028,7 @@ typedef enum
 }
 eStorageSpace;
 
-typedef enum
+typedef enum eSymbol
 {
   eSymbol_None,
   eSymbol_constant,
@@ -1074,7 +1074,7 @@ typedef struct Symbol
 }
 Symbol;
 
-typedef struct
+typedef struct SymbolContext
 {
   List scopes;
   Scope* active_scope;

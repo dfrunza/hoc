@@ -150,17 +150,6 @@ IrLabel* get_label_at(List* label_list, int stmt_nr)
   return label;
 }
 
-void alloc_data_object(IrContext* ir_context, Symbol* sym, Scope* scope)
-{
-  sym->data_loc = scope->allocd_size;
-  sym->allocd_size = sym->ty->width;
-  if((sym->allocd_size & (ir_context->data_alignment-1)) != 0)
-  {
-    sym->allocd_size = (sym->allocd_size + ir_context->data_alignment) & ~(ir_context->data_alignment-1);
-  }
-  scope->allocd_size += sym->allocd_size;
-}
-
 void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, IrArg* result)
 {
   IrStmt* stmt = mem_push_struct(ir_context->stmt_arena, IrStmt);
@@ -278,7 +267,6 @@ IrArg* ir_new_arg_temp_object(IrContext* ir_context, Scope* scope, Type* ty, Sou
 {
   IrArg* arg = mem_push_struct(arena, IrArg);
   arg->object = new_temp_object(ir_context->sym_context, scope, ty, src_loc);
-  alloc_data_object(ir_context, arg->object, scope);
 
   return arg;
 }
@@ -400,10 +388,7 @@ void ir_gen_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
   
-  Symbol* object = lit->lit.constant;
-  alloc_data_object(ir_context, object, object->scope);
-
-  lit->place = ir_new_arg_existing_object(ir_context, object);
+  lit->place = ir_new_arg_existing_object(ir_context, lit->lit.constant);
 }
 
 bool ir_gen_bool_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
@@ -464,13 +449,13 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
   if(is_extern_proc(proc))
   {
     // right-to-left (stdcall)
-    alloc_data_object(ir_context, call->call.retvar, call->call.param_scope);
+    alloc_data_object(ir_context->sym_context, call->call.retvar, call->call.param_scope);
     for(ListItem* li = args->node_list.last;
         li;
         li = li->prev)
     {
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      alloc_data_object(ir_context, arg->actual_arg.param, call->call.param_scope);
+      alloc_data_object(ir_context->sym_context, arg->actual_arg.param, call->call.param_scope);
     }
 
     ir_emit_call(ir_context, proc->proc.decorated_name, call->call.param_scope, call->call.retvar, true);
@@ -483,9 +468,9 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
         li = li->next)
     {
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      alloc_data_object(ir_context, arg->actual_arg.param, call->call.param_scope);
+      alloc_data_object(ir_context->sym_context, arg->actual_arg.param, call->call.param_scope);
     }
-    alloc_data_object(ir_context, call->call.retvar, call->call.param_scope);
+    alloc_data_object(ir_context->sym_context, call->call.retvar, call->call.param_scope);
 
     ir_emit_call(ir_context, proc->proc.name, call->call.param_scope, call->call.retvar, false);
   }
@@ -528,8 +513,12 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
 
       IrArg* offset = index->index.i_place = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
+#if 0
       Symbol* size_constant = new_const_object(ir_context->sym_context, basic_type_int, index->src_loc);
       int size_val = size_constant->int_val = size_of_array_dim(index->index.array_ty, index->index.ndim);
+#endif
+      int size_val = size_of_array_dim(index->index.array_ty, index->index.ndim);
+      Symbol* size_constant = new_const_object_int(ir_context->sym_context, index->src_loc, size_val);
       IrArg* dim_size = ir_new_arg_existing_object(ir_context, size_constant);
 
       if(size_val > 0)
@@ -555,8 +544,12 @@ bool ir_gen_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
   {
     IrArg* offset = index->index.offset = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
+#if 0
     Symbol* width_constant = new_const_object(ir_context->sym_context, basic_type_int, index->src_loc);
     width_constant->int_val = array_elem_width(index->index.array_ty);
+#endif
+    int width_val = array_elem_width(index->index.array_ty);
+    Symbol* width_constant = new_const_object_int(ir_context->sym_context, index->src_loc, width_val);
     IrArg* width = ir_new_arg_existing_object(ir_context, width_constant);
 
     ir_emit_assign(ir_context, eIrOp_mul, index->index.i_place, width, offset);
@@ -1098,7 +1091,7 @@ bool ir_gen_loop_ctrl(IrContext* ir_context, Scope* scope, AstNode* loop_ctrl)
 void ir_gen_var(IrContext* ir_context, Scope* scope, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
-  alloc_data_object(ir_context, var->var.decl_sym, scope);
+  alloc_data_object(ir_context->sym_context, var->var.decl_sym, scope);
 }
 
 bool ir_gen_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
@@ -1226,7 +1219,7 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
     proc->proc.decorated_name = str_cap(&decorated_label);
 
     ir_gen_formal_args(ir_context, proc->proc.preamble_scope, proc->proc.args);
-    alloc_data_object(ir_context, proc->proc.retvar, proc->proc.preamble_scope);
+    alloc_data_object(ir_context->sym_context, proc->proc.retvar, proc->proc.preamble_scope);
   }
   else
   {
@@ -1234,7 +1227,7 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
     assert(KIND(body, eAstNode_block));
 
     ir_gen_formal_args(ir_context, proc->proc.preamble_scope, proc->proc.args);
-    alloc_data_object(ir_context, proc->proc.retvar, proc->proc.preamble_scope);
+    alloc_data_object(ir_context->sym_context, proc->proc.retvar, proc->proc.preamble_scope);
 
     IrLabel* label_start = &proc->proc.label_start;
     label_start->name = proc->proc.name;
@@ -1259,6 +1252,7 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
 bool ir_gen_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 {
   bool success = true;
+
   switch(stmt->kind)
   {
     case eAstNode_proc:
@@ -1274,9 +1268,6 @@ bool ir_gen_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     break;
     
     case eAstNode_var:
-    {
-      alloc_data_object(ir_context, stmt->var.decl_sym, scope);
-    }
     break;
     
     default: assert(0);
@@ -1289,12 +1280,6 @@ bool ir_gen_module(IrContext* ir_context, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
-
-  ir_context->bool_true = new_const_object(ir_context->sym_context, basic_type_int, 0);
-  ir_context->bool_true->int_val = 1;
-
-  ir_context->bool_false = new_const_object(ir_context->sym_context, basic_type_int, 0);
-  ir_context->bool_false->int_val = 0;
   
   for(ListItem* li = module->module.nodes.first;
       li;

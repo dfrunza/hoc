@@ -229,12 +229,9 @@ void x86_print_opcode(String* text, eX86Stmt opcode)
       str_printf(text, "lea ");
     break;
 
+    /* integer ops */
     case eX86Stmt_mov:
       str_printf(text, "mov ");
-    break;
-
-    case eX86Stmt_movss:
-      str_printf(text, "movss ");
     break;
 
     case eX86Stmt_add:
@@ -249,6 +246,10 @@ void x86_print_opcode(String* text, eX86Stmt opcode)
       str_printf(text, "imul ");
     break;
 
+    case eX86Stmt_cdq:
+      str_printf(text, "cdq");
+    break;
+
     case eX86Stmt_idiv:
       str_printf(text, "idiv ");
     break;
@@ -257,14 +258,7 @@ void x86_print_opcode(String* text, eX86Stmt opcode)
       str_printf(text, "neg ");
     break;
 
-    case eX86Stmt_cmp:
-      str_printf(text, "cmp ");
-    break;
-
-    case eX86Stmt_cmpss:
-      str_printf(text, "cmpss ");
-    break;
-
+    /* integer jumps */
     case eX86Stmt_jz:
       str_printf(text, "jz ");
     break;
@@ -289,6 +283,56 @@ void x86_print_opcode(String* text, eX86Stmt opcode)
       str_printf(text, "jge ");
     break;
 
+    /* floating point ops */
+    case eX86Stmt_movss:
+      str_printf(text, "movss ");
+    break;
+
+    case eX86Stmt_addss:
+      str_printf(text, "addss ");
+    break;
+
+    case eX86Stmt_subss:
+      str_printf(text, "subss ");
+    break;
+
+    case eX86Stmt_mulss:
+      str_printf(text, "mulss ");
+    break;
+
+    case eX86Stmt_divss:
+      str_printf(text, "divss ");
+    break;
+
+    case eX86Stmt_ucomiss:
+      str_printf(text, "ucomiss ");
+    break;
+
+    /* floating point jumps */
+    case eX86Stmt_jb:
+      str_printf(text, "jb ");
+    break;
+
+    case eX86Stmt_jbe:
+      str_printf(text, "jbe ");
+    break;
+
+    case eX86Stmt_ja:
+      str_printf(text, "ja ");
+    break;
+
+    case eX86Stmt_jae:
+      str_printf(text, "jae ");
+    break;
+
+    case eX86Stmt_je:
+      str_printf(text, "je ");
+    break;
+
+    case eX86Stmt_jne:
+      str_printf(text, "jne ");
+    break;
+
     case eX86Stmt_jmp:
       str_printf(text, "jmp ");
     break;
@@ -299,10 +343,6 @@ void x86_print_opcode(String* text, eX86Stmt opcode)
 
     case eX86Stmt_ret:
       str_printf(text, "ret ");
-    break;
-
-    case eX86Stmt_cdq:
-      str_printf(text, "cdq");
     break;
 
     default: assert(0);
@@ -917,26 +957,6 @@ void x86_store_object(X86Context* context, Symbol* object)
   }
 }
 
-#if 0
-void x86_load_constant_into_register(X86Context* context, eX86Type x86_type, eX86Location dest_loc, Symbol* constant)
-{
-  assert(is_register_location(dest_loc));
-
-  X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86Stmt_mov);
-
-  stmt->operand1 = x86_make_register_operand(arena, dest_loc);
-  stmt->operand2 = x86_make_constant_operand(arena, x86_conv_constant_to_int(constant));
-}
-
-void x86_store_constant_to_memory(X86Context* context, eX86Type x86_type, Symbol* constant, Symbol* object)
-{
-  X86Stmt* stmt = x86_new_stmt(context, x86_type, eX86Stmt_mov);
-
-  stmt->operand1 = x86_make_memory_operand(context, object);
-  stmt->operand2 = x86_make_constant_operand(arena, x86_conv_constant_to_int(constant));
-}
-#endif
-
 eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
 {
   eX86Stmt x86_opcode = eX86Stmt_None;
@@ -996,7 +1016,50 @@ eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
   }
   else if(types_are_equal(type, basic_type_float))
   {
-    fail("TODO");
+    switch(ir_op)
+    {
+      case eIrOp_add:
+        x86_opcode = eX86Stmt_addss;
+      break;
+
+      case eIrOp_sub:
+        x86_opcode = eX86Stmt_subss;
+      break;
+
+      case eIrOp_mul:
+        x86_opcode = eX86Stmt_mulss;
+      break;
+
+      case eIrOp_div:
+        x86_opcode = eX86Stmt_divss;
+      break;
+
+      case eIrOp_less:
+        x86_opcode = eX86Stmt_jb;
+      break;
+
+      case eIrOp_less_eq:
+        x86_opcode = eX86Stmt_jbe;
+      break;
+
+      case eIrOp_greater:
+        x86_opcode = eX86Stmt_ja;
+      break;
+
+      case eIrOp_greater_eq:
+        x86_opcode = eX86Stmt_jae;
+      break;
+
+      case eIrOp_eq:
+        x86_opcode = eX86Stmt_je;
+      break;
+
+      case eIrOp_not_eq:
+        x86_opcode = eX86Stmt_jne;
+      break;
+
+      default: assert(0);
+    }
   }
   else assert(0);
 
@@ -1408,8 +1471,8 @@ void x86_gen_unr_expr(X86Context* context, struct IrStmt_assign* assign)
   X86Location* result_loc = arg1_loc;
 
   if(is_register_location(context, arg1_loc)
-     && is_single_occupant_register(context, arg1_loc, arg1->object)
-     && (arg1->next_use == NextUse_None && !arg1->is_live))
+      && is_single_occupant_register(context, arg1_loc, arg1->object)
+      && (arg1->next_use == NextUse_None && !arg1->is_live))
   {
     delete_object_from_location(context, arg1->object, arg1_loc);
   }
@@ -1419,8 +1482,17 @@ void x86_gen_unr_expr(X86Context* context, struct IrStmt_assign* assign)
     x86_load_object(context, arg1->object, result_loc);
   }
 
-  X86Stmt* x86_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(assign->op, result->object->ty));
-  x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
+  if(assign->op == eIrOp_neg && types_are_equal(arg1->object->ty, basic_type_float))
+  {
+    X86Stmt* x86_stmt = x86_new_stmt(context, eX86Stmt_mulss);
+    x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
+    x86_stmt->operand2 = x86_make_object_operand(context, context->float_minus_one);
+  }
+  else
+  {
+    X86Stmt* x86_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(assign->op, result->object->ty));
+    x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
+  }
 
   set_exclusive_object_location(context, result->object, result_loc);
 }
@@ -1507,26 +1579,27 @@ void x86_gen_cond_goto(X86Context* context, struct IrStmt_cond_goto* cond_goto)
 
   save_all_registers(context, false);
 
-  if(types_are_equal(arg1->object->ty, basic_type_int)
-     || types_are_equal(arg1->object->ty, basic_type_char)
-     || types_are_equal(arg1->object->ty, basic_type_bool))
+  if(!is_object_in_register(context, arg1->object))
   {
-    if(!is_object_in_register(context, arg1->object))
-    {
-      X86Location* loc = get_best_available_register(context, arg1->object->ty);
-      x86_load_object(context, arg1->object, loc);
-    }
+    X86Location* arg1_loc = get_best_available_register(context, arg1->object->ty);
+    x86_load_object(context, arg1->object, arg1_loc);
+  }
 
-    X86Stmt* cmp_stmt = x86_new_stmt(context, eX86Stmt_cmp);
-
-    cmp_stmt->operand1 = x86_make_object_operand(context, arg1->object);
-    cmp_stmt->operand2 = x86_make_object_operand(context, arg2->object);
+  X86Stmt* cmp_stmt = 0;
+  if(types_are_equal(arg1->object->ty, basic_type_int)
+    || types_are_equal(arg1->object->ty, basic_type_char)
+    || types_are_equal(arg1->object->ty, basic_type_bool))
+  {
+    cmp_stmt = x86_new_stmt(context, eX86Stmt_cmp);
   }
   else if(types_are_equal(arg1->object->ty, basic_type_float))
   {
-    fail("TODO");
+    cmp_stmt = x86_new_stmt(context, eX86Stmt_ucomiss);
   }
   else assert(0);
+
+  cmp_stmt->operand1 = x86_make_object_operand(context, arg1->object);
+  cmp_stmt->operand2 = x86_make_object_operand(context, arg2->object);
 
   X86Stmt* jump_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(cond_goto->relop, arg1->object->ty));
   jump_stmt->operand1 = x86_make_id_operand(cond_goto->label->name);

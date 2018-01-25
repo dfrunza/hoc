@@ -1,8 +1,77 @@
+int get_type_width(Type* type)
+{
+  switch(type->kind)
+  {
+    case eType_array:
+    {
+      type->width = type->array.size * get_type_width(type->array.elem);
+    }
+    break;
+    
+    case eType_product:
+    {
+      type->width = get_type_width(type->product.left) + get_type_width(type->product.right);
+    }
+    break;
+    
+    case eType_proc:
+    {
+      type->width = get_type_width(type->proc.ret) + get_type_width(type->proc.args);
+    }
+    break;
+    
+    case eType_basic:
+    {
+      switch(type->basic.kind)
+      {
+        case eBasicType_int:
+        case eBasicType_float:
+        case eBasicType_bool:
+        {
+          type->width = 4;
+        }
+        break;
+        
+        case eBasicType_char:
+        {
+          type->width = 1;
+        }
+        break;
+        
+        case eBasicType_void:
+        {
+          type->width = 0;
+        }
+        break;
+        
+        default: assert(0);
+      }
+    }
+    break;
+    
+    case eType_pointer:
+    {
+      type->width = 4;
+    }
+    break;
+    
+    case eType_var:
+    {
+      type->width = get_type_width(type->var.type);
+    }
+    break;
+    
+    default: assert(0);
+  }
+  return type->width;
+}
+
 Type* new_var_type(Type* var_type)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_var;
   type->var.type = var_type;
+  type->width = get_type_width(type);
 
   return type;
 }
@@ -12,7 +81,8 @@ Type* new_basic_type(eBasicType kind)
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_basic;
   type->basic.kind = kind;
-  
+  type->width = get_type_width(type);
+
   return type;
 }
 
@@ -22,6 +92,7 @@ Type* new_proc_type(Type* args, Type* ret)
   type->kind = eType_proc;
   type->proc.args = args;
   type->proc.ret = ret;
+  type->width = 0;
 
   return type;
 }
@@ -31,6 +102,7 @@ Type* new_typevar()
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_typevar;
   type->typevar.id = typevar_id++;
+  type->width = 0;
 
   return type;
 }
@@ -41,6 +113,7 @@ Type* new_product_type(Type* left, Type* right)
   type->kind = eType_product;
   type->product.left = left;
   type->product.right = right;
+  type->width = 0;
 
   return type;
 }
@@ -52,6 +125,7 @@ Type* new_array_type(int size, int ndim, Type* elem)
   type->array.size = size;
   type->array.ndim = ndim;
   type->array.elem = elem;
+  type->width = 0;
 
   return type;
 }
@@ -61,6 +135,7 @@ Type* new_pointer_type(Type* pointee)
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_pointer;
   type->pointer.pointee = pointee;
+  type->width = 0;
 
   return type;
 }
@@ -145,74 +220,6 @@ bool types_are_equal(Type* type_a, Type* type_b)
     }
   }
   return are_equal;
-}
-
-int get_type_width(Type* type)
-{
-  switch(type->kind)
-  {
-    case eType_array:
-    {
-      type->width = type->array.size * get_type_width(type->array.elem);
-    }
-    break;
-    
-    case eType_product:
-    {
-      type->width = get_type_width(type->product.left) + get_type_width(type->product.right);
-    }
-    break;
-    
-    case eType_proc:
-    {
-      type->width = get_type_width(type->proc.ret) + get_type_width(type->proc.args);
-    }
-    break;
-    
-    case eType_basic:
-    {
-      switch(type->basic.kind)
-      {
-        case eBasicType_int:
-        case eBasicType_float:
-        case eBasicType_bool:
-        {
-          type->width = 4;
-        }
-        break;
-        
-        case eBasicType_char:
-        {
-          type->width = 1;
-        }
-        break;
-        
-        case eBasicType_void:
-        {
-          type->width = 0;
-        }
-        break;
-        
-        default: assert(0);
-      }
-    }
-    break;
-    
-    case eType_pointer:
-    {
-      type->width = 4;
-    }
-    break;
-    
-    case eType_var:
-    {
-      type->width = get_type_width(type->var.type);
-    }
-    break;
-    
-    default: assert(0);
-  }
-  return type->width;
 }
 
 Type* copy_type(Type* type)

@@ -49,6 +49,28 @@ void init_object_locations(Symbol* object)
   }
 }
 
+void alloc_data_object(SymbolContext* sym_context, Symbol* sym, Scope* scope)
+{
+  sym->data_loc = scope->allocd_size;
+  sym->allocd_size = sym->ty->width;
+  if((sym->allocd_size & (sym_context->data_alignment-1)) != 0)
+  {
+    sym->allocd_size = (sym->allocd_size + sym_context->data_alignment) & ~(sym_context->data_alignment-1);
+  }
+  scope->allocd_size += sym->allocd_size;
+}
+
+void alloc_scope_data_objects(SymbolContext* sym_context, Scope* scope)
+{
+  for(ListItem* li = scope->decl_syms.first;
+      li;
+      li = li->next)
+  {
+    Symbol* object = KIND(li, eList_symbol)->symbol;
+    alloc_data_object(sym_context, object, scope);
+  }
+}
+
 Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_loc)
 {
   Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
@@ -71,6 +93,42 @@ Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_lo
   return sym;
 }
 
+Symbol* new_const_object_int(SymbolContext* sym_context, SourceLoc* src_loc, int int_val)
+{
+  Symbol* const_object = new_const_object(sym_context, basic_type_int, src_loc);
+  const_object->int_val = int_val;
+  const_object->data = &const_object->int_val;
+
+  return const_object;
+}
+
+Symbol* new_const_object_char(SymbolContext* sym_context, SourceLoc* src_loc, char char_val)
+{
+  Symbol* const_object = new_const_object(sym_context, basic_type_char, src_loc);
+  const_object->char_val = char_val;
+  const_object->data = &const_object->char_val;
+
+  return const_object;
+}
+
+Symbol* new_const_object_str(SymbolContext* sym_context, SourceLoc* src_loc, char* str_val)
+{
+  Symbol* const_object = new_const_object(sym_context, basic_type_str, src_loc);
+  const_object->str_val = str_val;
+  const_object->data = const_object->str_val;
+
+  return const_object;
+}
+
+Symbol* new_const_object_float(SymbolContext* sym_context, SourceLoc* src_loc, float float_val)
+{
+  Symbol* const_object = new_const_object(sym_context, basic_type_float, src_loc);
+  const_object->float_val = float_val;
+  const_object->data = &const_object->float_val;
+
+  return const_object;
+}
+
 Symbol* new_temp_object(SymbolContext* sym_context, Scope* scope, Type* ty, SourceLoc* src_loc)
 {
   Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
@@ -86,6 +144,7 @@ Symbol* new_temp_object(SymbolContext* sym_context, Scope* scope, Type* ty, Sour
   sym->is_live = false;
   init_object_locations(sym);
 
+  alloc_data_object(sym_context, sym, scope);
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
 
   return sym;
@@ -219,6 +278,42 @@ bool sym_lit(SymbolContext* context, AstNode* lit)
   assert(KIND(lit, eAstNode_lit));
   bool success = true;
 
+  switch(lit->lit.kind)
+  {
+    case eLiteral_int:
+    {
+      lit->lit.constant = new_const_object_int(context, lit->src_loc, lit->lit.int_val);
+    }
+    break;
+
+    case eLiteral_float:
+    {
+      lit->lit.constant = new_const_object_float(context, lit->src_loc, lit->lit.float_val);
+    }
+    break;
+
+    case eLiteral_bool:
+    {
+      lit->lit.constant = new_const_object_int(context, lit->src_loc, (int)lit->lit.bool_val);
+    }
+    break;
+
+    case eLiteral_char:
+    {
+      lit->lit.constant = new_const_object_char(context, lit->src_loc, lit->lit.char_val);
+    }
+    break;
+    
+    case eLiteral_str:
+    {
+      lit->lit.constant = new_const_object_str(context, lit->src_loc, lit->lit.str_val);
+    }
+    break;
+
+    default: assert(0);
+  }
+
+#if 0
   Symbol* constant = lit->lit.constant = new_const_object(context, lit->eval_ty, lit->src_loc);
 
   switch(lit->lit.kind)
@@ -260,6 +355,7 @@ bool sym_lit(SymbolContext* context, AstNode* lit)
 
     default: assert(0);
   }
+#endif
 
   return success;
 }
@@ -382,8 +478,11 @@ bool sym_array(SymbolContext* context, AstNode* array)
   AstNode* size_expr = array->array.size_expr;
   if(size_expr->kind == eAstNode_lit)
   {
+#if 0
     Symbol* size_const = size_expr->lit.constant = new_const_object(context, size_expr->eval_ty, size_expr->src_loc);
     size_const->int_val = size_expr->lit.int_val;
+#endif
+    size_expr->lit.constant = new_const_object_int(context, size_expr->src_loc, size_expr->lit.int_val);
   }
   else assert(0);
 

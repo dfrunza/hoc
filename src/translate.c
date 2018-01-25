@@ -139,12 +139,13 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   subst_list = new_list(arena, eList_type_pair);
 
   SymbolContext sym_context = {0};
-  sym_context.sym_arena = push_arena(&arena, 1*MEGABYTE);
+  sym_context.sym_arena = push_arena(&arena, 2*MEGABYTE);
   sym_context.nesting_depth = -1;
+  sym_context.data_alignment = 4;
   init_list(&sym_context.scopes, sym_context.sym_arena, eList_scope);
 
   IrContext ir_context = {0};
-  ir_context.stmt_arena = push_arena(&arena, 1*MEGABYTE);
+  ir_context.stmt_arena = push_arena(&arena, 2*MEGABYTE);
   ir_context.stmt_array = (IrStmt*)ir_context.stmt_arena->base;
   ir_context.stmt_count = 0;
   ir_context.sym_context = &sym_context;
@@ -161,16 +162,27 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
        set_types_module(module) &&
        eval_types_module(module) &&
        resolve_types_module(module) &&
-       check_types_module(module) &&
-       ir_gen_module(&ir_context, module)))
+       check_types_module(module)))
   {
     return false;
   }
 
+  ir_context.bool_true = new_const_object_int(&sym_context, 0, 1);
+  ir_context.bool_false = new_const_object_int(&sym_context, 0, 0);
+  ir_context.float_minus_one = new_const_object_float(&sym_context, 0, -1.0);
+
+  if(!ir_gen_module(&ir_context, module))
+  {
+    return false;
+  }
+
+  alloc_scope_data_objects(&sym_context, module->module.scope);
+
   X86Context x86_context = {0};
-  x86_context.stmt_arena = push_arena(&arena, 1*MEGABYTE);
+  x86_context.stmt_arena = push_arena(&arena, 2*MEGABYTE);
   x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
   x86_context.machine_word_size = 4;
+  x86_context.float_minus_one = ir_context.float_minus_one;
   x86_init_registers(&x86_context);
 
   x86_gen(&ir_context, &x86_context, module, x86_text);

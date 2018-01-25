@@ -8,9 +8,6 @@ int stdin;
 
 void startup()
 {
-  float f;
-  f = 1.23 * 2.87;
-  /*
   stdout = GetStdHandle(-11);
   stdin = GetStdHandle(-10);
 
@@ -18,7 +15,15 @@ void startup()
   []char s;
   s = int_to_str(&buf, 10, 123);
   print_str(s);
+  /*
   */
+}
+
+float absf(float a)
+{
+  if(a < 0.0)
+    a = -a;
+  return a;
 }
 
 /*

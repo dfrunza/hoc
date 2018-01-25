@@ -705,19 +705,12 @@ typedef enum eX86Stmt
   eX86Stmt_push,
   eX86Stmt_lea,
   eX86Stmt_mov,
-  eX86Stmt_movss,
   eX86Stmt_add,
-  eX86Stmt_addss,
   eX86Stmt_sub,
-  eX86Stmt_subss,
   eX86Stmt_imul,
-  eX86Stmt_mulss,
   eX86Stmt_idiv,
   eX86Stmt_cdq,
-  eX86Stmt_divss,
   eX86Stmt_neg,
-  eX86Stmt_cmp,
-  eX86Stmt_cmpss,
   eX86Stmt_jz,
   eX86Stmt_jnz,
   eX86Stmt_jl,
@@ -725,6 +718,22 @@ typedef enum eX86Stmt
   eX86Stmt_jg,
   eX86Stmt_jge,
   eX86Stmt_jmp,
+
+  eX86Stmt_cmp,
+  eX86Stmt_ucomiss,  // floating point cmp
+
+  eX86Stmt_movss,
+  eX86Stmt_addss,
+  eX86Stmt_subss,
+  eX86Stmt_mulss,
+  eX86Stmt_divss,
+  eX86Stmt_jb,
+  eX86Stmt_jbe,
+  eX86Stmt_ja,
+  eX86Stmt_jae,
+  eX86Stmt_je,
+  eX86Stmt_jne,
+
   eX86Stmt_nop,
   eX86Stmt_label,
   eX86Stmt_extern_proc,
@@ -1094,6 +1103,7 @@ typedef struct IrContext
 
   Symbol* bool_true;
   Symbol* bool_false;
+  Symbol* float_minus_one;
 }
 IrContext;
 
@@ -1145,6 +1155,8 @@ typedef struct X86Context
   }
   registers;
   int register_count;
+
+  Symbol* float_minus_one;
 }
 X86Context;
 

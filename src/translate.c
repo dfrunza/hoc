@@ -121,6 +121,8 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
 }
 #endif/*<<<*/
 
+void add_object_to_memory(X86Context* context, Symbol* object);
+
 #include "lex.c"
 #include "syntax.c"
 #include "sym.c"
@@ -155,11 +157,21 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_context.sym_context = &sym_context;
   ir_context.label_list = new_list(ir_context.gp_arena, eList_ir_label);
   ir_context.data_alignment = 4;
-  ir_context.bool_true = new_const_object_int(&sym_context, 0, 1);
-  ir_context.bool_false = new_const_object_int(&sym_context, 0, 0);
 
   TokenStream token_stream = {0};
   token_stream.arena = gp_arena;
+
+  X86Context x86_context = {0};
+  x86_context.gp_arena = gp_arena;
+  x86_context.stmt_arena = push_arena(&arena, 2*MEGABYTE);
+  x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
+  x86_context.machine_word_size = 4;
+  x86_init_registers(&x86_context);
+  x86_context.text = x86_text;
+
+  ir_context.x86_context = &x86_context;
+  sym_context.x86_context = &x86_context;
+
   init_token_stream(&token_stream, hoc_text, file_path);
   get_next_token(&token_stream);
 
@@ -174,6 +186,10 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
     return false;
   }
 
+  ir_context.bool_true = new_const_object_int(&sym_context, 0, 1);
+  ir_context.bool_false = new_const_object_int(&sym_context, 0, 0);
+  x86_context.float_minus_one = new_const_object_float(&sym_context, 0, -1.0);
+
   if(!ir_gen_module(&ir_context, module))
   {
     return false;
@@ -181,16 +197,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
 
   alloc_scope_data_objects(&ir_context, module->module.scope);
 
-  X86Context x86_context = {0};
-  x86_context.gp_arena = gp_arena;
-  x86_context.stmt_arena = push_arena(&arena, 2*MEGABYTE);
-  x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
-  x86_context.machine_word_size = 4;
-  x86_context.float_minus_one = new_const_object_float(&sym_context, 0, -1.0);
-  x86_init_registers(&x86_context);
-  x86_context.text = x86_text;
   str_init(push_arena(&arena, 2*MEGABYTE), x86_context.text);
-
   x86_gen(&ir_context, &x86_context, module);
 
   return true;

@@ -11,8 +11,10 @@ int a;
 int b;
 void startup()
 {
+  /*
   stdout = GetStdHandle(-11);
   stdin = GetStdHandle(-10);
+  */
 
   /*
   a = 123;
@@ -21,12 +23,14 @@ void startup()
   c = (a == b);
   */
 
-  print_int(123);
+  a = 15;
+  b = 20;
+  n = foo(abs(a), abs(b));
+}
 
-  a = 10;
-  b = 25;
-  n = gcd(a, b);
-  print_int(n);
+int foo(int a, int b)
+{
+  return a + b;
 }
 
 /*
@@ -41,7 +45,6 @@ int gcd_iter(int a, int b)
   }
   return a;
 }
-*/
 
 int gcd_recurs(int a, int b)
 {
@@ -60,8 +63,14 @@ int gcd_recurs(int a, int b)
 
 int gcd(int a, int b)
 {
+  int abs_a;
+  int abs_b;
+  abs_a = abs(a);
+  abs_b = abs(b);
+  return gcd_recurs(abs_a, abs_b);
   return gcd_recurs(abs(a), abs(b));
 }
+*/
 
 int abs(int a)
 {
@@ -71,92 +80,6 @@ int abs(int a)
 }
 
 /*
-void init_intbuf([]int buf, int len, int val)
-{
-  int i; i = 0;
-  while(i < len)
-  {
-    buf[i] = val;
-    i = i + 1;
-  }
-}
-
-void float_to_str(char^ buf, int buf_len, float f)
-{
-  [9]int significand;
-  init_intbuf(&significand[0], 9, 0);
-  int exponent; exponent = 0;
-
-  int digit_count; digit_count = fp_bin_to_dec(f, &significand, &exponent);
-
-  int pos; pos = 0;
-
-  if(f < 0.0)
-  {
-    buf[pos] = '-';
-    pos = pos + 1;
-  }
-
-  int i; i = 1;
-  if(exponent <= 0)
-  {
-    buf[pos] = '0';
-    pos = pos + 1;
-    buf[pos] = '.';
-    pos = pos + 1;
-  }
-  else
-  {
-    while((i <= digit_count) and (exponent > 0))
-    {
-      digit_to_char(buf, pos, significand[i]);
-      i = i + 1;
-      pos = pos + 1;
-      exponent = exponent - 1;
-    }
-
-    buf[pos] = '.';
-    pos = pos + 1;
-    if(i > digit_count)
-    {
-      buf[pos] = '0';
-      pos = pos + 1;
-    }
-  }
-
-  while(i <= digit_count)
-  {
-    digit_to_char(buf, pos, significand[i]);
-    i = i + 1;
-    pos = pos + 1;
-  }
-
-  if(exponent <> 0)
-  {
-    buf[pos] = 'e';
-    pos = pos + 1;
-
-    [20]char exponent_buf;
-    char^ exponent_str; exponent_str = int_to_str(&exponent_buf, 20, exponent);
-    while(^exponent_str <> '\0')
-    {
-      buf[pos] = ^exponent_str;
-      exponent_str = exponent_str + (char^):1;
-      pos = pos + 1;
-    }
-  }
-
-  buf[pos] = '\0';
-}
-
-void print_float(float f)
-{
-  [20]char buf;
-  float_to_str(&buf, 20, f);
-  print_str(&buf);
-}
-*/
-
 float absf(float a)
 {
   if(a < 0.0)
@@ -245,8 +168,95 @@ void digit_to_char([]char buf, int pos, int digit)
 
   return buf + (char^):buf_i;
 }
-/*
 */
+
+/*
+void init_intbuf([]int buf, int len, int val)
+{
+  int i; i = 0;
+  while(i < len)
+  {
+    buf[i] = val;
+    i = i + 1;
+  }
+}
+
+void float_to_str(char^ buf, int buf_len, float f)
+{
+  [9]int significand;
+  init_intbuf(&significand[0], 9, 0);
+  int exponent; exponent = 0;
+
+  int digit_count; digit_count = fp_bin_to_dec(f, &significand, &exponent);
+
+  int pos; pos = 0;
+
+  if(f < 0.0)
+  {
+    buf[pos] = '-';
+    pos = pos + 1;
+  }
+
+  int i; i = 1;
+  if(exponent <= 0)
+  {
+    buf[pos] = '0';
+    pos = pos + 1;
+    buf[pos] = '.';
+    pos = pos + 1;
+  }
+  else
+  {
+    while((i <= digit_count) and (exponent > 0))
+    {
+      digit_to_char(buf, pos, significand[i]);
+      i = i + 1;
+      pos = pos + 1;
+      exponent = exponent - 1;
+    }
+
+    buf[pos] = '.';
+    pos = pos + 1;
+    if(i > digit_count)
+    {
+      buf[pos] = '0';
+      pos = pos + 1;
+    }
+  }
+
+  while(i <= digit_count)
+  {
+    digit_to_char(buf, pos, significand[i]);
+    i = i + 1;
+    pos = pos + 1;
+  }
+
+  if(exponent <> 0)
+  {
+    buf[pos] = 'e';
+    pos = pos + 1;
+
+    [20]char exponent_buf;
+    char^ exponent_str; exponent_str = int_to_str(&exponent_buf, 20, exponent);
+    while(^exponent_str <> '\0')
+    {
+      buf[pos] = ^exponent_str;
+      exponent_str = exponent_str + (char^):1;
+      pos = pos + 1;
+    }
+  }
+
+  buf[pos] = '\0';
+}
+
+void print_float(float f)
+{
+  [20]char buf;
+  float_to_str(&buf, 20, f);
+  print_str(&buf);
+}
+*/
+
 
 /*
 [2]int A;

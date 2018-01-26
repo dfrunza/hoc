@@ -674,6 +674,11 @@ X86Location* lookup_object_location(X86Context* context, Symbol* object)
     loc = 0;
   }
 
+  if(!loc)
+  {
+    loc = object->locations._[eX86Location_memory];
+  }
+
 #if 0
   if(!loc)
   {
@@ -1418,8 +1423,6 @@ void x86_gen_equal(X86Context* context, struct IrStmt_assign* assign)
     }
     else
     {
-      assert(is_memory_location(context, result_loc));
-
       result_loc = get_best_available_register(context, result->object->ty);
       x86_load_object(context, arg1->object, result_loc);
     }
@@ -1662,6 +1665,8 @@ void x86_gen_call(X86Context* context, struct IrStmt_call* call)
     stmt = x86_new_stmt(context, eX86Stmt_add);
     stmt->operand1 = x86_make_register_operand(context, &context->esp);
     stmt->operand2 = x86_make_int_constant_operand(context, call->param_scope->allocd_size);
+
+    add_object_to_memory(context, call->retvar);
   }
 }
 

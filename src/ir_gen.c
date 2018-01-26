@@ -1,5 +1,3 @@
-void add_object_to_memory(X86Context* context, Symbol* object);
-
 IrLabel* label_gen_new(MemoryArena* arena)
 {
   IrLabel* label = mem_push_struct(arena, IrLabel);
@@ -1087,7 +1085,9 @@ void ir_gen_var(IrContext* ir_context, Scope* scope, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
 
-  alloc_data_object_incremental(ir_context, var->var.decl_sym, scope);
+  Symbol* object = var->var.decl_sym;
+  alloc_data_object_incremental(ir_context, object, scope);
+  add_object_to_memory(ir_context->x86_context, object);
 }
 
 bool ir_gen_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
@@ -1180,7 +1180,7 @@ void ir_gen_formal_args(IrContext* ir_context, Scope* scope, AstNode* args)
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     Symbol* arg_object = KIND(arg, eAstNode_var)->var.decl_sym;
     alloc_data_object(ir_context, arg_object, scope);
-    //add_object_to_memory(ir_context->x86_context, arg_object);
+    add_object_to_memory(ir_context->x86_context, arg_object);
   }
 }
 
@@ -1241,6 +1241,14 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   return success;
 }
 
+void ir_gen_module_var(IrContext* ir_context, Scope* scope, AstNode* var)
+{
+  assert(KIND(var, eAstNode_var));
+
+  Symbol* object = var->var.decl_sym;
+  add_object_to_memory(ir_context->x86_context, object);
+}
+
 bool ir_gen_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 {
   bool success = true;
@@ -1260,6 +1268,7 @@ bool ir_gen_module_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     break;
     
     case eAstNode_var:
+      ir_gen_module_var(ir_context, scope, stmt);
     break;
     
     default: assert(0);

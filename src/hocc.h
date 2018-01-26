@@ -1086,6 +1086,7 @@ typedef struct SymbolContext
   Scope* active_scope;
   int nesting_depth;
   int data_alignment;
+  X86Context* x86_context;
 }
 SymbolContext;
 

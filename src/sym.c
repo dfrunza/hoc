@@ -101,6 +101,8 @@ Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_lo
   sym->is_live = false;
   init_object_locations(sym);
 
+  add_object_to_memory(sym_context->x86_context, sym);
+
   return sym;
 }
 

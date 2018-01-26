@@ -312,7 +312,7 @@ void cstr_copy_substr(char* dest_str, char* begin_char, char* end_char)
 
 /* TODO: Check arena boundaries in the str_* functions */
 
-void str_init(String* str, MemoryArena* arena)
+void str_init(MemoryArena* arena, String* str)
 {
   // Two Strings cannot be both attached to an Arena at the same time
   assert(!arena->str);
@@ -453,7 +453,7 @@ int bitpos(int k)
   return (k & 1) ? pos : 0;
 }
 
-void init_list(List* list, MemoryArena* arena, eList kind)
+void init_list(MemoryArena* arena, List* list, eList kind)
 {
   list->kind = kind;
   list->arena = arena;
@@ -464,7 +464,7 @@ void init_list(List* list, MemoryArena* arena, eList kind)
 List* new_list(MemoryArena* arena, eList kind)
 {
   List* list = mem_push_struct(arena, List);
-  init_list(list, arena, kind);
+  init_list(arena, list, kind);
   return list;
 }
 

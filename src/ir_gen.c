@@ -1,3 +1,5 @@
+void add_object_to_memory(X86Context* context, Symbol* object);
+
 IrLabel* label_gen_new(MemoryArena* arena)
 {
   IrLabel* label = mem_push_struct(arena, IrLabel);
@@ -157,14 +159,14 @@ void ir_emit_assign(IrContext* ir_context, eIrOp op, IrArg* arg1, IrArg* arg2, I
   stmt->label = get_label_at(ir_context->label_list, ir_context->stmt_count);
 
   stmt->assign.op = op;
-  stmt->assign.arg1 = mem_push_struct(arena, IrArg);
+  stmt->assign.arg1 = mem_push_struct(ir_context->gp_arena, IrArg);
   *stmt->assign.arg1 = *arg1;
   if(arg2)
   {
-    stmt->assign.arg2 = mem_push_struct(arena, IrArg);
+    stmt->assign.arg2 = mem_push_struct(ir_context->gp_arena, IrArg);
     *stmt->assign.arg2 = *arg2;
   }
-  stmt->assign.result = mem_push_struct(arena, IrArg);
+  stmt->assign.result = mem_push_struct(ir_context->gp_arena, IrArg);
   *stmt->assign.result = *result;
 
   ir_context->stmt_count++;
@@ -266,7 +268,7 @@ void reset_ir_context(IrContext* ir_context)
 
 IrArg* ir_new_arg_temp_object(IrContext* ir_context, Scope* scope, Type* ty, SourceLoc* src_loc)
 {
-  IrArg* arg = mem_push_struct(arena, IrArg);
+  IrArg* arg = mem_push_struct(ir_context->gp_arena, IrArg);
   arg->object = new_temp_object(ir_context, scope, ty, src_loc);
 
   return arg;
@@ -274,7 +276,7 @@ IrArg* ir_new_arg_temp_object(IrContext* ir_context, Scope* scope, Type* ty, Sou
 
 IrArg* ir_new_arg_existing_object(IrContext* ir_context, Symbol* object)
 {
-  IrArg* arg = mem_push_struct(arena, IrArg);
+  IrArg* arg = mem_push_struct(ir_context->gp_arena, IrArg);
   arg->object = object;
 
   return arg;
@@ -492,7 +494,7 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
   }
   else if(array_ty->kind == eType_pointer)
   {
-    index->index.array_ty = new_array_type(0, 1, array_ty->pointer.pointee);
+    index->index.array_ty = new_array_type(ir_context->gp_arena, 0, 1, array_ty->pointer.pointee);
   }
   else assert(0);
 
@@ -524,7 +526,7 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
         ir_emit_assign(ir_context, eIrOp_add, offset, i_expr->place, offset);
       }
       else
-        success = compile_error(i_expr->src_loc, "array dim size = 0");
+        success = compile_error(ir_context->gp_arena, i_expr->src_loc, "array dim size = 0");
     }
   }
   else assert(0);
@@ -584,7 +586,7 @@ bool ir_gen_assign(IrContext* ir_context, Scope* scope, AstNode* assign)
     }
   }
   else
-    success = compile_error(dest_expr->src_loc, "unsupported expression on the left-side of assignment");
+    success = compile_error(ir_context->gp_arena, dest_expr->src_loc, "unsupported expression on the left-side of assignment");
 
   return success;
 }
@@ -684,9 +686,9 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
       eOperator op = expr->bin_expr.op;
       if(op == eOperator_logic_and || op == eOperator_logic_or)
       {
-        expr->label_true = label_gen_new(arena);
-        expr->label_false = label_gen_new(arena);
-        expr->label_next = label_gen_new(arena);
+        expr->label_true = label_gen_new(ir_context->gp_arena);
+        expr->label_false = label_gen_new(ir_context->gp_arena);
+        expr->label_next = label_gen_new(ir_context->gp_arena);
 
         expr->place = ir_new_arg_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
 
@@ -711,9 +713,9 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
       eOperator op = expr->unr_expr.op;
       if(op == eOperator_logic_not)
       {
-        expr->label_true = label_gen_new(arena);
-        expr->label_false = label_gen_new(arena);
-        expr->label_next = label_gen_new(arena);
+        expr->label_true = label_gen_new(ir_context->gp_arena);
+        expr->label_false = label_gen_new(ir_context->gp_arena);
+        expr->label_next = label_gen_new(ir_context->gp_arena);
 
         expr->place = ir_new_arg_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
 
@@ -822,7 +824,7 @@ bool ir_gen_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
       assert(bin_expr->label_false);
 
       left_operand->label_true = bin_expr->label_true;
-      left_operand->label_false = label_gen_new(arena);
+      left_operand->label_false = label_gen_new(ir_context->gp_arena);
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
       if(success = ir_gen_bool_expr(ir_context, scope, left_operand))
@@ -838,7 +840,7 @@ bool ir_gen_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
       assert(bin_expr->label_true);
       assert(bin_expr->label_false);
 
-      left_operand->label_true = label_gen_new(arena);
+      left_operand->label_true = label_gen_new(ir_context->gp_arena);
       left_operand->label_false = bin_expr->label_false;
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
@@ -950,10 +952,10 @@ bool ir_gen_do_while(IrContext* ir_context, Scope* scope, AstNode* do_while)
   AstNode* cond_expr = do_while->do_while.cond_expr;
   AstNode* body = do_while->do_while.body;
   
-  do_while->label_begin = label_gen_new(arena);
-  do_while->label_next = label_gen_new(arena);
+  do_while->label_begin = label_gen_new(ir_context->gp_arena);
+  do_while->label_next = label_gen_new(ir_context->gp_arena);
   do_while->label_true = cond_expr->label_true = do_while->label_begin;
-  do_while->label_false = cond_expr->label_false = label_gen_new(arena);
+  do_while->label_false = cond_expr->label_false = label_gen_new(ir_context->gp_arena);
   body->label_next = do_while->label_next;
   
   ir_emit_label(ir_context, do_while->label_begin);
@@ -975,9 +977,9 @@ bool ir_gen_while(IrContext* ir_context, Scope* scope, AstNode* while_)
   AstNode* cond_expr = while_->while_.cond_expr;
   AstNode* body = while_->while_.body;
   
-  while_->label_begin = label_gen_new(arena);
-  while_->label_next = label_gen_new(arena);
-  cond_expr->label_true = label_gen_new(arena);
+  while_->label_begin = label_gen_new(ir_context->gp_arena);
+  while_->label_next = label_gen_new(ir_context->gp_arena);
+  cond_expr->label_true = label_gen_new(ir_context->gp_arena);
   cond_expr->label_false = while_->label_next;
   body->label_next = while_->label_begin;
   
@@ -1002,11 +1004,11 @@ bool ir_gen_if(IrContext* ir_context, Scope* scope, AstNode* if_)
   AstNode* body = if_->if_.body;
   AstNode* else_body = if_->if_.else_body;
   
-  if_->label_next = label_gen_new(arena);
+  if_->label_next = label_gen_new(ir_context->gp_arena);
   if(else_body)
   {
-    cond_expr->label_true = label_gen_new(arena);
-    cond_expr->label_false = label_gen_new(arena);
+    cond_expr->label_true = label_gen_new(ir_context->gp_arena);
+    cond_expr->label_false = label_gen_new(ir_context->gp_arena);
     body->label_next = if_->label_next;
     else_body->label_next = if_->label_next;
     
@@ -1021,7 +1023,7 @@ bool ir_gen_if(IrContext* ir_context, Scope* scope, AstNode* if_)
   }
   else
   {
-    cond_expr->label_true = label_gen_new(arena);
+    cond_expr->label_true = label_gen_new(ir_context->gp_arena);
     cond_expr->label_false = if_->label_next;
     body->label_next = if_->label_next;
     
@@ -1178,6 +1180,7 @@ void ir_gen_formal_args(IrContext* ir_context, Scope* scope, AstNode* args)
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     Symbol* arg_object = KIND(arg, eAstNode_var)->var.decl_sym;
     alloc_data_object(ir_context, arg_object, scope);
+    //add_object_to_memory(ir_context->x86_context, arg_object);
   }
 }
 
@@ -1211,7 +1214,7 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   {
     int arg_size = get_proc_arg_size(proc->proc.args);
     char* name = proc->proc.name;
-    String decorated_label; str_init(&decorated_label, arena);
+    String decorated_label; str_init(ir_context->gp_arena, &decorated_label);
     str_printf(&decorated_label, "%s@%d", name, arg_size);
     proc->proc.decorated_name = str_cap(&decorated_label);
   }
@@ -1220,8 +1223,8 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
     AstNode* body = proc->proc.body;
     assert(KIND(body, eAstNode_block));
 
-    proc->label_begin = label_gen_new(arena);
-    proc->label_next = label_gen_new(arena);
+    proc->label_begin = label_gen_new(ir_context->gp_arena);
+    proc->label_next = label_gen_new(ir_context->gp_arena);
 
     ir_emit_label(ir_context, proc->label_begin);
 
@@ -1620,7 +1623,7 @@ void DEBUG_print_ir_code(MemoryArena* arena, List* procs, char* file_path)
 {
   begin_temp_memory(&arena);
   String text = {0};
-  str_init(&text, arena);
+  str_init(arena, &text);
 
   for(ListItem* li = procs->first;
       li;
@@ -1765,11 +1768,11 @@ IrLabel* normalize_jump_target_labels(IrStmt* stmt)
   return target_label;
 }
 
-void partition_to_basic_blocks(MemoryArena* stmt_arena, AstNode* proc)
+void partition_to_basic_blocks(IrContext* ir_context, AstNode* proc)
 {
   if(proc->proc.ir_stmt_count > 0)
   {
-    List* leaders = new_list(arena, eList_ir_leader_stmt);
+    List* leaders = new_list(ir_context->gp_arena, eList_ir_leader_stmt);
 
     IrStmt* stmt_array = proc->proc.ir_stmt_array;
     int stmt_count = proc->proc.ir_stmt_count;
@@ -1795,7 +1798,7 @@ void partition_to_basic_blocks(MemoryArena* stmt_arena, AstNode* proc)
 
     //------
     
-    List* basic_blocks = proc->proc.basic_blocks = new_list(stmt_arena, eList_basic_block);
+    List* basic_blocks = proc->proc.basic_blocks = new_list(ir_context->stmt_arena, eList_basic_block);
 
     for(ListItem* li = leaders->first;
         li;
@@ -1809,12 +1812,12 @@ void partition_to_basic_blocks(MemoryArena* stmt_arena, AstNode* proc)
       }
 
       IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
-      BasicBlock* block = mem_push_struct(stmt_arena, BasicBlock);
+      BasicBlock* block = mem_push_struct(ir_context->stmt_arena, BasicBlock);
       append_list_elem(basic_blocks, block, eList_basic_block);
-      init_list(&block->pred_list, stmt_arena, eList_basic_block);
-      init_list(&block->succ_list, stmt_arena, eList_basic_block);
+      init_list(ir_context->stmt_arena, &block->pred_list, eList_basic_block);
+      init_list(ir_context->stmt_arena, &block->succ_list, eList_basic_block);
       leader->block = block;
-      block->stmt_array = mem_push_array(stmt_arena, IrStmt*, next_stmt_nr - leader->stmt_nr);
+      block->stmt_array = mem_push_array(ir_context->stmt_arena, IrStmt*, next_stmt_nr - leader->stmt_nr);
       block->stmt_count = 0;
       block->label = leader->label;
 
@@ -1855,20 +1858,14 @@ void partition_to_basic_blocks(MemoryArena* stmt_arena, AstNode* proc)
         
         int stmt_nr = goto_label->stmt_nr;
         IrLeaderStmt* leader = get_leader_stmt(leaders, stmt_nr);
-        if(leader)
-        {
-          append_list_elem(&bb->succ_list, leader->block, eList_basic_block);
-          append_list_elem(&leader->block->pred_list, bb, eList_basic_block);
 
-          if(last_stmt->kind != eIrStmt_goto)
-          {
-            append_list_elem(&bb->succ_list, bb_next, eList_basic_block);
-            append_list_elem(&bb_next->pred_list, bb, eList_basic_block);
-          }
-        }
-        else
+        append_list_elem(&bb->succ_list, leader->block, eList_basic_block);
+        append_list_elem(&leader->block->pred_list, bb, eList_basic_block);
+
+        if(last_stmt->kind != eIrStmt_goto)
         {
-          compile_error(0, "leader is null");
+          append_list_elem(&bb->succ_list, bb_next, eList_basic_block);
+          append_list_elem(&bb_next->pred_list, bb, eList_basic_block);
         }
       }
       else if(bb_next)

@@ -47,7 +47,7 @@ Token* lookup_keyword(Token* list, char* lexeme)
   return result;
 }
 
-char* install_lexeme(char* begin_char, char* end_char)
+char* install_lexeme(MemoryArena* arena, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
 
@@ -89,7 +89,7 @@ bool escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
     {
       c = *(++estr->end);
       if(!is_valid_escape_char(c))
-        success = compile_error_(file, line, &input->src_loc, "invalid escape char `%c`", c);
+        success = compile_error_(input->arena, file, line, &input->src_loc, "invalid escape char `%c`", c);
     }
     estr->len++;
     c = *(++estr->end);
@@ -97,14 +97,14 @@ bool escaped_string(char* file, int line, TokenStream* input, EscapedStr* estr)
   if(success)
   {
     if(*estr->end != estr->quote)
-      success = compile_error_(file, line, &input->src_loc, 
+      success = compile_error_(input->arena, file, line, &input->src_loc, 
                                 "malformed string literal, missing the closing `%c`", estr->quote);
   }
   assert((estr->end - estr->begin) >= 1);
   return success;
 }
 
-char* install_escaped_str(EscapedStr* estr)
+char* install_escaped_str(MemoryArena* arena, EscapedStr* estr)
 {
   assert(estr->begin <= estr->end);
 
@@ -365,7 +365,7 @@ void init_token_stream(TokenStream* input, char* text, char* file_path)
   /* TODO: Compute the absolute path to the file, so that Vim could properly
      jump from the QuickFix window to the error line in the file. */
   src_loc->file_path = file_path;
-  input->last_state = mem_push_struct(arena, TokenStream);
+  input->last_state = mem_push_struct(input->arena, TokenStream);
 }
 
 void putback_token(TokenStream* input)
@@ -422,7 +422,7 @@ bool get_asm_text(TokenStream* input)
   if(c == '}')
   {
     char* end_char = input->cursor - 1;
-    char* lexeme = install_lexeme(begin_char, end_char);
+    char* lexeme = install_lexeme(input->arena, begin_char, end_char);
 
     token->kind = eToken_asm_text;
     token->lexeme = lexeme;
@@ -464,7 +464,7 @@ loop:
     }
 
     char* end_char = input->cursor - 1;
-    char* lexeme = install_lexeme(begin_char, end_char);
+    char* lexeme = install_lexeme(input->arena, begin_char, end_char);
 
     token->kind = eToken_id;
     token->lexeme = lexeme;
@@ -512,18 +512,18 @@ loop:
       }
     }
     digit_buf[i] = '\0';
-    token->lexeme = install_lexeme(digit_buf, digit_buf + i-1);
+    token->lexeme = install_lexeme(input->arena, digit_buf, digit_buf + i-1);
 
     if(is_float)
     {
       token->kind = eToken_float_val;
-      token->float_val = mem_push_struct(arena, float);
+      token->float_val = mem_push_struct(input->arena, float);
       h_sscanf(digit_buf, "%f", token->float_val);
     }
     else
     {
       token->kind = eToken_int_val;
-      token->int_val = mem_push_struct(arena, int);
+      token->int_val = mem_push_struct(input->arena, int);
       if(is_hex)
         h_sscanf(digit_buf, "%x", token->int_val);
       else
@@ -616,7 +616,7 @@ loop:
 
     if(success = escaped_string(__FILE__, __LINE__, input, &estr))
     {
-      token->str_val = install_escaped_str(&estr);;
+      token->str_val = install_escaped_str(input->arena, &estr);;
       token->kind = eToken_str_val;
       input->cursor = ++estr.end;
     }
@@ -629,10 +629,10 @@ loop:
 
     if(success = escaped_string(__FILE__, __LINE__, input, &estr))
     {
-      char* lexeme = install_escaped_str(&estr);
+      char* lexeme = install_escaped_str(input->arena, &estr);
 
       if(estr.len != 1)
-        success = compile_error(&input->src_loc, "invalid char literal '%s'", lexeme);
+        success = compile_error(input->arena, &input->src_loc, "invalid char literal '%s'", lexeme);
       else
       {
         token->char_val = *lexeme;

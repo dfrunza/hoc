@@ -36,6 +36,7 @@ typedef struct IrArg IrArg;
 typedef struct IrLeaderStmt IrLeaderStmt;
 typedef struct IrLabel IrLabel;
 typedef struct BasicBlock BasicBlock;
+typedef struct X86Context X86Context;
 
 typedef struct MemoryArena
 {
@@ -174,6 +175,7 @@ Token;
 
 typedef struct TokenStream
 {
+  MemoryArena* arena;
   struct TokenStream* last_state;
   Token token;
   char* text;
@@ -1077,20 +1079,23 @@ Symbol;
 
 typedef struct SymbolContext
 {
+  MemoryArena* gp_arena;
+  MemoryArena* sym_arena;
   List scopes;
   Scope* module_scope;
   Scope* active_scope;
   int nesting_depth;
-  MemoryArena* sym_arena;
   int data_alignment;
 }
 SymbolContext;
 
 typedef struct IrContext
 {
-  MemoryArena* stmt_arena;
+  MemoryArena* gp_arena;
   SymbolContext* sym_context;
+  X86Context* x86_context;
 
+  MemoryArena* stmt_arena;
   IrStmt* stmt_array;
   int stmt_count;
   List* label_list;
@@ -1100,7 +1105,6 @@ typedef struct IrContext
 
   Symbol* bool_true;
   Symbol* bool_false;
-  Symbol* float_minus_one;
 
   int current_alloc_offset;
 }
@@ -1108,6 +1112,7 @@ IrContext;
 
 typedef struct X86Context
 {
+  MemoryArena* gp_arena;
   MemoryArena* stmt_arena;
   X86Stmt* stmt_array;
   int stmt_count;
@@ -1156,6 +1161,7 @@ typedef struct X86Context
   int register_count;
 
   Symbol* float_minus_one;
+  String* text;
 }
 X86Context;
 

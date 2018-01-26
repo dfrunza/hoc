@@ -19,9 +19,9 @@ void gen_label_name(MemoryArena* arena, IrLabel* label)
   h_sprintf(label->name, "L_%d", last_label_id++);
 }
 
-char* new_tempvar_name(char* label)
+char* new_tempvar_name(MemoryArena* arena, char* label)
 {
-  String str; str_init(&str, arena);
+  String str; str_init(arena, &str);
   str_printf(&str, "%s%d", label, tempvar_id++);
   return str_cap(&str);
 }
@@ -128,48 +128,51 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
 #include "ir_gen.c"
 #include "x86_gen.c"
 
-bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
+bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text, String* x86_text)
 {
-  basic_type_bool = new_basic_type(eBasicType_bool);
-  basic_type_int = new_basic_type(eBasicType_int);
-  basic_type_char = new_basic_type(eBasicType_char);
-  basic_type_float = new_basic_type(eBasicType_float);
-  basic_type_void = new_basic_type(eBasicType_void);
-  basic_type_str = new_array_type(0, 1, basic_type_char);
-  subst_list = new_list(arena, eList_type_pair);
+  MemoryArena* gp_arena = push_arena(&arena, 2*MEGABYTE);
+
+  basic_type_bool = new_basic_type(gp_arena, eBasicType_bool);
+  basic_type_int = new_basic_type(gp_arena, eBasicType_int);
+  basic_type_char = new_basic_type(gp_arena, eBasicType_char);
+  basic_type_float = new_basic_type(gp_arena, eBasicType_float);
+  basic_type_void = new_basic_type(gp_arena, eBasicType_void);
+  basic_type_str = new_array_type(gp_arena, 0, 1, basic_type_char);
+  subst_list = new_list(gp_arena, eList_type_pair);
 
   SymbolContext sym_context = {0};
+  sym_context.gp_arena = gp_arena;
   sym_context.sym_arena = push_arena(&arena, 2*MEGABYTE);
   sym_context.nesting_depth = -1;
   sym_context.data_alignment = 4;
-  init_list(&sym_context.scopes, sym_context.sym_arena, eList_scope);
+  init_list(sym_context.sym_arena, &sym_context.scopes, eList_scope);
 
   IrContext ir_context = {0};
+  ir_context.gp_arena = gp_arena;
   ir_context.stmt_arena = push_arena(&arena, 2*MEGABYTE);
   ir_context.stmt_array = (IrStmt*)ir_context.stmt_arena->base;
   ir_context.stmt_count = 0;
   ir_context.sym_context = &sym_context;
-  ir_context.label_list = new_list(arena, eList_ir_label);
+  ir_context.label_list = new_list(ir_context.gp_arena, eList_ir_label);
   ir_context.data_alignment = 4;
+  ir_context.bool_true = new_const_object_int(&sym_context, 0, 1);
+  ir_context.bool_false = new_const_object_int(&sym_context, 0, 0);
 
   TokenStream token_stream = {0};
+  token_stream.arena = gp_arena;
   init_token_stream(&token_stream, hoc_text, file_path);
   get_next_token(&token_stream);
 
   AstNode* module = 0;
   if(!(parse_module(&token_stream, &module) &&
        sym_module(&sym_context, module) &&
-       set_types_module(module) &&
-       eval_types_module(module) &&
-       resolve_types_module(module) &&
-       check_types_module(module)))
+       set_types_module(gp_arena, module) &&
+       eval_types_module(gp_arena, module) &&
+       resolve_types_module(gp_arena, module) &&
+       check_types_module(gp_arena, module)))
   {
     return false;
   }
-
-  ir_context.bool_true = new_const_object_int(&sym_context, 0, 1);
-  ir_context.bool_false = new_const_object_int(&sym_context, 0, 0);
-  ir_context.float_minus_one = new_const_object_float(&sym_context, 0, -1.0);
 
   if(!ir_gen_module(&ir_context, module))
   {
@@ -179,13 +182,16 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
   alloc_scope_data_objects(&ir_context, module->module.scope);
 
   X86Context x86_context = {0};
+  x86_context.gp_arena = gp_arena;
   x86_context.stmt_arena = push_arena(&arena, 2*MEGABYTE);
   x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
   x86_context.machine_word_size = 4;
-  x86_context.float_minus_one = ir_context.float_minus_one;
+  x86_context.float_minus_one = new_const_object_float(&sym_context, 0, -1.0);
   x86_init_registers(&x86_context);
+  x86_context.text = x86_text;
+  str_init(push_arena(&arena, 2*MEGABYTE), x86_context.text);
 
-  x86_gen(&ir_context, &x86_context, module, x86_text);
+  x86_gen(&ir_context, &x86_context, module);
 
   return true;
 }

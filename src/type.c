@@ -66,7 +66,7 @@ int get_type_width(Type* type)
   return type->width;
 }
 
-Type* new_var_type(Type* var_type)
+Type* new_var_type(MemoryArena* arena, Type* var_type)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_var;
@@ -76,7 +76,7 @@ Type* new_var_type(Type* var_type)
   return type;
 }
 
-Type* new_basic_type(eBasicType kind)
+Type* new_basic_type(MemoryArena* arena, eBasicType kind)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_basic;
@@ -86,7 +86,7 @@ Type* new_basic_type(eBasicType kind)
   return type;
 }
 
-Type* new_proc_type(Type* args, Type* ret)
+Type* new_proc_type(MemoryArena* arena, Type* args, Type* ret)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_proc;
@@ -97,7 +97,7 @@ Type* new_proc_type(Type* args, Type* ret)
   return type;
 }
 
-Type* new_typevar()
+Type* new_typevar(MemoryArena* arena)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_typevar;
@@ -107,7 +107,7 @@ Type* new_typevar()
   return type;
 }
 
-Type* new_product_type(Type* left, Type* right)
+Type* new_product_type(MemoryArena* arena, Type* left, Type* right)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_product;
@@ -118,7 +118,7 @@ Type* new_product_type(Type* left, Type* right)
   return type;
 }
 
-Type* new_array_type(int size, int ndim, Type* elem)
+Type* new_array_type(MemoryArena* arena, int size, int ndim, Type* elem)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_array;
@@ -130,7 +130,7 @@ Type* new_array_type(int size, int ndim, Type* elem)
   return type;
 }
 
-Type* new_pointer_type(Type* pointee)
+Type* new_pointer_type(MemoryArena* arena, Type* pointee)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_pointer;
@@ -222,7 +222,7 @@ bool types_are_equal(Type* type_a, Type* type_b)
   return are_equal;
 }
 
-Type* copy_type(Type* type)
+Type* copy_type(MemoryArena* arena, Type* type)
 {
   Type* copy = mem_push_struct(arena, Type);
   *copy = *type;
@@ -329,7 +329,7 @@ bool type_unif(Type* type_a, Type* type_b)
   return success;
 }
 
-TypePair* new_type_pair(Type* key, Type* value)
+TypePair* new_type_pair(MemoryArena* arena, Type* key, Type* value)
 {
   TypePair* pair = mem_push_struct(arena, TypePair);
   pair->key = key;
@@ -356,7 +356,7 @@ TypePair* find_pair(List* subst_list, Type* type)
   return result;
 }
 
-Type* type_subst(List* subst_list, Type* type)
+Type* type_subst(MemoryArena* arena, List* subst_list, Type* type)
 {
   type = get_type_repr(type);
   Type* subst = 0;
@@ -368,9 +368,9 @@ Type* type_subst(List* subst_list, Type* type)
   }
   else
   {
-    subst = copy_type(type);
+    subst = copy_type(arena, type);
     
-    pair = new_type_pair(type, subst);
+    pair = new_type_pair(arena, type, subst);
     append_list_elem(subst_list, pair, eList_type_pair);
     
     switch(subst->kind)
@@ -383,33 +383,33 @@ Type* type_subst(List* subst_list, Type* type)
       
       case eType_proc:
       {
-        subst->proc.args = type_subst(subst_list, subst->proc.args);
-        subst->proc.ret = type_subst(subst_list, subst->proc.ret);
+        subst->proc.args = type_subst(arena, subst_list, subst->proc.args);
+        subst->proc.ret = type_subst(arena, subst_list, subst->proc.ret);
       }
       break;
       
       case eType_product:
       {
-        subst->product.left = type_subst(subst_list, subst->product.left);
-        subst->product.right = type_subst(subst_list, subst->product.right);
+        subst->product.left = type_subst(arena, subst_list, subst->product.left);
+        subst->product.right = type_subst(arena, subst_list, subst->product.right);
       }
       break;
       
       case eType_pointer:
       {
-        subst->pointer.pointee = type_subst(subst_list, subst->pointer.pointee);
+        subst->pointer.pointee = type_subst(arena, subst_list, subst->pointer.pointee);
       }
       break;
       
       case eType_array:
       {
-        subst->array.elem = type_subst(subst_list, subst->array.elem);
+        subst->array.elem = type_subst(arena, subst_list, subst->array.elem);
       }
       break;
       
       case eType_var:
       {
-        subst->var.type = type_subst(subst_list, subst->var.type);
+        subst->var.type = type_subst(arena, subst_list, subst->var.type);
       }
       break;
       
@@ -561,9 +561,9 @@ void make_type_printstr(String* str, Type* type)
   }
 }
 
-char* get_type_printstr(Type* type)
+char* get_type_printstr(MemoryArena* arena, Type* type)
 {
-  String str; str_init(&str, arena);
+  String str; str_init(arena, &str);
   make_type_printstr(&str, type);
 
   return str_cap(&str);
@@ -572,16 +572,16 @@ char* get_type_printstr(Type* type)
 //     SET TYPES
 //-----------------------------------------------------
 
-bool set_types_expr(AstNode* expr);
-bool set_types_type(AstNode* type);
-bool set_types_block_stmt(AstNode* stmt);
+bool set_types_expr(MemoryArena* arena, AstNode* expr);
+bool set_types_type(MemoryArena* arena, AstNode* type);
+bool set_types_block_stmt(MemoryArena* arena, AstNode* stmt);
 
-bool set_types_array(AstNode* array)
+bool set_types_array(MemoryArena* arena, AstNode* array)
 {
   assert(KIND(array, eAstNode_array));
   bool success = true;
   
-  if(success = set_types_expr(array->array.size_expr) && set_types_type(array->array.elem_expr))
+  if(success = set_types_expr(arena, array->array.size_expr) && set_types_type(arena, array->array.elem_expr))
   {
     int size = 0;
     AstNode* size_expr = array->array.size_expr;
@@ -589,10 +589,10 @@ bool set_types_array(AstNode* array)
     {
       size = size_expr->lit.int_val;
       if(size < 0)
-        success = compile_error(size_expr->src_loc, "array size must be greater than 0");
+        success = compile_error(arena, size_expr->src_loc, "array size must be greater than 0");
     }
     else
-      success = compile_error(size_expr->src_loc, "array size must be an int literal");
+      success = compile_error(arena, size_expr->src_loc, "array size must be an int literal");
 
     if(success)
     {
@@ -605,11 +605,11 @@ bool set_types_array(AstNode* array)
         array->array.ndim += elem_expr->array.ndim;
       }
       
-      array->ty = array->eval_ty = new_array_type(array->array.size, array->array.ndim, elem_expr->ty);
+      array->ty = array->eval_ty = new_array_type(arena, array->array.size, array->array.ndim, elem_expr->ty);
 
       if(size == 0)
       {
-        array->ty = array->eval_ty = new_pointer_type(elem_expr->ty);
+        array->ty = array->eval_ty = new_pointer_type(arena, elem_expr->ty);
       }
     }
   }
@@ -617,31 +617,31 @@ bool set_types_array(AstNode* array)
   return success;
 }
 
-bool set_types_pointer(AstNode* pointer)
+bool set_types_pointer(MemoryArena* arena, AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode_pointer));
   bool success = true;
   
   AstNode* pointee = pointer->pointer.pointee;
-  if(success = set_types_type(pointee))
+  if(success = set_types_type(arena, pointee))
   {
-    pointer->ty = pointer->eval_ty = new_pointer_type(pointee->ty);
+    pointer->ty = pointer->eval_ty = new_pointer_type(arena, pointee->ty);
   }
   return success;
 }
 
-bool set_types_type(AstNode* type)
+bool set_types_type(MemoryArena* arena, AstNode* type)
 {
   bool success = true;
   
   switch(type->kind)
   {
     case eAstNode_pointer:
-    success = set_types_pointer(type);
+    success = set_types_pointer(arena, type);
     break;
     
     case eAstNode_array:
-    success = set_types_array(type);
+    success = set_types_array(arena, type);
     break;
     
     case eAstNode_basic_type:
@@ -679,7 +679,7 @@ bool set_types_type(AstNode* type)
       
       case eBasicType_auto:
       {
-        type->ty = type->eval_ty = new_typevar();
+        type->ty = type->eval_ty = new_typevar(arena);
       }
       break;
       
@@ -689,29 +689,29 @@ bool set_types_type(AstNode* type)
     
     default:
     {
-      success = compile_error(type->src_loc, "invalid type expression");
+      success = compile_error(arena, type->src_loc, "invalid type expression");
     }
   }
 
   return success;
 }
 
-bool set_types_var(AstNode* var)
+bool set_types_var(MemoryArena* arena, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
   AstNode* type = var->var.type;
-  if(success = set_types_type(type))
+  if(success = set_types_type(arena, type))
   {
-    var->ty = new_var_type(type->ty);
+    var->ty = new_var_type(arena, type->ty);
     var->eval_ty = type->ty;
   }
 
   return success;
 }
 
-bool set_types_bin_expr(AstNode* bin_expr)
+bool set_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
@@ -719,37 +719,37 @@ bool set_types_bin_expr(AstNode* bin_expr)
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
   
-  if(success = set_types_expr(left_operand) && set_types_expr(right_operand))
+  if(success = set_types_expr(arena, left_operand) && set_types_expr(arena, right_operand))
   {
-    bin_expr->eval_ty = new_typevar();
-    bin_expr->ty = new_proc_type(new_product_type(left_operand->eval_ty, right_operand->eval_ty), bin_expr->eval_ty);
+    bin_expr->eval_ty = new_typevar(arena);
+    bin_expr->ty = new_proc_type(arena, new_product_type(arena, left_operand->eval_ty, right_operand->eval_ty), bin_expr->eval_ty);
   }
 
   return success;
 }
 
-bool set_types_unr_expr(AstNode* unr_expr)
+bool set_types_unr_expr(MemoryArena* arena, AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
   
   AstNode* operand = unr_expr->unr_expr.operand;
-  if(success = set_types_expr(operand))
+  if(success = set_types_expr(arena, operand))
   {
-    unr_expr->eval_ty = new_typevar();
-    unr_expr->ty = new_proc_type(operand->eval_ty, unr_expr->eval_ty);
+    unr_expr->eval_ty = new_typevar(arena);
+    unr_expr->ty = new_proc_type(arena, operand->eval_ty, unr_expr->eval_ty);
   }
 
   return success;
 }
 
-bool set_types_actual_arg(AstNode* actual_arg)
+bool set_types_actual_arg(MemoryArena* arena, AstNode* actual_arg)
 {
   assert(KIND(actual_arg, eAstNode_actual_arg));
   bool success = true;
 
   AstNode* expr = actual_arg->actual_arg.expr;
-  if(success = set_types_expr(expr))
+  if(success = set_types_expr(arena, expr))
   {
     actual_arg->eval_ty = expr->eval_ty;
     actual_arg->ty = expr->ty;
@@ -758,20 +758,20 @@ bool set_types_actual_arg(AstNode* actual_arg)
   return success;
 }
 
-bool set_types_id(AstNode* id)
+bool set_types_id(MemoryArena* arena, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   bool success = true;
 
-  id->ty = new_typevar();
-  id->eval_ty = new_typevar();
+  id->ty = new_typevar(arena);
+  id->eval_ty = new_typevar(arena);
 
   return success;
 }
 
-Type* make_type_of_args(AstNode* args);
+Type* make_type_of_args(MemoryArena* arena, AstNode* args);
 
-bool set_types_actual_args(AstNode* args)
+bool set_types_actual_args(MemoryArena* arena, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -781,18 +781,18 @@ bool set_types_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = set_types_expr(arg);
+    success = set_types_expr(arena, arg);
   }
 
   if(success)
   {
-    args->ty = args->eval_ty = make_type_of_args(args);
+    args->ty = args->eval_ty = make_type_of_args(arena, args);
   }
 
   return success;
 }
 
-bool set_types_call(AstNode* call)
+bool set_types_call(MemoryArena* arena, AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
   bool success = true;
@@ -801,19 +801,19 @@ bool set_types_call(AstNode* call)
   AstNode* args = call->call.args;
   if(call_expr->kind == eAstNode_id)
   {
-    if(success = set_types_id(call_expr) && set_types_actual_args(args))
+    if(success = set_types_id(arena, call_expr) && set_types_actual_args(arena, args))
     {
-      call->eval_ty = new_typevar();
-      call->ty = new_proc_type(args->ty, call->eval_ty);
+      call->eval_ty = new_typevar(arena);
+      call->ty = new_proc_type(arena, args->ty, call->eval_ty);
     }
   }
   else
-    success = compile_error(call->src_loc, "unsupported call expr");
+    success = compile_error(arena, call->src_loc, "unsupported call expr");
 
   return success;
 }
 
-bool set_types_lit(AstNode* lit)
+bool set_types_lit(MemoryArena* arena, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
   bool success = true;
@@ -847,7 +847,7 @@ bool set_types_lit(AstNode* lit)
 
     case eLiteral_str:
     {
-      ty = new_array_type(cstr_len(lit->lit.str_val)+1, 1, basic_type_char);
+      ty = new_array_type(arena, cstr_len(lit->lit.str_val)+1, 1, basic_type_char);
     }
     break;
     
@@ -858,37 +858,37 @@ bool set_types_lit(AstNode* lit)
   return success;
 }
 
-bool set_types_index(AstNode* index)
+bool set_types_index(MemoryArena* arena, AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
   bool success = true;
   
-  if(success = set_types_expr(index->index.array_expr) && set_types_expr(index->index.i_expr))
+  if(success = set_types_expr(arena, index->index.array_expr) && set_types_expr(arena, index->index.i_expr))
   {
     index->ty = index->index.array_expr->eval_ty;
-    index->eval_ty = new_typevar();
+    index->eval_ty = new_typevar(arena);
   }
 
   return success;
 }
 
-bool set_types_cast(AstNode* cast)
+bool set_types_cast(MemoryArena* arena, AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
   bool success = true;
 
   AstNode* to_type = cast->cast.to_type;
   AstNode* from_expr = cast->cast.from_expr;
-  if(success = set_types_type(to_type) && set_types_expr(from_expr))
+  if(success = set_types_type(arena, to_type) && set_types_expr(arena, from_expr))
   {
     cast->eval_ty = to_type->eval_ty;
-    cast->ty = new_product_type(from_expr->eval_ty, cast->eval_ty);
+    cast->ty = new_product_type(arena, from_expr->eval_ty, cast->eval_ty);
   }
 
   return success;
 }
 
-bool set_types_expr(AstNode* expr)
+bool set_types_expr(MemoryArena* arena, AstNode* expr)
 {
   bool success = true;
   
@@ -896,67 +896,67 @@ bool set_types_expr(AstNode* expr)
   {
     case eAstNode_pointer:
     {
-      success = set_types_pointer(expr);
+      success = set_types_pointer(arena, expr);
     }
     break;
     
     case eAstNode_array:
     {
-      success = set_types_array(expr);
+      success = set_types_array(arena, expr);
     }
     break;
     
     case eAstNode_cast:
     {
-      success = set_types_cast(expr);
+      success = set_types_cast(arena, expr);
     }
     break;
     
     case eAstNode_bin_expr:
     {
-      success = set_types_bin_expr(expr);
+      success = set_types_bin_expr(arena, expr);
     }
     break;
     
     case eAstNode_unr_expr:
     {
-      success = set_types_unr_expr(expr);
+      success = set_types_unr_expr(arena, expr);
     }
     break;
     
     case eAstNode_id:
     {
-      success = set_types_id(expr);
+      success = set_types_id(arena, expr);
     }
     break;
     
     case eAstNode_call:
     {
-      success = set_types_call(expr);
+      success = set_types_call(arena, expr);
     }
     break;
     
     case eAstNode_lit:
     {
-      success = set_types_lit(expr);
+      success = set_types_lit(arena, expr);
     }
     break;
     
     case eAstNode_basic_type:
     {
-      success = set_types_type(expr);
+      success = set_types_type(arena, expr);
     }
     break;
     
     case eAstNode_index:
     {
-      success = set_types_index(expr);
+      success = set_types_index(arena, expr);
     }
     break;
 
     case eAstNode_actual_arg:
     {
-      success = set_types_actual_arg(expr);
+      success = set_types_actual_arg(arena, expr);
     }
     break;
     
@@ -965,7 +965,7 @@ bool set_types_expr(AstNode* expr)
   return success;
 }
 
-bool set_types_return(AstNode* ret)
+bool set_types_return(MemoryArena* arena, AstNode* ret)
 {
   assert(KIND(ret, eAstNode_return));
   bool success = true;
@@ -973,7 +973,7 @@ bool set_types_return(AstNode* ret)
   if(ret->ret.expr)
   {
     AstNode* ret_expr = ret->ret.expr;
-    if(success = set_types_expr(ret_expr))
+    if(success = set_types_expr(arena, ret_expr))
     {
       ret->ty = ret_expr->ty;
       ret->eval_ty = ret_expr->eval_ty;
@@ -987,15 +987,15 @@ bool set_types_return(AstNode* ret)
   return success;
 }
 
-bool set_types_if(AstNode* if_)
+bool set_types_if(MemoryArena* arena, AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
   bool success = true;
   
-  if(success = set_types_expr(if_->if_.cond_expr))
+  if(success = set_types_expr(arena, if_->if_.cond_expr))
   {
     AstNode* body = if_->if_.body;
-    if(success = set_types_block_stmt(body))
+    if(success = set_types_block_stmt(arena, body))
     {
       if_->ty = body->ty;
       if_->eval_ty = body->eval_ty;
@@ -1003,7 +1003,7 @@ bool set_types_if(AstNode* if_)
       AstNode* else_body = if_->if_.else_body;
       if(else_body)
       {
-        success = set_types_block_stmt(else_body);
+        success = set_types_block_stmt(arena, else_body);
       }
     }
   }
@@ -1011,13 +1011,13 @@ bool set_types_if(AstNode* if_)
   return success;
 }
 
-bool set_types_do_while(AstNode* do_while)
+bool set_types_do_while(MemoryArena* arena, AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
   AstNode* body = do_while->do_while.body;
-  if(success = set_types_block_stmt(body) && set_types_expr(do_while->do_while.cond_expr))
+  if(success = set_types_block_stmt(arena, body) && set_types_expr(arena, do_while->do_while.cond_expr))
   {
     do_while->ty = body->ty;
     do_while->eval_ty = body->eval_ty;
@@ -1026,13 +1026,13 @@ bool set_types_do_while(AstNode* do_while)
   return success;
 }
 
-bool set_types_while(AstNode* while_)
+bool set_types_while(MemoryArena* arena, AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
   
   AstNode* body = while_->while_.body;
-  if(success = set_types_expr(while_->while_.cond_expr) && set_types_block_stmt(body))
+  if(success = set_types_expr(arena, while_->while_.cond_expr) && set_types_block_stmt(arena, body))
   {
     while_->ty = body->ty;
     while_->eval_ty = body->eval_ty;
@@ -1041,7 +1041,7 @@ bool set_types_while(AstNode* while_)
   return success;
 }
 
-bool set_types_block(AstNode* block)
+bool set_types_block(MemoryArena* arena, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -1051,7 +1051,7 @@ bool set_types_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = set_types_block_stmt(stmt);
+    success = set_types_block_stmt(arena, stmt);
   }
 
   if(success)
@@ -1062,14 +1062,14 @@ bool set_types_block(AstNode* block)
   return success;
 }
 
-bool set_types_assign(AstNode* assign)
+bool set_types_assign(MemoryArena* arena, AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
   
   AstNode* dest_expr = assign->assign.dest_expr;
   AstNode* source_expr =assign->assign.source_expr;
-  if(success = set_types_expr(dest_expr) && set_types_expr(source_expr))
+  if(success = set_types_expr(arena, dest_expr) && set_types_expr(arena, source_expr))
   {
     assign->ty = assign->eval_ty = dest_expr->eval_ty;
   }
@@ -1077,7 +1077,7 @@ bool set_types_assign(AstNode* assign)
   return success;
 }
 
-bool set_types_block_stmt(AstNode* stmt)
+bool set_types_block_stmt(MemoryArena* arena, AstNode* stmt)
 {
   bool success = true;
   
@@ -1085,25 +1085,25 @@ bool set_types_block_stmt(AstNode* stmt)
   {
     case eAstNode_var:
     {
-      success = set_types_var(stmt);
+      success = set_types_var(arena, stmt);
     }
     break;
     
     case eAstNode_block:
     {
-      success = set_types_block(stmt);
+      success = set_types_block(arena, stmt);
     }
     break;
     
     case eAstNode_assign:
     {
-      success = set_types_assign(stmt);
+      success = set_types_assign(arena,stmt);
     }
     break;
     
     case eAstNode_cast:
     {
-      success = set_types_cast(stmt);
+      success = set_types_cast(arena, stmt);
     }
     break;
     
@@ -1113,7 +1113,7 @@ bool set_types_block_stmt(AstNode* stmt)
     case eAstNode_call:
     case eAstNode_lit:
     {
-      success = set_types_expr(stmt);
+      success = set_types_expr(arena, stmt);
     }
     break;
     
@@ -1126,36 +1126,36 @@ bool set_types_block_stmt(AstNode* stmt)
     
     case eAstNode_basic_type:
     {
-      success = set_types_type(stmt);
+      success = set_types_type(arena, stmt);
     }
     break;
     case eAstNode_return:
     {
-      success = set_types_return(stmt);
+      success = set_types_return(arena, stmt);
     }
     break;
 
     case eAstNode_if:
     {
-      success = set_types_if(stmt);
+      success = set_types_if(arena, stmt);
     }
     break;
 
     case eAstNode_do_while:
     {
-      success = set_types_do_while(stmt);
+      success = set_types_do_while(arena, stmt);
     }
     break;
 
     case eAstNode_while:
     {
-      success = set_types_while(stmt);
+      success = set_types_while(arena, stmt);
     }
     break;
 
     case eAstNode_index:
     {
-      success = set_types_index(stmt);
+      success = set_types_index(arena, stmt);
     }
     break;
 
@@ -1165,7 +1165,7 @@ bool set_types_block_stmt(AstNode* stmt)
   return success;
 }
 
-Type* make_type_of_args(AstNode* args)
+Type* make_type_of_args(MemoryArena* arena, AstNode* args)
 {
   Type* result = basic_type_void;
 
@@ -1177,14 +1177,14 @@ Type* make_type_of_args(AstNode* args)
     for(li = li->next; li; li = li->next)
     {
       AstNode* next_arg = KIND(li, eList_ast_node)->ast_node;
-      result = new_product_type(result, next_arg->eval_ty);
+      result = new_product_type(arena, result, next_arg->eval_ty);
     }
   }
 
   return result;
 }
 
-bool set_types_formal_args(AstNode* args)
+bool set_types_formal_args(MemoryArena* arena, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -1194,38 +1194,38 @@ bool set_types_formal_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = set_types_var(arg);
+    success = set_types_var(arena, arg);
   }
   if(success)
   {
-    args->ty = args->eval_ty = make_type_of_args(args);
+    args->ty = args->eval_ty = make_type_of_args(arena, args);
   }
 
   return success;
 }
 
-bool set_types_proc(AstNode* proc)
+bool set_types_proc(MemoryArena* arena, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
   
   AstNode* ret_type = proc->proc.ret_type;
   AstNode* args = proc->proc.args;
-  if(success = set_types_formal_args(args) && set_types_type(ret_type))
+  if(success = set_types_formal_args(arena, args) && set_types_type(arena, ret_type))
   {
-    proc->ty = new_proc_type(args->eval_ty, ret_type->eval_ty);
+    proc->ty = new_proc_type(arena, args->eval_ty, ret_type->eval_ty);
     proc->eval_ty = basic_type_void;
     
     if(proc->modifier != eModifier_extern)
     {
-      success = set_types_block(proc->proc.body);
+      success = set_types_block(arena, proc->proc.body);
     }
   }
 
   return success;
 }
 
-bool set_types_module_stmt(AstNode* stmt)
+bool set_types_module_stmt(MemoryArena* arena, AstNode* stmt)
 {
   bool success = true;
   
@@ -1233,13 +1233,13 @@ bool set_types_module_stmt(AstNode* stmt)
   {
     case eAstNode_proc:
     {
-      success = set_types_proc(stmt);
+      success = set_types_proc(arena, stmt);
     }
     break;
 
     case eAstNode_var:
     {
-      success = set_types_var(stmt);
+      success = set_types_var(arena, stmt);
     }
     break;
 
@@ -1255,7 +1255,7 @@ bool set_types_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool set_types_module(AstNode* module)
+bool set_types_module(MemoryArena* arena, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
@@ -1267,7 +1267,7 @@ bool set_types_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = set_types_module_stmt(stmt);
+    success = set_types_module_stmt(arena, stmt);
   }
 
   return success;
@@ -1276,30 +1276,30 @@ bool set_types_module(AstNode* module)
 //       EVAL TYPES
 //-----------------------------------------------------
 
-bool eval_types_expr(AstNode* expr);
-bool eval_types_type(AstNode* type);
-bool eval_types_block_stmt(AstNode* stmt);
+bool eval_types_expr(MemoryArena* arena, AstNode* expr);
+bool eval_types_type(MemoryArena* arena, AstNode* type);
+bool eval_types_block_stmt(MemoryArena* arena, AstNode* stmt);
 
-bool eval_types_array(AstNode* array)
+bool eval_types_array(MemoryArena* arena, AstNode* array)
 {
   assert(KIND(array, eAstNode_array));
   bool success = true;
   
-  success = eval_types_expr(array->array.size_expr) && eval_types_type(array->array.elem_expr);
+  success = eval_types_expr(arena, array->array.size_expr) && eval_types_type(arena, array->array.elem_expr);
   return success;
 }
 
-bool eval_types_pointer(AstNode* pointer)
+bool eval_types_pointer(MemoryArena* arena, AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode_pointer));
 
   bool success = true;
-  success = eval_types_expr(pointer->pointer.pointee);
+  success = eval_types_expr(arena, pointer->pointer.pointee);
 
   return success;
 }
 
-bool eval_types_type(AstNode* type)
+bool eval_types_type(MemoryArena* arena, AstNode* type)
 {
   bool success = true;
   
@@ -1307,13 +1307,13 @@ bool eval_types_type(AstNode* type)
   {
     case eAstNode_pointer:
     {
-      success = eval_types_pointer(type);
+      success = eval_types_pointer(arena, type);
     }
     break;
 
     case eAstNode_array:
     {
-      success = eval_types_array(type);
+      success = eval_types_array(arena, type);
     }
     break;
 
@@ -1324,17 +1324,17 @@ bool eval_types_type(AstNode* type)
   return success;
 }
 
-bool eval_types_cast(AstNode* cast)
+bool eval_types_cast(MemoryArena* arena, AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
 
   bool success = true;
-  success = eval_types_type(cast->cast.to_type) && eval_types_expr(cast->cast.from_expr);
+  success = eval_types_type(arena, cast->cast.to_type) && eval_types_expr(arena, cast->cast.from_expr);
 
   return success;
 }
 
-bool eval_types_bin_expr(AstNode* bin_expr)
+bool eval_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
@@ -1343,7 +1343,7 @@ bool eval_types_bin_expr(AstNode* bin_expr)
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
   eOperator op = bin_expr->bin_expr.op;
   
-  if(success = eval_types_expr(left_operand) && eval_types_expr(right_operand))
+  if(success = eval_types_expr(arena, left_operand) && eval_types_expr(arena, right_operand))
   {
     switch(op)
     {
@@ -1356,7 +1356,7 @@ bool eval_types_bin_expr(AstNode* bin_expr)
           ;//ok
         }
         else
-          success = compile_error(bin_expr->src_loc, "type error (bitwise op)");
+          success = compile_error(arena, bin_expr->src_loc, "type error (bitwise op)");
       }
       break;
       
@@ -1368,7 +1368,7 @@ bool eval_types_bin_expr(AstNode* bin_expr)
           ;//ok
         }
         else
-          success = compile_error(bin_expr->src_loc, "type error (bitwise op)");
+          success = compile_error(arena, bin_expr->src_loc, "type error (bitwise op)");
       }
       break;
       
@@ -1390,7 +1390,7 @@ bool eval_types_bin_expr(AstNode* bin_expr)
             {
               if(!type_unif(bin_expr->eval_ty, basic_type_bool))
               {
-                success = compile_error(bin_expr->src_loc, "type error (bin expr)");
+                success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
               }
             }
             break;
@@ -1399,14 +1399,14 @@ bool eval_types_bin_expr(AstNode* bin_expr)
             {
               if(!type_unif(bin_expr->eval_ty, left_operand->eval_ty))
               {
-                success = compile_error(bin_expr->src_loc, "type error (bin expr)");
+                success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
               }
             }
             break;
           }
         }
         else
-          success = compile_error(bin_expr->src_loc, "type error (bin expr)");
+          success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
       }
       break;
     }
@@ -1416,7 +1416,7 @@ bool eval_types_bin_expr(AstNode* bin_expr)
       Type* bin_expr_ty = KIND(bin_expr->ty, eType_proc);
       if(!type_unif(bin_expr_ty->proc.ret, bin_expr->eval_ty))
       {
-        success = compile_error(bin_expr->src_loc, "type error (bin expr)");
+        success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
       }
     }
   }
@@ -1424,7 +1424,7 @@ bool eval_types_bin_expr(AstNode* bin_expr)
   return success;
 }
 
-bool eval_types_id(AstNode* id)
+bool eval_types_id(MemoryArena* arena, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   bool success = true;
@@ -1438,7 +1438,7 @@ bool eval_types_id(AstNode* id)
       id->id.decl_ast = id->id.decl_sym->ast_node;
     }
     else
-      success = compile_error(id->src_loc, "unknown id `%s`", id->id.name);
+      success = compile_error(arena, id->src_loc, "unknown id `%s`", id->id.name);
   }
 
   if(success)
@@ -1452,13 +1452,13 @@ bool eval_types_id(AstNode* id)
           {
             if((id->id.decl_sym->scope == id->id.scope) && (id->id.decl_sym->order_nr > id->id.order_nr))
             {
-              success = compile_error(id->src_loc, "var `%s` must be declared before its use", id->id.name);
+              success = compile_error(arena, id->src_loc, "var `%s` must be declared before its use", id->id.name);
             }
             else
             {
               if(!type_unif(decl_ast->ty->var.type, id->eval_ty))
               {
-                success = compile_error(id->src_loc, "type error (var id)");
+                success = compile_error(arena, id->src_loc, "type error (var id)");
               }
             }
           }
@@ -1468,7 +1468,7 @@ bool eval_types_id(AstNode* id)
         {
           if(!type_unif(decl_ast->ty->proc.ret, id->eval_ty))
           {
-            success = compile_error(id->src_loc, "type error (proc id)");
+            success = compile_error(arena, id->src_loc, "type error (proc id)");
           }
         }
         break;
@@ -1477,13 +1477,13 @@ bool eval_types_id(AstNode* id)
       }
     }
     else
-      success = compile_error(id->src_loc, "type error (id)");
+      success = compile_error(arena, id->src_loc, "type error (id)");
   }
 
   return success;
 }
 
-bool eval_types_unr_expr(AstNode* unr_expr)
+bool eval_types_unr_expr(MemoryArena* arena, AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
@@ -1491,7 +1491,7 @@ bool eval_types_unr_expr(AstNode* unr_expr)
   AstNode* operand = unr_expr->unr_expr.operand;
   eOperator op = unr_expr->unr_expr.op;
   
-  if(success = eval_types_expr(operand))
+  if(success = eval_types_expr(arena, operand))
   {
     switch(op)
     {
@@ -1500,22 +1500,22 @@ bool eval_types_unr_expr(AstNode* unr_expr)
       case eOperator_bit_not:
       if(!type_unif(unr_expr->eval_ty, operand->eval_ty))
       {
-        success = compile_error(unr_expr->src_loc, "type error (unr expr)");
+        success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
       }
       break;
       
       case eOperator_deref:
       {
-        Type* pointee_ty = new_typevar();
-        if(type_unif(operand->eval_ty, new_pointer_type(pointee_ty)))
+        Type* pointee_ty = new_typevar(arena);
+        if(type_unif(operand->eval_ty, new_pointer_type(arena, pointee_ty)))
         {
           if(!type_unif(unr_expr->eval_ty, pointee_ty))
           {
-            success = compile_error(unr_expr->src_loc, "type error (unr expr)");
+            success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
           }
         }
         else
-          success = compile_error(operand->src_loc, "pointer type expected");
+          success = compile_error(arena, operand->src_loc, "pointer type expected");
       }
       break;
       
@@ -1533,7 +1533,7 @@ bool eval_types_unr_expr(AstNode* unr_expr)
       Type* unr_expr_ty = KIND(unr_expr->ty, eType_proc);
       if(!type_unif(unr_expr_ty->proc.ret, unr_expr->eval_ty))
       {
-        success = compile_error(unr_expr->src_loc, "type error (unr expr)");
+        success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
       }
     }
   }
@@ -1541,20 +1541,20 @@ bool eval_types_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool eval_types_var(AstNode* var)
+bool eval_types_var(MemoryArena* arena, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
   if(!type_unif(var->ty->var.type, var->eval_ty))
   {
-    success = compile_error(var->src_loc, "type error (var)");
+    success = compile_error(arena, var->src_loc, "type error (var)");
   }
 
   return success;
 }
 
-bool eval_types_formal_args(AstNode* args)
+bool eval_types_formal_args(MemoryArena* arena, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -1564,13 +1564,13 @@ bool eval_types_formal_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = eval_types_var(arg);
+    success = eval_types_var(arena, arg);
   }
 
   return success;
 }
 
-bool eval_types_actual_args(AstNode* args)
+bool eval_types_actual_args(MemoryArena* arena, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -1580,33 +1580,33 @@ bool eval_types_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = eval_types_expr(arg->actual_arg.expr);
+    success = eval_types_expr(arena, arg->actual_arg.expr);
   }
 
   return success;
 }
 
-bool eval_types_call(AstNode* call)
+bool eval_types_call(MemoryArena* arena, AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
 
   bool success = true;
-  success = eval_types_id(call->call.expr) && eval_types_actual_args(call->call.args);
+  success = eval_types_id(arena, call->call.expr) && eval_types_actual_args(arena, call->call.args);
 
   return success;
 }
 
-bool eval_types_index(AstNode* index)
+bool eval_types_index(MemoryArena* arena, AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
 
   bool success = true;
-  success = eval_types_expr(index->index.array_expr) && eval_types_expr(index->index.i_expr);
+  success = eval_types_expr(arena, index->index.array_expr) && eval_types_expr(arena, index->index.i_expr);
 
   return success;
 }
 
-bool eval_types_expr(AstNode* expr)
+bool eval_types_expr(MemoryArena* arena, AstNode* expr)
 {
   bool success = true;
   
@@ -1614,37 +1614,37 @@ bool eval_types_expr(AstNode* expr)
   {
     case eAstNode_cast:
     {
-      success = eval_types_cast(expr);
+      success = eval_types_cast(arena, expr);
     }
     break;
     
     case eAstNode_bin_expr:
     {
-      success = eval_types_bin_expr(expr);
+      success = eval_types_bin_expr(arena, expr);
     }
     break;
     
     case eAstNode_unr_expr:
     {
-      success = eval_types_unr_expr(expr);
+      success = eval_types_unr_expr(arena, expr);
     }
     break;
     
     case eAstNode_id:
     {
-      success = eval_types_id(expr);
+      success = eval_types_id(arena, expr);
     }
     break;
     
     case eAstNode_call:
     {
-      success = eval_types_call(expr);
+      success = eval_types_call(arena, expr);
     }
     break;
     
     case eAstNode_index:
     {
-      success = eval_types_index(expr);
+      success = eval_types_index(arena, expr);
     }
     break;
     
@@ -1657,7 +1657,7 @@ bool eval_types_expr(AstNode* expr)
   return success;
 }
 
-bool eval_types_if(AstNode* if_)
+bool eval_types_if(MemoryArena* arena, AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
   bool success = true;
@@ -1666,20 +1666,20 @@ bool eval_types_if(AstNode* if_)
   AstNode* body = if_->if_.body;
   AstNode* else_body = if_->if_.else_body;
   
-  if(success = eval_types_expr(cond_expr) &&
-     eval_types_block_stmt(body) &&
-     (else_body ? eval_types_block_stmt(else_body) : true))
+  if(success = eval_types_expr(arena, cond_expr) &&
+     eval_types_block_stmt(arena, body) &&
+     (else_body ? eval_types_block_stmt(arena, else_body) : true))
   {
     if(!type_unif(cond_expr->eval_ty, basic_type_bool))
     {
-      success = compile_error(cond_expr->src_loc, "bool expression was expected");
+      success = compile_error(arena, cond_expr->src_loc, "bool expression was expected");
     }
   }
 
   return success;
 }
 
-bool eval_types_block(AstNode* block)
+bool eval_types_block(MemoryArena* arena, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -1689,73 +1689,73 @@ bool eval_types_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = eval_types_block_stmt(stmt);
+    success = eval_types_block_stmt(arena, stmt);
   }
 
   return success;
 }
 
-bool eval_types_do_while(AstNode* do_while)
+bool eval_types_do_while(MemoryArena* arena, AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
   AstNode* cond_expr = do_while->do_while.cond_expr;
-  if(success = eval_types_block_stmt(do_while->do_while.body) && eval_types_expr(cond_expr))
+  if(success = eval_types_block_stmt(arena, do_while->do_while.body) && eval_types_expr(arena, cond_expr))
   {
     if(!type_unif(cond_expr->eval_ty, basic_type_bool))
     {
-      success = compile_error(cond_expr->src_loc, "bool expression was expected");
+      success = compile_error(arena, cond_expr->src_loc, "bool expression was expected");
     }
   }
   return success;
 }
 
-bool eval_types_while(AstNode* while_)
+bool eval_types_while(MemoryArena* arena, AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
   
   AstNode* cond_expr = while_->while_.cond_expr;
-  if(success = eval_types_expr(cond_expr) && eval_types_block_stmt(while_->while_.body))
+  if(success = eval_types_expr(arena, cond_expr) && eval_types_block_stmt(arena, while_->while_.body))
   {
     if(!type_unif(cond_expr->eval_ty, basic_type_bool))
     {
-      success = compile_error(cond_expr->src_loc, "bool expression was expected");
+      success = compile_error(arena, cond_expr->src_loc, "bool expression was expected");
     }
   }
 
   return success;
 }
 
-bool eval_types_return(AstNode* ret)
+bool eval_types_return(MemoryArena* arena, AstNode* ret)
 {
   assert(KIND(ret, eAstNode_return));
   bool success = true;
   
   AstNode* ret_expr = ret->ret.expr;
-  if(ret_expr && (success = eval_types_expr(ret_expr)))
+  if(ret_expr && (success = eval_types_expr(arena, ret_expr)))
   {
     AstNode* proc = ret->ret.proc;
     Type* proc_ty = KIND(proc->ty, eType_proc);
     if(!type_unif(ret_expr->eval_ty, proc_ty->proc.ret))
     {
-      success = compile_error(ret->src_loc, "type error (return)");
+      success = compile_error(arena, ret->src_loc, "type error (return)");
     }
   }
 
   return success;
 }
 
-bool eval_types_assign(AstNode* assign)
+bool eval_types_assign(MemoryArena* arena, AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
-  success = eval_types_expr(assign->assign.dest_expr) && eval_types_expr(assign->assign.source_expr);
+  success = eval_types_expr(arena, assign->assign.dest_expr) && eval_types_expr(arena, assign->assign.source_expr);
   return success;
 }
 
-bool eval_types_block_stmt(AstNode* stmt)
+bool eval_types_block_stmt(MemoryArena* arena, AstNode* stmt)
 {
   bool success = true;
   
@@ -1763,13 +1763,13 @@ bool eval_types_block_stmt(AstNode* stmt)
   {
     case eAstNode_assign:
     {
-      success = eval_types_assign(stmt);
+      success = eval_types_assign(arena, stmt);
     }
     break;
     
     case eAstNode_cast:
     {
-      success = eval_types_cast(stmt);
+      success = eval_types_cast(arena, stmt);
     }
     break;
     
@@ -1779,37 +1779,37 @@ bool eval_types_block_stmt(AstNode* stmt)
     case eAstNode_call:
     case eAstNode_lit:
     {
-      success = eval_types_expr(stmt);
+      success = eval_types_expr(arena, stmt);
     }
     break;
     
     case eAstNode_if:
     {
-      success = eval_types_if(stmt);
+      success = eval_types_if(arena, stmt);
     }
     break;
     
     case eAstNode_do_while:
     {
-      success = eval_types_do_while(stmt);
+      success = eval_types_do_while(arena, stmt);
     }
     break;
     
     case eAstNode_while:
     {
-      success = eval_types_while(stmt);
+      success = eval_types_while(arena, stmt);
     }
     break;
     
     case eAstNode_block:
     {
-      success = eval_types_block(stmt);
+      success = eval_types_block(arena, stmt);
     }
     break;
     
     case eAstNode_return:
     {
-      success = eval_types_return(stmt);
+      success = eval_types_return(arena, stmt);
     }
     break;
     
@@ -1820,13 +1820,13 @@ bool eval_types_block_stmt(AstNode* stmt)
     
     case eAstNode_basic_type:
     {
-      success = eval_types_type(stmt);
+      success = eval_types_type(arena, stmt);
     }
     break;
     
     case eAstNode_index:
     {
-      success = eval_types_index(stmt);
+      success = eval_types_index(arena, stmt);
     }
     break;
     
@@ -1836,18 +1836,18 @@ bool eval_types_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool eval_types_proc(AstNode* proc)
+bool eval_types_proc(MemoryArena* arena, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
-  success = eval_types_formal_args(proc->proc.args) && eval_types_block_stmt(proc->proc.body)
-    && eval_types_type(proc->proc.ret_type);
+  success = eval_types_formal_args(arena, proc->proc.args) && eval_types_block_stmt(arena, proc->proc.body)
+    && eval_types_type(arena, proc->proc.ret_type);
 
   return success;
 }
 
-bool eval_types_module_stmt(AstNode* stmt)
+bool eval_types_module_stmt(MemoryArena* arena, AstNode* stmt)
 {
   bool success = true;
   
@@ -1855,7 +1855,7 @@ bool eval_types_module_stmt(AstNode* stmt)
   {
     case eAstNode_proc:
     {
-      success = eval_types_proc(stmt);
+      success = eval_types_proc(arena, stmt);
     }
     break;
 
@@ -1868,7 +1868,7 @@ bool eval_types_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool eval_types_module(AstNode* module)
+bool eval_types_module(MemoryArena* arena, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
@@ -1878,7 +1878,7 @@ bool eval_types_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = eval_types_module_stmt(stmt);
+    success = eval_types_module_stmt(arena, stmt);
   }
 
   return success;
@@ -1887,11 +1887,11 @@ bool eval_types_module(AstNode* module)
 //       RESOLVE TYPES
 //-----------------------------------------------------
 
-bool resolve_types_expr(AstNode* expr);
-bool resolve_types_type(AstNode* type);
-bool resolve_types_block_stmt(AstNode* stmt);
+bool resolve_types_expr(MemoryArena* arena, AstNode* expr);
+bool resolve_types_type(MemoryArena* arena, AstNode* type);
+bool resolve_types_block_stmt(MemoryArena* arena, AstNode* stmt);
 
-bool resolve_types_of_node(AstNode* node)
+bool resolve_types_of_node(MemoryArena* arena, AstNode* node)
 {
   bool success = true;
   
@@ -1903,20 +1903,20 @@ bool resolve_types_of_node(AstNode* node)
       get_type_width(node->eval_ty);
     }
     else
-      success = compile_error(node->src_loc, "type error (unresolved type)");
+      success = compile_error(arena, node->src_loc, "type error (unresolved type)");
   }
   else
-    success = compile_error(node->src_loc, "type error (unresolved type)");
+    success = compile_error(arena, node->src_loc, "type error (unresolved type)");
   
   return success;
 }
 
-bool resolve_types_var(AstNode* var)
+bool resolve_types_var(MemoryArena* arena, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
-  if(success = resolve_types_of_node(var))
+  if(success = resolve_types_of_node(arena, var))
   {
     var->var.decl_sym->ty = var->eval_ty;
   }
@@ -1924,12 +1924,12 @@ bool resolve_types_var(AstNode* var)
   return success;
 }
 
-bool resolve_types_lit(AstNode* lit)
+bool resolve_types_lit(MemoryArena* arena, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
   bool success = true;
 
-  if(success = resolve_types_of_node(lit))
+  if(success = resolve_types_of_node(arena, lit))
   {
     lit->lit.constant->ty = lit->eval_ty;
   }
@@ -1937,7 +1937,7 @@ bool resolve_types_lit(AstNode* lit)
   return success;
 }
 
-bool resolve_types_formal_args(AstNode* args)
+bool resolve_types_formal_args(MemoryArena* arena, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -1947,32 +1947,32 @@ bool resolve_types_formal_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = resolve_types_var(arg);
+    success = resolve_types_var(arena, arg);
   }
   if(success)
   {
-    success = resolve_types_of_node(args);
+    success = resolve_types_of_node(arena, args);
   }
   return success;
 }
 
-bool resolve_types_bin_expr(AstNode* bin_expr)
+bool resolve_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
 
-  success = resolve_types_expr(bin_expr->bin_expr.left_operand) &&
-    resolve_types_expr(bin_expr->bin_expr.right_operand) && resolve_types_of_node(bin_expr);
+  success = resolve_types_expr(arena, bin_expr->bin_expr.left_operand) &&
+    resolve_types_expr(arena, bin_expr->bin_expr.right_operand) && resolve_types_of_node(arena, bin_expr);
 
   return success;
 }
 
-bool resolve_types_unr_expr(AstNode* unr_expr)
+bool resolve_types_unr_expr(MemoryArena* arena, AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
 
-  if(success = resolve_types_expr(unr_expr->unr_expr.operand))
+  if(success = resolve_types_expr(arena, unr_expr->unr_expr.operand))
   {
     AstNode* operand = unr_expr->unr_expr.operand;
     eOperator op = unr_expr->unr_expr.op;
@@ -1983,38 +1983,38 @@ bool resolve_types_unr_expr(AstNode* unr_expr)
       {
         // ptr(array(T)) = ptr(T)
         Type* operand_ty = operand->eval_ty;
-        success = type_unif(unr_expr->eval_ty, new_pointer_type(operand_ty->array.elem));
+        success = type_unif(unr_expr->eval_ty, new_pointer_type(arena, operand_ty->array.elem));
       }
       else
       {
-        success = type_unif(unr_expr->eval_ty, new_pointer_type(operand->eval_ty));
+        success = type_unif(unr_expr->eval_ty, new_pointer_type(arena, operand->eval_ty));
       }
 
       if(!success)
       {
-        compile_error(unr_expr->src_loc, "type error (unr expr)");
+        compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
       }
     }
   }
   
   if(success)
   {
-    success = resolve_types_of_node(unr_expr);
+    success = resolve_types_of_node(arena, unr_expr);
   }
 
   return success;
 }
 
-bool resolve_types_id(AstNode* id)
+bool resolve_types_id(MemoryArena* arena, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   bool success = true;
 
-  success = resolve_types_of_node(id);
+  success = resolve_types_of_node(arena, id);
   return success;
 }
 
-bool resolve_types_actual_args(AstNode* args)
+bool resolve_types_actual_args(MemoryArena* arena, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -2024,7 +2024,7 @@ bool resolve_types_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    if(success = resolve_types_expr(arg->actual_arg.expr))
+    if(success = resolve_types_expr(arena, arg->actual_arg.expr))
     {
       arg->eval_ty = arg->actual_arg.expr->eval_ty;
     }
@@ -2032,20 +2032,20 @@ bool resolve_types_actual_args(AstNode* args)
 
   if(success)
   {
-    success = resolve_types_of_node(args);
+    success = resolve_types_of_node(arena, args);
   }
 
   return success;
 }
 
-bool resolve_types_call(AstNode* call)
+bool resolve_types_call(MemoryArena* arena, AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
   assert(call->call.expr->kind == eAstNode_id);
 
   bool success = true;
 
-  if(success = resolve_types_id(call->call.expr) && resolve_types_actual_args(call->call.args))
+  if(success = resolve_types_id(arena, call->call.expr) && resolve_types_actual_args(arena, call->call.args))
   {
     AstNode* args = call->call.args;
     for(ListItem* li = args->node_list.first;
@@ -2061,16 +2061,16 @@ bool resolve_types_call(AstNode* call)
     {
       if(!type_unif(proc->ty, call->ty))
       {
-        success = compile_error(call->src_loc, "type error (call argument types)");
+        success = compile_error(arena, call->src_loc, "type error (call argument types)");
       }
     }
     else
     {
-      success = compile_error(call->src_loc, "type error (call)");
+      success = compile_error(arena, call->src_loc, "type error (call)");
     }
   }
 
-  if(success && (success = resolve_types_of_node(call)))
+  if(success && (success = resolve_types_of_node(arena, call)))
   {
     call->call.retvar->ty = call->eval_ty;
   }
@@ -2078,7 +2078,7 @@ bool resolve_types_call(AstNode* call)
   return success;
 }
 
-bool resolve_types_index(AstNode* index)
+bool resolve_types_index(MemoryArena* arena, AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
   bool success = true;
@@ -2086,7 +2086,7 @@ bool resolve_types_index(AstNode* index)
   AstNode* array_expr = index->index.array_expr;
   AstNode* i_expr = index->index.i_expr;
 
-  if(success = resolve_types_expr(array_expr) && resolve_types_expr(i_expr))
+  if(success = resolve_types_expr(arena, array_expr) && resolve_types_expr(arena, i_expr))
   {
     if(type_unif(i_expr->eval_ty, basic_type_int))
     {
@@ -2096,43 +2096,43 @@ bool resolve_types_index(AstNode* index)
       {
         if(!type_unif(array_ty->array.elem, index->eval_ty))
         {
-          success = compile_error(index->src_loc, "type error (index)");
+          success = compile_error(arena, index->src_loc, "type error (index)");
         }
       }
       else if(array_ty->kind == eType_pointer)
       {
         if(!type_unif(array_ty->pointer.pointee, index->eval_ty))
         {
-          success = compile_error(index->src_loc, "type error (index)");
+          success = compile_error(arena, index->src_loc, "type error (index)");
         }
       }
       else
-        success = compile_error(index->src_loc, "type error (index)");
+        success = compile_error(arena, index->src_loc, "type error (index)");
     }
     else
-      success = compile_error(index->src_loc, "type error (index)");
+      success = compile_error(arena, index->src_loc, "type error (index)");
   }
 
   if(success)
   {
-    success = resolve_types_of_node(index);
+    success = resolve_types_of_node(arena, index);
   }
 
   return success;
 }
 
-bool resolve_types_cast(AstNode* cast)
+bool resolve_types_cast(MemoryArena* arena, AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
   bool success = true;
 
-  success = resolve_types_type(cast->cast.to_type) && resolve_types_expr(cast->cast.from_expr) &&
-    resolve_types_of_node(cast);
+  success = resolve_types_type(arena, cast->cast.to_type) && resolve_types_expr(arena, cast->cast.from_expr) &&
+    resolve_types_of_node(arena, cast);
 
   return success;
 }
 
-bool resolve_types_expr(AstNode* expr)
+bool resolve_types_expr(MemoryArena* arena, AstNode* expr)
 {
   bool success = true;
   
@@ -2140,37 +2140,37 @@ bool resolve_types_expr(AstNode* expr)
   {
     case eAstNode_cast:
     {
-      success = resolve_types_cast(expr);
+      success = resolve_types_cast(arena, expr);
     }
     break;
     
     case eAstNode_bin_expr:
     {
-      success = resolve_types_bin_expr(expr);
+      success = resolve_types_bin_expr(arena, expr);
     }
     break;
     
     case eAstNode_unr_expr:
     {
-      success = resolve_types_unr_expr(expr);
+      success = resolve_types_unr_expr(arena, expr);
     }
     break;
     
     case eAstNode_id:
     {
-      success = resolve_types_id(expr);
+      success = resolve_types_id(arena, expr);
     }
     break;
     
     case eAstNode_call:
     {
-      success = resolve_types_call(expr);
+      success = resolve_types_call(arena, expr);
     }
     break;
     
     case eAstNode_lit:
     {
-      success = resolve_types_lit(expr);
+      success = resolve_types_lit(arena, expr);
     }
     break;
 
@@ -2179,7 +2179,7 @@ bool resolve_types_expr(AstNode* expr)
     
     case eAstNode_index:
     {
-      success = resolve_types_index(expr);
+      success = resolve_types_index(arena, expr);
     }
     break;
     
@@ -2189,7 +2189,7 @@ bool resolve_types_expr(AstNode* expr)
   return success;
 }
 
-bool resolve_types_block(AstNode* block)
+bool resolve_types_block(MemoryArena* arena, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -2199,100 +2199,100 @@ bool resolve_types_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = resolve_types_block_stmt(stmt);
+    success = resolve_types_block_stmt(arena, stmt);
   }
 
   if(success)
   {
-    success = resolve_types_of_node(block);
+    success = resolve_types_of_node(arena, block);
   }
 
   return success;
 }
 
-bool resolve_types_return(AstNode* ret)
+bool resolve_types_return(MemoryArena* arena, AstNode* ret)
 {
   assert(KIND(ret, eAstNode_return));
   bool success = true;
 
   if(ret->ret.expr)
   {
-    success = resolve_types_expr(ret->ret.expr);
+    success = resolve_types_expr(arena, ret->ret.expr);
   }
 
   if(success)
   {
-    success = resolve_types_of_node(ret);
+    success = resolve_types_of_node(arena, ret);
   }
 
   return success;
 }
 
-bool resolve_types_if(AstNode* if_)
+bool resolve_types_if(MemoryArena* arena, AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
   bool success = true;
 
-  if(success = resolve_types_expr(if_->if_.cond_expr) && resolve_types_block_stmt(if_->if_.body))
+  if(success = resolve_types_expr(arena, if_->if_.cond_expr) && resolve_types_block_stmt(arena, if_->if_.body))
   {
     if(if_->if_.else_body)
     {
-      success = resolve_types_block_stmt(if_->if_.else_body);
+      success = resolve_types_block_stmt(arena, if_->if_.else_body);
     }
 
     if(success)
     {
-      success = resolve_types_of_node(if_);
+      success = resolve_types_of_node(arena, if_);
     }
   }
 
   return success;
 }
 
-bool resolve_types_do_while(AstNode* do_while)
+bool resolve_types_do_while(MemoryArena* arena, AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
-  success = resolve_types_block_stmt(do_while->do_while.body) && resolve_types_expr(do_while->do_while.cond_expr) &&
-    resolve_types_of_node(do_while);
+  success = resolve_types_block_stmt(arena, do_while->do_while.body) && resolve_types_expr(arena, do_while->do_while.cond_expr) &&
+    resolve_types_of_node(arena, do_while);
 
   return success;
 }
 
-bool resolve_types_while(AstNode* while_)
+bool resolve_types_while(MemoryArena* arena, AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
 
-  success = resolve_types_expr(while_->while_.cond_expr) && resolve_types_block_stmt(while_->while_.body) &&
-    resolve_types_of_node(while_);
+  success = resolve_types_expr(arena, while_->while_.cond_expr) && resolve_types_block_stmt(arena, while_->while_.body) &&
+    resolve_types_of_node(arena, while_);
 
   return success;
 }
 
-bool resolve_types_array(AstNode* array)
+bool resolve_types_array(MemoryArena* arena, AstNode* array)
 {
   assert(KIND(array, eAstNode_array));
   bool success = true;
   
-  success = resolve_types_expr(array->array.size_expr) &&
-    resolve_types_type(array->array.elem_expr) && resolve_types_of_node(array);
+  success = resolve_types_expr(arena, array->array.size_expr) &&
+    resolve_types_type(arena, array->array.elem_expr) && resolve_types_of_node(arena, array);
 
   return success;
 }
 
-bool resolve_types_pointer(AstNode* pointer)
+bool resolve_types_pointer(MemoryArena* arena, AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode_pointer));
   bool success = true;
   
-  success = resolve_types_expr(pointer->pointer.pointee) && resolve_types_of_node(pointer);
+  success = resolve_types_expr(arena, pointer->pointer.pointee) && resolve_types_of_node(arena, pointer);
 
   return success;
 }
 
-bool resolve_types_type(AstNode* type)
+bool resolve_types_type(MemoryArena* arena, AstNode* type)
 {
   bool success = true;
   
@@ -2300,13 +2300,13 @@ bool resolve_types_type(AstNode* type)
   {
     case eAstNode_pointer:
     {
-      success = resolve_types_pointer(type);
+      success = resolve_types_pointer(arena, type);
     }
     break;
 
     case eAstNode_array:
     {
-      success = resolve_types_array(type);
+      success = resolve_types_array(arena, type);
     }
     break;
 
@@ -2317,18 +2317,18 @@ bool resolve_types_type(AstNode* type)
   return success;
 }
 
-bool resolve_types_assign(AstNode* assign)
+bool resolve_types_assign(MemoryArena* arena, AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
 
-  success = resolve_types_expr(assign->assign.dest_expr) && resolve_types_expr(assign->assign.source_expr) &&
-    resolve_types_of_node(assign);
+  success = resolve_types_expr(arena, assign->assign.dest_expr) && resolve_types_expr(arena, assign->assign.source_expr) &&
+    resolve_types_of_node(arena, assign);
 
   return success;
 }
 
-bool resolve_types_block_stmt(AstNode* stmt)
+bool resolve_types_block_stmt(MemoryArena* arena, AstNode* stmt)
 {
   bool success = true;
   
@@ -2336,13 +2336,13 @@ bool resolve_types_block_stmt(AstNode* stmt)
   {
     case eAstNode_assign:
     {
-      success = resolve_types_assign(stmt);
+      success = resolve_types_assign(arena, stmt);
     }
     break;
     
     case eAstNode_cast:
     {
-      success = resolve_types_cast(stmt);
+      success = resolve_types_cast(arena, stmt);
     }
     break;
     
@@ -2352,43 +2352,43 @@ bool resolve_types_block_stmt(AstNode* stmt)
     case eAstNode_call:
     case eAstNode_lit:
     {
-      success = resolve_types_expr(stmt);
+      success = resolve_types_expr(arena, stmt);
     }
     break;
     
     case eAstNode_block:
     {
-      success = resolve_types_block(stmt);
+      success = resolve_types_block(arena, stmt);
     }
     break;
     
     case eAstNode_var:
     {
-      success = resolve_types_var(stmt);
+      success = resolve_types_var(arena, stmt);
     }
     break;
     
     case eAstNode_return:
     {
-      success = resolve_types_return(stmt);
+      success = resolve_types_return(arena, stmt);
     }
     break;
     
     case eAstNode_if:
     {
-      success = resolve_types_if(stmt);
+      success = resolve_types_if(arena, stmt);
     }
     break;
     
     case eAstNode_do_while:
     {
-      success = resolve_types_do_while(stmt);
+      success = resolve_types_do_while(arena, stmt);
     }
     break;
     
     case eAstNode_while:
     {
-      success = resolve_types_while(stmt);
+      success = resolve_types_while(arena, stmt);
     }
     break;
     
@@ -2398,13 +2398,13 @@ bool resolve_types_block_stmt(AstNode* stmt)
     
     case eAstNode_basic_type:
     {
-      success = resolve_types_type(stmt);
+      success = resolve_types_type(arena, stmt);
     }
     break;
     
     case eAstNode_index:
     {
-      success = resolve_types_index(stmt);
+      success = resolve_types_index(arena, stmt);
     }
     break;
     
@@ -2414,13 +2414,13 @@ bool resolve_types_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool resolve_types_proc(AstNode* proc)
+bool resolve_types_proc(MemoryArena* arena, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
-  if(success = resolve_types_formal_args(proc->proc.args) && resolve_types_type(proc->proc.ret_type)
-     && resolve_types_block_stmt(proc->proc.body) && resolve_types_of_node(proc))
+  if(success = resolve_types_formal_args(arena, proc->proc.args) && resolve_types_type(arena, proc->proc.ret_type)
+     && resolve_types_block_stmt(arena, proc->proc.body) && resolve_types_of_node(arena, proc))
   {
     proc->proc.decl_sym->ty = proc->eval_ty;
     proc->proc.retvar->ty = proc->proc.ret_type->eval_ty;
@@ -2429,7 +2429,7 @@ bool resolve_types_proc(AstNode* proc)
   return success;
 }
 
-bool resolve_types_module_stmt(AstNode* stmt)
+bool resolve_types_module_stmt(MemoryArena* arena, AstNode* stmt)
 {
   bool success = true;
   
@@ -2437,13 +2437,13 @@ bool resolve_types_module_stmt(AstNode* stmt)
   {
     case eAstNode_proc:
     {
-      success = resolve_types_proc(stmt);
+      success = resolve_types_proc(arena, stmt);
     }
     break;
     
     case eAstNode_var:
     {
-      success = resolve_types_var(stmt);
+      success = resolve_types_var(arena, stmt);
     }
     case eAstNode_include:
     break;
@@ -2454,7 +2454,7 @@ bool resolve_types_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool resolve_types_module(AstNode* module)
+bool resolve_types_module(MemoryArena* arena, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
@@ -2464,7 +2464,7 @@ bool resolve_types_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = resolve_types_module_stmt(stmt);
+    success = resolve_types_module_stmt(arena, stmt);
   }
 
   return success;
@@ -2473,23 +2473,23 @@ bool resolve_types_module(AstNode* module)
 //          CHECK TYPES
 //-----------------------------------------------------
 
-bool check_types_expr(AstNode* expr);
-bool check_types_block_stmt(AstNode* stmt);
+bool check_types_expr(MemoryArena* arena, AstNode* expr);
+bool check_types_block_stmt(MemoryArena* arena, AstNode* stmt);
 
-bool check_types_var(AstNode* var)
+bool check_types_var(MemoryArena* arena, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
   if(types_are_equal(var->eval_ty, basic_type_void))
   {
-    success = compile_error(var->src_loc, "type of var cannot be `void`");
+    success = compile_error(arena, var->src_loc, "type of var cannot be `void`");
   }
 
   return success;
 }
 
-bool check_types_formal_args(AstNode* args)
+bool check_types_formal_args(MemoryArena* arena, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -2499,13 +2499,13 @@ bool check_types_formal_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = check_types_var(arg);
+    success = check_types_var(arena, arg);
   }
 
   return success;
 }
 
-bool check_types_cast(AstNode* cast)
+bool check_types_cast(MemoryArena* arena, AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
   bool success = true;
@@ -2513,7 +2513,7 @@ bool check_types_cast(AstNode* cast)
   AstNode* from_expr = cast->cast.from_expr;
   AstNode* to_type = cast->cast.to_type;
   
-  if(success = check_types_expr(from_expr))
+  if(success = check_types_expr(arena, from_expr))
   {
     Type* from_ty = from_expr->eval_ty;
     Type* to_ty = to_type->eval_ty;
@@ -2554,7 +2554,8 @@ bool check_types_cast(AstNode* cast)
       }
       if(!success)
       {
-        compile_error(cast->src_loc, "invalid cast `%s` <- `%s`", get_type_printstr(to_ty), get_type_printstr(from_ty));
+        compile_error(arena, cast->src_loc, "invalid cast `%s` <- `%s`",
+                      get_type_printstr(arena, to_ty), get_type_printstr(arena, from_ty));
       }
     }
   }
@@ -2562,7 +2563,7 @@ bool check_types_cast(AstNode* cast)
   return success;
 }
 
-bool check_types_bin_expr(AstNode* bin_expr)
+bool check_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
@@ -2571,7 +2572,7 @@ bool check_types_bin_expr(AstNode* bin_expr)
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   eOperator op = bin_expr->bin_expr.op;
   
-  if(success = check_types_expr(left_operand) && check_types_expr(right_operand))
+  if(success = check_types_expr(arena, left_operand) && check_types_expr(arena, right_operand))
   {
     Type* expr_ty = KIND(bin_expr->ty, eType_proc);
     Type* operands_ty = expr_ty->proc.args;
@@ -2597,8 +2598,8 @@ bool check_types_bin_expr(AstNode* bin_expr)
         }
         else
         {
-          success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  get_operator_printstr(op), get_type_printstr(operands_ty));
+          success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
+                                  get_operator_printstr(op), get_type_printstr(arena, operands_ty));
         }
       }
       break;
@@ -2612,8 +2613,8 @@ bool check_types_bin_expr(AstNode* bin_expr)
         }
         else
         {
-          success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  get_operator_printstr(op), get_type_printstr(operands_ty));
+          success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
+                                  get_operator_printstr(op), get_type_printstr(arena, operands_ty));
         }
       }
       break;
@@ -2627,8 +2628,8 @@ bool check_types_bin_expr(AstNode* bin_expr)
           assert(ret_ty == basic_type_bool);
         }
         else
-          success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  get_operator_printstr(op), get_type_printstr(operands_ty));
+          success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
+                                  get_operator_printstr(op), get_type_printstr(arena, operands_ty));
       }
       break;
       
@@ -2640,8 +2641,8 @@ bool check_types_bin_expr(AstNode* bin_expr)
         ;//ok
       }
       else
-        success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                get_operator_printstr(op), get_type_printstr(operands_ty));
+        success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
+                                get_operator_printstr(op), get_type_printstr(arena, operands_ty));
       break;
       
       case eOperator_bit_shift_left:
@@ -2651,8 +2652,8 @@ bool check_types_bin_expr(AstNode* bin_expr)
         ;//ok
       }
       else
-        success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                get_operator_printstr(op), get_type_printstr(operands_ty));
+        success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
+                                get_operator_printstr(op), get_type_printstr(arena, operands_ty));
       break;
       
       case eOperator_less:
@@ -2673,8 +2674,8 @@ bool check_types_bin_expr(AstNode* bin_expr)
         }
         else
         {
-          success = compile_error(bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  get_operator_printstr(op), get_type_printstr(operands_ty));
+          success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
+                                  get_operator_printstr(op), get_type_printstr(arena, operands_ty));
         }
       }
       break;
@@ -2686,7 +2687,7 @@ bool check_types_bin_expr(AstNode* bin_expr)
   return success;
 }
 
-bool check_types_unr_expr(AstNode* unr_expr)
+bool check_types_unr_expr(MemoryArena* arena, AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
@@ -2694,7 +2695,7 @@ bool check_types_unr_expr(AstNode* unr_expr)
   AstNode* operand = unr_expr->unr_expr.operand;
   eOperator op = unr_expr->unr_expr.op;
   
-  if(success = check_types_expr(operand))
+  if(success = check_types_expr(arena, operand))
   {
     Type* expr_ty = KIND(unr_expr->ty, eType_proc);
     Type* operand_ty = expr_ty->proc.args;
@@ -2709,8 +2710,8 @@ bool check_types_unr_expr(AstNode* unr_expr)
         assert(ret_ty == basic_type_bool);
       }
       else
-        success = compile_error(unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                get_operator_printstr(op), get_type_printstr(operand_ty));
+        success = compile_error(arena, unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
+                                get_operator_printstr(op), get_type_printstr(arena, operand_ty));
       break;
       
       case eOperator_bit_not:
@@ -2719,8 +2720,8 @@ bool check_types_unr_expr(AstNode* unr_expr)
         ;//ok
       }
       else
-        success = compile_error(unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                get_operator_printstr(op), get_type_printstr(operand_ty));
+        success = compile_error(arena, unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
+                                get_operator_printstr(op), get_type_printstr(arena, operand_ty));
       break;
       
       case eOperator_neg:
@@ -2730,8 +2731,8 @@ bool check_types_unr_expr(AstNode* unr_expr)
         ;//ok
       }
       else
-        success = compile_error(unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                get_operator_printstr(op), get_type_printstr(operand_ty));
+        success = compile_error(arena, unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
+                                get_operator_printstr(op), get_type_printstr(arena, operand_ty));
       break;
     }
   }
@@ -2739,7 +2740,7 @@ bool check_types_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool check_types_actual_args(AstNode* args)
+bool check_types_actual_args(MemoryArena* arena, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -2749,23 +2750,23 @@ bool check_types_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = check_types_expr(arg->actual_arg.expr);
+    success = check_types_expr(arena, arg->actual_arg.expr);
   }
 
   return success;
 }
 
-bool check_types_call(AstNode* call)
+bool check_types_call(MemoryArena* arena, AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
 
   bool success = true;
-  success = check_types_actual_args(call->call.args);
+  success = check_types_actual_args(arena, call->call.args);
 
   return success;
 }
 
-bool check_types_index(AstNode* index)
+bool check_types_index(MemoryArena* arena, AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
   bool success = true;
@@ -2775,12 +2776,12 @@ bool check_types_index(AstNode* index)
     ;//ok
   }
   else
-    success = compile_error(index->src_loc, "type error (array index): size of type = 0");
+    success = compile_error(arena, index->src_loc, "type error (array index): size of type = 0");
   
   return success;
 }
 
-bool check_types_assign(AstNode* assign)
+bool check_types_assign(MemoryArena* arena, AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
@@ -2788,18 +2789,18 @@ bool check_types_assign(AstNode* assign)
   AstNode* dest_expr = assign->assign.dest_expr;
   AstNode* source_expr = assign->assign.source_expr;
 
-  if(success = check_types_expr(dest_expr) && check_types_expr(source_expr))
+  if(success = check_types_expr(arena, dest_expr) && check_types_expr(arena, source_expr))
   {
     if(!type_unif(dest_expr->eval_ty, source_expr->eval_ty))
     {
-      success = compile_error(assign->src_loc, "type error (assignment)");
+      success = compile_error(arena, assign->src_loc, "type error (assignment)");
     }
   }
 
   return success;
 }
 
-bool check_types_expr(AstNode* expr)
+bool check_types_expr(MemoryArena* arena, AstNode* expr)
 {
   bool success = true;
   
@@ -2807,31 +2808,31 @@ bool check_types_expr(AstNode* expr)
   {
     case eAstNode_assign:
     {
-      success = check_types_assign(expr);
+      success = check_types_assign(arena, expr);
     }
     break;
     
     case eAstNode_cast:
     {
-      success = check_types_cast(expr);
+      success = check_types_cast(arena, expr);
     }
     break;
     
     case eAstNode_bin_expr:
     {
-      success = check_types_bin_expr(expr);
+      success = check_types_bin_expr(arena, expr);
     }
     break;
     
     case eAstNode_unr_expr:
     {
-      success = check_types_unr_expr(expr);
+      success = check_types_unr_expr(arena, expr);
     }
     break;
     
     case eAstNode_call:
     {
-      success = check_types_call(expr);
+      success = check_types_call(arena, expr);
     }
     break;
     
@@ -2842,7 +2843,7 @@ bool check_types_expr(AstNode* expr)
     
     case eAstNode_index:
     {
-      success = check_types_index(expr);
+      success = check_types_index(arena, expr);
     }
     break;
     
@@ -2852,50 +2853,52 @@ bool check_types_expr(AstNode* expr)
   return success;
 }
 
-bool check_types_return(AstNode* ret)
+bool check_types_return(MemoryArena* arena, AstNode* ret)
 {
   assert(KIND(ret, eAstNode_return));
   bool success = true;
 
   if(ret->ret.expr)
   {
-    success = check_types_expr(ret->ret.expr);
+    success = check_types_expr(arena, ret->ret.expr);
   }
 
   return success;
 }
 
-bool check_types_do_while(AstNode* do_while)
+bool check_types_do_while(MemoryArena* arena, AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
-  success = check_types_block_stmt(do_while->do_while.body) && check_types_expr(do_while->do_while.cond_expr);
+  success = check_types_block_stmt(arena, do_while->do_while.body)
+    && check_types_expr(arena, do_while->do_while.cond_expr);
 
   return success;
 }
 
-bool check_types_while(AstNode* while_)
+bool check_types_while(MemoryArena* arena, AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
 
-  success = check_types_expr(while_->while_.cond_expr) && check_types_block_stmt(while_->while_.body);
+  success = check_types_expr(arena, while_->while_.cond_expr)
+    && check_types_block_stmt(arena, while_->while_.body);
   return success;
 }
 
-bool check_types_if(AstNode* if_)
+bool check_types_if(MemoryArena* arena, AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
   bool success = true;
   
-  success = check_types_expr(if_->if_.cond_expr) && check_types_block_stmt(if_->if_.body) &&
-    (if_->if_.else_body ? check_types_block_stmt(if_->if_.else_body) : true);
+  success = check_types_expr(arena, if_->if_.cond_expr) && check_types_block_stmt(arena, if_->if_.body) &&
+    (if_->if_.else_body ? check_types_block_stmt(arena, if_->if_.else_body) : true);
 
   return success;
 }
 
-bool check_types_block(AstNode* block)
+bool check_types_block(MemoryArena* arena, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -2905,13 +2908,13 @@ bool check_types_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = check_types_block_stmt(stmt);
+    success = check_types_block_stmt(arena, stmt);
   }
 
   return success;
 }
 
-bool check_types_block_stmt(AstNode* stmt)
+bool check_types_block_stmt(MemoryArena* arena, AstNode* stmt)
 {
   bool success = true;
   
@@ -2919,13 +2922,13 @@ bool check_types_block_stmt(AstNode* stmt)
   {
     case eAstNode_assign:
     {
-      success = check_types_assign(stmt);
+      success = check_types_assign(arena, stmt);
     }
     break;
     
     case eAstNode_cast:
     {
-      success = check_types_cast(stmt);
+      success = check_types_cast(arena, stmt);
     }
     break;
     
@@ -2935,43 +2938,43 @@ bool check_types_block_stmt(AstNode* stmt)
     case eAstNode_call:
     case eAstNode_lit:
     {
-      success = check_types_expr(stmt);
+      success = check_types_expr(arena, stmt);
     }
     break;
     
     case eAstNode_return:
     {
-      success = check_types_return(stmt);
+      success = check_types_return(arena, stmt);
     }
     break;
     
     case eAstNode_if:
     {
-      success = check_types_if(stmt);
+      success = check_types_if(arena, stmt);
     }
     break;
     
     case eAstNode_do_while:
     {
-      success = check_types_do_while(stmt);
+      success = check_types_do_while(arena, stmt);
     }
     break;
     
     case eAstNode_while:
     {
-      success = check_types_while(stmt);
+      success = check_types_while(arena, stmt);
     }
     break;
     
     case eAstNode_block:
     {
-      success = check_types_block(stmt);
+      success = check_types_block(arena, stmt);
     }
     break;
     
     case eAstNode_var:
     {
-      success = check_types_var(stmt);
+      success = check_types_var(arena, stmt);
     }
     break;
     
@@ -2981,7 +2984,7 @@ bool check_types_block_stmt(AstNode* stmt)
     
     case eAstNode_index:
     {
-      success = check_types_index(stmt);
+      success = check_types_index(arena, stmt);
     }
     break;
     
@@ -2991,17 +2994,17 @@ bool check_types_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool check_types_proc(AstNode* proc)
+bool check_types_proc(MemoryArena* arena, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
-  success = check_types_formal_args(proc->proc.args) && check_types_block_stmt(proc->proc.body);
+  success = check_types_formal_args(arena, proc->proc.args) && check_types_block_stmt(arena, proc->proc.body);
 
   return success;
 }
 
-bool check_types_module_stmt(AstNode* stmt)
+bool check_types_module_stmt(MemoryArena* arena, AstNode* stmt)
 {
   bool success = true;
   
@@ -3009,13 +3012,13 @@ bool check_types_module_stmt(AstNode* stmt)
   {
     case eAstNode_proc:
     {
-      success = check_types_proc(stmt);
+      success = check_types_proc(arena, stmt);
     }
     break;
     
     case eAstNode_var:
     {
-      success = check_types_var(stmt);
+      success = check_types_var(arena, stmt);
     }
     break;
     
@@ -3025,7 +3028,7 @@ bool check_types_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool check_types_module(AstNode* module)
+bool check_types_module(MemoryArena* arena, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
@@ -3035,7 +3038,7 @@ bool check_types_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = check_types_module_stmt(stmt);
+    success = check_types_module_stmt(arena, stmt);
   }
 
   return success;

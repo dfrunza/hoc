@@ -8,12 +8,10 @@
 
 #include "hocc.h"
 
-bool DEBUG_enabled = true;
-bool DEBUG_zero_arena = true;
-bool DEBUG_check_arena_bounds = true;
-bool DEBUG_zero_struct = true;
-
-MemoryArena* arena = 0;
+global_var bool DEBUG_enabled = true;
+global_var bool DEBUG_zero_arena = true;
+global_var bool DEBUG_check_arena_bounds = true;
+global_var bool DEBUG_zero_struct = true;
 
 #include "platform.h"
 #include "lib.c"
@@ -203,7 +201,7 @@ int h_printf(char* format, ...)
   return result;
 }
 
-bool compile_error_(char* file, int line, SourceLoc* src_loc, char* message, ...)
+bool compile_error_(MemoryArena* arena, char* file, int line, SourceLoc* src_loc, char* message, ...)
 {
   char* filename_buf = mem_push_array_nz(arena, char, cstr_len(file));
   cstr_copy(filename_buf, file);
@@ -298,7 +296,7 @@ typedef struct
 }
 OutFileNames;
 
-bool make_out_file_names(OutFileNames* out_files, char* src_file_path)
+bool make_out_file_names(MemoryArena* arena, OutFileNames* out_files, char* src_file_path)
 {
   char* leaf = mem_push_array_nz(arena, char, cstr_len(src_file_path));
   cstr_copy(leaf, src_file_path);
@@ -338,9 +336,10 @@ int main(int argc, char* argv[])
   }
 
   char* src_file_path = argv[1];
-  arena = new_arena(10*MEGABYTE);
 
-  char* hoc_text = file_read_text(arena, src_file_path);
+  MemoryArena* arena = new_arena(32*MEGABYTE);
+
+  char* hoc_text = file_read_text(push_arena(&arena, 2*MEGABYTE), src_file_path);
 
   if(hoc_text == 0)
   {
@@ -349,14 +348,14 @@ int main(int argc, char* argv[])
   }
 
   OutFileNames out_files = {0};
-  if(!make_out_file_names(&out_files, src_file_path))
+  if(!make_out_file_names(arena, &out_files, src_file_path))
   {
     success = false;
     goto end;
   }
 
   String x86_text = {0};
-  if(!translate(out_files.source.name, src_file_path, hoc_text, &x86_text))
+  if(!translate(arena, out_files.source.name, src_file_path, hoc_text, &x86_text))
   {
     success = error("program could not be translated");
     goto end;

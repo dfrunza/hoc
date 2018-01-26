@@ -7,8 +7,8 @@ void fail_(char* file, int line, char* message, ...);
 bool error_(char* file, int line, char* message, ...);
 #define error(MESSAGE, ...) error_(__FILE__, __LINE__, (MESSAGE), ## __VA_ARGS__)
 
-bool compile_error_(char* file, int line, SourceLoc* src_loc, char* message, ...);
-#define compile_error(SRC, MESSAGE, ...) compile_error_(__FILE__, __LINE__, (SRC), (MESSAGE), ## __VA_ARGS__)
+bool compile_error_(MemoryArena* arena, char* file, int line, SourceLoc* src_loc, char* message, ...);
+#define compile_error(ARENA, SRC, MESSAGE, ...) compile_error_((ARENA), __FILE__, __LINE__, (SRC), (MESSAGE), ## __VA_ARGS__)
 
 void mem_zero_(void* mem, int len);
 int h_sscanf(char*, char*, ...);

@@ -90,7 +90,7 @@ Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_lo
   Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
 
   sym->kind = eSymbol_constant;
-  sym->name = new_tempvar_name("const_");
+  sym->name = new_tempvar_name(sym_context->gp_arena, "const_");
   sym->src_loc = src_loc;
   sym->ty = ty;
   sym->scope = 0;
@@ -151,7 +151,7 @@ Symbol* new_temp_object(IrContext* ir_context, Scope* scope, Type* ty, SourceLoc
   SymbolContext* sym_context = ir_context->sym_context;
   Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
 
-  sym->name = new_tempvar_name("temp_");
+  sym->name = new_tempvar_name(ir_context->gp_arena, "temp_");
   sym->src_loc = src_loc;
   sym->ty = ty;
   sym->scope = scope;
@@ -199,7 +199,7 @@ Scope* begin_scope(SymbolContext* context, eScope kind, AstNode* ast_node)
   scope->allocd_size = 0;
   scope->encl_scope = context->active_scope;
   scope->ast_node = ast_node;
-  init_list(&scope->decl_syms, arena, eList_symbol);
+  init_list(context->gp_arena, &scope->decl_syms, eList_symbol);
   context->active_scope = scope;
   append_list_elem(&context->scopes, scope, eList_scope);
 
@@ -256,8 +256,8 @@ bool sym_formal_arg(SymbolContext* context, Scope* proc_scope, AstNode* arg)
   Symbol* decl_sym = lookup_decl_sym(arg->var.name, proc_scope);
   if(decl_sym && (decl_sym->scope == proc_scope))
   {
-    success = compile_error(arg->src_loc, "formal arg `%s` has already been declared", arg->var.name);
-    compile_error(decl_sym->src_loc, "see the declaration of `%s`", arg->var.name);
+    success = compile_error(context->gp_arena, arg->src_loc, "formal arg `%s` has already been declared", arg->var.name);
+    compile_error(context->gp_arena, decl_sym->src_loc, "see the declaration of `%s`", arg->var.name);
   }
   else
   {
@@ -278,8 +278,8 @@ bool sym_var(SymbolContext* context, AstNode* var)
   Scope* preamble_scope = find_scope(context->active_scope, eScope_args);
   if(decl_sym && (decl_sym->scope == context->active_scope || decl_sym->scope == preamble_scope))
   {
-    success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
-    compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
+    success = compile_error(context->gp_arena, var->src_loc, "name `%s` already declared", var->var.name);
+    compile_error(context->gp_arena, decl_sym->src_loc, "see declaration of `%s`", var->var.name);
   }
   else
   {
@@ -396,7 +396,7 @@ bool sym_call(SymbolContext* context, AstNode* call)
     if(success = sym_id(context, call_expr) && sym_actual_args(context, args))
     {
       call->call.param_scope = begin_scope(context, eScope_params, call);
-      call->call.retvar = add_decl_sym(context->sym_arena, new_tempvar_name("ret_"),
+      call->call.retvar = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "ret_"),
                                        eStorageSpace_param, call->call.param_scope, call);
 
       for(ListItem* li = args->node_list.first;
@@ -404,7 +404,7 @@ bool sym_call(SymbolContext* context, AstNode* call)
           li = li->next)
       {
         AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-        arg->actual_arg.param = add_decl_sym(context->sym_arena, new_tempvar_name("param_"),
+        arg->actual_arg.param = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "param_"),
                                              eStorageSpace_param, call->call.param_scope, arg);
       }
 
@@ -413,7 +413,7 @@ bool sym_call(SymbolContext* context, AstNode* call)
   }
   else
   {
-    success = compile_error(call_expr->src_loc, "unsupported call expression");
+    success = compile_error(context->gp_arena, call_expr->src_loc, "unsupported call expression");
   }
 
   return success;
@@ -430,7 +430,7 @@ bool sym_index(SymbolContext* context, AstNode* index)
     success = sym_expr(context, array_expr) && sym_expr(context, index->index.i_expr);
   }
   else
-    success = compile_error(array_expr->src_loc, "unsupported index expr");
+    success = compile_error(context->gp_arena, array_expr->src_loc, "unsupported index expr");
 
   return success;
 }
@@ -591,7 +591,7 @@ bool sym_loop_ctrl(SymbolContext* context, AstNode* stmt)
     else
       assert(0);
 
-    success = compile_error(stmt->src_loc, "unexpected `%s`", keyword);
+    success = compile_error(context->gp_arena, stmt->src_loc, "unexpected `%s`", keyword);
   }
 
   return success;
@@ -614,7 +614,7 @@ bool sym_return(SymbolContext* context, AstNode* ret)
     }
   }
   else
-    success = compile_error(ret->src_loc, "unexpected `return`");
+    success = compile_error(context->gp_arena, ret->src_loc, "unexpected `return`");
 
   return success;
 }
@@ -749,7 +749,7 @@ bool sym_proc_body(SymbolContext* context, AstNode* proc)
   {
     if(body->kind != eAstNode_empty)
     {
-      success = compile_error(proc->src_loc, "`extern` proc `%s` must not define a body", proc->proc.name);
+      success = compile_error(context->gp_arena, proc->src_loc, "`extern` proc `%s` must not define a body", proc->proc.name);
     }
   }
   else
@@ -762,7 +762,7 @@ bool sym_proc_body(SymbolContext* context, AstNode* proc)
     }
     else if(body->kind == eAstNode_empty)
     {
-      success = compile_error(proc->src_loc, "proc `%s` must define a body", proc->proc.name);
+      success = compile_error(context->gp_arena, proc->src_loc, "proc `%s` must define a body", proc->proc.name);
     }
     else assert(0);
   }
@@ -794,15 +794,15 @@ bool sym_module_proc(SymbolContext* context, AstNode* proc)
   Symbol* decl_sym = lookup_decl_sym(proc->proc.name, context->active_scope);
   if(decl_sym && (decl_sym->scope == context->active_scope))
   {
-    success = compile_error(proc->src_loc, "name `%s` has already been declared", proc->proc.name);
-    compile_error(decl_sym->src_loc, "see the declaration of `%s`", proc->proc.name);
+    success = compile_error(context->gp_arena, proc->src_loc, "name `%s` has already been declared", proc->proc.name);
+    compile_error(context->gp_arena, decl_sym->src_loc, "see the declaration of `%s`", proc->proc.name);
   }
   else
   {
     proc->proc.decl_sym = add_decl_sym(context->sym_arena, proc->proc.name,
                                        eStorageSpace_None, context->active_scope, proc);
     proc->proc.param_scope = begin_nested_scope(context, eScope_args, proc);
-    proc->proc.retvar = add_decl_sym(context->sym_arena, new_tempvar_name("ret_"),
+    proc->proc.retvar = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "ret_"),
                                      eStorageSpace_arg, proc->proc.param_scope, proc->proc.ret_type);
 
     if(is_extern_proc(proc))
@@ -837,8 +837,8 @@ bool sym_module_var(SymbolContext* context, AstNode* module, AstNode* var)
   Symbol* decl_sym = lookup_decl_sym(var->var.name, context->active_scope);
   if(decl_sym && (decl_sym->scope == context->active_scope))
   {
-    success = compile_error(var->src_loc, "name `%s` already declared", var->var.name);
-    compile_error(decl_sym->src_loc, "see declaration of `%s`", var->var.name);
+    success = compile_error(context->gp_arena, var->src_loc, "name `%s` already declared", var->var.name);
+    compile_error(context->gp_arena, decl_sym->src_loc, "see declaration of `%s`", var->var.name);
   }
   else
   {

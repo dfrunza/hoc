@@ -176,7 +176,7 @@ bool translate(char* title, char* file_path, char* hoc_text, String* x86_text)
     return false;
   }
 
-  alloc_scope_data_objects(&sym_context, module->module.scope);
+  alloc_scope_data_objects(&ir_context, module->module.scope);
 
   X86Context x86_context = {0};
   x86_context.stmt_arena = push_arena(&arena, 2*MEGABYTE);

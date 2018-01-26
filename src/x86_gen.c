@@ -1731,10 +1731,10 @@ void x86_gen_proc(X86Context* context, AstNode* proc)
     stmt->operand2 = x86_make_register_operand(context, &context->esp);
 
     /* sub esp, #frame_size */
-    Scope* body_scope = proc->proc.body_scope;
+    Scope* proc_scope = proc->proc.scope;
     stmt = x86_new_stmt(context, eX86Stmt_sub);
     stmt->operand1 = x86_make_register_operand(context, &context->esp);
-    stmt->operand2 = x86_make_int_constant_operand(body_scope->allocd_size);
+    stmt->operand2 = x86_make_int_constant_operand(proc_scope->allocd_size);
 
     x86_gen_basic_block(context, first_bb);
     save_all_registers(context, true);

@@ -8,18 +8,74 @@ int stdin;
 [10]char buf;
 int buf_i;
 int i;
+int dummy;
 
 void startup()
 {
+  /*
+  */
   stdout = GetStdHandle(-11);
   stdin = GetStdHandle(-10);
 
-  print_str(&"Hello\n");
-  []char s;
-  s = int_to_str(&buf, 10, 97);
-  print_str(s);
-  /*
-  */
+  fizzbuzz(30);
+}
+
+void fizzbuzz(int n)
+{
+  if(n > 0)
+  {
+    int i; i = 1;
+    while(i <= n)
+    {
+      if((i mod 15) == 0)
+        print_str(&"fizzbuzz");
+      else if((i mod 3) == 0)
+        print_str(&"buzz");
+      else if((i mod 5) == 0)
+        print_str(&"fizz");
+      else
+        print_int(i);
+
+      print_str(&"\n");
+      i = i + 1;
+    }
+  }
+}
+/*
+*/
+
+/*
+int gcd_iter(int a, int b)
+{
+  while(a <> b)
+  {
+    if(a > b)
+      a = a - b;
+    else
+      b = b - a;
+  }
+  return a;
+}
+
+void fibo(int n)
+{
+  if(n > 0)
+  {
+    int f_1; f_1 = 0;
+    int f_2; f_2 = 1;
+    int f_n; f_n = f_1 + f_2;
+
+    while(n > 0)
+    {
+      print_int(f_n);
+      print_str(&"\n");
+
+      f_n = f_2 + f_1;
+      f_1 = f_2;
+      f_2 = f_n;
+      n = n - 1;
+    }
+  }
 }
 
 float absf(float a)
@@ -28,6 +84,21 @@ float absf(float a)
     a = -a;
   return a;
 }
+*/
+
+int abs(int a)
+{
+  if(a < 0)
+    a = -a;
+  return a;
+}
+
+void print_int(int i)
+{
+  [20]char buf;
+  print_str(int_to_str(&buf, 20, i));
+}
+
 
 int strlen([]char str)
 {
@@ -44,13 +115,6 @@ void print_str([]char str)
   int len; len = strlen(str);
   int chars_written_count; chars_written_count = 0;
   WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
-}
-
-int abs(int a)
-{
-  if(a < 0)
-    a = -a;
-  return a;
 }
 
 void digit_to_char([]char buf, int pos, int digit)

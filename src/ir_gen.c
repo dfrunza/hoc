@@ -258,6 +258,7 @@ void reset_ir_context(IrContext* ir_context)
   ir_context->stmt_array = &ir_context->stmt_array[ir_context->stmt_count];
   ir_context->total_stmt_count += ir_context->stmt_count;
   ir_context->stmt_count = 0;
+  ir_context->current_alloc_offset = 0;
 
   /*XXX: 'label_list' storage is a good candidate for begin_temp_memory()/end_temp_memory() pattern of allocation. */
   clear_list(ir_context->label_list);
@@ -266,7 +267,7 @@ void reset_ir_context(IrContext* ir_context)
 IrArg* ir_new_arg_temp_object(IrContext* ir_context, Scope* scope, Type* ty, SourceLoc* src_loc)
 {
   IrArg* arg = mem_push_struct(arena, IrArg);
-  arg->object = new_temp_object(ir_context->sym_context, scope, ty, src_loc);
+  arg->object = new_temp_object(ir_context, scope, ty, src_loc);
 
   return arg;
 }
@@ -449,13 +450,13 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
   if(is_extern_proc(proc))
   {
     // right-to-left (stdcall)
-    alloc_data_object(ir_context->sym_context, call->call.retvar, call->call.param_scope);
+    alloc_data_object(ir_context, call->call.retvar, call->call.param_scope);
     for(ListItem* li = args->node_list.last;
         li;
         li = li->prev)
     {
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      alloc_data_object(ir_context->sym_context, arg->actual_arg.param, call->call.param_scope);
+      alloc_data_object(ir_context, arg->actual_arg.param, call->call.param_scope);
     }
 
     ir_emit_call(ir_context, proc->proc.decorated_name, call->call.param_scope, call->call.retvar, true);
@@ -468,9 +469,9 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
         li = li->next)
     {
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      alloc_data_object(ir_context->sym_context, arg->actual_arg.param, call->call.param_scope);
+      alloc_data_object(ir_context, arg->actual_arg.param, call->call.param_scope);
     }
-    alloc_data_object(ir_context->sym_context, call->call.retvar, call->call.param_scope);
+    alloc_data_object(ir_context, call->call.retvar, call->call.param_scope);
 
     ir_emit_call(ir_context, proc->proc.name, call->call.param_scope, call->call.retvar, false);
   }
@@ -1083,7 +1084,8 @@ bool ir_gen_loop_ctrl(IrContext* ir_context, Scope* scope, AstNode* loop_ctrl)
 void ir_gen_var(IrContext* ir_context, Scope* scope, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
-  alloc_data_object(ir_context->sym_context, var->var.decl_sym, scope);
+
+  alloc_data_object_incremental(ir_context, var->var.decl_sym, scope);
 }
 
 bool ir_gen_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
@@ -1174,7 +1176,8 @@ void ir_gen_formal_args(IrContext* ir_context, Scope* scope, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    ir_gen_var(ir_context, scope, arg);
+    Symbol* arg_object = KIND(arg, eAstNode_var)->var.decl_sym;
+    alloc_data_object(ir_context, arg_object, scope);
   }
 }
 
@@ -1201,6 +1204,8 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   bool success = true;
   
   proc->place = ir_new_arg_existing_object(ir_context, proc->proc.retvar);
+  ir_gen_formal_args(ir_context, proc->proc.param_scope, proc->proc.args);
+  alloc_data_object(ir_context, proc->proc.retvar, proc->proc.param_scope);
 
   if(is_extern_proc(proc))
   {
@@ -1209,17 +1214,11 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
     String decorated_label; str_init(&decorated_label, arena);
     str_printf(&decorated_label, "%s@%d", name, arg_size);
     proc->proc.decorated_name = str_cap(&decorated_label);
-
-    ir_gen_formal_args(ir_context, proc->proc.preamble_scope, proc->proc.args);
-    alloc_data_object(ir_context->sym_context, proc->proc.retvar, proc->proc.preamble_scope);
   }
   else
   {
     AstNode* body = proc->proc.body;
     assert(KIND(body, eAstNode_block));
-
-    ir_gen_formal_args(ir_context, proc->proc.preamble_scope, proc->proc.args);
-    alloc_data_object(ir_context->sym_context, proc->proc.retvar, proc->proc.preamble_scope);
 
     IrLabel* label_start = &proc->proc.label_start;
     label_start->name = proc->proc.name;
@@ -1236,6 +1235,9 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
       ir_emit_label(ir_context, label_return);
       ir_emit_return(ir_context);
     }
+
+    Scope* proc_scope = proc->proc.scope;
+    proc_scope->allocd_size = ir_context->current_alloc_offset;
   }
 
   return success;
@@ -1654,15 +1656,20 @@ void DEBUG_print_ir_code(MemoryArena* arena, List* procs, char* file_path)
 
 IrLeaderStmt* get_leader_stmt(List* leaders, int stmt_nr)
 {
-  ListItem* li = leaders->first;
-  assert(li);
-  IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
-  assert(leader->stmt_nr == 0);
-  for(;
-      li && (stmt_nr != leader->stmt_nr);
-      li = li->next, leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt)
-  { }
-  return leader->stmt_nr == stmt_nr ? leader : 0;
+  IrLeaderStmt* leader = 0;
+
+  for(ListItem* li = leaders->first;
+      li;
+      li = li->next)
+  {
+    leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
+    if(stmt_nr == leader->stmt_nr)
+      break;
+
+    leader = 0;
+  }
+
+  return leader;
 }
 
 IrLeaderStmt* new_leader_stmt(MemoryArena* arena, int stmt_nr, IrStmt* stmt)
@@ -1689,10 +1696,15 @@ void insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
   IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
   assert(leader->stmt_nr == 0);
 
-  for(;
-      li && (leader->stmt_nr < stmt_nr);
-      li = li->next, leader = (li ? KIND(li, eList_ir_leader_stmt)->ir_leader_stmt : 0))
-  { }
+  for(; li; li = li->next)
+  {
+    leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
+    if(leader->stmt_nr >= stmt_nr)
+    {
+      break;
+    }
+    leader = 0;
+  }
 
   if(leader)
   {
@@ -1846,13 +1858,20 @@ void partition_to_basic_blocks(MemoryArena* stmt_arena, AstNode* proc)
         
         int stmt_nr = goto_label->stmt_nr;
         IrLeaderStmt* leader = get_leader_stmt(leaders, stmt_nr);
-        append_list_elem(&bb->succ_list, leader->block, eList_basic_block);
-        append_list_elem(&leader->block->pred_list, bb, eList_basic_block);
-        
-        if(last_stmt->kind != eIrStmt_goto)
+        if(leader)
         {
-          append_list_elem(&bb->succ_list, bb_next, eList_basic_block);
-          append_list_elem(&bb_next->pred_list, bb, eList_basic_block);
+          append_list_elem(&bb->succ_list, leader->block, eList_basic_block);
+          append_list_elem(&leader->block->pred_list, bb, eList_basic_block);
+
+          if(last_stmt->kind != eIrStmt_goto)
+          {
+            append_list_elem(&bb->succ_list, bb_next, eList_basic_block);
+            append_list_elem(&bb_next->pred_list, bb, eList_basic_block);
+          }
+        }
+        else
+        {
+          compile_error(0, "leader is null");
         }
       }
       else if(bb_next)

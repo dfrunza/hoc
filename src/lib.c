@@ -605,11 +605,13 @@ void insert_item_before(List* list, ListItem* at_li, ListItem* new_li)
   if(at_li->prev)
   {
     at_li->prev->next = new_li;
-    if(at_li->next)
-      at_li->next->prev = new_li;
   }
+
   if(at_li == list->first)
+  {
     list->first = new_li;
+  }
+
   new_li->next = at_li;
   new_li->prev = at_li->prev;
   at_li->prev = new_li;
@@ -626,17 +628,20 @@ void insert_elem_before(List* list, ListItem* at_li, void* elem, eList kind)
   insert_item_before(list, at_li, new_li);
 }
 
+/* FIXME: Not tested!! */
 void insert_item_after(List* list, ListItem* at_li, ListItem* new_li)
 {
   assert(at_li);
   if(at_li->next)
   {
     at_li->next->prev = new_li;
-    if(at_li->prev)
-      at_li->prev->next = new_li;
   }
+
   if(at_li == list->last)
+  {
     list->last = new_li;
+  }
+
   new_li->prev = at_li;
   new_li->next = at_li->next;
   at_li->next = new_li;

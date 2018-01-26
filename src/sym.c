@@ -49,29 +49,43 @@ void init_object_locations(Symbol* object)
   }
 }
 
-void alloc_data_object(SymbolContext* sym_context, Symbol* sym, Scope* scope)
+void alloc_data_object(IrContext* ir_context, Symbol* sym, Scope* scope)
 {
   sym->data_loc = scope->allocd_size;
   sym->allocd_size = sym->ty->width;
-  if((sym->allocd_size & (sym_context->data_alignment-1)) != 0)
+  if((sym->allocd_size & (ir_context->data_alignment-1)) != 0)
   {
-    sym->allocd_size = (sym->allocd_size + sym_context->data_alignment) & ~(sym_context->data_alignment-1);
+    sym->allocd_size = (sym->allocd_size + ir_context->data_alignment) & ~(ir_context->data_alignment-1);
   }
   scope->allocd_size += sym->allocd_size;
 }
 
-void alloc_scope_data_objects(SymbolContext* sym_context, Scope* scope)
+void alloc_data_object_incremental(IrContext* ir_context, Symbol* sym, Scope* scope)
+{
+  sym->data_loc = ir_context->current_alloc_offset;
+
+  sym->allocd_size = sym->ty->width;
+  if((sym->allocd_size & (ir_context->data_alignment-1)) != 0)
+  {
+    sym->allocd_size = (sym->allocd_size + ir_context->data_alignment) & ~(ir_context->data_alignment-1);
+  }
+
+  scope->allocd_size += sym->allocd_size;
+  ir_context->current_alloc_offset += sym->allocd_size;
+}
+
+void alloc_scope_data_objects(IrContext* ir_context, Scope* scope)
 {
   for(ListItem* li = scope->decl_syms.first;
       li;
       li = li->next)
   {
     Symbol* object = KIND(li, eList_symbol)->symbol;
-    alloc_data_object(sym_context, object, scope);
+    alloc_data_object(ir_context, object, scope);
   }
 }
 
-Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_loc, bool add_to_scope)
+Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_loc)
 {
   Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
 
@@ -87,18 +101,12 @@ Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_lo
   sym->is_live = false;
   init_object_locations(sym);
 
-  if(add_to_scope)
-  {
-    Scope* module_scope = sym->scope = sym_context->module_scope;
-    append_list_elem(&module_scope->decl_syms, sym, eList_symbol);
-  }
-
   return sym;
 }
 
 Symbol* new_const_object_int(SymbolContext* sym_context, SourceLoc* src_loc, int int_val)
 {
-  Symbol* const_object = new_const_object(sym_context, basic_type_int, src_loc, false);
+  Symbol* const_object = new_const_object(sym_context, basic_type_int, src_loc);
   const_object->int_val = int_val;
   const_object->data = &const_object->int_val;
 
@@ -107,7 +115,7 @@ Symbol* new_const_object_int(SymbolContext* sym_context, SourceLoc* src_loc, int
 
 Symbol* new_const_object_char(SymbolContext* sym_context, SourceLoc* src_loc, char char_val)
 {
-  Symbol* const_object = new_const_object(sym_context, basic_type_char, src_loc, false);
+  Symbol* const_object = new_const_object(sym_context, basic_type_char, src_loc);
   const_object->char_val = char_val;
   const_object->data = &const_object->char_val;
 
@@ -116,24 +124,31 @@ Symbol* new_const_object_char(SymbolContext* sym_context, SourceLoc* src_loc, ch
 
 Symbol* new_const_object_str(SymbolContext* sym_context, SourceLoc* src_loc, char* str_val)
 {
-  Symbol* const_object = new_const_object(sym_context, basic_type_str, src_loc, true);
+  Symbol* const_object = new_const_object(sym_context, basic_type_str, src_loc);
   const_object->str_val = str_val;
   const_object->data = const_object->str_val;
+
+  Scope* module_scope = const_object->scope = sym_context->module_scope;
+  append_list_elem(&module_scope->decl_syms, const_object, eList_symbol);
 
   return const_object;
 }
 
 Symbol* new_const_object_float(SymbolContext* sym_context, SourceLoc* src_loc, float float_val)
 {
-  Symbol* const_object = new_const_object(sym_context, basic_type_float, src_loc, true);
+  Symbol* const_object = new_const_object(sym_context, basic_type_float, src_loc);
   const_object->float_val = float_val;
   const_object->data = &const_object->float_val;
+
+  Scope* module_scope = const_object->scope = sym_context->module_scope;
+  append_list_elem(&module_scope->decl_syms, const_object, eList_symbol);
 
   return const_object;
 }
 
-Symbol* new_temp_object(SymbolContext* sym_context, Scope* scope, Type* ty, SourceLoc* src_loc)
+Symbol* new_temp_object(IrContext* ir_context, Scope* scope, Type* ty, SourceLoc* src_loc)
 {
+  SymbolContext* sym_context = ir_context->sym_context;
   Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
 
   sym->name = new_tempvar_name("temp_");
@@ -147,7 +162,7 @@ Symbol* new_temp_object(SymbolContext* sym_context, Scope* scope, Type* ty, Sour
   sym->is_live = false;
   init_object_locations(sym);
 
-  alloc_data_object(sym_context, sym, scope);
+  alloc_data_object_incremental(ir_context, sym, scope);
   append_list_elem(&scope->decl_syms, sym, eList_symbol);
 
   return sym;
@@ -315,50 +330,6 @@ bool sym_lit(SymbolContext* context, AstNode* lit)
 
     default: assert(0);
   }
-
-#if 0
-  Symbol* constant = lit->lit.constant = new_const_object(context, lit->eval_ty, lit->src_loc);
-
-  switch(lit->lit.kind)
-  {
-    case eLiteral_int:
-    {
-      constant->int_val = lit->lit.int_val;
-      constant->data = &constant->int_val;
-    }
-    break;
-
-    case eLiteral_float:
-    {
-      constant->float_val = lit->lit.float_val;
-      constant->data = &constant->float_val;
-    }
-    break;
-
-    case eLiteral_bool:
-    {
-      constant->int_val = (int)lit->lit.bool_val;
-      constant->data = &constant->int_val;
-    }
-    break;
-
-    case eLiteral_char:
-    {
-      constant->char_val = lit->lit.char_val;
-      constant->data = &constant->char_val;
-    }
-    break;
-    
-    case eLiteral_str:
-    {
-      constant->str_val = lit->lit.str_val;
-      constant->data = constant->str_val;
-    }
-    break;
-
-    default: assert(0);
-  }
-#endif
 
   return success;
 }
@@ -799,18 +770,17 @@ bool sym_proc_body(SymbolContext* context, AstNode* proc)
   return success;
 }
 
-bool sym_formal_args(SymbolContext* context, AstNode* args)
+bool sym_formal_args(SymbolContext* context, Scope* param_scope, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
-  Scope* args_scope = find_scope(context->active_scope, eScope_args);
   for(ListItem* li = args->node_list.first;
       li && success;
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = sym_formal_arg(context, args_scope, arg);
+    success = sym_formal_arg(context, param_scope, arg);
   }
 
   return success;
@@ -831,23 +801,22 @@ bool sym_module_proc(SymbolContext* context, AstNode* proc)
   {
     proc->proc.decl_sym = add_decl_sym(context->sym_arena, proc->proc.name,
                                        eStorageSpace_None, context->active_scope, proc);
-    proc->proc.preamble_scope = begin_nested_scope(context, eScope_args, proc);
+    proc->proc.param_scope = begin_nested_scope(context, eScope_args, proc);
     proc->proc.retvar = add_decl_sym(context->sym_arena, new_tempvar_name("ret_"),
-                                     eStorageSpace_arg, proc->proc.preamble_scope, proc->proc.ret_type);
+                                     eStorageSpace_arg, proc->proc.param_scope, proc->proc.ret_type);
 
     if(is_extern_proc(proc))
     {
-      success = sym_formal_args(context, proc->proc.args) && sym_expr(context, proc->proc.ret_type);
+      success = sym_formal_args(context, proc->proc.param_scope, proc->proc.args) && sym_expr(context, proc->proc.ret_type);
     }
     else
     {
       proc->proc.scope = begin_scope(context, eScope_proc, proc);
 
-      if(success = sym_formal_args(context, proc->proc.args)
+      if(success = sym_formal_args(context, proc->proc.param_scope, proc->proc.args)
          && sym_expr(context, proc->proc.ret_type) && sym_proc_body(context, proc))
       {
-        AstNode* body = proc->proc.body;
-        proc->proc.body_scope = body->block.scope;
+        ;//ok
       }
 
       end_scope(context);

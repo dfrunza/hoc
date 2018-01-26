@@ -933,8 +933,7 @@ typedef struct AstNode
       AstNode* body;
 
       Scope* scope;
-      Scope* preamble_scope;
-      Scope* body_scope;
+      Scope* param_scope;
       Symbol* decl_sym;
       Symbol* retvar;
 
@@ -1104,6 +1103,8 @@ typedef struct IrContext
   Symbol* bool_true;
   Symbol* bool_false;
   Symbol* float_minus_one;
+
+  int current_alloc_offset;
 }
 IrContext;
 

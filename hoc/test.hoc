@@ -5,11 +5,10 @@ extern void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_coun
 
 int stdout;
 int stdin;
-[10]char buf;
-int buf_i;
-int i;
-int dummy;
 
+int n;
+int a;
+int b;
 void startup()
 {
   /*
@@ -17,7 +16,14 @@ void startup()
   stdout = GetStdHandle(-11);
   stdin = GetStdHandle(-10);
 
-  fizzbuzz(30);
+  a = 3*7*13;
+  b = 7*3*1;
+  n = gcd_iter(a, b);
+  print_int(n);
+  print_str(&"\n---------\n");
+  fizzbuzz(50);
+  /*
+  */
 }
 
 void fizzbuzz(int n)
@@ -41,10 +47,7 @@ void fizzbuzz(int n)
     }
   }
 }
-/*
-*/
 
-/*
 int gcd_iter(int a, int b)
 {
   while(a <> b)
@@ -84,7 +87,6 @@ float absf(float a)
     a = -a;
   return a;
 }
-*/
 
 int abs(int a)
 {

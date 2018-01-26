@@ -1,11 +1,11 @@
-IrLabel* new_gen_label(MemoryArena* arena)
+IrLabel* label_gen_new(MemoryArena* arena)
 {
   IrLabel* label = mem_push_struct(arena, IrLabel);
   gen_label_name(arena, label);
   return label;
 }
 
-IrLabel* new_label_by_name(MemoryArena* arena, char* name)
+IrLabel* label_new_by_name(MemoryArena* arena, char* name)
 {
   IrLabel* label = mem_push_struct(arena, IrLabel);
   label->name = name;
@@ -684,9 +684,9 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
       eOperator op = expr->bin_expr.op;
       if(op == eOperator_logic_and || op == eOperator_logic_or)
       {
-        expr->label_true = new_gen_label(arena);
-        expr->label_false = new_gen_label(arena);
-        expr->label_next = new_gen_label(arena);
+        expr->label_true = label_gen_new(arena);
+        expr->label_false = label_gen_new(arena);
+        expr->label_next = label_gen_new(arena);
 
         expr->place = ir_new_arg_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
 
@@ -711,9 +711,9 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
       eOperator op = expr->unr_expr.op;
       if(op == eOperator_logic_not)
       {
-        expr->label_true = new_gen_label(arena);
-        expr->label_false = new_gen_label(arena);
-        expr->label_next = new_gen_label(arena);
+        expr->label_true = label_gen_new(arena);
+        expr->label_false = label_gen_new(arena);
+        expr->label_next = label_gen_new(arena);
 
         expr->place = ir_new_arg_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
 
@@ -822,7 +822,7 @@ bool ir_gen_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
       assert(bin_expr->label_false);
 
       left_operand->label_true = bin_expr->label_true;
-      left_operand->label_false = new_gen_label(arena);
+      left_operand->label_false = label_gen_new(arena);
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
       if(success = ir_gen_bool_expr(ir_context, scope, left_operand))
@@ -838,7 +838,7 @@ bool ir_gen_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
       assert(bin_expr->label_true);
       assert(bin_expr->label_false);
 
-      left_operand->label_true = new_gen_label(arena);
+      left_operand->label_true = label_gen_new(arena);
       left_operand->label_false = bin_expr->label_false;
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
@@ -950,10 +950,10 @@ bool ir_gen_do_while(IrContext* ir_context, Scope* scope, AstNode* do_while)
   AstNode* cond_expr = do_while->do_while.cond_expr;
   AstNode* body = do_while->do_while.body;
   
-  do_while->label_begin = new_gen_label(arena);
-  do_while->label_next = new_gen_label(arena);
+  do_while->label_begin = label_gen_new(arena);
+  do_while->label_next = label_gen_new(arena);
   do_while->label_true = cond_expr->label_true = do_while->label_begin;
-  do_while->label_false = cond_expr->label_false = new_gen_label(arena);
+  do_while->label_false = cond_expr->label_false = label_gen_new(arena);
   body->label_next = do_while->label_next;
   
   ir_emit_label(ir_context, do_while->label_begin);
@@ -975,9 +975,9 @@ bool ir_gen_while(IrContext* ir_context, Scope* scope, AstNode* while_)
   AstNode* cond_expr = while_->while_.cond_expr;
   AstNode* body = while_->while_.body;
   
-  while_->label_begin = new_gen_label(arena);
-  while_->label_next = new_gen_label(arena);
-  cond_expr->label_true = new_gen_label(arena);
+  while_->label_begin = label_gen_new(arena);
+  while_->label_next = label_gen_new(arena);
+  cond_expr->label_true = label_gen_new(arena);
   cond_expr->label_false = while_->label_next;
   body->label_next = while_->label_begin;
   
@@ -1002,11 +1002,11 @@ bool ir_gen_if(IrContext* ir_context, Scope* scope, AstNode* if_)
   AstNode* body = if_->if_.body;
   AstNode* else_body = if_->if_.else_body;
   
-  if_->label_next = new_gen_label(arena);
+  if_->label_next = label_gen_new(arena);
   if(else_body)
   {
-    cond_expr->label_true = new_gen_label(arena);
-    cond_expr->label_false = new_gen_label(arena);
+    cond_expr->label_true = label_gen_new(arena);
+    cond_expr->label_false = label_gen_new(arena);
     body->label_next = if_->label_next;
     else_body->label_next = if_->label_next;
     
@@ -1021,7 +1021,7 @@ bool ir_gen_if(IrContext* ir_context, Scope* scope, AstNode* if_)
   }
   else
   {
-    cond_expr->label_true = new_gen_label(arena);
+    cond_expr->label_true = label_gen_new(arena);
     cond_expr->label_false = if_->label_next;
     body->label_next = if_->label_next;
     
@@ -1220,19 +1220,14 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
     AstNode* body = proc->proc.body;
     assert(KIND(body, eAstNode_block));
 
-    IrLabel* label_start = &proc->proc.label_start;
-    label_start->name = proc->proc.name;
-    proc->label_begin = label_start;
+    proc->label_begin = label_gen_new(arena);
+    proc->label_next = label_gen_new(arena);
 
-    IrLabel* label_return = &proc->proc.label_return;
-    gen_label_name(arena, label_return);
-    proc->label_next = label_return;
-
-    ir_emit_label(ir_context, label_start);
+    ir_emit_label(ir_context, proc->label_begin);
 
     if(success = ir_gen_block_stmt(ir_context, body->block.scope, body))
     {
-      ir_emit_label(ir_context, label_return);
+      ir_emit_label(ir_context, proc->label_next);
       ir_emit_return(ir_context);
     }
 
@@ -1639,6 +1634,8 @@ void DEBUG_print_ir_code(MemoryArena* arena, List* procs, char* file_path)
     }
     else
     {
+      str_printfln(&text, "%5s:", proc->proc.name);
+
       List* basic_blocks = proc->proc.basic_blocks;
       for(ListItem* li = basic_blocks->first;
           li;

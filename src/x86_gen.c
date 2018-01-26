@@ -1657,6 +1657,12 @@ void x86_gen_call(X86Context* context, struct IrStmt_call* call)
 
 void x86_gen_basic_block(X86Context* context, BasicBlock* bb)
 {
+  if(bb->label)
+  {
+    X86Stmt* label_stmt = x86_new_stmt(context, eX86Stmt_label);
+    label_stmt->operand1 = x86_make_id_operand(bb->label->name);
+  }
+
   for(int i = 0; i < bb->stmt_count; i++)
   {
     IrStmt* ir_stmt = bb->stmt_array[i];
@@ -1744,12 +1750,6 @@ void x86_gen_proc(X86Context* context, AstNode* proc)
         li = li->next)
     {
       BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
-
-      if(bb->label)
-      {
-        X86Stmt* label_stmt = x86_new_stmt(context, eX86Stmt_label);
-        label_stmt->operand1 = x86_make_id_operand(bb->label->name);
-      }
 
       x86_gen_basic_block(context, bb);
       save_all_registers(context, true);

@@ -937,8 +937,6 @@ typedef struct AstNode
       Symbol* decl_sym;
       Symbol* retvar;
 
-      IrLabel label_start;
-      IrLabel label_return;
       IrStmt* ir_stmt_array;
       int ir_stmt_count;
       List* basic_blocks;

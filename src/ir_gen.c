@@ -513,10 +513,6 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
 
       IrArg* offset = index->index.i_place = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
-#if 0
-      Symbol* size_constant = new_const_object(ir_context->sym_context, basic_type_int, index->src_loc);
-      int size_val = size_constant->int_val = size_of_array_dim(index->index.array_ty, index->index.ndim);
-#endif
       int size_val = size_of_array_dim(index->index.array_ty, index->index.ndim);
       Symbol* size_constant = new_const_object_int(ir_context->sym_context, index->src_loc, size_val);
       IrArg* dim_size = ir_new_arg_existing_object(ir_context, size_constant);
@@ -544,10 +540,6 @@ bool ir_gen_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
   {
     IrArg* offset = index->index.offset = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
-#if 0
-    Symbol* width_constant = new_const_object(ir_context->sym_context, basic_type_int, index->src_loc);
-    width_constant->int_val = array_elem_width(index->index.array_ty);
-#endif
     int width_val = array_elem_width(index->index.array_ty);
     Symbol* width_constant = new_const_object_int(ir_context->sym_context, index->src_loc, width_val);
     IrArg* width = ir_new_arg_existing_object(ir_context, width_constant);

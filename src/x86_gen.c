@@ -258,6 +258,10 @@ void x86_print_opcode(String* text, eX86Stmt opcode)
       str_printf(text, "neg ");
     break;
 
+    case eX86Stmt_cmp:
+      str_printf(text, "cmp ");
+    break;
+
     /* integer jumps */
     case eX86Stmt_jz:
       str_printf(text, "jz ");
@@ -562,7 +566,7 @@ X86Location* reg_get_top(X86Location* reg)
   return top;
 }
 
-void delete_register_all_levels(X86Context* context, X86Location* loc)
+void clean_register(X86Context* context, X86Location* loc)
 {
   List* occupants = &loc->occupants;
   for(ListItem* li = occupants->first;
@@ -572,22 +576,25 @@ void delete_register_all_levels(X86Context* context, X86Location* loc)
     Symbol* occupant = KIND(li, eList_symbol)->symbol;
     delete_object_from_location(context, occupant, loc);
   }
+}
+
+void clean_register_all_levels(X86Context* context, X86Location* loc)
+{
+  clean_register(context, reg_get_top(loc));
 
   if(loc->sub[0])
   {
-    delete_register_all_levels(context, loc->sub[0]);
+    clean_register(context, loc->sub[0]);
   }
 
   if(loc->sub[1])
   {
-    delete_register_all_levels(context, loc->sub[1]);
+    clean_register(context, loc->sub[1]);
   }
 }
 
 void set_exclusive_object_location(X86Context* context, Symbol* object, X86Location* loc)
 {
-  delete_register_all_levels(context, reg_get_top(loc));
-
   for(int i = 0; i < context->register_count; i++)
   {
     delete_object_from_location(context, object, context->registers._[i]);
@@ -1131,7 +1138,7 @@ void save_register(X86Context* context, X86Location* reg, bool free_reg)
 
 void save_register_all_levels(X86Context* context, X86Location* loc, bool free_reg)
 {
-  save_register(context, loc, free_reg);
+  save_register(context, reg_get_top(loc), free_reg);
 
   if(loc->sub[0])
   {
@@ -1213,12 +1220,12 @@ void x86_gen_divmod_op(X86Context* context, struct IrStmt_assign* assign)
     save_register_all_levels(context, remainder_loc, true);
 
     X86Location* dividend_loc = &context->eax;
-    save_register_all_levels(context, dividend_loc, false);
+    save_register_all_levels(context, dividend_loc, true);
     if(!is_object_in_location(arg1->object, dividend_loc))
     {
+      save_object_to_memory(context, arg1->object);
       x86_load_object(context, arg1->object, dividend_loc);
     }
-    set_exclusive_object_location(context, arg1->object, dividend_loc);
 
     X86Stmt* x86_stmt = x86_new_stmt(context, eX86Stmt_cdq);
 
@@ -1234,13 +1241,13 @@ void x86_gen_divmod_op(X86Context* context, struct IrStmt_assign* assign)
 
     if(assign->op == eIrOp_div)
     {
+      clean_register_all_levels(context, dividend_loc);
       set_exclusive_object_location(context, result->object, dividend_loc);
-      delete_register_all_levels(context, remainder_loc);
     }
     else if(assign->op == eIrOp_mod)
     {
+      clean_register_all_levels(context, remainder_loc);
       set_exclusive_object_location(context, result->object, remainder_loc);
-      delete_register_all_levels(context, dividend_loc);
     }
     else assert(0);
   }
@@ -1284,6 +1291,7 @@ void x86_gen_index_source(X86Context* context, struct IrStmt_assign* assign)
                                        x86_make_register_operand(context, arg1_loc),
                                        x86_make_register_operand(context, arg2_loc)));
 
+  clean_register_all_levels(context, result_loc);
   set_exclusive_object_location(context, result->object, result_loc);
 }
 
@@ -1347,6 +1355,7 @@ void x86_gen_deref_source(X86Context* context, struct IrStmt_assign* assign)
                x86_make_register_operand(context, result_loc),
                x86_make_memory_operand(result->object->ty, x86_make_register_operand(context, arg1_loc), 0));
 
+  clean_register_all_levels(context, result_loc);
   set_exclusive_object_location(context, result->object, result_loc);
 }
 
@@ -1405,6 +1414,7 @@ void x86_gen_equal(X86Context* context, struct IrStmt_assign* assign)
       x86_load_object(context, arg1->object, result_loc);
     }
 
+    clean_register_all_levels(context, result_loc);
     set_exclusive_object_location(context, result->object, result_loc);
   }
   else assert(0);
@@ -1418,6 +1428,8 @@ void x86_gen_address_of(X86Context* context, struct IrStmt_assign* assign)
 
   X86Location* result_loc = get_best_available_register(context, result->object->ty);
   x86_load_object_address(context, arg1->object, result_loc);
+
+  clean_register_all_levels(context, result_loc);
   set_exclusive_object_location(context, result->object, result_loc);
 }
 
@@ -1457,6 +1469,7 @@ void x86_gen_bin_expr(X86Context* context, struct IrStmt_assign* assign)
     x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
     x86_stmt->operand2 = x86_make_object_operand(context, arg2->object);
 
+    clean_register_all_levels(context, result_loc);
     set_exclusive_object_location(context, result->object, result_loc);
   }
 }
@@ -1494,6 +1507,7 @@ void x86_gen_unr_expr(X86Context* context, struct IrStmt_assign* assign)
     x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
   }
 
+  clean_register_all_levels(context, result_loc);
   set_exclusive_object_location(context, result->object, result_loc);
 }
 
@@ -1628,6 +1642,7 @@ void x86_gen_call(X86Context* context, struct IrStmt_call* call)
 
     if(!types_are_equal(call->retvar->ty, basic_type_void))
     {
+      clean_register_all_levels(context, &context->eax);
       set_exclusive_object_location(context, call->retvar, &context->eax);
     }
   }

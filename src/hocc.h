@@ -1151,7 +1151,7 @@ typedef struct X86Context
   // for natvis
   struct X86Context_registers
   {
-    X86Location* _[30];
+    X86Location* _[22];
   }
   registers;
   int register_count;

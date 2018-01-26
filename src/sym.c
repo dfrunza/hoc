@@ -71,16 +71,15 @@ void alloc_scope_data_objects(SymbolContext* sym_context, Scope* scope)
   }
 }
 
-Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_loc)
+Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_loc, bool add_to_scope)
 {
   Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
-  Scope* module_scope = sym_context->module_scope;
 
   sym->kind = eSymbol_constant;
   sym->name = new_tempvar_name("const_");
   sym->src_loc = src_loc;
   sym->ty = ty;
-  sym->scope = module_scope;
+  sym->scope = 0;
   sym->order_nr = 0;
   sym->storage_space = eStorageSpace_static;
   sym->next_use = NextUse_None;
@@ -88,14 +87,18 @@ Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_lo
   sym->is_live = false;
   init_object_locations(sym);
 
-  append_list_elem(&module_scope->decl_syms, sym, eList_symbol);
+  if(add_to_scope)
+  {
+    Scope* module_scope = sym->scope = sym_context->module_scope;
+    append_list_elem(&module_scope->decl_syms, sym, eList_symbol);
+  }
 
   return sym;
 }
 
 Symbol* new_const_object_int(SymbolContext* sym_context, SourceLoc* src_loc, int int_val)
 {
-  Symbol* const_object = new_const_object(sym_context, basic_type_int, src_loc);
+  Symbol* const_object = new_const_object(sym_context, basic_type_int, src_loc, false);
   const_object->int_val = int_val;
   const_object->data = &const_object->int_val;
 
@@ -104,7 +107,7 @@ Symbol* new_const_object_int(SymbolContext* sym_context, SourceLoc* src_loc, int
 
 Symbol* new_const_object_char(SymbolContext* sym_context, SourceLoc* src_loc, char char_val)
 {
-  Symbol* const_object = new_const_object(sym_context, basic_type_char, src_loc);
+  Symbol* const_object = new_const_object(sym_context, basic_type_char, src_loc, false);
   const_object->char_val = char_val;
   const_object->data = &const_object->char_val;
 
@@ -113,7 +116,7 @@ Symbol* new_const_object_char(SymbolContext* sym_context, SourceLoc* src_loc, ch
 
 Symbol* new_const_object_str(SymbolContext* sym_context, SourceLoc* src_loc, char* str_val)
 {
-  Symbol* const_object = new_const_object(sym_context, basic_type_str, src_loc);
+  Symbol* const_object = new_const_object(sym_context, basic_type_str, src_loc, true);
   const_object->str_val = str_val;
   const_object->data = const_object->str_val;
 
@@ -122,7 +125,7 @@ Symbol* new_const_object_str(SymbolContext* sym_context, SourceLoc* src_loc, cha
 
 Symbol* new_const_object_float(SymbolContext* sym_context, SourceLoc* src_loc, float float_val)
 {
-  Symbol* const_object = new_const_object(sym_context, basic_type_float, src_loc);
+  Symbol* const_object = new_const_object(sym_context, basic_type_float, src_loc, true);
   const_object->float_val = float_val;
   const_object->data = &const_object->float_val;
 

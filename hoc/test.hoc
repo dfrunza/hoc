@@ -5,15 +5,18 @@ extern void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_coun
 
 int stdout;
 int stdin;
+[10]char buf;
+int buf_i;
+int i;
 
 void startup()
 {
   stdout = GetStdHandle(-11);
   stdin = GetStdHandle(-10);
 
-  [10]char buf;
+  print_str(&"Hello\n");
   []char s;
-  s = int_to_str(&buf, 10, 123);
+  s = int_to_str(&buf, 10, 97);
   print_str(s);
   /*
   */
@@ -26,7 +29,6 @@ float absf(float a)
   return a;
 }
 
-/*
 int strlen([]char str)
 {
   int len; len = 0;
@@ -109,6 +111,7 @@ void digit_to_char([]char buf, int pos, int digit)
 
   return buf + (char^):buf_i;
 }
+/*
 */
 
 /*

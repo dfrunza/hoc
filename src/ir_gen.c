@@ -420,18 +420,33 @@ bool ir_gen_actual_args(IrContext* ir_context, Scope* scope, AstNode* args)
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
 
+  IrArg** temp_places = mem_push_array(ir_context->gp_arena, IrArg*, args->node_list.count);
+
+  int i = 0;
   for(ListItem* li = args->node_list.first;
       li && success;
-      li = li->next)
+      li = li->next, i++)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    AstNode* expr = arg->actual_arg.expr;
+    AstNode* expr = arg->call_arg.expr;
+
     if(success = ir_gen_expr(ir_context, scope, expr))
     {
-      IrArg* place = ir_new_arg_existing_object(ir_context, arg->actual_arg.param);
+      temp_places[i] = ir_new_arg_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
 
-      ir_emit_assign(ir_context, eIrOp_None, expr->place, 0, place);
+      ir_emit_assign(ir_context, eIrOp_None, expr->place, 0, temp_places[i]);
     }
+  }
+
+  i = 0;
+  for(ListItem* li = args->node_list.first;
+      li;
+      li = li->next, i++)
+  {
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+
+    arg->place = ir_new_arg_existing_object(ir_context, arg->call_arg.param);
+    ir_emit_assign(ir_context, eIrOp_None, temp_places[i], 0, arg->place);
   }
 
   return success;
@@ -456,7 +471,7 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
         li = li->prev)
     {
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      alloc_data_object(ir_context, arg->actual_arg.param, call->call.param_scope);
+      alloc_data_object(ir_context, arg->call_arg.param, call->call.param_scope);
     }
 
     ir_emit_call(ir_context, proc->proc.decorated_name, call->call.param_scope, call->call.retvar, true);
@@ -469,7 +484,7 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
         li = li->next)
     {
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      alloc_data_object(ir_context, arg->actual_arg.param, call->call.param_scope);
+      alloc_data_object(ir_context, arg->call_arg.param, call->call.param_scope);
     }
     alloc_data_object(ir_context, call->call.retvar, call->call.param_scope);
 
@@ -1799,10 +1814,12 @@ void partition_to_basic_blocks(IrContext* ir_context, AstNode* proc)
         IrLabel* target_label = normalize_jump_target_labels(stmt);
         start_new_basic_block(leaders, target_label->stmt_nr, stmt_array, stmt_count);
       }
+      /*
       else if(stmt->kind == eIrStmt_call || stmt->kind == eIrStmt_return)
       {
         start_new_basic_block(leaders, i+1, stmt_array, stmt_count);
       }
+      */
     }
 
     //------

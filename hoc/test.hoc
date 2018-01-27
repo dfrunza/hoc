@@ -11,9 +11,9 @@ int a;
 int b;
 void startup()
 {
-  /*
   stdout = GetStdHandle(-11);
   stdin = GetStdHandle(-10);
+  /*
   */
 
   /*
@@ -25,7 +25,7 @@ void startup()
 
   a = 15;
   b = 20;
-  n = foo(abs(a), abs(b));
+  print_int(gcd(foo(a, foo(a, b)), b));
 }
 
 int foo(int a, int b)
@@ -45,6 +45,7 @@ int gcd_iter(int a, int b)
   }
   return a;
 }
+*/
 
 int gcd_recurs(int a, int b)
 {
@@ -63,14 +64,8 @@ int gcd_recurs(int a, int b)
 
 int gcd(int a, int b)
 {
-  int abs_a;
-  int abs_b;
-  abs_a = abs(a);
-  abs_b = abs(b);
-  return gcd_recurs(abs_a, abs_b);
   return gcd_recurs(abs(a), abs(b));
 }
-*/
 
 int abs(int a)
 {
@@ -79,7 +74,6 @@ int abs(int a)
   return a;
 }
 
-/*
 float absf(float a)
 {
   if(a < 0.0)
@@ -168,6 +162,7 @@ void digit_to_char([]char buf, int pos, int digit)
 
   return buf + (char^):buf_i;
 }
+/*
 */
 
 /*

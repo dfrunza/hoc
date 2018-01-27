@@ -183,11 +183,11 @@ bool parse_actual_args(TokenStream* input, AstNode* args)
   {
     if(expr)
     {
-      AstNode* actual_arg = new_ast_node(input->arena, eAstNode_actual_arg,
+      AstNode* call_arg = new_ast_node(input->arena, eAstNode_call_arg,
                                          clone_source_loc(input->arena, &input->src_loc));
-      actual_arg->actual_arg.expr = expr;
+      call_arg->call_arg.expr = expr;
 
-      append_list_elem(&args->node_list, actual_arg, eList_ast_node);
+      append_list_elem(&args->node_list, call_arg, eList_ast_node);
       success = parse_rest_of_actual_args(input, args);
     }
   }

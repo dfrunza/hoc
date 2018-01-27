@@ -743,16 +743,16 @@ bool set_types_unr_expr(MemoryArena* arena, AstNode* unr_expr)
   return success;
 }
 
-bool set_types_actual_arg(MemoryArena* arena, AstNode* actual_arg)
+bool set_types_actual_arg(MemoryArena* arena, AstNode* call_arg)
 {
-  assert(KIND(actual_arg, eAstNode_actual_arg));
+  assert(KIND(call_arg, eAstNode_call_arg));
   bool success = true;
 
-  AstNode* expr = actual_arg->actual_arg.expr;
+  AstNode* expr = call_arg->call_arg.expr;
   if(success = set_types_expr(arena, expr))
   {
-    actual_arg->eval_ty = expr->eval_ty;
-    actual_arg->ty = expr->ty;
+    call_arg->eval_ty = expr->eval_ty;
+    call_arg->ty = expr->ty;
   }
 
   return success;
@@ -954,7 +954,7 @@ bool set_types_expr(MemoryArena* arena, AstNode* expr)
     }
     break;
 
-    case eAstNode_actual_arg:
+    case eAstNode_call_arg:
     {
       success = set_types_actual_arg(arena, expr);
     }
@@ -1580,7 +1580,7 @@ bool eval_types_actual_args(MemoryArena* arena, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = eval_types_expr(arena, arg->actual_arg.expr);
+    success = eval_types_expr(arena, arg->call_arg.expr);
   }
 
   return success;
@@ -2024,9 +2024,9 @@ bool resolve_types_actual_args(MemoryArena* arena, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    if(success = resolve_types_expr(arena, arg->actual_arg.expr))
+    if(success = resolve_types_expr(arena, arg->call_arg.expr))
     {
-      arg->eval_ty = arg->actual_arg.expr->eval_ty;
+      arg->eval_ty = arg->call_arg.expr->eval_ty;
     }
   }
 
@@ -2053,7 +2053,7 @@ bool resolve_types_call(MemoryArena* arena, AstNode* call)
         li = li->next)
     {
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-      arg->actual_arg.param->ty = arg->eval_ty;
+      arg->call_arg.param->ty = arg->eval_ty;
     }
 
     AstNode* proc = call->call.proc = KIND(call->call.expr, eAstNode_id)->id.decl_ast;
@@ -2750,7 +2750,7 @@ bool check_types_actual_args(MemoryArena* arena, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = check_types_expr(arena, arg->actual_arg.expr);
+    success = check_types_expr(arena, arg->call_arg.expr);
   }
 
   return success;

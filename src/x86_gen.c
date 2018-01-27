@@ -1119,13 +1119,13 @@ void add_object_to_memory(X86Context* context, Symbol* object)
   add_object_to_location(context, object, &context->memory);
 }
 
-void save_object_to_memory(X86Context* context, Symbol* object)
+void x86_save_object_to_memory(X86Context* context, Symbol* object)
 {
   x86_store_object(context, object);
   add_object_to_memory(context, object);
 }
 
-void save_register(X86Context* context, X86Location* reg, bool free_reg)
+void x86_save_register(X86Context* context, X86Location* reg, bool free_reg)
 {
   List* occupants = &reg->occupants;
 
@@ -1136,7 +1136,7 @@ void save_register(X86Context* context, X86Location* reg, bool free_reg)
     Symbol* object = KIND(li, eList_symbol)->symbol;
     if(object->is_live)
     {
-      save_object_to_memory(context, object);
+      x86_save_object_to_memory(context, object);
     }
 
     if(free_reg)
@@ -1148,22 +1148,22 @@ void save_register(X86Context* context, X86Location* reg, bool free_reg)
   }
 }
 
-void save_register_all_levels(X86Context* context, X86Location* loc, bool free_reg)
+void x86_save_register_all_levels(X86Context* context, X86Location* loc, bool free_reg)
 {
-  save_register(context, reg_get_top(loc), free_reg);
+  x86_save_register(context, reg_get_top(loc), free_reg);
 
   if(loc->sub[0])
   {
-    save_register(context, loc->sub[0], free_reg);
+    x86_save_register(context, loc->sub[0], free_reg);
   }
 
   if(loc->sub[1])
   {
-    save_register(context, loc->sub[1], free_reg);
+    x86_save_register(context, loc->sub[1], free_reg);
   }
 }
 
-X86Location* get_best_available_register(X86Context* context, Type* type)
+X86Location* x86_get_best_available_register(X86Context* context, Type* type)
 {
   X86Location* best_reg = 0;
 
@@ -1176,12 +1176,12 @@ X86Location* get_best_available_register(X86Context* context, Type* type)
   {
     if(best_reg)
     {
-      save_register(context, best_reg, true);
+      x86_save_register(context, best_reg, true);
     }
     else
     {
       best_reg = find_least_used_register(context, type);
-      save_register(context, best_reg, true);
+      x86_save_register(context, best_reg, true);
     }
   }
 
@@ -1209,12 +1209,12 @@ void discard_all_unused_args(X86Context* context, struct IrStmt_assign* assign)
   }
 }
 
-void save_all_registers(X86Context* context, bool free_reg)
+void x86_save_all_registers(X86Context* context, bool free_reg)
 {
   for(int i = 0; i < context->register_count; i++)
   {
     X86Location* reg = context->registers._[i];
-    save_register(context, reg, free_reg);
+    x86_save_register(context, reg, free_reg);
   }
 }
 
@@ -1229,14 +1229,14 @@ void x86_gen_divmod_op(X86Context* context, struct IrStmt_assign* assign)
   if(types_are_equal(arg1->object->ty, basic_type_int))
   {
     X86Location* remainder_loc = &context->edx;
-    save_register_all_levels(context, remainder_loc, true);
+    x86_save_register_all_levels(context, remainder_loc, true);
 
     X86Location* dividend_loc = &context->eax;
-    save_register_all_levels(context, dividend_loc, true);
+    x86_save_register_all_levels(context, dividend_loc, true);
 
     if(!is_object_in_location(arg1->object, dividend_loc))
     {
-      save_object_to_memory(context, arg1->object);
+      x86_save_object_to_memory(context, arg1->object);
       x86_load_object(context, arg1->object, dividend_loc);
     }
 
@@ -1245,7 +1245,7 @@ void x86_gen_divmod_op(X86Context* context, struct IrStmt_assign* assign)
     X86Location* arg2_loc = lookup_object_location(context, arg2->object);
     if(!is_register_location(context, arg2_loc))
     {
-      arg2_loc = get_best_available_register(context, arg2->object->ty);
+      arg2_loc = x86_get_best_available_register(context, arg2->object->ty);
       x86_load_object(context, arg2->object, arg2_loc);
     }
 
@@ -1281,20 +1281,20 @@ void x86_gen_index_source(X86Context* context, struct IrStmt_assign* assign)
   X86Location* result_loc = lookup_object_location(context, result->object);
   if(!is_register_location(context, result_loc))
   {
-    result_loc = get_best_available_register(context, result->object->ty);
+    result_loc = x86_get_best_available_register(context, result->object->ty);
   }
 
   X86Location* arg1_loc = lookup_object_location(context, arg1->object);
   if(!is_register_location(context, arg1_loc))
   {
-    arg1_loc = get_best_available_register(context, arg1->object->ty);
+    arg1_loc = x86_get_best_available_register(context, arg1->object->ty);
     x86_load_object(context, arg1->object, arg1_loc);
   }
 
   X86Location* arg2_loc = lookup_object_location(context, arg2->object);
   if(!is_register_location(context, arg2_loc))
   {
-    arg2_loc = get_best_available_register(context, arg2->object->ty);
+    arg2_loc = x86_get_best_available_register(context, arg2->object->ty);
     x86_load_object(context, arg2->object, arg2_loc);
   }
 
@@ -1318,14 +1318,14 @@ void x86_gen_index_dest(X86Context* context, struct IrStmt_assign* assign)
   X86Location* result_loc = lookup_object_location(context, result->object);
   if(!is_register_location(context, result_loc))
   {
-    result_loc = get_best_available_register(context, result->object->ty);
+    result_loc = x86_get_best_available_register(context, result->object->ty);
     x86_load_object(context, result->object, result_loc);
   }
 
   X86Location* arg1_loc = lookup_object_location(context, arg1->object);
   if(!is_register_location(context, arg1_loc))
   {
-    arg1_loc = get_best_available_register(context, arg1->object->ty);
+    arg1_loc = x86_get_best_available_register(context, arg1->object->ty);
     assert(arg1_loc != result_loc);
     x86_load_object(context, arg1->object, arg1_loc);
   }
@@ -1333,7 +1333,7 @@ void x86_gen_index_dest(X86Context* context, struct IrStmt_assign* assign)
   X86Location* arg2_loc = lookup_object_location(context, arg2->object);
   if(!is_register_location(context, arg2_loc))
   {
-    arg2_loc = get_best_available_register(context, arg2->object->ty);
+    arg2_loc = x86_get_best_available_register(context, arg2->object->ty);
     assert(arg2_loc != result_loc && arg2_loc != arg1_loc);
     x86_load_object(context, arg2->object, arg2_loc);
   }
@@ -1354,13 +1354,13 @@ void x86_gen_deref_source(X86Context* context, struct IrStmt_assign* assign)
   X86Location* result_loc = lookup_object_location(context, result->object);
   if(!is_register_location(context, result_loc))
   {
-    result_loc = get_best_available_register(context, result->object->ty);
+    result_loc = x86_get_best_available_register(context, result->object->ty);
   }
 
   X86Location* arg1_loc = lookup_object_location(context, arg1->object);
   if(!is_register_location(context, arg1_loc))
   {
-    arg1_loc = get_best_available_register(context, arg1->object->ty);
+    arg1_loc = x86_get_best_available_register(context, arg1->object->ty);
     x86_load_object(context, arg1->object, arg1_loc);
   }
 
@@ -1382,14 +1382,14 @@ void x86_gen_deref_dest(X86Context* context, struct IrStmt_assign *assign)
   X86Location* result_loc = lookup_object_location(context, result->object);
   if(!is_register_location(context, result_loc))
   {
-    result_loc = get_best_available_register(context, result->object->ty);
+    result_loc = x86_get_best_available_register(context, result->object->ty);
     x86_load_object(context, result->object, result_loc);
   }
 
   X86Location* arg1_loc = lookup_object_location(context, arg1->object);
   if(!is_register_location(context, arg1_loc))
   {
-    arg1_loc = get_best_available_register(context, arg1->object->ty);
+    arg1_loc = x86_get_best_available_register(context, arg1->object->ty);
     x86_load_object(context, arg1->object, arg1_loc);
   }
 
@@ -1423,7 +1423,7 @@ void x86_gen_equal(X86Context* context, struct IrStmt_assign* assign)
     }
     else
     {
-      result_loc = get_best_available_register(context, result->object->ty);
+      result_loc = x86_get_best_available_register(context, result->object->ty);
       x86_load_object(context, arg1->object, result_loc);
     }
 
@@ -1439,7 +1439,7 @@ void x86_gen_address_of(X86Context* context, struct IrStmt_assign* assign)
   IrArg* result = assign->result;
   IrArg* arg1 = assign->arg1;
 
-  X86Location* result_loc = get_best_available_register(context, result->object->ty);
+  X86Location* result_loc = x86_get_best_available_register(context, result->object->ty);
   x86_load_object_address(context, arg1->object, result_loc);
 
   clean_register_all_levels(context, result_loc);
@@ -1474,7 +1474,7 @@ void x86_gen_bin_expr(X86Context* context, struct IrStmt_assign* assign)
     }
     else
     {
-      result_loc = get_best_available_register(context, arg1->object->ty);
+      result_loc = x86_get_best_available_register(context, arg1->object->ty);
       x86_load_object(context, arg1->object, result_loc);
     }
 
@@ -1504,7 +1504,7 @@ void x86_gen_unr_expr(X86Context* context, struct IrStmt_assign* assign)
   }
   else
   {
-    result_loc = get_best_available_register(context, arg1->object->ty);
+    result_loc = x86_get_best_available_register(context, arg1->object->ty);
     x86_load_object(context, arg1->object, result_loc);
   }
 
@@ -1592,7 +1592,7 @@ void x86_gen_assign(X86Context* context, struct IrStmt_assign* assign)
 // goto L
 void x86_gen_goto(X86Context* context, IrLabel* goto_label)
 {
-  save_all_registers(context, false);
+  x86_save_all_registers(context, false);
 
   X86Stmt* jump_stmt = x86_new_stmt(context, eX86Stmt_jmp);
   jump_stmt->operand1 = x86_make_id_operand(context, goto_label->name);
@@ -1604,11 +1604,11 @@ void x86_gen_cond_goto(X86Context* context, struct IrStmt_cond_goto* cond_goto)
   IrArg* arg1 = cond_goto->arg1;
   IrArg* arg2 = cond_goto->arg2;
 
-  save_all_registers(context, false);
+  x86_save_all_registers(context, false);
 
   if(!is_object_in_register(context, arg1->object))
   {
-    X86Location* arg1_loc = get_best_available_register(context, arg1->object->ty);
+    X86Location* arg1_loc = x86_get_best_available_register(context, arg1->object->ty);
     x86_load_object(context, arg1->object, arg1_loc);
   }
 
@@ -1634,7 +1634,7 @@ void x86_gen_cond_goto(X86Context* context, struct IrStmt_cond_goto* cond_goto)
 
 void x86_gen_call(X86Context* context, struct IrStmt_call* call)
 {
-  save_all_registers(context, true);
+  x86_save_all_registers(context, true);
 
   /* sub esp, #param_size */
   X86Stmt* stmt = x86_new_stmt(context, eX86Stmt_sub);
@@ -1758,7 +1758,7 @@ void x86_gen_proc(X86Context* context, AstNode* proc)
     stmt->operand2 = x86_make_int_constant_operand(context, proc_scope->allocd_size);
 
     x86_gen_basic_block(context, first_bb);
-    save_all_registers(context, true);
+    x86_save_all_registers(context, true);
 
     for(li = li->next;
         li;
@@ -1767,7 +1767,7 @@ void x86_gen_proc(X86Context* context, AstNode* proc)
       BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
 
       x86_gen_basic_block(context, bb);
-      save_all_registers(context, true);
+      x86_save_all_registers(context, true);
     }
 
     /* mov esp, ebp */

@@ -487,11 +487,11 @@ bool is_ir_op_bitwise_op(eIrOp op)
   return op >= eIrOp_bit_and && op <= eIrOp_bit_shift_right;
 }
 
+//todo: remove this
 typedef enum eIrLabelTarget
 {
   eIrLabelTarget_None,
   eIrLabelTarget_stmt_nr,
-//  eIrLabelTarget_basic_block,
 }
 eIrLabelTarget;
 
@@ -499,14 +499,10 @@ typedef struct IrLabel
 {
   eIrLabelTarget kind;
   struct IrLabel* primary;
-  union
-  {
-    int stmt_nr;
-//    BasicBlock* basic_block;
-  };
+  int stmt_nr;
   char* name;
 }
-IrLabel;
+IrLabel; //todo: remove the Ir prefix from the name
 
 typedef int NextUse;
 
@@ -620,6 +616,7 @@ typedef struct IrStmt
       char* name;
       Scope* param_scope;
       Symbol* retvar;
+      int arg_count;
       bool is_extern;
     }
     call;
@@ -782,7 +779,7 @@ typedef enum eAstNode
   eAstNode_pointer,
   eAstNode_assign,
   eAstNode_cast,
-  eAstNode_actual_arg,
+  eAstNode_call_arg,
 }
 eAstNode;
 
@@ -792,7 +789,7 @@ typedef struct AstNode
   SourceLoc* src_loc;
   Type* ty;
   Type* eval_ty;
-  eModifier modifier;
+  eModifier modifier; // todo: get rid of this; use a boolean ffs.
   IrArg* place;
 
   IrLabel* label_true;
@@ -809,7 +806,7 @@ typedef struct AstNode
       AstNode* expr;
       Symbol* param;
     }
-    actual_arg;
+    call_arg;
 
     struct
     {

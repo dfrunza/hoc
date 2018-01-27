@@ -379,7 +379,7 @@ bool sym_actual_args(SymbolContext* context, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = sym_expr(context, arg->actual_arg.expr);
+    success = sym_expr(context, arg->call_arg.expr);
   }
 
   return success;
@@ -406,7 +406,7 @@ bool sym_call(SymbolContext* context, AstNode* call)
           li = li->next)
       {
         AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-        arg->actual_arg.param = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "param_"),
+        arg->call_arg.param = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "param_"),
                                              eStorageSpace_param, call->call.param_scope, arg);
       }
 

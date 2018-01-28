@@ -97,7 +97,7 @@ Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_lo
   sym->order_nr = 0;
   sym->storage_space = eStorageSpace_static;
   sym->next_use = NextUse_None;
-  sym->is_temp = false;
+  sym->is_live_on_exit = true;
   sym->is_live = false;
   init_object_locations(sym);
 
@@ -160,7 +160,7 @@ Symbol* new_temp_object(IrContext* ir_context, Scope* scope, Type* ty, SourceLoc
   sym->order_nr = scope->sym_count++;
   sym->storage_space = eStorageSpace_local;
   sym->next_use = NextUse_None;
-  sym->is_temp = true;
+  sym->is_live_on_exit = false;
   sym->is_live = false;
   init_object_locations(sym);
 
@@ -182,7 +182,7 @@ Symbol* add_decl_sym(MemoryArena* arena, char* name, eStorageSpace storage_space
   sym->order_nr = scope->sym_count++;
   sym->storage_space = storage_space;
   sym->next_use = NextUse_None;
-  sym->is_temp = false;
+  sym->is_live_on_exit = true;
   sym->is_live = true;
   init_object_locations(sym);
 

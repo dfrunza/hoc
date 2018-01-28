@@ -461,21 +461,6 @@ void add_object_to_location(X86Context* context, Symbol* object, X86Location* lo
   }
 }
 
-void add_scope_objects_to_memory(X86Context* context, Scope* scope)
-{
-  List* objects = &scope->decl_syms;
-  for(ListItem* li = objects->first;
-      li;
-      li = li->next)
-  {
-    Symbol* object = KIND(li, eList_symbol)->symbol;
-    if(!object->is_temp)
-    {
-      add_object_to_location(context, object, &context->memory);
-    }
-  }
-}
-
 bool reg_is_parent_free(X86Location* reg)
 {
   bool is_free = true;
@@ -1453,13 +1438,19 @@ void x86_gen_bin_expr(X86Context* context, struct IrStmt_assign* assign)
   IrArg* arg1 = assign->arg1;
   IrArg* arg2 = assign->arg2;
 
-  if(assign->op == eIrOp_mod)
+  if((types_are_equal(result->object->ty, basic_type_int)
+      || types_are_equal(result->object->ty, basic_type_char))
+     && (assign->op == eIrOp_div || assign->op == eIrOp_mod))
   {
-    x86_gen_divmod_op(context, assign);
-  }
-  else if(assign->op == eIrOp_div)
-  {
-    x86_gen_divmod_op(context, assign);
+    if(assign->op == eIrOp_mod)
+    {
+      x86_gen_divmod_op(context, assign);
+    }
+    else if(assign->op == eIrOp_div)
+    {
+      x86_gen_divmod_op(context, assign);
+    }
+    else assert(0);
   }
   else
   {
@@ -1476,6 +1467,11 @@ void x86_gen_bin_expr(X86Context* context, struct IrStmt_assign* assign)
     {
       result_loc = x86_get_best_available_register(context, arg1->object->ty);
       x86_load_object(context, arg1->object, result_loc);
+    }
+
+    if(ir_is_operator_relation(assign->op))
+    {
+
     }
 
     X86Stmt* x86_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(assign->op, result->object->ty));

@@ -134,6 +134,47 @@ eOperator negate_relop(eOperator op)
   return result;
 }
 
+bool is_operator_relation(eOperator op)
+{
+  bool is_relop = false;
+
+  switch(op)
+  {
+    case eOperator_eq:
+    case eOperator_not_eq:
+    case eOperator_less:
+    case eOperator_less_eq:
+    case eOperator_greater:
+    case eOperator_greater_eq:
+      is_relop = true;
+    break;
+  }
+
+  return is_relop;
+}
+
+bool ir_is_operator_relation(eIrOp op)
+{
+  bool is_relop = false;
+
+  switch(op)
+  {
+    case eIrOp_eq:
+    case eIrOp_not_eq:
+    case eIrOp_less:
+    case eIrOp_less_eq:
+    case eIrOp_greater:
+    case eIrOp_greater_eq:
+    case eIrOp_logic_and:
+    case eIrOp_logic_or:
+    case eIrOp_logic_not:
+      is_relop = true;
+    break;
+  }
+
+  return is_relop;
+}
+
 IrLabel* get_label_at(List* label_list, int stmt_nr)
 {
   IrLabel* label = 0;
@@ -697,13 +738,16 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     case eAstNode_bin_expr:
     {
       eOperator op = expr->bin_expr.op;
-      if(op == eOperator_logic_and || op == eOperator_logic_or)
+      if(is_operator_relation(op))
       {
         expr->label_true = label_gen_new(ir_context->gp_arena);
         expr->label_false = label_gen_new(ir_context->gp_arena);
         expr->label_next = label_gen_new(ir_context->gp_arena);
 
-        expr->place = ir_new_arg_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
+        Symbol* result_object = new_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
+        result_object->is_live_on_exit = true;
+        result_object->is_live = true;
+        expr->place = ir_new_arg_existing_object(ir_context, result_object);
 
         ir_gen_bool_expr(ir_context, scope, expr);
         
@@ -717,20 +761,25 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         ir_emit_label(ir_context, expr->label_next);
       }
       else
+      {
         ir_gen_bin_expr(ir_context, scope, expr);
+      }
     }
     break;
     
     case eAstNode_unr_expr:
     {
       eOperator op = expr->unr_expr.op;
-      if(op == eOperator_logic_not)
+      if(is_operator_relation(op))
       {
         expr->label_true = label_gen_new(ir_context->gp_arena);
         expr->label_false = label_gen_new(ir_context->gp_arena);
         expr->label_next = label_gen_new(ir_context->gp_arena);
 
-        expr->place = ir_new_arg_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
+        Symbol* result_object = new_temp_object(ir_context, scope,  expr->eval_ty, expr->src_loc);
+        result_object->is_live_on_exit = true;
+        result_object->is_live = true;
+        expr->place = ir_new_arg_existing_object(ir_context, result_object);
 
         ir_gen_bool_unr_expr(ir_context, scope, expr);
 
@@ -744,7 +793,9 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         ir_emit_label(ir_context, expr->label_next);
       }
       else
+      {
         ir_gen_unr_expr(ir_context, scope, expr);
+      }
     }
     break;
     
@@ -1932,7 +1983,7 @@ void partition_to_basic_blocks(IrContext* ir_context, AstNode* proc)
           }
           else
           {
-            result->object->is_live = result->object->is_temp ? false : true;
+            result->object->is_live = result->object->is_live_on_exit ? true : false;
             result->object->next_use = NextUse_None;
           }
 

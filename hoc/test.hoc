@@ -9,62 +9,73 @@ int stdin;
 int n;
 int a;
 int b;
+bool c;
 void startup()
 {
+  /*
   stdout = GetStdHandle(-11);
   stdin = GetStdHandle(-10);
-  /*
   */
 
-  /*
   a = 123;
   b = 123;
-  bool c;
-  c = (a == b);
-  */
-
-  a = 15;
-  b = 20;
-  print_int(gcd(foo(a, foo(a, b)), b));
-}
-
-int foo(int a, int b)
-{
-  return a + b;
+  c = (a <> b);
 }
 
 /*
-int gcd_iter(int a, int b)
+float sqrt(float x)
 {
-  while(a <> b)
+  float g; g = x;
+  float r; r = 1.0;
+
+  while((g > 0.0) and (g <> r))
   {
-    if(a > b)
-      a = a - b;
-    else
-      b = b - a;
+    g = r;
+    r = sqrt_iter(x, g);
   }
-  return a;
+  return g;
+}
+
+float sqrt_iter(float x, float g)
+{
+  float r; r = x/g;
+
+  if(r <> g)
+  {
+    r = (r+g) / 2.0;
+    if(absf(r-g) == 1.0)
+      r = minf(r, g);
+  }
+  return r;
 }
 */
 
-int gcd_recurs(int a, int b)
+/*
+float ipow(float a, int p)
 {
-  int result; result = a;
-  if(b <> 0)
+  bool inv; inv = (p < 0);
+  p = abs(p);
+
+  float result; result = 1.0;
+  if(p <> 0)
   {
-    result = b;
-    int r; r = a mod b;
-    if(r == 0)
-      result = b;
-    else
-      result = gcd_recurs(b, r);
+    while(p > 0)
+    {
+      result = result * a;
+      p = p - 1;
+    }
+    if(inv)
+      result = 1.0/result;
   }
   return result;
 }
 
-int gcd(int a, int b)
+float minf(float a, float b)
 {
-  return gcd_recurs(abs(a), abs(b));
+  float result; result = a;
+  if(a > b)
+    result = b;
+  return result;
 }
 
 int abs(int a)
@@ -162,7 +173,6 @@ void digit_to_char([]char buf, int pos, int digit)
 
   return buf + (char^):buf_i;
 }
-/*
 */
 
 /*

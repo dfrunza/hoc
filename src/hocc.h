@@ -1062,7 +1062,7 @@ typedef struct Symbol
   };
 
   bool is_live;
-  bool is_temp;
+  bool is_live_on_exit;
   NextUse next_use;
 
   // for natvis

@@ -153,26 +153,20 @@ bool is_operator_relation(eOperator op)
   return is_relop;
 }
 
-bool ir_is_operator_relation(eIrOp op)
+bool is_operator_logic(eOperator op)
 {
-  bool is_relop = false;
+  bool is_logic = false;
 
   switch(op)
   {
-    case eIrOp_eq:
-    case eIrOp_not_eq:
-    case eIrOp_less:
-    case eIrOp_less_eq:
-    case eIrOp_greater:
-    case eIrOp_greater_eq:
-    case eIrOp_logic_and:
-    case eIrOp_logic_or:
-    case eIrOp_logic_not:
-      is_relop = true;
+    case eOperator_logic_and:
+    case eOperator_logic_or:
+    case eOperator_logic_not:
+      is_logic = true;
     break;
   }
 
-  return is_relop;
+  return is_logic;
 }
 
 IrLabel* get_label_at(List* label_list, int stmt_nr)
@@ -738,7 +732,7 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     case eAstNode_bin_expr:
     {
       eOperator op = expr->bin_expr.op;
-      if(is_operator_relation(op))
+      if(is_operator_relation(op) || is_operator_logic(op))
       {
         expr->label_true = label_gen_new(ir_context->gp_arena);
         expr->label_false = label_gen_new(ir_context->gp_arena);
@@ -770,7 +764,7 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     case eAstNode_unr_expr:
     {
       eOperator op = expr->unr_expr.op;
-      if(is_operator_relation(op))
+      if(is_operator_relation(op) || is_operator_logic(op))
       {
         expr->label_true = label_gen_new(ir_context->gp_arena);
         expr->label_false = label_gen_new(ir_context->gp_arena);

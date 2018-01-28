@@ -1469,11 +1469,6 @@ void x86_gen_bin_expr(X86Context* context, struct IrStmt_assign* assign)
       x86_load_object(context, arg1->object, result_loc);
     }
 
-    if(ir_is_operator_relation(assign->op))
-    {
-
-    }
-
     X86Stmt* x86_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(assign->op, result->object->ty));
     x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
     x86_stmt->operand2 = x86_make_object_operand(context, arg2->object);

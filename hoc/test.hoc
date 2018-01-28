@@ -6,23 +6,24 @@ extern void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_coun
 int stdout;
 int stdin;
 
-int n;
-int a;
+float n;
+float m;
+float a;
 int b;
-bool c;
 void startup()
 {
-  /*
   stdout = GetStdHandle(-11);
   stdin = GetStdHandle(-10);
+  /*
   */
 
-  a = 123;
-  b = 123;
-  c = (a <> b);
+  a = 2.0;
+  b = 2;
+  n = ipow(a, b);
+  m = sqrt(n);
+  print_bool(m == a);
 }
 
-/*
 float sqrt(float x)
 {
   float g; g = x;
@@ -48,9 +49,9 @@ float sqrt_iter(float x, float g)
   }
   return r;
 }
+/*
 */
 
-/*
 float ipow(float a, int p)
 {
   bool inv; inv = (p < 0);
@@ -77,6 +78,8 @@ float minf(float a, float b)
     result = b;
   return result;
 }
+/*
+*/
 
 int abs(int a)
 {
@@ -92,12 +95,6 @@ float absf(float a)
   return a;
 }
 
-void print_int(int i)
-{
-  [20]char buf;
-  print_str(int_to_str(&buf, 20, i));
-}
-
 int strlen([]char str)
 {
   int len; len = 0;
@@ -106,6 +103,20 @@ int strlen([]char str)
     len = len + 1;
   }
   return len;
+}
+
+void print_int(int i)
+{
+  [20]char buf;
+  print_str(int_to_str(&buf, 20, i));
+}
+
+void print_bool(bool b)
+{
+  if(b)
+    print_str(&"true");
+  else
+    print_str(&"false");
 }
 
 void print_str([]char str)
@@ -173,6 +184,7 @@ void digit_to_char([]char buf, int pos, int digit)
 
   return buf + (char^):buf_i;
 }
+/*
 */
 
 /*

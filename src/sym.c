@@ -249,6 +249,8 @@ void process_includes(List* include_list, List* module_list, ListItem* module_li
 #endif
 
 bool sym_expr(SymbolContext* context, AstNode* expr);
+bool sym_block(SymbolContext* context, AstNode* block);
+bool sym_block_stmt(SymbolContext* context, AstNode* stmt);
 
 bool sym_formal_arg(SymbolContext* context, Scope* proc_scope, AstNode* arg)
 {
@@ -454,14 +456,20 @@ bool sym_array(SymbolContext* context, AstNode* array)
   AstNode* size_expr = array->array.size_expr;
   if(size_expr->kind == eAstNode_lit)
   {
-#if 0
-    Symbol* size_const = size_expr->lit.constant = new_const_object(context, size_expr->eval_ty, size_expr->src_loc);
-    size_const->int_val = size_expr->lit.int_val;
-#endif
     size_expr->lit.constant = new_const_object_int(context, size_expr->src_loc, size_expr->lit.int_val);
   }
   else assert(0);
 
+  return success;
+}
+
+bool sym_assign(SymbolContext* context, AstNode* assign)
+{
+  assert(KIND(assign, eAstNode_assign));
+
+  bool success = true;
+  success = sym_expr(context, assign->assign.dest_expr) && sym_expr(context, assign->assign.source_expr);
+  
   return success;
 }
 
@@ -523,13 +531,16 @@ bool sym_expr(SymbolContext* context, AstNode* expr)
     }
     break;
 
+    case eAstNode_assign:
+    {
+      success = sym_assign(context, expr);
+    }
+    break;
+
     default: assert(0);
   }
   return success;
 }
-
-bool sym_block(SymbolContext* context, AstNode* block);
-bool sym_block_stmt(SymbolContext* context, AstNode* stmt);
 
 bool sym_if(SymbolContext* context, AstNode* if_)
 {
@@ -618,16 +629,6 @@ bool sym_return(SymbolContext* context, AstNode* ret)
   else
     success = compile_error(context->gp_arena, ret->src_loc, "unexpected `return`");
 
-  return success;
-}
-
-bool sym_assign(SymbolContext* context, AstNode* assign)
-{
-  assert(KIND(assign, eAstNode_assign));
-
-  bool success = true;
-  success = sym_expr(context, assign->assign.dest_expr) && sym_expr(context, assign->assign.source_expr);
-  
   return success;
 }
 

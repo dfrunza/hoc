@@ -2,9 +2,9 @@ extern int GetStdHandle(int device_id);
 extern void ExitProcess(int code);
 extern char^ GetCommandLineA();
 extern void^ VirtualAlloc(void^ address, int alloc_size, int alloc_var, int protect_flags);
-extern void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
+extern void WriteConsoleA(int console_handle, []char buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
 extern int GetLastError();
-extern bool ReadFile(int file_handle, char^ buf, int bytes_to_read_count, int^ bytes_read_count, void^ p_overlapped);
+extern bool ReadFile(int file_handle, []char buf, int bytes_to_read_count, int^ bytes_read_count, void^ p_overlapped);
 
 int stdout;
 int stdin; 
@@ -18,14 +18,14 @@ void^ alloc(int size)
   return mem;
 }
 
-int stdin_read(char^ buf, int buf_size)
+int stdin_read([]char buf, int buf_size)
 {
   int bytes_read_count; bytes_read_count = 0;
   if(ReadFile(stdin, buf, buf_size, &bytes_read_count, (void^):0))
   {
     if((bytes_read_count >= 0) and (bytes_read_count < buf_size))
     {
-      ^(buf + (char^):bytes_read_count) = '\0';
+      buf[bytes_read_count] = '\0';
     }
   }
   return bytes_read_count;
@@ -33,9 +33,16 @@ int stdin_read(char^ buf, int buf_size)
 
 void startup()
 {
-  stdout = GetStdHandle(-11/*STD_OUTPUT_HANDLE*/);
-  stdin = GetStdHandle(-10/*STD_INPUT_HANDLE*/);
-  heap = VirtualAlloc((void^):0, 4096, 0x1000/*MEM_COMMIT*/|0x2000/*MEM_RESERVE*/, 0x4/*PAGE_READWRITE*/);
+  int STD_OUTPUT_HANDLE; STD_OUTPUT_HANDLE = -11;
+  int STD_INPUT_HANDLE; STD_INPUT_HANDLE = -10;
+
+  int MEM_COMMIT = 0x1000;
+  int MEM_COMMIT; MEM_COMMIT = 0x1000;
+  int MEM_RESERVE; MEM_RESERVE = 0x2000;
+
+  stdout = GetStdHandle(STD_OUTPUT_HANDLE);
+  stdin = GetStdHandle(-10);
+  heap = VirtualAlloc((void^):0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
   heap_ptr = 0;
 }
 

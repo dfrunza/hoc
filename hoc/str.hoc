@@ -1,4 +1,31 @@
-int strlen([]char str)
+void print_str([]char str)
+{
+  int len; len = str_len(str);
+  int chars_written_count; chars_written_count = 0;
+  WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
+}
+
+void print_int(int i)
+{
+  [20]char buf;
+  print_str(int_to_str(&buf, 20, i));
+}
+
+void print_float(float f)
+{
+  [20]char buf;
+  float_to_str(&buf, 20, f);
+  print_str(&buf);
+}
+
+void print_bool(bool b)
+{
+  if(b)
+    print_str(&"true");
+  else
+    print_str(&"false");
+}
+int str_len([]char str)
 {
   int len; len = 0;
   while(str[len] <> '\0')
@@ -8,11 +35,15 @@ int strlen([]char str)
   return len;
 }
 
-void print_str([]char str)
+void str_copy([]char dest_str, []char src_str)
 {
-  int len; len = strlen(str);
-  int chars_written_count; chars_written_count = 0;
-  WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
+  int i; i = 0;
+  do
+  {
+    dest_str[i] = src_str[i];
+    i = i + 1;
+  }
+  while(src_str[i] <> '\0');
 }
 
 void digit_to_char([]char buf, int pos, int digit)
@@ -41,7 +72,7 @@ void digit_to_char([]char buf, int pos, int digit)
     buf[pos] = '?';
 }
 
-char^ int_to_str(char^ buf, int buf_len, int i)
+[]char int_to_str([]char buf, int buf_len, int i)
 {
   int buf_i; buf_i = buf_len - 1;
   buf[buf_i] = '\0';
@@ -71,7 +102,7 @@ char^ int_to_str(char^ buf, int buf_len, int i)
     buf[buf_i] = '-';
   }
 
-  return buf[buf_i];
+  return buf + (char^):buf_i;
 }
 
 void init_intbuf([]int buf, int len, int val)
@@ -79,13 +110,12 @@ void init_intbuf([]int buf, int len, int val)
   int i; i = 0;
   while(i < len)
   {
-    /*^(buf + (int^):(i * 4)) = val;*/
     buf[i] = val;
     i = i + 1;
   }
 }
 
-void float_to_str(char^ buf, int buf_len, float f)
+void float_to_str([]char buf, int buf_len, float f)
 {
   [9]int significand; /* 0-th cell is not used */
   init_intbuf(&significand[0], 9, 0);
@@ -151,26 +181,5 @@ void float_to_str(char^ buf, int buf_len, float f)
   }
 
   buf[pos] = '\0';
-}
-
-void print_int(int i)
-{
-  [20]char buf;
-  print_str(int_to_str(&buf, 20, i));
-}
-
-void print_float(float f)
-{
-  [20]char buf;
-  float_to_str(&buf, 20, f);
-  print_str(&buf);
-}
-
-void print_bool(bool b)
-{
-  if(b)
-    print_str(&"true");
-  else
-    print_str(&"false");
 }
 

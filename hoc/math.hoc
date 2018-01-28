@@ -150,7 +150,7 @@ int floor_log_b(int b, float n)
 
   if(n > 1.0)
   {
-    while(n > b_pow_x)
+    while(n >= b_pow_x)
     {
       x = x + 1;
       b_pow_x = ipow((float):b, x);

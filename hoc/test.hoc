@@ -1,101 +1,272 @@
 extern int GetStdHandle(int device_id);
 extern void ExitProcess(int code);
 extern char^ GetCommandLineA();
-extern void WriteConsoleA(int console_handle, char^ buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
+extern void^ VirtualAlloc(void^ address, int alloc_size, int alloc_var, int protect_flags);
+extern void WriteConsoleA(int console_handle, []char buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
+extern int GetLastError();
+extern bool ReadFile(int file_handle, []char buf, int bytes_to_read_count, int^ bytes_read_count, void^ p_overlapped);
 
 int stdout;
-int stdin;
+int stdin; 
+void^ heap;
+int heap_ptr;
 
-float n;
-float m;
-float a;
-int b;
+void^ alloc(int size)
+{
+  void^ mem; mem = heap + (void^):heap_ptr;
+  heap_ptr = heap_ptr + size;
+  return mem;
+}
+
+int stdin_read([]char buf, int buf_size)
+{
+  int bytes_read_count; bytes_read_count = 0;
+  if(ReadFile(stdin, buf, buf_size, &bytes_read_count, (void^):0))
+  {
+    if((bytes_read_count >= 0) and (bytes_read_count < buf_size))
+    {
+      buf[bytes_read_count] = '\0';
+    }
+  }
+  return bytes_read_count;
+}
+
 void startup()
 {
-  stdout = GetStdHandle(-11);
+  int STD_OUTPUT_HANDLE; STD_OUTPUT_HANDLE = -11;
+  int STD_INPUT_HANDLE; STD_INPUT_HANDLE = -10;
+
+  int MEM_COMMIT; MEM_COMMIT = 0x1000;
+  int MEM_RESERVE; MEM_RESERVE = 0x2000;
+  int PAGE_READWRITE; PAGE_READWRITE = 0x4;
+
+  stdout = GetStdHandle(STD_OUTPUT_HANDLE);
   stdin = GetStdHandle(-10);
+  heap = VirtualAlloc((void^):0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+  heap_ptr = 0;
+
+  float f1; f1 = 12.0;
+  float f2; f2 = 1.04;
+  print_float(f2);
+
+  /*
+  float result; result = f1 + f2;
+  print_float(f1);
+  print_str(&" + ");
+  print_str(&" = ");
+  print_float(result);
+  print_str(&"\n---------\n");
+  */
+}
+
+void print_numbers([]int numbers, int len)
+{
+  int i; i = 0;
+  while(i < len)
+  {
+    print_int(numbers[i]);
+    print_str(&"\n");
+
+    i = i+1;
+  }
+}
+
+[]int make_numbers(int how_many)
+{
+  int i; i = 0;
+  int c1; c1 = 17;
+  int c2; c2 = 31;
+  []int numbers;
+  numbers = ([]int):alloc(how_many);
+
+  while(i < how_many)
+  {
+    if((i mod 2) == 0)
+      numbers[i] = c1 * i;
+    else
+      numbers[i] = c2 * i;
+
+    i = i+1;
+  }
+  return numbers;
+}
+
+void main()
+{
+  float f1; f1 = -12.0;
+  float f2; f2 = 1.058;
+  float result; result = f1 + f2;
+  print_float(f1);
+  print_str(&" + ");
+  print_float(f2);
+  print_str(&" = ");
+  print_float(result);
+  print_str(&"\n---------\n");
+
+  int i_a; i_a = 7*7*5*3;
+  int i_b; i_b = 7*3*11;
+  int i_r; i_r = gcd(i_a, i_b);
+  print_str(&"gcd(");
+  print_int(i_a);
+  print_str(&",");
+  print_int(i_b);
+  print_str(&")=");
+  print_int(i_r);
+
+  int nr_count; nr_count = 30;
+  []int numbers; numbers = make_numbers(nr_count);
+  print_str(&"\n--- SHUFFLED ---\n");
+  print_numbers(numbers, nr_count);
   /*
   */
 
-  a = 2.0;
-  b = 2;
-  n = ipow(a, b);
-  m = sqrt(n);
-  print_bool(m == a);
+  quick_sort(numbers, nr_count);
+  print_str(&"\n--- SORTED ---\n");
+  print_numbers(numbers, nr_count);
+  /*
+  */
+
+  print_str(&"\n--- FIBONACCI ---\n");
+  fibo(40);
+
+  print_str(&"\n--- FIZZBUZZ ---\n");
+  fizzbuzz(50);
+  /*
+  */
 }
 
-float sqrt(float x)
+void fizzbuzz(int n)
 {
-  float g; g = x;
-  float r; r = 1.0;
-
-  while((g > 0.0) and (g <> r))
+  if(n > 0)
   {
-    g = r;
-    r = sqrt_iter(x, g);
-  }
-  return g;
-}
-
-float sqrt_iter(float x, float g)
-{
-  float r; r = x/g;
-
-  if(r <> g)
-  {
-    r = (r+g) / 2.0;
-    if(absf(r-g) == 1.0)
-      r = minf(r, g);
-  }
-  return r;
-}
-/*
-*/
-
-float ipow(float a, int p)
-{
-  bool inv; inv = (p < 0);
-  p = abs(p);
-
-  float result; result = 1.0;
-  if(p <> 0)
-  {
-    while(p > 0)
+    int i; i = 1;
+    while(i <= n)
     {
-      result = result * a;
-      p = p - 1;
+      if((i mod 15) == 0)
+        print_str(&"fizzbuzz");
+      else if((i mod 3) == 0)
+        print_str(&"buzz");
+      else if((i mod 5) == 0)
+        print_str(&"fizz");
+      else
+        print_int(i);
+
+      print_str(&"\n");
+      i = i + 1;
     }
-    if(inv)
-      result = 1.0/result;
   }
-  return result;
 }
 
-float minf(float a, float b)
+void fibo(int n)
 {
-  float result; result = a;
-  if(a > b)
-    result = b;
-  return result;
-}
-/*
-*/
+  if(n > 0)
+  {
+    int f_1; f_1 = 0;
+    int f_2; f_2 = 1;
+    int f_n; f_n = f_1 + f_2;
 
-int abs(int a)
+    while(n > 0)
+    {
+      print_int(f_n);
+      print_str(&"\n");
+
+      f_n = f_2 + f_1;
+      f_1 = f_2;
+      f_2 = f_n;
+      n = n - 1;
+    }
+  }
+}
+
+void str_copy([]char dest_str, []char src_str)
 {
-  if(a < 0)
-    a = -a;
-  return a;
+  int i; i = 0;
+  do
+  {
+    dest_str[i] = src_str[i];
+    i = i + 1;
+  }
+  while(src_str[i] <> '\0');
 }
 
-float absf(float a)
+int qs_find_pivot_index([]int data, int start_index, int end_index)
 {
-  if(a < 0.0)
-    a = -a;
-  return a;
+  int index; index = -1;
+  int i; i = start_index;
+
+  while(i < end_index)
+  {
+    if(data[i] < data[i + 1])
+    {
+      index = i + 1;
+      break;
+    }
+    else if(data[i] > data[i + 1])
+    {
+      index = i;
+      break;
+    }
+    i = i + 1;
+  }
+  return index;
 }
 
-int strlen([]char str)
+void swap([]int data, int i, int j)
+{
+  if(i <> j)
+  {
+    int temp_val; temp_val = data[i];
+    data[i] = data[j];
+    data[j] = temp_val;
+  }
+}
+
+void insertion_sort([]int array, int len)
+{
+  int i; i = 0;
+
+  while(i < len)
+  {
+    int j; j = i;
+    while(array[j] < array[j - 1])
+    {
+      swap(array, j, j - 1);
+      j = j - 1;
+    }
+    i = i + 1;
+  }
+}
+
+void quick_sort_recurs([]int data, int i, int j)
+{
+  int pivot_index; pivot_index = qs_find_pivot_index(data, i, j);
+
+  if(pivot_index >= 0)
+  {
+    int l; l = i;
+    int r; r = j;
+    int pivot; pivot = data[pivot_index];
+
+    while(l < r)
+    {
+      swap(data, l, r);
+      while(data[l] < pivot)
+        l = l + 1;
+      while(data[r] >= pivot)
+        r = r - 1;
+    }
+
+    quick_sort_recurs(data, i, r);
+    quick_sort_recurs(data, l, j);
+  }
+}
+
+void quick_sort([]int data, int len)
+{
+  quick_sort_recurs(data, 0, len - 1);
+}
+
+int str_len([]char str)
 {
   int len; len = 0;
   while(str[len] <> '\0')
@@ -105,23 +276,9 @@ int strlen([]char str)
   return len;
 }
 
-void print_int(int i)
-{
-  [20]char buf;
-  print_str(int_to_str(&buf, 20, i));
-}
-
-void print_bool(bool b)
-{
-  if(b)
-    print_str(&"true");
-  else
-    print_str(&"false");
-}
-
 void print_str([]char str)
 {
-  int len; len = strlen(str);
+  int len; len = str_len(str);
   int chars_written_count; chars_written_count = 0;
   WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
 }
@@ -184,10 +341,7 @@ void digit_to_char([]char buf, int pos, int digit)
 
   return buf + (char^):buf_i;
 }
-/*
-*/
 
-/*
 void init_intbuf([]int buf, int len, int val)
 {
   int i; i = 0;
@@ -198,7 +352,7 @@ void init_intbuf([]int buf, int len, int val)
   }
 }
 
-void float_to_str(char^ buf, int buf_len, float f)
+void float_to_str([]char buf, int buf_len, float f)
 {
   [9]int significand;
   init_intbuf(&significand[0], 9, 0);
@@ -266,14 +420,226 @@ void float_to_str(char^ buf, int buf_len, float f)
   buf[pos] = '\0';
 }
 
+void print_int(int i)
+{
+  [20]char buf;
+  print_str(int_to_str(&buf, 20, i));
+}
+
 void print_float(float f)
 {
   [20]char buf;
   float_to_str(&buf, 20, f);
   print_str(&buf);
 }
-*/
 
+void print_bool(bool b)
+{
+  if(b)
+    print_str(&"true");
+  else
+    print_str(&"false");
+}
+
+int max(int a, int b)
+{
+  int result; result = a;
+  if(a < b)
+    result = b;
+  return result;
+}
+
+int min(int a, int b)
+{
+  int result; result = a;
+  if(a > b)
+    result = b;
+  return result;
+}
+
+float maxf(float a, float b)
+{
+  float result; result = a;
+  if(a < b)
+    result = b;
+  return result;
+}
+
+float minf(float a, float b)
+{
+  float result; result = a;
+  if(a > b)
+    result = b;
+  return result;
+}
+
+int abs(int a)
+{
+  if(a < 0)
+    a = -a;
+  return a;
+}
+
+float absf(float a)
+{
+  if(a < 0.0)
+    a = -a;
+  return a;
+}
+
+int gcd_recurs(int a, int b)
+{
+  int result; result = a;
+  if(b <> 0)
+  {
+    result = b;
+    int r; r = a mod b;
+    if(r == 0)
+      result = b;
+    else
+      result = gcd_recurs(b, r);
+  }
+  return result;
+}
+
+int gcd_iter(int a, int b)
+{
+  while(a <> b)
+  {
+    if(a > b)
+      a = a - b;
+    else
+      b = b - a;
+  }
+  return a;
+}
+
+int gcd(int a, int b)
+{
+
+  return gcd_recurs(abs(a), abs(b));
+}
+
+int lcm(int a, int b)
+{
+  return abs(a * b)/gcd(a, b);
+}
+
+float ipow(float a, int p)
+{
+  bool inv; inv = (p < 0);
+  p = abs(p);
+
+  float result; result = 1.0;
+  if(p <> 0)
+  {
+    while(p > 0)
+    {
+      result = result * a;
+      p = p - 1;
+    }
+    if(inv)
+      result = 1.0/result;
+  }
+  return result;
+}
+
+float sqrt_iter(float x, float g)
+{
+  float r; r = x/g;
+
+  if(r <> g)
+  {
+    r = (r+g) / 2.0;
+    if(absf(r-g) == 1.0)
+      r = minf(r, g);
+  }
+  return r;
+}
+
+float sqrt(float x)
+{
+  float g; g = x;
+  float r; r = 1.0;
+
+  while((g > 0.0) and (g <> r))
+  {
+    g = r;
+    r = sqrt_iter(x, g);
+  }
+  return g;
+}
+
+int floor_log_b(int b, float n)
+{
+  int x; x = 0;
+  float b_pow_x; b_pow_x = 1.0;
+
+  if(n > 1.0)
+  {
+    while(n >= b_pow_x)
+    {
+      x = x + 1;
+      b_pow_x = ipow((float):b, x);
+    }
+    x = x - 1;
+  }
+  else if(n < 1.0)
+  {
+    while(b_pow_x > n)
+    {
+      b_pow_x = ipow((float):b, x);
+      x = x - 1;
+    }
+    x = x + 1;
+  }
+
+  return x;
+}
+
+int fp_bin_to_dec(float v, []int significand, []int exponent)
+{
+  float v_abs; v_abs = absf(v);
+  int x; x = floor_log_b(10, v_abs) + 1;
+  exponent[0] = x;
+
+  float B_power_x; B_power_x = ipow(10.0, -x);
+  float v_prime; v_prime = v_abs * B_power_x;
+
+  int k; k = 0;
+  float R; R = v_prime;
+  float M; M = ipow(2.0, -23) / 2.0;
+  int U;
+
+  bool run_loop; run_loop = true;
+  while(run_loop)
+  {
+    k = k + 1;
+    U = (int):(R * 10.0);
+    R = (R * 10.0) - (float):U;
+    M = M * 10.0;
+    significand[k] = U;
+
+    run_loop = (R >= M) and (R <= (1.0 - M));
+  }
+
+  if(R <= 0.5)
+    significand[k] = U;
+  else
+    significand[k] = U + 1;
+
+  return k;
+}
+
+
+  /* test case */
+  /*
+  a = 2.0;
+  b = 2;
+  n = ipow(a, b);
+  m = sqrt(n);
+  print_bool(m == a);
+  */
 
 /*
 [2]int A;

@@ -13,7 +13,7 @@ global_var int last_label_id;
 
 global_var NextUse NextUse_None = max_int(); // infinity
 
-void gen_label_name(MemoryArena* arena, IrLabel* label)
+void gen_label_name(MemoryArena* arena, Label* label)
 {
   label->name = mem_push_array(arena, char, 12);
   h_sprintf(label->name, "L_%d", last_label_id++);

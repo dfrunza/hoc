@@ -34,7 +34,7 @@ typedef struct TypePair TypePair;
 typedef struct IrStmt IrStmt;
 typedef struct IrArg IrArg;
 typedef struct IrLeaderStmt IrLeaderStmt;
-typedef struct IrLabel IrLabel;
+typedef struct Label Label;
 typedef struct BasicBlock BasicBlock;
 typedef struct X86Context X86Context;
 
@@ -277,7 +277,7 @@ typedef struct ListItem
     TypePair* type_pair;
     IrStmt* ir_stmt;
     IrLeaderStmt* ir_leader_stmt;
-    IrLabel* ir_label;
+    Label* ir_label;
     BasicBlock* basic_block;
   };
   struct ListItem* next;
@@ -444,7 +444,7 @@ typedef enum eIrOp
   eIrOp_logic_or,
   eIrOp_logic_not,
 
-  /* conv funcs */
+  /* conv ops */
   eIrOp_itof,
   eIrOp_itoc,
   eIrOp_itob,
@@ -487,22 +487,13 @@ bool is_ir_op_bitwise_op(eIrOp op)
   return op >= eIrOp_bit_and && op <= eIrOp_bit_shift_right;
 }
 
-//todo: remove this
-typedef enum eIrLabelTarget
+typedef struct Label
 {
-  eIrLabelTarget_None,
-  eIrLabelTarget_stmt_nr,
-}
-eIrLabelTarget;
-
-typedef struct IrLabel
-{
-  eIrLabelTarget kind;
-  struct IrLabel* primary;
+  struct Label* primary;
   int stmt_nr;
   char* name;
 }
-IrLabel; //todo: remove the Ir prefix from the name
+Label;
 
 typedef int NextUse;
 
@@ -587,11 +578,11 @@ eIrStmt;
 typedef struct IrStmt
 {
   eIrStmt kind;
-  IrLabel* label;
+  Label* label;
 
   union
   {
-    IrLabel* goto_label;
+    Label* goto_label;
 
     struct IrStmt_assign
     {
@@ -607,7 +598,7 @@ typedef struct IrStmt
       eIrOp relop;
       IrArg* arg1;
       IrArg* arg2;
-      IrLabel* label;
+      Label* label;
     }
     cond_goto;
 
@@ -626,7 +617,7 @@ IrStmt;
 
 typedef struct BasicBlock
 {
-  IrLabel* label;
+  Label* label;
   IrStmt** stmt_array;
   int stmt_count;
   List pred_list;
@@ -639,7 +630,7 @@ typedef struct IrLeaderStmt
   int stmt_nr;
   BasicBlock* block;
   IrStmt* stmt;
-  IrLabel* label;
+  Label* label;
 }
 IrLeaderStmt;
 
@@ -703,13 +694,18 @@ typedef enum eX86Stmt
   eX86Stmt_pop,
   eX86Stmt_push,
   eX86Stmt_lea,
+  eX86Stmt_cdq,
+
   eX86Stmt_mov,
   eX86Stmt_add,
   eX86Stmt_sub,
   eX86Stmt_imul,
   eX86Stmt_idiv,
-  eX86Stmt_cdq,
   eX86Stmt_neg,
+  eX86Stmt_or,
+  eX86Stmt_and,
+  eX86Stmt_not,
+
   eX86Stmt_jz,
   eX86Stmt_jnz,
   eX86Stmt_jl,
@@ -726,12 +722,16 @@ typedef enum eX86Stmt
   eX86Stmt_subss,
   eX86Stmt_mulss,
   eX86Stmt_divss,
+
   eX86Stmt_jb,
   eX86Stmt_jbe,
   eX86Stmt_ja,
   eX86Stmt_jae,
   eX86Stmt_je,
   eX86Stmt_jne,
+
+  eX86Stmt_cvtsi2ss,
+  eX86Stmt_cvtss2si,
 
   eX86Stmt_nop,
   eX86Stmt_label,
@@ -792,10 +792,10 @@ typedef struct AstNode
   eModifier modifier; // todo: get rid of this; use a boolean ffs.
   IrArg* place;
 
-  IrLabel* label_true;
-  IrLabel* label_false;
-  IrLabel* label_next;
-  IrLabel* label_begin;
+  Label* label_true;
+  Label* label_false;
+  Label* label_next;
+  Label* label_begin;
 
   union
   {

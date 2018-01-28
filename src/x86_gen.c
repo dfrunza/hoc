@@ -262,6 +262,18 @@ void x86_print_opcode(String* text, eX86Stmt opcode)
       str_printf(text, "cmp ");
     break;
 
+    case eX86Stmt_or:
+      str_printf(text, "or ");
+    break;
+
+    case eX86Stmt_and:
+      str_printf(text, "and ");
+    break;
+
+    case eX86Stmt_not:
+      str_printf(text, "not ");
+    break;
+
     /* integer jumps */
     case eX86Stmt_jz:
       str_printf(text, "jz ");
@@ -347,6 +359,15 @@ void x86_print_opcode(String* text, eX86Stmt opcode)
 
     case eX86Stmt_ret:
       str_printf(text, "ret ");
+    break;
+
+    /* conversion ops */
+    case eX86Stmt_cvtsi2ss:
+      str_printf(text, "cvtsi2ss ");
+    break;
+
+    case eX86Stmt_cvtss2si:
+      str_printf(text, "cvtss2si ");
     break;
 
     default: assert(0);
@@ -563,7 +584,7 @@ void clean_register(X86Context* context, X86Location* loc)
   }
 }
 
-void clean_register_all_levels(X86Context* context, X86Location* loc)
+void clean_register_all_sizes(X86Context* context, X86Location* loc)
 {
   clean_register(context, reg_get_top(loc));
 
@@ -956,6 +977,25 @@ void x86_store_object(X86Context* context, Symbol* object)
   }
 }
 
+bool is_ir_conversion_op(eIrOp ir_op)
+{
+  bool is_conv = false;
+
+  switch(ir_op)
+  {
+    case eIrOp_itof:
+    case eIrOp_itoc:
+    case eIrOp_itob:
+    case eIrOp_ftoi:
+    case eIrOp_ctoi:
+    case eIrOp_btoi:
+      is_conv = true;
+    break;
+  }
+
+  return is_conv;
+}
+
 eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
 {
   eX86Stmt x86_opcode = eX86Stmt_None;
@@ -1010,6 +1050,22 @@ eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
         x86_opcode = eX86Stmt_neg;
       break;
 
+      case eIrOp_ftoi:
+        x86_opcode = eX86Stmt_cvtss2si;
+      break;
+
+      case eIrOp_bit_or:
+        x86_opcode = eX86Stmt_or;
+      break;
+
+      case eIrOp_bit_and:
+        x86_opcode = eX86Stmt_and;
+      break;
+
+      case eIrOp_bit_not:
+        x86_opcode = eX86Stmt_not;
+      break;
+
       default: assert(0);
     }
   }
@@ -1055,6 +1111,10 @@ eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
 
       case eIrOp_not_eq:
         x86_opcode = eX86Stmt_jne;
+      break;
+
+      case eIrOp_itof:
+        x86_opcode = eX86Stmt_cvtsi2ss;
       break;
 
       default: assert(0);
@@ -1133,7 +1193,7 @@ void x86_save_register(X86Context* context, X86Location* reg, bool free_reg)
   }
 }
 
-void x86_save_register_all_levels(X86Context* context, X86Location* loc, bool free_reg)
+void x86_save_register_all_sizes(X86Context* context, X86Location* loc, bool free_reg)
 {
   x86_save_register(context, reg_get_top(loc), free_reg);
 
@@ -1214,10 +1274,10 @@ void x86_gen_divmod_op(X86Context* context, struct IrStmt_assign* assign)
   if(types_are_equal(arg1->object->ty, basic_type_int))
   {
     X86Location* remainder_loc = &context->edx;
-    x86_save_register_all_levels(context, remainder_loc, true);
+    x86_save_register_all_sizes(context, remainder_loc, true);
 
     X86Location* dividend_loc = &context->eax;
-    x86_save_register_all_levels(context, dividend_loc, true);
+    x86_save_register_all_sizes(context, dividend_loc, true);
 
     if(!is_object_in_location(arg1->object, dividend_loc))
     {
@@ -1239,12 +1299,12 @@ void x86_gen_divmod_op(X86Context* context, struct IrStmt_assign* assign)
 
     if(assign->op == eIrOp_div)
     {
-      clean_register_all_levels(context, dividend_loc);
+      clean_register_all_sizes(context, dividend_loc);
       set_exclusive_object_location(context, result->object, dividend_loc);
     }
     else if(assign->op == eIrOp_mod)
     {
-      clean_register_all_levels(context, remainder_loc);
+      clean_register_all_sizes(context, remainder_loc);
       set_exclusive_object_location(context, result->object, remainder_loc);
     }
     else assert(0);
@@ -1289,7 +1349,7 @@ void x86_gen_index_source(X86Context* context, struct IrStmt_assign* assign)
                                        x86_make_register_operand(context, arg1_loc),
                                        x86_make_register_operand(context, arg2_loc)));
 
-  clean_register_all_levels(context, result_loc);
+  clean_register_all_sizes(context, result_loc);
   set_exclusive_object_location(context, result->object, result_loc);
 }
 
@@ -1354,7 +1414,7 @@ void x86_gen_deref_source(X86Context* context, struct IrStmt_assign* assign)
                x86_make_memory_operand(context, result->object->ty,
                                        x86_make_register_operand(context, arg1_loc), 0));
 
-  clean_register_all_levels(context, result_loc);
+  clean_register_all_sizes(context, result_loc);
   set_exclusive_object_location(context, result->object, result_loc);
 }
 
@@ -1412,7 +1472,7 @@ void x86_gen_equal(X86Context* context, struct IrStmt_assign* assign)
       x86_load_object(context, arg1->object, result_loc);
     }
 
-    clean_register_all_levels(context, result_loc);
+    clean_register_all_sizes(context, result_loc);
     set_exclusive_object_location(context, result->object, result_loc);
   }
   else assert(0);
@@ -1427,7 +1487,7 @@ void x86_gen_address_of(X86Context* context, struct IrStmt_assign* assign)
   X86Location* result_loc = x86_get_best_available_register(context, result->object->ty);
   x86_load_object_address(context, arg1->object, result_loc);
 
-  clean_register_all_levels(context, result_loc);
+  clean_register_all_sizes(context, result_loc);
   set_exclusive_object_location(context, result->object, result_loc);
 }
 
@@ -1473,7 +1533,7 @@ void x86_gen_bin_expr(X86Context* context, struct IrStmt_assign* assign)
     x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
     x86_stmt->operand2 = x86_make_object_operand(context, arg2->object);
 
-    clean_register_all_levels(context, result_loc);
+    clean_register_all_sizes(context, result_loc);
     set_exclusive_object_location(context, result->object, result_loc);
   }
 }
@@ -1487,31 +1547,53 @@ void x86_gen_unr_expr(X86Context* context, struct IrStmt_assign* assign)
   X86Location* arg1_loc = lookup_object_location(context, arg1->object);
   X86Location* result_loc = arg1_loc;
 
-  if(is_register_location(context, arg1_loc)
-      && is_single_occupant_register(context, arg1_loc, arg1->object)
-      && (arg1->next_use == NextUse_None && !arg1->is_live))
+  if(is_ir_conversion_op(assign->op))
   {
-    delete_object_from_location(context, arg1->object, arg1_loc);
+    result_loc = x86_get_best_available_register(context, result->object->ty);
+
+    switch(assign->op)
+    {
+      case eIrOp_itof:
+      case eIrOp_ftoi:
+      {
+        X86Stmt* x86_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(assign->op, result->object->ty));
+        x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
+        x86_stmt->operand2 = x86_make_object_operand(context, arg1->object);
+      }
+      break;
+
+      default:
+        fail("todo");
+    }
   }
   else
   {
-    result_loc = x86_get_best_available_register(context, arg1->object->ty);
-    x86_load_object(context, arg1->object, result_loc);
+    if(is_register_location(context, arg1_loc)
+       && is_single_occupant_register(context, arg1_loc, arg1->object)
+       && (arg1->next_use == NextUse_None && !arg1->is_live))
+    {
+      delete_object_from_location(context, arg1->object, arg1_loc);
+    }
+    else
+    {
+      result_loc = x86_get_best_available_register(context, arg1->object->ty);
+      x86_load_object(context, arg1->object, result_loc);
+    }
+
+    if(assign->op == eIrOp_neg && types_are_equal(arg1->object->ty, basic_type_float))
+    {
+      X86Stmt* x86_stmt = x86_new_stmt(context, eX86Stmt_mulss);
+      x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
+      x86_stmt->operand2 = x86_make_object_operand(context, context->float_minus_one);
+    }
+    else
+    {
+      X86Stmt* x86_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(assign->op, result->object->ty));
+      x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
+    }
   }
 
-  if(assign->op == eIrOp_neg && types_are_equal(arg1->object->ty, basic_type_float))
-  {
-    X86Stmt* x86_stmt = x86_new_stmt(context, eX86Stmt_mulss);
-    x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
-    x86_stmt->operand2 = x86_make_object_operand(context, context->float_minus_one);
-  }
-  else
-  {
-    X86Stmt* x86_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(assign->op, result->object->ty));
-    x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
-  }
-
-  clean_register_all_levels(context, result_loc);
+  clean_register_all_sizes(context, result_loc);
   set_exclusive_object_location(context, result->object, result_loc);
 }
 
@@ -1525,43 +1607,59 @@ void x86_gen_assign(X86Context* context, struct IrStmt_assign* assign)
   {
     if(arg2)
     {
-      if(assign->op == eIrOp_index_source)
+      switch(assign->op)
       {
-        // result = arg1[arg2]
-        x86_gen_index_source(context, assign);
-      }
-      else if(assign->op == eIrOp_index_dest)
-      {
-        // result[arg2] = arg1
-        x86_gen_index_dest(context, assign);
-      }
-      else
-      {
-        // result = arg1 op arg2
-        x86_gen_bin_expr(context, assign);
+        case eIrOp_index_source:
+        {
+          // result = arg1[arg2]
+          x86_gen_index_source(context, assign);
+        }
+        break;
+
+        case eIrOp_index_dest:
+        {
+          // result[arg2] = arg1
+          x86_gen_index_dest(context, assign);
+        }
+        break;
+
+        default:
+        {
+          // result = arg1 op arg2
+          x86_gen_bin_expr(context, assign);
+        }
       }
     }
     else
     {
-      if(assign->op == eIrOp_deref_source)
+      switch(assign->op)
       {
-        // result = ^arg1
-        x86_gen_deref_source(context, assign);
-      }
-      else if(assign->op == eIrOp_deref_dest)
-      {
-        // ^result = arg1
-        x86_gen_deref_dest(context, assign);
-      }
-      else if(assign->op == eIrOp_address_of)
-      {
-        // result = &arg1
-        x86_gen_address_of(context, assign);
-      }
-      else
-      {
-        // result = op arg1
-        x86_gen_unr_expr(context, assign);
+        case eIrOp_deref_source:
+        {
+          // result = ^arg1
+          x86_gen_deref_source(context, assign);
+        }
+        break;
+
+        case eIrOp_deref_dest:
+        {
+          // ^result = arg1
+          x86_gen_deref_dest(context, assign);
+        }
+        break;
+
+        case eIrOp_address_of:
+        {
+          // result = &arg1
+          x86_gen_address_of(context, assign);
+        }
+        break;
+
+        default:
+        {
+          // result = op arg1
+          x86_gen_unr_expr(context, assign);
+        }
       }
     }
   }
@@ -1581,7 +1679,7 @@ void x86_gen_assign(X86Context* context, struct IrStmt_assign* assign)
 }
 
 // goto L
-void x86_gen_goto(X86Context* context, IrLabel* goto_label)
+void x86_gen_goto(X86Context* context, Label* goto_label)
 {
   x86_save_all_registers(context, false);
 
@@ -1646,7 +1744,7 @@ void x86_gen_call(X86Context* context, struct IrStmt_call* call)
 
     if(!types_are_equal(call->retvar->ty, basic_type_void))
     {
-      clean_register_all_levels(context, &context->eax);
+      clean_register_all_sizes(context, &context->eax);
       set_exclusive_object_location(context, call->retvar, &context->eax);
     }
   }

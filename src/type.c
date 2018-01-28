@@ -1357,7 +1357,9 @@ bool eval_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
       case eOperator_bit_or:
       case eOperator_bit_xor:
       {
-        if(type_unif(left_operand->eval_ty, right_operand->eval_ty) && type_unif(left_operand->eval_ty, basic_type_int))
+        if(type_unif(left_operand->eval_ty, basic_type_int)
+           && type_unif(right_operand->eval_ty, basic_type_int)
+           && type_unif(bin_expr->eval_ty, basic_type_int))
         {
           ;//ok
         }
@@ -1369,7 +1371,9 @@ bool eval_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
       case eOperator_bit_shift_left:
       case eOperator_bit_shift_right:
       {
-        if(type_unif(left_operand->eval_ty, basic_type_int) && type_unif(right_operand->eval_ty, basic_type_char))
+        if(type_unif(left_operand->eval_ty, basic_type_int)
+           && type_unif(right_operand->eval_ty, basic_type_char)
+           && type_unif(bin_expr->eval_ty, basic_type_int))
         {
           ;//ok
         }

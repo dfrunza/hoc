@@ -16,6 +16,7 @@ Token keyword_list[] =
   {eToken_union, "union"},
   {eToken_enum, "enum"},
   {eToken_extern, "extern"},
+  {eToken_const, "const"},
   {eToken_and, "and"},
   {eToken_or, "or"},
   {eToken_not, "not"},
@@ -158,198 +159,264 @@ char* get_token_printstr(Token* token)
   {
     case eToken_dot:
       result = ".";
-      break;
+    break;
+
     case eToken_arrow_right:
       result = "->";
-      break;
+    break;
+
     case eToken_open_bracket:
       result = "[";
-      break;
+    break;
+
     case eToken_close_bracket:
       result = "]";
-      break;
+    break;
+
     case eToken_open_parens:
       result = "(";
-      break;
+    break;
+
     case eToken_close_parens:
       result = ")";
-      break;
+    break;
+
     case eToken_open_brace:
       result = "{";
-      break;
+    break;
     case eToken_close_brace:
       result = "}";
-      break;
+    break;
+
     case eToken_semicolon:
       result = ";";
-      break;
+    break;
+
     case eToken_colon:
       result = ":";
-      break;
+    break;
+
     case eToken_comma:
       result = ",";
-      break;
+    break;
+
     case eToken_star:
       result = "*";
-      break;
+    break;
+
     case eToken_mul:
       result = "×";
-      break;
+    break;
+
     case eToken_fwd_slash:
       result = "/";
-      break;
+    break;
+
     case eToken_back_slash:
       result = "\\";
-      break;
+    break;
+
     case eToken_plus:
       result = "+";
-      break;
+    break;
+
     case eToken_plus_plus:
       result = "++";
-      break;
+    break;
+
     case eToken_minus:
       result = "-";
-      break;
+    break;
+
     case eToken_minus_minus:
       result = "--";
-      break;
+    break;
+
     case eToken_exclam:
       result = "!";
-      break;
+    break;
+
 #if 0
     case eToken_exclam_eq:
       result = "!=";
       break;
+
 #endif
     case eToken_eq:
       result = "=";
-      break;
+    break;
+
     case eToken_eq_eq:
       result = "==";
-      break;
+    break;
+
     case eToken_angle_right:
       result = ">";
-      break;
+    break;
+
     case eToken_angle_right_eq:
       result = ">=";
-      break;
+    break;
+
     case eToken_angle_right_right:
       result = ">>";
-      break;
+    break;
+
     case eToken_angle_left:
       result = "<";
-      break;
+    break;
+
     case eToken_angle_left_eq:
       result = "<=";
-      break;
+    break;
+
     case eToken_angle_left_left:
       result = "<<";
-      break;
+    break;
+
     case eToken_ampersand:
       result = "&";
-      break;
+    break;
+
     case eToken_pipe:
       result = "|";
-      break;
+    break;
+
     case eToken_tilde:
       result = "~";
-      break;
+    break;
+
     case eToken_circumflex:
       result = "^";
-      break;
+    break;
+
     case eToken_end_of_input:
       result = "end-of-input";
-      break;
+    break;
+
     case eToken_if:
       result = "if";
-      break;
+    break;
+
     case eToken_else:
       result = "else";
-      break;
+    break;
+
     case eToken_do:
       result = "do";
-      break;
+    break;
+
     case eToken_while:
       result = "while";
-      break;
+    break;
+
     case eToken_struct:
       result = "struct";
-      break;
+    break;
+
     case eToken_union:
       result = "union";
-      break;
+    break;
+
     case eToken_return:
       result = "return";
-      break;
+    break;
+
     case eToken_break:
       result = "break";
-      break;
+    break;
+
     case eToken_continue:
       result = "continue";
-      break;
+    break;
+
     case eToken_include:
       result = "include";
-      break;
+    break;
+
     case eToken_enum:
       result = "enum";
-      break;
+    break;
+
     case eToken_goto:
       result = "goto";
-      break;
+    break;
+
     case eToken_true:
       result = "true";
-      break;
+    break;
+
     case eToken_false:
       result = "false";
-      break;
+    break;
+
     case eToken_extern:
       result = "extern";
-      break;
+    break;
+
+    case eToken_const:
+      result = "const";
+    break;
+
     case eToken_and:
       result = "and";
-      break;
+    break;
+
     case eToken_or:
       result = "or";
-      break;
+    break;
+
     case eToken_xor:
       result = "xor";
-      break;
+    break;
+
     case eToken_not:
       result = "not";
-      break;
+    break;
+
     case eToken_mod:
       result = "mod";
-      break;
+    break;
+
     case eToken_int:
       result = "int";
-      break;
+    break;
+
     case eToken_float:
       result = "float";
-      break;
+    break;
+
     case eToken_bool:
       result = "bool";
-      break;
+    break;
+
     case eToken_char:
       result = "char";
-      break;
+    break;
+
     case eToken_void:
       result = "void";
-      break;
+    break;
+
     case eToken_auto:
       result = "auto";
-      break;
+    break;
+
     case eToken_id:
     case eToken_int_val:
     case eToken_float_val:
       result = token->lexeme;
-      break;
+    break;
+
     case eToken_str_val:
       result = token->str_val; // TODO: Substitute non-printable chars
-      break;
+    break;
+
     case eToken_char_val:
     case eToken_unknown_char:
       print_char(result = char_print_buf, token->char_val);
-      break;
+    break;
+
     default:
       result = "???";
   }

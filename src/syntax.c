@@ -333,49 +333,54 @@ bool parse_rest_of_factor(TokenStream* input, AstNode* left_node, AstNode** node
     case eToken_mod:
     case eToken_and:
     case eToken_ampersand:
+    {
+      AstNode* bin_expr = *node = new_ast_node(input->arena, eAstNode_bin_expr,
+                                                clone_source_loc(input->arena, &input->src_loc));
+      bin_expr->bin_expr.left_operand = left_node;
+
+      switch(input->token.kind)
       {
-        AstNode* bin_expr = *node = new_ast_node(input->arena, eAstNode_bin_expr,
-                                                 clone_source_loc(input->arena, &input->src_loc));
-        bin_expr->bin_expr.left_operand = left_node;
+        case eToken_star:
+          bin_expr->bin_expr.op = eOperator_mul;
+        break;
 
-        switch(input->token.kind)
-        {
-          case eToken_star:
-            bin_expr->bin_expr.op = eOperator_mul;
-            break;
-          case eToken_fwd_slash:
-            bin_expr->bin_expr.op = eOperator_div;
-            break;
-          case eToken_mod:
-            bin_expr->bin_expr.op = eOperator_mod;
-            break;
-          case eToken_and:
-            bin_expr->bin_expr.op = eOperator_logic_and;
-            break;
-          case eToken_ampersand:
-            bin_expr->bin_expr.op = eOperator_bit_and;
-            break;
-          default:
-            assert(0);
-        }
+        case eToken_fwd_slash:
+          bin_expr->bin_expr.op = eOperator_div;
+        break;
 
-        AstNode* right_operand = 0;
-        if(success = get_next_token(input) && parse_factor(input, &right_operand))
+        case eToken_mod:
+          bin_expr->bin_expr.op = eOperator_mod;
+        break;
+
+        case eToken_and:
+          bin_expr->bin_expr.op = eOperator_logic_and;
+        break;
+
+        case eToken_ampersand:
+          bin_expr->bin_expr.op = eOperator_bit_and;
+        break;
+
+        default:
+          assert(0);
+      }
+
+      AstNode* right_operand = 0;
+      if(success = get_next_token(input) && parse_factor(input, &right_operand))
+      {
+        if(right_operand)
         {
-          if(right_operand)
+          if(is_valid_expr_operand(right_operand))
           {
-            if(is_valid_expr_operand(right_operand))
-            {
-              bin_expr->bin_expr.right_operand = right_operand;
-              success = parse_rest_of_factor(input, *node, node); // left-associativity
-            }
-            else
-              success = compile_error(input->arena, right_operand->src_loc, "invalid operand");
+            bin_expr->bin_expr.right_operand = right_operand;
+            success = parse_rest_of_factor(input, *node, node); // left-associativity
           }
           else
-            success = compile_error(input->arena, &input->src_loc, "operand was expected at `%s`", get_token_printstr(&input->token));
+            success = compile_error(input->arena, right_operand->src_loc, "invalid operand");
         }
+        else
+          success = compile_error(input->arena, &input->src_loc, "operand was expected at `%s`", get_token_printstr(&input->token));
       }
+    }
       break;
   }
   return success;
@@ -420,43 +425,56 @@ bool parse_rest_of_term(TokenStream* input, AstNode* left_node, AstNode** node)
         {
           case eToken_plus:
             bin_expr->bin_expr.op = eOperator_add;
-            break;
+          break;
+
           case eToken_minus:
             bin_expr->bin_expr.op = eOperator_sub;
-            break;
+          break;
+
           case eToken_pipe:
             bin_expr->bin_expr.op = eOperator_bit_or;
-            break;
+          break;
+
           case eToken_angle_left_left:
             bin_expr->bin_expr.op = eOperator_bit_shift_left;
-            break;
+          break;
+
           case eToken_angle_right_right:
             bin_expr->bin_expr.op = eOperator_bit_shift_right;
-            break;
+          break;
+
           case eToken_tilde:
             bin_expr->bin_expr.op = eOperator_bit_xor;
-            break;
+          break;
+
           case eToken_eq_eq:
             bin_expr->bin_expr.op = eOperator_eq;
-            break;
+          break;
+
           case eToken_angle_left_right:
             bin_expr->bin_expr.op = eOperator_not_eq;
-            break;
+          break;
+
           case eToken_angle_left:
             bin_expr->bin_expr.op = eOperator_less;
-            break;
+          break;
+
           case eToken_angle_left_eq:
             bin_expr->bin_expr.op = eOperator_less_eq;
-            break;
+          break;
+
           case eToken_angle_right:
             bin_expr->bin_expr.op = eOperator_greater;
-            break;
+          break;
+
           case eToken_angle_right_eq:
             bin_expr->bin_expr.op = eOperator_greater_eq;
-            break;
+          break;
+
           case eToken_or:
             bin_expr->bin_expr.op = eOperator_logic_or;
-            break;
+          break;
+
           default:
             assert(0);
         }
@@ -555,35 +573,35 @@ bool parse_basic_type(TokenStream* input, AstNode** node)
     case eToken_char:
     case eToken_void:
     case eToken_auto:
+    {
+      AstNode* basic_type = *node = new_ast_node(input->arena, eAstNode_basic_type,
+                                                  clone_source_loc(input->arena, &input->src_loc));
+      switch(input->token.kind)
       {
-        AstNode* basic_type = *node = new_ast_node(input->arena, eAstNode_basic_type,
-                                                   clone_source_loc(input->arena, &input->src_loc));
-        switch(input->token.kind)
-        {
-          case eToken_int:
-            basic_type->basic_type.kind = eBasicType_int;
-            break;
-          case eToken_float:
-            basic_type->basic_type.kind = eBasicType_float;
-            break;
-          case eToken_bool:
-            basic_type->basic_type.kind = eBasicType_bool;
-            break;
-          case eToken_char:
-            basic_type->basic_type.kind = eBasicType_char;
-            break;
-          case eToken_void:
-            basic_type->basic_type.kind = eBasicType_void;
-            break;
-          case eToken_auto:
-            basic_type->basic_type.kind = eBasicType_auto;
-            break;
-          default:
-            assert(0);
-        }
-        success = get_next_token(input);
+        case eToken_int:
+          basic_type->basic_type.kind = eBasicType_int;
+          break;
+        case eToken_float:
+          basic_type->basic_type.kind = eBasicType_float;
+          break;
+        case eToken_bool:
+          basic_type->basic_type.kind = eBasicType_bool;
+          break;
+        case eToken_char:
+          basic_type->basic_type.kind = eBasicType_char;
+          break;
+        case eToken_void:
+          basic_type->basic_type.kind = eBasicType_void;
+          break;
+        case eToken_auto:
+          basic_type->basic_type.kind = eBasicType_auto;
+          break;
+        default:
+          assert(0);
       }
-      break;
+      success = get_next_token(input);
+    }
+    break;
   }
   return success;
 }
@@ -606,20 +624,20 @@ bool parse_rest_of_cast(TokenStream* input, AstNode* left_node, AstNode** node)
   switch(input->token.kind)
   {
     case eToken_colon:
-      {
-        AstNode* cast = *node = new_ast_node(input->arena, eAstNode_cast,
-                                             clone_source_loc(input->arena, &input->src_loc));
-        cast->cast.to_type = left_node;
+    {
+      AstNode* cast = *node = new_ast_node(input->arena, eAstNode_cast,
+                                            clone_source_loc(input->arena, &input->src_loc));
+      cast->cast.to_type = left_node;
 
-        if(success = get_next_token(input) && parse_unr_expr(input, &cast->cast.from_expr))
+      if(success = get_next_token(input) && parse_unr_expr(input, &cast->cast.from_expr))
+      {
+        if(!cast->cast.from_expr)
         {
-          if(!cast->cast.from_expr)
-          {
-            success = compile_error(input->arena, &input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
-          }
+          success = compile_error(input->arena, &input->src_loc, "expression was expected at `%s`", get_token_printstr(&input->token));
         }
       }
-      break;
+    }
+    break;
   }
 #endif
   return success;
@@ -634,11 +652,11 @@ bool parse_rest_of_deref(TokenStream* input, AstNode** node)
   {
     case eToken_circumflex:
       success = parse_deref(input, node);
-      break;
+    break;
 
     case eToken_id:
       success = parse_id(input, node);
-      break;
+    break;
 
     case eToken_void:
     case eToken_int:
@@ -647,9 +665,10 @@ bool parse_rest_of_deref(TokenStream* input, AstNode** node)
     case eToken_char:
     case eToken_auto:
       success = parse_basic_type(input, node);
-      break;
+    break;
 
     case eToken_open_parens:
+    {
       if(success = get_next_token(input) && parse_expr(input, node))
       {
         if(input->token.kind == eToken_close_parens)
@@ -659,7 +678,8 @@ bool parse_rest_of_deref(TokenStream* input, AstNode** node)
         else
           success = compile_error(input->arena, &input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
       }
-      break;
+    }
+    break;
   }
   return success;
 }
@@ -694,11 +714,11 @@ bool parse_rest_of_array(TokenStream* input, AstNode** node)
   {
     case eToken_open_bracket:
       success = parse_array(input, node);
-      break;
+    break;
 
     case eToken_id:
       success = compile_error(input->arena, &input->src_loc, "unknown type id `%s`", get_token_printstr(&input->token));
-      break;
+    break;
 
     case eToken_void:
     case eToken_int:
@@ -707,9 +727,10 @@ bool parse_rest_of_array(TokenStream* input, AstNode** node)
     case eToken_char:
     case eToken_auto:
       success = parse_basic_type(input, node);
-      break;
+    break;
 
     case eToken_open_parens:
+    {
       if(success = get_next_token(input) && parse_array(input, node) && parse_pointer(input, *node, node))
       {
         if(input->token.kind == eToken_close_parens)
@@ -719,7 +740,8 @@ bool parse_rest_of_array(TokenStream* input, AstNode** node)
         else
           success = compile_error(input->arena, &input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
       }
-      break;
+    }
+    break;
   }
   return success;
 }
@@ -768,6 +790,7 @@ bool parse_cast(TokenStream* input, AstNode** node)
   switch(input->token.kind)
   {
     case eToken_open_parens:
+    {
       if(success = get_next_token(input) && parse_expr(input, node))
       {
         if(input->token.kind == eToken_close_parens)
@@ -782,19 +805,20 @@ bool parse_cast(TokenStream* input, AstNode** node)
         else
           success = compile_error(input->arena, &input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
       }
-      break;
+    }
+    break;
 
     case eToken_circumflex:
       success = parse_deref(input, node) && parse_index(input, *node, node, 1);
-      break;
+    break;
 
     case eToken_open_bracket:
       success = parse_array(input, node) && parse_pointer(input, *node, node);
-      break;
+    break;
 
     case eToken_id:
       success = parse_id(input, node) && parse_pointer(input, *node, node) && parse_index(input, *node, node, 1);
-      break;
+    break;
 
     case eToken_void:
     case eToken_int:
@@ -803,7 +827,7 @@ bool parse_cast(TokenStream* input, AstNode** node)
     case eToken_char:
     case eToken_auto:
       success = parse_basic_type(input, node) && parse_pointer(input, *node, node) && parse_index(input, *node, node, 1);
-      break;
+    break;
   }
   return success;
 }
@@ -1009,11 +1033,24 @@ bool parse_modifier(TokenStream* input, eModifier* modifier)
 {
   bool success = true;
   *modifier = eModifier_None;
-  if(input->token.kind == eToken_extern)
+
+  switch(input->token.kind)
   {
-    *modifier = eModifier_extern;
-    success = get_next_token(input);
+    case eToken_extern:
+    {
+      *modifier = eModifier_extern;
+      success = get_next_token(input);
+    }
+    break;
+
+    case eToken_const:
+    {
+      *modifier = eModifier_const;
+      success = get_next_token(input);
+    }
+    break;
   }
+
   return success;
 }
 
@@ -1261,6 +1298,30 @@ bool parse_break(TokenStream* input, AstNode** node)
   return success;
 }
 
+bool parse_block_var(TokenStream* input, char* name, eModifier modifier, AstNode* var_type, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  if(input->token.kind == eToken_id)
+  {
+    AstNode* var = *node = new_ast_node(input->arena, eAstNode_var,
+                                        clone_source_loc(input->arena, &input->src_loc));
+    var->var.type = var_type;
+    var->var.name = input->token.lexeme;
+
+    if(success = get_next_token(input))
+    {
+      if(input->token.kind == eToken_eq)
+      {
+        success = get_next_token(input) && parse_expr(input, &var->var.init_expr);
+      }
+    }
+  }
+
+  return success;
+}
+
 bool parse_block_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1269,44 +1330,54 @@ bool parse_block_stmt(TokenStream* input, AstNode** node)
   {
     case eToken_open_brace:
       success = parse_block(input, node);
-      break;
+    break;
+
     case eToken_if:
       success = parse_if(input, node);
-      break;
+    break;
+
     case eToken_do:
       success = parse_do_while(input, node);
-      break;
+    break;
+
     case eToken_while:
       success = parse_while(input, node);
-      break;
+    break;
+
     case eToken_semicolon:
       success = parse_empty(input, node);
-      break;
+    break;
+
     case eToken_return:
       success = parse_return(input, node) && consume_semicolon(input);
-      break;
+    break;
+
     case eToken_break:
       success = parse_break(input, node) && consume_semicolon(input);
-      break;
+    break;
+
     case eToken_continue:
       success = parse_continue(input, node) && consume_semicolon(input);
-      break;
+    break;
+
     default:
-      if((success = parse_expr(input, node)) && *node)
+    {
+      eModifier modifier = eModifier_None;
+
+      if((success = success = parse_modifier(input, &modifier) && parse_expr(input, node)) && *node)
       {
         if(input->token.kind == eToken_id)
         {
-          AstNode* type = *node;
-          AstNode* var = *node = new_ast_node(input->arena, eAstNode_var,
-                                              clone_source_loc(input->arena, &input->src_loc));
-          var->var.type = type;
-          var->var.name = input->token.lexeme;
-
-          success = get_next_token(input);
+          char* var_name = input->token.lexeme;
+          success = parse_block_var(input, var_name, modifier, *node, node) && consume_semicolon(input);
         }
-        success = consume_semicolon(input);
+        else
+        {
+          success = consume_semicolon(input);
+        }
       }
-      break;
+    }
+    break;
   }
   return success;
 }
@@ -1314,6 +1385,7 @@ bool parse_block_stmt(TokenStream* input, AstNode** node)
 bool parse_block_stmts(TokenStream* input, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
+
   bool success = true;
   AstNode* stmt = 0;
   if(success = parse_block_stmt(input, &stmt))
@@ -1325,12 +1397,14 @@ bool parse_block_stmts(TokenStream* input, AstNode* block)
       {
         case eAstNode_var:
           append_list_elem(&block->block.vars, stmt, eList_ast_node);
-          break;
+        break;
+
         case eAstNode_empty:
-          break;
+        break;
+
         default:
           append_list_elem(&block->block.stmts, stmt, eList_ast_node);
-          break;
+        break;
       }
       success = parse_block_stmts(input, block);
     }
@@ -1605,6 +1679,53 @@ bool parse_asm_block(TokenStream* input, AstNode** node)
 }
 #endif
 
+bool parse_module_proc(TokenStream* input, char* name, eModifier modifier, AstNode* ret_type, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  if(input->token.kind == eToken_open_parens)
+  {
+    AstNode* proc = *node = new_ast_node(input->arena, eAstNode_proc,
+                                         clone_source_loc(input->arena, &input->src_loc));
+    proc->proc.ret_type = ret_type;
+    proc->proc.name = name;
+    proc->proc.modifier = modifier;
+
+    if(success = get_next_token(input))
+    {
+      AstNode* args = proc->proc.args = new_ast_node(input->arena, eAstNode_node_list,
+                                                     clone_source_loc(input->arena, &input->src_loc));
+      init_list(input->arena, &args->node_list, eList_ast_node);
+
+      if(success = parse_formal_args(input, proc->proc.args))
+      {
+        if(input->token.kind == eToken_close_parens)
+        {
+          success = get_next_token(input) && parse_proc_body(input, proc);
+        }
+        else
+          success = compile_error(input->arena, &input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
+      }
+    }
+  }
+
+  return success;
+}
+
+bool parse_module_var(TokenStream* input, char* name, eModifier modifier, AstNode* var_type, AstNode** node)
+{
+  bool success = true;
+
+  AstNode* var = *node = new_ast_node(input->arena, eAstNode_var,
+                                      clone_source_loc(input->arena, &input->src_loc));
+  var->var.type = var_type;
+  var->var.name = name;
+  var->var.modifier = modifier;
+
+  return success;
+}
+
 bool parse_module_stmt(TokenStream* input, AstNode** node)
 {
   *node = 0;
@@ -1612,6 +1733,7 @@ bool parse_module_stmt(TokenStream* input, AstNode** node)
   switch(input->token.kind)
   {
     case eToken_include:
+    {
       if(success = get_next_token(input))
       {
         AstNode* include = *node = new_ast_node(input->arena, eAstNode_include,
@@ -1624,61 +1746,35 @@ bool parse_module_stmt(TokenStream* input, AstNode** node)
         else
           success = compile_error(input->arena, &input->src_loc, "string literal was expected at `%s`", get_token_printstr(&input->token));
       }
-      break;
+    }
+    break;
 
     default:
+    {
+      eModifier modifier = eModifier_None;
+
+      if((success = parse_modifier(input, &modifier) && parse_expr(input, node)) && *node)
       {
-        eModifier modifier = eModifier_None;
-        if((success = parse_modifier(input, &modifier) && parse_expr(input, node)) && *node)
+        if(input->token.kind == eToken_id)
         {
-          if(input->token.kind == eToken_id)
+          char* name = input->token.lexeme;
+          if(success = get_next_token(input))
           {
-            char* name = input->token.lexeme;
-            if(success = get_next_token(input))
+            if(input->token.kind == eToken_open_parens)
             {
-              if(input->token.kind == eToken_open_parens)
-              {
-                AstNode* ret_type = *node;
-                AstNode* proc = *node = new_ast_node(input->arena, eAstNode_proc,
-                                                     clone_source_loc(input->arena, &input->src_loc));
-                proc->proc.ret_type = ret_type;
-                proc->proc.name = name;
-                proc->modifier = modifier;
-
-                if(success = get_next_token(input))
-                {
-                  AstNode* args = proc->proc.args = new_ast_node(input->arena, eAstNode_node_list,
-                                                                 clone_source_loc(input->arena, &input->src_loc));
-                  init_list(input->arena, &args->node_list, eList_ast_node);
-
-                  if(success = parse_formal_args(input, proc->proc.args))
-                  {
-                    if(input->token.kind == eToken_close_parens)
-                    {
-                      success = get_next_token(input) && parse_proc_body(input, proc);
-                    }
-                    else
-                      success = compile_error(input->arena, &input->src_loc, "`)` was expected at `%s`", get_token_printstr(&input->token));
-                  }
-                }
-              }
-              else
-              {
-                AstNode* type = *node;
-                AstNode* var = *node = new_ast_node(input->arena, eAstNode_var,
-                                                    clone_source_loc(input->arena, &input->src_loc));
-                var->var.type = type;
-                var->var.name = name;
-
-                success = consume_semicolon(input);
-              }
+              success = parse_module_proc(input, name, modifier, *node, node);
+            }
+            else
+            {
+              success = parse_module_var(input, name, modifier, *node, node) && consume_semicolon(input);
             }
           }
-          else
-            success = compile_error(input->arena, &input->src_loc, "identifier was expected at `%s`", get_token_printstr(&input->token));
         }
+        else
+          success = compile_error(input->arena, &input->src_loc, "identifier was expected at `%s`", get_token_printstr(&input->token));
       }
-      break;
+    }
+    break;
   }
   return success;
 }

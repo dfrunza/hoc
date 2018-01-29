@@ -1,6 +1,6 @@
 int max(int a, int b)
 {
-  int result; result = a;
+  int result = a;
   if(a < b)
     result = b;
   return result;
@@ -8,7 +8,7 @@ int max(int a, int b)
 
 int min(int a, int b)
 {
-  int result; result = a;
+  int result = a;
   if(a > b)
     result = b;
   return result;
@@ -16,7 +16,7 @@ int min(int a, int b)
 
 float maxf(float a, float b)
 {
-  float result; result = a;
+  float result = a;
   if(a < b)
     result = b;
   return result;
@@ -24,7 +24,7 @@ float maxf(float a, float b)
 
 float minf(float a, float b)
 {
-  float result; result = a;
+  float result = a;
   if(a > b)
     result = b;
   return result;
@@ -46,11 +46,11 @@ float absf(float a)
 
 int gcd_recurs(int a, int b)
 {
-  int result; result = a;
+  int result = a;
   if(b <> 0)
   {
     result = b;
-    int r; r = a mod b;
+    int r = a mod b;
     if(r == 0)
       result = b;
     else
@@ -92,10 +92,10 @@ int lcm(int a, int b)
 
 float ipow(float a, int p)
 {
-  bool inv; inv = (p < 0);
+  bool inv = (p < 0);
   p = abs(p);
 
-  float result; result = 1.0;
+  float result = 1.0;
   if(p <> 0)
   {
     while(p > 0)
@@ -111,7 +111,7 @@ float ipow(float a, int p)
 
 float sqrt_iter(float x, float g)
 {
-  float r; r = x/g;
+  float r = x/g;
 
   if(r <> g)
   {
@@ -128,8 +128,8 @@ FIXME: sqrt(100.0) gives a funky result.
  */
 float sqrt(float x)
 {
-  float g; g = x;
-  float r; r = 1.0;
+  float g = x;
+  float r = 1.0;
 
   while((g > 0.0) and (g <> r))
   {
@@ -145,8 +145,8 @@ float sqrt(float x)
 */
 int floor_log_b(int b, float n)
 {
-  int x; x = 0;
-  float b_pow_x; b_pow_x = 1.0;
+  int x = 0;
+  float b_pow_x = 1.0;
 
   if(n > 1.0)
   {
@@ -173,19 +173,19 @@ int floor_log_b(int b, float n)
 /* Returns the number of significand 10-base digits */
 int fp_bin_to_dec(float v, []int significand, []int exponent)
 {
-  float v_abs; v_abs = absf(v);
-  int x; x = floor_log_b(10, v_abs) + 1;
+  float v_abs = absf(v);
+  int x = floor_log_b(10, v_abs) + 1;
   exponent[0] = x;
 
-  float B_power_x; B_power_x = ipow(10.0, -x);
-  float v_prime; v_prime = v_abs * B_power_x;
+  float B_power_x = ipow(10.0, -x);
+  float v_prime = v_abs * B_power_x;
 
-  int k; k = 0;
-  float R; R = v_prime;
-  float M; M = ipow(2.0, -23) / 2.0; /* 23 is the width of the significand of single precision binary FP */
+  int k = 0;
+  float R = v_prime;
+  float M = ipow(2.0, -23) / 2.0;
   int U;
 
-  bool run_loop; run_loop = true;
+  bool run_loop = true;
   while(run_loop)
   {
     k = k + 1;

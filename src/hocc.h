@@ -142,6 +142,7 @@ typedef enum eToken
   eToken_true,
   eToken_false,
   eToken_extern,
+  eToken_const,
   eToken_int,
   eToken_float,
   eToken_bool,
@@ -321,6 +322,7 @@ typedef enum eModifier
 {
   eModifier_None,
   eModifier_extern,
+  eModifier_const,
 }
 eModifier;
 
@@ -789,7 +791,6 @@ typedef struct AstNode
   SourceLoc* src_loc;
   Type* ty;
   Type* eval_ty;
-  eModifier modifier;
   IrArg* place;
 
   Label* label_true;
@@ -929,6 +930,7 @@ typedef struct AstNode
       AstNode* args;
       AstNode* ret_type;
       AstNode* body;
+      eModifier modifier;
 
       Scope* scope;
       Scope* param_scope;
@@ -969,7 +971,9 @@ typedef struct AstNode
     {
       char* name;
       AstNode* type;
+      AstNode* init_expr;
       Symbol* decl_sym;
+      eModifier modifier;
     }
     var;
 

@@ -13,14 +13,20 @@ int heap_ptr;
 
 void^ alloc(int size)
 {
-  void^ mem; mem = heap + (void^):heap_ptr;
-  heap_ptr = heap_ptr + size;
+  void^ mem = (void^):0;
+
+  if(size > 0)
+  {
+    mem = heap + (void^):heap_ptr;
+    heap_ptr = heap_ptr + size;
+  }
+
   return mem;
 }
 
 int stdin_read([]char buf, int buf_size)
 {
-  int bytes_read_count; bytes_read_count = 0;
+  int bytes_read_count = 0;
   if(ReadFile(stdin, buf, buf_size, &bytes_read_count, (void^):0))
   {
     if((bytes_read_count >= 0) and (bytes_read_count < buf_size))
@@ -33,12 +39,12 @@ int stdin_read([]char buf, int buf_size)
 
 void startup()
 {
-  int STD_OUTPUT_HANDLE; STD_OUTPUT_HANDLE = -11;
-  int STD_INPUT_HANDLE; STD_INPUT_HANDLE = -10;
+  int STD_OUTPUT_HANDLE = -11;
+  int STD_INPUT_HANDLE = -10;
 
-  int MEM_COMMIT; MEM_COMMIT = 0x1000;
-  int MEM_RESERVE; MEM_RESERVE = 0x2000;
-  int PAGE_READWRITE; PAGE_READWRITE = 0x4;
+  int MEM_COMMIT = 0x1000;
+  int MEM_RESERVE = 0x2000;
+  int PAGE_READWRITE = 0x4;
 
   stdout = GetStdHandle(STD_OUTPUT_HANDLE);
   stdin = GetStdHandle(STD_INPUT_HANDLE);

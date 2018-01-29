@@ -3,12 +3,13 @@ include "str.hoc";
 include "fibo.hoc";
 include "fizzbuzz.hoc";
 include "sort.hoc";
+include "std.hoc";
 /*
 */
 
 void print_numbers([]int numbers, int len)
 {
-  int i; i = 0;
+  int i = 0;
   while(i < len)
   {
     print_int(numbers[i]);
@@ -20,11 +21,10 @@ void print_numbers([]int numbers, int len)
 
 []int make_numbers(int how_many)
 {
-  int i; i = 0;
-  int c1; c1 = 17;
-  int c2; c2 = 31;
-  []int numbers;
-  numbers = ([]int):alloc(how_many);
+  int i = 0;
+  int c1 = 17;
+  int c2 = 31;
+  []int numbers = ([]int):alloc(how_many);
 
   while(i < how_many)
   {
@@ -40,30 +40,30 @@ void print_numbers([]int numbers, int len)
 
 void main()
 {
-  float f1; f1 = -12.0;
-  float f2; f2 = 1.058;
-  float result; result = f1 + f2;
+  float x = -12.0;
+  float y = 1.058;
+  float z = x + y;
   print_str(&"\n");
-  print_float(f1);
+  print_float(x);
   print_str(&" + ");
-  print_float(f2);
+  print_float(y);
   print_str(&" = ");
-  print_float(result);
+  print_float(z);
   print_str(&"\n");
 
-  int i_a; i_a = 7*7*5*3;
-  int i_b; i_b = 7*3*11;
-  int i_r; i_r = gcd(i_a, i_b);
+  int a = 7*7*5*3;
+  int b = 7*3*11;
+  int r = gcd(a, b);
   print_str(&"\ngcd(");
-  print_int(i_a);
+  print_int(a);
   print_str(&",");
-  print_int(i_b);
+  print_int(b);
   print_str(&")=");
-  print_int(i_r);
+  print_int(r);
   print_str(&"\n");
 
-  int nr_count; nr_count = 15;
-  []int numbers; numbers = make_numbers(nr_count);
+  int nr_count = 15;
+  []int numbers = make_numbers(nr_count);
   print_title(&"SHUFFLED");
   print_numbers(numbers, nr_count);
 

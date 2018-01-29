@@ -289,7 +289,8 @@ bool sym_var(SymbolContext* context, AstNode* var)
   {
     var->var.decl_sym = add_decl_sym(context->sym_arena, var->var.name,
                                      eStorageSpace_local, context->active_scope, var);
-    success = sym_expr(context, var->var.type);
+    success = sym_expr(context, var->var.type)
+      && var->var.init_expr ? sym_expr(context, var->var.init_expr) : true;
   }
 
   return success;
@@ -738,7 +739,7 @@ bool sym_block(SymbolContext* context, AstNode* block)
 static inline
 bool is_extern_proc(AstNode* proc)
 {
-  return (proc->modifier & eModifier_extern) != 0;
+  return (proc->proc.modifier & eModifier_extern) != 0;
 }
 
 bool sym_proc_body(SymbolContext* context, AstNode* proc)

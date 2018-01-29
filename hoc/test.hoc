@@ -1,6 +1,7 @@
 void main()
 {
-  []char cmd; cmd = GetCommandLineA();
+  float a = 3.14;
+  print_float(a);
 }
 
 extern int GetStdHandle(int device_id);
@@ -18,14 +19,20 @@ int heap_ptr;
 
 void^ alloc(int size)
 {
-  void^ mem; mem = heap + (void^):heap_ptr;
-  heap_ptr = heap_ptr + size;
+  void^ mem = (void^):0;
+
+  if(size > 0)
+  {
+    mem = heap + (void^):heap_ptr;
+    heap_ptr = heap_ptr + size;
+  }
+
   return mem;
 }
 
 int stdin_read([]char buf, int buf_size)
 {
-  int bytes_read_count; bytes_read_count = 0;
+  int bytes_read_count = 0;
   if(ReadFile(stdin, buf, buf_size, &bytes_read_count, (void^):0))
   {
     if((bytes_read_count >= 0) and (bytes_read_count < buf_size))
@@ -38,12 +45,12 @@ int stdin_read([]char buf, int buf_size)
 
 void startup()
 {
-  int STD_OUTPUT_HANDLE; STD_OUTPUT_HANDLE = -11;
-  int STD_INPUT_HANDLE; STD_INPUT_HANDLE = -10;
+  int STD_OUTPUT_HANDLE = -11;
+  int STD_INPUT_HANDLE = -10;
 
-  int MEM_COMMIT; MEM_COMMIT = 0x1000;
-  int MEM_RESERVE; MEM_RESERVE = 0x2000;
-  int PAGE_READWRITE; PAGE_READWRITE = 0x4;
+  int MEM_COMMIT  = 0x1000;
+  int MEM_RESERVE = 0x2000;
+  int PAGE_READWRITE = 0x4;
 
   stdout = GetStdHandle(STD_OUTPUT_HANDLE);
   stdin = GetStdHandle(STD_INPUT_HANDLE);
@@ -56,7 +63,7 @@ void startup()
 
 void str_copy([]char dest_str, []char src_str)
 {
-  int i; i = 0;
+  int i = 0;
   do
   {
     dest_str[i] = src_str[i];
@@ -68,7 +75,7 @@ void str_copy([]char dest_str, []char src_str)
 
 int str_len([]char str)
 {
-  int len; len = 0;
+  int len = 0;
   while(str[len] <> '\0')
   {
     len = len + 1;
@@ -78,8 +85,8 @@ int str_len([]char str)
 
 void print_str([]char str)
 {
-  int len; len = str_len(str);
-  int chars_written_count; chars_written_count = 0;
+  int len = str_len(str);
+  int chars_written_count = 0;
   WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
 }
 
@@ -111,10 +118,10 @@ void digit_to_char([]char buf, int pos, int digit)
 
 []char int_to_str([]char buf, int buf_len, int i)
 {
-  int buf_i; buf_i = buf_len - 1;
+  int buf_i = buf_len - 1;
   buf[buf_i] = '\0';
 
-  bool is_negative; is_negative = false;
+  bool is_negative = false;
   if(i < 0)
   {
     i = abs(i);
@@ -122,7 +129,7 @@ void digit_to_char([]char buf, int pos, int digit)
   }
 
   buf_i = buf_i - 1;
-  int remainder; remainder = i mod 10;
+  int remainder = i mod 10;
   digit_to_char(buf, buf_i, remainder);
 
   while(i > remainder)
@@ -144,7 +151,7 @@ void digit_to_char([]char buf, int pos, int digit)
 
 void init_intbuf([]int buf, int len, int val)
 {
-  int i; i = 0;
+  int i = 0;
   while(i < len)
   {
     buf[i] = val;
@@ -156,11 +163,11 @@ void float_to_str([]char buf, int buf_len, float f)
 {
   [9]int significand;
   init_intbuf(&significand, 9, 0);
-  int exponent; exponent = 0;
+  int exponent = 0;
 
-  int digit_count; digit_count = fp_bin_to_dec(f, &significand, &exponent);
+  int digit_count = fp_bin_to_dec(f, &significand, &exponent);
 
-  int pos; pos = 0;
+  int pos = 0;
 
   if(f < 0.0)
   {
@@ -168,7 +175,7 @@ void float_to_str([]char buf, int buf_len, float f)
     pos = pos + 1;
   }
 
-  int i; i = 1;
+  int i = 1;
   if(exponent <= 0)
   {
     buf[pos] = '0';
@@ -208,7 +215,7 @@ void float_to_str([]char buf, int buf_len, float f)
     pos = pos + 1;
 
     [20]char exponent_buf;
-    []char exponent_str; exponent_str = int_to_str(&exponent_buf, 20, exponent);
+    []char exponent_str = int_to_str(&exponent_buf, 20, exponent);
     while(^exponent_str <> '\0')
     {
       buf[pos] = ^exponent_str;
@@ -243,7 +250,7 @@ void print_bool(bool b)
 
 int max(int a, int b)
 {
-  int result; result = a;
+  int result = a;
   if(a < b)
     result = b;
   return result;
@@ -251,7 +258,7 @@ int max(int a, int b)
 
 int min(int a, int b)
 {
-  int result; result = a;
+  int result = a;
   if(a > b)
     result = b;
   return result;
@@ -259,7 +266,7 @@ int min(int a, int b)
 
 float maxf(float a, float b)
 {
-  float result; result = a;
+  float result = a;
   if(a < b)
     result = b;
   return result;
@@ -267,7 +274,7 @@ float maxf(float a, float b)
 
 float minf(float a, float b)
 {
-  float result; result = a;
+  float result = a;
   if(a > b)
     result = b;
   return result;
@@ -289,10 +296,10 @@ float absf(float a)
 
 float ipow(float a, int p)
 {
-  bool inv; inv = (p < 0);
+  bool inv = (p < 0);
   p = abs(p);
 
-  float result; result = 1.0;
+  float result = 1.0;
   if(p <> 0)
   {
     while(p > 0)
@@ -308,8 +315,8 @@ float ipow(float a, int p)
 
 int floor_log_b(int b, float n)
 {
-  int x; x = 0;
-  float b_pow_x; b_pow_x = 1.0;
+  int x = 0;
+  float b_pow_x = 1.0;
 
   if(n > 1.0)
   {
@@ -335,19 +342,19 @@ int floor_log_b(int b, float n)
 
 int fp_bin_to_dec(float v, []int significand, []int exponent)
 {
-  float v_abs; v_abs = absf(v);
-  int x; x = floor_log_b(10, v_abs) + 1;
+  float v_abs = absf(v);
+  int x = floor_log_b(10, v_abs) + 1;
   exponent[0] = x;
 
-  float B_power_x; B_power_x = ipow(10.0, -x);
-  float v_prime; v_prime = v_abs * B_power_x;
+  float B_power_x = ipow(10.0, -x);
+  float v_prime = v_abs * B_power_x;
 
   int k; k = 0;
-  float R; R = v_prime;
-  float M; M = ipow(2.0, -23) / 2.0;
+  float R = v_prime;
+  float M = ipow(2.0, -23) / 2.0;
   int U;
 
-  bool run_loop; run_loop = true;
+  bool run_loop = true;
   while(run_loop)
   {
     k = k + 1;

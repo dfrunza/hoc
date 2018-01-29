@@ -706,6 +706,11 @@ bool set_types_var(MemoryArena* arena, AstNode* var)
   {
     var->ty = new_var_type(arena, type->ty);
     var->eval_ty = type->ty;
+
+    if(var->var.init_expr)
+    {
+      success = set_types_expr(arena, var->var.init_expr);
+    }
   }
 
   return success;
@@ -1222,7 +1227,7 @@ bool set_types_proc(MemoryArena* arena, AstNode* proc)
     proc->ty = new_proc_type(arena, args->eval_ty, ret_type->eval_ty);
     proc->eval_ty = basic_type_void;
     
-    if(proc->modifier != eModifier_extern)
+    if(!is_extern_proc(proc))
     {
       success = set_types_block(arena, proc->proc.body);
     }
@@ -1556,7 +1561,21 @@ bool eval_types_var(MemoryArena* arena, AstNode* var)
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
-  if(!type_unif(var->ty->var.type, var->eval_ty))
+  if(type_unif(var->ty->var.type, var->eval_ty))
+  {
+    AstNode* init_expr = var->var.init_expr;
+    if(init_expr)
+    {
+      if(success = eval_types_expr(arena, init_expr))
+      {
+        if(!type_unif(var->eval_ty, init_expr->eval_ty))
+        {
+          success = compile_error(arena, var->src_loc, "type error (var init expr)");
+        }
+      }
+    }
+  }
+  else
   {
     success = compile_error(arena, var->src_loc, "type error (var)");
   }
@@ -1832,6 +1851,11 @@ bool eval_types_block_stmt(MemoryArena* arena, AstNode* stmt)
     break;
     
     case eAstNode_var:
+    {
+      success = eval_types_var(arena, stmt);
+    }
+    break;
+
     case eAstNode_loop_ctrl:
     case eAstNode_empty:
     break;
@@ -1937,6 +1961,11 @@ bool resolve_types_var(MemoryArena* arena, AstNode* var)
   if(success = resolve_types_of_node(arena, var))
   {
     var->var.decl_sym->ty = var->eval_ty;
+
+    if(var->var.init_expr)
+    {
+      success = resolve_types_expr(arena, var->var.init_expr);
+    }
   }
 
   return success;
@@ -2508,6 +2537,13 @@ bool check_types_var(MemoryArena* arena, AstNode* var)
   if(types_are_equal(var->eval_ty, basic_type_void))
   {
     success = compile_error(arena, var->src_loc, "type of var cannot be `void`");
+  }
+  else
+  {
+    if(var->var.init_expr)
+    {
+      success = check_types_expr(arena, var->var.init_expr);
+    }
   }
 
   return success;

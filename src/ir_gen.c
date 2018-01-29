@@ -1163,13 +1163,26 @@ bool ir_gen_loop_ctrl(IrContext* ir_context, Scope* scope, AstNode* loop_ctrl)
   return success;
 }
 
-void ir_gen_var(IrContext* ir_context, Scope* scope, AstNode* var)
+bool ir_gen_var(IrContext* ir_context, Scope* scope, AstNode* var)
 {
+  bool success = true;
   assert(KIND(var, eAstNode_var));
 
   Symbol* object = var->var.decl_sym;
   alloc_data_object_incremental(ir_context, object, scope);
   add_object_to_memory(ir_context->x86_context, object);
+  var->place = ir_new_arg_existing_object(ir_context, object);
+
+  AstNode* init_expr = var->var.init_expr;
+  if(init_expr)
+  {
+    if(success = ir_gen_expr(ir_context, scope, init_expr))
+    {
+      ir_emit_assign(ir_context, eIrOp_None, init_expr->place, 0, var->place);
+    }
+  }
+
+  return success;
 }
 
 bool ir_gen_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
@@ -1227,7 +1240,7 @@ bool ir_gen_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
     
     case eAstNode_var:
     {
-      ir_gen_var(ir_context, scope, stmt);
+      success = ir_gen_var(ir_context, scope, stmt);
     }
     break;
     

@@ -1807,7 +1807,7 @@ void x86_gen_extern_proc(X86Context* context, AstNode* proc)
 
 void x86_gen_proc(X86Context* context, AstNode* proc)
 {
-  if((proc->modifier & eModifier_extern) != 0)
+  if(is_extern_proc(proc))
   {
     x86_gen_extern_proc(context, proc);
   }

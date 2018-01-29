@@ -9,7 +9,7 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 cl > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (
-  ECHO MSVC environment is not in working state
+  ECHO MSVC environment is not functional
   GOTO :early_exit
 )
 
@@ -53,7 +53,6 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 
 :: NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
-
 ECHO %hoc_file%.hoc
 hocc %hoc_dir%\%hoc_file%.hoc
 IF %ERRORLEVEL% NEQ 0 (

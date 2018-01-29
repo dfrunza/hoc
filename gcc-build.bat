@@ -9,7 +9,7 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 gcc -v > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (
-  ECHO MINGW environment is not in working state
+  ECHO MINGW environment is not functional
   GOTO :early_exit
 )
 
@@ -20,7 +20,8 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 ml > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (
-  ECHO MSVC environment is not in working state
+  ECHO MSVC environment is not functional
+  GOTO :early_exit
 )
 
 SETLOCAL

@@ -6,32 +6,32 @@ include "sort.hoc";
 /*
 */
 
-void print_numbers(int^ numbers, int len)
+void print_numbers([]int numbers, int len)
 {
   int i; i = 0;
   while(i < len)
   {
-    print_int(^(numbers + (int^):(i*4)));
+    print_int(numbers[i]);
     print_str(&"\n");
 
     i = i+1;
   }
 }
 
-int^ make_numbers(int how_many)
+[]int make_numbers(int how_many)
 {
   int i; i = 0;
   int c1; c1 = 17;
   int c2; c2 = 31;
-  int^ numbers;
-  numbers = (int^):alloc(how_many);
+  []int numbers;
+  numbers = ([]int):alloc(how_many);
 
   while(i < how_many)
   {
     if((i mod 2) == 0)
-      ^(numbers + (int^):(i*4)) = c1 * i;
+      numbers[i] = c1 * i;
     else
-      ^(numbers + (int^):(i*4)) = c2 * i;
+      numbers[i] = c2 * i;
 
     i = i+1;
   }
@@ -41,7 +41,7 @@ int^ make_numbers(int how_many)
 void main()
 {
   float f1; f1 = -12.0;
-  float f2; f2 = 0.058;
+  float f2; f2 = 1.058;
   float result; result = f1 + f2;
   print_float(f1);
   print_str(&" + ");
@@ -61,16 +61,16 @@ void main()
   print_int(i_r);
 
   int nr_count; nr_count = 30;
-  int^ numbers; numbers = make_numbers(nr_count);
+  []int numbers; numbers = make_numbers(nr_count);
   print_str(&"\n--- SHUFFLED ---\n");
   print_numbers(numbers, nr_count);
   /*
   */
 
-  /*
   quick_sort(numbers, nr_count);
   print_str(&"\n--- SORTED ---\n");
   print_numbers(numbers, nr_count);
+  /*
   */
 
   print_str(&"\n--- FIBONACCI ---\n");
@@ -81,5 +81,3 @@ void main()
   /*
   */
 }
-
-

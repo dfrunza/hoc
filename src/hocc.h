@@ -731,7 +731,7 @@ typedef enum eX86Stmt
   eX86Stmt_jne,
 
   eX86Stmt_cvtsi2ss,
-  eX86Stmt_cvtss2si,
+  eX86Stmt_cvttss2si,
 
   eX86Stmt_nop,
   eX86Stmt_label,

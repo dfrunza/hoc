@@ -366,8 +366,8 @@ void x86_print_opcode(String* text, eX86Stmt opcode)
       str_printf(text, "cvtsi2ss ");
     break;
 
-    case eX86Stmt_cvtss2si:
-      str_printf(text, "cvtss2si ");
+    case eX86Stmt_cvttss2si:
+      str_printf(text, "cvttss2si ");
     break;
 
     default: assert(0);
@@ -684,17 +684,6 @@ X86Location* lookup_object_location(X86Context* context, Symbol* object)
   {
     loc = object->locations._[eX86Location_memory];
   }
-
-#if 0
-  if(!loc)
-  {
-    if(is_object_in_location(object, &context->memory) || object->kind == eSymbol_constant
-       || !object->is_temp)
-    {
-      loc = &context->memory;
-    }
-  }
-#endif
 
   return loc;
 }
@@ -1051,7 +1040,7 @@ eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
       break;
 
       case eIrOp_ftoi:
-        x86_opcode = eX86Stmt_cvtss2si;
+        x86_opcode = eX86Stmt_cvttss2si;
       break;
 
       case eIrOp_bit_or:

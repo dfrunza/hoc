@@ -6,6 +6,16 @@ extern void WriteConsoleA(int console_handle, []char buf, int chars_to_write_cou
 extern int GetLastError();
 extern bool ReadFile(int file_handle, []char buf, int bytes_to_read_count, int^ bytes_read_count, void^ p_overlapped);
 
+void main()
+{
+  float a; a = 1.0064;
+  print_float(a);
+  print_str(&"\n");
+
+  []char cmd; cmd = GetCommandLineA();
+  print_str(cmd);
+}
+
 int stdout;
 int stdin; 
 void^ heap;
@@ -41,141 +51,12 @@ void startup()
   int PAGE_READWRITE; PAGE_READWRITE = 0x4;
 
   stdout = GetStdHandle(STD_OUTPUT_HANDLE);
-  stdin = GetStdHandle(-10);
+  stdin = GetStdHandle(STD_INPUT_HANDLE);
+
   heap = VirtualAlloc((void^):0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
   heap_ptr = 0;
 
-  float f1; f1 = 12.0;
-  float f2; f2 = 1.04;
-  print_float(f2);
-
-  /*
-  float result; result = f1 + f2;
-  print_float(f1);
-  print_str(&" + ");
-  print_str(&" = ");
-  print_float(result);
-  print_str(&"\n---------\n");
-  */
-}
-
-void print_numbers([]int numbers, int len)
-{
-  int i; i = 0;
-  while(i < len)
-  {
-    print_int(numbers[i]);
-    print_str(&"\n");
-
-    i = i+1;
-  }
-}
-
-[]int make_numbers(int how_many)
-{
-  int i; i = 0;
-  int c1; c1 = 17;
-  int c2; c2 = 31;
-  []int numbers;
-  numbers = ([]int):alloc(how_many);
-
-  while(i < how_many)
-  {
-    if((i mod 2) == 0)
-      numbers[i] = c1 * i;
-    else
-      numbers[i] = c2 * i;
-
-    i = i+1;
-  }
-  return numbers;
-}
-
-void main()
-{
-  float f1; f1 = -12.0;
-  float f2; f2 = 1.058;
-  float result; result = f1 + f2;
-  print_float(f1);
-  print_str(&" + ");
-  print_float(f2);
-  print_str(&" = ");
-  print_float(result);
-  print_str(&"\n---------\n");
-
-  int i_a; i_a = 7*7*5*3;
-  int i_b; i_b = 7*3*11;
-  int i_r; i_r = gcd(i_a, i_b);
-  print_str(&"gcd(");
-  print_int(i_a);
-  print_str(&",");
-  print_int(i_b);
-  print_str(&")=");
-  print_int(i_r);
-
-  int nr_count; nr_count = 30;
-  []int numbers; numbers = make_numbers(nr_count);
-  print_str(&"\n--- SHUFFLED ---\n");
-  print_numbers(numbers, nr_count);
-  /*
-  */
-
-  quick_sort(numbers, nr_count);
-  print_str(&"\n--- SORTED ---\n");
-  print_numbers(numbers, nr_count);
-  /*
-  */
-
-  print_str(&"\n--- FIBONACCI ---\n");
-  fibo(40);
-
-  print_str(&"\n--- FIZZBUZZ ---\n");
-  fizzbuzz(50);
-  /*
-  */
-}
-
-void fizzbuzz(int n)
-{
-  if(n > 0)
-  {
-    int i; i = 1;
-    while(i <= n)
-    {
-      if((i mod 15) == 0)
-        print_str(&"fizzbuzz");
-      else if((i mod 3) == 0)
-        print_str(&"buzz");
-      else if((i mod 5) == 0)
-        print_str(&"fizz");
-      else
-        print_int(i);
-
-      print_str(&"\n");
-      i = i + 1;
-    }
-  }
-}
-
-void fibo(int n)
-{
-  if(n > 0)
-  {
-    int f_1; f_1 = 0;
-    int f_2; f_2 = 1;
-    int f_n; f_n = f_1 + f_2;
-
-    while(n > 0)
-    {
-      print_int(f_n);
-      print_str(&"\n");
-
-      f_n = f_2 + f_1;
-      f_1 = f_2;
-      f_2 = f_n;
-      n = n - 1;
-    }
-  }
+  main();
 }
 
 void str_copy([]char dest_str, []char src_str)
@@ -189,82 +70,6 @@ void str_copy([]char dest_str, []char src_str)
   while(src_str[i] <> '\0');
 }
 
-int qs_find_pivot_index([]int data, int start_index, int end_index)
-{
-  int index; index = -1;
-  int i; i = start_index;
-
-  while(i < end_index)
-  {
-    if(data[i] < data[i + 1])
-    {
-      index = i + 1;
-      break;
-    }
-    else if(data[i] > data[i + 1])
-    {
-      index = i;
-      break;
-    }
-    i = i + 1;
-  }
-  return index;
-}
-
-void swap([]int data, int i, int j)
-{
-  if(i <> j)
-  {
-    int temp_val; temp_val = data[i];
-    data[i] = data[j];
-    data[j] = temp_val;
-  }
-}
-
-void insertion_sort([]int array, int len)
-{
-  int i; i = 0;
-
-  while(i < len)
-  {
-    int j; j = i;
-    while(array[j] < array[j - 1])
-    {
-      swap(array, j, j - 1);
-      j = j - 1;
-    }
-    i = i + 1;
-  }
-}
-
-void quick_sort_recurs([]int data, int i, int j)
-{
-  int pivot_index; pivot_index = qs_find_pivot_index(data, i, j);
-
-  if(pivot_index >= 0)
-  {
-    int l; l = i;
-    int r; r = j;
-    int pivot; pivot = data[pivot_index];
-
-    while(l < r)
-    {
-      swap(data, l, r);
-      while(data[l] < pivot)
-        l = l + 1;
-      while(data[r] >= pivot)
-        r = r - 1;
-    }
-
-    quick_sort_recurs(data, i, r);
-    quick_sort_recurs(data, l, j);
-  }
-}
-
-void quick_sort([]int data, int len)
-{
-  quick_sort_recurs(data, 0, len - 1);
-}
 
 int str_len([]char str)
 {
@@ -355,7 +160,7 @@ void init_intbuf([]int buf, int len, int val)
 void float_to_str([]char buf, int buf_len, float f)
 {
   [9]int significand;
-  init_intbuf(&significand[0], 9, 0);
+  init_intbuf(&significand, 9, 0);
   int exponent; exponent = 0;
 
   int digit_count; digit_count = fp_bin_to_dec(f, &significand, &exponent);
@@ -408,7 +213,7 @@ void float_to_str([]char buf, int buf_len, float f)
     pos = pos + 1;
 
     [20]char exponent_buf;
-    char^ exponent_str; exponent_str = int_to_str(&exponent_buf, 20, exponent);
+    []char exponent_str; exponent_str = int_to_str(&exponent_buf, 20, exponent);
     while(^exponent_str <> '\0')
     {
       buf[pos] = ^exponent_str;
@@ -487,44 +292,6 @@ float absf(float a)
   return a;
 }
 
-int gcd_recurs(int a, int b)
-{
-  int result; result = a;
-  if(b <> 0)
-  {
-    result = b;
-    int r; r = a mod b;
-    if(r == 0)
-      result = b;
-    else
-      result = gcd_recurs(b, r);
-  }
-  return result;
-}
-
-int gcd_iter(int a, int b)
-{
-  while(a <> b)
-  {
-    if(a > b)
-      a = a - b;
-    else
-      b = b - a;
-  }
-  return a;
-}
-
-int gcd(int a, int b)
-{
-
-  return gcd_recurs(abs(a), abs(b));
-}
-
-int lcm(int a, int b)
-{
-  return abs(a * b)/gcd(a, b);
-}
-
 float ipow(float a, int p)
 {
   bool inv; inv = (p < 0);
@@ -542,32 +309,6 @@ float ipow(float a, int p)
       result = 1.0/result;
   }
   return result;
-}
-
-float sqrt_iter(float x, float g)
-{
-  float r; r = x/g;
-
-  if(r <> g)
-  {
-    r = (r+g) / 2.0;
-    if(absf(r-g) == 1.0)
-      r = minf(r, g);
-  }
-  return r;
-}
-
-float sqrt(float x)
-{
-  float g; g = x;
-  float r; r = 1.0;
-
-  while((g > 0.0) and (g <> r))
-  {
-    g = r;
-    r = sqrt_iter(x, g);
-  }
-  return g;
 }
 
 int floor_log_b(int b, float n)
@@ -630,33 +371,4 @@ int fp_bin_to_dec(float v, []int significand, []int exponent)
 
   return k;
 }
-
-
-  /* test case */
-  /*
-  a = 2.0;
-  b = 2;
-  n = ipow(a, b);
-  m = sqrt(n);
-  print_bool(m == a);
-  */
-
-/*
-[2]int A;
-[2]int B;
-
-int foo([]int A, []int B)
-{
-  int prod; prod = 0;
-  int i; i = 0;
-
-  while(i < 2)
-  {
-    prod = prod + A[i]*B[i];
-    i = i + 1;
-  }
-
-  return prod;
-}
-*/
 

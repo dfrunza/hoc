@@ -43,41 +43,37 @@ void main()
   float f1; f1 = -12.0;
   float f2; f2 = 1.058;
   float result; result = f1 + f2;
+  print_str(&"\n");
   print_float(f1);
   print_str(&" + ");
   print_float(f2);
   print_str(&" = ");
   print_float(result);
-  print_str(&"\n---------\n");
+  print_str(&"\n");
 
   int i_a; i_a = 7*7*5*3;
   int i_b; i_b = 7*3*11;
   int i_r; i_r = gcd(i_a, i_b);
-  print_str(&"gcd(");
+  print_str(&"\ngcd(");
   print_int(i_a);
   print_str(&",");
   print_int(i_b);
   print_str(&")=");
   print_int(i_r);
+  print_str(&"\n");
 
-  int nr_count; nr_count = 30;
+  int nr_count; nr_count = 15;
   []int numbers; numbers = make_numbers(nr_count);
-  print_str(&"\n--- SHUFFLED ---\n");
+  print_title(&"SHUFFLED");
   print_numbers(numbers, nr_count);
-  /*
-  */
 
   quick_sort(numbers, nr_count);
-  print_str(&"\n--- SORTED ---\n");
+  print_title(&"SORTED");
   print_numbers(numbers, nr_count);
-  /*
-  */
 
-  print_str(&"\n--- FIBONACCI ---\n");
-  fibo(40);
+  print_title(&"FIBONACCI");
+  fibo(20);
 
-  print_str(&"\n--- FIZZBUZZ ---\n");
-  fizzbuzz(50);
-  /*
-  */
+  print_title(&"FIZZBUZZ");
+  fizzbuzz(30);
 }

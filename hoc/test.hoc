@@ -1,3 +1,8 @@
+void main()
+{
+  []char cmd; cmd = GetCommandLineA();
+}
+
 extern int GetStdHandle(int device_id);
 extern void ExitProcess(int code);
 extern char^ GetCommandLineA();
@@ -5,16 +10,6 @@ extern void^ VirtualAlloc(void^ address, int alloc_size, int alloc_var, int prot
 extern void WriteConsoleA(int console_handle, []char buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
 extern int GetLastError();
 extern bool ReadFile(int file_handle, []char buf, int bytes_to_read_count, int^ bytes_read_count, void^ p_overlapped);
-
-void main()
-{
-  float a; a = 1.0064;
-  print_float(a);
-  print_str(&"\n");
-
-  []char cmd; cmd = GetCommandLineA();
-  print_str(cmd);
-}
 
 int stdout;
 int stdin; 

@@ -604,7 +604,7 @@ typedef struct IrStmt
 
     struct IrStmt_call
     {
-      char* name;
+      Label* name;
       Scope* param_scope;
       Symbol* retvar;
       int arg_count;
@@ -789,7 +789,7 @@ typedef struct AstNode
   SourceLoc* src_loc;
   Type* ty;
   Type* eval_ty;
-  eModifier modifier; // todo: get rid of this; use a boolean ffs.
+  eModifier modifier;
   IrArg* place;
 
   Label* label_true;
@@ -926,7 +926,6 @@ typedef struct AstNode
     struct
     {
       char* name;
-      char* decorated_name;
       AstNode* args;
       AstNode* ret_type;
       AstNode* body;
@@ -935,6 +934,9 @@ typedef struct AstNode
       Scope* param_scope;
       Symbol* decl_sym;
       Symbol* retvar;
+
+      // If the proc is external, then this is the decorated name.
+      Label label_name;
 
       IrStmt* ir_stmt_array;
       int ir_stmt_count;

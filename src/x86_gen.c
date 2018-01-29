@@ -1722,7 +1722,7 @@ void x86_gen_call(X86Context* context, struct IrStmt_call* call)
   /* call #proc_name */
   stmt = x86_new_stmt(context, eX86Stmt_call);
 
-  stmt->operand1 = x86_make_id_operand(context, call->name);
+  stmt->operand1 = x86_make_id_operand(context, call->name->name);
 
   if(call->is_extern)
   {
@@ -1801,7 +1801,8 @@ void x86_gen_extern_proc(X86Context* context, AstNode* proc)
 {
   /* extern #proc_name:proc */
   X86Stmt* stmt = x86_new_stmt(context, eX86Stmt_extern_proc);
-  stmt->operand1 = x86_make_id_operand(context, proc->proc.decorated_name);
+  Label* label_name = &proc->proc.label_name;
+  stmt->operand1 = x86_make_id_operand(context, label_name->name);
 }
 
 void x86_gen_proc(X86Context* context, AstNode* proc)

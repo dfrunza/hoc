@@ -265,7 +265,7 @@ void ir_emit_goto(IrContext* ir_context, Label* goto_label)
   ir_context->stmt_count++;
 }
 
-void ir_emit_call(IrContext* ir_context, char* name, Scope* param_scope, Symbol* retvar, bool is_extern)
+void ir_emit_call(IrContext* ir_context, Label* name, Scope* param_scope, Symbol* retvar, bool is_extern)
 {
   IrStmt* stmt = mem_push_struct(ir_context->stmt_arena, IrStmt);
   stmt->kind = eIrStmt_call;
@@ -512,7 +512,7 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
       alloc_data_object(ir_context, arg->call_arg.param, call->call.param_scope);
     }
 
-    ir_emit_call(ir_context, proc->proc.decorated_name, call->call.param_scope, call->call.retvar, true);
+    ir_emit_call(ir_context, &proc->proc.label_name, call->call.param_scope, call->call.retvar, true);
   }
   else
   {
@@ -526,7 +526,7 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
     }
     alloc_data_object(ir_context, call->call.retvar, call->call.param_scope);
 
-    ir_emit_call(ir_context, proc->proc.name, call->call.param_scope, call->call.retvar, false);
+    ir_emit_call(ir_context, &proc->proc.label_name, call->call.param_scope, call->call.retvar, false);
   }
 }
 
@@ -1292,16 +1292,22 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   ir_gen_formal_args(ir_context, proc->proc.param_scope, proc->proc.args);
   alloc_data_object(ir_context, proc->proc.retvar, proc->proc.param_scope);
 
+  Label* label_name = &proc->proc.label_name;
+  label_name->stmt_nr = 0;
+
   if(is_extern_proc(proc))
   {
     int arg_size = get_proc_arg_size(proc->proc.args);
     char* name = proc->proc.name;
     String decorated_label; str_init(ir_context->gp_arena, &decorated_label);
     str_printf(&decorated_label, "%s@%d", name, arg_size);
-    proc->proc.decorated_name = str_cap(&decorated_label);
+
+    label_name->name = str_cap(&decorated_label);
   }
   else
   {
+    label_name->name = proc->proc.name;
+
     AstNode* body = proc->proc.body;
     assert(KIND(body, eAstNode_block));
 
@@ -1671,7 +1677,7 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
     case eIrStmt_call:
     {
       struct IrStmt_call* call = &stmt->call;
-      str_printf(text, "call %s", call->name);
+      str_printf(text, "call %s", call->name->name);
     }
     break;
     

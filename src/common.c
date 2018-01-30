@@ -2,6 +2,23 @@
 #define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
 #define max_int() ~(1 << (sizeof(int)*8 - 1))
 
+#define assert(EXPR) do { if(!(EXPR)) assert_(#EXPR, __FILE__, __LINE__); } while(0)
+void assert_(char* message, char* file, int line)
+{
+  if(DEBUG_enabled)
+  {
+    platform_printf("%s:%d: ", file, line);
+    if(!message || message[0] == '\0')
+    {
+      message = "";
+    }
+    platform_printf("assert(%s)\n", message);
+
+    //fflush(stderr);
+    *(int*)0 = 0;
+  }
+}
+
 bool char_is_letter(char ch)
 {
   return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z');
@@ -17,9 +34,18 @@ bool char_is_hex_digit(char c)
   return ('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
 }
 
+void mem_zero_(void* mem, int len)
+{
+  /* slow but CRT-independent */
+  uint8* p_byte = (uint8*)mem;
+  for(int i = 0; i < len; i++)
+  {
+    *p_byte = 0;
+  }
+}
+
 #define struct_check_bounds(ARENA, TYPE, STRUCT) mem_check_bounds_(ARENA, sizeof(TYPE), STRUCT)
 #define arena_check_bounds(ARENA) mem_check_bounds_((ARENA), 0, (ARENA)->free)
-
 void mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
 {
   assert(arena->base <= (uint8*)ptr);
@@ -28,12 +54,23 @@ void mem_check_bounds_(MemoryArena* arena, int elem_size, void* ptr)
 
 #define mem_zero_struct(VAR, TYPE) (mem_zero_(VAR, sizeof(TYPE)))
 #define mem_zero_array(VAR, TYPE) (mem_zero_(VAR, sizeof_array(VAR) * sizeof(TYPE)))
-
 void mem_zero_range(void* start, void* one_past_end)
 {
   assert(one_past_end >= start);
   int len = (int)((uint8*)one_past_end - (uint8*)start);
   mem_zero_(start, len);
+}
+
+MemoryArena* new_arena(int size)
+{
+  void* raw_mem = platform_alloc_memory(size);
+  MemoryArena* arena = (MemoryArena*)raw_mem;
+  mem_zero_struct(arena, MemoryArena);
+  arena->base = (uint8*)arena + sizeof(MemoryArena);
+  arena->free = arena->base;
+  arena->cap = arena->free + size;
+
+  return arena;
 }
 
 void free_arena(MemoryArena* arena)
@@ -230,7 +267,7 @@ bool cstr_to_float(char* str, float* result)
   else
     return false;
 #else
-  if(h_sscanf(str, "%f", result) != 1)
+  if(platform_sscanf(str, "%f", result) != 1)
     return false;
 #endif
 
@@ -355,14 +392,14 @@ void str_append(String* str, char* cstr)
   }
 }
 
-int str_printf_va(String* str, char* fmessage, va_list varargs)
+int str_printf_va(String* str, char* fmessage, va_list args)
 {
   assert(str->head && str->end && str->arena);
   MemoryArena* arena = str->arena;
   assert(str->head <= str->end);
   assert(str->end == (char*)arena->free-1);
 
-  int len = h_vsprintf(str->end, fmessage, varargs);
+  int len = platform_sprintf_va(str->end, fmessage, args);
   str->end += len;
   assert(str->end < (char*)arena->cap);
   arena->free = (uint8*)str->end+1;
@@ -372,19 +409,20 @@ int str_printf_va(String* str, char* fmessage, va_list varargs)
 
 int str_printf(String* str, char* ftext, ...)
 {
-  va_list varargs;
-  va_start(varargs, ftext);
-  int text_len = str_printf_va(str, ftext, varargs);
-  va_end(varargs);
+  va_list args;
+  va_start(args, ftext);
+  int text_len = str_printf_va(str, ftext, args);
+  va_end(args);
+
   return text_len;
 }
 
 int str_printfln(String* str, char* fline, ...)
 {
-  va_list varargs;
-  va_start(varargs, fline);
-  int text_len  = str_printf_va(str, fline, varargs);
-  va_end(varargs);
+  va_list args;
+  va_start(args, fline);
+  int text_len = str_printf_va(str, fline, args);
+  va_end(args);
 
   str_append(str, "\n");
   text_len++;
@@ -440,6 +478,141 @@ void print_char(char buf[3], char raw_char)
     cstr_copy(buf, "\\'");
   else
     *buf = raw_char;
+}
+
+char* path_find_leaf(char* file_path)
+{
+  char* p_char = file_path;
+  char* leaf = p_char;
+
+  /* get the file name part */
+  while(p_char && *p_char)
+  {
+    while(*p_char && *p_char != '\\')
+    {
+      p_char++;
+    }
+
+    if(*p_char == '\\')
+    {
+      leaf = ++p_char;
+    }
+  }
+
+  return leaf;
+}
+
+char* path_make_leaf(char* file_path, bool with_extension)
+{
+  char* leaf = path_find_leaf(file_path);
+
+  /* remove the filename extension */
+  if(leaf && !with_extension)
+  {
+    char* p_char = leaf;
+    while(*p_char && *p_char != '.')
+      p_char++;
+    *p_char = '\0';
+  }
+
+  return leaf;
+}
+
+char* path_make_dir(char* file_path)
+{
+  char* leaf = path_find_leaf(file_path);
+  if(leaf)
+    *leaf = '\0';
+  return file_path;
+}
+
+#define fail(MESSAGE, ...) fail_(__FILE__, __LINE__, (MESSAGE), ## __VA_ARGS__)
+void fail_(char* file, int line, char* message, ...)
+{
+  platform_printf("%s:%d: fail : ", file, line);
+
+  if(!message || message[0] == '\0')
+  {
+    message = "";
+  }
+
+  va_list args;
+  va_start(args, message);
+  //vfprintf(stderr, message, args);
+  platform_printf(message, args);
+  va_end(args);
+
+  platform_printf("\n");
+  //fprintf(stderr, "\n");
+  //fflush(stderr);
+  *(int*)0 = 0;
+}
+
+#define error(MESSAGE, ...) error_(__FILE__, __LINE__, (MESSAGE), ## __VA_ARGS__)
+bool error_(char* file, int line, char* message, ...)
+{
+  platform_printf("%s:%d: error : ", file, line);
+
+  if(!message || message[0] == '\0')
+  {
+    message = "";
+  }
+
+  va_list args;
+  va_start(args, message);
+  platform_printf(message, args);
+  va_end(args);
+
+  platform_printf("\n");
+  //fflush(stderr);
+
+  return false;
+}
+
+#define compile_error(ARENA, SRC, MESSAGE, ...) compile_error_((ARENA), __FILE__, __LINE__, (SRC), (MESSAGE), ## __VA_ARGS__)
+bool compile_error_(MemoryArena* arena, char* file, int line, SourceLoc* src_loc, char* message, ...)
+{
+  char* filename_buf = mem_push_array_nz(arena, char, cstr_len(file));
+  cstr_copy(filename_buf, file);
+
+  if(src_loc && src_loc->line_nr >= 0)
+  {
+    platform_printf("%s:%d: (%s:%d) error : ", src_loc->file_path, src_loc->line_nr,
+            path_make_leaf(filename_buf, false), line);
+  }
+  else
+  {
+    platform_printf("%s:%d: error : ", file, line);
+  }
+
+  va_list args;
+  va_start(args, message);
+  //vfprintf(stderr, message, args);
+  platform_printf(message, args);
+  va_end(args);
+
+  platform_printf("\n");
+
+  return false;
+}
+
+char* file_read_text(MemoryArena* arena, char* file_path)
+{
+  char* text = 0;
+  int byte_count = 0;
+  if((byte_count = platform_file_read_bytes(arena, (uint8**)&text, file_path, 1)) >= 0)
+  {
+    text[byte_count] = '\0'; // NULL terminator
+  }
+
+  return text;
+}
+
+bool str_dump_to_file(String* str, char* file_path)
+{
+  int char_count = str_len(str);
+  int bytes_written = platform_file_write_bytes(file_path, (uint8*)str->head, str_len(str));
+  return (char_count == bytes_written);
 }
 
 int bitpos(int k)

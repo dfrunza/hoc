@@ -64,6 +64,14 @@ typedef struct String
 }
 String;
 
+void* platform_alloc_memory(int size);
+int platform_printf(char* format, ...);
+int platform_sscanf(char* buffer, char* format, ...);
+int platform_sprintf_va(char* buffer, char* format, va_list args);
+int platform_sprintf(char* buffer, char* format, ...);
+int platform_file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int alloc_extra);
+int platform_file_write_bytes(char* file_path, uint8* bytes, int count);
+
 #define countof(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
 #define KIND(VAR, KIND) (((VAR)->kind == KIND) ? (VAR) : 0)
 

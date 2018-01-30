@@ -13,28 +13,15 @@ global_var bool DEBUG_zero_arena = true;
 global_var bool DEBUG_check_arena_bounds = true;
 global_var bool DEBUG_zero_struct = true;
 
-#include "platform.h"
-#include "lib.c"
-#include "translate.c"
+#include "common.c"
 
-void mem_zero_(void* mem, int len)
+void* platform_alloc_memory(int size)
 {
-  memset(mem, 0, (size_t)len);
+  void *raw_mem = VirtualAlloc(0, size + sizeof(MemoryArena), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+  return raw_mem;
 }
 
-MemoryArena* new_arena(int size)
-{
-  void* raw_mem = VirtualAlloc(0, size + sizeof(MemoryArena), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-  MemoryArena* arena = (MemoryArena*)raw_mem;
-  mem_zero_struct(arena, MemoryArena);
-  arena->base = (uint8*)arena + sizeof(MemoryArena);
-  arena->free = arena->base;
-  arena->cap = arena->free + size;
-
-  return arena;
-}
-
-int stdin_read(char buf[], int buf_size)
+int platform_stdin_read(char buf[], int buf_size)
 {
   HANDLE h_std = GetStdHandle(STD_INPUT_HANDLE);
   DWORD bytes_read = 0;
@@ -57,53 +44,7 @@ int stdin_read(char buf[], int buf_size)
   return (int)bytes_read;
 }
 
-char* path_find_leaf(char* file_path)
-{
-  char* p_char = file_path;
-  char* leaf = p_char;
-
-  /* get the file name part */
-  while(p_char && *p_char)
-  {
-    while(*p_char && *p_char != '\\')
-    {
-      p_char++;
-    }
-
-    if(*p_char == '\\')
-    {
-      leaf = ++p_char;
-    }
-  }
-
-  return leaf;
-}
-
-char* path_make_leaf(char* file_path, bool with_extension)
-{
-  char* leaf = path_find_leaf(file_path);
-
-  /* remove the filename extension */
-  if(leaf && !with_extension)
-  {
-    char* p_char = leaf;
-    while(*p_char && *p_char != '.')
-      p_char++;
-    *p_char = '\0';
-  }
-
-  return leaf;
-}
-
-char* path_make_dir(char* file_path)
-{
-  char* leaf = path_find_leaf(file_path);
-  if(leaf)
-    *leaf = '\0';
-  return file_path;
-}
-
-int file_write_bytes(char* file_path, uint8* bytes, int count)
+int platform_file_write_bytes(char* file_path, uint8* bytes, int count)
 {
   int bytes_written = 0;
   FILE* h_file = fopen(file_path, "wb");
@@ -116,14 +57,7 @@ int file_write_bytes(char* file_path, uint8* bytes, int count)
   return bytes_written;
 }
 
-bool str_dump_to_file(String* str, char* file_path)
-{
-  int char_count = str_len(str);
-  int bytes_written = file_write_bytes(file_path, (uint8*)str->head, str_len(str));
-  return (char_count == bytes_written);
-}
-
-int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int alloc_extra)
+int platform_file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int alloc_extra)
 {
   *bytes = 0;
   int byte_count = -1;
@@ -154,19 +88,7 @@ int file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int allo
   return byte_count;
 }
 
-char* file_read_text(MemoryArena* arena, char* file_path)
-{
-  char* text = 0;
-  int byte_count = 0;
-  if((byte_count = file_read_bytes(arena, (uint8**)&text, file_path, 1)) >= 0)
-  {
-    text[byte_count] = '\0'; // NULL terminator
-  }
-
-  return text;
-}
-
-int h_sscanf(char* buffer, char* format, ...)
+int platform_sscanf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
@@ -176,12 +98,12 @@ int h_sscanf(char* buffer, char* format, ...)
   return result;
 }
 
-int h_vsprintf(char* buffer, char* format, va_list args)
+int platform_sprintf_va(char* buffer, char* format, va_list args)
 {
   return vsprintf(buffer, format, args);
 }
 
-int h_sprintf(char* buffer, char* format, ...)
+int platform_sprintf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
@@ -191,94 +113,15 @@ int h_sprintf(char* buffer, char* format, ...)
   return result;
 }
 
-int h_printf(char* format, ...)
+int platform_printf(char* format, ...)
 {
   va_list args;
   va_start(args, format);
   int result = vfprintf(stdout, format, args);
   va_end(args);
 
+  fflush(stdout);
   return result;
-}
-
-bool compile_error_(MemoryArena* arena, char* file, int line, SourceLoc* src_loc, char* message, ...)
-{
-  char* filename_buf = mem_push_array_nz(arena, char, cstr_len(file));
-  cstr_copy(filename_buf, file);
-
-  if(src_loc && src_loc->line_nr >= 0)
-  {
-    fprintf(stderr, "%s:%d: (%s:%d) error : ", src_loc->file_path, src_loc->line_nr,
-            path_make_leaf(filename_buf, false), line);
-  }
-  else
-  {
-    fprintf(stderr, "%s:%d: error : ", file, line);
-  }
-
-  va_list args;
-  va_start(args, message);
-  vfprintf(stderr, message, args);
-  va_end(args);
-
-  fprintf(stderr, "\n");
-
-  return false;
-}
-
-void assert_(char* message, char* file, int line)
-{
-  if(DEBUG_enabled)
-  {
-    fprintf(stderr, "%s:%d: ", file, line);
-    if(!message || message[0] == '\0')
-    {
-      message = "";
-    }
-    fprintf(stderr, "assert(%s)\n", message);
-
-    fflush(stderr);
-    *(int*)0 = 0;
-  }
-}
-
-void fail_(char* file, int line, char* message, ...)
-{
-  fprintf(stderr, "%s:%d: fail : ", file, line);
-
-  if(!message || message[0] == '\0')
-  {
-    message = "";
-  }
-
-  va_list args;
-  va_start(args, message);
-  vfprintf(stderr, message, args);
-  va_end(args);
-
-  fprintf(stderr, "\n");
-  fflush(stderr);
-  *(int*)0 = 0;
-}
-
-bool error_(char* file, int line, char* message, ...)
-{
-  fprintf(stderr, "%s:%d: error : ", file, line);
-
-  if(!message || message[0] == '\0')
-  {
-    message = "";
-  }
-
-  va_list args;
-  va_start(args, message);
-  vfprintf(stderr, message, args);
-  va_end(args);
-
-  fprintf(stderr, "\n");
-  fflush(stderr);
-
-  return false;
 }
 
 typedef struct
@@ -325,6 +168,8 @@ bool make_out_file_names(MemoryArena* arena, OutFileNames* out_files, char* src_
   return success;
 }
 
+#include "translate.c"
+
 int main(int argc, char* argv[])
 {
   bool success = true;
@@ -362,7 +207,7 @@ int main(int argc, char* argv[])
   }
 
   int x86_text_len = str_len(&x86_text);
-  int bytes_written = file_write_bytes(out_files.h_asm.name, (uint8*)x86_text.head, x86_text_len);
+  int bytes_written = platform_file_write_bytes(out_files.h_asm.name, (uint8*)x86_text.head, x86_text_len);
   if(bytes_written != x86_text_len)
   {
     success = error("not all bytes were written to file `%s`", out_files.h_asm.name);

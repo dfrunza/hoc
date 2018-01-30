@@ -1436,11 +1436,12 @@ bool parse_include(TokenStream* input, AstNode** node)
   *node = 0;
   bool success = true;
 
-  AstNode* include = *node = new_ast_node(eAstNode_include, clone_source_loc(&input->src_loc));
+  AstNode* include = *node = new_ast_node(input->arena, eAstNode_include,
+                                          clone_source_loc(input->arena, &input->src_loc));
 
-  if(input->token.kind == eToken_string_val)
+  if(input->token.kind == eToken_str_val)
   {
-    String str; str_init(&str, arena);
+    String str; str_init(input->arena, &str);
     str_append(&str, input->src_loc.file_path);
     path_make_dir(str.head);
     str_tidyup(&str);
@@ -1470,7 +1471,9 @@ bool parse_include(TokenStream* input, AstNode** node)
     success = compile_error(input->arena, &input->src_loc, "string expected, actual `%s`", get_token_printstr(&input->token));
   return success;
 }
+#endif
 
+#if 0
 bool parse_enum(TokenStream* input, AstNode** node)
 {
   *node = 0;

@@ -16,7 +16,7 @@ global_var NextUse NextUse_None = max_int(); // infinity
 void gen_label_name(MemoryArena* arena, Label* label)
 {
   label->name = mem_push_array(arena, char, 12);
-  h_sprintf(label->name, "L_%d", last_label_id++);
+  platform_sprintf(label->name, "L_%d", last_label_id++);
 }
 
 char* new_tempvar_name(MemoryArena* arena, char* label)
@@ -29,7 +29,7 @@ char* new_tempvar_name(MemoryArena* arena, char* label)
 void DEBUG_print_arena_usage(MemoryArena* arena, char* tag)
 {
   ArenaUsage usage = arena_usage(arena);
-  h_printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
+  platform_printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
 }
 
 #if 0/*>>>*/

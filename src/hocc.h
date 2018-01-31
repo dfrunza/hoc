@@ -1006,7 +1006,6 @@ typedef struct AstNode
       List nodes;
       List procs;
       List vars;
-      List includes;
       Scope* scope;
     }
     module;
@@ -1014,7 +1013,7 @@ typedef struct AstNode
     struct AstNode_include
     {
       char* file_path;
-      AstNode* included_module;
+      HFile* file;
     }
     include;
 
@@ -1054,7 +1053,7 @@ typedef struct Parser
 
   AstNode* module;
   HFile* file;
-  List* included_files;
+  List* includes;
 }
 Parser;
 

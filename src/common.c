@@ -709,16 +709,21 @@ void replace_list_item_at(List* list_a, List* list_b, ListItem* at_b_item)
   list_b->count += list_a->count - 1;
 }
 
-void join_list_pair(List* list_a, List* list_b)
+void list_join(List* list_a, List* list_b)
 {
   ListItem* last_a_item = list_a->last;
   ListItem* first_b_item = list_b->first;
 
   if(last_a_item)
-    last_a_item->next = list_b->first;
+    last_a_item->next = first_b_item;
 
   if(first_b_item)
     first_b_item->prev = last_a_item;
+
+  if(!list_a->first)
+    list_a->first = list_b->first;
+
+  list_a->last = list_b->last;
 
   list_a->count += list_b->count;
 }

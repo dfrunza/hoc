@@ -38,6 +38,23 @@ void print_numbers([]int numbers, int len)
   return numbers;
 }
 
+void print_title([]char title)
+{
+  int len = str_len(title);
+  print_str(&"\n  ");
+  print_str(title);
+  print_str(&"\n");
+
+  int L = len + 4;
+  int i = 0;
+  while(i < L)
+  {
+    print_str(&"-");
+    i = i + 1;
+  }
+  print_str(&"\n");
+}
+
 void main()
 {
   float x = -12.0;
@@ -56,9 +73,9 @@ void main()
   int r = gcd(a, b);
   print_str(&"\ngcd(");
   print_int(a);
-  print_str(&",");
+  print_str(&", ");
   print_int(b);
-  print_str(&")=");
+  print_str(&") = ");
   print_int(r);
   print_str(&"\n");
 

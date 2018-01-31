@@ -1,46 +1,3 @@
-Parser* parser_new(MemoryArena* arena)
-{
-  Parser* parser = mem_push_struct(arena, Parser);
-  parser->arena = arena;
-  parser->included_files = list_new(arena, eList_file);
-
-  Lexer* lexer = parser->lexer = lexer_new(arena);
-  parser->token = &lexer->token;
-  parser->src_loc = &lexer->src_loc;
-
-  return parser;
-}
-
-internal inline
-void parser_set_input(Parser* parser, char* text, HFile* file)
-{
-  parser->file = file;
-  lexer_set_input(parser->lexer, text, file->path);
-  append_list_elem(parser->included_files, file, eList_file);
-}
-
-internal inline
-bool parser_get_next_token(Parser* parser)
-{
-  bool result = lexer_get_next_token(parser->lexer);
-  return result;
-}
-
-internal inline
-void parser_putback_token(Parser* parser)
-{
-  lexer_putback_token(parser->lexer);
-}
-
-internal inline
-Parser* parser_included_new(Parser* parser)
-{
-  Parser* included_parser = parser_new(parser->arena);
-  included_parser->included_files = parser->included_files;
-
-  return included_parser;
-}
-
 char* get_operator_printstr(eOperator op)
 {
   char* str = "???";
@@ -169,18 +126,51 @@ SourceLoc* clone_source_loc(MemoryArena* arena, SourceLoc* src_loc)
   return clone;
 }
 
-bool consume_semicolon(Parser* parser)
+Parser* parser_new(MemoryArena* arena)
 {
-  bool success = true;
-  if(parser->token->kind == eToken_semicolon)
-  {
-    success = parser_get_next_token(parser);
-  }
-  else
-    success = compile_error(parser->arena, parser->src_loc, "`;` was expected at `%s`", get_token_printstr(parser->token));
+  Parser* parser = mem_push_struct(arena, Parser);
+  parser->arena = arena;
+  parser->includes = list_new(arena, eList_ast_node);
 
-  return success;
+  Lexer* lexer = parser->lexer = lexer_new(arena);
+  parser->token = &lexer->token;
+  parser->src_loc = &lexer->src_loc;
+
+  return parser;
 }
+
+internal inline
+void parser_set_input(Parser* parser, char* text, HFile* file)
+{
+  parser->file = file;
+  lexer_set_input(parser->lexer, text, file->path);
+}
+
+internal inline
+bool parser_get_next_token(Parser* parser)
+{
+  bool result = lexer_get_next_token(parser->lexer);
+  return result;
+}
+
+internal inline
+void parser_putback_token(Parser* parser)
+{
+  lexer_putback_token(parser->lexer);
+}
+
+internal inline
+Parser* parser_included_new(Parser* parser)
+{
+  Parser* included_parser = parser_new(parser->arena);
+  included_parser->includes = parser->includes;
+
+  return included_parser;
+}
+
+//
+//  Parsing procs
+//-----------------
 
 bool parse_actual_args(Parser* parser, AstNode* call);
 bool parse_array(Parser* parser, AstNode** node);
@@ -195,6 +185,19 @@ bool parse_pointer(Parser* parser, AstNode* left_node, AstNode** node);
 bool parse_rest_of_selector(Parser* parser, AstNode* left_node, AstNode** node);
 bool parse_selector(Parser*, AstNode**);
 bool parse_unr_expr(Parser*, AstNode**);
+
+bool consume_semicolon(Parser* parser)
+{
+  bool success = true;
+  if(parser->token->kind == eToken_semicolon)
+  {
+    success = parser_get_next_token(parser);
+  }
+  else
+    success = compile_error(parser->arena, parser->src_loc, "`;` was expected at `%s`", get_token_printstr(parser->token));
+
+  return success;
+}
 
 bool is_valid_expr_operand(AstNode* node)
 {
@@ -1685,27 +1688,6 @@ bool parse_asm_block(Parser* parser, AstNode** node)
 }
 #endif
 
-#if 0
-void process_includes(List* include_list, List* module_list, ListItem* module_li)
-{
-  for(ListItem* li = include_list->first;
-      li;
-      li = li->next)
-  {
-    AstNode* node = KIND(li, eList_ast_node)->ast_node;
-    
-    if(node->kind == eAstNode_include)
-    {
-      AstNode* block = node->include.body;
-      process_includes(block->block.nodes, include_list, li);
-    }
-  }
-  replace_li_at(include_list, module_list, module_li);
-  
-  mem_zero_struct(include_list, List);
-}
-#endif
-
 bool parse_module_proc(Parser* parser, char* name, eModifier modifier, AstNode* ret_type, AstNode** node)
 {
   *node = 0;
@@ -1753,19 +1735,28 @@ bool parse_module_var(Parser* parser, char* name, eModifier modifier, AstNode* v
   return success;
 }
 
-bool is_file_included(Parser* parser, HFile* file)
+AstNode* parser_find_include(Parser* parser, HFile* file)
 {
-  bool is_included = false;
+  AstNode* include = 0;
 
-  for(ListItem* li = parser->included_files->first;
-      li && !is_included;
+  for(ListItem* li = parser->includes->first;
+      li && !include;
       li = li->next)
   {
-    HFile* included_file = KIND(li, eList_file)->file;
-    is_included = platform_file_identity(file, included_file);
+    include = KIND(li, eList_ast_node)->ast_node;
+    if(platform_file_identity(file, include->include.file))
+      break;
+    include = 0;
   }
 
-  return is_included;
+  return include;
+}
+
+void merge_modules(AstNode* main_module, AstNode* merged_module)
+{
+  list_join(&main_module->module.nodes, &merged_module->module.nodes);
+  list_join(&main_module->module.procs, &merged_module->module.procs);
+  list_join(&main_module->module.vars, &merged_module->module.vars);
 }
 
 bool parse_module_include(Parser* parser, AstNode** node)
@@ -1792,27 +1783,34 @@ bool parse_module_include(Parser* parser, AstNode** node)
 
         if(success = parser_get_next_token(parser) && consume_semicolon(parser))
         {
-          HFile* file = platform_open_file(parser->arena, include->include.file_path);
-          if(file)
+          HFile* included_file = include->include.file = platform_open_file(parser->arena, include->include.file_path);
+          if(included_file)
           {
-            if(!is_file_included(parser, file))
+            AstNode* previous_include = parser_find_include(parser, included_file);
+            if(!previous_include)
             {
-              char* hoc_text = file_read_text(parser->arena, file->path);
+              append_list_elem(parser->includes, include, eList_ast_node);
+
+              char* hoc_text = file_read_text(parser->arena, included_file->path);
               if(hoc_text)
               {
                 Parser* included_parser = parser_included_new(parser);
-                parser_set_input(included_parser, hoc_text, file);
+                parser_set_input(included_parser, hoc_text, included_file);
 
-                if(success = parse_module(included_parser, &include->include.included_module))
+                AstNode* included_module = 0;
+                if(success = parse_module(included_parser, &included_module))
                 {
-                  platform_printf("todo: merge the included module\n");
+                  merge_modules(parser->module, included_parser->module);
                 }
               }
             }
             else
             {
-              parser_putback_token(parser);
-              success = compile_error(parser->arena, parser->src_loc, "file `%s` already included", include->include.file_path);
+              success = compile_error(parser->arena, include->src_loc, "file `%s` has already been included", include->include.file_path);
+              if(previous_include->src_loc) // main file does not have a src_loc
+              {
+                compile_error(parser->arena, previous_include->src_loc, "see the location of the previous include");
+              }
             }
           }
           else
@@ -1836,6 +1834,7 @@ bool parse_module_stmt(Parser* parser, AstNode** node)
 {
   *node = 0;
   bool success = true;
+
   switch(parser->token->kind)
   {
     case eToken_include:
@@ -1884,33 +1883,30 @@ bool parse_module_stmts(Parser* parser, AstNode* module)
   {
     if(stmt)
     {
-      append_list_elem(&module->module.nodes, stmt, eList_ast_node);
       switch(stmt->kind)
       {
         case eAstNode_proc:
         {
+          append_list_elem(&module->module.nodes, stmt, eList_ast_node);
           append_list_elem(&module->module.procs, stmt, eList_ast_node);
         }
         break;
 
         case eAstNode_var:
         {
+          append_list_elem(&module->module.nodes, stmt, eList_ast_node);
           append_list_elem(&module->module.vars, stmt, eList_ast_node);
         }
         break;
           
         case eAstNode_include:
-        {
-          append_list_elem(&module->module.includes, stmt, eList_ast_node);
-        }
-        break;
-
         case eAstNode_empty:
           break;
 
         default:
           assert(0);
       }
+
       success = parse_module_stmts(parser, module);
     }
   }
@@ -1944,11 +1940,16 @@ bool parse_module(Parser* parser, AstNode** node)
   {
     AstNode* module = *node = new_ast_node(parser->arena, eAstNode_module,
                                            clone_source_loc(parser->arena, parser->src_loc));
-    module->module.file_path = parser->src_loc->file_path;
+    parser->module = module;
+    module->module.file_path = parser->file->path;
     list_init(parser->arena, &module->module.nodes, eList_ast_node);
     list_init(parser->arena, &module->module.procs, eList_ast_node);
     list_init(parser->arena, &module->module.vars, eList_ast_node);
-    list_init(parser->arena, &module->module.includes, eList_ast_node);
+
+    AstNode* include = new_ast_node(parser->arena, eAstNode_include, 0);
+    include->include.file = parser->file;
+    include->include.file_path = parser->file->path;
+    append_list_elem(parser->includes, include, eList_ast_node);
 
     success = parse_module_body(parser, module);;
   }

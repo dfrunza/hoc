@@ -623,8 +623,8 @@ bool is_register_location(X86Context* context, X86Location* loc)
     is_register = (reg == loc);
   }
 
-  //FIXME: Not sure if we need to include EBP and ESP in the result; confirm this!!
-  //is_register |= (loc == &context->ebp) | (loc == &context->esp);
+  //XXX: make_register_operand() allows EBP and ESP parameters.
+  is_register |= (loc == &context->ebp) | (loc == &context->esp);
 
   return is_register;
 }

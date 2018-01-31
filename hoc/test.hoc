@@ -1,7 +1,2 @@
-include "test_B.hoc";
+include "test_v0_1.hoc";
 
-int A;
-void main()
-{
-  int a;
-}

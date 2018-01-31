@@ -37,6 +37,15 @@ typedef struct IrLeaderStmt IrLeaderStmt;
 typedef struct Label Label;
 typedef struct BasicBlock BasicBlock;
 typedef struct X86Context X86Context;
+typedef struct HFile_platform HFile_platform;
+
+typedef struct HFile
+{
+  char* path;
+
+  HFile_platform* platform;
+}
+HFile;
 
 typedef struct MemoryArena
 {
@@ -66,11 +75,14 @@ String;
 
 void* platform_alloc_memory(int size);
 int platform_printf(char* format, ...);
-int platform_sscanf(char* buffer, char* format, ...);
-int platform_sprintf_va(char* buffer, char* format, va_list args);
+int platform_printf_va(char* format, va_list args);
 int platform_sprintf(char* buffer, char* format, ...);
+int platform_sprintf_va(char* buffer, char* format, va_list args);
+int platform_sscanf(char* buffer, char* format, ...);
 int platform_file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int alloc_extra);
 int platform_file_write_bytes(char* file_path, uint8* bytes, int count);
+HFile* platform_open_file(MemoryArena* arena, char* filename);
+bool platform_file_identity(HFile* file_A, HFile* file_B);
 
 #define countof(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
 #define KIND(VAR, KIND) (((VAR)->kind == KIND) ? (VAR) : 0)
@@ -182,17 +194,17 @@ typedef struct Token
 }
 Token;
 
-typedef struct TokenStream
+typedef struct Lexer
 {
   MemoryArena* arena;
-  struct TokenStream* last_state;
+  struct Lexer* last_state;
   Token token;
   char* text;
   char* cursor;
 
   SourceLoc src_loc;
 }
-TokenStream;
+Lexer;
 
 typedef enum eOperator
 {
@@ -271,12 +283,16 @@ typedef enum eList
   eList_ir_leader_stmt,
   eList_ir_label,
   eList_basic_block,
+  eList_file,
 }
 eList;
 
 typedef struct ListItem
 {
   eList kind;
+  struct ListItem* next;
+  struct ListItem* prev;
+
   union
   {
     void* elem;
@@ -288,19 +304,18 @@ typedef struct ListItem
     IrLeaderStmt* ir_leader_stmt;
     Label* ir_label;
     BasicBlock* basic_block;
+    HFile* file;
   };
-  struct ListItem* next;
-  struct ListItem* prev;
 }
 ListItem;
 
 typedef struct List
 {
   eList kind;
-  int count;
+  MemoryArena* arena;
   ListItem* first;
   ListItem* last;
-  MemoryArena* arena;
+  int count;
 }
 List;
 
@@ -810,34 +825,34 @@ typedef struct AstNode
   {
     List node_list;
 
-    struct
+    struct AstNode_call_arg
     {
       AstNode* expr;
       Symbol* param;
     }
     call_arg;
 
-    struct
+    struct AstNode_cast
     {
       AstNode* from_expr;
       AstNode* to_type;
     }
     cast;
 
-    struct
+    struct AstNode_assign
     {
       AstNode* dest_expr;
       AstNode* source_expr;
     }
     assign;
 
-    struct
+    struct AstNode_pointer
     {
       AstNode* pointee;
     }
     pointer;
 
-    struct
+    struct AstNode_array
     {
       AstNode* size_expr;
       AstNode* elem_expr;
@@ -846,7 +861,7 @@ typedef struct AstNode
     }
     array;
 
-    struct
+    struct AstNode_index
     {
       AstNode* array_expr;
       AstNode* i_expr;
@@ -858,13 +873,13 @@ typedef struct AstNode
     }
     index;
 
-    struct
+    struct AstNode_basic_type
     {
       eBasicType kind;
     }
     basic_type;
 
-    struct
+    struct AstNode_id
     {
       char* name;
       AstNode* decl_ast;
@@ -874,7 +889,7 @@ typedef struct AstNode
     }
     id;
 
-    struct
+    struct AstNode_bin_expr
     {
       AstNode* left_operand;
       AstNode* right_operand;
@@ -882,14 +897,14 @@ typedef struct AstNode
     }
     bin_expr;
 
-    struct
+    struct AstNode_unr_expr
     {
       AstNode* operand;
       eOperator op;
     }
     unr_expr;
 
-    struct
+    struct AstNode_call
     {
       AstNode* expr;
       AstNode* args;
@@ -900,7 +915,7 @@ typedef struct AstNode
     }
     call;
 
-    struct
+    struct AstNode_ret
     {
       AstNode* expr;
       AstNode* proc;
@@ -908,7 +923,7 @@ typedef struct AstNode
     }
     ret;
 
-    struct
+    struct AstNode_loop_ctrl
     {
       eLoopCtrl kind;
       AstNode* loop;
@@ -916,7 +931,7 @@ typedef struct AstNode
     }
     loop_ctrl;
 
-    struct
+    struct AstNode_if
     {
       AstNode* cond_expr;
       AstNode* body;
@@ -924,7 +939,7 @@ typedef struct AstNode
     }
     if_;
 
-    struct
+    struct AstNode_while
     {
       AstNode* cond_expr;
       AstNode* body;
@@ -932,7 +947,7 @@ typedef struct AstNode
     }
     while_, do_while;
 
-    struct
+    struct AstNode_proc
     {
       char* name;
       AstNode* args;
@@ -954,13 +969,13 @@ typedef struct AstNode
     }
     proc;
 
-    struct
+    struct AstNode_str
     {
       char* str_val;
     }
     str;
 
-    struct
+    struct AstNode_lit
     {
       eLiteral kind;
       union
@@ -975,7 +990,7 @@ typedef struct AstNode
     }
     lit;
 
-    struct
+    struct AstNode_var
     {
       char* name;
       AstNode* type;
@@ -985,10 +1000,9 @@ typedef struct AstNode
     }
     var;
 
-    struct
+    struct AstNode_module
     {
       char* file_path;
-      AstNode* body;
       List nodes;
       List procs;
       List vars;
@@ -997,14 +1011,14 @@ typedef struct AstNode
     }
     module;
 
-    struct
+    struct AstNode_include
     {
       char* file_path;
-      AstNode* body;
+      AstNode* included_module;
     }
     include;
 
-    struct
+    struct AstNode_block
     {
       Scope* scope;
       List nodes;
@@ -1013,7 +1027,7 @@ typedef struct AstNode
     }
     block;
 
-    struct
+    struct AstNode_struct
     {
       char* name;
       AstNode* id;
@@ -1022,7 +1036,7 @@ typedef struct AstNode
     enum_decl,
     union_decl, struct_decl; //record;
 
-    struct
+    struct AstNode_asm
     {
       char* asm_text;
     }
@@ -1031,13 +1045,26 @@ typedef struct AstNode
 }
 AstNode;
 
+typedef struct Parser
+{
+  MemoryArena* arena;
+  Lexer* lexer;
+  Token* token;
+  SourceLoc* src_loc;
+
+  AstNode* module;
+  HFile* file;
+  List* included_files;
+}
+Parser;
+
 typedef enum eStorageSpace
 {
   eStorageSpace_None,
   eStorageSpace_constant, // immediate
   eStorageSpace_local, // vars and temps
-  eStorageSpace_param, // param at the call site
-  eStorageSpace_arg, // formal arg to proc
+  eStorageSpace_actual_param, // params (actual args and retvar) at the call site
+  eStorageSpace_formal_param, // params to proc 
   eStorageSpace_static, // module-level vars
 }
 eStorageSpace;

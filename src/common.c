@@ -14,7 +14,6 @@ void assert_(char* message, char* file, int line)
     }
     platform_printf("assert(%s)\n", message);
 
-    //fflush(stderr);
     *(int*)0 = 0;
   }
 }
@@ -216,64 +215,6 @@ bool cstr_to_int(char* str, int* integer)
   return true;
 }
 
-bool cstr_to_float(char* str, float* result)
-{
-#if 0
-  bool negative = false;
-
-  if(*str == '-')
-  {
-    negative = true;
-    str++;
-  }
-
-  char c = *str++;
-  if(char_is_dec_digit(c))
-  {
-    int int_part = (c - '0');
-    for(c = *str++; c != '\0' && c != '.'; c = *str++)
-    {
-      if(char_is_dec_digit(c))
-      {
-        int_part = int_part*10 + (c - '0');
-      }
-      else if(c != '.')
-        return false;
-    }
-
-    float float_val = (float)int_part;
-
-    if(c == '.')
-    {
-      float fract_part = 0.0;
-
-      c = *str++;
-      for(c = *str++; c != '\0'; c = *str++)
-      {
-        if(char_is_dec_digit(c))
-        {
-          fract_part = fract_part + ((c - '0') / 10.0f);
-        }
-        else
-          return false;
-      }
-      float_val += fract_part;
-    }
-
-    if(negative)
-      float_val = -float_val;
-    *result = float_val;
-  }
-  else
-    return false;
-#else
-  if(platform_sscanf(str, "%f", result) != 1)
-    return false;
-#endif
-
-  return true;
-}
-
 bool cstr_contains_char(char* str, char c)
 {
   bool result = false;
@@ -411,9 +352,10 @@ int str_printf(String* str, char* ftext, ...)
 {
   va_list args;
   va_start(args, ftext);
-  int text_len = str_printf_va(str, ftext, args);
-  va_end(args);
 
+  int text_len = str_printf_va(str, ftext, args);
+
+  va_end(args);
   return text_len;
 }
 
@@ -421,7 +363,9 @@ int str_printfln(String* str, char* fline, ...)
 {
   va_list args;
   va_start(args, fline);
+
   int text_len = str_printf_va(str, fline, args);
+
   va_end(args);
 
   str_append(str, "\n");
@@ -538,13 +482,12 @@ void fail_(char* file, int line, char* message, ...)
 
   va_list args;
   va_start(args, message);
-  //vfprintf(stderr, message, args);
-  platform_printf(message, args);
+
+  platform_printf_va(message, args);
+
   va_end(args);
 
   platform_printf("\n");
-  //fprintf(stderr, "\n");
-  //fflush(stderr);
   *(int*)0 = 0;
 }
 
@@ -560,17 +503,17 @@ bool error_(char* file, int line, char* message, ...)
 
   va_list args;
   va_start(args, message);
-  platform_printf(message, args);
+
+  platform_printf_va(message, args);
+
   va_end(args);
 
   platform_printf("\n");
-  //fflush(stderr);
 
   return false;
 }
 
-#define compile_error(ARENA, SRC, MESSAGE, ...) compile_error_((ARENA), __FILE__, __LINE__, (SRC), (MESSAGE), ## __VA_ARGS__)
-bool compile_error_(MemoryArena* arena, char* file, int line, SourceLoc* src_loc, char* message, ...)
+bool compile_error_va(MemoryArena* arena, char* file, int line, SourceLoc* src_loc, char* message, va_list args)
 {
   char* filename_buf = mem_push_array_nz(arena, char, cstr_len(file));
   cstr_copy(filename_buf, file);
@@ -578,22 +521,30 @@ bool compile_error_(MemoryArena* arena, char* file, int line, SourceLoc* src_loc
   if(src_loc && src_loc->line_nr >= 0)
   {
     platform_printf("%s:%d: (%s:%d) error : ", src_loc->file_path, src_loc->line_nr,
-            path_make_leaf(filename_buf, false), line);
+                    path_make_leaf(filename_buf, false), line);
   }
   else
   {
     platform_printf("%s:%d: error : ", file, line);
   }
 
-  va_list args;
-  va_start(args, message);
-  //vfprintf(stderr, message, args);
-  platform_printf(message, args);
-  va_end(args);
+  platform_printf_va(message, args);
 
   platform_printf("\n");
 
   return false;
+}
+
+#define compile_error(ARENA, SRC, MESSAGE, ...) compile_error_((ARENA), __FILE__, __LINE__, (SRC), (MESSAGE), ## __VA_ARGS__)
+bool compile_error_(MemoryArena* arena, char* file, int line, SourceLoc* src_loc, char* message, ...)
+{
+  va_list args;
+  va_start(args, message);
+
+  bool result = compile_error_va(arena, file, line, src_loc, message, args);
+
+  va_end(args);
+  return result;
 }
 
 char* file_read_text(MemoryArena* arena, char* file_path)
@@ -626,7 +577,7 @@ int bitpos(int k)
   return (k & 1) ? pos : 0;
 }
 
-void init_list(MemoryArena* arena, List* list, eList kind)
+void list_init(MemoryArena* arena, List* list, eList kind)
 {
   list->kind = kind;
   list->arena = arena;
@@ -634,10 +585,10 @@ void init_list(MemoryArena* arena, List* list, eList kind)
   list->count = 0;
 }
 
-List* new_list(MemoryArena* arena, eList kind)
+List* list_new(MemoryArena* arena, eList kind)
 {
   List* list = mem_push_struct(arena, List);
-  init_list(arena, list, kind);
+  list_init(arena, list, kind);
   return list;
 }
 

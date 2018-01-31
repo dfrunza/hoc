@@ -201,7 +201,7 @@ Scope* begin_scope(SymbolContext* context, eScope kind, AstNode* ast_node)
   scope->allocd_size = 0;
   scope->encl_scope = context->active_scope;
   scope->ast_node = ast_node;
-  init_list(context->gp_arena, &scope->decl_syms, eList_symbol);
+  list_init(context->gp_arena, &scope->decl_syms, eList_symbol);
   context->active_scope = scope;
   append_list_elem(&context->scopes, scope, eList_scope);
 
@@ -226,28 +226,6 @@ void end_nested_scope(SymbolContext* context)
   context->nesting_depth--;
 }
 
-
-#if 0
-void process_includes(List* include_list, List* module_list, ListItem* module_li)
-{
-  for(ListItem* li = include_list->first;
-      li;
-      li = li->next)
-  {
-    AstNode* node = KIND(li, eList_ast_node)->ast_node;
-    
-    if(node->kind == eAstNode_include)
-    {
-      AstNode* block = node->include.body;
-      process_includes(block->block.nodes, include_list, li);
-    }
-  }
-  replace_li_at(include_list, module_list, module_li);
-  
-  mem_zero_struct(include_list, List);
-}
-#endif
-
 bool sym_expr(SymbolContext* context, AstNode* expr);
 bool sym_block(SymbolContext* context, AstNode* block);
 bool sym_block_stmt(SymbolContext* context, AstNode* stmt);
@@ -266,7 +244,7 @@ bool sym_formal_arg(SymbolContext* context, Scope* proc_scope, AstNode* arg)
   else
   {
     arg->var.decl_sym = add_decl_sym(context->sym_arena, arg->var.name,
-                                     eStorageSpace_arg, proc_scope, arg);
+                                     eStorageSpace_formal_param, proc_scope, arg);
     success = sym_expr(context, arg->var.type);
   }
 
@@ -402,7 +380,7 @@ bool sym_call(SymbolContext* context, AstNode* call)
     {
       call->call.param_scope = begin_scope(context, eScope_params, call);
       call->call.retvar = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "ret_"),
-                                       eStorageSpace_param, call->call.param_scope, call);
+                                       eStorageSpace_actual_param, call->call.param_scope, call);
 
       for(ListItem* li = args->node_list.first;
           li;
@@ -410,7 +388,7 @@ bool sym_call(SymbolContext* context, AstNode* call)
       {
         AstNode* arg = KIND(li, eList_ast_node)->ast_node;
         arg->call_arg.param = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "param_"),
-                                             eStorageSpace_param, call->call.param_scope, arg);
+                                             eStorageSpace_actual_param, call->call.param_scope, arg);
       }
 
       end_scope(context);
@@ -807,7 +785,7 @@ bool sym_module_proc(SymbolContext* context, AstNode* proc)
                                        eStorageSpace_None, context->active_scope, proc);
     proc->proc.param_scope = begin_nested_scope(context, eScope_args, proc);
     proc->proc.retvar = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "ret_"),
-                                     eStorageSpace_arg, proc->proc.param_scope, proc->proc.ret_type);
+                                     eStorageSpace_formal_param, proc->proc.param_scope, proc->proc.ret_type);
 
     if(is_extern_proc(proc))
     {

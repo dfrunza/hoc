@@ -1882,7 +1882,7 @@ void partition_to_basic_blocks(IrContext* ir_context, AstNode* proc)
 {
   if(proc->proc.ir_stmt_count > 0)
   {
-    List* leaders = new_list(ir_context->gp_arena, eList_ir_leader_stmt);
+    List* leaders = list_new(ir_context->gp_arena, eList_ir_leader_stmt);
 
     IrStmt* stmt_array = proc->proc.ir_stmt_array;
     int stmt_count = proc->proc.ir_stmt_count;
@@ -1903,7 +1903,7 @@ void partition_to_basic_blocks(IrContext* ir_context, AstNode* proc)
 
     //------
     
-    List* basic_blocks = proc->proc.basic_blocks = new_list(ir_context->stmt_arena, eList_basic_block);
+    List* basic_blocks = proc->proc.basic_blocks = list_new(ir_context->stmt_arena, eList_basic_block);
 
     for(ListItem* li = leaders->first;
         li;
@@ -1919,8 +1919,8 @@ void partition_to_basic_blocks(IrContext* ir_context, AstNode* proc)
       IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
       BasicBlock* block = mem_push_struct(ir_context->stmt_arena, BasicBlock);
       append_list_elem(basic_blocks, block, eList_basic_block);
-      init_list(ir_context->stmt_arena, &block->pred_list, eList_basic_block);
-      init_list(ir_context->stmt_arena, &block->succ_list, eList_basic_block);
+      list_init(ir_context->stmt_arena, &block->pred_list, eList_basic_block);
+      list_init(ir_context->stmt_arena, &block->succ_list, eList_basic_block);
       leader->block = block;
       block->stmt_array = mem_push_array(ir_context->stmt_arena, IrStmt*, next_stmt_nr - leader->stmt_nr);
       block->stmt_count = 0;

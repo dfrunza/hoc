@@ -1,3 +1,7 @@
+include "test_B.hoc";
+
+int A;
 void main()
 {
+  int a;
 }

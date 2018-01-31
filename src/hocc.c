@@ -1,11 +1,4 @@
-#undef UNICODE
-#undef _UNICODE
-#include <stdio.h>
 #include <stdarg.h>
-#define VC_EXTRALEAN
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-
 #include "hocc.h"
 
 global_var bool DEBUG_enabled = true;
@@ -14,6 +7,14 @@ global_var bool DEBUG_check_arena_bounds = true;
 global_var bool DEBUG_zero_struct = true;
 
 #include "common.c"
+#include "translate.c"
+
+#include <stdio.h>
+#undef UNICODE
+#undef _UNICODE
+#define VC_EXTRALEAN
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 void* platform_alloc_memory(int size)
 {
@@ -113,6 +114,11 @@ int platform_sprintf(char* buffer, char* format, ...)
   return result;
 }
 
+int platform_printf_va(char* format, va_list args)
+{
+  return vprintf(format, args);
+}
+
 int platform_printf(char* format, ...)
 {
   va_list args;
@@ -122,6 +128,46 @@ int platform_printf(char* format, ...)
 
   fflush(stdout);
   return result;
+}
+
+struct HFile_platform
+{
+  HANDLE* handle;
+  int id_low;
+  int id_high;
+  int volume_serial_no;
+};
+
+HFile* platform_open_file(MemoryArena* arena, char* file_path)
+{
+  HFile* file = 0;
+
+  HANDLE* handle = CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  if(handle != INVALID_HANDLE_VALUE)
+  {
+    file = mem_push_struct(arena, HFile);
+    file->platform = mem_push_struct(arena, HFile_platform);
+    file->platform->handle = handle;
+    file->path = file_path;
+
+    BY_HANDLE_FILE_INFORMATION* info = mem_push_struct(arena, BY_HANDLE_FILE_INFORMATION);
+    if(GetFileInformationByHandle(handle, info))
+    {
+      file->platform->volume_serial_no = info->dwVolumeSerialNumber;
+      file->platform->id_low = info->nFileIndexLow;
+      file->platform->id_high = info->nFileIndexHigh;
+    }
+  }
+
+  return file;
+}
+
+bool platform_file_identity(HFile* file_A, HFile* file_B)
+{
+  bool is_identity = (file_A->platform->volume_serial_no == file_B->platform->volume_serial_no)
+    && (file_A->platform->id_low == file_B->platform->id_low)
+    && (file_A->platform->id_high == file_B->platform->id_high);
+  return is_identity;
 }
 
 typedef struct
@@ -167,8 +213,6 @@ bool make_out_file_names(MemoryArena* arena, OutFileNames* out_files, char* src_
 
   return success;
 }
-
-#include "translate.c"
 
 int main(int argc, char* argv[])
 {

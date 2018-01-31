@@ -140,14 +140,14 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   basic_type_float = new_basic_type(gp_arena, eBasicType_float);
   basic_type_void = new_basic_type(gp_arena, eBasicType_void);
   basic_type_str = new_array_type(gp_arena, 0, 1, basic_type_char);
-  subst_list = new_list(gp_arena, eList_type_pair);
+  subst_list = list_new(gp_arena, eList_type_pair);
 
   SymbolContext sym_context = {0};
   sym_context.gp_arena = gp_arena;
   sym_context.sym_arena = push_arena(&arena, 2*MEGABYTE);
   sym_context.nesting_depth = -1;
   sym_context.data_alignment = 4;
-  init_list(sym_context.sym_arena, &sym_context.scopes, eList_scope);
+  list_init(sym_context.sym_arena, &sym_context.scopes, eList_scope);
 
   IrContext ir_context = {0};
   ir_context.gp_arena = gp_arena;
@@ -155,11 +155,8 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_context.stmt_array = (IrStmt*)ir_context.stmt_arena->base;
   ir_context.stmt_count = 0;
   ir_context.sym_context = &sym_context;
-  ir_context.label_list = new_list(ir_context.gp_arena, eList_ir_label);
+  ir_context.label_list = list_new(ir_context.gp_arena, eList_ir_label);
   ir_context.data_alignment = 4;
-
-  TokenStream token_stream = {0};
-  token_stream.arena = gp_arena;
 
   X86Context x86_context = {0};
   x86_context.gp_arena = gp_arena;
@@ -172,11 +169,12 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_context.x86_context = &x86_context;
   sym_context.x86_context = &x86_context;
 
-  init_token_stream(&token_stream, hoc_text, file_path);
-  get_next_token(&token_stream);
+  Parser* parser = parser_new(gp_arena);
+  HFile* file = platform_open_file(gp_arena, file_path);
+  parser_set_input(parser, hoc_text, file);
 
   AstNode* module = 0;
-  if(!(parse_module(&token_stream, &module) &&
+  if(!(parse_module(parser, &module) &&
        sym_module(&sym_context, module) &&
        set_types_module(gp_arena, module) &&
        eval_types_module(gp_arena, module) &&

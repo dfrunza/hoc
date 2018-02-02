@@ -15,26 +15,11 @@ void main()
   sloc_file_buf_size = 1*MEGABYTE;
   sloc_file_buf = ([]char):alloc(sloc_file_buf_size);
 
-  sloc_line_buf_size = 100*KILOBYTE; /* BUG: 1*KILOBYTE, 1*MEGABYTE */
+  sloc_line_buf_size = 100*KILOBYTE;
   sloc_line_buf = ([]char):alloc(sloc_line_buf_size);
 
   int file_count = 0;
   []char^ files = make_file_list(&file_count);
-
-  /*
-  DEBUG_print_int(&"file_count", file_count);
-
-  int f = 0;
-  while(f < file_count)
-  {
-    DEBUG_print_int(&"f", f);
-    DEBUG_print_int(&"files[f]", (int): files[f]);
-
-    print_str(files[f]);
-    print_str(&"\n");
-    f = f + 1;
-  }
-  */
 
   int total_line_count = 0;
 
@@ -51,7 +36,7 @@ void main()
   }
 
   print_int(total_line_count);
-  print_str(&" lines");
+  print_str(&" lines\n");
 }
 
 []char^ make_file_list(int^ count)

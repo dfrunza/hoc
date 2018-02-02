@@ -193,7 +193,10 @@ void x86_print_operand(String* text, X86Operand* operand)
       }
       else if(constant->kind == eX86Constant_char)
       {
-        str_printf(text, "'%c'", constant->char_val);
+        if(constant->char_val >= ' ' && constant->char_val <= '~')
+          str_printf(text, "'%c'", constant->char_val);
+        else
+          str_printf(text, "%d", constant->char_val);
       }
       else assert(0);
     }
@@ -1116,11 +1119,28 @@ eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
   return x86_opcode;
 }
 
+X86Location* get_first_fit_register(X86Context* context, Type* type)
+{
+  X86Location* reg = 0;
+
+  for(int i = 0; i < context->register_count; i++)
+  {
+    reg = context->registers._[i];
+
+    if(type_fits_into_register(type, reg))
+      break;
+
+    reg = 0;
+  }
+
+  assert(reg);
+  return reg;
+}
+
 X86Location* find_least_used_register(X86Context* context, Type* type)
 {
   X86Location* result = 0;
-
-  int next_use = max_int();
+  int next_use = 0;
 
   for(int i = 0; i < context->register_count; i++)
   {
@@ -1144,8 +1164,8 @@ X86Location* find_least_used_register(X86Context* context, Type* type)
       }
     }
   }
-  assert(result);
 
+  assert(result);
   return result;
 }
 
@@ -2122,7 +2142,7 @@ void x86_gen(IrContext* ir_context, X86Context* x86_context, AstNode* module)
   str_printfln(x86_context->text, ".686");
   str_printfln(x86_context->text, ".xmm");
   str_printfln(x86_context->text, ".model flat, C");
-  str_printfln(x86_context->text, ".stack 4096");
+  str_printfln(x86_context->text, ".stack %d", 1*MEGABYTE);
   str_printfln(x86_context->text, ".data");
   str_printfln(x86_context->text, "static_area label byte");
   str_printfln(x86_context->text, "align %d", ir_context->data_alignment);

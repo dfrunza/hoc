@@ -442,6 +442,15 @@ bool sym_array(SymbolContext* context, AstNode* array)
   return success;
 }
 
+bool sym_pointer(SymbolContext* context, AstNode* pointer)
+{
+  assert(KIND(pointer, eAstNode_pointer));
+
+  bool success = true;
+  success = sym_expr(context, pointer->pointer.pointee);
+  return success;
+}
+
 bool sym_assign(SymbolContext* context, AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
@@ -495,6 +504,11 @@ bool sym_expr(SymbolContext* context, AstNode* expr)
     break;
 
     case eAstNode_pointer:
+    {
+      success = sym_pointer(context, expr);
+    }
+    break;
+
     case eAstNode_basic_type:
     break;
 

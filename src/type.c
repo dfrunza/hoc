@@ -1329,6 +1329,9 @@ bool eval_types_type(MemoryArena* arena, AstNode* type)
     break;
 
     case eAstNode_basic_type:
+    {
+      breakpoint();
+    }
     break;
   }
 
@@ -1688,7 +1691,14 @@ bool eval_types_expr(MemoryArena* arena, AstNode* expr)
     break;
     
     case eAstNode_lit:
+    break;
+
     case eAstNode_basic_type:
+    case eAstNode_pointer:
+    case eAstNode_array:
+    {
+      success = eval_types_type(arena, expr);
+    }
     break;
 
     case eAstNode_assign:
@@ -2233,6 +2243,11 @@ bool resolve_types_expr(MemoryArena* arena, AstNode* expr)
     break;
 
     case eAstNode_basic_type:
+    case eAstNode_pointer:
+    case eAstNode_array:
+    {
+      success = resolve_types_type(arena, expr);
+    }
     break;
     
     case eAstNode_index:

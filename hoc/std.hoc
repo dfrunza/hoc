@@ -1,32 +1,79 @@
-extern int GetStdHandle(int device_id);
 extern void ExitProcess(int code);
-extern []char GetCommandLineA();
-extern void^ VirtualAlloc(void^ address, int alloc_size, int alloc_var, int protect_flags);
-extern void WriteConsoleA(int console_handle, []char buf, int chars_to_write_count, int^ chars_written_count, void^ reserved);
-extern int GetLastError();
-extern bool ReadFile(int file_handle, []char buf, int bytes_to_read_count, int^ bytes_read_count, void^ p_overlapped);
 
-int stdout;
-int stdin; 
-void^ heap;
-int heap_ptr;
+extern []char GetCommandLineA();
+
+extern void WriteConsoleA(int    console_handle,
+                          []char buf,
+                          int    chars_to_write_count,
+                          int^   chars_written_count,
+                          void^  reserved);
+
+extern int GetLastError();
+
+extern bool ReadFile(int    file_handle,
+                     []char buf,
+                     int    bytes_to_read_count,
+                     int^   bytes_read_count,
+                     void^  p_overlapped);
+
+int STD_OUTPUT_HANDLE;
+int STD_INPUT_HANDLE;
+
+extern int GetStdHandle(int device_id);
+
+int MEM_COMMIT;
+int MEM_RESERVE;
+int PAGE_READWRITE;
+
+extern void^ VirtualAlloc(void^ address, int alloc_size, int alloc_var, int protect_flags);
+
+int GENERIC_READ;
+int FILE_SHARE_READ;
+int OPEN_EXISTING;
+int FILE_ATTRIBUTE_NORMAL;
+int INVALID_HANDLE_VALUE;
+
+extern int CreateFileA([]char file_path,
+                       int    desired_access,
+                       int    share_mode,
+                       void^  security_attributes,
+                       int    creation_disposition,
+                       int    flags_and_attributes,
+                       int    template_file);
+
+extern bool GetFileSizeEx(int file_handle, int^ file_size);
+
+int MEGABYTE;
+int KILOBYTE;
+int GIGABYTE;
+
+void^ heap_base;
+void^ heap_free;
 
 void^ alloc(int size)
 {
-  void^ mem = (void^):0;
+  void^ mem = heap_free;
 
   if(size > 0)
   {
-    mem = heap + (void^):heap_ptr;
-    heap_ptr = heap_ptr + size;
+    heap_free = heap_base + (void^):size;
   }
 
   return mem;
 }
 
+void free()
+{
+  heap_free = heap_base;
+}
+
+int stdout;
+int stdin; 
+
 int stdin_read([]char buf, int buf_size)
 {
   int bytes_read_count = 0;
+
   if(ReadFile(stdin, buf, buf_size, &bytes_read_count, (void^):0))
   {
     if((bytes_read_count >= 0) and (bytes_read_count < buf_size))
@@ -34,23 +81,41 @@ int stdin_read([]char buf, int buf_size)
       buf[bytes_read_count] = '\0';
     }
   }
+
   return bytes_read_count;
+}
+
+void assert([]char message)
+{
+  print_str(&"ASSERT : ");
+  print_str(message);
+  ExitProcess(-1);
 }
 
 void startup()
 {
-  int STD_OUTPUT_HANDLE = -11;
-  int STD_INPUT_HANDLE = -10;
+  STD_OUTPUT_HANDLE = -11;
+  STD_INPUT_HANDLE = -10;
 
-  int MEM_COMMIT = 0x1000;
-  int MEM_RESERVE = 0x2000;
-  int PAGE_READWRITE = 0x4;
+  MEM_COMMIT = 0x1000;
+  MEM_RESERVE = 0x2000;
+  PAGE_READWRITE = 0x4;
+
+  GENERIC_READ = 0x80000000;
+  FILE_SHARE_READ = 0x1;
+  OPEN_EXISTING = 0x3;
+  FILE_ATTRIBUTE_NORMAL = 0x80;
+  INVALID_HANDLE_VALUE = -1;
 
   stdout = GetStdHandle(STD_OUTPUT_HANDLE);
   stdin = GetStdHandle(STD_INPUT_HANDLE);
 
-  heap = VirtualAlloc((void^):0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-  heap_ptr = 0;
+  KILOBYTE = 1024;
+  MEGABYTE = 1024*KILOBYTE;
+  GIGABYTE = 1024*MEGABYTE;
+
+  heap_base = VirtualAlloc((void^):0, 32*MEGABYTE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+  heap_free = heap_base;
 
   main();
 }

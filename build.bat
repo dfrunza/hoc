@@ -69,8 +69,8 @@ ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
 :end
 POPD
 
-cloc.exe %src_dir%\hocc.h %src_dir%\hocc.c %src_dir%\common.c %src_dir%\translate.c ^
-  %src_dir%\lex.c %src_dir%\syntax.c  %src_dir%\sym.c %src_dir%\type.c %src_dir%\ir_gen.c %src_dir%\x86_gen.c
+:: cloc.exe %src_dir%\hocc.h %src_dir%\hocc.c %src_dir%\common.c %src_dir%\translate.c ^
+::  %src_dir%\lex.c %src_dir%\syntax.c  %src_dir%\sym.c %src_dir%\type.c %src_dir%\ir_gen.c %src_dir%\x86_gen.c
 
 :early_exit
 

@@ -970,7 +970,7 @@ void x86_store_object(X86Context* context, Symbol* object)
   }
 }
 
-bool is_ir_conversion_op(eIrOp ir_op)
+bool is_ir_cast_op(eIrOp ir_op)
 {
   bool is_conv = false;
 
@@ -1550,19 +1550,25 @@ void x86_gen_unr_expr(X86Context* context, struct IrStmt_assign* assign)
   X86Location* arg1_loc = lookup_object_location(context, arg1->object);
   X86Location* result_loc = arg1_loc;
 
-  if(is_ir_conversion_op(assign->op))
+  if(is_ir_cast_op(assign->op))
   {
-    result_loc = x86_get_best_available_register(context, result->object->ty);
-
     switch(assign->op)
     {
+      /* converting ops */
       case eIrOp_itof:
       case eIrOp_ftoi:
       {
+        result_loc = x86_get_best_available_register(context, result->object->ty);
+
         X86Stmt* x86_stmt = x86_new_stmt(context, conv_ir_op_to_x86_opcode(assign->op, result->object->ty));
         x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
         x86_stmt->operand2 = x86_make_object_operand(context, arg1->object);
       }
+      break;
+
+      /* non-converting ops */
+      case eIrOp_itob:
+      case eIrOp_btoi:
       break;
 
       default:

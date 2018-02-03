@@ -1,3 +1,10 @@
+void assert([]char message)
+{
+  print_str(&"ASSERT : ");
+  print_str(message);
+  ExitProcess(-1);
+}
+
 void print_str([]char str)
 {
   int len = str_len(str);

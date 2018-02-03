@@ -15,7 +15,7 @@ void main()
   sloc_file_buf_size = 1*MEGABYTE;
   sloc_file_buf = ([]char):alloc(sloc_file_buf_size);
 
-  sloc_line_buf_size = 100*KILOBYTE;
+  sloc_line_buf_size = 1*KILOBYTE;
   sloc_line_buf = ([]char):alloc(sloc_line_buf_size);
 
   int file_count = 0;
@@ -36,7 +36,7 @@ void main()
   }
 
   print_int(total_line_count);
-  print_str(&" lines\n");
+  print_str(&" lines");
 }
 
 []char^ make_file_list(int^ count)
@@ -98,7 +98,7 @@ bool sloc_count_lines([]char file_path, int^ line_count)
       success = sloc_read_line(sloc_file_buf, file_size, sloc_line_buf, sloc_line_buf_size, &pos);
       if(success)
       {
-        if(^sloc_line_buf <> '\0')
+        if(sloc_line_buf[0] <> '\0')
         {
           ^line_count = ^line_count + 1;
         }
@@ -143,7 +143,9 @@ bool sloc_read_file([]char file_path, []char file_buf, int^ file_size)
       success = sloc_error(&"file too big");
   }
   else
+  {
     success = sloc_error(&"open file");
+  }
 
   return success;
 }

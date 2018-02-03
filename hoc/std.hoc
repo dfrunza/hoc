@@ -47,16 +47,16 @@ int MEGABYTE;
 int KILOBYTE;
 int GIGABYTE;
 
-void^ heap_base;
-void^ heap_free;
+char^ heap_base;
+char^ heap_free;
 
 void^ alloc(int size)
 {
-  void^ mem = heap_free;
+  void^ mem = (void^):heap_free;
 
   if(size > 0)
   {
-    heap_free = heap_base + (void^):size;
+    heap_free = heap_free + (char^):size;
   }
 
   return mem;
@@ -85,13 +85,6 @@ int stdin_read([]char buf, int buf_size)
   return bytes_read_count;
 }
 
-void assert([]char message)
-{
-  print_str(&"ASSERT : ");
-  print_str(message);
-  ExitProcess(-1);
-}
-
 void startup()
 {
   STD_OUTPUT_HANDLE = -11;
@@ -114,7 +107,7 @@ void startup()
   MEGABYTE = 1024*KILOBYTE;
   GIGABYTE = 1024*MEGABYTE;
 
-  heap_base = VirtualAlloc((void^):0, 32*MEGABYTE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+  heap_base = (char^):VirtualAlloc((void^):0, 32*MEGABYTE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
   heap_free = heap_base;
 
   main();

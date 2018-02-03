@@ -2,10 +2,10 @@ include "std.hoc";
 include "str.hoc";
 include "math.hoc";
 
-[]char sloc_file_buf;
+char^ sloc_file_buf;
 int sloc_file_buf_size;
 
-[]char sloc_line_buf;
+char^ sloc_line_buf;
 int sloc_line_buf_size;
 
 void main()
@@ -13,13 +13,13 @@ void main()
   bool success = true;
 
   sloc_file_buf_size = 1*MEGABYTE;
-  sloc_file_buf = ([]char):alloc(sloc_file_buf_size);
+  sloc_file_buf = (char^):alloc(sloc_file_buf_size);
 
   sloc_line_buf_size = 1*KILOBYTE;
-  sloc_line_buf = ([]char):alloc(sloc_line_buf_size);
+  sloc_line_buf = (char^):alloc(sloc_line_buf_size);
 
   int file_count = 0;
-  []char^ files = make_file_list(&file_count);
+  char^^ files = make_file_list(&file_count);
 
   int total_line_count = 0;
 
@@ -39,10 +39,10 @@ void main()
   print_str(&" lines");
 }
 
-[]char^ make_file_list(int^ count)
+char^^ make_file_list(int^ count)
 {
   int max_file_count = 20;
-  []char^ files = ([]char^):alloc(4*max_file_count);
+  char^^ files = (char^^):alloc(4*max_file_count);
   int f = 0;
 
   files[f] = &"../src/hocc.h";
@@ -83,7 +83,7 @@ void main()
   return files;
 }
 
-bool sloc_count_lines([]char file_path, int^ line_count)
+bool sloc_count_lines(char^ file_path, int^ line_count)
 {
   bool success = true;
   ^line_count = 0;
@@ -111,7 +111,7 @@ bool sloc_count_lines([]char file_path, int^ line_count)
   return success;
 }
 
-bool sloc_read_file([]char file_path, []char file_buf, int^ file_size)
+bool sloc_read_file(char^ file_path, char^ file_buf, int^ file_size)
 {
   bool success = true;
 
@@ -150,7 +150,7 @@ bool sloc_read_file([]char file_path, []char file_buf, int^ file_size)
   return success;
 }
 
-bool sloc_error([]char message)
+bool sloc_error(char^ message)
 {
   print_str(&"\nERROR : ");
   print_str(message);
@@ -159,9 +159,9 @@ bool sloc_error([]char message)
   return false;
 }
 
-bool sloc_read_line([]char file_buf,
+bool sloc_read_line(char^  file_buf,
                     int    file_size,
-                    []char line_buf,
+                    char^  line_buf,
                     int    line_buf_size,
                     int^   pos)
 {
@@ -221,7 +221,7 @@ bool sloc_read_line([]char file_buf,
   return success;
 }
 
-void DEBUG_print_int([]char var_name, int value)
+void DEBUG_print_int(char^ var_name, int value)
 {
   print_str(var_name);
   print_str(&" = ");

@@ -7,7 +7,7 @@ include "std.hoc";
 /*
 */
 
-void print_numbers([]int numbers, int len)
+void print_numbers(int^ numbers, int len)
 {
   int i = 0;
   while(i < len)
@@ -19,12 +19,12 @@ void print_numbers([]int numbers, int len)
   }
 }
 
-[]int make_numbers(int how_many)
+int^ make_numbers(int how_many)
 {
   int i = 0;
   int c1 = 17;
   int c2 = 31;
-  []int numbers = ([]int):alloc(how_many);
+  int^ numbers = (int^):alloc(how_many);
 
   while(i < how_many)
   {
@@ -38,7 +38,7 @@ void print_numbers([]int numbers, int len)
   return numbers;
 }
 
-void print_title([]char title)
+void print_title(char^ title)
 {
   int len = str_len(title);
   print_str(&"\n  ");
@@ -80,7 +80,7 @@ void main()
   print_str(&"\n");
 
   int nr_count = 15;
-  []int numbers = make_numbers(nr_count);
+  int^ numbers = make_numbers(nr_count);
   print_title(&"SHUFFLED");
   print_numbers(numbers, nr_count);
 

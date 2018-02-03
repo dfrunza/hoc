@@ -1,6 +1,6 @@
 extern void ExitProcess(int code);
 
-extern []char GetCommandLineA();
+extern char^ GetCommandLineA();
 
 extern void WriteConsoleA(int    console_handle,
                           char^  buf,
@@ -13,7 +13,7 @@ extern bool GetConsoleMode(int console_handle, int^ mode);
 extern int GetLastError();
 
 extern bool ReadFile(int    file_handle,
-                     []char buf,
+                     char^  buf,
                      int    bytes_to_read_count,
                      int^   bytes_read_count,
                      void^  p_overlapped);
@@ -35,7 +35,7 @@ int OPEN_EXISTING;
 int FILE_ATTRIBUTE_NORMAL;
 int INVALID_HANDLE_VALUE;
 
-extern int CreateFileA([]char file_path,
+extern int CreateFileA(char^  file_path,
                        int    desired_access,
                        int    share_mode,
                        void^  security_attributes,
@@ -78,7 +78,7 @@ void free()
 int stdout;
 int stdin; 
 
-int stdin_read([]char buf, int buf_size)
+int stdin_read(char^ buf, int buf_size)
 {
   int bytes_read_count = 0;
 

@@ -171,7 +171,7 @@ int floor_log_b(int b, float n)
 }
 
 /* Returns the number of significand 10-base digits */
-int fp_bin_to_dec(float v, []int significand, []int exponent)
+int fp_bin_to_dec(float v, int^ significand, int^ exponent)
 {
   float v_abs = absf(v);
   int x = floor_log_b(10, v_abs) + 1;

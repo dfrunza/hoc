@@ -1,8 +1,6 @@
-include "std.hoc";
-include "str.hoc";
-include "math.hoc";
+/*
+include "sloc.hoc";
+*/
 
-void main()
-{
-  print_str(&"Hello World!\n");
-}
+include "test_v0_1.hoc";
+

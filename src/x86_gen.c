@@ -1852,13 +1852,6 @@ void x86_gen_proc(X86Context* context, AstNode* proc)
     stmt->operand2 = x86_make_int_constant_operand(context, proc_scope->allocd_size);
 
     List* basic_blocks = proc->proc.basic_blocks;
-#if 0
-    ListItem* li = basic_blocks->first;
-    BasicBlock* first_bb = KIND(li, eList_basic_block)->basic_block;
-
-    x86_gen_basic_block(context, first_bb);
-    x86_save_all_registers(context, true);
-#endif
 
     for(ListItem* li = basic_blocks->first;
         li;
@@ -2143,7 +2136,8 @@ void x86_gen(IrContext* ir_context, X86Context* x86_context, AstNode* module)
 {
   x86_gen_module(ir_context, x86_context, module);
 
-  DEBUG_print_ir_code(ir_context->gp_arena, &module->module.procs, "./out.ir");
+  if(DEBUG_enabled)
+    DEBUG_print_ir_code(ir_context->gp_arena, &module->module.procs, "./module.ir");
 
   str_printfln(x86_context->text, ".686");
   str_printfln(x86_context->text, ".xmm");

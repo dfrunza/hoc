@@ -18,11 +18,11 @@ global_var bool DEBUG_zero_struct = true;
 
 void* platform_alloc_memory(int size)
 {
-  void *raw_mem = VirtualAlloc(0, size + sizeof(MemoryArena), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+  void *raw_mem = VirtualAlloc(0, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
   return raw_mem;
 }
 
-int platform_stdin_read(char buf[], int buf_size)
+int platform_stdin_read(char* buf, int buf_size)
 {
   HANDLE h_std = GetStdHandle(STD_INPUT_HANDLE);
   DWORD bytes_read = 0;

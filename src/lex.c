@@ -567,7 +567,7 @@ loop:
       is_hex = true;
       c = *(++lexer->cursor);
 
-      for(; i < countof(digit_buf)-1 && char_is_hex_digit(c);
+      for(; i < sizeof_array(digit_buf)-1 && char_is_hex_digit(c);
           i++)
       {
         digit_buf[i] = c;
@@ -576,7 +576,7 @@ loop:
     }
     else if(char_is_dec_digit(c) || c == '.')
     {
-      for(; i < countof(digit_buf)-1 && ((char_is_dec_digit(c) || c == '.'));
+      for(; i < sizeof_array(digit_buf)-1 && ((char_is_dec_digit(c) || c == '.'));
           i++)
       {
         digit_buf[i] = c;

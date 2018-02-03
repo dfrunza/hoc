@@ -84,7 +84,6 @@ int platform_file_write_bytes(char* file_path, uint8* bytes, int count);
 HFile* platform_open_file(MemoryArena* arena, char* filename);
 bool platform_file_identity(HFile* file_A, HFile* file_B);
 
-#define countof(ARRAY) (sizeof(ARRAY)/sizeof(ARRAY[0]))
 #define KIND(VAR, KIND) (((VAR)->kind == KIND) ? (VAR) : 0)
 
 void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes);
@@ -1060,7 +1059,7 @@ Parser;
 typedef enum eStorageSpace
 {
   eStorageSpace_None,
-  eStorageSpace_constant, // immediate
+  eStorageSpace_constant,
   eStorageSpace_local, // vars and temps
   eStorageSpace_actual_param, // params (actual args and retvar) at the call site
   eStorageSpace_formal_param, // params to proc 

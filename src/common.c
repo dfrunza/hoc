@@ -35,7 +35,7 @@ bool char_is_hex_digit(char c)
 
 void mem_zero_(void* mem, int len)
 {
-  /* slow but CRT-independent */
+  /* slow func, but CRT-independent */
   uint8* p_byte = (uint8*)mem;
   for(int i = 0; i < len; i++)
   {
@@ -62,7 +62,7 @@ void mem_zero_range(void* start, void* one_past_end)
 
 MemoryArena* new_arena(int size)
 {
-  void* raw_mem = platform_alloc_memory(size);
+  void* raw_mem = platform_alloc_memory(size + sizeof(MemoryArena));
   MemoryArena* arena = (MemoryArena*)raw_mem;
   mem_zero_struct(arena, MemoryArena);
   arena->base = (uint8*)arena + sizeof(MemoryArena);
@@ -292,7 +292,7 @@ void cstr_copy_substr(char* dest_str, char* begin_char, char* end_char)
 
 void str_init(MemoryArena* arena, String* str)
 {
-  // Two Strings cannot be both attached to an Arena at the same time
+  // Two Strings cannot be both attached to the same Arena at the same time
   assert(!arena->str);
 
   str->arena = arena;
@@ -301,21 +301,20 @@ void str_init(MemoryArena* arena, String* str)
   arena->str = str;
 }
 
+String* str_new(MemoryArena* arena)
+{
+  String* str = mem_push_struct(arena, String);
+  str_init(arena, str);
+
+  return str;
+}
+
 int str_len(String* str)
 {
   assert(str->head <= str->end);
   int len = (int)(str->end - str->head);
   return len;
 }
-
-#if 0
-String* str_new(MemoryArena* arena)
-{
-  String* str = mem_push_struct(arena, String);
-  str_init(str, arena);
-  return str;
-}
-#endif
 
 void str_append(String* str, char* cstr)
 {

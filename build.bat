@@ -36,7 +36,7 @@ SET src_dir=%base_dir%\src
 :: /W{n}         - warning output level (/W0 disable all warnings)
 :: /Wall         - display all warnings
 
-SET C_flags=/Od /W4 /nologo /MTd /Zo /Zi /Gm- /GS- /GR- /EHa- /FC /D_CRT_SECURE_NO_WARNINGS ^
+SET C_flags=/Od /MTd /W4 /Zo /Zi /Gm- /GS- /GR- /EHa- /FC /nologo /D_CRT_SECURE_NO_WARNINGS ^
             /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459 /wd4456
 SET L_flags=/incremental:no /opt:ref /subsystem:console
 
@@ -63,7 +63,7 @@ IF %ERRORLEVEL% NEQ 0 (
 :: /Zi     - add symbolic debug info
 :: /Fl     - generate listing
 :: /c      - assemble without linking
-ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
+ml /Zi /Fl /Cx /nologo %hoc_file%.asm ^
    /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
 
 :end

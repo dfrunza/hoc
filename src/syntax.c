@@ -180,7 +180,7 @@ bool parse_expr(Parser*, AstNode**);
 bool parse_formal_args(Parser* parser, AstNode* args);
 bool parse_cast(Parser* parser, AstNode** node);
 bool parse_deref(Parser* parser, AstNode** node);
-bool parse_module(Parser* parser, AstNode** node);
+bool parse_module(Parser* parser);
 bool parse_pointer(Parser* parser, AstNode* left_node, AstNode** node);
 bool parse_rest_of_selector(Parser* parser, AstNode* left_node, AstNode** node);
 bool parse_selector(Parser*, AstNode**);
@@ -810,21 +810,18 @@ bool parse_array(Parser* parser, AstNode** node)
     {
       if(parser->token->kind == eToken_close_bracket)
       {
-        if(!array->array.size_expr)
+        if(array->array.size_expr)
         {
-          AstNode* size_zero = array->array.size_expr = new_ast_node(parser->arena, eAstNode_lit,
-                                                                     clone_source_loc(parser->arena, parser->src_loc));
-          size_zero->lit.kind = eLiteral_int;
-          size_zero->lit.int_val = 0;
-        }
-
-        if(success = parser_get_next_token(parser) && parse_rest_of_array(parser, &array->array.elem_expr))
-        {
-          if(!array->array.elem_expr)
+          if(success = parser_get_next_token(parser) && parse_rest_of_array(parser, &array->array.elem_expr))
           {
-            success = compile_error(parser->arena, parser->src_loc,  "expression was expected at `%s`", get_token_printstr(parser->token));
+            if(!array->array.elem_expr)
+            {
+              success = compile_error(parser->arena, parser->src_loc,  "expression was expected at `%s`", get_token_printstr(parser->token));
+            }
           }
         }
+        else
+          success = compile_error(parser->arena, parser->src_loc, "expression was expected at `%s`", get_token_printstr(parser->token));
       }
       else
         success = compile_error(parser->arena, parser->src_loc,  "`]` was expected at `%s`", get_token_printstr(parser->token));
@@ -1797,8 +1794,7 @@ bool parse_module_include(Parser* parser, AstNode** node)
                 Parser* included_parser = parser_included_new(parser);
                 parser_set_input(included_parser, hoc_text, included_file);
 
-                AstNode* included_module = 0;
-                if(success = parse_module(included_parser, &included_module))
+                if(success = parse_module(included_parser))
                 {
                   merge_modules(parser->module, included_parser->module);
                 }
@@ -1807,9 +1803,9 @@ bool parse_module_include(Parser* parser, AstNode** node)
             else
             {
               success = compile_error(parser->arena, include->src_loc, "file `%s` has already been included", include->include.file_path);
-              if(previous_include->src_loc) // main file does not have a src_loc
+              if(previous_include->src_loc) // main file does not have an inclusion point
               {
-                compile_error(parser->arena, previous_include->src_loc, "see the location of the previous include");
+                compile_error(parser->arena, previous_include->src_loc, "see the previous inclusion point");
               }
             }
           }
@@ -1931,16 +1927,14 @@ bool parse_module_body(Parser* parser, AstNode* module)
   return success;
 }
 
-bool parse_module(Parser* parser, AstNode** node)
+bool parse_module(Parser* parser)
 {
-  *node = 0;
   bool success = true;
 
   if(success = parser_get_next_token(parser))
   {
-    AstNode* module = *node = new_ast_node(parser->arena, eAstNode_module,
+    AstNode* module = parser->module = module = new_ast_node(parser->arena, eAstNode_module,
                                            clone_source_loc(parser->arena, parser->src_loc));
-    parser->module = module;
     module->module.file_path = parser->file->path;
     list_init(parser->arena, &module->module.nodes, eList_ast_node);
     list_init(parser->arena, &module->module.procs, eList_ast_node);

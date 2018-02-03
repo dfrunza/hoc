@@ -173,9 +173,14 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   HFile* file = platform_open_file(gp_arena, file_path);
   parser_set_input(parser, hoc_text, file);
 
-  AstNode* module = 0;
-  if(!(parse_module(parser, &module) &&
-       sym_module(&sym_context, module) &&
+  if(!parse_module(parser))
+  {
+    return false;
+  }
+
+  AstNode* module = parser->module;
+
+  if(!(sym_module(&sym_context, module) &&
        set_types_module(gp_arena, module) &&
        eval_types_module(gp_arena, module) &&
        resolve_types_module(gp_arena, module) &&

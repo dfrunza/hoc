@@ -1,6 +1,5 @@
-/*
-include "sloc.hoc";
-*/
-
-include "test_v0_1.hoc";
+void startup()
+{
+  [34]char c;
+}
 

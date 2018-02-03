@@ -9,7 +9,17 @@ void print_str([]char str)
 {
   int len = str_len(str);
   int chars_written_count = 0;
-  WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
+
+  int console_mode = 0;
+  if(GetConsoleMode(stdout, &console_mode))
+  {
+    WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
+  }
+  else
+  {
+    /* The output is redirected to a file. */
+    WriteFile(stdout, str, len, &chars_written_count, (void^):0);
+  }
 }
 
 void print_int(int i)

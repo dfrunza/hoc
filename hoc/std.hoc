@@ -3,10 +3,12 @@ extern void ExitProcess(int code);
 extern []char GetCommandLineA();
 
 extern void WriteConsoleA(int    console_handle,
-                          []char buf,
-                          int    chars_to_write_count,
-                          int^   chars_written_count,
+                          char^  buf,
+                          int    bytes_to_write_count,
+                          int^   bytes_written_count,
                           void^  reserved);
+
+extern bool GetConsoleMode(int console_handle, int^ mode);
 
 extern int GetLastError();
 
@@ -42,6 +44,12 @@ extern int CreateFileA([]char file_path,
                        int    template_file);
 
 extern bool GetFileSizeEx(int file_handle, int^ file_size);
+
+extern bool WriteFile(int   file_handle,
+                      char^ buf,
+                      int   bytes_to_write_count,
+                      int^  bytes_written_count,
+                      void^ overlapped);
 
 int MEGABYTE;
 int KILOBYTE;

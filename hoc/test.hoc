@@ -1,1 +1,8 @@
+include "std.hoc";
+include "str.hoc";
+include "math.hoc";
 
+void main()
+{
+  print_str(&"Hello World!\n");
+}

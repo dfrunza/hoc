@@ -163,6 +163,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   x86_context.stmt_arena = push_arena(&arena, 2*MEGABYTE);
   x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
   x86_context.machine_word_size = 4;
+  x86_context.data_alignment = 4;
   x86_init_registers(&x86_context);
   x86_context.text = x86_text;
 
@@ -198,10 +199,11 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
     return false;
   }
 
+  ir_partition_basic_blocks_module(&ir_context, module);
   alloc_scope_data_objects(&ir_context, module->module.scope);
 
   str_init(push_arena(&arena, 2*MEGABYTE), x86_context.text);
-  x86_gen(&ir_context, &x86_context, module);
+  x86_gen(&x86_context, module);
 
   return true;
 }

@@ -588,7 +588,7 @@ bool set_types_array(MemoryArena* arena, AstNode* array)
     if(size_expr->kind == eAstNode_lit && size_expr->lit.kind == eLiteral_int)
     {
       size = size_expr->lit.int_val;
-      if(size < 0)
+      if(size <= 0)
         success = compile_error(arena, size_expr->src_loc, "array size must be greater than 0");
     }
     else
@@ -606,11 +606,6 @@ bool set_types_array(MemoryArena* arena, AstNode* array)
       }
       
       array->ty = array->eval_ty = new_array_type(arena, array->array.size, array->array.ndim, elem_expr->ty);
-
-      if(size == 0)
-      {
-        array->ty = array->eval_ty = new_pointer_type(arena, elem_expr->ty);
-      }
     }
   }
 
@@ -1976,6 +1971,9 @@ bool resolve_types_var(MemoryArena* arena, AstNode* var)
     {
       success = resolve_types_expr(arena, var->var.init_expr);
     }
+
+    Symbol* object = var->var.decl_sym;
+    assert(object->ty->width > 0);
   }
 
   return success;

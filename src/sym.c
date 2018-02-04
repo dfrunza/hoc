@@ -268,7 +268,7 @@ bool sym_var(SymbolContext* context, AstNode* var)
     var->var.decl_sym = add_decl_sym(context->sym_arena, var->var.name,
                                      eStorageSpace_local, context->active_scope, var);
     success = sym_expr(context, var->var.type)
-      && var->var.init_expr ? sym_expr(context, var->var.init_expr) : true;
+      && (var->var.init_expr ? sym_expr(context, var->var.init_expr) : true);
   }
 
   return success;
@@ -435,9 +435,16 @@ bool sym_array(SymbolContext* context, AstNode* array)
   AstNode* size_expr = array->array.size_expr;
   if(size_expr->kind == eAstNode_lit)
   {
-    size_expr->lit.constant = new_const_object_int(context, size_expr->src_loc, size_expr->lit.int_val);
+    int size_val = size_expr->lit.int_val;
+    if(size_val > 0)
+    {
+      size_expr->lit.constant = new_const_object_int(context, size_expr->src_loc, size_val);
+    }
+    else if(size_val == 0)
+      success = compile_error(context->gp_arena, size_expr->src_loc, "array of 0 size");
   }
-  else assert(0);
+  else
+    success = compile_error(context->gp_arena, size_expr->src_loc, "unsupported size expr"); 
 
   return success;
 }

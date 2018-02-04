@@ -1155,6 +1155,7 @@ typedef struct X86Context
   int stmt_count;
 
   int machine_word_size; // = stack width
+  int data_alignment;
 
   struct
   {

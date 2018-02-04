@@ -917,6 +917,60 @@ bool parse_rest_of_selector(Parser* parser, AstNode* left_node, AstNode** node)
   return success;
 }
 
+bool parse_lit(Parser* parser, AstNode** node)
+{
+  *node = 0;
+  bool success = true;
+
+  AstNode* lit = *node = new_ast_node(parser->arena, eAstNode_lit,
+                                      clone_source_loc(parser->arena, parser->src_loc));
+
+  switch(parser->token->kind)
+  {
+    case eToken_int_val:
+    {
+      lit->lit.kind = eLiteral_int;
+      lit->lit.int_val = *parser->token->int_val;
+    }
+    break;
+
+    case eToken_float_val:
+    {
+      lit->lit.kind = eLiteral_float;
+      lit->lit.float_val = *parser->token->float_val;
+    }
+    break;
+
+    case eToken_true:
+    case eToken_false:
+    {
+      lit->lit.kind = eLiteral_bool;
+      lit->lit.bool_val = (parser->token->kind == eToken_true ? 1 : 0);
+    }
+    break;
+
+    case eToken_char_val:
+    {
+      lit->lit.kind = eLiteral_char;
+      lit->lit.char_val = parser->token->char_val;
+    }
+    break;
+
+    case eToken_str_val:
+    {
+      lit->lit.kind = eLiteral_str;
+      lit->lit.str_val = parser->token->str_val;
+    }
+    break;
+
+    default: assert(0);
+  }
+
+  success = parser_get_next_token(parser);
+
+  return success;
+}
+
 bool parse_selector(Parser* parser, AstNode** node)
 {
   *node = 0;
@@ -930,52 +984,7 @@ bool parse_selector(Parser* parser, AstNode** node)
     case eToken_float_val:
     case eToken_char_val:
     case eToken_str_val:
-    {
-      AstNode* lit = *node = new_ast_node(parser->arena, eAstNode_lit,
-                                          clone_source_loc(parser->arena, parser->src_loc));
-
-      switch(parser->token->kind)
-      {
-        case eToken_int_val:
-        {
-          lit->lit.kind = eLiteral_int;
-          lit->lit.int_val = *parser->token->int_val;
-        }
-        break;
-
-        case eToken_float_val:
-        {
-          lit->lit.kind = eLiteral_float;
-          lit->lit.float_val = *parser->token->float_val;
-        }
-        break;
-
-        case eToken_true:
-        case eToken_false:
-        {
-          lit->lit.kind = eLiteral_bool;
-          lit->lit.bool_val = (parser->token->kind == eToken_true ? 1 : 0);
-        }
-        break;
-
-        case eToken_char_val:
-        {
-          lit->lit.kind = eLiteral_char;
-          lit->lit.char_val = parser->token->char_val;
-        }
-        break;
-
-        case eToken_str_val:
-        {
-          lit->lit.kind = eLiteral_str;
-          lit->lit.str_val = parser->token->str_val;
-        }
-        break;
-
-        default: assert(0);
-      }
-      success = parser_get_next_token(parser);
-    }
+      success = parse_lit(parser, node);
     break;
 
     case eToken_open_parens:

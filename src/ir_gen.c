@@ -298,7 +298,7 @@ void reset_ir_context(IrContext* ir_context)
   clear_list(ir_context->label_list);
 }
 
-IrArg* ir_new_arg_temp_object(IrContext* ir_context, Scope* scope, Type* ty, SourceLoc* src_loc)
+IrArg* ir_arg_new_temp_object(IrContext* ir_context, Scope* scope, Type* ty, SourceLoc* src_loc)
 {
   IrArg* arg = mem_push_struct(ir_context->gp_arena, IrArg);
   arg->object = new_temp_object(ir_context, scope, ty, src_loc);
@@ -306,7 +306,7 @@ IrArg* ir_new_arg_temp_object(IrContext* ir_context, Scope* scope, Type* ty, Sou
   return arg;
 }
 
-IrArg* ir_new_arg_existing_object(IrContext* ir_context, Symbol* object)
+IrArg* ir_arg_new_existing_object(IrContext* ir_context, Symbol* object)
 {
   IrArg* arg = mem_push_struct(ir_context->gp_arena, IrArg);
   arg->object = object;
@@ -348,7 +348,7 @@ bool ir_gen_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
     {
       if(success = ir_gen_expr(ir_context, scope, left_operand) && ir_gen_expr(ir_context, scope, right_operand))
       {
-        bin_expr->place = ir_new_arg_temp_object(ir_context, scope, bin_expr->eval_ty, bin_expr->src_loc);
+        bin_expr->place = ir_arg_new_temp_object(ir_context, scope, bin_expr->eval_ty, bin_expr->src_loc);
 
         ir_emit_assign(ir_context, conv_operator_to_ir_op(op), left_operand->place, right_operand->place, bin_expr->place);
       }
@@ -364,7 +364,7 @@ bool ir_gen_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
 void ir_gen_id(IrContext* ir_context, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
-  id->place = ir_new_arg_existing_object(ir_context, id->id.decl_sym);
+  id->place = ir_arg_new_existing_object(ir_context, id->id.decl_sym);
 }
 
 bool ir_gen_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
@@ -381,7 +381,7 @@ bool ir_gen_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
     {
       if(success = ir_gen_expr(ir_context, scope, operand))
       {
-        unr_expr->place = ir_new_arg_temp_object(ir_context, scope, unr_expr->eval_ty, unr_expr->src_loc);
+        unr_expr->place = ir_arg_new_temp_object(ir_context, scope, unr_expr->eval_ty, unr_expr->src_loc);
         ir_emit_assign(ir_context, conv_operator_to_ir_op(op), operand->place, 0, unr_expr->place);
       }
     }
@@ -397,7 +397,7 @@ bool ir_gen_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
     {
       if(success = ir_gen_expr(ir_context, scope, operand))
       {
-        unr_expr->place = ir_new_arg_temp_object(ir_context, scope, unr_expr->eval_ty, unr_expr->src_loc);
+        unr_expr->place = ir_arg_new_temp_object(ir_context, scope, unr_expr->eval_ty, unr_expr->src_loc);
         ir_emit_assign(ir_context, conv_operator_to_ir_op(op), operand->place, 0, unr_expr->place);
       }
     }
@@ -407,7 +407,7 @@ bool ir_gen_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
     {
       if(success = ir_gen_expr(ir_context, scope, operand))
       {
-        unr_expr->place = ir_new_arg_temp_object(ir_context, scope, unr_expr->eval_ty, unr_expr->src_loc);
+        unr_expr->place = ir_arg_new_temp_object(ir_context, scope, unr_expr->eval_ty, unr_expr->src_loc);
         ir_emit_assign(ir_context, conv_operator_to_ir_op(op), operand->place, 0, unr_expr->place);
       }
     }
@@ -423,7 +423,7 @@ void ir_gen_lit(IrContext* ir_context, Scope* scope, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
   
-  lit->place = ir_new_arg_existing_object(ir_context, lit->lit.constant);
+  lit->place = ir_arg_new_existing_object(ir_context, lit->lit.constant);
 }
 
 bool ir_gen_bool_unr_expr(IrContext* ir_context, Scope* scope, AstNode* unr_expr)
@@ -469,7 +469,7 @@ bool ir_gen_actual_args(IrContext* ir_context, Scope* scope, AstNode* args)
 
       if(success = ir_gen_expr(ir_context, scope, expr))
       {
-        temp_places[i] = ir_new_arg_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
+        temp_places[i] = ir_arg_new_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
 
         ir_emit_assign(ir_context, eIrOp_None, expr->place, 0, temp_places[i]);
       }
@@ -482,7 +482,7 @@ bool ir_gen_actual_args(IrContext* ir_context, Scope* scope, AstNode* args)
     {
       AstNode* arg = KIND(li, eList_ast_node)->ast_node;
 
-      arg->place = ir_new_arg_existing_object(ir_context, arg->call_arg.param);
+      arg->place = ir_arg_new_existing_object(ir_context, arg->call_arg.param);
       ir_emit_assign(ir_context, eIrOp_None, temp_places[i], 0, arg->place);
     }
   }
@@ -495,7 +495,7 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
   assert(KIND(call, eAstNode_call));
   AstNode* proc = call->call.proc;
   
-  call->place = ir_new_arg_existing_object(ir_context, call->call.retvar);
+  call->place = ir_arg_new_existing_object(ir_context, call->call.retvar);
 
   AstNode* args = call->call.args;
   ir_gen_actual_args(ir_context, scope, args);
@@ -565,11 +565,11 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
     {
       index->index.place = array_expr->index.place;
 
-      IrArg* offset = index->index.i_place = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
+      IrArg* offset = index->index.i_place = ir_arg_new_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
       int size_val = size_of_array_dim(index->index.array_ty, index->index.ndim);
       Symbol* size_constant = new_const_object_int(ir_context->sym_context, index->src_loc, size_val);
-      IrArg* dim_size = ir_new_arg_existing_object(ir_context, size_constant);
+      IrArg* dim_size = ir_arg_new_existing_object(ir_context, size_constant);
 
       if(size_val > 0)
       {
@@ -592,11 +592,11 @@ bool ir_gen_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
 
   if(success = ir_gen_index(ir_context, scope, index))
   {
-    IrArg* offset = index->index.offset = ir_new_arg_temp_object(ir_context, scope, basic_type_int, index->src_loc);
+    IrArg* offset = index->index.offset = ir_arg_new_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
     int width_val = array_elem_width(index->index.array_ty);
     Symbol* width_constant = new_const_object_int(ir_context->sym_context, index->src_loc, width_val);
-    IrArg* width = ir_new_arg_existing_object(ir_context, width_constant);
+    IrArg* width = ir_arg_new_existing_object(ir_context, width_constant);
 
     ir_emit_assign(ir_context, eIrOp_mul, index->index.i_place, width, offset);
   }
@@ -671,7 +671,7 @@ bool ir_gen_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
     }
     if(require_conv)
     {
-      cast->place = ir_new_arg_temp_object(ir_context, scope, cast->eval_ty, cast->src_loc);
+      cast->place = ir_arg_new_temp_object(ir_context, scope, cast->eval_ty, cast->src_loc);
 
       eIrOp cast_op = eIrOp_None;
 
@@ -744,17 +744,17 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         Symbol* result_object = new_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
         result_object->is_live_on_exit = true;
         result_object->is_live = true;
-        expr->place = ir_new_arg_existing_object(ir_context, result_object);
+        expr->place = ir_arg_new_existing_object(ir_context, result_object);
 
         ir_gen_bool_expr(ir_context, scope, expr);
         
         ir_emit_label(ir_context, expr->label_true);
         ir_emit_assign(ir_context, eIrOp_None,
-                       ir_new_arg_existing_object(ir_context, ir_context->bool_true), 0, expr->place);
+                       ir_arg_new_existing_object(ir_context, ir_context->bool_true), 0, expr->place);
         ir_emit_goto(ir_context, expr->label_next);
         ir_emit_label(ir_context, expr->label_false);
         ir_emit_assign(ir_context, eIrOp_None,
-                       ir_new_arg_existing_object(ir_context, ir_context->bool_false), 0, expr->place);
+                       ir_arg_new_existing_object(ir_context, ir_context->bool_false), 0, expr->place);
         ir_emit_label(ir_context, expr->label_next);
       }
       else
@@ -776,17 +776,17 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         Symbol* result_object = new_temp_object(ir_context, scope,  expr->eval_ty, expr->src_loc);
         result_object->is_live_on_exit = true;
         result_object->is_live = true;
-        expr->place = ir_new_arg_existing_object(ir_context, result_object);
+        expr->place = ir_arg_new_existing_object(ir_context, result_object);
 
         ir_gen_bool_unr_expr(ir_context, scope, expr);
 
         ir_emit_label(ir_context, expr->label_true);
         ir_emit_assign(ir_context, eIrOp_None,
-                       ir_new_arg_existing_object(ir_context, ir_context->bool_true), 0, expr->place);
+                       ir_arg_new_existing_object(ir_context, ir_context->bool_true), 0, expr->place);
         ir_emit_goto(ir_context, expr->label_next);
         ir_emit_label(ir_context, expr->label_false);
         ir_emit_assign(ir_context, eIrOp_None,
-                       ir_new_arg_existing_object(ir_context, ir_context->bool_false), 0, expr->place);
+                       ir_arg_new_existing_object(ir_context, ir_context->bool_false), 0, expr->place);
         ir_emit_label(ir_context, expr->label_next);
       }
       else
@@ -818,7 +818,7 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
     {
       if(success = ir_gen_index_with_offset(ir_context, scope, expr))
       {
-        expr->place = ir_new_arg_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
+        expr->place = ir_arg_new_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
 
         ir_emit_assign(ir_context, eIrOp_index_source, expr->index.place, expr->index.offset, expr->place);
       }
@@ -927,7 +927,7 @@ bool ir_gen_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
   if(success = ir_gen_expr(ir_context, scope, id))
   {
     ir_emit_cond_goto(ir_context, eIrOp_not_eq, id->place,
-                      ir_new_arg_existing_object(ir_context, ir_context->bool_false), id->label_true);
+                      ir_arg_new_existing_object(ir_context, ir_context->bool_false), id->label_true);
     ir_emit_goto(ir_context, id->label_false);
   }
 
@@ -942,7 +942,7 @@ bool ir_gen_bool_call(IrContext* ir_context, Scope* scope, AstNode* call)
   if(success = ir_gen_expr(ir_context, scope, call))
   {
     ir_emit_cond_goto(ir_context, eIrOp_not_eq, call->place,
-                      ir_new_arg_existing_object(ir_context, ir_context->bool_false), call->label_true);
+                      ir_arg_new_existing_object(ir_context, ir_context->bool_false), call->label_true);
     ir_emit_goto(ir_context, call->label_false);
   }
 
@@ -957,7 +957,7 @@ bool ir_gen_bool_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
   if(success = ir_gen_cast(ir_context, scope, cast))
   {
     ir_emit_cond_goto(ir_context, eIrOp_not_eq, cast->place,
-                      ir_new_arg_existing_object(ir_context, ir_context->bool_false), cast->label_true);
+                      ir_arg_new_existing_object(ir_context, ir_context->bool_false), cast->label_true);
     ir_emit_goto(ir_context, cast->label_false);
   }
 
@@ -1133,7 +1133,7 @@ bool ir_gen_return(IrContext* ir_context, Scope* scope, AstNode* ret)
   {
     if(success = ir_gen_expr(ir_context, scope, ret_expr))
     {
-      IrArg* retvar = ir_new_arg_existing_object(ir_context, proc->proc.retvar);
+      IrArg* retvar = ir_arg_new_existing_object(ir_context, proc->proc.retvar);
 
       ir_emit_assign(ir_context, eIrOp_None, ret_expr->place, 0, retvar);
     }
@@ -1171,7 +1171,7 @@ bool ir_gen_var(IrContext* ir_context, Scope* scope, AstNode* var)
   Symbol* object = var->var.decl_sym;
   alloc_data_object_incremental(ir_context, object, scope);
   add_object_to_memory(ir_context->x86_context, object);
-  var->place = ir_new_arg_existing_object(ir_context, object);
+  var->place = ir_arg_new_existing_object(ir_context, object);
 
   AstNode* init_expr = var->var.init_expr;
   if(init_expr)
@@ -1301,7 +1301,7 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
   
-  proc->place = ir_new_arg_existing_object(ir_context, proc->proc.retvar);
+  proc->place = ir_arg_new_existing_object(ir_context, proc->proc.retvar);
   ir_gen_formal_args(ir_context, proc->proc.param_scope, proc->proc.args);
   alloc_data_object(ir_context, proc->proc.retvar, proc->proc.param_scope);
 
@@ -1878,7 +1878,7 @@ Label* normalize_jump_target_labels(IrStmt* stmt)
   return target_label;
 }
 
-void partition_to_basic_blocks(IrContext* ir_context, AstNode* proc)
+void ir_partition_basic_blocks_proc(IrContext* ir_context, AstNode* proc)
 {
   if(proc->proc.ir_stmt_count > 0)
   {
@@ -1901,7 +1901,7 @@ void partition_to_basic_blocks(IrContext* ir_context, AstNode* proc)
       }
     }
 
-    //------
+    //------//
     
     List* basic_blocks = proc->proc.basic_blocks = list_new(ir_context->stmt_arena, eList_basic_block);
 
@@ -2027,4 +2027,20 @@ void partition_to_basic_blocks(IrContext* ir_context, AstNode* proc)
       }
     }
   }
+}
+
+void ir_partition_basic_blocks_module(IrContext* ir_context, AstNode* module)
+{
+  List* procs = &module->module.procs;
+  for(ListItem* li = procs->first;
+      li;
+      li = li->next)
+  {
+    AstNode* proc = KIND(li, eList_ast_node)->ast_node;
+
+    ir_partition_basic_blocks_proc(ir_context, proc);
+  }
+
+  if(DEBUG_enabled)
+    DEBUG_print_ir_code(ir_context->gp_arena, &module->module.procs, "./module.ir");
 }

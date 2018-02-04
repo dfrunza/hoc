@@ -2118,7 +2118,7 @@ void x86_write_static_data_text(String* text, Scope* scope)
   }
 }
 
-void x86_gen_module(IrContext* ir_context, X86Context* x86_context, AstNode* module)
+void x86_gen_module(X86Context* x86_context, AstNode* module)
 {
   List* procs = &module->module.procs;
   for(ListItem* li = procs->first;
@@ -2127,17 +2127,13 @@ void x86_gen_module(IrContext* ir_context, X86Context* x86_context, AstNode* mod
   {
     AstNode* proc = KIND(li, eList_ast_node)->ast_node;
 
-    partition_to_basic_blocks(ir_context, proc);
     x86_gen_proc(x86_context, proc);
   }
 }
 
-void x86_gen(IrContext* ir_context, X86Context* x86_context, AstNode* module)
+void x86_gen(X86Context* x86_context, AstNode* module)
 {
-  x86_gen_module(ir_context, x86_context, module);
-
-  if(DEBUG_enabled)
-    DEBUG_print_ir_code(ir_context->gp_arena, &module->module.procs, "./module.ir");
+  x86_gen_module(x86_context, module);
 
   str_printfln(x86_context->text, ".686");
   str_printfln(x86_context->text, ".xmm");
@@ -2145,7 +2141,7 @@ void x86_gen(IrContext* ir_context, X86Context* x86_context, AstNode* module)
   str_printfln(x86_context->text, ".stack %d", 1*MEGABYTE);
   str_printfln(x86_context->text, ".data");
   str_printfln(x86_context->text, "static_area label byte");
-  str_printfln(x86_context->text, "align %d", ir_context->data_alignment);
+  str_printfln(x86_context->text, "align %d", x86_context->data_alignment);
 
   x86_write_static_data_text(x86_context->text, module->module.scope);
 

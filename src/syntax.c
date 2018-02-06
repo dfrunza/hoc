@@ -279,7 +279,7 @@ bool parse_call(Parser* parser, AstNode* left_node, AstNode** node)
   return success;
 }
 
-bool parse_index(Parser* parser, AstNode* left_node, AstNode** node, int ndim)
+bool parse_index_recursive(Parser* parser, AstNode* left_node, AstNode** node, int* ndim)
 {
   *node = left_node;
   bool success = true;
@@ -289,7 +289,7 @@ bool parse_index(Parser* parser, AstNode* left_node, AstNode** node, int ndim)
     AstNode* index = *node = new_ast_node(parser->arena, eAstNode_index,
                                           clone_source_loc(parser->arena, parser->src_loc));
     index->index.array_expr = left_node;
-    index->index.ndim = ndim;
+    index->index.ndim = *ndim;
 
     if(success = parser_get_next_token(parser) && parse_expr(parser, &index->index.i_expr))
     {
@@ -297,7 +297,11 @@ bool parse_index(Parser* parser, AstNode* left_node, AstNode** node, int ndim)
       {
         if(index->index.i_expr)
         {
-          success = parser_get_next_token(parser) && parse_index(parser, *node, node, ndim+1);
+          *ndim = *ndim + 1;
+          if(success = parser_get_next_token(parser) && parse_index_recursive(parser, *node, node, ndim))
+          {
+            index->index.ndim = *ndim - index->index.ndim;
+          }
         }
         else
           success = compile_error(parser->arena, parser->src_loc, "expression was expected at %s", get_token_printstr(parser->token));
@@ -308,6 +312,16 @@ bool parse_index(Parser* parser, AstNode* left_node, AstNode** node, int ndim)
       }
     }
   }
+  return success;
+}
+
+bool parse_index(Parser* parser, AstNode* left_node, AstNode** node)
+{
+  *node = left_node;
+  bool success = true;
+
+  int ndim = 1;
+  success = parse_index_recursive(parser, left_node, node, &ndim);
   return success;
 }
 
@@ -857,7 +871,7 @@ bool parse_cast(Parser* parser, AstNode** node)
     break;
 
     case eToken_circumflex:
-      success = parse_deref(parser, node) && parse_index(parser, *node, node, 1);
+      success = parse_deref(parser, node) && parse_index(parser, *node, node);
     break;
 
     case eToken_open_bracket:
@@ -865,7 +879,7 @@ bool parse_cast(Parser* parser, AstNode** node)
     break;
 
     case eToken_id:
-      success = parse_id(parser, node) && parse_pointer(parser, *node, node) && parse_index(parser, *node, node, 1);
+      success = parse_id(parser, node) && parse_pointer(parser, *node, node) && parse_index(parser, *node, node);
     break;
 
     case eToken_void:
@@ -874,7 +888,7 @@ bool parse_cast(Parser* parser, AstNode** node)
     case eToken_bool:
     case eToken_char:
     case eToken_auto:
-      success = parse_basic_type(parser, node) && parse_pointer(parser, *node, node) && parse_index(parser, *node, node, 1);
+      success = parse_basic_type(parser, node) && parse_pointer(parser, *node, node) && parse_index(parser, *node, node);
     break;
   }
   return success;
@@ -911,7 +925,7 @@ bool parse_rest_of_selector(Parser* parser, AstNode* left_node, AstNode** node)
     break;
 
     case eToken_open_bracket:
-      success = parse_index(parser, left_node, node, 1);
+      success = parse_index(parser, left_node, node);
     break;
   }
   return success;

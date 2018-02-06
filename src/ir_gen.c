@@ -537,17 +537,6 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
 
   AstNode* array_expr = index->index.array_expr;
   AstNode* i_expr = index->index.i_expr;
-  
-  Type* array_ty = array_expr->eval_ty;
-  if(array_ty->kind == eType_array)
-  {
-    index->index.array_ty = array_ty;
-  }
-  else if(array_ty->kind == eType_pointer)
-  {
-    index->index.array_ty = new_array_type(ir_context->gp_arena, 0, 1, array_ty->pointer.pointee);
-  }
-  else assert(0);
 
   if(array_expr->kind == eAstNode_id)
   {
@@ -567,7 +556,9 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
 
       IrArg* offset = index->index.i_place = ir_arg_new_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
-      int size_val = size_of_array_dim(index->index.array_ty, index->index.ndim);
+      Type* index_ty = index->ty;
+      int size_val = KIND(index_ty, eType_array)->array.size;
+
       Symbol* size_constant = new_const_object_int(ir_context->sym_context, index->src_loc, size_val);
       IrArg* dim_size = ir_arg_new_existing_object(ir_context, size_constant);
 
@@ -577,7 +568,7 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
         ir_emit_assign(ir_context, eIrOp_add, offset, i_expr->place, offset);
       }
       else
-        success = compile_error(ir_context->gp_arena, i_expr->src_loc, "array dim size = 0");
+        success = compile_error(ir_context->gp_arena, i_expr->src_loc, "array dim size <= 0");
     }
   }
   else assert(0);
@@ -594,7 +585,9 @@ bool ir_gen_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
   {
     IrArg* offset = index->index.offset = ir_arg_new_temp_object(ir_context, scope, basic_type_int, index->src_loc);
 
-    int width_val = array_elem_width(index->index.array_ty);
+    assert(index->index.ndim == 1);
+    int width_val = index->eval_ty->width;
+
     Symbol* width_constant = new_const_object_int(ir_context->sym_context, index->src_loc, width_val);
     IrArg* width = ir_arg_new_existing_object(ir_context, width_constant);
 

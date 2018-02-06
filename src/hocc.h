@@ -381,47 +381,46 @@ typedef struct Type
 
   union
   {
-    struct
+    struct Type_var
     {
       Type* type;
     }
     var;
 
-    struct
+    struct Type_basic
     {
       eBasicType kind;
     }
     basic;
 
-    struct
+    struct Type_pointer
     {
       Type* pointee;
     }
     pointer;
 
-    struct
+    struct Type_proc
     {
       Type* args;
       Type* ret;
     }
     proc;
 
-    struct
+    struct Type_product
     {
       Type* left;
       Type* right;
     }
     product;
 
-    struct
+    struct Type_array
     {
       int size;
-      int ndim;
       Type* elem;
     }
     array;
 
-    struct
+    struct Type_typevar
     {
       int id;
     }
@@ -867,7 +866,6 @@ typedef struct AstNode
       IrArg* place;   // L.place
       IrArg* offset;  // L.offset
       IrArg* i_place; // Elist.place
-      Type* array_ty; // Elist.array
       int ndim;
     }
     index;

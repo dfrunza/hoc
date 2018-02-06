@@ -123,7 +123,6 @@ Type* new_array_type(MemoryArena* arena, int size, int ndim, Type* elem)
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType_array;
   type->array.size = size;
-  type->array.ndim = ndim;
   type->array.elem = elem;
   type->width = 0;
 
@@ -138,37 +137,6 @@ Type* new_pointer_type(MemoryArena* arena, Type* pointee)
   type->width = 0;
 
   return type;
-}
-
-int size_of_array_dim(Type* array_ty, int dim)
-{
-  assert(dim > 0);
-  assert(KIND(array_ty, eType_array));
-  assert(dim <= array_ty->array.ndim);
-  
-  Type* ty = array_ty;
-  int size = array_ty->array.size;
-  for(int d = 2; d <= dim; d++)
-  {
-    ty = ty->array.elem;
-    assert(KIND(ty, eType_array));
-    size = ty->array.size;
-  }
-
-  return size;
-}
-
-int array_elem_width(Type* array_ty)
-{
-  assert(KIND(array_ty, eType_array));
-  
-  Type* ty = array_ty->array.elem;
-  for(int d = 2; d <= array_ty->array.ndim; d++)
-  {
-    ty = ty->array.elem;
-  }
-
-  return ty->width;
 }
 
 bool types_are_equal(Type* type_a, Type* type_b)

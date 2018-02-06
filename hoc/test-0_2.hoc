@@ -7,6 +7,37 @@ include "std.hoc";
 /*
 */
 
+[4][2]int array_2dim;
+
+void test_array_2dim()
+{
+  array_2dim[0][0] = 123;
+  array_2dim[0][1] = 124;
+  array_2dim[1][0] = 125;
+  array_2dim[1][1] = 126;
+  array_2dim[2][0] = 127;
+  array_2dim[2][1] = 128;
+  array_2dim[3][0] = 129;
+  array_2dim[3][1] = 130;
+
+  int i = 0;
+  do
+  {
+    int j = 0;
+    do
+    {
+      print_int(array_2dim[i][j]);
+      print_str(&" ");
+      j = j + 1;
+    }
+    while(j < 2);
+
+    print_str(&"\n");
+    i = i + 1;
+  }
+  while(i < 4);
+}
+
 void print_numbers(int^ numbers, int len)
 {
   int i = 0;
@@ -93,4 +124,7 @@ void main()
 
   print_title(&"FIZZBUZZ");
   fizzbuzz(30);
+
+  print_title(&"2-DIM ARRAY");
+  test_array_2dim();
 }

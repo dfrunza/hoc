@@ -48,37 +48,40 @@ char^^ make_file_list(int^ count)
   files[f] = &"../src/hocc.h";
   f = f + 1;
 
-  files[f] = &"../src/common.c";
+  files[f] = &"../src/common.cpp";
   f = f + 1;
 
-  files[f] = &"../src/hocc.c";
+  files[f] = &"../src/hocc.cpp";
   f = f + 1;
 
-  files[f] = &"../src/ir_gen.c";
+  files[f] = &"../src/ir_gen.cpp";
   f = f + 1;
 
-  files[f] = &"../src/lex.c";
+  files[f] = &"../src/lex.cpp";
   f = f + 1;
 
-  files[f] = &"../src/sym.c";
+  files[f] = &"../src/sym.cpp";
   f = f + 1;
 
-  files[f] = &"../src/syntax.c";
+  files[f] = &"../src/syntax.cpp";
   f = f + 1;
 
-  files[f] = &"../src/translate.c";
+  files[f] = &"../src/translate.cpp";
   f = f + 1;
 
-  files[f] = &"../src/type.c";
+  files[f] = &"../src/type.cpp";
   f = f + 1;
 
-  files[f] = &"../src/x86_gen.c";
+  files[f] = &"../src/x86_gen.cpp";
   f = f + 1;
 
   if(f < max_file_count)
     ^count = f;
   else
+  {
+    print_int(max_file_count);
     assert(&"max file count exceeded");
+  }
 
   return files;
 }
@@ -103,7 +106,10 @@ bool sloc_count_lines(char^ file_path, int^ line_count)
           ^line_count = ^line_count + 1;
         }
         else if(pos < file_size)
+        {
+          print_str(file_path);
           success = sloc_error(&"premature end of file");
+        }
       }
     }
   }
@@ -134,16 +140,26 @@ bool sloc_read_file(char^ file_path, char^ file_buf, int^ file_size)
           file_buf[^file_size] = '\0';
         }
         else
+        {
+          print_str(file_path);
           success = sloc_error(&"read bytes not equal to file size");
+        }
       }
       else
+      {
+        print_str(file_path);
         success = sloc_error(&"read file");
+      }
     }
     else
+    {
+      print_str(file_path);
       success = sloc_error(&"file too big");
+    }
   }
   else
   {
+    print_str(file_path);
     success = sloc_error(&"open file");
   }
 
@@ -216,7 +232,7 @@ bool sloc_read_line(char^  file_buf,
       assert(&"read past buf size");
   }
   else
-    success = sloc_error(&"request to read past buf size");
+    assert(&"request to read past buf size");
 
   return success;
 }

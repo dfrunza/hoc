@@ -36,7 +36,7 @@ SET src_dir=%base_dir%\src
 :: If you use -nostdlib, you get an unresolved reference to __main, since it's defined in the standard GCC library.
 :: Include -lgcc at the end of your compiler command line to resolve this reference.
 :: Calling __main is necessary, even when compiling C code, to allow linking C and C++ object code together.
-:: gcc -std=c99 -nostdlib -static %C_flags% %src_dir%\hocc.c -lkernel32 -lgcc -Wl,-e_mainCRTStartup -o hocc.exe
+:: g++ -nostdlib -static %C_flags% %src_dir%\hocc.cpp -lkernel32 -lgcc -Wl,-e_mainCRTStartup -o hocc.exe
 :: ---------------------------
 
 SET C_flags=-g -ggdb -Winline
@@ -48,7 +48,7 @@ IF NOT EXIST .\bin (
 )
 PUSHD .\bin
 
-gcc -std=c99 %C_flags% %src_dir%\hocc.c -lkernel32 -o hocc.exe
+g++ %C_flags% %src_dir%\hocc.cpp -lkernel32 -o hocc.exe
 
 IF %ERRORLEVEL% NEQ 0 (
   GOTO :end

@@ -6,8 +6,8 @@ global_var bool DEBUG_zero_arena = true;
 global_var bool DEBUG_check_arena_bounds = true;
 global_var bool DEBUG_zero_struct = true;
 
-#include "common.c"
-#include "translate.c"
+#include "common.cpp"
+#include "translate.cpp"
 
 #include <stdio.h>
 #undef UNICODE
@@ -16,13 +16,13 @@ global_var bool DEBUG_zero_struct = true;
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-void* platform_alloc_memory(int size)
+void* Platform::alloc_memory(int size)
 {
   void *raw_mem = VirtualAlloc(0, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
   return raw_mem;
 }
 
-int platform_stdin_read(char* buf, int buf_size)
+int Platform::stdin_read(char* buf, int buf_size)
 {
   HANDLE h_std = GetStdHandle(STD_INPUT_HANDLE);
   DWORD bytes_read = 0;
@@ -45,7 +45,19 @@ int platform_stdin_read(char* buf, int buf_size)
   return (int)bytes_read;
 }
 
-int platform_file_write_bytes(char* file_path, uint8* bytes, int count)
+char* Platform::file_read_text(MemoryArena* arena, char* file_path)
+{
+  char* text = 0;
+  int byte_count = 0;
+  if((byte_count = Platform::file_read_bytes(arena, (uint8**)&text, file_path, 1)) >= 0)
+  {
+    text[byte_count] = '\0'; // NULL terminator
+  }
+
+  return text;
+}
+
+int Platform::file_write_bytes(char* file_path, uint8* bytes, int count)
 {
   int bytes_written = 0;
   FILE* h_file = fopen(file_path, "wb");
@@ -58,7 +70,7 @@ int platform_file_write_bytes(char* file_path, uint8* bytes, int count)
   return bytes_written;
 }
 
-int platform_file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int alloc_extra)
+int Platform::file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int alloc_extra)
 {
   *bytes = 0;
   int byte_count = -1;
@@ -72,7 +84,7 @@ int platform_file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path,
       {
         if(fseek(file, 0, SEEK_SET) == 0)
         {
-          *bytes = mem_push_array_nz(arena, uint8, byte_count + alloc_extra);
+          *bytes = mem_push_array(arena, uint8, byte_count + alloc_extra);
           fread(*bytes, (size_t)byte_count, 1, file);
           if(ferror(file))
             byte_count = -1;
@@ -89,7 +101,7 @@ int platform_file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path,
   return byte_count;
 }
 
-int platform_sscanf(char* buffer, char* format, ...)
+int Platform::sscanf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
@@ -99,12 +111,12 @@ int platform_sscanf(char* buffer, char* format, ...)
   return result;
 }
 
-int platform_sprintf_va(char* buffer, char* format, va_list args)
+int Platform::sprintf_va(char* buffer, char* format, va_list args)
 {
   return vsprintf(buffer, format, args);
 }
 
-int platform_sprintf(char* buffer, char* format, ...)
+int Platform::sprintf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
@@ -114,12 +126,12 @@ int platform_sprintf(char* buffer, char* format, ...)
   return result;
 }
 
-int platform_printf_va(char* format, va_list args)
+int Platform::printf_va(char* format, va_list args)
 {
   return vprintf(format, args);
 }
 
-int platform_printf(char* format, ...)
+int Platform::printf(char* format, ...)
 {
   va_list args;
   va_start(args, format);
@@ -130,43 +142,43 @@ int platform_printf(char* format, ...)
   return result;
 }
 
-struct HFile_platform
+struct HFile::Impl
 {
-  HANDLE* handle;
+  HANDLE handle;
   int id_low;
   int id_high;
   int volume_serial_no;
 };
 
-HFile* platform_open_file(MemoryArena* arena, char* file_path)
+HFile* Platform::file_open(MemoryArena* arena, char* file_path)
 {
   HFile* file = 0;
 
-  HANDLE* handle = CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  HANDLE handle = CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
   if(handle != INVALID_HANDLE_VALUE)
   {
     file = mem_push_struct(arena, HFile);
-    file->platform = mem_push_struct(arena, HFile_platform);
-    file->platform->handle = handle;
+    file->impl = mem_push_struct(arena, HFile::Impl);
+    file->impl->handle = handle;
     file->path = file_path;
 
     BY_HANDLE_FILE_INFORMATION* info = mem_push_struct(arena, BY_HANDLE_FILE_INFORMATION);
     if(GetFileInformationByHandle(handle, info))
     {
-      file->platform->volume_serial_no = info->dwVolumeSerialNumber;
-      file->platform->id_low = info->nFileIndexLow;
-      file->platform->id_high = info->nFileIndexHigh;
+      file->impl->volume_serial_no = info->dwVolumeSerialNumber;
+      file->impl->id_low = info->nFileIndexLow;
+      file->impl->id_high = info->nFileIndexHigh;
     }
   }
 
   return file;
 }
 
-bool platform_file_identity(HFile* file_A, HFile* file_B)
+bool Platform::file_identity(HFile* file_A, HFile* file_B)
 {
-  bool is_identity = (file_A->platform->volume_serial_no == file_B->platform->volume_serial_no)
-    && (file_A->platform->id_low == file_B->platform->id_low)
-    && (file_A->platform->id_high == file_B->platform->id_high);
+  bool is_identity = (file_A->impl->volume_serial_no == file_B->impl->volume_serial_no)
+    && (file_A->impl->id_low == file_B->impl->id_low)
+    && (file_A->impl->id_high == file_B->impl->id_high);
   return is_identity;
 }
 
@@ -187,11 +199,11 @@ OutFileNames;
 
 bool make_out_file_names(MemoryArena* arena, OutFileNames* out_files, char* src_file_path)
 {
-  char* leaf = mem_push_array_nz(arena, char, cstr_len(src_file_path));
-  cstr_copy(leaf, src_file_path);
-  leaf = path_make_leaf(leaf, false);
+  char* leaf = mem_push_array(arena, char, Cstr::len(src_file_path));
+  Cstr::copy(leaf, src_file_path);
+  leaf = Platform::path_make_leaf(leaf, false);
 
-  int leaf_len = cstr_len(leaf);
+  int leaf_len = Cstr::len(leaf);
   assert(leaf_len > 0);
   bool success = true;
 
@@ -203,12 +215,12 @@ bool make_out_file_names(MemoryArena* arena, OutFileNames* out_files, char* src_
 
   sprintf(str, "%s.asm", leaf);
   out_files->h_asm.name = str;
-  out_files->h_asm.len = cstr_len(out_files->h_asm.name);
+  out_files->h_asm.len = Cstr::len(out_files->h_asm.name);
   str = out_files->h_asm.name + out_files->h_asm.len + 1;
 
   sprintf(str, "%s", leaf);
   out_files->source.name = str;
-  out_files->source.len = cstr_len(out_files->source.name);
+  out_files->source.len = Cstr::len(out_files->source.name);
   str = out_files->source.name + out_files->source.len + 1;
 
   return success;
@@ -226,9 +238,9 @@ int main(int argc, char* argv[])
 
   char* src_file_path = argv[1];
 
-  MemoryArena* arena = new_arena(32*MEGABYTE);
+  MemoryArena* arena = MemoryArena::create(32*MEGABYTE);
 
-  char* hoc_text = file_read_text(push_arena(&arena, 2*MEGABYTE), src_file_path);
+  char* hoc_text = Platform::file_read_text(MemoryArena::push(&arena, 2*MEGABYTE), src_file_path);
 
   if(hoc_text == 0)
   {
@@ -243,15 +255,15 @@ int main(int argc, char* argv[])
     goto end;
   }
 
-  String x86_text = {0};
+  String* x86_text = 0;
   if(!translate(arena, out_files.source.name, src_file_path, hoc_text, &x86_text))
   {
     success = error("program could not be translated");
     goto end;
   }
 
-  int x86_text_len = str_len(&x86_text);
-  int bytes_written = platform_file_write_bytes(out_files.h_asm.name, (uint8*)x86_text.head, x86_text_len);
+  int x86_text_len = x86_text->len();
+  int bytes_written = Platform::file_write_bytes(out_files.h_asm.name, (uint8*)x86_text->head, x86_text_len);
   if(bytes_written != x86_text_len)
   {
     success = error("not all bytes were written to file `%s`", out_files.h_asm.name);

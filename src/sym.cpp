@@ -17,8 +17,8 @@ Symbol* lookup_sym(char* name, List* symbols)
   ListItem* li = symbols->last;
   while(li)
   {
-    Symbol* symbol = KIND(li, eList_symbol)->symbol;
-    if(cstr_match(symbol->name, name))
+    Symbol* symbol = KIND(li, eList::symbol)->symbol;
+    if(Cstr::match(symbol->name, name))
     {
       result = symbol;
       break;
@@ -80,7 +80,7 @@ void alloc_scope_data_objects(IrContext* ir_context, Scope* scope)
       li;
       li = li->next)
   {
-    Symbol* object = KIND(li, eList_symbol)->symbol;
+    Symbol* object = KIND(li, eList::symbol)->symbol;
     alloc_data_object(ir_context, object, scope);
   }
 }
@@ -89,13 +89,13 @@ Symbol* new_const_object(SymbolContext* sym_context, Type* ty, SourceLoc* src_lo
 {
   Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
 
-  sym->kind = eSymbol_constant;
+  sym->kind = eSymbol::constant;
   sym->name = new_tempvar_name(sym_context->gp_arena, "const_");
   sym->src_loc = src_loc;
   sym->ty = ty;
   sym->scope = 0;
   sym->order_nr = 0;
-  sym->storage_space = eStorageSpace_static;
+  sym->storage_space = eStorageSpace::static_;
   sym->next_use = NextUse_None;
   sym->is_live_on_exit = true;
   sym->is_live = false;
@@ -131,7 +131,7 @@ Symbol* new_const_object_str(SymbolContext* sym_context, SourceLoc* src_loc, cha
   const_object->data = const_object->str_val;
 
   Scope* module_scope = const_object->scope = sym_context->module_scope;
-  append_list_elem(&module_scope->decl_syms, const_object, eList_symbol);
+  module_scope->decl_syms.append(const_object, eList::symbol);
 
   return const_object;
 }
@@ -143,7 +143,7 @@ Symbol* new_const_object_float(SymbolContext* sym_context, SourceLoc* src_loc, f
   const_object->data = &const_object->float_val;
 
   Scope* module_scope = const_object->scope = sym_context->module_scope;
-  append_list_elem(&module_scope->decl_syms, const_object, eList_symbol);
+  module_scope->decl_syms.append(const_object, eList::symbol);
 
   return const_object;
 }
@@ -158,14 +158,14 @@ Symbol* new_temp_object(IrContext* ir_context, Scope* scope, Type* ty, SourceLoc
   sym->ty = ty;
   sym->scope = scope;
   sym->order_nr = scope->sym_count++;
-  sym->storage_space = eStorageSpace_local;
+  sym->storage_space = eStorageSpace::local;
   sym->next_use = NextUse_None;
   sym->is_live_on_exit = false;
   sym->is_live = false;
   init_object_locations(sym);
 
   alloc_data_object_incremental(ir_context, sym, scope);
-  append_list_elem(&scope->decl_syms, sym, eList_symbol);
+  scope->decl_syms.append(sym, eList::symbol);
 
   return sym;
 }
@@ -186,7 +186,7 @@ Symbol* add_decl_sym(MemoryArena* arena, char* name, eStorageSpace storage_space
   sym->is_live = true;
   init_object_locations(sym);
 
-  append_list_elem(&scope->decl_syms, sym, eList_symbol);
+  scope->decl_syms.append(sym, eList::symbol);
 
   return sym;
 }
@@ -201,9 +201,9 @@ Scope* begin_scope(SymbolContext* context, eScope kind, AstNode* ast_node)
   scope->allocd_size = 0;
   scope->encl_scope = context->active_scope;
   scope->ast_node = ast_node;
-  list_init(context->gp_arena, &scope->decl_syms, eList_symbol);
+  scope->decl_syms.init(context->gp_arena, eList::symbol);
   context->active_scope = scope;
-  append_list_elem(&context->scopes, scope, eList_scope);
+  context->scopes.append(scope, eList::scope);
 
   return scope;
 }
@@ -232,7 +232,7 @@ bool sym_block_stmt(SymbolContext* context, AstNode* stmt);
 
 bool sym_formal_arg(SymbolContext* context, Scope* proc_scope, AstNode* arg)
 {
-  assert(KIND(arg, eAstNode_var));
+  assert(KIND(arg, eAstNode::var));
   bool success = true;
   
   Symbol* decl_sym = lookup_decl_sym(arg->var.name, proc_scope);
@@ -244,7 +244,7 @@ bool sym_formal_arg(SymbolContext* context, Scope* proc_scope, AstNode* arg)
   else
   {
     arg->var.decl_sym = add_decl_sym(context->sym_arena, arg->var.name,
-                                     eStorageSpace_formal_param, proc_scope, arg);
+                                     eStorageSpace::formal_param, proc_scope, arg);
     success = sym_expr(context, arg->var.type);
   }
 
@@ -253,11 +253,11 @@ bool sym_formal_arg(SymbolContext* context, Scope* proc_scope, AstNode* arg)
 
 bool sym_var(SymbolContext* context, AstNode* var)
 {
-  assert(KIND(var, eAstNode_var));
+  assert(KIND(var, eAstNode::var));
   bool success = true;
   
   Symbol* decl_sym = lookup_decl_sym(var->var.name, context->active_scope);
-  Scope* preamble_scope = find_scope(context->active_scope, eScope_args);
+  Scope* preamble_scope = find_scope(context->active_scope, eScope::args);
   if(decl_sym && (decl_sym->scope == context->active_scope || decl_sym->scope == preamble_scope))
   {
     success = compile_error(context->gp_arena, var->src_loc, "name `%s` already declared", var->var.name);
@@ -266,7 +266,7 @@ bool sym_var(SymbolContext* context, AstNode* var)
   else
   {
     var->var.decl_sym = add_decl_sym(context->sym_arena, var->var.name,
-                                     eStorageSpace_local, context->active_scope, var);
+                                     eStorageSpace::local, context->active_scope, var);
     success = sym_expr(context, var->var.type)
       && (var->var.init_expr ? sym_expr(context, var->var.init_expr) : true);
   }
@@ -276,36 +276,36 @@ bool sym_var(SymbolContext* context, AstNode* var)
 
 bool sym_lit(SymbolContext* context, AstNode* lit)
 {
-  assert(KIND(lit, eAstNode_lit));
+  assert(KIND(lit, eAstNode::lit));
   bool success = true;
 
   switch(lit->lit.kind)
   {
-    case eLiteral_int:
+    case eLiteral::int_:
     {
       lit->lit.constant = new_const_object_int(context, lit->src_loc, lit->lit.int_val);
     }
     break;
 
-    case eLiteral_float:
+    case eLiteral::float_:
     {
       lit->lit.constant = new_const_object_float(context, lit->src_loc, lit->lit.float_val);
     }
     break;
 
-    case eLiteral_bool:
+    case eLiteral::bool_:
     {
       lit->lit.constant = new_const_object_int(context, lit->src_loc, (int)lit->lit.bool_val);
     }
     break;
 
-    case eLiteral_char:
+    case eLiteral::char_:
     {
       lit->lit.constant = new_const_object_char(context, lit->src_loc, lit->lit.char_val);
     }
     break;
     
-    case eLiteral_str:
+    case eLiteral::str:
     {
       lit->lit.constant = new_const_object_str(context, lit->src_loc, lit->lit.str_val);
     }
@@ -319,7 +319,7 @@ bool sym_lit(SymbolContext* context, AstNode* lit)
 
 bool sym_id(SymbolContext* context, AstNode* id)
 {
-  assert(KIND(id, eAstNode_id));
+  assert(KIND(id, eAstNode::id));
   bool success = true;
 
   Scope* scope = context->active_scope;
@@ -331,7 +331,7 @@ bool sym_id(SymbolContext* context, AstNode* id)
 
 bool sym_bin_expr(SymbolContext* context, AstNode* bin_expr)
 {
-  assert(KIND(bin_expr, eAstNode_bin_expr));
+  assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
   
   success = sym_expr(context, bin_expr->bin_expr.left_operand)
@@ -342,7 +342,7 @@ bool sym_bin_expr(SymbolContext* context, AstNode* bin_expr)
 
 bool sym_unr_expr(SymbolContext* context, AstNode* unr_expr)
 {
-  assert(KIND(unr_expr, eAstNode_unr_expr));
+  assert(KIND(unr_expr, eAstNode::unr_expr));
 
   bool success = true;
   success = sym_expr(context, unr_expr->unr_expr.operand);
@@ -352,14 +352,14 @@ bool sym_unr_expr(SymbolContext* context, AstNode* unr_expr)
 
 bool sym_actual_args(SymbolContext* context, AstNode* args)
 {
-  assert(KIND(args, eAstNode_node_list));
+  assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
   for(ListItem* li = args->node_list.first;
       li && success;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
     success = sym_expr(context, arg->call_arg.expr);
   }
 
@@ -368,27 +368,27 @@ bool sym_actual_args(SymbolContext* context, AstNode* args)
 
 bool sym_call(SymbolContext* context, AstNode* call)
 {
-  assert(KIND(call, eAstNode_call));
+  assert(KIND(call, eAstNode::call));
   bool success = true;
   
   AstNode* call_expr = call->call.expr;
   AstNode* args = call->call.args;
 
-  if(call_expr->kind == eAstNode_id)
+  if(call_expr->kind == eAstNode::id)
   {
     if(success = sym_id(context, call_expr) && sym_actual_args(context, args))
     {
-      call->call.param_scope = begin_scope(context, eScope_params, call);
+      call->call.param_scope = begin_scope(context, eScope::params, call);
       call->call.retvar = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "ret_"),
-                                       eStorageSpace_actual_param, call->call.param_scope, call);
+                                       eStorageSpace::actual_param, call->call.param_scope, call);
 
       for(ListItem* li = args->node_list.first;
           li;
           li = li->next)
       {
-        AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+        AstNode* arg = KIND(li, eList::ast_node)->ast_node;
         arg->call_arg.param = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "param_"),
-                                             eStorageSpace_actual_param, call->call.param_scope, arg);
+                                             eStorageSpace::actual_param, call->call.param_scope, arg);
       }
 
       end_scope(context);
@@ -404,11 +404,11 @@ bool sym_call(SymbolContext* context, AstNode* call)
 
 bool sym_index(SymbolContext* context, AstNode* index)
 {
-  assert(KIND(index, eAstNode_index));
+  assert(KIND(index, eAstNode::index));
   bool success = true;
   
   AstNode* array_expr = index->index.array_expr;
-  if(array_expr->kind == eAstNode_id || array_expr->kind == eAstNode_index)
+  if(array_expr->kind == eAstNode::id || array_expr->kind == eAstNode::index)
   {
     success = sym_expr(context, array_expr) && sym_expr(context, index->index.i_expr);
   }
@@ -420,7 +420,7 @@ bool sym_index(SymbolContext* context, AstNode* index)
 
 bool sym_cast(SymbolContext* context, AstNode* cast)
 {
-  assert(KIND(cast, eAstNode_cast));
+  assert(KIND(cast, eAstNode::cast));
 
   bool success = true;
   success = sym_expr(context, cast->cast.to_type) && sym_expr(context, cast->cast.from_expr);
@@ -429,11 +429,11 @@ bool sym_cast(SymbolContext* context, AstNode* cast)
 
 bool sym_array(SymbolContext* context, AstNode* array)
 {
-  assert(KIND(array, eAstNode_array));
+  assert(KIND(array, eAstNode::array));
   bool success = true;
 
   AstNode* size_expr = array->array.size_expr;
-  if(size_expr->kind == eAstNode_lit)
+  if(size_expr->kind == eAstNode::lit)
   {
     int size_val = size_expr->lit.int_val;
     if(size_val > 0)
@@ -451,7 +451,7 @@ bool sym_array(SymbolContext* context, AstNode* array)
 
 bool sym_pointer(SymbolContext* context, AstNode* pointer)
 {
-  assert(KIND(pointer, eAstNode_pointer));
+  assert(KIND(pointer, eAstNode::pointer));
 
   bool success = true;
   success = sym_expr(context, pointer->pointer.pointee);
@@ -460,7 +460,7 @@ bool sym_pointer(SymbolContext* context, AstNode* pointer)
 
 bool sym_assign(SymbolContext* context, AstNode* assign)
 {
-  assert(KIND(assign, eAstNode_assign));
+  assert(KIND(assign, eAstNode::assign));
 
   bool success = true;
   success = sym_expr(context, assign->assign.dest_expr) && sym_expr(context, assign->assign.source_expr);
@@ -474,64 +474,64 @@ bool sym_expr(SymbolContext* context, AstNode* expr)
   
   switch(expr->kind)
   {
-    case eAstNode_cast:
+    case eAstNode::cast:
     {
       success = sym_cast(context, expr);
     }
     break;
     
-    case eAstNode_bin_expr:
+    case eAstNode::bin_expr:
     {
       success = sym_bin_expr(context, expr);
     }
     break;
     
-    case eAstNode_unr_expr:
+    case eAstNode::unr_expr:
     {
       success = sym_unr_expr(context, expr);
     }
     break;
     
-    case eAstNode_id:
+    case eAstNode::id:
     {
       success = sym_id(context, expr);
     }
     break;
     
-    case eAstNode_call:
+    case eAstNode::call:
     {
       success = sym_call(context, expr);
     }
     break;
 
-    case eAstNode_array:
+    case eAstNode::array:
     {
       success = sym_array(context, expr);
     }
     break;
 
-    case eAstNode_pointer:
+    case eAstNode::pointer:
     {
       success = sym_pointer(context, expr);
     }
     break;
 
-    case eAstNode_basic_type:
+    case eAstNode::basic_type:
     break;
 
-    case eAstNode_lit:
+    case eAstNode::lit:
     {
       success = sym_lit(context, expr);
     }
     break;
     
-    case eAstNode_index:
+    case eAstNode::index:
     {
       success = sym_index(context, expr);
     }
     break;
 
-    case eAstNode_assign:
+    case eAstNode::assign:
     {
       success = sym_assign(context, expr);
     }
@@ -544,7 +544,7 @@ bool sym_expr(SymbolContext* context, AstNode* expr)
 
 bool sym_if(SymbolContext* context, AstNode* if_)
 {
-  assert(KIND(if_, eAstNode_if));
+  assert(KIND(if_, eAstNode::if_));
   bool success = true;
   
   if(success = sym_expr(context, if_->if_.cond_expr) && sym_block_stmt(context, if_->if_.body))
@@ -560,10 +560,10 @@ bool sym_if(SymbolContext* context, AstNode* if_)
 
 bool sym_do_while(SymbolContext* context, AstNode* do_while)
 {
-  assert(KIND(do_while, eAstNode_do_while));
+  assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
 
-  do_while->do_while.scope = begin_nested_scope(context, eScope_while, do_while);
+  do_while->do_while.scope = begin_nested_scope(context, eScope::while_, do_while);
   success = sym_block_stmt(context, do_while->do_while.body) &&
     sym_expr(context, do_while->do_while.cond_expr);
   end_nested_scope(context);
@@ -573,12 +573,12 @@ bool sym_do_while(SymbolContext* context, AstNode* do_while)
 
 bool sym_while(SymbolContext* context, AstNode* while_)
 {
-  assert(KIND(while_, eAstNode_while));
+  assert(KIND(while_, eAstNode::while_));
   bool success = true;
   
   if(success = sym_expr(context, while_->while_.cond_expr))
   {
-    while_->while_.scope = begin_nested_scope(context, eScope_while, while_);
+    while_->while_.scope = begin_nested_scope(context, eScope::while_, while_);
     success = sym_block_stmt(context, while_->while_.body);
     end_nested_scope(context);
   }
@@ -589,7 +589,7 @@ bool sym_loop_ctrl(SymbolContext* context, AstNode* stmt)
 {
   bool success = true;
   
-  Scope* loop_scope = find_scope(context->active_scope, eScope_while);
+  Scope* loop_scope = find_scope(context->active_scope, eScope::while_);
   if(loop_scope)
   {
     stmt->loop_ctrl.loop = loop_scope->ast_node;
@@ -597,9 +597,9 @@ bool sym_loop_ctrl(SymbolContext* context, AstNode* stmt)
   else
   {
     char* keyword = "???";
-    if(stmt->loop_ctrl.kind == eLoopCtrl_break)
+    if(stmt->loop_ctrl.kind == eLoopCtrl::break_)
       keyword = "break";
-    else if(stmt->loop_ctrl.kind == eLoopCtrl_continue)
+    else if(stmt->loop_ctrl.kind == eLoopCtrl::continue_)
       keyword = "continue";
     else
       assert(0);
@@ -612,13 +612,13 @@ bool sym_loop_ctrl(SymbolContext* context, AstNode* stmt)
 
 bool sym_return(SymbolContext* context, AstNode* ret)
 {
-  assert(KIND(ret, eAstNode_return));
+  assert(KIND(ret, eAstNode::return_));
   bool success = true;
   
-  Scope* proc_scope = find_scope(context->active_scope, eScope_proc);
+  Scope* proc_scope = find_scope(context->active_scope, eScope::proc);
   if(proc_scope)
   {
-    assert(KIND(proc_scope->ast_node, eAstNode_proc));
+    assert(KIND(proc_scope->ast_node, eAstNode::proc));
 
     ret->ret.proc = proc_scope->ast_node;
     if(ret->ret.expr)
@@ -638,77 +638,77 @@ bool sym_block_stmt(SymbolContext* context, AstNode* stmt)
   
   switch(stmt->kind)
   {
-    case eAstNode_var:
+    case eAstNode::var:
     {
       success = sym_var(context, stmt);
     }
     break;
     
-    case eAstNode_if:
+    case eAstNode::if_:
     {
       success = sym_if(context, stmt);
     }
     break;
     
-    case eAstNode_do_while:
+    case eAstNode::do_while:
     {
       success = sym_do_while(context, stmt);
     }
     break;
     
-    case eAstNode_while:
+    case eAstNode::while_:
     {
       success = sym_while(context, stmt);
     }
     break;
     
-    case eAstNode_block:
+    case eAstNode::block:
     {
-      stmt->block.scope = begin_nested_scope(context, eScope_block, stmt);
+      stmt->block.scope = begin_nested_scope(context, eScope::block, stmt);
       success = sym_block(context, stmt);
       end_nested_scope(context);
     }
     break;
     
-    case eAstNode_assign:
+    case eAstNode::assign:
     {
       success = sym_assign(context, stmt);
     }
     break;
     
-    case eAstNode_cast:
+    case eAstNode::cast:
     {
       success = sym_cast(context, stmt);
     }
     break;
     
-    case eAstNode_bin_expr:
-    case eAstNode_unr_expr:
-    case eAstNode_id:
-    case eAstNode_call:
-    case eAstNode_lit:
+    case eAstNode::bin_expr:
+    case eAstNode::unr_expr:
+    case eAstNode::id:
+    case eAstNode::call:
+    case eAstNode::lit:
     {
       success = sym_expr(context, stmt);
     }
     break;
     
-    case eAstNode_loop_ctrl:
+    case eAstNode::loop_ctrl:
     {
       success = sym_loop_ctrl(context, stmt);
     }
     break;
     
-    case eAstNode_return:
+    case eAstNode::return_:
     {
       success = sym_return(context, stmt);
     }
     break;
     
-    case eAstNode_basic_type:
-    case eAstNode_empty:
+    case eAstNode::basic_type:
+    case eAstNode::empty:
     break;
     
-    case eAstNode_index:
+    case eAstNode::index:
     {
       success = sym_index(context, stmt);
     }
@@ -721,14 +721,14 @@ bool sym_block_stmt(SymbolContext* context, AstNode* stmt)
 
 bool sym_block(SymbolContext* context, AstNode* block)
 {
-  assert(KIND(block, eAstNode_block));
+  assert(KIND(block, eAstNode::block));
   bool success = true;
   
   for(ListItem* li = block->block.nodes.first;
       li && success;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
     success = sym_block_stmt(context, stmt);
   }
 
@@ -738,32 +738,32 @@ bool sym_block(SymbolContext* context, AstNode* block)
 static inline
 bool is_extern_proc(AstNode* proc)
 {
-  return (proc->proc.modifier & eModifier_extern) != 0;
+  return ((int)proc->proc.modifier & (int)eModifier::extern_) != 0;
 }
 
 bool sym_proc_body(SymbolContext* context, AstNode* proc)
 {
-  assert(KIND(proc, eAstNode_proc));
+  assert(KIND(proc, eAstNode::proc));
   bool success = true;
 
   AstNode* body = proc->proc.body;
 
   if(is_extern_proc(proc))
   {
-    if(body->kind != eAstNode_empty)
+    if(body->kind != eAstNode::empty)
     {
       success = compile_error(context->gp_arena, proc->src_loc, "`extern` proc `%s` must not define a body", proc->proc.name);
     }
   }
   else
   {
-    if(body->kind == eAstNode_block)
+    if(body->kind == eAstNode::block)
     {
-      body->block.scope = begin_scope(context, eScope_block, body);
+      body->block.scope = begin_scope(context, eScope::block, body);
       success = sym_block(context, body);
       end_scope(context);
     }
-    else if(body->kind == eAstNode_empty)
+    else if(body->kind == eAstNode::empty)
     {
       success = compile_error(context->gp_arena, proc->src_loc, "proc `%s` must define a body", proc->proc.name);
     }
@@ -775,14 +775,14 @@ bool sym_proc_body(SymbolContext* context, AstNode* proc)
 
 bool sym_formal_args(SymbolContext* context, Scope* param_scope, AstNode* args)
 {
-  assert(KIND(args, eAstNode_node_list));
+  assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
   for(ListItem* li = args->node_list.first;
       li && success;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
     success = sym_formal_arg(context, param_scope, arg);
   }
 
@@ -791,7 +791,7 @@ bool sym_formal_args(SymbolContext* context, Scope* param_scope, AstNode* args)
 
 bool sym_module_proc(SymbolContext* context, AstNode* proc)
 {
-  assert(KIND(proc, eAstNode_proc));
+  assert(KIND(proc, eAstNode::proc));
   bool success = true;
   
   Symbol* decl_sym = lookup_decl_sym(proc->proc.name, context->active_scope);
@@ -803,10 +803,10 @@ bool sym_module_proc(SymbolContext* context, AstNode* proc)
   else
   {
     proc->proc.decl_sym = add_decl_sym(context->sym_arena, proc->proc.name,
-                                       eStorageSpace_None, context->active_scope, proc);
-    proc->proc.param_scope = begin_nested_scope(context, eScope_args, proc);
+                                       eStorageSpace::None, context->active_scope, proc);
+    proc->proc.param_scope = begin_nested_scope(context, eScope::args, proc);
     proc->proc.retvar = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "ret_"),
-                                     eStorageSpace_formal_param, proc->proc.param_scope, proc->proc.ret_type);
+                                     eStorageSpace::formal_param, proc->proc.param_scope, proc->proc.ret_type);
 
     if(is_extern_proc(proc))
     {
@@ -814,7 +814,7 @@ bool sym_module_proc(SymbolContext* context, AstNode* proc)
     }
     else
     {
-      proc->proc.scope = begin_scope(context, eScope_proc, proc);
+      proc->proc.scope = begin_scope(context, eScope::proc, proc);
 
       if(success = sym_formal_args(context, proc->proc.param_scope, proc->proc.args)
          && sym_expr(context, proc->proc.ret_type) && sym_proc_body(context, proc))
@@ -833,8 +833,8 @@ bool sym_module_proc(SymbolContext* context, AstNode* proc)
 
 bool sym_module_var(SymbolContext* context, AstNode* module, AstNode* var)
 {
-  assert(KIND(module, eAstNode_module));
-  assert(KIND(var, eAstNode_var));
+  assert(KIND(module, eAstNode::module));
+  assert(KIND(var, eAstNode::var));
   bool success = true;
   
   Symbol* decl_sym = lookup_decl_sym(var->var.name, context->active_scope);
@@ -846,7 +846,7 @@ bool sym_module_var(SymbolContext* context, AstNode* module, AstNode* var)
   else
   {
     var->var.decl_sym = add_decl_sym(context->sym_arena, var->var.name,
-                                     eStorageSpace_static, context->active_scope, var);
+                                     eStorageSpace::static_, context->active_scope, var);
   }
 
   return success;
@@ -854,32 +854,32 @@ bool sym_module_var(SymbolContext* context, AstNode* module, AstNode* var)
 
 bool sym_module(SymbolContext* context, AstNode* module)
 {
-  assert(KIND(module, eAstNode_module));
+  assert(KIND(module, eAstNode::module));
   bool success = true;
   
-  module->module.scope = begin_nested_scope(context, eScope_module, module);
+  module->module.scope = begin_nested_scope(context, eScope::module, module);
   context->module_scope = module->module.scope;
   
   for(ListItem* li = module->module.nodes.first;
       li && success;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
     switch(stmt->kind)
     {
-      case eAstNode_var:
+      case eAstNode::var:
       {
         success = sym_module_var(context, module, stmt);
       }
       break;
       
-      case eAstNode_proc:
+      case eAstNode::proc:
       {
         success = sym_module_proc(context, stmt);
       }
       break;
       
-      case eAstNode_include:
+      case eAstNode::include:
       break;
       
       default: assert(0);

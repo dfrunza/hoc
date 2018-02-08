@@ -26,6 +26,8 @@ SET src_dir=%base_dir%\src
 :: /wd4306       - 'type cast' : conversion from 'uint8' to 'int32 *' of greater size
 :: /wd4459       - declaration hides global declaration
 :: /wd4456       - declaration hides previous local declaration
+:: /wd4533       - initialization of '..' is skipped by 'goto ..'
+:: /wd4458       - declaration of '..' hides class member
 :: /FC           - display full path of source code files passed to cl.exe in diagnostic text
 :: /Fo:<path>    - compile to object file
 :: /Fe:<path>    - compile to executable
@@ -37,7 +39,7 @@ SET src_dir=%base_dir%\src
 :: /Wall         - display all warnings
 
 SET C_flags=/Od /MTd /W4 /Zo /Zi /Gm- /GS- /GR- /EHa- /FC /nologo /D_CRT_SECURE_NO_WARNINGS ^
-            /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459 /wd4456
+            /wd4201 /wd4127 /wd4100 /wd4706 /wd4211 /wd4306 /wd4459 /wd4456 /wd4533 /wd4458
 SET L_flags=/incremental:no /opt:ref /subsystem:console
 
 IF NOT EXIST .\bin (
@@ -46,7 +48,7 @@ IF NOT EXIST .\bin (
 )
 PUSHD .\bin
 
-cl %C_flags% %src_dir%\hocc.c /link %L_flags%
+cl %C_flags% %src_dir%\hocc.cpp /link %L_flags%
 
 IF %ERRORLEVEL% NEQ 0 (
   GOTO :end

@@ -1,33 +1,33 @@
 Token keyword_list[] = 
 {
-  {eToken_asm, "asm"},
-  {eToken_if, "if"},
-  {eToken_else, "else"},
-  {eToken_do, "do"},
-  {eToken_while, "while"},
-  {eToken_return, "return"},
-  {eToken_break, "break"},
-  {eToken_continue, "continue"},
-  {eToken_goto, "goto"},
-  {eToken_include, "include"},
-  {eToken_true, "true"},
-  {eToken_false, "false"},
-  {eToken_struct, "struct"},
-  {eToken_union, "union"},
-  {eToken_enum, "enum"},
-  {eToken_extern, "extern"},
-  {eToken_const, "const"},
-  {eToken_and, "and"},
-  {eToken_or, "or"},
-  {eToken_not, "not"},
-  {eToken_mod, "mod"},
-  {eToken_int, "int"},
-  {eToken_float, "float"},
-  {eToken_bool, "bool"},
-  {eToken_char, "char"},
-  {eToken_void, "void"},
-  {eToken_auto, "auto"},
-  {eToken_None, 0}, /* terminator */
+  {eToken::asm_, "asm"},
+  {eToken::if_, "if"},
+  {eToken::else_, "else"},
+  {eToken::do_, "do"},
+  {eToken::while_, "while"},
+  {eToken::return_, "return"},
+  {eToken::break_, "break"},
+  {eToken::continue_, "continue"},
+  {eToken::goto_, "goto"},
+  {eToken::include, "include"},
+  {eToken::true_, "true"},
+  {eToken::false_, "false"},
+  {eToken::struct_, "struct"},
+  {eToken::union_, "union"},
+  {eToken::enum_, "enum"},
+  {eToken::extern_, "extern"},
+  {eToken::const_, "const"},
+  {eToken::and, "and"},
+  {eToken::or, "or"},
+  {eToken::not, "not"},
+  {eToken::mod, "mod"},
+  {eToken::int_, "int"},
+  {eToken::float_, "float"},
+  {eToken::bool_, "bool"},
+  {eToken::char_, "char"},
+  {eToken::void_, "void"},
+  {eToken::auto_, "auto"},
+  {eToken::None, 0}, /* terminator */
 };
 
 Token* lookup_keyword(Token* list, char* lexeme)
@@ -36,10 +36,10 @@ Token* lookup_keyword(Token* list, char* lexeme)
   Token* token;
 
   for(int i = 0;
-      (token = &list[i])->kind;
+      (token = &list[i])->kind != eToken::None;
       token = &list[++i])
   {
-    if(cstr_match(lexeme, token->lexeme))
+    if(Cstr::match(lexeme, token->lexeme))
     {
       result = token;
       break;
@@ -54,8 +54,8 @@ char* install_lexeme(MemoryArena* arena, char* begin_char, char* end_char)
 
   /* TODO: Search the lexeme, and if found, then return it. */
   int len = (int)(end_char - begin_char + 1);
-  char* lexeme = mem_push_array_nz(arena, char, len + 1); // +NULL
-  cstr_copy_substr(lexeme, begin_char, end_char);
+  char* lexeme = mem_push_array(arena, char, len + 1); // +NULL
+  Cstr::copy_substr(lexeme, begin_char, end_char);
   lexeme[len] = 0; // cap the string
   return lexeme;
 }
@@ -109,7 +109,7 @@ char* install_escaped_str(MemoryArena* arena, EscapedStr* estr)
 {
   assert(estr->begin <= estr->end);
 
-  char* lexeme = mem_push_array_nz(arena, char, estr->len+1); /* +NULL */
+  char* lexeme = mem_push_array(arena, char, estr->len+1); /* +NULL */
 
   if(estr->len > 0)
   {
@@ -157,264 +157,264 @@ char* get_token_printstr(Token* token)
 
   switch(token->kind)
   {
-    case eToken_dot:
+    case eToken::dot:
       result = ".";
     break;
 
-    case eToken_arrow_right:
+    case eToken::arrow_right:
       result = "->";
     break;
 
-    case eToken_open_bracket:
+    case eToken::open_bracket:
       result = "[";
     break;
 
-    case eToken_close_bracket:
+    case eToken::close_bracket:
       result = "]";
     break;
 
-    case eToken_open_parens:
+    case eToken::open_parens:
       result = "(";
     break;
 
-    case eToken_close_parens:
+    case eToken::close_parens:
       result = ")";
     break;
 
-    case eToken_open_brace:
+    case eToken::open_brace:
       result = "{";
     break;
-    case eToken_close_brace:
+    case eToken::close_brace:
       result = "}";
     break;
 
-    case eToken_semicolon:
+    case eToken::semicolon:
       result = ";";
     break;
 
-    case eToken_colon:
+    case eToken::colon:
       result = ":";
     break;
 
-    case eToken_comma:
+    case eToken::comma:
       result = ",";
     break;
 
-    case eToken_star:
+    case eToken::star:
       result = "*";
     break;
 
-    case eToken_mul:
+    case eToken::mul:
       result = "×";
     break;
 
-    case eToken_fwd_slash:
+    case eToken::fwd_slash:
       result = "/";
     break;
 
-    case eToken_back_slash:
+    case eToken::back_slash:
       result = "\\";
     break;
 
-    case eToken_plus:
+    case eToken::plus:
       result = "+";
     break;
 
-    case eToken_plus_plus:
+    case eToken::plus_plus:
       result = "++";
     break;
 
-    case eToken_minus:
+    case eToken::minus:
       result = "-";
     break;
 
-    case eToken_minus_minus:
+    case eToken::minus_minus:
       result = "--";
     break;
 
-    case eToken_exclam:
+    case eToken::exclam:
       result = "!";
     break;
 
 #if 0
-    case eToken_exclam_eq:
+    case eToken::exclam_eq:
       result = "!=";
       break;
 
 #endif
-    case eToken_eq:
+    case eToken::eq:
       result = "=";
     break;
 
-    case eToken_eq_eq:
+    case eToken::eq_eq:
       result = "==";
     break;
 
-    case eToken_angle_right:
+    case eToken::angle_right:
       result = ">";
     break;
 
-    case eToken_angle_right_eq:
+    case eToken::angle_right_eq:
       result = ">=";
     break;
 
-    case eToken_angle_right_right:
+    case eToken::angle_right_right:
       result = ">>";
     break;
 
-    case eToken_angle_left:
+    case eToken::angle_left:
       result = "<";
     break;
 
-    case eToken_angle_left_eq:
+    case eToken::angle_left_eq:
       result = "<=";
     break;
 
-    case eToken_angle_left_left:
+    case eToken::angle_left_left:
       result = "<<";
     break;
 
-    case eToken_ampersand:
+    case eToken::ampersand:
       result = "&";
     break;
 
-    case eToken_pipe:
+    case eToken::pipe:
       result = "|";
     break;
 
-    case eToken_tilde:
+    case eToken::tilde:
       result = "~";
     break;
 
-    case eToken_circumflex:
+    case eToken::circumflex:
       result = "^";
     break;
 
-    case eToken_end_of_input:
+    case eToken::end_of_input:
       result = "end-of-input";
     break;
 
-    case eToken_if:
+    case eToken::if_:
       result = "if";
     break;
 
-    case eToken_else:
+    case eToken::else_:
       result = "else";
     break;
 
-    case eToken_do:
+    case eToken::do_:
       result = "do";
     break;
 
-    case eToken_while:
+    case eToken::while_:
       result = "while";
     break;
 
-    case eToken_struct:
+    case eToken::struct_:
       result = "struct";
     break;
 
-    case eToken_union:
+    case eToken::union_:
       result = "union";
     break;
 
-    case eToken_return:
+    case eToken::return_:
       result = "return";
     break;
 
-    case eToken_break:
+    case eToken::break_:
       result = "break";
     break;
 
-    case eToken_continue:
+    case eToken::continue_:
       result = "continue";
     break;
 
-    case eToken_include:
+    case eToken::include:
       result = "include";
     break;
 
-    case eToken_enum:
+    case eToken::enum_:
       result = "enum";
     break;
 
-    case eToken_goto:
+    case eToken::goto_:
       result = "goto";
     break;
 
-    case eToken_true:
+    case eToken::true_:
       result = "true";
     break;
 
-    case eToken_false:
+    case eToken::false_:
       result = "false";
     break;
 
-    case eToken_extern:
+    case eToken::extern_:
       result = "extern";
     break;
 
-    case eToken_const:
+    case eToken::const_:
       result = "const";
     break;
 
-    case eToken_and:
+    case eToken::and:
       result = "and";
     break;
 
-    case eToken_or:
+    case eToken::or:
       result = "or";
     break;
 
-    case eToken_xor:
+    case eToken::xor:
       result = "xor";
     break;
 
-    case eToken_not:
+    case eToken::not:
       result = "not";
     break;
 
-    case eToken_mod:
+    case eToken::mod:
       result = "mod";
     break;
 
-    case eToken_int:
+    case eToken::int_:
       result = "int";
     break;
 
-    case eToken_float:
+    case eToken::float_:
       result = "float";
     break;
 
-    case eToken_bool:
+    case eToken::bool_:
       result = "bool";
     break;
 
-    case eToken_char:
+    case eToken::char_:
       result = "char";
     break;
 
-    case eToken_void:
+    case eToken::void_:
       result = "void";
     break;
 
-    case eToken_auto:
+    case eToken::auto_:
       result = "auto";
     break;
 
-    case eToken_id:
-    case eToken_int_val:
-    case eToken_float_val:
+    case eToken::id:
+    case eToken::int_val:
+    case eToken::float_val:
       result = token->lexeme;
     break;
 
-    case eToken_str_val:
+    case eToken::str_val:
       result = token->str_val; // TODO: Substitute non-printable chars
     break;
 
-    case eToken_char_val:
-    case eToken_unknown_char:
-      print_char(result = char_print_buf, token->char_val);
+    case eToken::char_val:
+    case eToken::unknown_char:
+      Cstr::print_char(result = char_print_buf, token->char_val);
     break;
 
     default:
@@ -465,7 +465,7 @@ char skip_whitespace(Lexer* lexer, char* whitechars)
   SourceLoc* src_loc = &lexer->src_loc;
   char c = *lexer->cursor;
 
-  while(cstr_contains_char(whitechars, c))
+  while(Cstr::contains_char(whitechars, c))
   {
     if(c == '\n')
     {
@@ -502,16 +502,16 @@ bool get_asm_text(Lexer* lexer)
     char* end_char = lexer->cursor - 1;
     char* lexeme = install_lexeme(lexer->arena, begin_char, end_char);
 
-    token->kind = eToken_asm_text;
+    token->kind = eToken::asm_text;
     token->lexeme = lexeme;
   }
   else if(c == '\0')
   {
-    token->kind = eToken_end_of_input;
+    token->kind = eToken::end_of_input;
   }
   else
   {
-    token->kind = eToken_unknown_char;
+    token->kind = eToken::unknown_char;
     token->char_val = c;
   }
   return success;
@@ -531,12 +531,12 @@ loop:
   skip_whitespace(lexer, " \r\n\t");
   c = *lexer->cursor;
 
-  if(char_is_letter(c) || c == '_')
+  if(Cstr::is_letter(c) || c == '_')
   {
     char* begin_char = lexer->cursor;
     c = *(++lexer->cursor);
 
-    while(char_is_letter(c) || char_is_dec_digit(c) || c == '_')
+    while(Cstr::is_letter(c) || Cstr::is_dec_digit(c) || c == '_')
     {
       c = *(++lexer->cursor);
     }
@@ -544,7 +544,7 @@ loop:
     char* end_char = lexer->cursor - 1;
     char* lexeme = install_lexeme(lexer->arena, begin_char, end_char);
 
-    token->kind = eToken_id;
+    token->kind = eToken::id;
     token->lexeme = lexeme;
     Token* keyword = lookup_keyword(keyword_list, lexeme);
     if(keyword)
@@ -552,7 +552,7 @@ loop:
       token->kind = keyword->kind;
     }
   }
-  else if(char_is_dec_digit(c))
+  else if(Cstr::is_dec_digit(c))
   {
     char digit_buf[32] = {0};
     bool is_float = false;
@@ -567,16 +567,16 @@ loop:
       is_hex = true;
       c = *(++lexer->cursor);
 
-      for(; i < sizeof_array(digit_buf)-1 && char_is_hex_digit(c);
+      for(; i < sizeof_array(digit_buf)-1 && Cstr::is_hex_digit(c);
           i++)
       {
         digit_buf[i] = c;
         c = *(++lexer->cursor);
       }
     }
-    else if(char_is_dec_digit(c) || c == '.')
+    else if(Cstr::is_dec_digit(c) || c == '.')
     {
-      for(; i < sizeof_array(digit_buf)-1 && ((char_is_dec_digit(c) || c == '.'));
+      for(; i < sizeof_array(digit_buf)-1 && ((Cstr::is_dec_digit(c) || c == '.'));
           i++)
       {
         digit_buf[i] = c;
@@ -594,58 +594,58 @@ loop:
 
     if(is_float)
     {
-      token->kind = eToken_float_val;
+      token->kind = eToken::float_val;
       token->float_val = mem_push_struct(lexer->arena, float);
-      platform_sscanf(digit_buf, "%f", token->float_val);
+      Platform::sscanf(digit_buf, "%f", token->float_val);
     }
     else
     {
-      token->kind = eToken_int_val;
+      token->kind = eToken::int_val;
       token->int_val = mem_push_struct(lexer->arena, int);
       if(is_hex)
-        platform_sscanf(digit_buf, "%x", token->int_val);
+        Platform::sscanf(digit_buf, "%x", token->int_val);
       else
-        platform_sscanf(digit_buf, "%d", token->int_val);
+        Platform::sscanf(digit_buf, "%d", token->int_val);
     }
   }
   else if(c == '-')
   {
-    token->kind = eToken_minus;
+    token->kind = eToken::minus;
     c = *(++lexer->cursor);
     if(c == '-')
     {
-      token->kind = eToken_minus_minus;
+      token->kind = eToken::minus_minus;
       ++lexer->cursor;
     }
     else if(c == '>')
     {
-      token->kind = eToken_arrow_right;
+      token->kind = eToken::arrow_right;
       ++lexer->cursor;
     }
   }
   else if(c == '<')
   {
-    token->kind = eToken_angle_left;
+    token->kind = eToken::angle_left;
     c = *(++lexer->cursor);
     if(c == '=')
     {
-      token->kind = eToken_angle_left_eq;
+      token->kind = eToken::angle_left_eq;
       ++lexer->cursor;
     }
     else if(c == '<')
     {
-      token->kind = eToken_angle_left_left;
+      token->kind = eToken::angle_left_left;
       ++lexer->cursor;
     }
     else if(c == '>')
     {
-      token->kind = eToken_angle_left_right;
+      token->kind = eToken::angle_left_right;
       ++lexer->cursor;
     }
   }
   else if(c == '&')
   {
-    token->kind = eToken_ampersand;
+    token->kind = eToken::ampersand;
     c = *(++lexer->cursor);
   }
   else if(c == '/')
@@ -682,7 +682,7 @@ loop:
     }
     else
     {
-      token->kind = eToken_fwd_slash;
+      token->kind = eToken::fwd_slash;
       ++lexer->cursor;
     }
   }
@@ -695,7 +695,7 @@ loop:
     if(success = escaped_string(__FILE__, __LINE__, lexer, &estr))
     {
       token->str_val = install_escaped_str(lexer->arena, &estr);;
-      token->kind = eToken_str_val;
+      token->kind = eToken::str_val;
       lexer->cursor = ++estr.end;
     }
   }
@@ -714,150 +714,150 @@ loop:
       else
       {
         token->char_val = *lexeme;
-        token->kind = eToken_char_val;
+        token->kind = eToken::char_val;
         lexer->cursor = ++estr.end;
       }
     }
   }
   else if(c == '=')
   {
-    token->kind = eToken_eq;
+    token->kind = eToken::eq;
     c = *(++lexer->cursor);
     if(c == '=')
     {
-      token->kind = eToken_eq_eq;
+      token->kind = eToken::eq_eq;
       ++lexer->cursor;
     }
   }
   else if(c == '>')
   {
-    token->kind = eToken_angle_right;
+    token->kind = eToken::angle_right;
     c = *(++lexer->cursor);
     if(c == '=')
     {
-      token->kind = eToken_angle_right_eq;
+      token->kind = eToken::angle_right_eq;
       ++lexer->cursor;
     }
     else if(c == '>')
     {
-      token->kind = eToken_angle_right_right;
+      token->kind = eToken::angle_right_right;
       ++lexer->cursor;
     }
   }
   else if(c == '|')
   {
-    token->kind = eToken_pipe;
+    token->kind = eToken::pipe;
     c = *(++lexer->cursor);
   }
   else if(c == '~')
   {
-    token->kind = eToken_tilde;
+    token->kind = eToken::tilde;
     c = *(++lexer->cursor);
   }
   else if(c == '!')
   {
-    token->kind = eToken_exclam;
+    token->kind = eToken::exclam;
     c = *(++lexer->cursor);
 #if 0
     if(c == '=')
     {
-      token->kind = eToken_exclam_eq;
+      token->kind = eToken::exclam_eq;
       ++lexer->cursor;
     }
 #endif
   }
   else if(c == 'ª')
   {
-    token->kind = eToken_logic_not;
+    token->kind = eToken::logic_not;
     c = *(++lexer->cursor);
   }
   else if(c == '+')
   {
-    token->kind = eToken_plus;
+    token->kind = eToken::plus;
     c = *(++lexer->cursor);
     if(c == '+')
     {
-      token->kind = eToken_plus_plus;
+      token->kind = eToken::plus_plus;
       ++lexer->cursor;
     }
   }
   else if(c == '*')
   {
-    token->kind = eToken_star;
+    token->kind = eToken::star;
     ++lexer->cursor;
   }
   else if(c == '×')
   {
-    token->kind = eToken_mul;
+    token->kind = eToken::mul;
     c = *(++lexer->cursor);
   }
   else if(c == '^')
   {
-    token->kind = eToken_circumflex;
+    token->kind = eToken::circumflex;
     ++lexer->cursor;
   }
   else if(c == '\\')
   {
-    token->kind = eToken_back_slash;
+    token->kind = eToken::back_slash;
     ++lexer->cursor;
   }
   else if(c == '.')
   {
-    token->kind = eToken_dot;
+    token->kind = eToken::dot;
     ++lexer->cursor;
   }
   else if(c == '}')
   {
-    token->kind = eToken_close_brace;
+    token->kind = eToken::close_brace;
     ++lexer->cursor;
   }
   else if(c == '{')
   {
-    token->kind = eToken_open_brace;
+    token->kind = eToken::open_brace;
     ++lexer->cursor;
   }
   else if(c == '(')
   {
-    token->kind = eToken_open_parens;
+    token->kind = eToken::open_parens;
     ++lexer->cursor;
   }
   else if(c == ')')
   {
-    token->kind = eToken_close_parens;
+    token->kind = eToken::close_parens;
     ++lexer->cursor;
   }
   else if(c == ';')
   {
-    token->kind = eToken_semicolon;
+    token->kind = eToken::semicolon;
     ++lexer->cursor;
   }
   else if(c == ',')
   {
-    token->kind = eToken_comma;
+    token->kind = eToken::comma;
     ++lexer->cursor;
   }
   else if(c == ':')
   {
-    token->kind = eToken_colon;
+    token->kind = eToken::colon;
     ++lexer->cursor;
   }
   else if(c == '[')
   {
-    token->kind = eToken_open_bracket;
+    token->kind = eToken::open_bracket;
     ++lexer->cursor;
   }
   else if(c == ']')
   {
-    token->kind = eToken_close_bracket;
+    token->kind = eToken::close_bracket;
     ++lexer->cursor;
   }
   else if(c == '\0')
   {
-    token->kind = eToken_end_of_input;
+    token->kind = eToken::end_of_input;
   }
   else
   {
-    token->kind = eToken_unknown_char;
+    token->kind = eToken::unknown_char;
     token->char_val = c;
   }
   return success;

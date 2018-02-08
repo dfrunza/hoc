@@ -1,7 +1,8 @@
 void assert(char^ message)
 {
-  print_str(&"ASSERT : ");
+  print_str(&"\nASSERT : ");
   print_str(message);
+  print_str(&"\n");
   ExitProcess(-1);
 }
 

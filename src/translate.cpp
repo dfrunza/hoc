@@ -16,20 +16,21 @@ global_var NextUse NextUse_None = max_int(); // infinity
 void gen_label_name(MemoryArena* arena, Label* label)
 {
   label->name = mem_push_array(arena, char, 12);
-  platform_sprintf(label->name, "L_%d", last_label_id++);
+  Platform::sprintf(label->name, "L_%d", last_label_id++);
 }
 
 char* new_tempvar_name(MemoryArena* arena, char* label)
 {
-  String str; str_init(arena, &str);
-  str_printf(&str, "%s%d", label, tempvar_id++);
-  return str_cap(&str);
+  String str = {};
+  str.init(arena);
+  str.printf("%s%d", label, tempvar_id++);
+  return str.cap();
 }
 
 void DEBUG_print_arena_usage(MemoryArena* arena, char* tag)
 {
-  ArenaUsage usage = arena_usage(arena);
-  platform_printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
+  MemoryArena::Usage usage = arena->usage();
+  Platform::printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
 }
 
 #if 0/*>>>*/
@@ -114,7 +115,7 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
         li;
         li = li->next)
     {
-      AstNode* node = KIND(li, eList_ast_node)->ast_node;
+      AstNode* node = KIND(li, eList::ast_node)->ast_node;
       DEBUG_print_ast_node(str, indent_level, 0, node);
     }
   }
@@ -123,55 +124,55 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
 
 void add_object_to_memory(X86Context* context, Symbol* object);
 
-#include "lex.c"
-#include "syntax.c"
-#include "sym.c"
-#include "type.c"
-#include "ir_gen.c"
-#include "x86_gen.c"
+#include "lex.cpp"
+#include "syntax.cpp"
+#include "sym.cpp"
+#include "type.cpp"
+#include "ir_gen.cpp"
+#include "x86_gen.cpp"
 
-bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text, String* x86_text)
+bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text, String** x86_text)
 {
-  MemoryArena* gp_arena = push_arena(&arena, 2*MEGABYTE);
+  MemoryArena* gp_arena = MemoryArena::push(&arena, 2*MEGABYTE);
 
-  basic_type_bool = new_basic_type(gp_arena, eBasicType_bool);
-  basic_type_int = new_basic_type(gp_arena, eBasicType_int);
-  basic_type_char = new_basic_type(gp_arena, eBasicType_char);
-  basic_type_float = new_basic_type(gp_arena, eBasicType_float);
-  basic_type_void = new_basic_type(gp_arena, eBasicType_void);
+  basic_type_bool = new_basic_type(gp_arena, eBasicType::bool_);
+  basic_type_int = new_basic_type(gp_arena, eBasicType::int_);
+  basic_type_char = new_basic_type(gp_arena, eBasicType::char_);
+  basic_type_float = new_basic_type(gp_arena, eBasicType::float_);
+  basic_type_void = new_basic_type(gp_arena, eBasicType::void_);
   basic_type_str = new_array_type(gp_arena, 0, 1, basic_type_char);
-  subst_list = list_new(gp_arena, eList_type_pair);
+  subst_list = List::create(gp_arena, eList::type_pair);
 
   SymbolContext sym_context = {0};
   sym_context.gp_arena = gp_arena;
-  sym_context.sym_arena = push_arena(&arena, 2*MEGABYTE);
+  sym_context.sym_arena = MemoryArena::push(&arena, 2*MEGABYTE);
   sym_context.nesting_depth = -1;
   sym_context.data_alignment = 4;
-  list_init(sym_context.sym_arena, &sym_context.scopes, eList_scope);
+  sym_context.scopes.init(sym_context.sym_arena, eList::scope);
 
   IrContext ir_context = {0};
   ir_context.gp_arena = gp_arena;
-  ir_context.stmt_arena = push_arena(&arena, 2*MEGABYTE);
+  ir_context.stmt_arena = MemoryArena::push(&arena, 2*MEGABYTE);
   ir_context.stmt_array = (IrStmt*)ir_context.stmt_arena->base;
   ir_context.stmt_count = 0;
   ir_context.sym_context = &sym_context;
-  ir_context.label_list = list_new(ir_context.gp_arena, eList_ir_label);
+  ir_context.label_list = List::create(ir_context.gp_arena, eList::ir_label);
   ir_context.data_alignment = 4;
 
   X86Context x86_context = {0};
   x86_context.gp_arena = gp_arena;
-  x86_context.stmt_arena = push_arena(&arena, 2*MEGABYTE);
+  x86_context.stmt_arena = MemoryArena::push(&arena, 2*MEGABYTE);
   x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
   x86_context.machine_word_size = 4;
   x86_context.data_alignment = 4;
   x86_init_registers(&x86_context);
-  x86_context.text = x86_text;
+  *x86_text = x86_context.text = String::create(MemoryArena::push(&arena, 2*MEGABYTE));
 
   ir_context.x86_context = &x86_context;
   sym_context.x86_context = &x86_context;
 
   Parser* parser = parser_new(gp_arena);
-  HFile* file = platform_open_file(gp_arena, file_path);
+  HFile* file = Platform::file_open(gp_arena, file_path);
   parser_set_input(parser, hoc_text, file);
 
   if(!parse_module(parser))
@@ -202,7 +203,6 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_partition_basic_blocks_module(&ir_context, module);
   alloc_scope_data_objects(&ir_context, module->module.scope);
 
-  str_init(push_arena(&arena, 2*MEGABYTE), x86_context.text);
   x86_gen(&x86_context, module);
 
   return true;

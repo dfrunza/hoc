@@ -157,10 +157,9 @@ enum struct eToken
   pipe,
   tilde,
   circumflex,
-  and,
-  or,
-  xor,
-  not,
+  and_,
+  or_,
+  not_,
   mod,
   unknown_char,
   end_of_input,
@@ -237,7 +236,7 @@ enum struct eOperator
 
   /* relational ops */
   eq,
-  not_eq,
+  not_eq_,
   less,
   less_eq,
   greater,
@@ -397,6 +396,44 @@ enum struct eBasicType
   auto_,
 };
 
+struct Type_Var
+{
+  Type* type;
+};
+
+struct Type_Basic
+{
+  eBasicType kind;
+};
+
+struct Type_Pointer
+{
+  Type* pointee;
+};
+
+struct Type_Proc
+{
+  Type* args;
+  Type* ret;
+};
+
+struct Type_Product
+{
+  Type* left;
+  Type* right;
+};
+
+struct Type_Array
+{
+  int size;
+  Type* elem;
+};
+
+struct Type_Typevar
+{
+  int id;
+};
+
 struct Type
 {
   eType kind;
@@ -405,50 +442,13 @@ struct Type
 
   union
   {
-    struct Type_Var
-    {
-      Type* type;
-    }
-    var;
-
-    struct Type_Basic
-    {
-      eBasicType kind;
-    }
-    basic;
-
-    struct Type_Pointer
-    {
-      Type* pointee;
-    }
-    pointer;
-
-    struct Type_Proc
-    {
-      Type* args;
-      Type* ret;
-    }
-    proc;
-
-    struct Type_Product
-    {
-      Type* left;
-      Type* right;
-    }
-    product;
-
-    struct Type_Array
-    {
-      int size;
-      Type* elem;
-    }
-    array;
-
-    struct Type_Typevar
-    {
-      int id;
-    }
-    typevar;
+    Type_Var     var;
+    Type_Basic   basic;
+    Type_Pointer pointer;
+    Type_Proc    proc;
+    Type_Product product;
+    Type_Array   array;
+    Type_Typevar typevar;
   };
 
   bool  equal(Type* type_b);
@@ -489,7 +489,7 @@ enum struct eIrOp
 
   /* relational ops */
   eq,
-  not_eq,
+  not_eq_,
   less,
   less_eq,
   greater,
@@ -716,9 +716,9 @@ enum struct eX86Stmt
   imul,
   idiv,
   neg,
-  or,
-  and,
-  not,
+  or_,
+  and_,
+  not_,
 
   jz,
   jnz,
@@ -794,6 +794,201 @@ enum struct eAstNode
   call_arg,
 };
 
+struct AstNode_NodeList
+{
+  List node_list;
+};
+
+struct AstNode_CallArg
+{
+  AstNode* expr;
+  Symbol* param;
+};
+
+struct AstNode_Cast
+{
+  AstNode* from_expr;
+  AstNode* to_type;
+};
+
+struct AstNode_Assign
+{
+  AstNode* dest_expr;
+  AstNode* source_expr;
+};
+
+struct AstNode_Pointer
+{
+  AstNode* pointee;
+};
+
+struct AstNode_Array
+{
+  AstNode* size_expr;
+  AstNode* elem_expr;
+  int size;
+  int ndim;
+};
+
+struct AstNode_Index
+{
+  AstNode* array_expr;
+  AstNode* i_expr;
+  IrArg* place;   // L.place
+  IrArg* offset;  // L.offset
+  IrArg* i_place; // Elist.place
+  int ndim;
+};
+
+struct AstNode_BasicType
+{
+  eBasicType kind;
+};
+
+struct AstNode_Id
+{
+  char* name;
+  AstNode* decl_ast;
+  int order_nr;
+  Scope* scope;
+  Symbol* decl_sym;
+};
+
+struct AstNode_BinExpr
+{
+  AstNode* left_operand;
+  AstNode* right_operand;
+  eOperator op;
+};
+
+struct AstNode_UnrExpr
+{
+  AstNode* operand;
+  eOperator op;
+};
+
+struct AstNode_Call
+{
+  AstNode* expr;
+  AstNode* args;
+  AstNode* proc;
+
+  Scope* param_scope;
+  Symbol* retvar;
+};
+
+struct AstNode_Return
+{
+  AstNode* expr;
+  AstNode* proc;
+  int nesting_depth;
+};
+
+struct AstNode_LoopCtrl
+{
+  eLoopCtrl kind;
+  AstNode* loop;
+  int nesting_depth;
+};
+
+struct AstNode_If
+{
+  AstNode* cond_expr;
+  AstNode* body;
+  AstNode* else_body;
+};
+
+struct AstNode_While
+{
+  AstNode* cond_expr;
+  AstNode* body;
+  Scope* scope;
+};
+
+struct AstNode_Proc
+{
+  char* name;
+  AstNode* args;
+  AstNode* ret_type;
+  AstNode* body;
+  eModifier modifier;
+
+  Scope* scope;
+  Scope* param_scope;
+  Symbol* decl_sym;
+  Symbol* retvar;
+
+  // If the proc is external, then this is the decorated name.
+  Label label_name;
+
+  IrStmt* ir_stmt_array;
+  int ir_stmt_count;
+  List* basic_blocks;
+};
+
+struct AstNode_Str
+{
+  char* str_val;
+};
+
+struct AstNode_Lit
+{
+  eLiteral kind;
+  union
+  {
+    int int_val;
+    float float_val;
+    bool bool_val;
+    char char_val;
+    char* str_val;
+  };
+  Symbol* constant;
+};
+
+struct AstNode_Var
+{
+  char* name;
+  AstNode* type;
+  AstNode* init_expr;
+  Symbol* decl_sym;
+  eModifier modifier;
+};
+
+struct AstNode_Module
+{
+  char* file_path;
+  List nodes;
+  List procs;
+  List vars;
+  Scope* scope;
+};
+
+struct AstNode_Include
+{
+  char* file_path;
+  HFile* file;
+};
+
+struct AstNode_Block
+{
+  Scope* scope;
+  List nodes;
+  List vars;
+  List stmts;
+};
+
+struct AstNode_Struct
+{
+  char* name;
+  AstNode* id;
+  List* members;
+};
+
+struct AstNode_Asm
+{
+  char* asm_text;
+};
+
 struct AstNode
 {
   eAstNode   kind;
@@ -809,222 +1004,34 @@ struct AstNode
 
   union
   {
-    List node_list;
-
-    struct AstNode_call_arg
-    {
-      AstNode* expr;
-      Symbol* param;
-    }
-    call_arg;
-
-    struct AstNode_cast
-    {
-      AstNode* from_expr;
-      AstNode* to_type;
-    }
-    cast;
-
-    struct AstNode_assign
-    {
-      AstNode* dest_expr;
-      AstNode* source_expr;
-    }
-    assign;
-
-    struct AstNode_pointer
-    {
-      AstNode* pointee;
-    }
-    pointer;
-
-    struct AstNode_array
-    {
-      AstNode* size_expr;
-      AstNode* elem_expr;
-      int size;
-      int ndim;
-    }
-    array;
-
-    struct AstNode_index
-    {
-      AstNode* array_expr;
-      AstNode* i_expr;
-      IrArg* place;   // L.place
-      IrArg* offset;  // L.offset
-      IrArg* i_place; // Elist.place
-      int ndim;
-    }
-    index;
-
-    struct AstNode_basic_type
-    {
-      eBasicType kind;
-    }
-    basic_type;
-
-    struct AstNode_id
-    {
-      char* name;
-      AstNode* decl_ast;
-      int order_nr;
-      Scope* scope;
-      Symbol* decl_sym;
-    }
-    id;
-
-    struct AstNode_bin_expr
-    {
-      AstNode* left_operand;
-      AstNode* right_operand;
-      eOperator op;
-    }
-    bin_expr;
-
-    struct AstNode_unr_expr
-    {
-      AstNode* operand;
-      eOperator op;
-    }
-    unr_expr;
-
-    struct AstNode_call
-    {
-      AstNode* expr;
-      AstNode* args;
-      AstNode* proc;
-
-      Scope* param_scope;
-      Symbol* retvar;
-    }
-    call;
-
-    struct AstNode_ret
-    {
-      AstNode* expr;
-      AstNode* proc;
-      int nesting_depth;
-    }
-    ret;
-
-    struct AstNode_loop_ctrl
-    {
-      eLoopCtrl kind;
-      AstNode* loop;
-      int nesting_depth;
-    }
-    loop_ctrl;
-
-    struct AstNode_if
-    {
-      AstNode* cond_expr;
-      AstNode* body;
-      AstNode* else_body;
-    }
-    if_;
-
-    struct AstNode_while
-    {
-      AstNode* cond_expr;
-      AstNode* body;
-      Scope* scope;
-    }
-    while_, do_while;
-
-    struct AstNode_proc
-    {
-      char* name;
-      AstNode* args;
-      AstNode* ret_type;
-      AstNode* body;
-      eModifier modifier;
-
-      Scope* scope;
-      Scope* param_scope;
-      Symbol* decl_sym;
-      Symbol* retvar;
-
-      // If the proc is external, then this is the decorated name.
-      Label label_name;
-
-      IrStmt* ir_stmt_array;
-      int ir_stmt_count;
-      List* basic_blocks;
-    }
-    proc;
-
-    struct AstNode_str
-    {
-      char* str_val;
-    }
-    str;
-
-    struct AstNode_lit
-    {
-      eLiteral kind;
-      union
-      {
-        int int_val;
-        float float_val;
-        bool bool_val;
-        char char_val;
-        char* str_val;
-      };
-      Symbol* constant;
-    }
-    lit;
-
-    struct AstNode_var
-    {
-      char* name;
-      AstNode* type;
-      AstNode* init_expr;
-      Symbol* decl_sym;
-      eModifier modifier;
-    }
-    var;
-
-    struct AstNode_module
-    {
-      char* file_path;
-      List nodes;
-      List procs;
-      List vars;
-      Scope* scope;
-    }
-    module;
-
-    struct AstNode_include
-    {
-      char* file_path;
-      HFile* file;
-    }
-    include;
-
-    struct AstNode_block
-    {
-      Scope* scope;
-      List nodes;
-      List vars;
-      List stmts;
-    }
-    block;
-
-    struct AstNode_struct
-    {
-      char* name;
-      AstNode* id;
-      List* members;
-    }
-    enum_decl,
-    union_decl, struct_decl; //record;
-
-    struct AstNode_asm
-    {
-      char* asm_text;
-    }
-    asm_block;
+    AstNode_NodeList  args;
+    AstNode_CallArg   call_arg;
+    AstNode_Cast      cast;
+    AstNode_Assign    assign;
+    AstNode_Pointer   pointer;
+    AstNode_Array     array;
+    AstNode_Index     index;
+    AstNode_BasicType basic_type;
+    AstNode_Id        id;
+    AstNode_BinExpr   bin_expr;
+    AstNode_UnrExpr   unr_expr;
+    AstNode_Call      call;
+    AstNode_Return    ret;
+    AstNode_LoopCtrl  loop_ctrl;
+    AstNode_If        if_;
+    AstNode_While     while_;
+    AstNode_While     do_while;
+    AstNode_Proc      proc;
+    AstNode_Str       str;
+    AstNode_Lit       lit;
+    AstNode_Var       var;
+    AstNode_Module    module;
+    AstNode_Include   include;
+    AstNode_Block     block;
+    AstNode_Struct    enum_decl;
+    AstNode_Struct    union_decl;
+    AstNode_Struct    struct_decl;
+    AstNode_Asm       asm_block;
   };
 };
 
@@ -1089,7 +1096,7 @@ struct Symbol
   // natvis
   struct Symbol_Locations
   {
-    X86Location* _[eX86Location::Count];
+    X86Location* _[(int)eX86Location::Count];
   }
   locations;
 };

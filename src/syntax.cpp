@@ -60,7 +60,7 @@ char* get_operator_printstr(eOperator op)
       str = "==";
     break;
     
-    case eOperator::not_eq:
+    case eOperator::not_eq_:
       str = "<>";
     break;
     
@@ -242,7 +242,7 @@ bool parse_actual_args(Parser* parser, AstNode* args)
                                          clone_source_loc(parser->arena, parser->src_loc));
       call_arg->call_arg.expr = expr;
 
-      args->node_list.append(call_arg, eList::ast_node);
+      args->args.node_list.append(call_arg, eList::ast_node);
       success = parse_rest_of_actual_args(parser, args);
     }
   }
@@ -261,7 +261,7 @@ bool parse_call(Parser* parser, AstNode* left_node, AstNode** node)
     call->call.expr = left_node;
     AstNode* args = call->call.args = new_ast_node(parser->arena, eAstNode::node_list,
                                                    clone_source_loc(parser->arena, parser->src_loc));
-    args->node_list.init(parser->arena, eList::ast_node);
+    args->args.node_list.init(parser->arena, eList::ast_node);
 
     if(success = parser_get_next_token(parser) && parse_actual_args(parser, call->call.args))
     {
@@ -399,7 +399,7 @@ bool parse_rest_of_factor(Parser* parser, AstNode* left_node, AstNode** node)
     case eToken::star:
     case eToken::fwd_slash:
     case eToken::mod:
-    case eToken::and:
+    case eToken::and_:
     case eToken::ampersand:
     {
       AstNode* bin_expr = *node = new_ast_node(parser->arena, eAstNode::bin_expr,
@@ -420,7 +420,7 @@ bool parse_rest_of_factor(Parser* parser, AstNode* left_node, AstNode** node)
           bin_expr->bin_expr.op = eOperator::mod;
         break;
 
-        case eToken::and:
+        case eToken::and_:
           bin_expr->bin_expr.op = eOperator::logic_and;
         break;
 
@@ -483,7 +483,7 @@ bool parse_rest_of_term(Parser* parser, AstNode* left_node, AstNode** node)
     case eToken::angle_right:
     case eToken::angle_right_eq:
     case eToken::angle_left_right:
-    case eToken::or:
+    case eToken::or_:
       {
         AstNode* bin_expr = *node = new_ast_node(parser->arena, eAstNode::bin_expr,
                                                  clone_source_loc(parser->arena, parser->src_loc));
@@ -520,7 +520,7 @@ bool parse_rest_of_term(Parser* parser, AstNode* left_node, AstNode** node)
           break;
 
           case eToken::angle_left_right:
-            bin_expr->bin_expr.op = eOperator::not_eq;
+            bin_expr->bin_expr.op = eOperator::not_eq_;
           break;
 
           case eToken::angle_left:
@@ -539,7 +539,7 @@ bool parse_rest_of_term(Parser* parser, AstNode* left_node, AstNode** node)
             bin_expr->bin_expr.op = eOperator::greater_eq;
           break;
 
-          case eToken::or:
+          case eToken::or_:
             bin_expr->bin_expr.op = eOperator::logic_or;
           break;
 
@@ -1048,7 +1048,7 @@ bool parse_unr_expr(Parser* parser, AstNode** node)
   switch(parser->token->kind)
   {
     case eToken::exclam:
-    case eToken::not:
+    case eToken::not_:
     case eToken::ampersand:
     case eToken::minus:
       {
@@ -1060,7 +1060,7 @@ bool parse_unr_expr(Parser* parser, AstNode** node)
           case eToken::exclam:
             unr_expr->unr_expr.op = eOperator::bit_not;
             break;
-          case eToken::not:
+          case eToken::not_:
             unr_expr->unr_expr.op = eOperator::logic_not;
             break;
           case eToken::ampersand:
@@ -1147,7 +1147,7 @@ bool parse_formal_args(Parser* parser, AstNode* args)
   {
     if(arg)
     {
-      args->node_list.append(arg, eList::ast_node);
+      args->args.node_list.append(arg, eList::ast_node);
       success = parse_rest_of_formal_args(parser, args);
     }
   }
@@ -1725,7 +1725,7 @@ bool parse_module_proc(Parser* parser, char* name, eModifier modifier, AstNode* 
     {
       AstNode* args = proc->proc.args = new_ast_node(parser->arena, eAstNode::node_list,
                                                      clone_source_loc(parser->arena, parser->src_loc));
-      args->node_list.init(parser->arena, eList::ast_node);
+      args->args.node_list.init(parser->arena, eList::ast_node);
 
       if(success = parse_formal_args(parser, proc->proc.args))
       {

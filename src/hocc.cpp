@@ -239,11 +239,14 @@ int main(int argc, char* argv[])
     goto end;
   }
 
-  char* src_file_path = argv[1];
+  char* src_file_path;
+  src_file_path = argv[1];
 
-  MemoryArena* arena = MemoryArena::create(32*MEGABYTE);
+  MemoryArena* arena;
+  arena = MemoryArena::create(32*MEGABYTE);
 
-  char* hoc_text = Platform::file_read_text(MemoryArena::push(&arena, 2*MEGABYTE), src_file_path);
+  char* hoc_text;
+  hoc_text = Platform::file_read_text(MemoryArena::push(&arena, 2*MEGABYTE), src_file_path);
 
   if(hoc_text == 0)
   {
@@ -251,22 +254,26 @@ int main(int argc, char* argv[])
     goto end;
   }
 
-  OutFileNames out_files = {0};
+  OutFileNames out_files;
+  out_files = {};
   if(!make_out_file_names(arena, &out_files, src_file_path))
   {
     success = false;
     goto end;
   }
 
-  String* x86_text = 0;
+  String* x86_text;
+  x86_text = 0;
   if(!translate(arena, out_files.source.name, src_file_path, hoc_text, &x86_text))
   {
     success = error("program could not be translated");
     goto end;
   }
 
-  int x86_text_len = x86_text->len();
-  int bytes_written = Platform::file_write_bytes(out_files.h_asm.name, (uint8*)x86_text->head, x86_text_len);
+  int x86_text_len;
+  x86_text_len = x86_text->len();
+  int bytes_written;
+  bytes_written = Platform::file_write_bytes(out_files.h_asm.name, (uint8*)x86_text->head, x86_text_len);
   if(bytes_written != x86_text_len)
   {
     success = error("not all bytes were written to file `%s`", out_files.h_asm.name);

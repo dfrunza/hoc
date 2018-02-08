@@ -745,7 +745,7 @@ bool set_types_actual_args(MemoryArena* arena, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
@@ -1142,9 +1142,10 @@ bool set_types_block_stmt(MemoryArena* arena, AstNode* stmt)
 
 Type* make_type_of_args(MemoryArena* arena, AstNode* args)
 {
+  assert(KIND(args, eAstNode::node_list));
   Type* result = basic_type_void;
 
-  ListItem* li = args->node_list.first;
+  ListItem* li = args->args.node_list.first;
   if(li)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
@@ -1164,7 +1165,7 @@ bool set_types_formal_args(MemoryArena* arena, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
@@ -1365,7 +1366,7 @@ bool eval_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
             case eOperator::greater:
             case eOperator::greater_eq:
             case eOperator::eq:
-            case eOperator::not_eq:
+            case eOperator::not_eq_:
             case eOperator::logic_and:
             case eOperator::logic_or:
             case eOperator::logic_not:
@@ -1555,7 +1556,7 @@ bool eval_types_formal_args(MemoryArena* arena, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
@@ -1571,7 +1572,7 @@ bool eval_types_actual_args(MemoryArena* arena, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
@@ -1966,7 +1967,7 @@ bool resolve_types_formal_args(MemoryArena* arena, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
@@ -2043,7 +2044,7 @@ bool resolve_types_actual_args(MemoryArena* arena, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
@@ -2072,7 +2073,8 @@ bool resolve_types_call(MemoryArena* arena, AstNode* call)
   if(success = resolve_types_id(arena, call->call.expr) && resolve_types_actual_args(arena, call->call.args))
   {
     AstNode* args = call->call.args;
-    for(ListItem* li = args->node_list.first;
+    assert(KIND(args, eAstNode::node_list));
+    for(ListItem* li = args->args.node_list.first;
         li;
         li = li->next)
     {
@@ -2536,7 +2538,7 @@ bool check_types_formal_args(MemoryArena* arena, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
@@ -2703,7 +2705,7 @@ bool check_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
       case eOperator::greater:
       case eOperator::greater_eq:
       case eOperator::eq:
-      case eOperator::not_eq:
+      case eOperator::not_eq_:
       {
         if((left_ty->equal(basic_type_int) ||
             left_ty->equal(basic_type_char) ||
@@ -2786,7 +2788,7 @@ bool check_types_actual_args(MemoryArena* arena, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {

@@ -81,8 +81,8 @@ eIrOp conv_operator_to_ir_op(eOperator op)
       ir_op = eIrOp::eq;
     break;
     
-    case eOperator::not_eq:
-      ir_op = eIrOp::not_eq;
+    case eOperator::not_eq_:
+      ir_op = eIrOp::not_eq_;
     break;
     
     case eOperator::address_of:
@@ -105,10 +105,10 @@ eOperator negate_relop(eOperator op)
   switch(op)
   {
     case eOperator::eq:
-      result = eOperator::not_eq;
+      result = eOperator::not_eq_;
     break;
     
-    case eOperator::not_eq:
+    case eOperator::not_eq_:
       result = eOperator::eq;
     break;
     
@@ -141,7 +141,7 @@ bool is_operator_relation(eOperator op)
   switch(op)
   {
     case eOperator::eq:
-    case eOperator::not_eq:
+    case eOperator::not_eq_:
     case eOperator::less:
     case eOperator::less_eq:
     case eOperator::greater:
@@ -344,7 +344,7 @@ bool ir_gen_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr)
     case eOperator::greater:
     case eOperator::greater_eq:
     case eOperator::eq:
-    case eOperator::not_eq:
+    case eOperator::not_eq_:
     {
       if(success = ir_gen_expr(ir_context, scope, left_operand) && ir_gen_expr(ir_context, scope, right_operand))
       {
@@ -454,13 +454,13 @@ bool ir_gen_actual_args(IrContext* ir_context, Scope* scope, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
 
-  int arg_count = args->node_list.count;
+  int arg_count = args->args.node_list.count;
   if(arg_count > 0)
   {
     IrArg** temp_places = mem_push_array(ir_context->gp_arena, IrArg*, arg_count);
 
     int i = 0;
-    for(ListItem* li = args->node_list.first;
+    for(ListItem* li = args->args.node_list.first;
         li && success;
         li = li->next, i++)
     {
@@ -476,7 +476,7 @@ bool ir_gen_actual_args(IrContext* ir_context, Scope* scope, AstNode* args)
     }
 
     i = 0;
-    for(ListItem* li = args->node_list.first;
+    for(ListItem* li = args->args.node_list.first;
         li;
         li = li->next, i++)
     {
@@ -498,13 +498,14 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
   call->place = ir_arg_new_existing_object(ir_context, call->call.retvar);
 
   AstNode* args = call->call.args;
+  assert(KIND(args, eAstNode::node_list));
   ir_gen_actual_args(ir_context, scope, args);
 
   if(is_extern_proc(proc))
   {
     // right-to-left (stdcall)
     alloc_data_object(ir_context, call->call.retvar, call->call.param_scope);
-    for(ListItem* li = args->node_list.last;
+    for(ListItem* li = args->args.node_list.last;
         li;
         li = li->prev)
     {
@@ -517,7 +518,7 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
   else
   {
     // left-to-right
-    for(ListItem* li = args->node_list.first;
+    for(ListItem* li = args->args.node_list.first;
         li;
         li = li->next)
     {
@@ -858,7 +859,7 @@ bool ir_gen_bool_bin_expr(IrContext* ir_context, Scope* scope, AstNode* bin_expr
   switch(op)
   {
     case eOperator::eq:
-    case eOperator::not_eq:
+    case eOperator::not_eq_:
     case eOperator::less:
     case eOperator::less_eq:
     case eOperator::greater:
@@ -919,7 +920,7 @@ bool ir_gen_bool_id(IrContext* ir_context, Scope* scope, AstNode* id)
 
   if(success = ir_gen_expr(ir_context, scope, id))
   {
-    ir_emit_cond_goto(ir_context, eIrOp::not_eq, id->place,
+    ir_emit_cond_goto(ir_context, eIrOp::not_eq_, id->place,
                       ir_arg_new_existing_object(ir_context, ir_context->bool_false), id->label_true);
     ir_emit_goto(ir_context, id->label_false);
   }
@@ -934,7 +935,7 @@ bool ir_gen_bool_call(IrContext* ir_context, Scope* scope, AstNode* call)
 
   if(success = ir_gen_expr(ir_context, scope, call))
   {
-    ir_emit_cond_goto(ir_context, eIrOp::not_eq, call->place,
+    ir_emit_cond_goto(ir_context, eIrOp::not_eq_, call->place,
                       ir_arg_new_existing_object(ir_context, ir_context->bool_false), call->label_true);
     ir_emit_goto(ir_context, call->label_false);
   }
@@ -949,7 +950,7 @@ bool ir_gen_bool_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
 
   if(success = ir_gen_cast(ir_context, scope, cast))
   {
-    ir_emit_cond_goto(ir_context, eIrOp::not_eq, cast->place,
+    ir_emit_cond_goto(ir_context, eIrOp::not_eq_, cast->place,
                       ir_arg_new_existing_object(ir_context, ir_context->bool_false), cast->label_true);
     ir_emit_goto(ir_context, cast->label_false);
   }
@@ -1261,7 +1262,7 @@ bool ir_gen_block_stmt(IrContext* ir_context, Scope* scope, AstNode* stmt)
 void ir_gen_formal_args(IrContext* ir_context, Scope* scope, AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li;
       li = li->next)
   {
@@ -1277,7 +1278,7 @@ int get_proc_arg_size(AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   int size = 0;
 
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li;
       li = li->next)
   {
@@ -1420,7 +1421,7 @@ void DEBUG_print_ir_op(String* text, eIrOp op)
       text->printf("==");
     break;
     
-    case eIrOp::not_eq:
+    case eIrOp::not_eq_:
       text->printf("<>");
     break;
     
@@ -1569,7 +1570,7 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         case eIrOp::div:
         case eIrOp::mod:
         case eIrOp::eq:
-        case eIrOp::not_eq:
+        case eIrOp::not_eq_:
         case eIrOp::less:
         case eIrOp::less_eq:
         case eIrOp::greater:

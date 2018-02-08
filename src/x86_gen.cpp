@@ -265,15 +265,15 @@ void x86_print_opcode(String* text, eX86Stmt opcode)
       text->printf("cmp ");
     break;
 
-    case eX86Stmt::or:
+    case eX86Stmt::or_:
       text->printf("or ");
     break;
 
-    case eX86Stmt::and:
+    case eX86Stmt::and_:
       text->printf("and ");
     break;
 
-    case eX86Stmt::not:
+    case eX86Stmt::not_:
       text->printf("not ");
     break;
 
@@ -1035,7 +1035,7 @@ eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
         x86_opcode = eX86Stmt::jz;
       break;
 
-      case eIrOp::not_eq:
+      case eIrOp::not_eq_:
         x86_opcode = eX86Stmt::jnz;
       break;
 
@@ -1048,15 +1048,15 @@ eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
       break;
 
       case eIrOp::bit_or:
-        x86_opcode = eX86Stmt::or;
+        x86_opcode = eX86Stmt::or_;
       break;
 
       case eIrOp::bit_and:
-        x86_opcode = eX86Stmt::and;
+        x86_opcode = eX86Stmt::and_;
       break;
 
       case eIrOp::bit_not:
-        x86_opcode = eX86Stmt::not;
+        x86_opcode = eX86Stmt::not_;
       break;
 
       default: assert(0);
@@ -1102,7 +1102,7 @@ eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
         x86_opcode = eX86Stmt::je;
       break;
 
-      case eIrOp::not_eq:
+      case eIrOp::not_eq_:
         x86_opcode = eX86Stmt::jne;
       break;
 

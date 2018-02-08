@@ -355,7 +355,7 @@ bool sym_actual_args(SymbolContext* context, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
@@ -382,7 +382,7 @@ bool sym_call(SymbolContext* context, AstNode* call)
       call->call.retvar = add_decl_sym(context->sym_arena, new_tempvar_name(context->gp_arena, "ret_"),
                                        eStorageSpace::actual_param, call->call.param_scope, call);
 
-      for(ListItem* li = args->node_list.first;
+      for(ListItem* li = args->args.node_list.first;
           li;
           li = li->next)
       {
@@ -778,7 +778,7 @@ bool sym_formal_args(SymbolContext* context, Scope* param_scope, AstNode* args)
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
   
-  for(ListItem* li = args->node_list.first;
+  for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {

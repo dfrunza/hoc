@@ -17,9 +17,9 @@ Token keyword_list[] =
   {eToken::enum_, "enum"},
   {eToken::extern_, "extern"},
   {eToken::const_, "const"},
-  {eToken::and, "and"},
-  {eToken::or, "or"},
-  {eToken::not, "not"},
+  {eToken::and_, "and"},
+  {eToken::or_, "or"},
+  {eToken::not_, "not"},
   {eToken::mod, "mod"},
   {eToken::int_, "int"},
   {eToken::float_, "float"},
@@ -358,19 +358,15 @@ char* get_token_printstr(Token* token)
       result = "const";
     break;
 
-    case eToken::and:
+    case eToken::and_:
       result = "and";
     break;
 
-    case eToken::or:
+    case eToken::or_:
       result = "or";
     break;
 
-    case eToken::xor:
-      result = "xor";
-    break;
-
-    case eToken::not:
+    case eToken::not_:
       result = "not";
     break;
 

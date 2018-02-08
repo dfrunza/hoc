@@ -39,7 +39,9 @@ SET src_dir=%base_dir%\src
 :: g++ -nostdlib -static %C_flags% %src_dir%\hocc.cpp -lkernel32 -lgcc -Wl,-e_mainCRTStartup -o hocc.exe
 :: ---------------------------
 
-SET C_flags=-g -ggdb -Winline
+:: -Wno-write-strings      - ISO C++ forbids converting a string constant to 'char*'
+
+SET C_flags=-g -ggdb -Winline -Wno-write-strings
 SET L_flags=
 
 IF NOT EXIST .\bin (

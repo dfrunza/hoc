@@ -1,46 +1,46 @@
-int get_type_width(Type* type)
+int Type::set_width()
 {
-  switch(type->kind)
+  switch(kind)
   {
     case eType::array:
     {
-      type->width = type->array.size * get_type_width(type->array.elem);
+      width = array.size * array.elem->set_width();
     }
     break;
     
     case eType::product:
     {
-      type->width = get_type_width(type->product.left) + get_type_width(type->product.right);
+      width = product.left->set_width() + product.right->set_width();
     }
     break;
     
     case eType::proc:
     {
-      type->width = get_type_width(type->proc.ret) + get_type_width(type->proc.args);
+      width = proc.ret->set_width() + proc.args->set_width();
     }
     break;
     
     case eType::basic:
     {
-      switch(type->basic.kind)
+      switch(basic.kind)
       {
         case eBasicType::int_:
         case eBasicType::float_:
         case eBasicType::bool_:
         {
-          type->width = 4;
+          width = 4;
         }
         break;
         
         case eBasicType::char_:
         {
-          type->width = 1;
+          width = 1;
         }
         break;
         
         case eBasicType::void_:
         {
-          type->width = 0;
+          width = 0;
         }
         break;
         
@@ -51,19 +51,20 @@ int get_type_width(Type* type)
     
     case eType::pointer:
     {
-      type->width = 4;
+      width = 4;
     }
     break;
     
     case eType::var:
     {
-      type->width = get_type_width(type->var.type);
+      width = var.type->set_width();
     }
     break;
     
     default: assert(0);
   }
-  return type->width;
+
+  return width;
 }
 
 Type* new_var_type(MemoryArena* arena, Type* var_type)
@@ -71,7 +72,7 @@ Type* new_var_type(MemoryArena* arena, Type* var_type)
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType::var;
   type->var.type = var_type;
-  type->width = get_type_width(type);
+  type->set_width();
 
   return type;
 }
@@ -81,7 +82,7 @@ Type* new_basic_type(MemoryArena* arena, eBasicType kind)
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType::basic;
   type->basic.kind = kind;
-  type->width = get_type_width(type);
+  type->set_width();
 
   return type;
 }
@@ -139,48 +140,48 @@ Type* new_pointer_type(MemoryArena* arena, Type* pointee)
   return type;
 }
 
-bool types_are_equal(Type* type_a, Type* type_b)
+bool Type::equal(Type* type_b)
 {
   bool are_equal = false;
   
-  if((type_a->kind != eType::typevar) && (type_b->kind == type_a->kind))
+  if((kind != eType::typevar) && (type_b->kind == kind))
   {
-    switch(type_a->kind)
+    switch(kind)
     {
       case eType::basic:
       {
-        are_equal = (type_a->basic.kind == type_b->basic.kind);
+        are_equal = (basic.kind == type_b->basic.kind);
       }
       break;
       
       case eType::proc:
       {
-        are_equal = types_are_equal(type_a->proc.args, type_b->proc.args)
-          && types_are_equal(type_a->proc.ret, type_b->proc.ret);
+        are_equal = proc.args->equal(type_b->proc.args)
+          && proc.ret->equal(type_b->proc.ret);
       }
       break;
       
       case eType::pointer:
       {
-        are_equal = types_are_equal(type_a->pointer.pointee, type_b->pointer.pointee);
+        are_equal = pointer.pointee->equal(type_b->pointer.pointee);
       }
       break;
       
       case eType::product:
       {
-        are_equal = types_are_equal(type_a->product.left, type_b->product.right);
+        are_equal = product.left->equal(type_b->product.right);
       }
       break;
       
       case eType::array:
       {
-        are_equal = types_are_equal(type_a->array.elem, type_b->array.elem);
+        are_equal = array.elem->equal(type_b->array.elem);
       }
       break;
       
       case eType::var:
       {
-        are_equal = types_are_equal(type_a->var.type, type_b->var.type);
+        are_equal = var.type->equal(type_b->var.type);
       }
       break;
       
@@ -190,43 +191,42 @@ bool types_are_equal(Type* type_a, Type* type_b)
   return are_equal;
 }
 
-Type* copy_type(MemoryArena* arena, Type* type)
+Type* Type::copy(MemoryArena* arena)
 {
   Type* copy = mem_push_struct(arena, Type);
-  *copy = *type;
+  *copy = *this;
 
   return copy;
 }
 
-Type* get_type_repr(Type* type)
+Type* Type::get_repr_type()
 {
-  Type* result = type;
-  while(type->repr_type)
+  Type* result = this;
+  while(result->repr_type)
   {
-    type = type->repr_type;
-    result = type;
+    result = result->repr_type;
   }
 
   return result;
 }
 
-void set_union(Type* type_a, Type* type_b)
+void Type::set_union(Type* type_b)
 {
-  if(type_a->kind == eType::typevar)
+  if(kind == eType::typevar)
   {
-    type_a->repr_type = type_b;
+    repr_type = type_b;
   }
   else
   {
-    type_b->repr_type = type_a;
+    type_b->repr_type = this;
   }
 }
 
-bool type_unif(Type* type_a, Type* type_b)
+bool Type::unif(Type* type_b)
 {
   bool success = false;
-  Type* repr_type_a = get_type_repr(type_a);
-  Type* repr_type_b = get_type_repr(type_b);
+  Type* repr_type_a = get_repr_type();
+  Type* repr_type_b = type_b->get_repr_type();
   
   if(repr_type_a == repr_type_b)
   {
@@ -236,7 +236,7 @@ bool type_unif(Type* type_a, Type* type_b)
   {
     if(repr_type_a->kind == eType::typevar || repr_type_b->kind == eType::typevar)
     {
-      set_union(repr_type_a, repr_type_b);
+      repr_type_a->set_union(repr_type_b);
       success = true;
     }
     else if(repr_type_a->kind == repr_type_b->kind)
@@ -251,40 +251,40 @@ bool type_unif(Type* type_a, Type* type_b)
       }
       else
       {
-        set_union(repr_type_a, repr_type_b);
+        repr_type_a->set_union(repr_type_b);
         assert(repr_type_a->kind == repr_type_b->kind);
         
         switch(repr_type_a->kind)
         {
           case eType::proc:
           {
-            success = type_unif(repr_type_a->proc.args, repr_type_b->proc.args)
-              && type_unif(repr_type_a->proc.ret, repr_type_b->proc.ret);
+            success = repr_type_a->proc.args->unif(repr_type_b->proc.args)
+              && repr_type_a->proc.ret->unif(repr_type_b->proc.ret);
           }
           break;
           
           case eType::product:
           {
-            success = type_unif(repr_type_a->product.left, repr_type_b->product.left)
-              && type_unif(repr_type_a->product.right, repr_type_b->product.right);
+            success = repr_type_a->product.left->unif(repr_type_b->product.left)
+              && repr_type_a->product.right->unif(repr_type_b->product.right);
           }
           break;
           
           case eType::pointer:
           {
-            success = type_unif(repr_type_a->pointer.pointee, repr_type_b->pointer.pointee);
+            success = repr_type_a->pointer.pointee->unif(repr_type_b->pointer.pointee);
           }
           break;
           
           case eType::array:
           {
-            success = type_unif(repr_type_a->array.elem, repr_type_b->array.elem);
+            success = repr_type_a->array.elem->unif(repr_type_b->array.elem);
           }
           break;
           
           case eType::var:
           {
-            success = type_unif(repr_type_a->var.type, repr_type_b->var.type);
+            success = repr_type_a->var.type->unif(repr_type_b->var.type);
           }
           break;
           
@@ -326,7 +326,7 @@ TypePair* find_pair(List* subst_list, Type* type)
 
 Type* type_subst(MemoryArena* arena, List* subst_list, Type* type)
 {
-  type = get_type_repr(type);
+  type = type->get_repr_type();
   Type* subst = 0;
   
   TypePair* pair = find_pair(subst_list, type);
@@ -336,7 +336,7 @@ Type* type_subst(MemoryArena* arena, List* subst_list, Type* type)
   }
   else
   {
-    subst = copy_type(arena, type);
+    subst = type->copy(arena);
     
     pair = new_type_pair(arena, type, subst);
     subst_list->append(pair, eList::type_pair);
@@ -396,7 +396,7 @@ bool resolve_type(Type* type, Type** resolved_type)
   {
     case eType::typevar:
     {
-      type = get_type_repr(type);
+      type = type->get_repr_type();
       if(type->kind == eType::typevar)
       {
         success = false;
@@ -454,23 +454,23 @@ bool resolve_type(Type* type, Type** resolved_type)
   return success;
 }
 
-void make_type_printstr(String* str, Type* type)
+void Type::append_printstr(String* str)
 {
-  switch(type->kind)
+  switch(kind)
   {
     case eType::basic:
     {
-      if(type->basic.kind == eBasicType::bool_)
+      if(basic.kind == eBasicType::bool_)
         str->append("bool");
-      else if(type->basic.kind == eBasicType::int_)
+      else if(basic.kind == eBasicType::int_)
         str->append("int");
-      else if(type->basic.kind == eBasicType::float_)
+      else if(basic.kind == eBasicType::float_)
         str->append("float");
-      else if(type->basic.kind == eBasicType::char_)
+      else if(basic.kind == eBasicType::char_)
         str->append("char");
-      else if(type->basic.kind == eBasicType::void_)
+      else if(basic.kind == eBasicType::void_)
         str->append("void");
-      else if(type->basic.kind == eBasicType::auto_)
+      else if(basic.kind == eBasicType::auto_)
         str->append("auto");
       else
         assert(0);
@@ -479,7 +479,7 @@ void make_type_printstr(String* str, Type* type)
 
     case eType::pointer:
     {
-      make_type_printstr(str, type->pointer.pointee);
+      pointer.pointee->append_printstr(str);
       str->append("^");
     }
     break;
@@ -487,41 +487,41 @@ void make_type_printstr(String* str, Type* type)
     case eType::array:
     {
       str->append("(");
-      if(type->array.size >= 0)
-        str->printf("[%d]", type->array.size);
+      if(array.size >= 0)
+        str->printf("[%d]", array.size);
       else
         str->append("[]");
-      make_type_printstr(str, type->array.elem);
+      array.elem->append_printstr(str);
       str->append(")");
     }
     break;
 
     case eType::product:
     {
-      make_type_printstr(str, type->product.left);
+      product.left->append_printstr(str);
       str->append(", ");
-      make_type_printstr(str, type->product.right);
+      product.right->append_printstr(str);
     }
     break;
 
     case eType::proc:
     {
-      make_type_printstr(str, type->proc.ret);
+      proc.ret->append_printstr(str);
       str->append(" (");
-      make_type_printstr(str, type->proc.args);
+      proc.args->append_printstr(str);
       str->append(")");
     }
     break;
 
     case eType::var:
     {
-      make_type_printstr(str, type->var.type);
+      var.type->append_printstr(str);
     }
     break;
 
     case eType::typevar:
     {
-      str->printf("type_%d", type->typevar.id);
+      str->printf("type_%d", typevar.id);
     }
     break;
 
@@ -529,11 +529,11 @@ void make_type_printstr(String* str, Type* type)
   }
 }
 
-char* get_type_printstr(MemoryArena* arena, Type* type)
+char* Type::get_printstr(MemoryArena* arena)
 {
   String str = {};
   str.init(arena);
-  make_type_printstr(&str, type);
+  append_printstr(&str);
 
   return str.cap();
 }
@@ -1329,9 +1329,9 @@ bool eval_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
       case eOperator::bit_or:
       case eOperator::bit_xor:
       {
-        if(type_unif(left_operand->eval_ty, basic_type_int)
-           && type_unif(right_operand->eval_ty, basic_type_int)
-           && type_unif(bin_expr->eval_ty, basic_type_int))
+        if(left_operand->eval_ty->unif(basic_type_int)
+           && right_operand->eval_ty->unif(basic_type_int)
+           && bin_expr->eval_ty->unif(basic_type_int))
         {
           ;//ok
         }
@@ -1343,9 +1343,9 @@ bool eval_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
       case eOperator::bit_shift_left:
       case eOperator::bit_shift_right:
       {
-        if(type_unif(left_operand->eval_ty, basic_type_int)
-           && type_unif(right_operand->eval_ty, basic_type_char)
-           && type_unif(bin_expr->eval_ty, basic_type_int))
+        if(left_operand->eval_ty->unif(basic_type_int)
+           && right_operand->eval_ty->unif(basic_type_char)
+           && bin_expr->eval_ty->unif(basic_type_int))
         {
           ;//ok
         }
@@ -1356,7 +1356,7 @@ bool eval_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
       
       default:
       {
-        if(type_unif(left_operand->eval_ty, right_operand->eval_ty))
+        if(left_operand->eval_ty->unif(right_operand->eval_ty))
         {
           switch(bin_expr->bin_expr.op)
           {
@@ -1370,7 +1370,7 @@ bool eval_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
             case eOperator::logic_or:
             case eOperator::logic_not:
             {
-              if(!type_unif(bin_expr->eval_ty, basic_type_bool))
+              if(!bin_expr->eval_ty->unif(basic_type_bool))
               {
                 success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
               }
@@ -1379,7 +1379,7 @@ bool eval_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
 
             default:
             {
-              if(!type_unif(bin_expr->eval_ty, left_operand->eval_ty))
+              if(!bin_expr->eval_ty->unif(left_operand->eval_ty))
               {
                 success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
               }
@@ -1396,7 +1396,7 @@ bool eval_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
     if(success)
     {
       Type* bin_expr_ty = KIND(bin_expr->ty, eType::proc);
-      if(!type_unif(bin_expr_ty->proc.ret, bin_expr->eval_ty))
+      if(!bin_expr_ty->proc.ret->unif(bin_expr->eval_ty))
       {
         success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
       }
@@ -1426,7 +1426,7 @@ bool eval_types_id(MemoryArena* arena, AstNode* id)
   if(success)
   {
     AstNode* decl_ast = id->id.decl_ast;
-    if(type_unif(decl_ast->ty, id->ty))
+    if(decl_ast->ty->unif(id->ty))
     {
       switch(decl_ast->ty->kind)
       {
@@ -1438,7 +1438,7 @@ bool eval_types_id(MemoryArena* arena, AstNode* id)
             }
             else
             {
-              if(!type_unif(decl_ast->ty->var.type, id->eval_ty))
+              if(!decl_ast->ty->var.type->unif(id->eval_ty))
               {
                 success = compile_error(arena, id->src_loc, "type error (var id)");
               }
@@ -1448,7 +1448,7 @@ bool eval_types_id(MemoryArena* arena, AstNode* id)
         
         case eType::proc:
         {
-          if(!type_unif(decl_ast->ty->proc.ret, id->eval_ty))
+          if(!decl_ast->ty->proc.ret->unif(id->eval_ty))
           {
             success = compile_error(arena, id->src_loc, "type error (proc id)");
           }
@@ -1480,7 +1480,7 @@ bool eval_types_unr_expr(MemoryArena* arena, AstNode* unr_expr)
       case eOperator::neg:
       case eOperator::logic_not:
       case eOperator::bit_not:
-      if(!type_unif(unr_expr->eval_ty, operand->eval_ty))
+      if(!unr_expr->eval_ty->unif(operand->eval_ty))
       {
         success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
       }
@@ -1489,9 +1489,9 @@ bool eval_types_unr_expr(MemoryArena* arena, AstNode* unr_expr)
       case eOperator::deref:
       {
         Type* pointee_ty = new_typevar(arena);
-        if(type_unif(operand->eval_ty, new_pointer_type(arena, pointee_ty)))
+        if(operand->eval_ty->unif(new_pointer_type(arena, pointee_ty)))
         {
-          if(!type_unif(unr_expr->eval_ty, pointee_ty))
+          if(!unr_expr->eval_ty->unif(pointee_ty))
           {
             success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
           }
@@ -1513,7 +1513,7 @@ bool eval_types_unr_expr(MemoryArena* arena, AstNode* unr_expr)
     if(success)
     {
       Type* unr_expr_ty = KIND(unr_expr->ty, eType::proc);
-      if(!type_unif(unr_expr_ty->proc.ret, unr_expr->eval_ty))
+      if(!unr_expr_ty->proc.ret->unif(unr_expr->eval_ty))
       {
         success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
       }
@@ -1528,14 +1528,14 @@ bool eval_types_var(MemoryArena* arena, AstNode* var)
   assert(KIND(var, eAstNode::var));
   bool success = true;
   
-  if(type_unif(var->ty->var.type, var->eval_ty))
+  if(var->ty->var.type->unif(var->eval_ty))
   {
     AstNode* init_expr = var->var.init_expr;
     if(init_expr)
     {
       if(success = eval_types_expr(arena, init_expr))
       {
-        if(!type_unif(var->eval_ty, init_expr->eval_ty))
+        if(!var->eval_ty->unif(init_expr->eval_ty))
         {
           success = compile_error(arena, var->src_loc, "type error (var init expr)");
         }
@@ -1689,7 +1689,7 @@ bool eval_types_if(MemoryArena* arena, AstNode* if_)
      eval_types_block_stmt(arena, body) &&
      (else_body ? eval_types_block_stmt(arena, else_body) : true))
   {
-    if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+    if(!cond_expr->eval_ty->unif(basic_type_bool))
     {
       success = compile_error(arena, cond_expr->src_loc, "bool expression was expected");
     }
@@ -1722,7 +1722,7 @@ bool eval_types_do_while(MemoryArena* arena, AstNode* do_while)
   AstNode* cond_expr = do_while->do_while.cond_expr;
   if(success = eval_types_block_stmt(arena, do_while->do_while.body) && eval_types_expr(arena, cond_expr))
   {
-    if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+    if(!cond_expr->eval_ty->unif(basic_type_bool))
     {
       success = compile_error(arena, cond_expr->src_loc, "bool expression was expected");
     }
@@ -1738,7 +1738,7 @@ bool eval_types_while(MemoryArena* arena, AstNode* while_)
   AstNode* cond_expr = while_->while_.cond_expr;
   if(success = eval_types_expr(arena, cond_expr) && eval_types_block_stmt(arena, while_->while_.body))
   {
-    if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+    if(!cond_expr->eval_ty->unif(basic_type_bool))
     {
       success = compile_error(arena, cond_expr->src_loc, "bool expression was expected");
     }
@@ -1757,7 +1757,7 @@ bool eval_types_return(MemoryArena* arena, AstNode* ret)
   {
     AstNode* proc = ret->ret.proc;
     Type* proc_ty = KIND(proc->ty, eType::proc);
-    if(!type_unif(ret_expr->eval_ty, proc_ty->proc.ret))
+    if(!ret_expr->eval_ty->unif(proc_ty->proc.ret))
     {
       success = compile_error(arena, ret->src_loc, "type error (return)");
     }
@@ -1913,10 +1913,10 @@ bool resolve_types_of_node(MemoryArena* arena, AstNode* node)
   
   if(success = resolve_type(node->ty, &node->ty))
   {
-    get_type_width(node->ty);
+    node->ty->set_width();
     if(success = resolve_type(node->eval_ty, &node->eval_ty))
     {
-      get_type_width(node->eval_ty);
+      node->eval_ty->set_width();
     }
     else
       success = compile_error(arena, node->src_loc, "type error (unresolved type)");
@@ -2007,11 +2007,11 @@ bool resolve_types_unr_expr(MemoryArena* arena, AstNode* unr_expr)
       {
         // ptr(array(T)) = ptr(T)
         Type* operand_ty = operand->eval_ty;
-        success = type_unif(unr_expr->eval_ty, new_pointer_type(arena, operand_ty->array.elem));
+        success = unr_expr->eval_ty->unif(new_pointer_type(arena, operand_ty->array.elem));
       }
       else
       {
-        success = type_unif(unr_expr->eval_ty, new_pointer_type(arena, operand->eval_ty));
+        success = unr_expr->eval_ty->unif(new_pointer_type(arena, operand->eval_ty));
       }
 
       if(!success)
@@ -2083,7 +2083,7 @@ bool resolve_types_call(MemoryArena* arena, AstNode* call)
     AstNode* proc = call->call.proc = KIND(call->call.expr, eAstNode::id)->id.decl_ast;
     if(proc->ty->kind == eType::proc)
     {
-      if(!type_unif(proc->ty, call->ty))
+      if(!proc->ty->unif(call->ty))
       {
         success = compile_error(arena, call->src_loc, "type error (call argument types)");
       }
@@ -2112,20 +2112,20 @@ bool resolve_types_index(MemoryArena* arena, AstNode* index)
 
   if(success = resolve_types_expr(arena, array_expr) && resolve_types_expr(arena, i_expr))
   {
-    if(type_unif(i_expr->eval_ty, basic_type_int))
+    if(i_expr->eval_ty->unif(basic_type_int))
     {
       Type* array_ty = array_expr->eval_ty;
 
       if(array_ty->kind == eType::array)
       {
-        if(!type_unif(array_ty->array.elem, index->eval_ty))
+        if(!array_ty->array.elem->unif(index->eval_ty))
         {
           success = compile_error(arena, index->src_loc, "type error (index)");
         }
       }
       else if(array_ty->kind == eType::pointer)
       {
-        if(!type_unif(array_ty->pointer.pointee, index->eval_ty))
+        if(!array_ty->pointer.pointee->unif(index->eval_ty))
         {
           success = compile_error(arena, index->src_loc, "type error (index)");
         }
@@ -2516,7 +2516,7 @@ bool check_types_var(MemoryArena* arena, AstNode* var)
   assert(KIND(var, eAstNode::var));
   bool success = true;
   
-  if(types_are_equal(var->eval_ty, basic_type_void))
+  if(var->eval_ty->equal(basic_type_void))
   {
     success = compile_error(arena, var->src_loc, "type of var cannot be `void`");
   }
@@ -2560,44 +2560,44 @@ bool check_types_cast(MemoryArena* arena, AstNode* cast)
     Type* from_ty = from_expr->eval_ty;
     Type* to_ty = to_type->eval_ty;
     
-    if(!types_are_equal(from_ty, to_ty))
+    if(!from_ty->equal(to_ty))
     {
       success = false;
       
-      if(types_are_equal(to_ty, basic_type_int))
+      if(to_ty->equal(basic_type_int))
       {
         // int <- float | bool | pointer(T) | char
-        success = types_are_equal(from_ty, basic_type_float) ||
-          types_are_equal(from_ty, basic_type_bool) ||
-          types_are_equal(from_ty, basic_type_char) ||
+        success = from_ty->equal(basic_type_float) ||
+          from_ty->equal(basic_type_bool) ||
+          from_ty->equal(basic_type_char) ||
           (from_ty->kind == eType::pointer);
       }
-      else if(types_are_equal(to_ty, basic_type_char))
+      else if(to_ty->equal(basic_type_char))
       {
         // char <- int
-        success = types_are_equal(from_ty, basic_type_int);
+        success = from_ty->equal(basic_type_int);
       }
-      else if(types_are_equal(to_ty, basic_type_float))
+      else if(to_ty->equal(basic_type_float))
       {
         // float <- int
-        success = types_are_equal(from_ty, basic_type_int);
+        success = from_ty->equal(basic_type_int);
       }
-      else if(types_are_equal(to_ty, basic_type_bool))
+      else if(to_ty->equal(basic_type_bool))
       {
         // bool <- int | pointer(T)
-        success = types_are_equal(from_ty, basic_type_int) ||
+        success = from_ty->equal(basic_type_int) ||
           (from_ty->kind == eType::pointer);
       }
       else if(to_ty->kind == eType::pointer)
       {
         // pointer(T) <- pointer(P) | int
         success = (from_ty->kind == eType::pointer) ||
-          types_are_equal(from_ty, basic_type_int);
+          from_ty->equal(basic_type_int);
       }
       if(!success)
       {
         compile_error(arena, cast->src_loc, "invalid cast `%s` <- `%s`",
-                      get_type_printstr(arena, to_ty), get_type_printstr(arena, from_ty));
+                      to_ty->get_printstr(arena), from_ty->get_printstr(arena));
       }
     }
   }
@@ -2630,33 +2630,33 @@ bool check_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
       case eOperator::mul:
       case eOperator::div:
       {
-        if(types_are_equal(ret_ty, basic_type_int)
-           || types_are_equal(ret_ty, basic_type_float)
-           || (types_are_equal(ret_ty, basic_type_char))
+        if(ret_ty->equal(basic_type_int)
+           || ret_ty->equal(basic_type_float)
+           || ret_ty->equal(basic_type_char)
            || (ret_ty->kind == eType::pointer))
         {
           ;//ok
-          assert(types_are_equal(ret_ty, left_ty) && types_are_equal(left_ty, right_ty));
+          assert(ret_ty->equal(left_ty) && left_ty->equal(right_ty));
         }
         else
         {
           success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  get_operator_printstr(op), get_type_printstr(arena, operands_ty));
+                                  get_operator_printstr(op), operands_ty->get_printstr(arena));
         }
       }
       break;
       
       case eOperator::mod:
       {
-        if(types_are_equal(ret_ty, basic_type_int))
+        if(ret_ty->equal(basic_type_int))
         {
           ;//ok
-          assert(types_are_equal(ret_ty, left_ty) && types_are_equal(left_ty, right_ty));
+          assert(ret_ty->equal(left_ty) && left_ty->equal(right_ty));
         }
         else
         {
           success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  get_operator_printstr(op), get_type_printstr(arena, operands_ty));
+                                  get_operator_printstr(op), operands_ty->get_printstr(arena));
         }
       }
       break;
@@ -2664,38 +2664,38 @@ bool check_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
       case eOperator::logic_and:
       case eOperator::logic_or:
       {
-        if(types_are_equal(left_ty, basic_type_bool) && types_are_equal(left_ty, right_ty))
+        if(left_ty->equal(basic_type_bool) && left_ty->equal(right_ty))
         {
           ;//ok
           assert(ret_ty == basic_type_bool);
         }
         else
           success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  get_operator_printstr(op), get_type_printstr(arena, operands_ty));
+                                  get_operator_printstr(op), operands_ty->get_printstr(arena));
       }
       break;
       
       case eOperator::bit_and:
       case eOperator::bit_or:
       case eOperator::bit_xor:
-      if(types_are_equal(left_ty, basic_type_int) && types_are_equal(right_ty, basic_type_int))
+      if(left_ty->equal(basic_type_int) && right_ty->equal(basic_type_int))
       {
         ;//ok
       }
       else
         success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                get_operator_printstr(op), get_type_printstr(arena, operands_ty));
+                                get_operator_printstr(op), operands_ty->get_printstr(arena));
       break;
       
       case eOperator::bit_shift_left:
       case eOperator::bit_shift_right:
-      if(types_are_equal(left_ty, basic_type_int) && types_are_equal(right_ty, basic_type_char))
+      if(left_ty->equal(basic_type_int) && right_ty->equal(basic_type_char))
       {
         ;//ok
       }
       else
         success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                get_operator_printstr(op), get_type_printstr(arena, operands_ty));
+                                get_operator_printstr(op), operands_ty->get_printstr(arena));
       break;
       
       case eOperator::less:
@@ -2705,19 +2705,19 @@ bool check_types_bin_expr(MemoryArena* arena, AstNode* bin_expr)
       case eOperator::eq:
       case eOperator::not_eq:
       {
-        if(types_are_equal(left_ty, basic_type_int) ||
-           types_are_equal(left_ty, basic_type_char) ||
-           types_are_equal(left_ty, basic_type_float) ||
-           left_ty->kind == eType::pointer &&
-           types_are_equal(left_ty, right_ty))
+        if((left_ty->equal(basic_type_int) ||
+            left_ty->equal(basic_type_char) ||
+            left_ty->equal(basic_type_float) ||
+            (left_ty->kind == eType::pointer)) &&
+           left_ty->equal(right_ty))
         {
           ;//ok
-          assert(types_are_equal(ret_ty, basic_type_bool));
+          assert(ret_ty->equal(basic_type_bool));
         }
         else
         {
           success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  get_operator_printstr(op), get_type_printstr(arena, operands_ty));
+                                  get_operator_printstr(op), operands_ty->get_printstr(arena));
         }
       }
       break;
@@ -2746,35 +2746,34 @@ bool check_types_unr_expr(MemoryArena* arena, AstNode* unr_expr)
     switch(op)
     {
       case eOperator::logic_not:
-      if(types_are_equal(operand_ty, basic_type_bool))
+      if(operand_ty->equal(basic_type_bool))
       {
         ;//ok
         assert(ret_ty == basic_type_bool);
       }
       else
         success = compile_error(arena, unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                get_operator_printstr(op), get_type_printstr(arena, operand_ty));
+                                get_operator_printstr(op), operand_ty->get_printstr(arena));
       break;
       
       case eOperator::bit_not:
-      if(types_are_equal(operand_ty, basic_type_int))
+      if(operand_ty->equal(basic_type_int))
       {
         ;//ok
       }
       else
         success = compile_error(arena, unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                get_operator_printstr(op), get_type_printstr(arena, operand_ty));
+                                get_operator_printstr(op), operand_ty->get_printstr(arena));
       break;
       
       case eOperator::neg:
-      if(types_are_equal(operand_ty, basic_type_int) ||
-         types_are_equal(operand_ty, basic_type_float))
+      if(operand_ty->equal(basic_type_int) || operand_ty->equal(basic_type_float))
       {
         ;//ok
       }
       else
         success = compile_error(arena, unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                get_operator_printstr(op), get_type_printstr(arena, operand_ty));
+                                get_operator_printstr(op), operand_ty->get_printstr(arena));
       break;
     }
   }
@@ -2833,7 +2832,7 @@ bool check_types_assign(MemoryArena* arena, AstNode* assign)
 
   if(success = check_types_expr(arena, dest_expr) && check_types_expr(arena, source_expr))
   {
-    if(!type_unif(dest_expr->eval_ty, source_expr->eval_ty))
+    if(!dest_expr->eval_ty->unif(source_expr->eval_ty))
     {
       success = compile_error(arena, assign->src_loc, "type error (assignment)");
     }

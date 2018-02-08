@@ -646,13 +646,13 @@ bool ir_gen_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
   {
     cast->place = from_expr->place;
     
-    if(types_are_equal(to_type->eval_ty, from_expr->eval_ty) ||
+    if(to_type->eval_ty->equal(from_expr->eval_ty) ||
        ((to_type->eval_ty->kind == from_expr->eval_ty->kind) && (to_type->eval_ty->kind == eType::pointer)))
     {
       return success;
     }
     bool require_conv = true;
-    if(types_are_equal(to_type->eval_ty, basic_type_int))
+    if(to_type->eval_ty->equal(basic_type_int))
     {
       // int <- pointer
       require_conv = from_expr->eval_ty->kind != eType::pointer;
@@ -660,7 +660,7 @@ bool ir_gen_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
     else if(to_type->eval_ty->kind == eType::pointer)
     {
       // pointer <- int
-      require_conv = !types_are_equal(from_expr->eval_ty, basic_type_int);
+      require_conv = !from_expr->eval_ty->equal(basic_type_int);
     }
     if(require_conv)
     {
@@ -668,41 +668,41 @@ bool ir_gen_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
 
       eIrOp cast_op = eIrOp::None;
 
-      if(types_are_equal(to_type->eval_ty, basic_type_int))
+      if(to_type->eval_ty->equal(basic_type_int))
       {
-        if(types_are_equal(from_expr->eval_ty, basic_type_float))
+        if(from_expr->eval_ty->equal(basic_type_float))
         {
           cast_op = eIrOp::ftoi; // int <- float
         }
-        else if(types_are_equal(from_expr->eval_ty, basic_type_bool))
+        else if(from_expr->eval_ty->equal(basic_type_bool))
         {
           cast_op = eIrOp::btoi; // int <- bool
         }
-        else if(types_are_equal(from_expr->eval_ty, basic_type_char))
+        else if(from_expr->eval_ty->equal(basic_type_char))
         {
           cast_op = eIrOp::ctoi; // int <- char
         }
         else assert(0);
       }
-      else if(types_are_equal(to_type->eval_ty, basic_type_float))
+      else if(to_type->eval_ty->equal(basic_type_float))
       {
-        if(types_are_equal(from_expr->eval_ty, basic_type_int))
+        if(from_expr->eval_ty->equal(basic_type_int))
         {
           cast_op = eIrOp::itof; // float <- int
         }
         else assert(0);
       }
-      else if(types_are_equal(to_type->eval_ty, basic_type_char))
+      else if(to_type->eval_ty->equal(basic_type_char))
       {
-        if(types_are_equal(from_expr->eval_ty, basic_type_int))
+        if(from_expr->eval_ty->equal(basic_type_int))
         {
           cast_op = eIrOp::itoc; // char <- int
         }
         else assert(0);
       }
-      else if(types_are_equal(to_type->eval_ty, basic_type_bool))
+      else if(to_type->eval_ty->equal(basic_type_bool))
       {
-        if(types_are_equal(from_expr->eval_ty, basic_type_int))
+        if(from_expr->eval_ty->equal(basic_type_int))
         {
           cast_op = eIrOp::itob; // bool <- int
         }
@@ -1283,7 +1283,7 @@ int get_proc_arg_size(AstNode* args)
   {
     AstNode* var = KIND(li, eList::ast_node)->ast_node;
     Symbol* arg_object = var->var.decl_sym;
-    size += get_type_width(arg_object->ty);
+    size += arg_object->ty->set_width();
   }
 
   return size;
@@ -1518,21 +1518,21 @@ void DEBUG_print_ir_arg(String* text, IrArg* arg)
     
     case eSymbol::constant:
     {
-      if(types_are_equal(object->ty, basic_type_int) || types_are_equal(object->ty, basic_type_bool))
+      if(object->ty->equal(basic_type_int) || object->ty->equal(basic_type_bool))
       {
         text->printf("%d", object->int_val);
       }
-      else if(types_are_equal(object->ty, basic_type_float))
+      else if(object->ty->equal(basic_type_float))
       {
         text->printf("%f", object->float_val);
       }
-      else if(types_are_equal(object->ty, basic_type_char))
+      else if(object->ty->equal(basic_type_char))
       {
         char buf[3] = {0};
         Cstr::print_char(buf, object->char_val);
         text->printf("'%s'", buf);
       }
-      else if(types_are_equal(object->ty, basic_type_str))
+      else if(object->ty->equal(basic_type_str))
       {
         text->printf("\"%s\"", object->str_val);
       }
@@ -1550,7 +1550,7 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
   {
     case eIrStmt::assign:
     {
-      auto assign = &stmt->assign;
+      IrStmt_Assign* assign = &stmt->assign;
 
       switch(assign->op)
       {

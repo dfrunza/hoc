@@ -90,22 +90,6 @@ struct String
   bool  dump_to_file(char* file_path);
 };
 
-namespace Cstr
-{
-  bool  to_int(char* str, int* integer);
-  bool  contains_char(char* str, char c);
-  bool  start_with(char* str, char* prefix);
-  bool  match(char* str_a, char* str_b);
-  int   len(char* str);
-  char* copy(char* dest_str, char* src_str);
-  void  append(char* dest_str, char* src_str);
-  void  copy_substr(char* dest_str, char* begin_char, char* end_char);
-  bool  is_letter(char c);
-  bool  is_dec_digit(char c);
-  bool  is_hex_digit(char c);
-  void  print_char(char buf[3], char c);
-};
-
 namespace Platform
 {
   void*  alloc_memory(int size);
@@ -325,16 +309,16 @@ struct ListItem
 
   union
   {
-    void* elem;
-    AstNode* ast_node;
-    Symbol* symbol;
-    Scope* scope;
-    TypePair* type_pair;
-    IrStmt* ir_stmt;
+    void*       elem;
+    AstNode*    ast_node;
+    Symbol*     symbol;
+    Scope*      scope;
+    TypePair*   type_pair;
+    IrStmt*     ir_stmt;
     IrLeaderStmt* ir_leader_stmt;
-    Label* ir_label;
+    Label*      ir_label;
     BasicBlock* basic_block;
-    HFile* file;
+    HFile*      file;
   };
 };
 
@@ -421,51 +405,60 @@ struct Type
 
   union
   {
-    struct Type_var
+    struct Type_Var
     {
       Type* type;
     }
     var;
 
-    struct Type_basic
+    struct Type_Basic
     {
       eBasicType kind;
     }
     basic;
 
-    struct Type_pointer
+    struct Type_Pointer
     {
       Type* pointee;
     }
     pointer;
 
-    struct Type_proc
+    struct Type_Proc
     {
       Type* args;
       Type* ret;
     }
     proc;
 
-    struct Type_product
+    struct Type_Product
     {
       Type* left;
       Type* right;
     }
     product;
 
-    struct Type_array
+    struct Type_Array
     {
       int size;
       Type* elem;
     }
     array;
 
-    struct Type_typevar
+    struct Type_Typevar
     {
       int id;
     }
     typevar;
   };
+
+  bool  equal(Type* type_b);
+  int   set_width();
+  Type* copy(MemoryArena* arena);
+  Type* get_repr_type();
+  void  set_union(Type* type_b);
+  bool  unif(Type* type_b);
+  void  append_printstr(String* str);
+  char* get_printstr(MemoryArena* arena);
 };
 
 struct TypePair
@@ -522,30 +515,6 @@ enum struct eIrOp
 
   param,
 };
-
-internal inline
-bool is_ir_op_arithmetic(eIrOp op)
-{
-  return op >= eIrOp::add && op <= eIrOp::neg;
-}
-
-internal inline
-bool is_ir_op_relational(eIrOp op)
-{
-  return op >= eIrOp::eq && op <= eIrOp::logic_not;
-}
-
-internal inline
-bool is_ir_op_conv_func(eIrOp op)
-{
-  return op >= eIrOp::itof && op <= eIrOp::btoi;
-}
-
-internal inline
-bool is_ir_op_bitwise_op(eIrOp op)
-{
-  return op >= eIrOp::bit_and && op <= eIrOp::bit_shift_right;
-}
 
 struct Label
 {
@@ -617,7 +586,6 @@ enum struct eIrStmt
   goto_,
   cond_goto,
   call,
-  param,
   return_,
   nop,
 };
@@ -659,10 +627,10 @@ struct IrStmt
 
   union
   {
-    IrStmt_Assign assign;
-    IrStmt_Goto goto_;
+    IrStmt_Assign   assign;
+    IrStmt_Goto     goto_;
     IrStmt_CondGoto cond_goto;
-    IrStmt_Call call;
+    IrStmt_Call     call;
   };
 };
 
@@ -828,11 +796,11 @@ enum struct eAstNode
 
 struct AstNode
 {
-  eAstNode kind;
+  eAstNode   kind;
   SourceLoc* src_loc;
-  Type* ty;
-  Type* eval_ty;
-  IrArg* place;
+  Type*      ty;
+  Type*      eval_ty;
+  IrArg*     place;
 
   Label* label_true;
   Label* label_false;
@@ -1118,8 +1086,8 @@ struct Symbol
   bool is_live_on_exit;
   NextUse next_use;
 
-  // for natvis
-  struct Symbol_locations
+  // natvis
+  struct Symbol_Locations
   {
     X86Location* _[eX86Location::Count];
   }
@@ -1201,8 +1169,8 @@ struct X86Context
 
   X86Location memory;
 
-  // for natvis
-  struct X86Context_registers
+  // natvis
+  struct X86Context_Registers
   {
     X86Location* _[22];
   }

@@ -109,12 +109,12 @@ char* x86_make_type_directive(Type* type)
 {
   char* directv = "";
 
-  if(types_are_equal(type, basic_type_char))
+  if(type->equal(basic_type_char))
   {
     directv = "byte";
   }
-  else if(types_are_equal(type, basic_type_int) || types_are_equal(type, basic_type_float)
-          || types_are_equal(type, basic_type_bool) || (type->kind == eType::pointer) || (type->kind == eType::array))
+  else if(type->equal(basic_type_int) || type->equal(basic_type_float)
+          || type->equal(basic_type_bool) || (type->kind == eType::pointer) || (type->kind == eType::array))
   {
     directv = "dword";
   }
@@ -642,14 +642,14 @@ bool type_fits_into_register(Type* type, X86Location* reg)
 {
   bool result = false;
 
-  if(types_are_equal(type, basic_type_bool)
+  if(type->equal(basic_type_bool)
      || type->kind == eType::pointer || type->kind == eType::array)
   {
-    result = types_are_equal(reg->type, basic_type_int);
+    result = reg->type->equal(basic_type_int);
   }
   else
   {
-    result = types_are_equal(type, reg->type);
+    result = type->equal(reg->type);
   }
 
   return result;
@@ -830,7 +830,7 @@ X86Operand* x86_make_object_memory_operand(X86Context* context, Symbol* object)
 
   if(object->kind == eSymbol::constant)
   {
-    if(types_are_equal(object->ty, basic_type_str))
+    if(object->ty->equal(basic_type_str))
     {
       operand = x86_make_object_address_operand(context, object);
     }
@@ -841,21 +841,21 @@ X86Operand* x86_make_object_memory_operand(X86Context* context, Symbol* object)
 
       struct X86Operand_constant* constant = &operand->constant;
 
-      if(types_are_equal(object->ty, basic_type_int))
+      if(object->ty->equal(basic_type_int))
       {
         constant->kind = eX86Constant::int_;
         constant->int_val = object->int_val;
       }
-      else if(types_are_equal(object->ty, basic_type_float))
+      else if(object->ty->equal(basic_type_float))
       {
         operand = x86_make_index_operand(context, eX86Operand::memory, object);
       }
-      else if(types_are_equal(object->ty, basic_type_char))
+      else if(object->ty->equal(basic_type_char))
       {
         constant->kind = eX86Constant::char_;
         constant->char_val = object->char_val;
       }
-      else if(types_are_equal(object->ty, basic_type_bool))
+      else if(object->ty->equal(basic_type_bool))
       {
         constant->kind = eX86Constant::int_;
         constant->int_val = object->int_val;
@@ -901,13 +901,13 @@ void x86_emit_mov(X86Context* context, Type* type, X86Operand* dest_operand, X86
 {
   eX86Stmt mov_op = eX86Stmt::None;
 
-  if(types_are_equal(type, basic_type_int) || types_are_equal(type, basic_type_bool)
-     || types_are_equal(type, basic_type_char)
+  if(type->equal(basic_type_int) || type->equal(basic_type_bool)
+     || type->equal(basic_type_char)
      || (type->kind == eType::pointer) || (type->kind == eType::array))
   {
     mov_op = eX86Stmt::mov;
   }
-  else if(types_are_equal(type, basic_type_float))
+  else if(type->equal(basic_type_float))
   {
     mov_op = eX86Stmt::movss;
   }
@@ -993,8 +993,8 @@ eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
 {
   eX86Stmt x86_opcode = eX86Stmt::None;
 
-  if(types_are_equal(type, basic_type_int) || types_are_equal(type, basic_type_bool)
-     || types_are_equal(type, basic_type_char)
+  if(type->equal(basic_type_int) || type->equal(basic_type_bool)
+     || type->equal(basic_type_char)
      || (type->kind == eType::pointer) || (type->kind == eType::array))
   {
     switch(ir_op)
@@ -1062,7 +1062,7 @@ eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
       default: assert(0);
     }
   }
-  else if(types_are_equal(type, basic_type_float))
+  else if(type->equal(basic_type_float))
   {
     switch(ir_op)
     {
@@ -1274,7 +1274,7 @@ void x86_gen_divmod_op(X86Context* context, IrStmt_Assign* assign)
 
   assert(assign->op == eIrOp::div || assign->op == eIrOp::mod);
 
-  if(types_are_equal(arg1->object->ty, basic_type_int))
+  if(arg1->object->ty->equal(basic_type_int))
   {
     X86Location* remainder_loc = &context->edx;
     x86_save_register_all_sizes(context, remainder_loc, true);
@@ -1312,7 +1312,7 @@ void x86_gen_divmod_op(X86Context* context, IrStmt_Assign* assign)
     }
     else assert(0);
   }
-  else if(types_are_equal(arg1->object->ty, basic_type_char))
+  else if(arg1->object->ty->equal(basic_type_char))
   {
     fail("TODO");
   }
@@ -1501,8 +1501,8 @@ void x86_gen_bin_expr(X86Context* context, IrStmt_Assign* assign)
   IrArg* arg1 = assign->arg1;
   IrArg* arg2 = assign->arg2;
 
-  if((types_are_equal(result->object->ty, basic_type_int)
-      || types_are_equal(result->object->ty, basic_type_char))
+  if((result->object->ty->equal(basic_type_int)
+      || result->object->ty->equal(basic_type_char))
      && (assign->op == eIrOp::div || assign->op == eIrOp::mod))
   {
     if(assign->op == eIrOp::mod)
@@ -1589,7 +1589,7 @@ void x86_gen_unr_expr(X86Context* context, IrStmt_Assign* assign)
       x86_load_object(context, arg1->object, result_loc);
     }
 
-    if(assign->op == eIrOp::neg && types_are_equal(arg1->object->ty, basic_type_float))
+    if(assign->op == eIrOp::neg && arg1->object->ty->equal(basic_type_float))
     {
       X86Stmt* x86_stmt = x86_new_stmt(context, eX86Stmt::mulss);
       x86_stmt->operand1 = x86_make_register_operand(context, result_loc);
@@ -1711,13 +1711,13 @@ void x86_gen_cond_goto(X86Context* context, IrStmt_CondGoto* cond_goto)
   }
 
   X86Stmt* cmp_stmt = 0;
-  if(types_are_equal(arg1->object->ty, basic_type_int)
-    || types_are_equal(arg1->object->ty, basic_type_char)
-    || types_are_equal(arg1->object->ty, basic_type_bool))
+  if(arg1->object->ty->equal(basic_type_int)
+    || arg1->object->ty->equal(basic_type_char)
+    || arg1->object->ty->equal(basic_type_bool))
   {
     cmp_stmt = x86_new_stmt(context, eX86Stmt::cmp);
   }
-  else if(types_are_equal(arg1->object->ty, basic_type_float))
+  else if(arg1->object->ty->equal(basic_type_float))
   {
     cmp_stmt = x86_new_stmt(context, eX86Stmt::ucomiss);
   }
@@ -1750,7 +1750,7 @@ void x86_gen_call(X86Context* context, IrStmt_Call* call)
     stmt->operand1 = x86_make_register_operand(context, &context->esp);
     stmt->operand2 = x86_make_int_constant_operand(context, call->retvar->allocd_size);
 
-    if(!types_are_equal(call->retvar->ty, basic_type_void))
+    if(!call->retvar->ty->equal(basic_type_void))
     {
       clean_register_all_sizes(context, &context->eax);
       set_exclusive_object_location(context, call->retvar, &context->eax);

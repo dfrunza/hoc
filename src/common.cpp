@@ -173,128 +173,147 @@ int bitpos(int k)
   return (k & 1) ? pos : 0;
 }
 
-bool Cstr::is_letter(char c)
+namespace Cstr
 {
-  return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
-}
-
-bool Cstr::is_dec_digit(char c)
-{
-  return '0' <= c && c <= '9';
-}
-
-bool Cstr::is_hex_digit(char c)
-{
-  return ('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
-}
-
-bool Cstr::to_int(char* str, int* integer)
-{
-  bool negative = false;
-
-  if(*str == '-')
+  bool is_letter(char c)
   {
-    negative = true;
-    str++;
+    return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
   }
 
-  char c = *str++;
-  if(Cstr::is_dec_digit(c))
+  bool is_dec_digit(char c)
   {
-    int result = (int)(c - '0');
+    return '0' <= c && c <= '9';
+  }
 
-    for(c = *str++; c != '\0'; c = *str++)
+  bool is_hex_digit(char c)
+  {
+    return ('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
+  }
+
+  bool to_int(char* str, int* integer)
+  {
+    bool negative = false;
+
+    if(*str == '-')
     {
-      if(Cstr::is_dec_digit(c))
-      {
-        int digit = (int)(c - '0');
-        result = result*10 + digit;
-      }
-      else
-        return false;
+      negative = true;
+      str++;
     }
 
-    if(negative)
-      result = -result;
-    *integer = result;
-  } else
-    return false;
+    char c = *str++;
+    if(is_dec_digit(c))
+    {
+      int result = (int)(c - '0');
 
-  return true;
-}
+      for(c = *str++; c != '\0'; c = *str++)
+      {
+        if(is_dec_digit(c))
+        {
+          int digit = (int)(c - '0');
+          result = result*10 + digit;
+        }
+        else
+          return false;
+      }
 
-bool Cstr::contains_char(char* str, char c)
-{
-  bool result = false;
-  while(*str && !result)
-  {
-    result = (*str == c);
-    str++;
+      if(negative)
+        result = -result;
+      *integer = result;
+    } else
+      return false;
+
+    return true;
   }
-  return result;
-}
 
-bool Cstr::start_with(char* str, char* prefix)
-{
-  while(*str == *prefix)
+  bool contains_char(char* str, char c)
   {
-    str++;
-    prefix++;
-    if(*prefix == '\0')
-      break;
+    bool result = false;
+    while(*str && !result)
+    {
+      result = (*str == c);
+      str++;
+    }
+    return result;
   }
-  bool result = (*prefix == '\0');
-  return result;
-}
 
-bool Cstr::match(char* str_a, char* str_b)
-{
-  while(*str_a == *str_b)
+  bool start_with(char* str, char* prefix)
   {
-    str_a++;
-    str_b++;
-    if(*str_a == '\0')
-      break;
+    while(*str == *prefix)
+    {
+      str++;
+      prefix++;
+      if(*prefix == '\0')
+        break;
+    }
+    bool result = (*prefix == '\0');
+    return result;
   }
-  bool result = (*str_a == *str_b);
-  return result;
-}
 
-int Cstr::len(char* str)
-{
-  int len = 0;
-  while(*str++ != 0)
-    len++;
-  return len;
-}
+  bool match(char* str_a, char* str_b)
+  {
+    while(*str_a == *str_b)
+    {
+      str_a++;
+      str_b++;
+      if(*str_a == '\0')
+        break;
+    }
+    bool result = (*str_a == *str_b);
+    return result;
+  }
 
-char* Cstr::copy(char* dest_str, char* src_str)
-{
-  do
-    *dest_str++ = *src_str++;
-  while(*src_str);
-  return dest_str;
-}
+  int len(char* str)
+  {
+    int len = 0;
+    while(*str++ != 0)
+      len++;
+    return len;
+  }
 
-void Cstr::append(char* dest_str, char* src_str)
-{
-  while(*dest_str)
-    dest_str++;
+  char* copy(char* dest_str, char* src_str)
+  {
+    do
+      *dest_str++ = *src_str++;
+    while(*src_str);
+    return dest_str;
+  }
 
-  do
-    *dest_str++ = *src_str++;
-  while(*src_str);
-  *dest_str = '\0';
-}
+  void append(char* dest_str, char* src_str)
+  {
+    while(*dest_str)
+      dest_str++;
 
-void Cstr::copy_substr(char* dest_str, char* begin_char, char* end_char)
-{
-  char* src_str = begin_char;
+    do
+      *dest_str++ = *src_str++;
+    while(*src_str);
+    *dest_str = '\0';
+  }
 
-  do
-    *dest_str++ = *src_str++;
-  while(src_str <= end_char);
-}
+  void copy_substr(char* dest_str, char* begin_char, char* end_char)
+  {
+    char* src_str = begin_char;
+
+    do
+      *dest_str++ = *src_str++;
+    while(src_str <= end_char);
+  }
+
+  void print_char(char buf[3], char c)
+  {
+    if(c == '\0')
+      copy(buf, "\\0");
+    else if(c == '\t')
+      copy(buf, "\\t");
+    else if(c == '\n')
+      copy(buf, "\\n");
+    else if(c == '\r')
+      copy(buf, "\\r");
+    else if(c == '\'')
+      copy(buf, "\\'");
+    else
+      *buf = c;
+  }
+} // Cstr::
 
 /* TODO: Check arena boundaries in the str_* functions */
 
@@ -414,22 +433,6 @@ char* String::cap()
   assert(end < (char*)arena->cap);
   arena->str = 0;
   return head;
-}
-
-void Cstr::print_char(char buf[3], char c)
-{
-  if(c == '\0')
-    Cstr::copy(buf, "\\0");
-  else if(c == '\t')
-    Cstr::copy(buf, "\\t");
-  else if(c == '\n')
-    Cstr::copy(buf, "\\n");
-  else if(c == '\r')
-    Cstr::copy(buf, "\\r");
-  else if(c == '\'')
-    Cstr::copy(buf, "\\'");
-  else
-    *buf = c;
 }
 
 char* Platform::path_find_leaf(char* file_path)

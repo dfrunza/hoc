@@ -1,14 +1,5 @@
 global_var int tempvar_id;
 
-global_var Type* basic_type_bool;
-global_var Type* basic_type_int;
-global_var Type* basic_type_char;
-global_var Type* basic_type_float;
-global_var Type* basic_type_void;
-global_var Type* basic_type_str;
-global_var List* subst_list;
-global_var int typevar_id = 1;
-
 global_var int last_label_id;
 
 global_var NextUse NextUse_None = max_int(); // infinity
@@ -134,23 +125,31 @@ void add_object_to_memory(X86Context* context, Symbol* object);
 bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text, String** x86_text)
 {
   MemoryArena* gp_arena = MemoryArena::push(&arena, 2*MEGABYTE);
+  Typesys typesys = {};
+  typesys.init(MemoryArena::push(&arena, 2*MEGABYTE));
 
-  basic_type_bool = new_basic_type(gp_arena, eBasicType::bool_);
-  basic_type_int = new_basic_type(gp_arena, eBasicType::int_);
-  basic_type_char = new_basic_type(gp_arena, eBasicType::char_);
-  basic_type_float = new_basic_type(gp_arena, eBasicType::float_);
-  basic_type_void = new_basic_type(gp_arena, eBasicType::void_);
-  basic_type_str = new_array_type(gp_arena, 0, 1, basic_type_char);
-  subst_list = List::create(gp_arena, eList::type_pair);
+  SymbolContext sym_context = {};
+  sym_context.basic_type_bool  = typesys.basic_type_bool;
+  sym_context.basic_type_int   = typesys.basic_type_int;
+  sym_context.basic_type_char  = typesys.basic_type_char;
+  sym_context.basic_type_float = typesys.basic_type_float;
+  sym_context.basic_type_void  = typesys.basic_type_void;
+  sym_context.basic_type_str   = typesys.basic_type_str;
 
-  SymbolContext sym_context = {0};
   sym_context.gp_arena = gp_arena;
   sym_context.sym_arena = MemoryArena::push(&arena, 2*MEGABYTE);
   sym_context.nesting_depth = -1;
   sym_context.data_alignment = 4;
   sym_context.scopes.init(sym_context.sym_arena, eList::scope);
 
-  IrContext ir_context = {0};
+  IrContext ir_context = {};
+  ir_context.basic_type_bool  = typesys.basic_type_bool;
+  ir_context.basic_type_int   = typesys.basic_type_int;
+  ir_context.basic_type_char  = typesys.basic_type_char;
+  ir_context.basic_type_float = typesys.basic_type_float;
+  ir_context.basic_type_void  = typesys.basic_type_void;
+  ir_context.basic_type_str   = typesys.basic_type_str;
+
   ir_context.gp_arena = gp_arena;
   ir_context.stmt_arena = MemoryArena::push(&arena, 2*MEGABYTE);
   ir_context.stmt_array = (IrStmt*)ir_context.stmt_arena->base;
@@ -159,7 +158,14 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_context.label_list = List::create(ir_context.gp_arena, eList::ir_label);
   ir_context.data_alignment = 4;
 
-  X86Context x86_context = {0};
+  X86Context x86_context = {};
+  x86_context.basic_type_bool  = typesys.basic_type_bool;
+  x86_context.basic_type_int   = typesys.basic_type_int;
+  x86_context.basic_type_char  = typesys.basic_type_char;
+  x86_context.basic_type_float = typesys.basic_type_float;
+  x86_context.basic_type_void  = typesys.basic_type_void;
+  x86_context.basic_type_str   = typesys.basic_type_str;
+
   x86_context.gp_arena = gp_arena;
   x86_context.stmt_arena = MemoryArena::push(&arena, 2*MEGABYTE);
   x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
@@ -171,29 +177,25 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_context.x86_context = &x86_context;
   sym_context.x86_context = &x86_context;
 
-  Parser* parser = parser_new(gp_arena);
+  Parser* parser = Parser::create(gp_arena);
   HFile* file = Platform::file_open(gp_arena, file_path);
-  parser_set_input(parser, hoc_text, file);
+  parser->set_input(hoc_text, file);
 
-  if(!parse_module(parser))
+  if(!parser->parse_module())
   {
     return false;
   }
 
   AstNode* module = parser->module;
 
-  if(!(sym_module(&sym_context, module) &&
-       set_types_module(gp_arena, module) &&
-       eval_types_module(gp_arena, module) &&
-       resolve_types_module(gp_arena, module) &&
-       check_types_module(gp_arena, module)))
+  if(!(sym_context.process(module) && typesys.process(module)))
   {
     return false;
   }
 
-  ir_context.bool_true = new_const_object_int(&sym_context, 0, 1);
-  ir_context.bool_false = new_const_object_int(&sym_context, 0, 0);
-  x86_context.float_minus_one = new_const_object_float(&sym_context, 0, -1.0);
+  ir_context.bool_true = sym_context.create_const_object_int(0, 1);
+  ir_context.bool_false = sym_context.create_const_object_int(0, 0);
+  x86_context.float_minus_one = sym_context.create_const_object_float(0, -1.0);
 
   if(!ir_gen_module(&ir_context, module))
   {

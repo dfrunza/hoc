@@ -301,7 +301,7 @@ void reset_ir_context(IrContext* ir_context)
 IrArg* ir_arg_new_temp_object(IrContext* ir_context, Scope* scope, Type* ty, SourceLoc* src_loc)
 {
   IrArg* arg = mem_push_struct(ir_context->gp_arena, IrArg);
-  arg->object = new_temp_object(ir_context, scope, ty, src_loc);
+  arg->object = create_temp_object(ir_context, scope, ty, src_loc);
 
   return arg;
 }
@@ -501,7 +501,7 @@ void ir_gen_call(IrContext* ir_context, Scope* scope, AstNode* call)
   assert(KIND(args, eAstNode::node_list));
   ir_gen_actual_args(ir_context, scope, args);
 
-  if(is_extern_proc(proc))
+  if(proc->proc.is_extern())
   {
     // right-to-left (stdcall)
     alloc_data_object(ir_context, call->call.retvar, call->call.param_scope);
@@ -555,12 +555,12 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
     {
       index->index.place = array_expr->index.place;
 
-      IrArg* offset = index->index.i_place = ir_arg_new_temp_object(ir_context, scope, basic_type_int, index->src_loc);
+      IrArg* offset = index->index.i_place = ir_arg_new_temp_object(ir_context, scope, ir_context->basic_type_int, index->src_loc);
 
       Type* index_ty = index->ty;
       int size_val = KIND(index_ty, eType::array)->array.size;
 
-      Symbol* size_constant = new_const_object_int(ir_context->sym_context, index->src_loc, size_val);
+      Symbol* size_constant = ir_context->sym_context->create_const_object_int(index->src_loc, size_val);
       IrArg* dim_size = ir_arg_new_existing_object(ir_context, size_constant);
 
       if(size_val > 0)
@@ -584,12 +584,13 @@ bool ir_gen_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
 
   if(success = ir_gen_index(ir_context, scope, index))
   {
-    IrArg* offset = index->index.offset = ir_arg_new_temp_object(ir_context, scope, basic_type_int, index->src_loc);
+    IrArg* offset = index->index.offset = ir_arg_new_temp_object(ir_context, scope,
+                                                                 ir_context->basic_type_int, index->src_loc);
 
     assert(index->index.ndim == 1);
     int width_val = index->eval_ty->width;
 
-    Symbol* width_constant = new_const_object_int(ir_context->sym_context, index->src_loc, width_val);
+    Symbol* width_constant = ir_context->sym_context->create_const_object_int(index->src_loc, width_val);
     IrArg* width = ir_arg_new_existing_object(ir_context, width_constant);
 
     ir_emit_assign(ir_context, eIrOp::mul, index->index.i_place, width, offset);
@@ -653,7 +654,7 @@ bool ir_gen_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
       return success;
     }
     bool require_conv = true;
-    if(to_type->eval_ty->equal(basic_type_int))
+    if(to_type->eval_ty->equal(ir_context->basic_type_int))
     {
       // int <- pointer
       require_conv = from_expr->eval_ty->kind != eType::pointer;
@@ -661,7 +662,7 @@ bool ir_gen_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
     else if(to_type->eval_ty->kind == eType::pointer)
     {
       // pointer <- int
-      require_conv = !from_expr->eval_ty->equal(basic_type_int);
+      require_conv = !from_expr->eval_ty->equal(ir_context->basic_type_int);
     }
     if(require_conv)
     {
@@ -669,41 +670,41 @@ bool ir_gen_cast(IrContext* ir_context, Scope* scope, AstNode* cast)
 
       eIrOp cast_op = eIrOp::None;
 
-      if(to_type->eval_ty->equal(basic_type_int))
+      if(to_type->eval_ty->equal(ir_context->basic_type_int))
       {
-        if(from_expr->eval_ty->equal(basic_type_float))
+        if(from_expr->eval_ty->equal(ir_context->basic_type_float))
         {
           cast_op = eIrOp::ftoi; // int <- float
         }
-        else if(from_expr->eval_ty->equal(basic_type_bool))
+        else if(from_expr->eval_ty->equal(ir_context->basic_type_bool))
         {
           cast_op = eIrOp::btoi; // int <- bool
         }
-        else if(from_expr->eval_ty->equal(basic_type_char))
+        else if(from_expr->eval_ty->equal(ir_context->basic_type_char))
         {
           cast_op = eIrOp::ctoi; // int <- char
         }
         else assert(0);
       }
-      else if(to_type->eval_ty->equal(basic_type_float))
+      else if(to_type->eval_ty->equal(ir_context->basic_type_float))
       {
-        if(from_expr->eval_ty->equal(basic_type_int))
+        if(from_expr->eval_ty->equal(ir_context->basic_type_int))
         {
           cast_op = eIrOp::itof; // float <- int
         }
         else assert(0);
       }
-      else if(to_type->eval_ty->equal(basic_type_char))
+      else if(to_type->eval_ty->equal(ir_context->basic_type_char))
       {
-        if(from_expr->eval_ty->equal(basic_type_int))
+        if(from_expr->eval_ty->equal(ir_context->basic_type_int))
         {
           cast_op = eIrOp::itoc; // char <- int
         }
         else assert(0);
       }
-      else if(to_type->eval_ty->equal(basic_type_bool))
+      else if(to_type->eval_ty->equal(ir_context->basic_type_bool))
       {
-        if(from_expr->eval_ty->equal(basic_type_int))
+        if(from_expr->eval_ty->equal(ir_context->basic_type_int))
         {
           cast_op = eIrOp::itob; // bool <- int
         }
@@ -735,7 +736,7 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         expr->label_false = label_gen_new(ir_context->gp_arena);
         expr->label_next = label_gen_new(ir_context->gp_arena);
 
-        Symbol* result_object = new_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
+        Symbol* result_object = create_temp_object(ir_context, scope, expr->eval_ty, expr->src_loc);
         result_object->is_live_on_exit = true;
         result_object->is_live = true;
         expr->place = ir_arg_new_existing_object(ir_context, result_object);
@@ -767,7 +768,7 @@ bool ir_gen_expr(IrContext* ir_context, Scope* scope, AstNode* expr)
         expr->label_false = label_gen_new(ir_context->gp_arena);
         expr->label_next = label_gen_new(ir_context->gp_arena);
 
-        Symbol* result_object = new_temp_object(ir_context, scope,  expr->eval_ty, expr->src_loc);
+        Symbol* result_object = create_temp_object(ir_context, scope,  expr->eval_ty, expr->src_loc);
         result_object->is_live_on_exit = true;
         result_object->is_live = true;
         expr->place = ir_arg_new_existing_object(ir_context, result_object);
@@ -1302,7 +1303,7 @@ bool ir_gen_proc(IrContext* ir_context, Scope* scope, AstNode* proc)
   Label* label_name = &proc->proc.label_name;
   label_name->stmt_nr = 0;
 
-  if(is_extern_proc(proc))
+  if(proc->proc.is_extern())
   {
     int arg_size = get_proc_arg_size(proc->proc.args);
     char* name = proc->proc.name;
@@ -1505,7 +1506,7 @@ void DEBUG_print_ir_op(String* text, eIrOp op)
   }
 }
 
-void DEBUG_print_ir_arg(String* text, IrArg* arg)
+void DEBUG_print_ir_arg(IrContext* ir_context, String* text, IrArg* arg)
 {
   Symbol* object = arg->object;
 
@@ -1519,21 +1520,21 @@ void DEBUG_print_ir_arg(String* text, IrArg* arg)
     
     case eSymbol::constant:
     {
-      if(object->ty->equal(basic_type_int) || object->ty->equal(basic_type_bool))
+      if(object->ty->equal(ir_context->basic_type_int) || object->ty->equal(ir_context->basic_type_bool))
       {
         text->printf("%d", object->int_val);
       }
-      else if(object->ty->equal(basic_type_float))
+      else if(object->ty->equal(ir_context->basic_type_float))
       {
         text->printf("%f", object->float_val);
       }
-      else if(object->ty->equal(basic_type_char))
+      else if(object->ty->equal(ir_context->basic_type_char))
       {
         char buf[3] = {0};
         Cstr::print_char(buf, object->char_val);
         text->printf("'%s'", buf);
       }
-      else if(object->ty->equal(basic_type_str))
+      else if(object->ty->equal(ir_context->basic_type_str))
       {
         text->printf("\"%s\"", object->str_val);
       }
@@ -1545,7 +1546,7 @@ void DEBUG_print_ir_arg(String* text, IrArg* arg)
   }
 }
 
-void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
+void DEBUG_print_ir_stmt(IrContext* ir_context, String* text, IrStmt* stmt)
 {
   switch(stmt->kind)
   {
@@ -1557,9 +1558,9 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
       {
         case eIrOp::None:
         {
-          DEBUG_print_ir_arg(text, assign->result);
+          DEBUG_print_ir_arg(ir_context, text, assign->result);
           text->printf(" = ");
-          DEBUG_print_ir_arg(text, assign->arg1);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg1);
         }
         break;
         
@@ -1585,13 +1586,13 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         case eIrOp::bit_shift_left:
         case eIrOp::bit_shift_right:
         {
-          DEBUG_print_ir_arg(text, assign->result);
+          DEBUG_print_ir_arg(ir_context, text, assign->result);
           text->printf(" = ");
-          DEBUG_print_ir_arg(text, assign->arg1);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg1);
           text->printf(" ");
           DEBUG_print_ir_op(text, assign->op);
           text->printf(" ");
-          DEBUG_print_ir_arg(text, assign->arg2);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg2);
         }
         break;
         
@@ -1604,57 +1605,57 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         case eIrOp::ctoi:
         case eIrOp::btoi:
         {
-          DEBUG_print_ir_arg(text, assign->result);
+          DEBUG_print_ir_arg(ir_context, text, assign->result);
           text->printf(" = ");
           DEBUG_print_ir_op(text, assign->op);
           text->printf(" ");
-          DEBUG_print_ir_arg(text, assign->arg1);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg1);
         }
         break;
         
         case eIrOp::index_dest:
         {
-          DEBUG_print_ir_arg(text, assign->result);
+          DEBUG_print_ir_arg(ir_context, text, assign->result);
           text->printf("[");
-          DEBUG_print_ir_arg(text, assign->arg2);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg2);
           text->printf("] = ");
-          DEBUG_print_ir_arg(text, assign->arg1);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg1);
         }
         break;
         
         case eIrOp::index_source:
         {
-          DEBUG_print_ir_arg(text, assign->result);
+          DEBUG_print_ir_arg(ir_context, text, assign->result);
           text->printf(" = ");
-          DEBUG_print_ir_arg(text, assign->arg1);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg1);
           text->printf("[");
-          DEBUG_print_ir_arg(text, assign->arg2);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg2);
           text->printf("]");
         }
         break;
 
         case eIrOp::address_of:
         {
-          DEBUG_print_ir_arg(text, assign->result);
+          DEBUG_print_ir_arg(ir_context, text, assign->result);
           text->printf(" = &");
-          DEBUG_print_ir_arg(text, assign->arg1);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg1);
         }
         break;
 
         case eIrOp::deref_dest:
         {
           text->printf("^");
-          DEBUG_print_ir_arg(text, assign->result);
+          DEBUG_print_ir_arg(ir_context, text, assign->result);
           text->printf(" = ");
-          DEBUG_print_ir_arg(text, assign->arg1);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg1);
         }
         break;
 
         case eIrOp::deref_source:
         {
-          DEBUG_print_ir_arg(text, assign->result);
+          DEBUG_print_ir_arg(ir_context, text, assign->result);
           text->printf(" = ^");
-          DEBUG_print_ir_arg(text, assign->arg1);
+          DEBUG_print_ir_arg(ir_context, text, assign->arg1);
         }
         break;
         
@@ -1667,11 +1668,11 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
     {
       IrStmt_CondGoto* cond_goto = &stmt->cond_goto;
       text->printf("if ");
-      DEBUG_print_ir_arg(text, cond_goto->arg1);
+      DEBUG_print_ir_arg(ir_context, text, cond_goto->arg1);
       text->printf(" ");
       DEBUG_print_ir_op(text, cond_goto->relop);
       text->printf(" ");
-      DEBUG_print_ir_arg(text, cond_goto->arg2);
+      DEBUG_print_ir_arg(ir_context, text, cond_goto->arg2);
       text->printf(" goto %s", cond_goto->goto_label->name);
     }
     break;
@@ -1709,7 +1710,7 @@ void DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
   }
 }
 
-void DEBUG_print_basic_block(MemoryArena* arena, String* text, BasicBlock* bb)
+void DEBUG_print_basic_block(IrContext* ir_context, String* text, BasicBlock* bb)
 {
   IrStmt** stmt_array = bb->stmt_array;
   for(int i = 0; i < bb->stmt_count; i++)
@@ -1720,16 +1721,16 @@ void DEBUG_print_basic_block(MemoryArena* arena, String* text, BasicBlock* bb)
       text->printfln("%5s:", stmt->label->name);
     }
     text->printf("%5d: ", i);
-    DEBUG_print_ir_stmt(text, stmt);
+    DEBUG_print_ir_stmt(ir_context, text, stmt);
     text->println();
   }
 }
 
-void DEBUG_print_ir_code(MemoryArena* arena, List* procs, char* file_path)
+void DEBUG_print_ir_code(IrContext* ir_context, List* procs, char* file_path)
 {
-  MemoryArena::begin_temp_memory(&arena);
+  MemoryArena::begin_temp_memory(&ir_context->gp_arena);
   String text = {};
-  text.init(arena);
+  text.init(ir_context->gp_arena);
 
   for(ListItem* li = procs->first;
       li;
@@ -1737,7 +1738,7 @@ void DEBUG_print_ir_code(MemoryArena* arena, List* procs, char* file_path)
   {
     AstNode* proc = KIND(li, eList::ast_node)->ast_node;
 
-    if(is_extern_proc(proc))
+    if(proc->proc.is_extern())
     {
       ;//ok
     }
@@ -1751,13 +1752,13 @@ void DEBUG_print_ir_code(MemoryArena* arena, List* procs, char* file_path)
           li = li->next)
       {
         BasicBlock* bb = KIND(li, eList::basic_block)->basic_block;
-        DEBUG_print_basic_block(arena, &text, bb);
+        DEBUG_print_basic_block(ir_context, &text, bb);
       }
     }
   }
 
   text.dump_to_file(file_path);
-  MemoryArena::end_temp_memory(&arena);
+  MemoryArena::end_temp_memory(&ir_context->gp_arena);
 }
 
 IrLeaderStmt* get_leader_stmt(List* leaders, int stmt_nr)
@@ -2040,5 +2041,5 @@ void ir_partition_basic_blocks_module(IrContext* ir_context, AstNode* module)
   }
 
   if(DEBUG_enabled)
-    DEBUG_print_ir_code(ir_context->gp_arena, &module->module.procs, "./module.ir");
+    DEBUG_print_ir_code(ir_context, &module->module.procs, "./module.ir");
 }

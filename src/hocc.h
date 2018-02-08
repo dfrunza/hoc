@@ -357,6 +357,10 @@ struct Scope
   int allocd_size; // aligned
 
   List decl_syms;
+
+  Scope* find(eScope kind);
+  Symbol* lookup(char* name);
+  Symbol* lookup_decl(char* name);
 };
 
 enum struct eLoopCtrl
@@ -459,12 +463,137 @@ struct Type
   bool  unif(Type* type_b);
   void  append_printstr(String* str);
   char* get_printstr(MemoryArena* arena);
+  bool  resolve(Type** resolved_type);
 };
 
-struct TypePair
+struct Typesys
 {
-  Type* key;
-  Type* value;
+  struct TypePair
+  {
+    Type* key;
+    Type* value;
+  };
+
+  MemoryArena* arena;
+  List* subst_list;
+  int typevar_id = 1;
+
+  Type* basic_type_bool;
+  Type* basic_type_int;
+  Type* basic_type_char;
+  Type* basic_type_float;
+  Type* basic_type_void;
+  Type* basic_type_str;
+
+  Type* create_var_type(Type* var_type);
+  Type* create_basic_type(eBasicType kind);
+  Type* create_proc_type(Type* args, Type* ret);
+  Type* create_typevar();
+  Type* create_product_type(Type* left, Type* right);
+  Type* create_array_type(int size, Type* elem);
+  Type* create_pointer_type(Type* pointee);
+
+  void  init(MemoryArena* arena);
+  Type* type_subst(Type* type);
+  TypePair* find_pair(Type* type);
+  Type* make_args_type(AstNode* args);
+  bool  process(AstNode* module);
+  TypePair* create_type_pair(Type* key, Type* value);
+
+  bool set_type_array(AstNode* array);
+  bool set_type_pointer(AstNode* pointer);
+  bool set_type_type(AstNode* type);
+  bool set_type_var(AstNode* var);
+  bool set_type_bin_expr(AstNode* bin_expr);
+  bool set_type_unr_expr(AstNode* unr_expr);
+  bool set_type_actual_arg(AstNode* call_arg);
+  bool set_type_id(AstNode* id);
+  bool set_type_actual_args(AstNode* args);
+  bool set_type_call(AstNode* call);
+  bool set_type_lit(AstNode* lit);
+  bool set_type_index(AstNode* index);
+  bool set_type_cast(AstNode* cast);
+  bool set_type_assign(AstNode* assign);
+  bool set_type_expr(AstNode* expr);
+  bool set_type_return(AstNode* ret);
+  bool set_type_if(AstNode* if_);
+  bool set_type_do_while(AstNode* do_while);
+  bool set_type_while(AstNode* while_);
+  bool set_type_block(AstNode* block);
+  bool set_type_block_stmt(AstNode* stmt);
+  bool set_type_formal_args(AstNode* args);
+  bool set_type_proc(AstNode* proc);
+  bool set_type_module_stmt(AstNode* stmt);
+  bool set_type_module(AstNode* module);
+
+  bool eval_type_array(AstNode* array);
+  bool eval_type_pointer(AstNode* pointer);
+  bool eval_type_type(AstNode* type);
+  bool eval_type_cast(AstNode* cast);
+  bool eval_type_bin_expr(AstNode* bin_expr);
+  bool eval_type_id(AstNode* id);
+  bool eval_type_unr_expr(AstNode* unr_expr);
+  bool eval_type_var(AstNode* var);
+  bool eval_type_formal_args(AstNode* args);
+  bool eval_type_actual_args(AstNode* args);
+  bool eval_type_call(AstNode* call);
+  bool eval_type_index(AstNode* index);
+  bool eval_type_assign(AstNode* assign);
+  bool eval_type_expr(AstNode* expr);
+  bool eval_type_if(AstNode* if_);
+  bool eval_type_block(AstNode* block);
+  bool eval_type_do_while(AstNode* do_while);
+  bool eval_type_while(AstNode* while_);
+  bool eval_type_return(AstNode* ret);
+  bool eval_type_block_stmt(AstNode* stmt);
+  bool eval_type_proc(AstNode* proc);
+  bool eval_type_module_stmt(AstNode* stmt);
+  bool eval_type_module(AstNode* module);
+
+  bool resolve_type_var(AstNode* var);
+  bool resolve_type_lit(AstNode* lit);
+  bool resolve_type_formal_args(AstNode* args);
+  bool resolve_type_bin_expr(AstNode* bin_expr);
+  bool resolve_type_unr_expr(AstNode* unr_expr);
+  bool resolve_type_id(AstNode* id);
+  bool resolve_type_actual_args(AstNode* args);
+  bool resolve_type_call(AstNode* call);
+  bool resolve_type_index(AstNode* index);
+  bool resolve_type_cast(AstNode* cast);
+  bool resolve_type_assign(AstNode* assign);
+  bool resolve_type_expr(AstNode* expr);
+  bool resolve_type_block(AstNode* block);
+  bool resolve_type_return(AstNode* ret);
+  bool resolve_type_if(AstNode* if_);
+  bool resolve_type_do_while(AstNode* do_while);
+  bool resolve_type_while(AstNode* while_);
+  bool resolve_type_array(AstNode* array);
+  bool resolve_type_pointer(AstNode* pointer);
+  bool resolve_type_type(AstNode* type);
+  bool resolve_type_block_stmt(AstNode* stmt);
+  bool resolve_type_proc(AstNode* proc);
+  bool resolve_type_module_stmt(AstNode* stmt);
+  bool resolve_type_module(AstNode* module);
+
+  bool check_types_var(AstNode* var);
+  bool check_types_formal_args(AstNode* args);
+  bool check_types_cast(AstNode* cast);
+  bool check_types_bin_expr(AstNode* bin_expr);
+  bool check_types_unr_expr(AstNode* unr_expr);
+  bool check_types_actual_args(AstNode* args);
+  bool check_types_call(AstNode* call);
+  bool check_types_index(AstNode* index);
+  bool check_types_assign(AstNode* assign);
+  bool check_types_expr(AstNode* expr);
+  bool check_types_return(AstNode* ret);
+  bool check_types_do_while(AstNode* do_while);
+  bool check_types_while(AstNode* while_);
+  bool check_types_if(AstNode* if_);
+  bool check_types_block(AstNode* block);
+  bool check_types_block_stmt(AstNode* stmt);
+  bool check_types_proc(AstNode* proc);
+  bool check_types_module_stmt(AstNode* stmt);
+  bool check_types_module(AstNode* module);
 };
 
 enum struct eIrOp
@@ -924,6 +1053,8 @@ struct AstNode_Proc
   IrStmt* ir_stmt_array;
   int ir_stmt_count;
   List* basic_blocks;
+
+  bool is_extern();
 };
 
 struct AstNode_Str
@@ -1033,6 +1164,9 @@ struct AstNode
     AstNode_Struct    struct_decl;
     AstNode_Asm       asm_block;
   };
+
+  bool resolve_types(MemoryArena* arena);
+  bool is_valid_expr_operand();
 };
 
 struct Parser
@@ -1045,6 +1179,69 @@ struct Parser
   AstNode* module;
   HFile* file;
   List* includes;
+
+  static Parser* create(MemoryArena* arena);
+  Parser* create_included();
+  void set_input(char* text, HFile* file);
+  bool get_next_token();
+  void putback_token();
+  static char* get_operator_printstr(eOperator op);
+  SourceLoc* clone_source_loc();
+  AstNode* create_ast_node(eAstNode kind, SourceLoc* src_loc);
+  bool consume_semicolon();
+  AstNode* find_include(HFile* file);
+  void merge_modules(AstNode* main_module, AstNode* merged_module);
+
+  bool parse_actual_args(AstNode* args);
+  bool parse_rest_of_actual_args(AstNode* args);
+  bool parse_call(AstNode* left_node, AstNode** node);
+  bool parse_index_recursive(AstNode* left_node, AstNode** node, int* ndim);
+  bool parse_index(AstNode* left_node, AstNode** node);
+  bool parse_rest_of_unr_expr(AstNode* left_node, AstNode** node);
+  bool parse_factor(AstNode** node);
+  bool parse_rest_of_factor(AstNode* left_node, AstNode** node);
+  bool parse_term(AstNode** node);
+  bool parse_rest_of_term(AstNode* left_node, AstNode** node);
+  bool parse_assignment(AstNode** node);
+  bool parse_rest_of_assignment(AstNode* left_node, AstNode** node);
+  bool parse_id(AstNode** node);
+  bool parse_basic_type(AstNode** node);
+  bool parse_rest_of_cast(AstNode* left_node, AstNode** node);
+  bool parse_rest_of_deref(AstNode** node);
+  bool parse_deref(AstNode** node);
+  bool parse_rest_of_array(AstNode** node);
+  bool parse_array(AstNode** node);
+  bool parse_cast(AstNode** node);
+  bool parse_pointer(AstNode* left_node, AstNode** node);
+  bool parse_rest_of_selector(AstNode* left_node, AstNode** node);
+  bool parse_lit(AstNode** node);
+  bool parse_selector(AstNode** node);
+  bool parse_formal_arg(AstNode** node);
+  bool parse_unr_expr(AstNode** node);
+  bool parse_expr(AstNode** node);
+  bool parse_modifier(eModifier* modifier);
+  bool parse_rest_of_formal_args(AstNode* args);
+  bool parse_formal_args(AstNode* args);
+  bool parse_empty(AstNode** node);
+  bool parse_block(AstNode** node);
+  bool parse_else(AstNode** node);
+  bool parse_if(AstNode** node);
+  bool parse_do_while(AstNode** node);
+  bool parse_while(AstNode** node);
+  bool parse_return(AstNode** node);
+  bool parse_continue(AstNode** node);
+  bool parse_break(AstNode** node);
+  bool parse_block_var(char* name, eModifier modifier, AstNode* var_type, AstNode** node);
+  bool parse_block_stmt(AstNode** node);
+  bool parse_block_stmts(AstNode* block);
+  bool parse_proc_body(AstNode* proc);
+  bool parse_module_proc(char* name, eModifier modifier, AstNode* ret_type, AstNode** node);
+  bool parse_module_var(char* name, eModifier modifier, AstNode* var_type, AstNode** node);
+  bool parse_module_include(AstNode** node);
+  bool parse_module_stmt(AstNode** node);
+  bool parse_module_stmts(AstNode* module);
+  bool parse_module_body(AstNode* module);
+  bool parse_module();
 };
 
 enum struct eStorageSpace
@@ -1099,10 +1296,19 @@ struct Symbol
     X86Location* _[(int)eX86Location::Count];
   }
   locations;
+
+  void init_locations();
 };
 
 struct SymbolContext
 {
+  Type* basic_type_bool;
+  Type* basic_type_int;
+  Type* basic_type_char;
+  Type* basic_type_float;
+  Type* basic_type_void;
+  Type* basic_type_str;
+
   MemoryArena* gp_arena;
   MemoryArena* sym_arena;
   List scopes;
@@ -1111,10 +1317,58 @@ struct SymbolContext
   int nesting_depth;
   int data_alignment;
   X86Context* x86_context;
+
+  Symbol* create_const_object(Type* ty, SourceLoc* src_loc);
+  Symbol* create_const_object_int(SourceLoc* src_loc, int int_val);
+  Symbol* create_const_object_char(SourceLoc* src_loc, char char_val);
+  Symbol* create_const_object_str(SourceLoc* src_loc, char* str_val);
+  Symbol* create_const_object_float(SourceLoc* src_loc, float float_val);
+
+  Scope* begin_scope(eScope kind, AstNode* ast_node);
+  void   end_scope();
+  Scope* begin_nested_scope(eScope kind, AstNode* ast_node);
+  void   end_nested_scope();
+  Symbol* add_decl(char* name, eStorageSpace storage_space, Scope* scope, AstNode* ast_node);
+
+  bool sym_lit(AstNode* lit);
+  bool sym_array(AstNode* array);
+  bool sym_expr(AstNode* expr);
+  bool sym_cast(AstNode* cast);
+  bool sym_index(AstNode* index);
+  bool sym_call(AstNode* call);
+  bool sym_actual_args(AstNode* args);
+  bool sym_unr_expr(AstNode* unr_expr);
+  bool sym_bin_expr(AstNode* bin_expr);
+  bool sym_id(AstNode* id);
+  bool sym_if(AstNode* if_);
+  bool sym_do_while(AstNode* do_while);
+  bool sym_while(AstNode* while_);
+  bool sym_loop_ctrl(AstNode* stmt);
+  bool sym_return(AstNode* ret);
+  bool sym_block_stmt(AstNode* stmt);
+  bool sym_block(AstNode* block);
+  bool sym_proc_body(AstNode* proc);
+  bool sym_formal_args(Scope* param_scope, AstNode* args);
+  bool sym_module_proc(AstNode* proc);
+  bool sym_module_var(AstNode* module, AstNode* var);
+  bool sym_module(AstNode* module);
+  bool sym_pointer(AstNode* pointer);
+  bool sym_assign(AstNode* assign);
+  bool sym_var(AstNode* var);
+  bool sym_formal_arg(Scope* proc_scope, AstNode* arg);
+
+  bool process(AstNode* module);
 };
 
 struct IrContext
 {
+  Type* basic_type_bool;
+  Type* basic_type_int;
+  Type* basic_type_char;
+  Type* basic_type_float;
+  Type* basic_type_void;
+  Type* basic_type_str;
+
   MemoryArena* gp_arena;
   SymbolContext* sym_context;
   X86Context* x86_context;
@@ -1135,6 +1389,13 @@ struct IrContext
 
 struct X86Context
 {
+  Type* basic_type_bool;
+  Type* basic_type_int;
+  Type* basic_type_char;
+  Type* basic_type_float;
+  Type* basic_type_void;
+  Type* basic_type_str;
+
   MemoryArena* gp_arena;
   MemoryArena* stmt_arena;
   X86Stmt* stmt_array;

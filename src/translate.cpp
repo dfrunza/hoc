@@ -3,19 +3,55 @@ global_var int last_label_id;
 
 global_var NextUse NextUse_None = max_int(); // infinity
 
+bool is_operator_relation(eOperator op)
+{
+  bool is_relop = false;
+
+  switch(op)
+  {
+    case eOperator::eq:
+    case eOperator::not_eq_:
+    case eOperator::less:
+    case eOperator::less_eq:
+    case eOperator::greater:
+    case eOperator::greater_eq:
+      is_relop = true;
+    break;
+  }
+
+  return is_relop;
+}
+
+bool is_operator_logic(eOperator op)
+{
+  bool is_logic = false;
+
+  switch(op)
+  {
+    case eOperator::logic_and:
+    case eOperator::logic_or:
+    case eOperator::logic_not:
+      is_logic = true;
+    break;
+  }
+
+  return is_logic;
+}
+
 void gen_label_name(MemoryArena* arena, Label* label)
 {
   label->name = mem_push_array(arena, char, 12);
   Platform::sprintf(label->name, "L_%d", last_label_id++);
 }
 
-char* new_tempvar_name(MemoryArena* arena, char* label)
+char* gen_tempvar_name(MemoryArena* arena, char* label)
 {
   String str = {};
   str.init(arena);
   str.printf("%s%d", label, tempvar_id++);
   return str.cap();
 }
+
 
 void DEBUG_print_arena_usage(MemoryArena* arena, char* tag)
 {
@@ -196,13 +232,13 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_context.bool_false = sym_context.create_const_int(0, 0);
   x86_context.float_minus_one = sym_context.create_const_float(0, -1.0);
 
-  if(!ir_gen_module(&ir_context, module))
+  if(!ir_context.gen_module(module))
   {
     return false;
   }
 
-  ir_partition_basic_blocks_module(&ir_context, module);
-  alloc_scope_data_objects(&ir_context, module->module.scope);
+  ir_context.partition_basic_blocks_module(module);
+  ir_context.alloc_scope_data_objects(module->module.scope);
 
   x86_gen(&x86_context, module);
 

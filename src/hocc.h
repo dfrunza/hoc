@@ -669,6 +669,9 @@ struct Label
   struct Label* primary;
   int stmt_nr;
   char* name;
+
+  static Label* create(MemoryArena* arena);
+  static Label* create_by_name(MemoryArena* arena, char* name);
 };
 
 typedef int NextUse;
@@ -744,6 +747,8 @@ struct IrStmt_Assign
   IrArg* arg1;
   IrArg* arg2;
   IrArg* result;
+
+  void update_object_live_info();
 };
 
 struct IrStmt_CondGoto
@@ -1407,6 +1412,71 @@ struct IrContext
   Symbol* bool_false;
 
   int current_alloc_offset;
+
+  void emit_assign(eIrOp op, IrArg* arg1, IrArg* arg2, IrArg* result);
+  void emit_label(Label* label);
+  void emit_nop();
+  void emit_cond_goto(eIrOp relop, IrArg* arg1, IrArg* arg2, Label* label);
+  void emit_goto(Label* goto_label);
+  void emit_call(Label* name, Scope* param_scope, Symbol* retvar, bool is_extern);
+  void emit_return();
+  bool gen_bin_expr(Scope* scope, AstNode* bin_expr);
+  void gen_id(AstNode* id);
+  bool gen_unr_expr(Scope* scope, AstNode* unr_expr);
+  void gen_lit(Scope* scope, AstNode* lit);
+  bool gen_bool_unr_expr(Scope* scope, AstNode* unr_expr);
+  bool gen_actual_args(Scope* scope, AstNode* args);
+  void gen_call(Scope* scope, AstNode* call);
+  bool gen_index(Scope* scope, AstNode* index);
+  bool gen_index_with_offset(Scope* scope, AstNode* index);
+  bool gen_assign(Scope* scope, AstNode* assign);
+  bool gen_cast(Scope* scope, AstNode* cast);
+  bool gen_expr(Scope* scope, AstNode* expr);
+  bool gen_block(Scope* scope, AstNode* block);
+  bool gen_bool_bin_expr(Scope* scope, AstNode* bin_expr);
+  bool gen_bool_id(Scope* scope, AstNode* id);
+  bool gen_bool_call(Scope* scope, AstNode* call);
+  bool gen_bool_cast(Scope* scope, AstNode* cast);
+  void gen_bool_lit(Scope* scope, AstNode* lit);
+  bool gen_bool_expr(Scope* scope, AstNode* expr);
+  bool gen_do_while(Scope* scope, AstNode* do_while);
+  bool gen_while(Scope* scope, AstNode* while_);
+  bool gen_if(Scope* scope, AstNode* if_);
+  bool gen_return(Scope* scope, AstNode* ret);
+  bool gen_loop_ctrl(Scope* scope, AstNode* loop_ctrl);
+  bool gen_var(Scope* scope, AstNode* var);
+  bool gen_block_stmt(Scope* scope, AstNode* stmt);
+  void gen_formal_args(Scope* scope, AstNode* args);
+  bool gen_proc(Scope* scope, AstNode* proc);
+  void gen_module_var(Scope* scope, AstNode* var);
+  bool gen_module_stmt(Scope* scope, AstNode* stmt);
+  bool gen_module(AstNode* module);
+
+  void DEBUG_print_ir_op(String* text, eIrOp op);
+  void DEBUG_print_ir_arg(String* text, IrArg* arg);
+  void DEBUG_print_ir_stmt(String* text, IrStmt* stmt);
+  void DEBUG_print_basic_block(String* text, BasicBlock* bb);
+  void DEBUG_print_ir_code(List* procs, char* file_path);
+
+  void reset_ir_context();
+  IrArg* ir_arg_new_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc);
+  IrArg* ir_arg_new_existing_object(Symbol* object);
+  void partition_basic_blocks_proc(AstNode* proc);
+  void partition_basic_blocks_module(AstNode* module);
+  Symbol* create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc);
+  void alloc_data_object_incremental(Symbol* sym, Scope* scope);
+  void alloc_scope_data_objects(Scope* scope);
+  void alloc_data_object(Symbol* sym, Scope* scope);
+  void start_new_basic_block(List* leaders, int at_stmt_nr, IrStmt* stmt_array, int stmt_count);
+  static eIrOp conv_operator_to_ir_op(eOperator op);
+  Label* get_label_at(int stmt_nr);
+  IrLeaderStmt* get_leader_stmt(List* leaders, int stmt_nr);
+  IrLeaderStmt* create_leader_stmt(MemoryArena* arena, int stmt_nr, IrStmt* stmt);
+  void insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt);
+  Label* normalize_jump_target_labels(IrStmt* stmt);
+  int get_proc_arg_size(AstNode* args);
+  static void gen_label_name(MemoryArena* arena, Label* label);
+  static char* new_tempvar_name(MemoryArena* arena, char* label);
 };
 
 struct X86Context

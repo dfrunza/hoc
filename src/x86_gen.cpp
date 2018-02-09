@@ -1608,13 +1608,9 @@ void x86_gen_unr_expr(X86Context* context, IrStmt_Assign* assign)
 
 void x86_gen_assign(X86Context* context, IrStmt_Assign* assign)
 {
-  IrArg* result = assign->result;
-  IrArg* arg1 = assign->arg1;
-  IrArg* arg2 = assign->arg2;
-
   if(assign->op != eIrOp::None)
   {
-    if(arg2)
+    if(assign->arg2)
     {
       switch(assign->op)
       {
@@ -1682,7 +1678,7 @@ void x86_gen_assign(X86Context* context, IrStmt_Assign* assign)
   // The update must be done *here*, so that when the next statement is processed,
   // a particular object will have the live-info of the previous last statement it appeared in.
   // As a bonus, the objects of 'result', 'arg1' and 'arg2' are automatically excluded from the find_least_used_register() search function.
-  update_object_live_info(result, arg1, arg2);
+  assign->update_object_live_info();
 
   discard_all_unused_args(context, assign);
 }

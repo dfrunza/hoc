@@ -44,39 +44,39 @@ Symbol* Scope::lookup_decl(char* name)
   return result;
 }
 
-void alloc_data_object(IrContext* ir_context, Symbol* sym, Scope* scope)
+void IrContext::alloc_data_object(Symbol* sym, Scope* scope)
 {
   sym->data_loc = scope->allocd_size;
   sym->allocd_size = sym->ty->width;
-  if((sym->allocd_size & (ir_context->data_alignment-1)) != 0)
+  if((sym->allocd_size & (data_alignment-1)) != 0)
   {
-    sym->allocd_size = (sym->allocd_size + ir_context->data_alignment) & ~(ir_context->data_alignment-1);
+    sym->allocd_size = (sym->allocd_size + data_alignment) & ~(data_alignment-1);
   }
   scope->allocd_size += sym->allocd_size;
 }
 
-void alloc_data_object_incremental(IrContext* ir_context, Symbol* sym, Scope* scope)
+void IrContext::alloc_data_object_incremental(Symbol* sym, Scope* scope)
 {
-  sym->data_loc = ir_context->current_alloc_offset;
+  sym->data_loc = current_alloc_offset;
 
   sym->allocd_size = sym->ty->width;
-  if((sym->allocd_size & (ir_context->data_alignment-1)) != 0)
+  if((sym->allocd_size & (data_alignment-1)) != 0)
   {
-    sym->allocd_size = (sym->allocd_size + ir_context->data_alignment) & ~(ir_context->data_alignment-1);
+    sym->allocd_size = (sym->allocd_size + data_alignment) & ~(data_alignment-1);
   }
 
   scope->allocd_size += sym->allocd_size;
-  ir_context->current_alloc_offset += sym->allocd_size;
+  current_alloc_offset += sym->allocd_size;
 }
 
-void alloc_scope_data_objects(IrContext* ir_context, Scope* scope)
+void IrContext::alloc_scope_data_objects(Scope* scope)
 {
   for(ListItem* li = scope->decl_syms.first;
       li;
       li = li->next)
   {
     Symbol* object = KIND(li, eList::symbol)->symbol;
-    alloc_data_object(ir_context, object, scope);
+    alloc_data_object(object, scope);
   }
 }
 
@@ -93,7 +93,7 @@ Symbol* SymbolContext::create_const(Type* ty, SourceLoc* src_loc)
   Symbol* sym = mem_push_struct(sym_arena, Symbol);
 
   sym->kind = eSymbol::constant;
-  sym->name = new_tempvar_name(gp_arena, "const_");
+  sym->name = gen_tempvar_name(gp_arena, "const_");
   sym->src_loc = src_loc;
   sym->ty = ty;
   sym->scope = 0;
@@ -151,12 +151,11 @@ Symbol* SymbolContext::create_const_float(SourceLoc* src_loc, float float_val)
   return const_object;
 }
 
-Symbol* create_temp_object(IrContext* ir_context, Scope* scope, Type* ty, SourceLoc* src_loc)
+Symbol* IrContext::create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc)
 {
-  SymbolContext* sym_context = ir_context->sym_context;
   Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
 
-  sym->name = new_tempvar_name(ir_context->gp_arena, "temp_");
+  sym->name = gen_tempvar_name(gp_arena, "temp_");
   sym->src_loc = src_loc;
   sym->ty = ty;
   sym->scope = scope;
@@ -167,7 +166,7 @@ Symbol* create_temp_object(IrContext* ir_context, Scope* scope, Type* ty, Source
   sym->is_live = false;
   sym->init_locations();
 
-  alloc_data_object_incremental(ir_context, sym, scope);
+  alloc_data_object_incremental(sym, scope);
   scope->decl_syms.append(sym, eList::symbol);
 
   return sym;
@@ -375,16 +374,16 @@ bool SymbolContext::sym_call(AstNode* call)
     if(success = sym_id(call_expr) && sym_actual_args(args))
     {
       call->call.param_scope = begin_scope(eScope::params, call);
-      call->call.retvar = add_decl(new_tempvar_name(gp_arena, "ret_"),
-                                       eStorageSpace::actual_param, call->call.param_scope, call);
+      call->call.retvar = add_decl(gen_tempvar_name(gp_arena, "ret_"),
+                                   eStorageSpace::actual_param, call->call.param_scope, call);
 
       for(ListItem* li = args->args.node_list.first;
           li;
           li = li->next)
       {
         AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-        arg->call_arg.param = add_decl(new_tempvar_name(gp_arena, "param_"),
-                                           eStorageSpace::actual_param, call->call.param_scope, arg);
+        arg->call_arg.param = add_decl(gen_tempvar_name(gp_arena, "param_"),
+                                       eStorageSpace::actual_param, call->call.param_scope, arg);
       }
 
       end_scope();
@@ -799,8 +798,8 @@ bool SymbolContext::sym_module_proc(AstNode* proc)
   {
     proc->proc.decl_sym = add_decl(proc->proc.name, eStorageSpace::None, active_scope, proc);
     proc->proc.param_scope = begin_nested_scope(eScope::args, proc);
-    proc->proc.retvar = add_decl(new_tempvar_name(gp_arena, "ret_"),
-                                     eStorageSpace::formal_param, proc->proc.param_scope, proc->proc.ret_type);
+    proc->proc.retvar = add_decl(gen_tempvar_name(gp_arena, "ret_"),
+                                 eStorageSpace::formal_param, proc->proc.param_scope, proc->proc.ret_type);
 
     if(proc->proc.is_extern())
     {

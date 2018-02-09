@@ -1721,11 +1721,11 @@ AstNode* Parser::find_include(HFile* file)
   return include;
 }
 
-void Parser::merge_modules(AstNode* main_module, AstNode* merged_module)
+void AstNode_Module::merge(AstNode_Module* merged_module)
 {
-  main_module->module.nodes.join(&merged_module->module.nodes);
-  main_module->module.procs.join(&merged_module->module.procs);
-  main_module->module.vars.join(&merged_module->module.vars);
+  nodes.join(&merged_module->nodes);
+  procs.join(&merged_module->procs);
+  vars.join(&merged_module->vars);
 }
 
 bool Parser::parse_module_include(AstNode** node)
@@ -1768,7 +1768,7 @@ bool Parser::parse_module_include(AstNode** node)
 
                 if(success = included_parser->parse_module())
                 {
-                  merge_modules(module, included_parser->module);
+                  module->module.merge(&included_parser->module->module);
                 }
               }
             }

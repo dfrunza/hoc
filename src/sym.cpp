@@ -88,7 +88,7 @@ void Symbol::init_locations()
   }
 }
 
-Symbol* SymbolContext::create_const_object(Type* ty, SourceLoc* src_loc)
+Symbol* SymbolContext::create_const(Type* ty, SourceLoc* src_loc)
 {
   Symbol* sym = mem_push_struct(sym_arena, Symbol);
 
@@ -109,27 +109,27 @@ Symbol* SymbolContext::create_const_object(Type* ty, SourceLoc* src_loc)
   return sym;
 }
 
-Symbol* SymbolContext::create_const_object_int(SourceLoc* src_loc, int int_val)
+Symbol* SymbolContext::create_const_int(SourceLoc* src_loc, int int_val)
 {
-  Symbol* const_object = create_const_object(basic_type_int, src_loc);
+  Symbol* const_object = create_const(basic_type_int, src_loc);
   const_object->int_val = int_val;
   const_object->data = &const_object->int_val;
 
   return const_object;
 }
 
-Symbol* SymbolContext::create_const_object_char(SourceLoc* src_loc, char char_val)
+Symbol* SymbolContext::create_const_char(SourceLoc* src_loc, char char_val)
 {
-  Symbol* const_object = create_const_object(basic_type_char, src_loc);
+  Symbol* const_object = create_const(basic_type_char, src_loc);
   const_object->char_val = char_val;
   const_object->data = &const_object->char_val;
 
   return const_object;
 }
 
-Symbol* SymbolContext::create_const_object_str(SourceLoc* src_loc, char* str_val)
+Symbol* SymbolContext::create_const_str(SourceLoc* src_loc, char* str_val)
 {
-  Symbol* const_object = create_const_object(basic_type_str, src_loc);
+  Symbol* const_object = create_const(basic_type_str, src_loc);
   const_object->str_val = str_val;
   const_object->data = const_object->str_val;
 
@@ -139,9 +139,9 @@ Symbol* SymbolContext::create_const_object_str(SourceLoc* src_loc, char* str_val
   return const_object;
 }
 
-Symbol* SymbolContext::create_const_object_float(SourceLoc* src_loc, float float_val)
+Symbol* SymbolContext::create_const_float(SourceLoc* src_loc, float float_val)
 {
-  Symbol* const_object = create_const_object(basic_type_float, src_loc);
+  Symbol* const_object = create_const(basic_type_float, src_loc);
   const_object->float_val = float_val;
   const_object->data = &const_object->float_val;
 
@@ -279,31 +279,31 @@ bool SymbolContext::sym_lit(AstNode* lit)
   {
     case eLiteral::int_:
     {
-      lit->lit.constant = create_const_object_int(lit->src_loc, lit->lit.int_val);
+      lit->lit.constant = create_const_int(lit->src_loc, lit->lit.int_val);
     }
     break;
 
     case eLiteral::float_:
     {
-      lit->lit.constant = create_const_object_float(lit->src_loc, lit->lit.float_val);
+      lit->lit.constant = create_const_float(lit->src_loc, lit->lit.float_val);
     }
     break;
 
     case eLiteral::bool_:
     {
-      lit->lit.constant = create_const_object_int(lit->src_loc, (int)lit->lit.bool_val);
+      lit->lit.constant = create_const_int(lit->src_loc, (int)lit->lit.bool_val);
     }
     break;
 
     case eLiteral::char_:
     {
-      lit->lit.constant = create_const_object_char(lit->src_loc, lit->lit.char_val);
+      lit->lit.constant = create_const_char(lit->src_loc, lit->lit.char_val);
     }
     break;
     
     case eLiteral::str:
     {
-      lit->lit.constant = create_const_object_str(lit->src_loc, lit->lit.str_val);
+      lit->lit.constant = create_const_str(lit->src_loc, lit->lit.str_val);
     }
     break;
 
@@ -434,7 +434,7 @@ bool SymbolContext::sym_array(AstNode* array)
     int size_val = size_expr->lit.int_val;
     if(size_val > 0)
     {
-      size_expr->lit.constant = create_const_object_int(size_expr->src_loc, size_val);
+      size_expr->lit.constant = create_const_int(size_expr->src_loc, size_val);
     }
     else if(size_val == 0)
       success = compile_error(gp_arena, size_expr->src_loc, "array of 0 size");

@@ -1,3 +1,35 @@
+global_var Token keyword_list[] =
+{
+  {eToken::asm_, "asm"},
+  {eToken::if_, "if"},
+  {eToken::else_, "else"},
+  {eToken::do_, "do"},
+  {eToken::while_, "while"},
+  {eToken::return_, "return"},
+  {eToken::break_, "break"},
+  {eToken::continue_, "continue"},
+  {eToken::goto_, "goto"},
+  {eToken::include, "include"},
+  {eToken::true_, "true"},
+  {eToken::false_, "false"},
+  {eToken::struct_, "struct"},
+  {eToken::union_, "union"},
+  {eToken::enum_, "enum"},
+  {eToken::extern_, "extern"},
+  {eToken::const_, "const"},
+  {eToken::and_, "and"},
+  {eToken::or_, "or"},
+  {eToken::not_, "not"},
+  {eToken::mod, "mod"},
+  {eToken::int_, "int"},
+  {eToken::float_, "float"},
+  {eToken::bool_, "bool"},
+  {eToken::char_, "char"},
+  {eToken::void_, "void"},
+  {eToken::auto_, "auto"},
+  {eToken::None, 0}, /* terminator */
+};
+
 Token* Lexer::lookup_keyword(char* lexeme)
 {
   Token* result = 0;

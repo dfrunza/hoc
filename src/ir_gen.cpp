@@ -560,7 +560,7 @@ bool ir_gen_index(IrContext* ir_context, Scope* scope, AstNode* index)
       Type* index_ty = index->ty;
       int size_val = KIND(index_ty, eType::array)->array.size;
 
-      Symbol* size_constant = ir_context->sym_context->create_const_object_int(index->src_loc, size_val);
+      Symbol* size_constant = ir_context->sym_context->create_const_int(index->src_loc, size_val);
       IrArg* dim_size = ir_arg_new_existing_object(ir_context, size_constant);
 
       if(size_val > 0)
@@ -590,7 +590,7 @@ bool ir_gen_index_with_offset(IrContext* ir_context, Scope* scope, AstNode* inde
     assert(index->index.ndim == 1);
     int width_val = index->eval_ty->width;
 
-    Symbol* width_constant = ir_context->sym_context->create_const_object_int(index->src_loc, width_val);
+    Symbol* width_constant = ir_context->sym_context->create_const_int(index->src_loc, width_val);
     IrArg* width = ir_arg_new_existing_object(ir_context, width_constant);
 
     ir_emit_assign(ir_context, eIrOp::mul, index->index.i_place, width, offset);

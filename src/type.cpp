@@ -781,7 +781,7 @@ bool Typesys::set_type_actual_args(AstNode* args)
 
   if(success)
   {
-    args->ty = args->eval_ty = make_args_type(args);
+    args->ty = args->eval_ty = args->args.make_product_type(this);
   }
 
   return success;
@@ -1166,12 +1166,11 @@ bool Typesys::set_type_block_stmt(AstNode* stmt)
   return success;
 }
 
-Type* Typesys::make_args_type(AstNode* args)
+Type* AstNode_NodeList::make_product_type(Typesys* typesys)
 {
-  assert(KIND(args, eAstNode::node_list));
-  Type* result = basic_type_void;
+  Type* result = typesys->basic_type_void;
 
-  ListItem* li = args->args.node_list.first;
+  ListItem* li = node_list.first;
   if(li)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
@@ -1179,7 +1178,7 @@ Type* Typesys::make_args_type(AstNode* args)
     for(li = li->next; li; li = li->next)
     {
       AstNode* next_arg = KIND(li, eList::ast_node)->ast_node;
-      result = create_product_type(result, next_arg->eval_ty);
+      result = typesys->create_product_type(result, next_arg->eval_ty);
     }
   }
 
@@ -1201,7 +1200,7 @@ bool Typesys::set_type_formal_args(AstNode* args)
 
   if(success)
   {
-    args->ty = args->eval_ty = make_args_type(args);
+    args->ty = args->eval_ty = args->args.make_product_type(this);
   }
 
   return success;

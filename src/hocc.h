@@ -1,5 +1,3 @@
-#define BINIMAGE_SIGNATURE "HC"
-
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
@@ -40,7 +38,6 @@ struct HFile
   struct Impl;
 
   char* path;
-
   Impl* impl;
 };
 
@@ -56,18 +53,17 @@ struct MemoryArena
   uint8* free;
   uint8* cap;
   struct MemoryArena* prev_arena;
-  char* label;
   struct String* str;
 
   static MemoryArena* create(int size);
-  static void         pop(MemoryArena** arena);
   static MemoryArena* push(MemoryArena** arena, int size);
+  static void         pop(MemoryArena** arena);
   static void         begin_temp_memory(MemoryArena** arena);
   static void         end_temp_memory(MemoryArena** arena);
   void  dealloc();
   void* push_struct(int elem_size, int count);
-  Usage usage();
   void  check_bounds(int elem_size, void* ptr);
+  Usage usage();
 };
 
 struct String
@@ -114,7 +110,7 @@ namespace Platform
 struct SourceLoc
 {
   char* file_path;
-  int line_nr;
+  int   line_nr;
   char* src_line;
 };
 
@@ -213,38 +209,6 @@ struct Token
   };
 
   char* get_printstr();
-};
-
-internal Token keyword_list[] =
-{
-  {eToken::asm_, "asm"},
-  {eToken::if_, "if"},
-  {eToken::else_, "else"},
-  {eToken::do_, "do"},
-  {eToken::while_, "while"},
-  {eToken::return_, "return"},
-  {eToken::break_, "break"},
-  {eToken::continue_, "continue"},
-  {eToken::goto_, "goto"},
-  {eToken::include, "include"},
-  {eToken::true_, "true"},
-  {eToken::false_, "false"},
-  {eToken::struct_, "struct"},
-  {eToken::union_, "union"},
-  {eToken::enum_, "enum"},
-  {eToken::extern_, "extern"},
-  {eToken::const_, "const"},
-  {eToken::and_, "and"},
-  {eToken::or_, "or"},
-  {eToken::not_, "not"},
-  {eToken::mod, "mod"},
-  {eToken::int_, "int"},
-  {eToken::float_, "float"},
-  {eToken::bool_, "bool"},
-  {eToken::char_, "char"},
-  {eToken::void_, "void"},
-  {eToken::auto_, "auto"},
-  {eToken::None, 0}, /* terminator */
 };
 
 struct Lexer
@@ -412,7 +376,6 @@ struct Scope
   AstNode* ast_node;
   int sym_count;
   int allocd_size; // aligned
-
   List decl_syms;
 
   Scope* find(eScope kind);
@@ -550,12 +513,11 @@ struct Typesys
   Type* create_array_type(int size, Type* elem);
   Type* create_pointer_type(Type* pointee);
 
-  void  init(MemoryArena* arena);
-  Type* type_subst(Type* type);
-  TypePair* find_pair(Type* type);
-  Type* make_args_type(AstNode* args);
-  bool  process(AstNode* module);
+  void      init(MemoryArena* arena);
+  Type*     type_subst(Type* type);
   TypePair* create_type_pair(Type* key, Type* value);
+  TypePair* find_pair(Type* type);
+  bool      process(AstNode* module);
 
   bool set_type_array(AstNode* array);
   bool set_type_pointer(AstNode* pointer);
@@ -983,6 +945,8 @@ enum struct eAstNode
 struct AstNode_NodeList
 {
   List node_list;
+
+  Type* make_product_type(Typesys* typesys);
 };
 
 struct AstNode_CallArg
@@ -1149,6 +1113,8 @@ struct AstNode_Module
   List procs;
   List vars;
   Scope* scope;
+
+  void merge(AstNode_Module* merged_module);
 };
 
 struct AstNode_Include
@@ -1237,17 +1203,16 @@ struct Parser
   HFile* file;
   List* includes;
 
-  static Parser* create(MemoryArena* arena);
-  Parser* create_included();
-  void set_input(char* text, HFile* file);
-  bool get_next_token();
-  void putback_token();
   static char* get_operator_printstr(eOperator op);
+  static Parser* create(MemoryArena* arena);
+  Parser*    create_included();
+  void       set_input(char* text, HFile* file);
+  bool       get_next_token();
+  void       putback_token();
   SourceLoc* clone_source_loc();
-  AstNode* create_ast_node(eAstNode kind, SourceLoc* src_loc);
-  bool consume_semicolon();
-  AstNode* find_include(HFile* file);
-  void merge_modules(AstNode* main_module, AstNode* merged_module);
+  AstNode*   create_ast_node(eAstNode kind, SourceLoc* src_loc);
+  bool       consume_semicolon();
+  AstNode*   find_include(HFile* file);
 
   bool parse_actual_args(AstNode* args);
   bool parse_rest_of_actual_args(AstNode* args);
@@ -1332,8 +1297,8 @@ struct Symbol
 
   eStorageSpace storage_space;
   int data_loc;
-  int allocd_size; // aligned
   void* data;
+  int allocd_size; // aligned
 
   union
   {
@@ -1375,11 +1340,11 @@ struct SymbolContext
   int data_alignment;
   X86Context* x86_context;
 
-  Symbol* create_const_object(Type* ty, SourceLoc* src_loc);
-  Symbol* create_const_object_int(SourceLoc* src_loc, int int_val);
-  Symbol* create_const_object_char(SourceLoc* src_loc, char char_val);
-  Symbol* create_const_object_str(SourceLoc* src_loc, char* str_val);
-  Symbol* create_const_object_float(SourceLoc* src_loc, float float_val);
+  Symbol* create_const(Type* ty, SourceLoc* src_loc);
+  Symbol* create_const_int(SourceLoc* src_loc, int int_val);
+  Symbol* create_const_char(SourceLoc* src_loc, char char_val);
+  Symbol* create_const_str(SourceLoc* src_loc, char* str_val);
+  Symbol* create_const_float(SourceLoc* src_loc, float float_val);
 
   Scope* begin_scope(eScope kind, AstNode* ast_node);
   void   end_scope();

@@ -1,5 +1,4 @@
 global_var int tempvar_id;
-
 global_var int last_label_id;
 
 global_var NextUse NextUse_None = max_int(); // infinity
@@ -193,9 +192,9 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
     return false;
   }
 
-  ir_context.bool_true = sym_context.create_const_object_int(0, 1);
-  ir_context.bool_false = sym_context.create_const_object_int(0, 0);
-  x86_context.float_minus_one = sym_context.create_const_object_float(0, -1.0);
+  ir_context.bool_true = sym_context.create_const_int(0, 1);
+  ir_context.bool_false = sym_context.create_const_int(0, 0);
+  x86_context.float_minus_one = sym_context.create_const_float(0, -1.0);
 
   if(!ir_gen_module(&ir_context, module))
   {

@@ -206,7 +206,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
   x86_context.machine_word_size = 4;
   x86_context.data_alignment = 4;
-  x86_init_registers(&x86_context);
+  x86_context.init_registers();
   *x86_text = x86_context.text = String::create(MemoryArena::push(&arena, 2*MEGABYTE));
 
   ir_context.x86_context = &x86_context;
@@ -240,7 +240,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_context.partition_basic_blocks_module(module);
   ir_context.alloc_scope_data_objects(module->module.scope);
 
-  x86_gen(&x86_context, module);
+  x86_context.gen(module);
 
   return true;
 }

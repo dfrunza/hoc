@@ -12,6 +12,25 @@ Label* Label::create_by_name(MemoryArena* arena, char* name)
   return label;
 }
 
+bool IrContext::is_ir_cast_op(eIrOp ir_op)
+{
+  bool is_conv = false;
+
+  switch(ir_op)
+  {
+    case eIrOp::itof:
+    case eIrOp::itoc:
+    case eIrOp::itob:
+    case eIrOp::ftoi:
+    case eIrOp::ctoi:
+    case eIrOp::btoi:
+      is_conv = true;
+    break;
+  }
+
+  return is_conv;
+}
+
 eIrOp IrContext::conv_operator_to_ir_op(eOperator op)
 {
   eIrOp ir_op = eIrOp::None;
@@ -1084,7 +1103,7 @@ bool IrContext::gen_var(Scope* scope, AstNode* var)
 
   Symbol* object = var->var.decl_sym;
   alloc_data_object_incremental(object, scope);
-  add_object_to_memory(x86_context, object);
+  x86_context->add_object_to_memory(object);
   var->place = ir_arg_new_existing_object(object);
 
   AstNode* init_expr = var->var.init_expr;
@@ -1189,7 +1208,7 @@ void IrContext::gen_formal_args(Scope* scope, AstNode* args)
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
     Symbol* arg_object = KIND(arg, eAstNode::var)->var.decl_sym;
     alloc_data_object(arg_object, scope);
-    add_object_to_memory(x86_context, arg_object);
+    x86_context->add_object_to_memory(arg_object);
   }
 }
 
@@ -1263,7 +1282,7 @@ void IrContext::gen_module_var(Scope* scope, AstNode* var)
   assert(KIND(var, eAstNode::var));
 
   Symbol* object = var->var.decl_sym;
-  add_object_to_memory(x86_context, object);
+  x86_context->add_object_to_memory(object);
 }
 
 bool IrContext::gen_module_stmt(Scope* scope, AstNode* stmt)

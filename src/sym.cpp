@@ -104,7 +104,7 @@ Symbol* SymbolContext::create_const(Type* ty, SourceLoc* src_loc)
   sym->is_live = false;
   sym->init_locations();
 
-  add_object_to_memory(x86_context, sym);
+  x86_context->add_object_to_memory(sym);
 
   return sym;
 }

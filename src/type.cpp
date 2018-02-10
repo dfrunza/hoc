@@ -67,7 +67,42 @@ int Type::set_width()
   return width;
 }
 
-void Typesys::init(MemoryArena* arena)
+int maximum_of_int(int N, ...)
+{
+  assert(N > 0);
+
+  va_list args;
+  va_start(args, N);
+
+  int result = va_arg(args, int);
+  for(int i = 1; i < N; i++)
+  {
+    int next_int = va_arg(args, int);
+    if(next_int > result)
+    {
+      result = next_int;
+    }
+  }
+
+  va_end(args);
+  return result;
+}
+
+TypeContext* TypeContext::create(MemoryArena* arena)
+{
+  int struct_size = maximum_of_int(4,
+                                   sizeof(TypeContext_Set),
+                                   sizeof(TypeContext_Eval),
+                                   sizeof(TypeContext_Resolve),
+                                   sizeof(TypeContext_Check));
+
+  TypeContext* context = (TypeContext*)arena->push_struct(struct_size, 1);
+  context->init(arena);
+
+  return context;
+}
+
+void TypeContext::init(MemoryArena* arena)
 {
   this->arena = arena;
   basic_type_bool  = create_basic_type(eBasicType::bool_);
@@ -79,7 +114,7 @@ void Typesys::init(MemoryArena* arena)
   subst_list = List::create(arena, eList::type_pair);
 }
 
-Type* Typesys::create_var_type(Type* var_type)
+Type* TypeContext::create_var_type(Type* var_type)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType::var;
@@ -89,7 +124,7 @@ Type* Typesys::create_var_type(Type* var_type)
   return type;
 }
 
-Type* Typesys::create_basic_type(eBasicType kind)
+Type* TypeContext::create_basic_type(eBasicType kind)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType::basic;
@@ -99,7 +134,7 @@ Type* Typesys::create_basic_type(eBasicType kind)
   return type;
 }
 
-Type* Typesys::create_proc_type(Type* args, Type* ret)
+Type* TypeContext::create_proc_type(Type* args, Type* ret)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType::proc;
@@ -110,7 +145,7 @@ Type* Typesys::create_proc_type(Type* args, Type* ret)
   return type;
 }
 
-Type* Typesys::create_typevar()
+Type* TypeContext::create_typevar()
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType::typevar;
@@ -120,7 +155,7 @@ Type* Typesys::create_typevar()
   return type;
 }
 
-Type* Typesys::create_product_type(Type* left, Type* right)
+Type* TypeContext::create_product_type(Type* left, Type* right)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType::product;
@@ -131,7 +166,7 @@ Type* Typesys::create_product_type(Type* left, Type* right)
   return type;
 }
 
-Type* Typesys::create_array_type(int size, Type* elem)
+Type* TypeContext::create_array_type(int size, Type* elem)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType::array;
@@ -142,7 +177,7 @@ Type* Typesys::create_array_type(int size, Type* elem)
   return type;
 }
 
-Type* Typesys::create_pointer_type(Type* pointee)
+Type* TypeContext::create_pointer_type(Type* pointee)
 {
   Type* type = mem_push_struct(arena, Type);
   type->kind = eType::pointer;
@@ -329,7 +364,7 @@ bool AstNode::resolve_types(MemoryArena* arena)
   return success;
 }
 
-Typesys::TypePair* Typesys::create_type_pair(Type* key, Type* value)
+TypeContext::TypePair* TypeContext::create_type_pair(Type* key, Type* value)
 {
   TypePair* pair = mem_push_struct(arena, TypePair);
   pair->key = key;
@@ -338,7 +373,7 @@ Typesys::TypePair* Typesys::create_type_pair(Type* key, Type* value)
   return pair;
 }
 
-Typesys::TypePair* Typesys::find_pair(Type* type)
+TypeContext::TypePair* TypeContext::find_pair(Type* type)
 {
   TypePair* result = 0;
   for(ListItem* li = subst_list->first;
@@ -356,7 +391,7 @@ Typesys::TypePair* Typesys::find_pair(Type* type)
   return result;
 }
 
-Type* Typesys::type_subst(Type* type)
+Type* TypeContext::type_subst(Type* type)
 {
   type = type->get_repr_type();
   Type* subst = 0;
@@ -573,12 +608,12 @@ char* Type::get_printstr(MemoryArena* arena)
 //     SET TYPES
 //-----------------------------------------------------
 
-bool Typesys::set_type_array(AstNode* array)
+bool TypeContext_Set::visit_array(AstNode* array)
 {
   assert(KIND(array, eAstNode::array));
   bool success = true;
   
-  if(success = set_type_expr(array->array.size_expr) && set_type_type(array->array.elem_expr))
+  if(success = visit_expr(array->array.size_expr) && visit_type(array->array.elem_expr))
   {
     int size = 0;
     AstNode* size_expr = array->array.size_expr;
@@ -609,31 +644,31 @@ bool Typesys::set_type_array(AstNode* array)
   return success;
 }
 
-bool Typesys::set_type_pointer(AstNode* pointer)
+bool TypeContext_Set::visit_pointer(AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode::pointer));
   bool success = true;
   
   AstNode* pointee = pointer->pointer.pointee;
-  if(success = set_type_type(pointee))
+  if(success = visit_type(pointee))
   {
     pointer->ty = pointer->eval_ty = create_pointer_type(pointee->ty);
   }
   return success;
 }
 
-bool Typesys::set_type_type(AstNode* type)
+bool TypeContext_Set::visit_type(AstNode* type)
 {
   bool success = true;
   
   switch(type->kind)
   {
     case eAstNode::pointer:
-      success = set_type_pointer(type);
+      success = visit_pointer(type);
     break;
     
     case eAstNode::array:
-      success = set_type_array(type);
+      success = visit_array(type);
     break;
     
     case eAstNode::basic_type:
@@ -688,27 +723,27 @@ bool Typesys::set_type_type(AstNode* type)
   return success;
 }
 
-bool Typesys::set_type_var(AstNode* var)
+bool TypeContext_Set::visit_var(AstNode* var)
 {
   assert(KIND(var, eAstNode::var));
   bool success = true;
   
   AstNode* type = var->var.type;
-  if(success = set_type_type(type))
+  if(success = visit_type(type))
   {
     var->ty = create_var_type(type->ty);
     var->eval_ty = type->ty;
 
     if(var->var.init_expr)
     {
-      success = set_type_expr(var->var.init_expr);
+      success = visit_expr(var->var.init_expr);
     }
   }
 
   return success;
 }
 
-bool Typesys::set_type_bin_expr(AstNode* bin_expr)
+bool TypeContext_Set::visit_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
@@ -716,7 +751,7 @@ bool Typesys::set_type_bin_expr(AstNode* bin_expr)
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
   
-  if(success = set_type_expr(left_operand) && set_type_expr(right_operand))
+  if(success = visit_expr(left_operand) && visit_expr(right_operand))
   {
     bin_expr->eval_ty = create_typevar();
     bin_expr->ty = create_proc_type(create_product_type(left_operand->eval_ty, right_operand->eval_ty), bin_expr->eval_ty);
@@ -725,13 +760,13 @@ bool Typesys::set_type_bin_expr(AstNode* bin_expr)
   return success;
 }
 
-bool Typesys::set_type_unr_expr(AstNode* unr_expr)
+bool TypeContext_Set::visit_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
   bool success = true;
   
   AstNode* operand = unr_expr->unr_expr.operand;
-  if(success = set_type_expr(operand))
+  if(success = visit_expr(operand))
   {
     unr_expr->eval_ty = create_typevar();
     unr_expr->ty = create_proc_type(operand->eval_ty, unr_expr->eval_ty);
@@ -740,13 +775,13 @@ bool Typesys::set_type_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool Typesys::set_type_actual_arg(AstNode* call_arg)
+bool TypeContext_Set::visit_actual_arg(AstNode* call_arg)
 {
   assert(KIND(call_arg, eAstNode::call_arg));
   bool success = true;
 
   AstNode* expr = call_arg->call_arg.expr;
-  if(success = set_type_expr(expr))
+  if(success = visit_expr(expr))
   {
     call_arg->eval_ty = expr->eval_ty;
     call_arg->ty = expr->ty;
@@ -755,7 +790,7 @@ bool Typesys::set_type_actual_arg(AstNode* call_arg)
   return success;
 }
 
-bool Typesys::set_type_id(AstNode* id)
+bool TypeContext_Set::visit_id(AstNode* id)
 {
   assert(KIND(id, eAstNode::id));
   bool success = true;
@@ -766,7 +801,7 @@ bool Typesys::set_type_id(AstNode* id)
   return success;
 }
 
-bool Typesys::set_type_actual_args(AstNode* args)
+bool TypeContext_Set::visit_actual_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -776,7 +811,7 @@ bool Typesys::set_type_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    success = set_type_expr(arg);
+    success = visit_expr(arg);
   }
 
   if(success)
@@ -787,7 +822,7 @@ bool Typesys::set_type_actual_args(AstNode* args)
   return success;
 }
 
-bool Typesys::set_type_call(AstNode* call)
+bool TypeContext_Set::visit_call(AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
   bool success = true;
@@ -796,7 +831,7 @@ bool Typesys::set_type_call(AstNode* call)
   AstNode* args = call->call.args;
   if(call_expr->kind == eAstNode::id)
   {
-    if(success = set_type_id(call_expr) && set_type_actual_args(args))
+    if(success = visit_id(call_expr) && visit_actual_args(args))
     {
       call->eval_ty = create_typevar();
       call->ty = create_proc_type(args->ty, call->eval_ty);
@@ -808,7 +843,7 @@ bool Typesys::set_type_call(AstNode* call)
   return success;
 }
 
-bool Typesys::set_type_lit(AstNode* lit)
+bool TypeContext_Set::visit_lit(AstNode* lit)
 {
   assert(KIND(lit, eAstNode::lit));
   bool success = true;
@@ -853,12 +888,12 @@ bool Typesys::set_type_lit(AstNode* lit)
   return success;
 }
 
-bool Typesys::set_type_index(AstNode* index)
+bool TypeContext_Set::visit_index(AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
   bool success = true;
   
-  if(success = set_type_expr(index->index.array_expr) && set_type_expr(index->index.i_expr))
+  if(success = visit_expr(index->index.array_expr) && visit_expr(index->index.i_expr))
   {
     index->ty = index->index.array_expr->eval_ty;
     index->eval_ty = create_typevar();
@@ -867,14 +902,14 @@ bool Typesys::set_type_index(AstNode* index)
   return success;
 }
 
-bool Typesys::set_type_cast(AstNode* cast)
+bool TypeContext_Set::visit_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
   bool success = true;
 
   AstNode* to_type = cast->cast.to_type;
   AstNode* from_expr = cast->cast.from_expr;
-  if(success = set_type_type(to_type) && set_type_expr(from_expr))
+  if(success = visit_type(to_type) && visit_expr(from_expr))
   {
     cast->eval_ty = to_type->eval_ty;
     cast->ty = create_product_type(from_expr->eval_ty, cast->eval_ty);
@@ -883,14 +918,14 @@ bool Typesys::set_type_cast(AstNode* cast)
   return success;
 }
 
-bool Typesys::set_type_assign(AstNode* assign)
+bool TypeContext_Set::visit_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode::assign));
   bool success = true;
   
   AstNode* dest_expr = assign->assign.dest_expr;
   AstNode* source_expr =assign->assign.source_expr;
-  if(success = set_type_expr(dest_expr) && set_type_expr(source_expr))
+  if(success = visit_expr(dest_expr) && visit_expr(source_expr))
   {
     assign->ty = assign->eval_ty = dest_expr->eval_ty;
   }
@@ -898,7 +933,7 @@ bool Typesys::set_type_assign(AstNode* assign)
   return success;
 }
 
-bool Typesys::set_type_expr(AstNode* expr)
+bool TypeContext_Set::visit_expr(AstNode* expr)
 {
   bool success = true;
   
@@ -906,73 +941,73 @@ bool Typesys::set_type_expr(AstNode* expr)
   {
     case eAstNode::pointer:
     {
-      success = set_type_pointer(expr);
+      success = visit_pointer(expr);
     }
     break;
     
     case eAstNode::array:
     {
-      success = set_type_array(expr);
+      success = visit_array(expr);
     }
     break;
     
     case eAstNode::cast:
     {
-      success = set_type_cast(expr);
+      success = visit_cast(expr);
     }
     break;
     
     case eAstNode::bin_expr:
     {
-      success = set_type_bin_expr(expr);
+      success = visit_bin_expr(expr);
     }
     break;
     
     case eAstNode::unr_expr:
     {
-      success = set_type_unr_expr(expr);
+      success = visit_unr_expr(expr);
     }
     break;
     
     case eAstNode::id:
     {
-      success = set_type_id(expr);
+      success = visit_id(expr);
     }
     break;
     
     case eAstNode::call:
     {
-      success = set_type_call(expr);
+      success = visit_call(expr);
     }
     break;
     
     case eAstNode::lit:
     {
-      success = set_type_lit(expr);
+      success = visit_lit(expr);
     }
     break;
     
     case eAstNode::basic_type:
     {
-      success = set_type_type(expr);
+      success = visit_type(expr);
     }
     break;
     
     case eAstNode::index:
     {
-      success = set_type_index(expr);
+      success = visit_index(expr);
     }
     break;
 
     case eAstNode::call_arg:
     {
-      success = set_type_actual_arg(expr);
+      success = visit_actual_arg(expr);
     }
     break;
 
     case eAstNode::assign:
     {
-      success = set_type_assign(expr);
+      success = visit_assign(expr);
     }
     break;
     
@@ -981,7 +1016,7 @@ bool Typesys::set_type_expr(AstNode* expr)
   return success;
 }
 
-bool Typesys::set_type_return(AstNode* ret)
+bool TypeContext_Set::visit_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode::return_));
   bool success = true;
@@ -989,7 +1024,7 @@ bool Typesys::set_type_return(AstNode* ret)
   if(ret->ret.expr)
   {
     AstNode* ret_expr = ret->ret.expr;
-    if(success = set_type_expr(ret_expr))
+    if(success = visit_expr(ret_expr))
     {
       ret->ty = ret_expr->ty;
       ret->eval_ty = ret_expr->eval_ty;
@@ -1003,15 +1038,15 @@ bool Typesys::set_type_return(AstNode* ret)
   return success;
 }
 
-bool Typesys::set_type_if(AstNode* if_)
+bool TypeContext_Set::visit_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode::if_));
   bool success = true;
   
-  if(success = set_type_expr(if_->if_.cond_expr))
+  if(success = visit_expr(if_->if_.cond_expr))
   {
     AstNode* body = if_->if_.body;
-    if(success = set_type_block_stmt(body))
+    if(success = visit_block_stmt(body))
     {
       if_->ty = body->ty;
       if_->eval_ty = body->eval_ty;
@@ -1019,7 +1054,7 @@ bool Typesys::set_type_if(AstNode* if_)
       AstNode* else_body = if_->if_.else_body;
       if(else_body)
       {
-        success = set_type_block_stmt(else_body);
+        success = visit_block_stmt(else_body);
       }
     }
   }
@@ -1027,13 +1062,13 @@ bool Typesys::set_type_if(AstNode* if_)
   return success;
 }
 
-bool Typesys::set_type_do_while(AstNode* do_while)
+bool TypeContext_Set::visit_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
 
   AstNode* body = do_while->do_while.body;
-  if(success = set_type_block_stmt(body) && set_type_expr(do_while->do_while.cond_expr))
+  if(success = visit_block_stmt(body) && visit_expr(do_while->do_while.cond_expr))
   {
     do_while->ty = body->ty;
     do_while->eval_ty = body->eval_ty;
@@ -1042,13 +1077,13 @@ bool Typesys::set_type_do_while(AstNode* do_while)
   return success;
 }
 
-bool Typesys::set_type_while(AstNode* while_)
+bool TypeContext_Set::visit_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode::while_));
   bool success = true;
   
   AstNode* body = while_->while_.body;
-  if(success = set_type_expr(while_->while_.cond_expr) && set_type_block_stmt(body))
+  if(success = visit_expr(while_->while_.cond_expr) && visit_block_stmt(body))
   {
     while_->ty = body->ty;
     while_->eval_ty = body->eval_ty;
@@ -1057,7 +1092,7 @@ bool Typesys::set_type_while(AstNode* while_)
   return success;
 }
 
-bool Typesys::set_type_block(AstNode* block)
+bool TypeContext_Set::visit_block(AstNode* block)
 {
   assert(KIND(block, eAstNode::block));
   bool success = true;
@@ -1067,7 +1102,7 @@ bool Typesys::set_type_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    success = set_type_block_stmt(stmt);
+    success = visit_block_stmt(stmt);
   }
 
   if(success)
@@ -1078,7 +1113,7 @@ bool Typesys::set_type_block(AstNode* block)
   return success;
 }
 
-bool Typesys::set_type_block_stmt(AstNode* stmt)
+bool TypeContext_Set::visit_block_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -1086,25 +1121,25 @@ bool Typesys::set_type_block_stmt(AstNode* stmt)
   {
     case eAstNode::var:
     {
-      success = set_type_var(stmt);
+      success = visit_var(stmt);
     }
     break;
     
     case eAstNode::block:
     {
-      success = set_type_block(stmt);
+      success = visit_block(stmt);
     }
     break;
     
     case eAstNode::assign:
     {
-      success = set_type_assign(stmt);
+      success = visit_assign(stmt);
     }
     break;
     
     case eAstNode::cast:
     {
-      success = set_type_cast(stmt);
+      success = visit_cast(stmt);
     }
     break;
     
@@ -1114,7 +1149,7 @@ bool Typesys::set_type_block_stmt(AstNode* stmt)
     case eAstNode::call:
     case eAstNode::lit:
     {
-      success = set_type_expr(stmt);
+      success = visit_expr(stmt);
     }
     break;
     
@@ -1127,36 +1162,36 @@ bool Typesys::set_type_block_stmt(AstNode* stmt)
     
     case eAstNode::basic_type:
     {
-      success = set_type_type(stmt);
+      success = visit_type(stmt);
     }
     break;
     case eAstNode::return_:
     {
-      success = set_type_return(stmt);
+      success = visit_return(stmt);
     }
     break;
 
     case eAstNode::if_:
     {
-      success = set_type_if(stmt);
+      success = visit_if(stmt);
     }
     break;
 
     case eAstNode::do_while:
     {
-      success = set_type_do_while(stmt);
+      success = visit_do_while(stmt);
     }
     break;
 
     case eAstNode::while_:
     {
-      success = set_type_while(stmt);
+      success = visit_while(stmt);
     }
     break;
 
     case eAstNode::index:
     {
-      success = set_type_index(stmt);
+      success = visit_index(stmt);
     }
     break;
 
@@ -1166,9 +1201,9 @@ bool Typesys::set_type_block_stmt(AstNode* stmt)
   return success;
 }
 
-Type* AstNode_NodeList::make_product_type(Typesys* typesys)
+Type* AstNode_NodeList::make_product_type(TypeContext* context)
 {
-  Type* result = typesys->basic_type_void;
+  Type* result = context->basic_type_void;
 
   ListItem* li = node_list.first;
   if(li)
@@ -1178,14 +1213,14 @@ Type* AstNode_NodeList::make_product_type(Typesys* typesys)
     for(li = li->next; li; li = li->next)
     {
       AstNode* next_arg = KIND(li, eList::ast_node)->ast_node;
-      result = typesys->create_product_type(result, next_arg->eval_ty);
+      result = context->create_product_type(result, next_arg->eval_ty);
     }
   }
 
   return result;
 }
 
-bool Typesys::set_type_formal_args(AstNode* args)
+bool TypeContext_Set::visit_formal_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -1195,7 +1230,7 @@ bool Typesys::set_type_formal_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    success = set_type_var(arg);
+    success = visit_var(arg);
   }
 
   if(success)
@@ -1206,28 +1241,28 @@ bool Typesys::set_type_formal_args(AstNode* args)
   return success;
 }
 
-bool Typesys::set_type_proc(AstNode* proc)
+bool TypeContext_Set::visit_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
   
   AstNode* ret_type = proc->proc.ret_type;
   AstNode* args = proc->proc.args;
-  if(success = set_type_formal_args(args) && set_type_type(ret_type))
+  if(success = visit_formal_args(args) && visit_type(ret_type))
   {
     proc->ty = create_proc_type(args->eval_ty, ret_type->eval_ty);
     proc->eval_ty = basic_type_void;
     
     if(!proc->proc.is_extern())
     {
-      success = set_type_block(proc->proc.body);
+      success = visit_block(proc->proc.body);
     }
   }
 
   return success;
 }
 
-bool Typesys::set_type_module_stmt(AstNode* stmt)
+bool TypeContext_Set::visit_module_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -1235,13 +1270,13 @@ bool Typesys::set_type_module_stmt(AstNode* stmt)
   {
     case eAstNode::proc:
     {
-      success = set_type_proc(stmt);
+      success = visit_proc(stmt);
     }
     break;
 
     case eAstNode::var:
     {
-      success = set_type_var(stmt);
+      success = visit_var(stmt);
     }
     break;
 
@@ -1257,7 +1292,7 @@ bool Typesys::set_type_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool Typesys::set_type_module(AstNode* module)
+bool TypeContext_Set::visit_module(AstNode* module)
 {
   assert(KIND(module, eAstNode::module));
   bool success = true;
@@ -1269,7 +1304,7 @@ bool Typesys::set_type_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    success = set_type_module_stmt(stmt);
+    success = visit_module_stmt(stmt);
   }
 
   return success;
@@ -1278,26 +1313,26 @@ bool Typesys::set_type_module(AstNode* module)
 //       EVAL TYPES
 //-----------------------------------------------------
 
-bool Typesys::eval_type_array(AstNode* array)
+bool TypeContext_Eval::visit_array(AstNode* array)
 {
   assert(KIND(array, eAstNode::array));
   bool success = true;
   
-  success = eval_type_expr(array->array.size_expr) && eval_type_type(array->array.elem_expr);
+  success = visit_expr(array->array.size_expr) && visit_type(array->array.elem_expr);
   return success;
 }
 
-bool Typesys::eval_type_pointer(AstNode* pointer)
+bool TypeContext_Eval::visit_pointer(AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode::pointer));
 
   bool success = true;
-  success = eval_type_expr(pointer->pointer.pointee);
+  success = visit_expr(pointer->pointer.pointee);
 
   return success;
 }
 
-bool Typesys::eval_type_type(AstNode* type)
+bool TypeContext_Eval::visit_type(AstNode* type)
 {
   bool success = true;
   
@@ -1305,13 +1340,13 @@ bool Typesys::eval_type_type(AstNode* type)
   {
     case eAstNode::pointer:
     {
-      success = eval_type_pointer(type);
+      success = visit_pointer(type);
     }
     break;
 
     case eAstNode::array:
     {
-      success = eval_type_array(type);
+      success = visit_array(type);
     }
     break;
 
@@ -1325,17 +1360,17 @@ bool Typesys::eval_type_type(AstNode* type)
   return success;
 }
 
-bool Typesys::eval_type_cast(AstNode* cast)
+bool TypeContext_Eval::visit_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
 
   bool success = true;
-  success = eval_type_type(cast->cast.to_type) && eval_type_expr(cast->cast.from_expr);
+  success = visit_type(cast->cast.to_type) && visit_expr(cast->cast.from_expr);
 
   return success;
 }
 
-bool Typesys::eval_type_bin_expr(AstNode* bin_expr)
+bool TypeContext_Eval::visit_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
@@ -1344,7 +1379,7 @@ bool Typesys::eval_type_bin_expr(AstNode* bin_expr)
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
   eOperator op = bin_expr->bin_expr.op;
   
-  if(success = eval_type_expr(left_operand) && eval_type_expr(right_operand))
+  if(success = visit_expr(left_operand) && visit_expr(right_operand))
   {
     switch(op)
     {
@@ -1429,7 +1464,7 @@ bool Typesys::eval_type_bin_expr(AstNode* bin_expr)
   return success;
 }
 
-bool Typesys::eval_type_id(AstNode* id)
+bool TypeContext_Eval::visit_id(AstNode* id)
 {
   assert(KIND(id, eAstNode::id));
   bool success = true;
@@ -1488,7 +1523,7 @@ bool Typesys::eval_type_id(AstNode* id)
   return success;
 }
 
-bool Typesys::eval_type_unr_expr(AstNode* unr_expr)
+bool TypeContext_Eval::visit_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
   bool success = true;
@@ -1496,7 +1531,7 @@ bool Typesys::eval_type_unr_expr(AstNode* unr_expr)
   AstNode* operand = unr_expr->unr_expr.operand;
   eOperator op = unr_expr->unr_expr.op;
   
-  if(success = eval_type_expr(operand))
+  if(success = visit_expr(operand))
   {
     switch(op)
     {
@@ -1546,7 +1581,7 @@ bool Typesys::eval_type_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool Typesys::eval_type_var(AstNode* var)
+bool TypeContext_Eval::visit_var(AstNode* var)
 {
   assert(KIND(var, eAstNode::var));
   bool success = true;
@@ -1556,7 +1591,7 @@ bool Typesys::eval_type_var(AstNode* var)
     AstNode* init_expr = var->var.init_expr;
     if(init_expr)
     {
-      if(success = eval_type_expr(init_expr))
+      if(success = visit_expr(init_expr))
       {
         if(!var->eval_ty->unif(init_expr->eval_ty))
         {
@@ -1573,7 +1608,7 @@ bool Typesys::eval_type_var(AstNode* var)
   return success;
 }
 
-bool Typesys::eval_type_formal_args(AstNode* args)
+bool TypeContext_Eval::visit_formal_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -1583,13 +1618,13 @@ bool Typesys::eval_type_formal_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    success = eval_type_var(arg);
+    success = visit_var(arg);
   }
 
   return success;
 }
 
-bool Typesys::eval_type_actual_args(AstNode* args)
+bool TypeContext_Eval::visit_actual_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -1599,43 +1634,43 @@ bool Typesys::eval_type_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    success = eval_type_expr(arg->call_arg.expr);
+    success = visit_expr(arg->call_arg.expr);
   }
 
   return success;
 }
 
-bool Typesys::eval_type_call(AstNode* call)
+bool TypeContext_Eval::visit_call(AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
 
   bool success = true;
-  success = eval_type_id(call->call.expr) && eval_type_actual_args(call->call.args);
+  success = visit_id(call->call.expr) && visit_actual_args(call->call.args);
 
   return success;
 }
 
-bool Typesys::eval_type_index(AstNode* index)
+bool TypeContext_Eval::visit_index(AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
 
   bool success = true;
-  success = eval_type_expr(index->index.array_expr) && eval_type_expr(index->index.i_expr);
+  success = visit_expr(index->index.array_expr) && visit_expr(index->index.i_expr);
 
   return success;
 }
 
-bool Typesys::eval_type_assign(AstNode* assign)
+bool TypeContext_Eval::visit_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode::assign));
 
   bool success = true;
-  success = eval_type_expr(assign->assign.dest_expr) && eval_type_expr(assign->assign.source_expr);
+  success = visit_expr(assign->assign.dest_expr) && visit_expr(assign->assign.source_expr);
 
   return success;
 }
 
-bool Typesys::eval_type_expr(AstNode* expr)
+bool TypeContext_Eval::visit_expr(AstNode* expr)
 {
   bool success = true;
   
@@ -1643,37 +1678,37 @@ bool Typesys::eval_type_expr(AstNode* expr)
   {
     case eAstNode::cast:
     {
-      success = eval_type_cast(expr);
+      success = visit_cast(expr);
     }
     break;
     
     case eAstNode::bin_expr:
     {
-      success = eval_type_bin_expr(expr);
+      success = visit_bin_expr(expr);
     }
     break;
     
     case eAstNode::unr_expr:
     {
-      success = eval_type_unr_expr(expr);
+      success = visit_unr_expr(expr);
     }
     break;
     
     case eAstNode::id:
     {
-      success = eval_type_id(expr);
+      success = visit_id(expr);
     }
     break;
     
     case eAstNode::call:
     {
-      success = eval_type_call(expr);
+      success = visit_call(expr);
     }
     break;
     
     case eAstNode::index:
     {
-      success = eval_type_index(expr);
+      success = visit_index(expr);
     }
     break;
     
@@ -1684,13 +1719,13 @@ bool Typesys::eval_type_expr(AstNode* expr)
     case eAstNode::pointer:
     case eAstNode::array:
     {
-      success = eval_type_type(expr);
+      success = visit_type(expr);
     }
     break;
 
     case eAstNode::assign:
     {
-      success = eval_type_assign(expr);
+      success = visit_assign(expr);
     }
     break;
     
@@ -1699,7 +1734,7 @@ bool Typesys::eval_type_expr(AstNode* expr)
   return success;
 }
 
-bool Typesys::eval_type_if(AstNode* if_)
+bool TypeContext_Eval::visit_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode::if_));
   bool success = true;
@@ -1708,9 +1743,9 @@ bool Typesys::eval_type_if(AstNode* if_)
   AstNode* body = if_->if_.body;
   AstNode* else_body = if_->if_.else_body;
   
-  if(success = eval_type_expr(cond_expr) &&
-     eval_type_block_stmt(body) &&
-     (else_body ? eval_type_block_stmt(else_body) : true))
+  if(success = visit_expr(cond_expr) &&
+     visit_block_stmt(body) &&
+     (else_body ? visit_block_stmt(else_body) : true))
   {
     if(!cond_expr->eval_ty->unif(basic_type_bool))
     {
@@ -1721,7 +1756,7 @@ bool Typesys::eval_type_if(AstNode* if_)
   return success;
 }
 
-bool Typesys::eval_type_block(AstNode* block)
+bool TypeContext_Eval::visit_block(AstNode* block)
 {
   assert(KIND(block, eAstNode::block));
   bool success = true;
@@ -1731,19 +1766,19 @@ bool Typesys::eval_type_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    success = eval_type_block_stmt(stmt);
+    success = visit_block_stmt(stmt);
   }
 
   return success;
 }
 
-bool Typesys::eval_type_do_while(AstNode* do_while)
+bool TypeContext_Eval::visit_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
 
   AstNode* cond_expr = do_while->do_while.cond_expr;
-  if(success = eval_type_block_stmt(do_while->do_while.body) && eval_type_expr(cond_expr))
+  if(success = visit_block_stmt(do_while->do_while.body) && visit_expr(cond_expr))
   {
     if(!cond_expr->eval_ty->unif(basic_type_bool))
     {
@@ -1753,13 +1788,13 @@ bool Typesys::eval_type_do_while(AstNode* do_while)
   return success;
 }
 
-bool Typesys::eval_type_while(AstNode* while_)
+bool TypeContext_Eval::visit_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode::while_));
   bool success = true;
   
   AstNode* cond_expr = while_->while_.cond_expr;
-  if(success = eval_type_expr(cond_expr) && eval_type_block_stmt(while_->while_.body))
+  if(success = visit_expr(cond_expr) && visit_block_stmt(while_->while_.body))
   {
     if(!cond_expr->eval_ty->unif(basic_type_bool))
     {
@@ -1770,13 +1805,13 @@ bool Typesys::eval_type_while(AstNode* while_)
   return success;
 }
 
-bool Typesys::eval_type_return(AstNode* ret)
+bool TypeContext_Eval::visit_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode::return_));
   bool success = true;
   
   AstNode* ret_expr = ret->ret.expr;
-  if(ret_expr && (success = eval_type_expr(ret_expr)))
+  if(ret_expr && (success = visit_expr(ret_expr)))
   {
     AstNode* proc = ret->ret.proc;
     Type* proc_ty = KIND(proc->ty, eType::proc);
@@ -1789,7 +1824,7 @@ bool Typesys::eval_type_return(AstNode* ret)
   return success;
 }
 
-bool Typesys::eval_type_block_stmt(AstNode* stmt)
+bool TypeContext_Eval::visit_block_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -1797,13 +1832,13 @@ bool Typesys::eval_type_block_stmt(AstNode* stmt)
   {
     case eAstNode::assign:
     {
-      success = eval_type_assign(stmt);
+      success = visit_assign(stmt);
     }
     break;
     
     case eAstNode::cast:
     {
-      success = eval_type_cast(stmt);
+      success = visit_cast(stmt);
     }
     break;
     
@@ -1813,43 +1848,43 @@ bool Typesys::eval_type_block_stmt(AstNode* stmt)
     case eAstNode::call:
     case eAstNode::lit:
     {
-      success = eval_type_expr(stmt);
+      success = visit_expr(stmt);
     }
     break;
     
     case eAstNode::if_:
     {
-      success = eval_type_if(stmt);
+      success = visit_if(stmt);
     }
     break;
     
     case eAstNode::do_while:
     {
-      success = eval_type_do_while(stmt);
+      success = visit_do_while(stmt);
     }
     break;
     
     case eAstNode::while_:
     {
-      success = eval_type_while(stmt);
+      success = visit_while(stmt);
     }
     break;
     
     case eAstNode::block:
     {
-      success = eval_type_block(stmt);
+      success = visit_block(stmt);
     }
     break;
     
     case eAstNode::return_:
     {
-      success = eval_type_return(stmt);
+      success = visit_return(stmt);
     }
     break;
     
     case eAstNode::var:
     {
-      success = eval_type_var(stmt);
+      success = visit_var(stmt);
     }
     break;
 
@@ -1859,13 +1894,13 @@ bool Typesys::eval_type_block_stmt(AstNode* stmt)
     
     case eAstNode::basic_type:
     {
-      success = eval_type_type(stmt);
+      success = visit_type(stmt);
     }
     break;
     
     case eAstNode::index:
     {
-      success = eval_type_index(stmt);
+      success = visit_index(stmt);
     }
     break;
     
@@ -1875,18 +1910,18 @@ bool Typesys::eval_type_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool Typesys::eval_type_proc(AstNode* proc)
+bool TypeContext_Eval::visit_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
 
-  success = eval_type_formal_args(proc->proc.args) && eval_type_block_stmt(proc->proc.body)
-    && eval_type_type(proc->proc.ret_type);
+  success = visit_formal_args(proc->proc.args) && visit_block_stmt(proc->proc.body)
+    && visit_type(proc->proc.ret_type);
 
   return success;
 }
 
-bool Typesys::eval_type_module_stmt(AstNode* stmt)
+bool TypeContext_Eval::visit_module_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -1894,7 +1929,7 @@ bool Typesys::eval_type_module_stmt(AstNode* stmt)
   {
     case eAstNode::proc:
     {
-      success = eval_type_proc(stmt);
+      success = visit_proc(stmt);
     }
     break;
 
@@ -1907,7 +1942,7 @@ bool Typesys::eval_type_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool Typesys::eval_type_module(AstNode* module)
+bool TypeContext_Eval::visit_module(AstNode* module)
 {
   assert(KIND(module, eAstNode::module));
   bool success = true;
@@ -1917,7 +1952,7 @@ bool Typesys::eval_type_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    success = eval_type_module_stmt(stmt);
+    success = visit_module_stmt(stmt);
   }
 
   return success;
@@ -1926,7 +1961,7 @@ bool Typesys::eval_type_module(AstNode* module)
 //       RESOLVE TYPES
 //-----------------------------------------------------
 
-bool Typesys::resolve_type_var(AstNode* var)
+bool TypeContext_Resolve::visit_var(AstNode* var)
 {
   assert(KIND(var, eAstNode::var));
   bool success = true;
@@ -1937,7 +1972,7 @@ bool Typesys::resolve_type_var(AstNode* var)
 
     if(var->var.init_expr)
     {
-      success = resolve_type_expr(var->var.init_expr);
+      success = visit_expr(var->var.init_expr);
     }
 
     Symbol* object = var->var.decl_sym;
@@ -1947,7 +1982,7 @@ bool Typesys::resolve_type_var(AstNode* var)
   return success;
 }
 
-bool Typesys::resolve_type_lit(AstNode* lit)
+bool TypeContext_Resolve::visit_lit(AstNode* lit)
 {
   assert(KIND(lit, eAstNode::lit));
   bool success = true;
@@ -1960,7 +1995,7 @@ bool Typesys::resolve_type_lit(AstNode* lit)
   return success;
 }
 
-bool Typesys::resolve_type_formal_args(AstNode* args)
+bool TypeContext_Resolve::visit_formal_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -1970,7 +2005,7 @@ bool Typesys::resolve_type_formal_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    success = resolve_type_var(arg);
+    success = visit_var(arg);
   }
   if(success)
   {
@@ -1979,23 +2014,23 @@ bool Typesys::resolve_type_formal_args(AstNode* args)
   return success;
 }
 
-bool Typesys::resolve_type_bin_expr(AstNode* bin_expr)
+bool TypeContext_Resolve::visit_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
 
-  success = resolve_type_expr(bin_expr->bin_expr.left_operand) &&
-    resolve_type_expr(bin_expr->bin_expr.right_operand) && bin_expr->resolve_types(arena);
+  success = visit_expr(bin_expr->bin_expr.left_operand) &&
+    visit_expr(bin_expr->bin_expr.right_operand) && bin_expr->resolve_types(arena);
 
   return success;
 }
 
-bool Typesys::resolve_type_unr_expr(AstNode* unr_expr)
+bool TypeContext_Resolve::visit_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
   bool success = true;
 
-  if(success = resolve_type_expr(unr_expr->unr_expr.operand))
+  if(success = visit_expr(unr_expr->unr_expr.operand))
   {
     AstNode* operand = unr_expr->unr_expr.operand;
     eOperator op = unr_expr->unr_expr.op;
@@ -2028,7 +2063,7 @@ bool Typesys::resolve_type_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool Typesys::resolve_type_id(AstNode* id)
+bool TypeContext_Resolve::visit_id(AstNode* id)
 {
   assert(KIND(id, eAstNode::id));
   bool success = true;
@@ -2037,7 +2072,7 @@ bool Typesys::resolve_type_id(AstNode* id)
   return success;
 }
 
-bool Typesys::resolve_type_actual_args(AstNode* args)
+bool TypeContext_Resolve::visit_actual_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -2047,7 +2082,7 @@ bool Typesys::resolve_type_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    if(success = resolve_type_expr(arg->call_arg.expr))
+    if(success = visit_expr(arg->call_arg.expr))
     {
       arg->eval_ty = arg->call_arg.expr->eval_ty;
     }
@@ -2061,14 +2096,14 @@ bool Typesys::resolve_type_actual_args(AstNode* args)
   return success;
 }
 
-bool Typesys::resolve_type_call(AstNode* call)
+bool TypeContext_Resolve::visit_call(AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
   assert(call->call.expr->kind == eAstNode::id);
 
   bool success = true;
 
-  if(success = resolve_type_id(call->call.expr) && resolve_type_actual_args(call->call.args))
+  if(success = visit_id(call->call.expr) && visit_actual_args(call->call.args))
   {
     AstNode* args = call->call.args;
     assert(KIND(args, eAstNode::node_list));
@@ -2102,7 +2137,7 @@ bool Typesys::resolve_type_call(AstNode* call)
   return success;
 }
 
-bool Typesys::resolve_type_index(AstNode* index)
+bool TypeContext_Resolve::visit_index(AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
   bool success = true;
@@ -2110,7 +2145,7 @@ bool Typesys::resolve_type_index(AstNode* index)
   AstNode* array_expr = index->index.array_expr;
   AstNode* i_expr = index->index.i_expr;
 
-  if(success = resolve_type_expr(array_expr) && resolve_type_expr(i_expr))
+  if(success = visit_expr(array_expr) && visit_expr(i_expr))
   {
     if(i_expr->eval_ty->unif(basic_type_int))
     {
@@ -2145,29 +2180,29 @@ bool Typesys::resolve_type_index(AstNode* index)
   return success;
 }
 
-bool Typesys::resolve_type_cast(AstNode* cast)
+bool TypeContext_Resolve::visit_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
   bool success = true;
 
-  success = resolve_type_type(cast->cast.to_type) && resolve_type_expr(cast->cast.from_expr) &&
+  success = visit_type(cast->cast.to_type) && visit_expr(cast->cast.from_expr) &&
     cast->resolve_types(arena);
 
   return success;
 }
 
-bool Typesys::resolve_type_assign(AstNode* assign)
+bool TypeContext_Resolve::visit_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode::assign));
   bool success = true;
 
-  success = resolve_type_expr(assign->assign.dest_expr) && resolve_type_expr(assign->assign.source_expr) &&
+  success = visit_expr(assign->assign.dest_expr) && visit_expr(assign->assign.source_expr) &&
     assign->resolve_types(arena);
 
   return success;
 }
 
-bool Typesys::resolve_type_expr(AstNode* expr)
+bool TypeContext_Resolve::visit_expr(AstNode* expr)
 {
   bool success = true;
   
@@ -2175,37 +2210,37 @@ bool Typesys::resolve_type_expr(AstNode* expr)
   {
     case eAstNode::cast:
     {
-      success = resolve_type_cast(expr);
+      success = visit_cast(expr);
     }
     break;
     
     case eAstNode::bin_expr:
     {
-      success = resolve_type_bin_expr(expr);
+      success = visit_bin_expr(expr);
     }
     break;
     
     case eAstNode::unr_expr:
     {
-      success = resolve_type_unr_expr(expr);
+      success = visit_unr_expr(expr);
     }
     break;
     
     case eAstNode::id:
     {
-      success = resolve_type_id(expr);
+      success = visit_id(expr);
     }
     break;
     
     case eAstNode::call:
     {
-      success = resolve_type_call(expr);
+      success = visit_call(expr);
     }
     break;
     
     case eAstNode::lit:
     {
-      success = resolve_type_lit(expr);
+      success = visit_lit(expr);
     }
     break;
 
@@ -2213,19 +2248,19 @@ bool Typesys::resolve_type_expr(AstNode* expr)
     case eAstNode::pointer:
     case eAstNode::array:
     {
-      success = resolve_type_type(expr);
+      success = visit_type(expr);
     }
     break;
     
     case eAstNode::index:
     {
-      success = resolve_type_index(expr);
+      success = visit_index(expr);
     }
     break;
 
     case eAstNode::assign:
     {
-      success = resolve_type_assign(expr);
+      success = visit_assign(expr);
     }
     break;
     
@@ -2235,7 +2270,7 @@ bool Typesys::resolve_type_expr(AstNode* expr)
   return success;
 }
 
-bool Typesys::resolve_type_block(AstNode* block)
+bool TypeContext_Resolve::visit_block(AstNode* block)
 {
   assert(KIND(block, eAstNode::block));
   bool success = true;
@@ -2245,7 +2280,7 @@ bool Typesys::resolve_type_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    success = resolve_type_block_stmt(stmt);
+    success = visit_block_stmt(stmt);
   }
 
   if(success)
@@ -2256,14 +2291,14 @@ bool Typesys::resolve_type_block(AstNode* block)
   return success;
 }
 
-bool Typesys::resolve_type_return(AstNode* ret)
+bool TypeContext_Resolve::visit_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode::return_));
   bool success = true;
 
   if(ret->ret.expr)
   {
-    success = resolve_type_expr(ret->ret.expr);
+    success = visit_expr(ret->ret.expr);
   }
 
   if(success)
@@ -2274,16 +2309,16 @@ bool Typesys::resolve_type_return(AstNode* ret)
   return success;
 }
 
-bool Typesys::resolve_type_if(AstNode* if_)
+bool TypeContext_Resolve::visit_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode::if_));
   bool success = true;
 
-  if(success = resolve_type_expr(if_->if_.cond_expr) && resolve_type_block_stmt(if_->if_.body))
+  if(success = visit_expr(if_->if_.cond_expr) && visit_block_stmt(if_->if_.body))
   {
     if(if_->if_.else_body)
     {
-      success = resolve_type_block_stmt(if_->if_.else_body);
+      success = visit_block_stmt(if_->if_.else_body);
     }
 
     if(success)
@@ -2295,50 +2330,50 @@ bool Typesys::resolve_type_if(AstNode* if_)
   return success;
 }
 
-bool Typesys::resolve_type_do_while(AstNode* do_while)
+bool TypeContext_Resolve::visit_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
 
-  success = resolve_type_block_stmt(do_while->do_while.body) && resolve_type_expr(do_while->do_while.cond_expr) &&
+  success = visit_block_stmt(do_while->do_while.body) && visit_expr(do_while->do_while.cond_expr) &&
     do_while->resolve_types(arena);
 
   return success;
 }
 
-bool Typesys::resolve_type_while(AstNode* while_)
+bool TypeContext_Resolve::visit_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode::while_));
   bool success = true;
 
-  success = resolve_type_expr(while_->while_.cond_expr) && resolve_type_block_stmt(while_->while_.body) &&
+  success = visit_expr(while_->while_.cond_expr) && visit_block_stmt(while_->while_.body) &&
     while_->resolve_types(arena);
 
   return success;
 }
 
-bool Typesys::resolve_type_array(AstNode* array)
+bool TypeContext_Resolve::visit_array(AstNode* array)
 {
   assert(KIND(array, eAstNode::array));
   bool success = true;
   
-  success = resolve_type_expr(array->array.size_expr) &&
-    resolve_type_type(array->array.elem_expr) && array->resolve_types(arena);
+  success = visit_expr(array->array.size_expr) &&
+    visit_type(array->array.elem_expr) && array->resolve_types(arena);
 
   return success;
 }
 
-bool Typesys::resolve_type_pointer(AstNode* pointer)
+bool TypeContext_Resolve::visit_pointer(AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode::pointer));
   bool success = true;
   
-  success = resolve_type_expr(pointer->pointer.pointee) && pointer->resolve_types(arena);
+  success = visit_expr(pointer->pointer.pointee) && pointer->resolve_types(arena);
 
   return success;
 }
 
-bool Typesys::resolve_type_type(AstNode* type)
+bool TypeContext_Resolve::visit_type(AstNode* type)
 {
   bool success = true;
   
@@ -2346,13 +2381,13 @@ bool Typesys::resolve_type_type(AstNode* type)
   {
     case eAstNode::pointer:
     {
-      success = resolve_type_pointer(type);
+      success = visit_pointer(type);
     }
     break;
 
     case eAstNode::array:
     {
-      success = resolve_type_array(type);
+      success = visit_array(type);
     }
     break;
 
@@ -2363,7 +2398,7 @@ bool Typesys::resolve_type_type(AstNode* type)
   return success;
 }
 
-bool Typesys::resolve_type_block_stmt(AstNode* stmt)
+bool TypeContext_Resolve::visit_block_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -2371,13 +2406,13 @@ bool Typesys::resolve_type_block_stmt(AstNode* stmt)
   {
     case eAstNode::assign:
     {
-      success = resolve_type_assign(stmt);
+      success = visit_assign(stmt);
     }
     break;
     
     case eAstNode::cast:
     {
-      success = resolve_type_cast(stmt);
+      success = visit_cast(stmt);
     }
     break;
     
@@ -2387,43 +2422,43 @@ bool Typesys::resolve_type_block_stmt(AstNode* stmt)
     case eAstNode::call:
     case eAstNode::lit:
     {
-      success = resolve_type_expr(stmt);
+      success = visit_expr(stmt);
     }
     break;
     
     case eAstNode::block:
     {
-      success = resolve_type_block(stmt);
+      success = visit_block(stmt);
     }
     break;
     
     case eAstNode::var:
     {
-      success = resolve_type_var(stmt);
+      success = visit_var(stmt);
     }
     break;
     
     case eAstNode::return_:
     {
-      success = resolve_type_return(stmt);
+      success = visit_return(stmt);
     }
     break;
     
     case eAstNode::if_:
     {
-      success = resolve_type_if(stmt);
+      success = visit_if(stmt);
     }
     break;
     
     case eAstNode::do_while:
     {
-      success = resolve_type_do_while(stmt);
+      success = visit_do_while(stmt);
     }
     break;
     
     case eAstNode::while_:
     {
-      success = resolve_type_while(stmt);
+      success = visit_while(stmt);
     }
     break;
     
@@ -2433,13 +2468,13 @@ bool Typesys::resolve_type_block_stmt(AstNode* stmt)
     
     case eAstNode::basic_type:
     {
-      success = resolve_type_type(stmt);
+      success = visit_type(stmt);
     }
     break;
     
     case eAstNode::index:
     {
-      success = resolve_type_index(stmt);
+      success = visit_index(stmt);
     }
     break;
     
@@ -2449,13 +2484,13 @@ bool Typesys::resolve_type_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool Typesys::resolve_type_proc(AstNode* proc)
+bool TypeContext_Resolve::visit_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
 
-  if(success = resolve_type_formal_args(proc->proc.args) && resolve_type_type(proc->proc.ret_type)
-     && resolve_type_block_stmt(proc->proc.body) && proc->resolve_types(arena))
+  if(success = visit_formal_args(proc->proc.args) && visit_type(proc->proc.ret_type)
+     && visit_block_stmt(proc->proc.body) && proc->resolve_types(arena))
   {
     proc->proc.decl_sym->ty = proc->eval_ty;
     proc->proc.retvar->ty = proc->proc.ret_type->eval_ty;
@@ -2464,7 +2499,7 @@ bool Typesys::resolve_type_proc(AstNode* proc)
   return success;
 }
 
-bool Typesys::resolve_type_module_stmt(AstNode* stmt)
+bool TypeContext_Resolve::visit_module_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -2472,13 +2507,13 @@ bool Typesys::resolve_type_module_stmt(AstNode* stmt)
   {
     case eAstNode::proc:
     {
-      success = resolve_type_proc(stmt);
+      success = visit_proc(stmt);
     }
     break;
     
     case eAstNode::var:
     {
-      success = resolve_type_var(stmt);
+      success = visit_var(stmt);
     }
     case eAstNode::include:
     break;
@@ -2489,7 +2524,7 @@ bool Typesys::resolve_type_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool Typesys::resolve_type_module(AstNode* module)
+bool TypeContext_Resolve::visit_module(AstNode* module)
 {
   assert(KIND(module, eAstNode::module));
   bool success = true;
@@ -2499,7 +2534,7 @@ bool Typesys::resolve_type_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    success = resolve_type_module_stmt(stmt);
+    success = visit_module_stmt(stmt);
   }
 
   return success;
@@ -2508,7 +2543,7 @@ bool Typesys::resolve_type_module(AstNode* module)
 //          CHECK TYPES
 //-----------------------------------------------------
 
-bool Typesys::check_types_var(AstNode* var)
+bool TypeContext_Check::visit_var(AstNode* var)
 {
   assert(KIND(var, eAstNode::var));
   bool success = true;
@@ -2521,14 +2556,14 @@ bool Typesys::check_types_var(AstNode* var)
   {
     if(var->var.init_expr)
     {
-      success = check_types_expr(var->var.init_expr);
+      success = visit_expr(var->var.init_expr);
     }
   }
 
   return success;
 }
 
-bool Typesys::check_types_formal_args(AstNode* args)
+bool TypeContext_Check::visit_formal_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -2538,13 +2573,13 @@ bool Typesys::check_types_formal_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    success = check_types_var(arg);
+    success = visit_var(arg);
   }
 
   return success;
 }
 
-bool Typesys::check_types_cast(AstNode* cast)
+bool TypeContext_Check::visit_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
   bool success = true;
@@ -2552,7 +2587,7 @@ bool Typesys::check_types_cast(AstNode* cast)
   AstNode* from_expr = cast->cast.from_expr;
   AstNode* to_type = cast->cast.to_type;
   
-  if(success = check_types_expr(from_expr))
+  if(success = visit_expr(from_expr))
   {
     Type* from_ty = from_expr->eval_ty;
     Type* to_ty = to_type->eval_ty;
@@ -2602,7 +2637,7 @@ bool Typesys::check_types_cast(AstNode* cast)
   return success;
 }
 
-bool Typesys::check_types_bin_expr(AstNode* bin_expr)
+bool TypeContext_Check::visit_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
@@ -2611,7 +2646,7 @@ bool Typesys::check_types_bin_expr(AstNode* bin_expr)
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
   eOperator op = bin_expr->bin_expr.op;
   
-  if(success = check_types_expr(left_operand) && check_types_expr(right_operand))
+  if(success = visit_expr(left_operand) && visit_expr(right_operand))
   {
     Type* expr_ty = KIND(bin_expr->ty, eType::proc);
     Type* operands_ty = expr_ty->proc.args;
@@ -2726,7 +2761,7 @@ bool Typesys::check_types_bin_expr(AstNode* bin_expr)
   return success;
 }
 
-bool Typesys::check_types_unr_expr(AstNode* unr_expr)
+bool TypeContext_Check::visit_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
   bool success = true;
@@ -2734,7 +2769,7 @@ bool Typesys::check_types_unr_expr(AstNode* unr_expr)
   AstNode* operand = unr_expr->unr_expr.operand;
   eOperator op = unr_expr->unr_expr.op;
   
-  if(success = check_types_expr(operand))
+  if(success = visit_expr(operand))
   {
     Type* expr_ty = KIND(unr_expr->ty, eType::proc);
     Type* operand_ty = expr_ty->proc.args;
@@ -2778,7 +2813,7 @@ bool Typesys::check_types_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool Typesys::check_types_actual_args(AstNode* args)
+bool TypeContext_Check::visit_actual_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -2788,23 +2823,23 @@ bool Typesys::check_types_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    success = check_types_expr(arg->call_arg.expr);
+    success = visit_expr(arg->call_arg.expr);
   }
 
   return success;
 }
 
-bool Typesys::check_types_call(AstNode* call)
+bool TypeContext_Check::visit_call(AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
 
   bool success = true;
-  success = check_types_actual_args(call->call.args);
+  success = visit_actual_args(call->call.args);
 
   return success;
 }
 
-bool Typesys::check_types_index(AstNode* index)
+bool TypeContext_Check::visit_index(AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
   bool success = true;
@@ -2819,7 +2854,7 @@ bool Typesys::check_types_index(AstNode* index)
   return success;
 }
 
-bool Typesys::check_types_assign(AstNode* assign)
+bool TypeContext_Check::visit_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode::assign));
   bool success = true;
@@ -2827,7 +2862,7 @@ bool Typesys::check_types_assign(AstNode* assign)
   AstNode* dest_expr = assign->assign.dest_expr;
   AstNode* source_expr = assign->assign.source_expr;
 
-  if(success = check_types_expr(dest_expr) && check_types_expr(source_expr))
+  if(success = visit_expr(dest_expr) && visit_expr(source_expr))
   {
     if(!dest_expr->eval_ty->unif(source_expr->eval_ty))
     {
@@ -2838,7 +2873,7 @@ bool Typesys::check_types_assign(AstNode* assign)
   return success;
 }
 
-bool Typesys::check_types_expr(AstNode* expr)
+bool TypeContext_Check::visit_expr(AstNode* expr)
 {
   bool success = true;
   
@@ -2846,31 +2881,31 @@ bool Typesys::check_types_expr(AstNode* expr)
   {
     case eAstNode::assign:
     {
-      success = check_types_assign(expr);
+      success = visit_assign(expr);
     }
     break;
     
     case eAstNode::cast:
     {
-      success = check_types_cast(expr);
+      success = visit_cast(expr);
     }
     break;
     
     case eAstNode::bin_expr:
     {
-      success = check_types_bin_expr(expr);
+      success = visit_bin_expr(expr);
     }
     break;
     
     case eAstNode::unr_expr:
     {
-      success = check_types_unr_expr(expr);
+      success = visit_unr_expr(expr);
     }
     break;
     
     case eAstNode::call:
     {
-      success = check_types_call(expr);
+      success = visit_call(expr);
     }
     break;
     
@@ -2881,7 +2916,7 @@ bool Typesys::check_types_expr(AstNode* expr)
     
     case eAstNode::index:
     {
-      success = check_types_index(expr);
+      success = visit_index(expr);
     }
     break;
     
@@ -2891,52 +2926,52 @@ bool Typesys::check_types_expr(AstNode* expr)
   return success;
 }
 
-bool Typesys::check_types_return(AstNode* ret)
+bool TypeContext_Check::visit_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode::return_));
   bool success = true;
 
   if(ret->ret.expr)
   {
-    success = check_types_expr(ret->ret.expr);
+    success = visit_expr(ret->ret.expr);
   }
 
   return success;
 }
 
-bool Typesys::check_types_do_while(AstNode* do_while)
+bool TypeContext_Check::visit_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
 
-  success = check_types_block_stmt(do_while->do_while.body)
-    && check_types_expr(do_while->do_while.cond_expr);
+  success = visit_block_stmt(do_while->do_while.body)
+    && visit_expr(do_while->do_while.cond_expr);
 
   return success;
 }
 
-bool Typesys::check_types_while(AstNode* while_)
+bool TypeContext_Check::visit_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode::while_));
   bool success = true;
 
-  success = check_types_expr(while_->while_.cond_expr)
-    && check_types_block_stmt(while_->while_.body);
+  success = visit_expr(while_->while_.cond_expr)
+    && visit_block_stmt(while_->while_.body);
   return success;
 }
 
-bool Typesys::check_types_if(AstNode* if_)
+bool TypeContext_Check::visit_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode::if_));
   bool success = true;
   
-  success = check_types_expr(if_->if_.cond_expr) && check_types_block_stmt(if_->if_.body) &&
-    (if_->if_.else_body ? check_types_block_stmt(if_->if_.else_body) : true);
+  success = visit_expr(if_->if_.cond_expr) && visit_block_stmt(if_->if_.body) &&
+    (if_->if_.else_body ? visit_block_stmt(if_->if_.else_body) : true);
 
   return success;
 }
 
-bool Typesys::check_types_block(AstNode* block)
+bool TypeContext_Check::visit_block(AstNode* block)
 {
   assert(KIND(block, eAstNode::block));
   bool success = true;
@@ -2946,13 +2981,13 @@ bool Typesys::check_types_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    success = check_types_block_stmt(stmt);
+    success = visit_block_stmt(stmt);
   }
 
   return success;
 }
 
-bool Typesys::check_types_block_stmt(AstNode* stmt)
+bool TypeContext_Check::visit_block_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -2960,13 +2995,13 @@ bool Typesys::check_types_block_stmt(AstNode* stmt)
   {
     case eAstNode::assign:
     {
-      success = check_types_assign(stmt);
+      success = visit_assign(stmt);
     }
     break;
     
     case eAstNode::cast:
     {
-      success = check_types_cast(stmt);
+      success = visit_cast(stmt);
     }
     break;
     
@@ -2976,43 +3011,43 @@ bool Typesys::check_types_block_stmt(AstNode* stmt)
     case eAstNode::call:
     case eAstNode::lit:
     {
-      success = check_types_expr(stmt);
+      success = visit_expr(stmt);
     }
     break;
     
     case eAstNode::return_:
     {
-      success = check_types_return(stmt);
+      success = visit_return(stmt);
     }
     break;
     
     case eAstNode::if_:
     {
-      success = check_types_if(stmt);
+      success = visit_if(stmt);
     }
     break;
     
     case eAstNode::do_while:
     {
-      success = check_types_do_while(stmt);
+      success = visit_do_while(stmt);
     }
     break;
     
     case eAstNode::while_:
     {
-      success = check_types_while(stmt);
+      success = visit_while(stmt);
     }
     break;
     
     case eAstNode::block:
     {
-      success = check_types_block(stmt);
+      success = visit_block(stmt);
     }
     break;
     
     case eAstNode::var:
     {
-      success = check_types_var(stmt);
+      success = visit_var(stmt);
     }
     break;
     
@@ -3022,7 +3057,7 @@ bool Typesys::check_types_block_stmt(AstNode* stmt)
     
     case eAstNode::index:
     {
-      success = check_types_index(stmt);
+      success = visit_index(stmt);
     }
     break;
     
@@ -3032,17 +3067,17 @@ bool Typesys::check_types_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool Typesys::check_types_proc(AstNode* proc)
+bool TypeContext_Check::visit_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
 
-  success = check_types_formal_args(proc->proc.args) && check_types_block_stmt(proc->proc.body);
+  success = visit_formal_args(proc->proc.args) && visit_block_stmt(proc->proc.body);
 
   return success;
 }
 
-bool Typesys::check_types_module_stmt(AstNode* stmt)
+bool TypeContext_Check::visit_module_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -3050,13 +3085,13 @@ bool Typesys::check_types_module_stmt(AstNode* stmt)
   {
     case eAstNode::proc:
     {
-      success = check_types_proc(stmt);
+      success = visit_proc(stmt);
     }
     break;
     
     case eAstNode::var:
     {
-      success = check_types_var(stmt);
+      success = visit_var(stmt);
     }
     break;
     
@@ -3066,7 +3101,7 @@ bool Typesys::check_types_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool Typesys::check_types_module(AstNode* module)
+bool TypeContext_Check::visit_module(AstNode* module)
 {
   assert(KIND(module, eAstNode::module));
   bool success = true;
@@ -3076,16 +3111,24 @@ bool Typesys::check_types_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    success = check_types_module_stmt(stmt);
+    success = visit_module_stmt(stmt);
   }
 
   return success;
 }
 
-bool Typesys::process(AstNode* module)
+bool TypeContext::process(AstNode* module)
 {
-  bool success = set_type_module(module) && eval_type_module(module) &&
-    resolve_type_module(module) && check_types_module(module);
+  bool success = true;
+
+  TypeContext_Set* set = (TypeContext_Set*)this;
+  TypeContext_Eval* eval = (TypeContext_Eval*)this;
+  TypeContext_Resolve* resolve = (TypeContext_Resolve*)this;
+  TypeContext_Check* check = (TypeContext_Check*)this;
+
+  success = set->visit_module(module) && eval->visit_module(module)
+    && resolve->visit_module(module) && check->visit_module(module);
+
   return success;
 }
 

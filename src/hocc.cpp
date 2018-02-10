@@ -1,11 +1,6 @@
 #include <stdarg.h>
+
 #include "hocc.h"
-
-global_var bool DEBUG_enabled = true;
-global_var bool DEBUG_zero_arena = true;
-global_var bool DEBUG_check_arena_bounds = true;
-global_var bool DEBUG_zero_struct = true;
-
 #include "common.cpp"
 #include "translate.cpp"
 
@@ -276,7 +271,7 @@ int main(int argc, char* argv[])
   bytes_written = Platform::file_write_bytes(out_files.h_asm.name, (uint8*)x86_text->head, x86_text_len);
   if(bytes_written != x86_text_len)
   {
-    success = error("not all bytes were written to file `%s`", out_files.h_asm.name);
+    success = error("number of bytes written not equal to text size : `%s`", out_files.h_asm.name);
     goto end;
   }
 

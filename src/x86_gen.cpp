@@ -1,3 +1,245 @@
+void X86Context::init(MemoryArena* gp_arena, MemoryArena* stmt_arena, MemoryArena* text_arena,
+                      TypeContext* type_context, IrContext* ir_context, SymbolContext* sym_context)
+{
+  basic_type_bool  = type_context->basic_type_bool;
+  basic_type_int   = type_context->basic_type_int;
+  basic_type_char  = type_context->basic_type_char;
+  basic_type_float = type_context->basic_type_float;
+  basic_type_void  = type_context->basic_type_void;
+  basic_type_str   = type_context->basic_type_str;
+
+  this->gp_arena = gp_arena;
+  this->stmt_arena = stmt_arena;
+  stmt_array = (X86Stmt*)stmt_arena->base;
+  machine_word_size = 4;
+  data_alignment = 4;
+  init_registers();
+  text = String::create(text_arena);
+
+  ir_context->x86_context = this;
+  sym_context->x86_context = this;
+}
+
+void X86Context::init_registers()
+{
+  register_count = 0;
+
+  /* eax */
+  X86Location* loc = &eax;
+  *loc = {};
+  loc->kind = eX86Location::eax;
+  loc->type = basic_type_int;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* al */
+  X86Location* subloc = &al;
+  *subloc = {};
+  loc->subloc[0] = subloc;
+  subloc->parent = loc;
+  subloc->kind = eX86Location::al;
+  subloc->type = basic_type_char;
+  registers._[register_count++] = subloc;
+  subloc->occupants.init(gp_arena, eList::symbol);
+
+  /* ah */
+  subloc = &ah;
+  *subloc = {};
+  loc->subloc[1] = subloc;
+  subloc->parent = loc;
+  subloc->kind = eX86Location::ah;
+  subloc->type = basic_type_char;
+  registers._[register_count++] = subloc;
+  subloc->occupants.init(gp_arena, eList::symbol);
+
+  /* ebx */
+  loc = &ebx;
+  *loc = {};
+  loc->kind = eX86Location::ebx;
+  loc->type = basic_type_int;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* bl */
+  subloc = &bl;
+  *subloc = {};
+  loc->subloc[0] = subloc;
+  subloc->parent = loc;
+  subloc->kind = eX86Location::bl;
+  subloc->type = basic_type_char;
+  registers._[register_count++] = subloc;
+  subloc->occupants.init(gp_arena, eList::symbol);
+
+  /* bh */
+  subloc = &bh;
+  *subloc = {};
+  loc->subloc[1] = subloc;
+  subloc->parent = loc;
+  subloc->kind = eX86Location::bh;
+  subloc->type = basic_type_char;
+  registers._[register_count++] = subloc;
+  subloc->occupants.init(gp_arena, eList::symbol);
+
+  /* ecx */
+  loc = &ecx;
+  *loc = {};
+  loc->kind = eX86Location::ecx;
+  loc->type = basic_type_int;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* cl */
+  subloc = &cl;
+  *subloc = {};
+  loc->subloc[0] = subloc;
+  subloc->parent = loc;
+  subloc->kind = eX86Location::cl;
+  subloc->type = basic_type_char;
+  registers._[register_count++] = subloc;
+  subloc->occupants.init(gp_arena, eList::symbol);
+
+  /* ch */
+  subloc = &ch;
+  *subloc = {};
+  loc->subloc[1] = subloc;
+  subloc->parent = loc;
+  subloc->kind = eX86Location::ch;
+  subloc->type = basic_type_char;
+  registers._[register_count++] = subloc;
+  subloc->occupants.init(gp_arena, eList::symbol);
+
+  /* edx */
+  loc = &edx;
+  *loc = {};
+  loc->kind = eX86Location::edx;
+  loc->type = basic_type_int;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* dl */
+  subloc = &dl;
+  *subloc = {};
+  loc->subloc[0] = subloc;
+  subloc->parent = loc;
+  subloc->kind = eX86Location::dl;
+  subloc->type = basic_type_char;
+  registers._[register_count++] = subloc;
+  subloc->occupants.init(gp_arena, eList::symbol);
+
+  /* dh */
+  subloc = &dh;
+  *subloc = {};
+  loc->subloc[1] = subloc;
+  subloc->parent = loc;
+  subloc->kind = eX86Location::dh;
+  subloc->type = basic_type_char;
+  registers._[register_count++] = subloc;
+  subloc->occupants.init(gp_arena, eList::symbol);
+
+  /* esi */
+  loc = &esi;
+  *loc = {};
+  loc->kind = eX86Location::esi;
+  loc->type = basic_type_int;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* edi */
+  loc = &edi;
+  *loc = {};
+  loc->kind = eX86Location::edi;
+  loc->type = basic_type_int;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* memory */
+  loc = &memory;
+  *loc = {};
+  loc->kind = eX86Location::memory;
+  loc->type = basic_type_void;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* ebp */
+  loc = &ebp;
+  *loc = {};
+  loc->kind = eX86Location::ebp;
+  loc->type = basic_type_int;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* esp */
+  loc = &esp;
+  *loc = {};
+  loc->kind = eX86Location::esp;
+  loc->type = basic_type_int;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* xmm0 */
+  loc = &xmm0;
+  *loc = {};
+  loc->kind = eX86Location::xmm0;
+  loc->type = basic_type_float;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* xmm1 */
+  loc = &xmm1;
+  *loc = {};
+  loc->kind = eX86Location::xmm1;
+  loc->type = basic_type_float;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* xmm2 */
+  loc = &xmm2;
+  *loc = {};
+  loc->kind = eX86Location::xmm2;
+  loc->type = basic_type_float;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* xmm3 */
+  loc = &xmm3;
+  *loc = {};
+  loc->kind = eX86Location::xmm3;
+  loc->type = basic_type_float;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* xmm4 */
+  loc = &xmm4;
+  *loc = {};
+  loc->kind = eX86Location::xmm4;
+  loc->type = basic_type_float;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* xmm5 */
+  loc = &xmm5;
+  *loc = {};
+  loc->kind = eX86Location::xmm5;
+  loc->type = basic_type_float;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* xmm6 */
+  loc = &xmm6;
+  *loc = {};
+  loc->kind = eX86Location::xmm6;
+  loc->type = basic_type_float;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  /* xmm7 */
+  loc = &xmm7;
+  *loc = {};
+  loc->kind = eX86Location::xmm7;
+  loc->type = basic_type_float;
+  registers._[register_count++] = loc;
+  loc->occupants.init(gp_arena, eList::symbol);
+
+  assert(register_count <= sizeof_array(registers._));
+}
+
 void X86Context::print_register(String* text, X86Location* reg)
 {
   switch(reg->kind)
@@ -149,7 +391,7 @@ void X86Context::print_operand(String* text, X86Operand* operand)
         char* sign = "+";
         if(offset->kind == eX86Operand::constant)
         {
-          struct X86Operand_constant* constant = &offset->constant;
+          struct X86Operand_Constant* constant = &offset->constant;
           assert(constant->kind == eX86Constant::int_);
 
           if(constant->int_val < 0)
@@ -172,7 +414,7 @@ void X86Context::print_operand(String* text, X86Operand* operand)
 
     case eX86Operand::constant:
     {
-      struct X86Operand_constant* constant = &operand->constant;
+      struct X86Operand_Constant* constant = &operand->constant;
 
       if(constant->kind == eX86Constant::int_)
       {
@@ -486,74 +728,74 @@ void X86Context::add_object_to_location(Symbol* object, X86Location* loc)
 
 bool X86Location::is_parent_free()
 {
-  bool is_free = true;
+  bool result = true;
 
   if(occupants.count == 0)
   {
     if(parent)
     {
-      is_free = parent->is_parent_free();
+      result = parent->is_parent_free();
     }
   }
   else
   {
-    is_free = false;
+    result = false;
   }
 
-  return is_free;
+  return result;
 }
 
 bool X86Location::is_subloc_free()
 {
-  bool is_free = true;
+  bool result = true;
 
   if(occupants.count == 0)
   {
     if(subloc[0])
     {
-      is_free = subloc[0]->is_subloc_free();
+      result = subloc[0]->is_subloc_free();
     }
 
-    if(is_free && subloc[1])
+    if(result && subloc[1])
     {
-      is_free = subloc[1]->is_subloc_free();
+      result = subloc[1]->is_subloc_free();
     }
   }
   else
   {
-    is_free = false;
+    result = false;
   }
 
-  return is_free;
+  return result;
 }
 
 bool X86Location::is_free()
 {
-  bool is_free = true;
+  bool result = true;
 
   if(occupants.count == 0)
   {
     if(parent)
     {
-      is_free = parent->is_parent_free();
+      result = parent->is_parent_free();
     }
 
-    if(is_free && subloc[0])
+    if(result && subloc[0])
     {
-      is_free = subloc[0]->is_subloc_free();
+      result = subloc[0]->is_subloc_free();
     }
 
-    if(is_free && subloc[1])
+    if(result && subloc[1])
     {
-      is_free = subloc[1]->is_subloc_free();
+      result = subloc[1]->is_subloc_free();
     }
   }
   else
   {
-    is_free = false;
+    result = false;
   }
 
-  return is_free;
+  return result;
 }
 
 X86Location* X86Location::get_top()
@@ -724,7 +966,7 @@ X86Operand* X86Context::make_index_operand(eX86Operand kind, Symbol* object)
   X86Operand* offset = operand->index.offset = mem_push_struct(gp_arena, X86Operand);
 
   offset->kind = eX86Operand::constant;
-  struct X86Operand_constant* constant = &offset->constant;
+  struct X86Operand_Constant* constant = &offset->constant;
   constant->kind = eX86Constant::int_;
 
   switch(object->storage_space)
@@ -789,7 +1031,7 @@ X86Operand* X86Context::make_int_constant_operand(int int_val)
   X86Operand* operand = mem_push_struct(gp_arena, X86Operand);
   operand->kind = eX86Operand::constant;
 
-  struct X86Operand_constant* constant = &operand->constant;
+  struct X86Operand_Constant* constant = &operand->constant;
   constant->kind = eX86Constant::int_;
   constant->int_val = int_val;
 
@@ -828,7 +1070,7 @@ X86Operand* X86Context::make_object_memory_operand(Symbol* object)
       operand = mem_push_struct(gp_arena, X86Operand);
       operand->kind = eX86Operand::constant;
 
-      struct X86Operand_constant* constant = &operand->constant;
+      struct X86Operand_Constant* constant = &operand->constant;
 
       if(object->ty->equal(basic_type_int))
       {
@@ -1516,7 +1758,7 @@ void X86Context::gen_unr_expr(IrStmt_Assign* assign)
   X86Location* arg1_loc = lookup_object_location(arg1->object);
   X86Location* result_loc = arg1_loc;
 
-  if(IrContext::is_ir_cast_op(assign->op))
+  if(IrContext::is_cast_op(assign->op))
   {
     switch(assign->op)
     {
@@ -1837,226 +2079,6 @@ void X86Context::gen_proc(AstNode* proc)
     /* ret */
     create_stmt(eX86Stmt::ret);
   }
-}
-
-void X86Context::init_registers()
-{
-  register_count = 0;
-
-  /* eax */
-  X86Location* loc = &eax;
-  *loc = {};
-  loc->kind = eX86Location::eax;
-  loc->type = basic_type_int;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* al */
-  X86Location* subloc = &al;
-  *subloc = {};
-  loc->subloc[0] = subloc;
-  subloc->parent = loc;
-  subloc->kind = eX86Location::al;
-  subloc->type = basic_type_char;
-  registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
-
-  /* ah */
-  subloc = &ah;
-  *subloc = {};
-  loc->subloc[1] = subloc;
-  subloc->parent = loc;
-  subloc->kind = eX86Location::ah;
-  subloc->type = basic_type_char;
-  registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
-
-  /* ebx */
-  loc = &ebx;
-  *loc = {};
-  loc->kind = eX86Location::ebx;
-  loc->type = basic_type_int;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* bl */
-  subloc = &bl;
-  *subloc = {};
-  loc->subloc[0] = subloc;
-  subloc->parent = loc;
-  subloc->kind = eX86Location::bl;
-  subloc->type = basic_type_char;
-  registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
-
-  /* bh */
-  subloc = &bh;
-  *subloc = {};
-  loc->subloc[1] = subloc;
-  subloc->parent = loc;
-  subloc->kind = eX86Location::bh;
-  subloc->type = basic_type_char;
-  registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
-
-  /* ecx */
-  loc = &ecx;
-  *loc = {};
-  loc->kind = eX86Location::ecx;
-  loc->type = basic_type_int;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* cl */
-  subloc = &cl;
-  *subloc = {};
-  loc->subloc[0] = subloc;
-  subloc->parent = loc;
-  subloc->kind = eX86Location::cl;
-  subloc->type = basic_type_char;
-  registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
-
-  /* ch */
-  subloc = &ch;
-  *subloc = {};
-  loc->subloc[1] = subloc;
-  subloc->parent = loc;
-  subloc->kind = eX86Location::ch;
-  subloc->type = basic_type_char;
-  registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
-
-  /* edx */
-  loc = &edx;
-  *loc = {};
-  loc->kind = eX86Location::edx;
-  loc->type = basic_type_int;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* dl */
-  subloc = &dl;
-  *subloc = {};
-  loc->subloc[0] = subloc;
-  subloc->parent = loc;
-  subloc->kind = eX86Location::dl;
-  subloc->type = basic_type_char;
-  registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
-
-  /* dh */
-  subloc = &dh;
-  *subloc = {};
-  loc->subloc[1] = subloc;
-  subloc->parent = loc;
-  subloc->kind = eX86Location::dh;
-  subloc->type = basic_type_char;
-  registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
-
-  /* esi */
-  loc = &esi;
-  *loc = {};
-  loc->kind = eX86Location::esi;
-  loc->type = basic_type_int;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* edi */
-  loc = &edi;
-  *loc = {};
-  loc->kind = eX86Location::edi;
-  loc->type = basic_type_int;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* memory */
-  loc = &memory;
-  *loc = {};
-  loc->kind = eX86Location::memory;
-  loc->type = basic_type_void;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* ebp */
-  loc = &ebp;
-  *loc = {};
-  loc->kind = eX86Location::ebp;
-  loc->type = basic_type_int;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* esp */
-  loc = &esp;
-  *loc = {};
-  loc->kind = eX86Location::esp;
-  loc->type = basic_type_int;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* xmm0 */
-  loc = &xmm0;
-  *loc = {};
-  loc->kind = eX86Location::xmm0;
-  loc->type = basic_type_float;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* xmm1 */
-  loc = &xmm1;
-  *loc = {};
-  loc->kind = eX86Location::xmm1;
-  loc->type = basic_type_float;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* xmm2 */
-  loc = &xmm2;
-  *loc = {};
-  loc->kind = eX86Location::xmm2;
-  loc->type = basic_type_float;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* xmm3 */
-  loc = &xmm3;
-  *loc = {};
-  loc->kind = eX86Location::xmm3;
-  loc->type = basic_type_float;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* xmm4 */
-  loc = &xmm4;
-  *loc = {};
-  loc->kind = eX86Location::xmm4;
-  loc->type = basic_type_float;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* xmm5 */
-  loc = &xmm5;
-  *loc = {};
-  loc->kind = eX86Location::xmm5;
-  loc->type = basic_type_float;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* xmm6 */
-  loc = &xmm6;
-  *loc = {};
-  loc->kind = eX86Location::xmm6;
-  loc->type = basic_type_float;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  /* xmm7 */
-  loc = &xmm7;
-  *loc = {};
-  loc->kind = eX86Location::xmm7;
-  loc->type = basic_type_float;
-  registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
-
-  assert(register_count <= sizeof_array(registers._));
 }
 
 void X86Context::write_data_bytes(String* text, uint8* p_data, int data_size)

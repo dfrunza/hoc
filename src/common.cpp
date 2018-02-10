@@ -1,3 +1,8 @@
+global_var bool DEBUG_enabled = true;
+global_var bool DEBUG_zero_arena = true;
+global_var bool DEBUG_check_arena_bounds = true;
+global_var bool DEBUG_zero_struct = true;
+
 #define breakpoint() for(int x = 0; x != 0; )
 #define sizeof_array(array) (sizeof(array)/sizeof(array[0]))
 #define max_int() ~(1 << (sizeof(int)*8 - 1))
@@ -26,6 +31,12 @@ void mem_zero_(void* mem, int len)
   {
     *p_byte = 0;
   }
+}
+
+void MemoryArena::DEBUG_print_usage(char* tag)
+{
+  MemoryArena::Usage usage = get_usage();
+  Platform::printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
 }
 
 #define struct_check_bounds(ARENA, TYPE, STRUCT) (ARENA)->check_bounds(sizeof(TYPE), STRUCT)
@@ -150,7 +161,7 @@ void* MemoryArena::push_struct(int elem_size, int count)
   return element;
 }
 
-MemoryArena::Usage MemoryArena::usage()
+MemoryArena::Usage MemoryArena::get_usage()
 {
   MemoryArena::Usage usage = {0};
 #if 0

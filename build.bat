@@ -65,7 +65,7 @@ IF %ERRORLEVEL% NEQ 0 (
 :: /Zi     - add symbolic debug info
 :: /Fl     - generate listing
 :: /c      - assemble without linking
-ml /Zi /Fl /Cx /nologo %hoc_file%.asm ^
+ml /Zi /Fl /Cx /nologo %cd%\%hoc_file%.asm ^
    /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
 
 :end

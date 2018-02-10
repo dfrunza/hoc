@@ -278,7 +278,7 @@ bool Parser::parse_index_recursive(AstNode* left_node, AstNode** node, int* ndim
           }
         }
         else
-          success = compile_error(arena, src_loc, "expression was expected at %s", token->get_printstr());
+          success = compile_error(arena, src_loc, "expression was expected at `%s`", token->get_printstr());
       }
       else
       {
@@ -1383,17 +1383,22 @@ bool Parser::parse_block_stmt(AstNode** node)
     {
       eModifier modifier = eModifier::None;
 
-      if((success = success = parse_modifier(&modifier) && parse_expr(node)) && *node)
+      if(success = success = parse_modifier(&modifier) && parse_expr(node))
       {
-        if(token->kind == eToken::id)
+        if(*node)
         {
-          char* var_name = token->lexeme;
-          success = parse_block_var(var_name, modifier, *node, node) && consume_semicolon();
+          if(token->kind == eToken::id)
+          {
+            char* var_name = token->lexeme;
+            success = parse_block_var(var_name, modifier, *node, node) && consume_semicolon();
+          }
+          else
+          {
+            success = consume_semicolon();
+          }
         }
-        else
-        {
-          success = consume_semicolon();
-        }
+        else if(modifier != eModifier::None)
+          success = compile_error(arena, src_loc, "statement was expected at `%s`", token->get_printstr());
       }
     }
     break;
@@ -1815,25 +1820,30 @@ bool Parser::parse_module_stmt(AstNode** node)
     {
       eModifier modifier = eModifier::None;
 
-      if((success = parse_modifier(&modifier) && parse_expr(node)) && *node)
+      if(success = parse_modifier(&modifier) && parse_expr(node))
       {
-        if(token->kind == eToken::id)
+        if(*node)
         {
-          char* name = token->lexeme;
-          if(success = get_next_token())
+          if(token->kind == eToken::id)
           {
-            if(token->kind == eToken::open_parens)
+            char* name = token->lexeme;
+            if(success = get_next_token())
             {
-              success = parse_module_proc(name, modifier, *node, node);
-            }
-            else
-            {
-              success = parse_module_var(name, modifier, *node, node) && consume_semicolon();
+              if(token->kind == eToken::open_parens)
+              {
+                success = parse_module_proc(name, modifier, *node, node);
+              }
+              else
+              {
+                success = parse_module_var(name, modifier, *node, node) && consume_semicolon();
+              }
             }
           }
+          else
+            success = compile_error(arena, src_loc, "identifier was expected at `%s`", token->get_printstr());
         }
-        else
-          success = compile_error(arena, src_loc, "identifier was expected at `%s`", token->get_printstr());
+        else if(modifier != eModifier::None)
+          success = compile_error(arena, src_loc, "statement was expected at `%s`", token->get_printstr());
       }
     }
     break;

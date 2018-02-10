@@ -12,7 +12,26 @@ Label* Label::create_by_name(MemoryArena* arena, char* name)
   return label;
 }
 
-bool IrContext::is_ir_cast_op(eIrOp ir_op)
+void IrContext::init(MemoryArena* gp_arena, MemoryArena* stmt_arena,
+                     TypeContext* type_context, SymbolContext* sym_context)
+{
+  basic_type_bool  = type_context->basic_type_bool;
+  basic_type_int   = type_context->basic_type_int;
+  basic_type_char  = type_context->basic_type_char;
+  basic_type_float = type_context->basic_type_float;
+  basic_type_void  = type_context->basic_type_void;
+  basic_type_str   = type_context->basic_type_str;
+
+  this->gp_arena = gp_arena;
+  this->stmt_arena = stmt_arena;
+  stmt_array = (IrStmt*)stmt_arena->base;
+  stmt_count = 0;
+  this->sym_context = sym_context;
+  label_list = List::create(gp_arena, eList::ir_label);
+  data_alignment = 4;
+}
+
+bool IrContext::is_cast_op(eIrOp ir_op)
 {
   bool is_conv = false;
 
@@ -236,7 +255,7 @@ void IrContext::emit_return()
   stmt_count++;
 }
 
-void IrContext::reset_ir_context()
+void IrContext::reset()
 {
   stmt_array = &stmt_array[stmt_count];
   total_stmt_count += stmt_count;
@@ -247,7 +266,7 @@ void IrContext::reset_ir_context()
   label_list->clear();
 }
 
-IrArg* IrContext::ir_arg_new_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc)
+IrArg* IrContext::create_arg_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc)
 {
   IrArg* arg = mem_push_struct(gp_arena, IrArg);
   arg->object = create_temp_object(scope, ty, src_loc);
@@ -255,7 +274,7 @@ IrArg* IrContext::ir_arg_new_temp_object(Scope* scope, Type* ty, SourceLoc* src_
   return arg;
 }
 
-IrArg* IrContext::ir_arg_new_existing_object(Symbol* object)
+IrArg* IrContext::create_arg_existing_object(Symbol* object)
 {
   IrArg* arg = mem_push_struct(gp_arena, IrArg);
   arg->object = object;
@@ -263,7 +282,7 @@ IrArg* IrContext::ir_arg_new_existing_object(Symbol* object)
   return arg;
 }
 
-bool IrContext::gen_bin_expr(Scope* scope, AstNode* bin_expr)
+bool IrContext::visit_bin_expr(Scope* scope, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
@@ -291,9 +310,9 @@ bool IrContext::gen_bin_expr(Scope* scope, AstNode* bin_expr)
     case eOperator::eq:
     case eOperator::not_eq_:
     {
-      if(success = gen_expr(scope, left_operand) && gen_expr(scope, right_operand))
+      if(success = visit_expr(scope, left_operand) && visit_expr(scope, right_operand))
       {
-        bin_expr->place = ir_arg_new_temp_object(scope, bin_expr->eval_ty, bin_expr->src_loc);
+        bin_expr->place = create_arg_temp_object(scope, bin_expr->eval_ty, bin_expr->src_loc);
 
         emit_assign(conv_operator_to_ir_op(op), left_operand->place, right_operand->place, bin_expr->place);
       }
@@ -306,13 +325,13 @@ bool IrContext::gen_bin_expr(Scope* scope, AstNode* bin_expr)
   return success;
 }
 
-void IrContext::gen_id(AstNode* id)
+void IrContext::visit_id(AstNode* id)
 {
   assert(KIND(id, eAstNode::id));
-  id->place = ir_arg_new_existing_object(id->id.decl_sym);
+  id->place = create_arg_existing_object(id->id.decl_sym);
 }
 
-bool IrContext::gen_unr_expr(Scope* scope, AstNode* unr_expr)
+bool IrContext::visit_unr_expr(Scope* scope, AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
   bool success = true;
@@ -324,9 +343,9 @@ bool IrContext::gen_unr_expr(Scope* scope, AstNode* unr_expr)
   {
     case eOperator::neg:
     {
-      if(success = gen_expr(scope, operand))
+      if(success = visit_expr(scope, operand))
       {
-        unr_expr->place = ir_arg_new_temp_object(scope, unr_expr->eval_ty, unr_expr->src_loc);
+        unr_expr->place = create_arg_temp_object(scope, unr_expr->eval_ty, unr_expr->src_loc);
         emit_assign(conv_operator_to_ir_op(op), operand->place, 0, unr_expr->place);
       }
     }
@@ -340,9 +359,9 @@ bool IrContext::gen_unr_expr(Scope* scope, AstNode* unr_expr)
 
     case eOperator::address_of:
     {
-      if(success = gen_expr(scope, operand))
+      if(success = visit_expr(scope, operand))
       {
-        unr_expr->place = ir_arg_new_temp_object(scope, unr_expr->eval_ty, unr_expr->src_loc);
+        unr_expr->place = create_arg_temp_object(scope, unr_expr->eval_ty, unr_expr->src_loc);
         emit_assign(conv_operator_to_ir_op(op), operand->place, 0, unr_expr->place);
       }
     }
@@ -350,9 +369,9 @@ bool IrContext::gen_unr_expr(Scope* scope, AstNode* unr_expr)
 
     case eOperator::deref:
     {
-      if(success = gen_expr(scope, operand))
+      if(success = visit_expr(scope, operand))
       {
-        unr_expr->place = ir_arg_new_temp_object(scope, unr_expr->eval_ty, unr_expr->src_loc);
+        unr_expr->place = create_arg_temp_object(scope, unr_expr->eval_ty, unr_expr->src_loc);
         emit_assign(conv_operator_to_ir_op(op), operand->place, 0, unr_expr->place);
       }
     }
@@ -364,14 +383,14 @@ bool IrContext::gen_unr_expr(Scope* scope, AstNode* unr_expr)
   return success;
 }
 
-void IrContext::gen_lit(Scope* scope, AstNode* lit)
+void IrContext::visit_lit(Scope* scope, AstNode* lit)
 {
   assert(KIND(lit, eAstNode::lit));
   
-  lit->place = ir_arg_new_existing_object(lit->lit.constant);
+  lit->place = create_arg_existing_object(lit->lit.constant);
 }
 
-bool IrContext::gen_bool_unr_expr(Scope* scope, AstNode* unr_expr)
+bool IrContext::visit_bool_unr_expr(Scope* scope, AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
   bool success = true;
@@ -385,7 +404,7 @@ bool IrContext::gen_bool_unr_expr(Scope* scope, AstNode* unr_expr)
     {
       operand->label_true = unr_expr->label_false;
       operand->label_false = unr_expr->label_true;
-      success = gen_bool_expr(scope, operand);
+      success = visit_bool_expr(scope, operand);
     }
     break;
     
@@ -394,7 +413,7 @@ bool IrContext::gen_bool_unr_expr(Scope* scope, AstNode* unr_expr)
   return success;
 }
 
-bool IrContext::gen_actual_args(Scope* scope, AstNode* args)
+bool IrContext::visit_actual_args(Scope* scope, AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -412,9 +431,9 @@ bool IrContext::gen_actual_args(Scope* scope, AstNode* args)
       AstNode* arg = KIND(li, eList::ast_node)->ast_node;
       AstNode* expr = arg->call_arg.expr;
 
-      if(success = gen_expr(scope, expr))
+      if(success = visit_expr(scope, expr))
       {
-        temp_places[i] = ir_arg_new_temp_object(scope, expr->eval_ty, expr->src_loc);
+        temp_places[i] = create_arg_temp_object(scope, expr->eval_ty, expr->src_loc);
 
         emit_assign(eIrOp::None, expr->place, 0, temp_places[i]);
       }
@@ -427,7 +446,7 @@ bool IrContext::gen_actual_args(Scope* scope, AstNode* args)
     {
       AstNode* arg = KIND(li, eList::ast_node)->ast_node;
 
-      arg->place = ir_arg_new_existing_object(arg->call_arg.param);
+      arg->place = create_arg_existing_object(arg->call_arg.param);
       emit_assign(eIrOp::None, temp_places[i], 0, arg->place);
     }
   }
@@ -435,16 +454,16 @@ bool IrContext::gen_actual_args(Scope* scope, AstNode* args)
   return success;
 }
 
-void IrContext::gen_call(Scope* scope, AstNode* call)
+void IrContext::visit_call(Scope* scope, AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
   AstNode* proc = call->call.proc;
   
-  call->place = ir_arg_new_existing_object(call->call.retvar);
+  call->place = create_arg_existing_object(call->call.retvar);
 
   AstNode* args = call->call.args;
   assert(KIND(args, eAstNode::node_list));
-  gen_actual_args(scope, args);
+  visit_actual_args(scope, args);
 
   if(proc->proc.is_extern())
   {
@@ -476,7 +495,7 @@ void IrContext::gen_call(Scope* scope, AstNode* call)
   }
 }
 
-bool IrContext::gen_index(Scope* scope, AstNode* index)
+bool IrContext::visit_index(Scope* scope, AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
   bool success = true;
@@ -486,27 +505,27 @@ bool IrContext::gen_index(Scope* scope, AstNode* index)
 
   if(array_expr->kind == eAstNode::id)
   {
-    gen_id(array_expr);
+    visit_id(array_expr);
     index->index.place = array_expr->place;
 
-    if(success = gen_expr(scope, i_expr))
+    if(success = visit_expr(scope, i_expr))
     {
       index->index.i_place = i_expr->place;
     }
   }
   else if(array_expr->kind == eAstNode::index)
   {
-    if(success = gen_index(scope, array_expr) && gen_expr(scope, i_expr))
+    if(success = visit_index(scope, array_expr) && visit_expr(scope, i_expr))
     {
       index->index.place = array_expr->index.place;
 
-      IrArg* offset = index->index.i_place = ir_arg_new_temp_object(scope, basic_type_int, index->src_loc);
+      IrArg* offset = index->index.i_place = create_arg_temp_object(scope, basic_type_int, index->src_loc);
 
       Type* index_ty = index->ty;
       int size_val = KIND(index_ty, eType::array)->array.size;
 
       Symbol* size_constant = sym_context->create_const_int(index->src_loc, size_val);
-      IrArg* dim_size = ir_arg_new_existing_object(size_constant);
+      IrArg* dim_size = create_arg_existing_object(size_constant);
 
       if(size_val > 0)
       {
@@ -522,20 +541,20 @@ bool IrContext::gen_index(Scope* scope, AstNode* index)
   return success;
 }
 
-bool IrContext::gen_index_with_offset(Scope* scope, AstNode* index)
+bool IrContext::visit_index_with_offset(Scope* scope, AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
   bool success = true;
 
-  if(success = gen_index(scope, index))
+  if(success = visit_index(scope, index))
   {
-    IrArg* offset = index->index.offset = ir_arg_new_temp_object(scope, basic_type_int, index->src_loc);
+    IrArg* offset = index->index.offset = create_arg_temp_object(scope, basic_type_int, index->src_loc);
 
     assert(index->index.ndim == 1);
     int width_val = index->eval_ty->width;
 
     Symbol* width_constant = sym_context->create_const_int(index->src_loc, width_val);
-    IrArg* width = ir_arg_new_existing_object(width_constant);
+    IrArg* width = create_arg_existing_object(width_constant);
 
     emit_assign(eIrOp::mul, index->index.i_place, width, offset);
   }
@@ -543,7 +562,7 @@ bool IrContext::gen_index_with_offset(Scope* scope, AstNode* index)
   return success;
 }
 
-bool IrContext::gen_assign(Scope* scope, AstNode* assign)
+bool IrContext::visit_assign(Scope* scope, AstNode* assign)
 {
   assert(KIND(assign, eAstNode::assign));
   bool success = true;
@@ -553,14 +572,14 @@ bool IrContext::gen_assign(Scope* scope, AstNode* assign)
   
   if(dest_expr->kind == eAstNode::id)
   {
-    if(success = gen_expr(scope, dest_expr) && gen_expr(scope, source_expr))
+    if(success = visit_expr(scope, dest_expr) && visit_expr(scope, source_expr))
     {
       emit_assign(eIrOp::None, source_expr->place, 0, dest_expr->place);
     }
   }
   else if(dest_expr->kind == eAstNode::index)
   {
-    if(success = gen_index_with_offset(scope, dest_expr) && gen_expr(scope, source_expr))
+    if(success = visit_index_with_offset(scope, dest_expr) && visit_expr(scope, source_expr))
     {
       dest_expr->place = dest_expr->index.place;
       emit_assign(eIrOp::index_dest, source_expr->place, dest_expr->index.offset, dest_expr->index.place);
@@ -569,7 +588,7 @@ bool IrContext::gen_assign(Scope* scope, AstNode* assign)
   else if(dest_expr->kind == eAstNode::unr_expr && dest_expr->unr_expr.op == eOperator::deref)
   {
     AstNode* operand = dest_expr->unr_expr.operand;
-    if(success = gen_expr(scope, operand) && gen_expr(scope, source_expr))
+    if(success = visit_expr(scope, operand) && visit_expr(scope, source_expr))
     {
       dest_expr->place = operand->place;
       emit_assign(eIrOp::deref_dest, source_expr->place, 0, dest_expr->place);
@@ -581,14 +600,14 @@ bool IrContext::gen_assign(Scope* scope, AstNode* assign)
   return success;
 }
 
-bool IrContext::gen_cast(Scope* scope, AstNode* cast)
+bool IrContext::visit_cast(Scope* scope, AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
   bool success = true;
   AstNode* to_type = cast->cast.to_type;
   AstNode* from_expr = cast->cast.from_expr;
   
-  if(success = gen_expr(scope, from_expr))
+  if(success = visit_expr(scope, from_expr))
   {
     cast->place = from_expr->place;
     
@@ -610,7 +629,7 @@ bool IrContext::gen_cast(Scope* scope, AstNode* cast)
     }
     if(require_conv)
     {
-      cast->place = ir_arg_new_temp_object(scope, cast->eval_ty, cast->src_loc);
+      cast->place = create_arg_temp_object(scope, cast->eval_ty, cast->src_loc);
 
       eIrOp cast_op = eIrOp::None;
 
@@ -665,7 +684,7 @@ bool IrContext::gen_cast(Scope* scope, AstNode* cast)
   return success;
 }
 
-bool IrContext::gen_expr(Scope* scope, AstNode* expr)
+bool IrContext::visit_expr(Scope* scope, AstNode* expr)
 {
   bool success = true;
 
@@ -683,20 +702,20 @@ bool IrContext::gen_expr(Scope* scope, AstNode* expr)
         Symbol* result_object = create_temp_object(scope, expr->eval_ty, expr->src_loc);
         result_object->is_live_on_exit = true;
         result_object->is_live = true;
-        expr->place = ir_arg_new_existing_object(result_object);
+        expr->place = create_arg_existing_object(result_object);
 
-        gen_bool_expr(scope, expr);
+        visit_bool_expr(scope, expr);
         
         emit_label(expr->label_true);
-        emit_assign(eIrOp::None, ir_arg_new_existing_object(bool_true), 0, expr->place);
+        emit_assign(eIrOp::None, create_arg_existing_object(bool_true), 0, expr->place);
         emit_goto(expr->label_next);
         emit_label(expr->label_false);
-        emit_assign(eIrOp::None, ir_arg_new_existing_object(bool_false), 0, expr->place);
+        emit_assign(eIrOp::None, create_arg_existing_object(bool_false), 0, expr->place);
         emit_label(expr->label_next);
       }
       else
       {
-        gen_bin_expr(scope, expr);
+        visit_bin_expr(scope, expr);
       }
     }
     break;
@@ -713,47 +732,47 @@ bool IrContext::gen_expr(Scope* scope, AstNode* expr)
         Symbol* result_object = create_temp_object(scope,  expr->eval_ty, expr->src_loc);
         result_object->is_live_on_exit = true;
         result_object->is_live = true;
-        expr->place = ir_arg_new_existing_object(result_object);
+        expr->place = create_arg_existing_object(result_object);
 
-        gen_bool_unr_expr(scope, expr);
+        visit_bool_unr_expr(scope, expr);
 
         emit_label(expr->label_true);
-        emit_assign(eIrOp::None, ir_arg_new_existing_object(bool_true), 0, expr->place);
+        emit_assign(eIrOp::None, create_arg_existing_object(bool_true), 0, expr->place);
         emit_goto(expr->label_next);
         emit_label(expr->label_false);
-        emit_assign(eIrOp::None, ir_arg_new_existing_object(bool_false), 0, expr->place);
+        emit_assign(eIrOp::None, create_arg_existing_object(bool_false), 0, expr->place);
         emit_label(expr->label_next);
       }
       else
       {
-        gen_unr_expr(scope, expr);
+        visit_unr_expr(scope, expr);
       }
     }
     break;
     
     case eAstNode::id:
     {
-      gen_id(expr);
+      visit_id(expr);
     }
     break;
     
     case eAstNode::lit:
     {
-      gen_lit(scope, expr);
+      visit_lit(scope, expr);
     }
     break;
     
     case eAstNode::call:
     {
-      gen_call(scope, expr);
+      visit_call(scope, expr);
     }
     break;
     
     case eAstNode::index:
     {
-      if(success = gen_index_with_offset(scope, expr))
+      if(success = visit_index_with_offset(scope, expr))
       {
-        expr->place = ir_arg_new_temp_object(scope, expr->eval_ty, expr->src_loc);
+        expr->place = create_arg_temp_object(scope, expr->eval_ty, expr->src_loc);
 
         emit_assign(eIrOp::index_source, expr->index.place, expr->index.offset, expr->place);
       }
@@ -762,7 +781,7 @@ bool IrContext::gen_expr(Scope* scope, AstNode* expr)
     
     case eAstNode::cast:
     {
-      gen_cast(scope, expr);
+      visit_cast(scope, expr);
     }
     break;
     
@@ -772,7 +791,7 @@ bool IrContext::gen_expr(Scope* scope, AstNode* expr)
   return success;
 }
 
-bool IrContext::gen_block(Scope* scope, AstNode* block)
+bool IrContext::visit_block(Scope* scope, AstNode* block)
 {
   assert(KIND(block, eAstNode::block));
   bool success = true;
@@ -782,13 +801,13 @@ bool IrContext::gen_block(Scope* scope, AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    gen_block_stmt(scope, stmt);
+    visit_block_stmt(scope, stmt);
   }
 
   return success;
 }
 
-bool IrContext::gen_bool_bin_expr(Scope* scope, AstNode* bin_expr)
+bool IrContext::visit_bool_bin_expr(Scope* scope, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
@@ -806,7 +825,7 @@ bool IrContext::gen_bool_bin_expr(Scope* scope, AstNode* bin_expr)
     case eOperator::greater:
     case eOperator::greater_eq:
     {
-      if(success = gen_expr(scope, left_operand) && gen_expr(scope, right_operand))
+      if(success = visit_expr(scope, left_operand) && visit_expr(scope, right_operand))
       {
         emit_cond_goto(conv_operator_to_ir_op(op), left_operand->place, right_operand->place, bin_expr->label_true);
         emit_goto(bin_expr->label_false);
@@ -823,10 +842,10 @@ bool IrContext::gen_bool_bin_expr(Scope* scope, AstNode* bin_expr)
       left_operand->label_false = Label::create(gp_arena);
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
-      if(success = gen_bool_expr(scope, left_operand))
+      if(success = visit_bool_expr(scope, left_operand))
       {
         emit_label(left_operand->label_false);
-        success = gen_bool_expr(scope, right_operand);
+        success = visit_bool_expr(scope, right_operand);
       }
     }
     break;
@@ -840,10 +859,10 @@ bool IrContext::gen_bool_bin_expr(Scope* scope, AstNode* bin_expr)
       left_operand->label_false = bin_expr->label_false;
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
-      if(success = gen_bool_expr(scope, left_operand))
+      if(success = visit_bool_expr(scope, left_operand))
       {
         emit_label(left_operand->label_true);
-        success = gen_bool_expr(scope, right_operand);
+        success = visit_bool_expr(scope, right_operand);
       }
     }
     break;
@@ -854,50 +873,50 @@ bool IrContext::gen_bool_bin_expr(Scope* scope, AstNode* bin_expr)
   return success;
 }
 
-bool IrContext::gen_bool_id(Scope* scope, AstNode* id)
+bool IrContext::visit_bool_id(Scope* scope, AstNode* id)
 {
   assert(KIND(id, eAstNode::id));
   bool success = true;
 
-  if(success = gen_expr(scope, id))
+  if(success = visit_expr(scope, id))
   {
     emit_cond_goto(eIrOp::not_eq_, id->place,
-                      ir_arg_new_existing_object(bool_false), id->label_true);
+                      create_arg_existing_object(bool_false), id->label_true);
     emit_goto(id->label_false);
   }
 
   return success;
 }
 
-bool IrContext::gen_bool_call(Scope* scope, AstNode* call)
+bool IrContext::visit_bool_call(Scope* scope, AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
   bool success = true;
 
-  if(success = gen_expr(scope, call))
+  if(success = visit_expr(scope, call))
   {
-    emit_cond_goto(eIrOp::not_eq_, call->place, ir_arg_new_existing_object(bool_false), call->label_true);
+    emit_cond_goto(eIrOp::not_eq_, call->place, create_arg_existing_object(bool_false), call->label_true);
     emit_goto(call->label_false);
   }
 
   return success;
 }
 
-bool IrContext::gen_bool_cast(Scope* scope, AstNode* cast)
+bool IrContext::visit_bool_cast(Scope* scope, AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
   bool success = true;
 
-  if(success = gen_cast(scope, cast))
+  if(success = visit_cast(scope, cast))
   {
-    emit_cond_goto(eIrOp::not_eq_, cast->place, ir_arg_new_existing_object(bool_false), cast->label_true);
+    emit_cond_goto(eIrOp::not_eq_, cast->place, create_arg_existing_object(bool_false), cast->label_true);
     emit_goto(cast->label_false);
   }
 
   return success;
 }
 
-void IrContext::gen_bool_lit(Scope* scope, AstNode* lit)
+void IrContext::visit_bool_lit(Scope* scope, AstNode* lit)
 {
   assert(KIND(lit, eAstNode::lit));
 
@@ -911,7 +930,7 @@ void IrContext::gen_bool_lit(Scope* scope, AstNode* lit)
   }
 }
 
-bool IrContext::gen_bool_expr(Scope* scope, AstNode* expr)
+bool IrContext::visit_bool_expr(Scope* scope, AstNode* expr)
 {
   bool success = true;
 
@@ -919,37 +938,37 @@ bool IrContext::gen_bool_expr(Scope* scope, AstNode* expr)
   {
     case eAstNode::id:
     {
-      success = gen_bool_id(scope, expr);
+      success = visit_bool_id(scope, expr);
     }
     break;
     
     case eAstNode::lit:
     {
-      gen_bool_lit(scope, expr);
+      visit_bool_lit(scope, expr);
     }
     break;
     
     case eAstNode::bin_expr:
     {
-      success = gen_bool_bin_expr(scope, expr);
+      success = visit_bool_bin_expr(scope, expr);
     }
     break;
     
     case eAstNode::unr_expr:
     {
-      success = gen_bool_unr_expr(scope, expr);
+      success = visit_bool_unr_expr(scope, expr);
     }
     break;
     
     case eAstNode::cast:
     {
-      success = gen_bool_cast(scope, expr);
+      success = visit_bool_cast(scope, expr);
     }
     break;
 
     case eAstNode::call:
     {
-      success = gen_bool_call(scope, expr);
+      success = visit_bool_call(scope, expr);
     }
     break;
     
@@ -959,7 +978,7 @@ bool IrContext::gen_bool_expr(Scope* scope, AstNode* expr)
   return success;
 }
 
-bool IrContext::gen_do_while(Scope* scope, AstNode* do_while)
+bool IrContext::visit_do_while(Scope* scope, AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
@@ -973,9 +992,9 @@ bool IrContext::gen_do_while(Scope* scope, AstNode* do_while)
   cond_expr->label_false = do_while->label_next;
   
   emit_label(cond_expr->label_true);
-  gen_block_stmt(scope, body);
+  visit_block_stmt(scope, body);
   emit_label(do_while->label_begin);
-  if(success = gen_bool_expr(scope, cond_expr))
+  if(success = visit_bool_expr(scope, cond_expr))
   {
     emit_label(do_while->label_next);
   }
@@ -983,7 +1002,7 @@ bool IrContext::gen_do_while(Scope* scope, AstNode* do_while)
   return success;
 }
 
-bool IrContext::gen_while(Scope* scope, AstNode* while_)
+bool IrContext::visit_while(Scope* scope, AstNode* while_)
 {
   assert(KIND(while_, eAstNode::while_));
   bool success = true;
@@ -997,10 +1016,10 @@ bool IrContext::gen_while(Scope* scope, AstNode* while_)
   cond_expr->label_false = while_->label_next;
   
   emit_label(while_->label_begin);
-  if(success = gen_bool_expr(scope, cond_expr))
+  if(success = visit_bool_expr(scope, cond_expr))
   {
     emit_label(cond_expr->label_true);
-    gen_block_stmt(scope, body);
+    visit_block_stmt(scope, body);
     emit_goto(while_->label_begin);
     emit_label(while_->label_next);
   }
@@ -1008,7 +1027,7 @@ bool IrContext::gen_while(Scope* scope, AstNode* while_)
   return success;
 }
 
-bool IrContext::gen_if(Scope* scope, AstNode* if_)
+bool IrContext::visit_if(Scope* scope, AstNode* if_)
 {
   assert(KIND(if_, eAstNode::if_));
   bool success = true;
@@ -1025,13 +1044,13 @@ bool IrContext::gen_if(Scope* scope, AstNode* if_)
     body->label_next = if_->label_next;
     else_body->label_next = if_->label_next;
     
-    if(success = gen_bool_expr(scope, cond_expr))
+    if(success = visit_bool_expr(scope, cond_expr))
     {
       emit_label(cond_expr->label_true);
-      gen_block_stmt(scope, body);
+      visit_block_stmt(scope, body);
       emit_goto(if_->label_next);
       emit_label(cond_expr->label_false);
-      gen_block_stmt(scope, else_body);
+      visit_block_stmt(scope, else_body);
     }
   }
   else
@@ -1040,10 +1059,10 @@ bool IrContext::gen_if(Scope* scope, AstNode* if_)
     cond_expr->label_false = if_->label_next;
     body->label_next = if_->label_next;
     
-    if(success = gen_bool_expr(scope, cond_expr))
+    if(success = visit_bool_expr(scope, cond_expr))
     {
       emit_label(cond_expr->label_true);
-      gen_block_stmt(scope, body);
+      visit_block_stmt(scope, body);
     }
   }
   if(success)
@@ -1054,7 +1073,7 @@ bool IrContext::gen_if(Scope* scope, AstNode* if_)
   return success;
 }
 
-bool IrContext::gen_return(Scope* scope, AstNode* ret)
+bool IrContext::visit_return(Scope* scope, AstNode* ret)
 {
   assert(KIND(ret, eAstNode::return_));
   bool success = true;
@@ -1064,9 +1083,9 @@ bool IrContext::gen_return(Scope* scope, AstNode* ret)
 
   if(ret_expr)
   {
-    if(success = gen_expr(scope, ret_expr))
+    if(success = visit_expr(scope, ret_expr))
     {
-      IrArg* retvar = ir_arg_new_existing_object(proc->proc.retvar);
+      IrArg* retvar = create_arg_existing_object(proc->proc.retvar);
 
       emit_assign(eIrOp::None, ret_expr->place, 0, retvar);
     }
@@ -1077,7 +1096,7 @@ bool IrContext::gen_return(Scope* scope, AstNode* ret)
   return success;
 }
 
-bool IrContext::gen_loop_ctrl(Scope* scope, AstNode* loop_ctrl)
+bool IrContext::visit_loop_ctrl(Scope* scope, AstNode* loop_ctrl)
 {
   assert(KIND(loop_ctrl, eAstNode::loop_ctrl));
   bool success = true;
@@ -1096,7 +1115,7 @@ bool IrContext::gen_loop_ctrl(Scope* scope, AstNode* loop_ctrl)
   return success;
 }
 
-bool IrContext::gen_var(Scope* scope, AstNode* var)
+bool IrContext::visit_var(Scope* scope, AstNode* var)
 {
   bool success = true;
   assert(KIND(var, eAstNode::var));
@@ -1104,12 +1123,12 @@ bool IrContext::gen_var(Scope* scope, AstNode* var)
   Symbol* object = var->var.decl_sym;
   alloc_data_object_incremental(object, scope);
   x86_context->add_object_to_memory(object);
-  var->place = ir_arg_new_existing_object(object);
+  var->place = create_arg_existing_object(object);
 
   AstNode* init_expr = var->var.init_expr;
   if(init_expr)
   {
-    if(success = gen_expr(scope, init_expr))
+    if(success = visit_expr(scope, init_expr))
     {
       emit_assign(eIrOp::None, init_expr->place, 0, var->place);
     }
@@ -1118,7 +1137,7 @@ bool IrContext::gen_var(Scope* scope, AstNode* var)
   return success;
 }
 
-bool IrContext::gen_block_stmt(Scope* scope, AstNode* stmt)
+bool IrContext::visit_block_stmt(Scope* scope, AstNode* stmt)
 {
   bool success = true;
   
@@ -1126,13 +1145,13 @@ bool IrContext::gen_block_stmt(Scope* scope, AstNode* stmt)
   {
     case eAstNode::assign:
     {
-      success = gen_assign(scope, stmt);
+      success = visit_assign(scope, stmt);
     }
     break;
     
     case eAstNode::cast:
     {
-      success = gen_cast(scope, stmt);
+      success = visit_cast(scope, stmt);
     }
     break;
     
@@ -1143,43 +1162,43 @@ bool IrContext::gen_block_stmt(Scope* scope, AstNode* stmt)
     case eAstNode::index:
     case eAstNode::lit:
     {
-      success = gen_expr(scope, stmt);
+      success = visit_expr(scope, stmt);
     }
     break;
     
     case eAstNode::block:
     {
-      success = gen_block(stmt->block.scope, stmt);
+      success = visit_block(stmt->block.scope, stmt);
     }
     break;
     
     case eAstNode::if_:
     {
-      success = gen_if(scope, stmt);
+      success = visit_if(scope, stmt);
     }
     break;
     
     case eAstNode::do_while:
     {
-      success = gen_do_while(scope, stmt);
+      success = visit_do_while(scope, stmt);
     }
     break;
     
     case eAstNode::while_:
     {
-      success = gen_while(scope, stmt);
+      success = visit_while(scope, stmt);
     }
     break;
     
     case eAstNode::var:
     {
-      success = gen_var(scope, stmt);
+      success = visit_var(scope, stmt);
     }
     break;
     
     case eAstNode::return_:
     {
-      success = gen_return(scope, stmt);
+      success = visit_return(scope, stmt);
     }
     break;
     
@@ -1188,7 +1207,7 @@ bool IrContext::gen_block_stmt(Scope* scope, AstNode* stmt)
 
     case eAstNode::loop_ctrl:
     {
-      success = gen_loop_ctrl(scope, stmt);
+      success = visit_loop_ctrl(scope, stmt);
     }
     break;
     
@@ -1198,7 +1217,7 @@ bool IrContext::gen_block_stmt(Scope* scope, AstNode* stmt)
   return success;
 }
 
-void IrContext::gen_formal_args(Scope* scope, AstNode* args)
+void IrContext::visit_formal_args(Scope* scope, AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   for(ListItem* li = args->args.node_list.first;
@@ -1230,13 +1249,13 @@ int IrContext::get_proc_arg_size(AstNode* args)
   return size;
 }
 
-bool IrContext::gen_proc(Scope* scope, AstNode* proc)
+bool IrContext::visit_proc(Scope* scope, AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
   
-  proc->place = ir_arg_new_existing_object(proc->proc.retvar);
-  gen_formal_args(proc->proc.param_scope, proc->proc.args);
+  proc->place = create_arg_existing_object(proc->proc.retvar);
+  visit_formal_args(proc->proc.param_scope, proc->proc.args);
   alloc_data_object(proc->proc.retvar, proc->proc.param_scope);
 
   Label* label_name = &proc->proc.label_name;
@@ -1264,7 +1283,7 @@ bool IrContext::gen_proc(Scope* scope, AstNode* proc)
 
     emit_label(proc->label_begin);
 
-    if(success = gen_block_stmt(body->block.scope, body))
+    if(success = visit_block_stmt(body->block.scope, body))
     {
       emit_label(proc->label_next);
       emit_return();
@@ -1277,7 +1296,7 @@ bool IrContext::gen_proc(Scope* scope, AstNode* proc)
   return success;
 }
 
-void IrContext::gen_module_var(Scope* scope, AstNode* var)
+void IrContext::visit_module_var(Scope* scope, AstNode* var)
 {
   assert(KIND(var, eAstNode::var));
 
@@ -1285,7 +1304,7 @@ void IrContext::gen_module_var(Scope* scope, AstNode* var)
   x86_context->add_object_to_memory(object);
 }
 
-bool IrContext::gen_module_stmt(Scope* scope, AstNode* stmt)
+bool IrContext::visit_module_stmt(Scope* scope, AstNode* stmt)
 {
   bool success = true;
 
@@ -1293,18 +1312,18 @@ bool IrContext::gen_module_stmt(Scope* scope, AstNode* stmt)
   {
     case eAstNode::proc:
     {
-      if(success = gen_proc(scope, stmt))
+      if(success = visit_proc(scope, stmt))
       {
         stmt->proc.ir_stmt_array = stmt_array;
         stmt->proc.ir_stmt_count = stmt_count;
 
-        reset_ir_context();
+        reset();
       }
     }
     break;
     
     case eAstNode::var:
-      gen_module_var(scope, stmt);
+      visit_module_var(scope, stmt);
     break;
     
     default: assert(0);
@@ -1313,7 +1332,7 @@ bool IrContext::gen_module_stmt(Scope* scope, AstNode* stmt)
   return success;
 }
 
-bool IrContext::gen_module(AstNode* module)
+bool IrContext::visit_module(AstNode* module)
 {
   assert(KIND(module, eAstNode::module));
   bool success = true;
@@ -1323,7 +1342,7 @@ bool IrContext::gen_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    success = gen_module_stmt(module->module.scope, stmt);
+    success = visit_module_stmt(module->module.scope, stmt);
   }
 
   return success;
@@ -1765,7 +1784,7 @@ void IrContext::insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
   }
 }
 
-void IrContext::start_new_basic_block(List* leaders, int at_stmt_nr, IrStmt* stmt_array, int stmt_count)
+void IrContext::start_basic_block(List* leaders, int at_stmt_nr, IrStmt* stmt_array, int stmt_count)
 {
   if(at_stmt_nr < stmt_count)
   {
@@ -1833,9 +1852,9 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
       stmt = &stmt_array[i];
       if(stmt->kind == eIrStmt::cond_goto || stmt->kind == eIrStmt::goto_)
       {
-        start_new_basic_block(leaders, i+1, stmt_array, stmt_count);
+        start_basic_block(leaders, i+1, stmt_array, stmt_count);
         Label* target_label = normalize_jump_target_labels(stmt);
-        start_new_basic_block(leaders, target_label->stmt_nr, stmt_array, stmt_count);
+        start_basic_block(leaders, target_label->stmt_nr, stmt_array, stmt_count);
       }
     }
 

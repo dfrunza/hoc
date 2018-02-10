@@ -88,6 +88,22 @@ void Symbol::init_locations()
   }
 }
 
+void SymbolContext::init(MemoryArena* gp_arena, MemoryArena* sym_arena, TypeContext* type_context)
+{
+  basic_type_bool  = type_context->basic_type_bool;
+  basic_type_int   = type_context->basic_type_int;
+  basic_type_char  = type_context->basic_type_char;
+  basic_type_float = type_context->basic_type_float;
+  basic_type_void  = type_context->basic_type_void;
+  basic_type_str   = type_context->basic_type_str;
+
+  this->gp_arena = gp_arena;
+  this->sym_arena = sym_arena;
+  nesting_depth = -1;
+  data_alignment = 4;
+  scopes.init(sym_arena, eList::scope);
+}
+
 Symbol* SymbolContext::create_const(Type* ty, SourceLoc* src_loc)
 {
   Symbol* sym = mem_push_struct(sym_arena, Symbol);
@@ -227,7 +243,7 @@ void SymbolContext::end_nested_scope()
   nesting_depth--;
 }
 
-bool SymbolContext::sym_formal_arg(Scope* proc_scope, AstNode* arg)
+bool SymbolContext::visit_formal_arg(Scope* proc_scope, AstNode* arg)
 {
   assert(KIND(arg, eAstNode::var));
   bool success = true;
@@ -241,13 +257,13 @@ bool SymbolContext::sym_formal_arg(Scope* proc_scope, AstNode* arg)
   else
   {
     arg->var.decl_sym = add_decl(arg->var.name, eStorageSpace::formal_param, proc_scope, arg);
-    success = sym_expr(arg->var.type);
+    success = visit_expr(arg->var.type);
   }
 
   return success;
 }
 
-bool SymbolContext::sym_var(AstNode* var)
+bool SymbolContext::visit_var(AstNode* var)
 {
   assert(KIND(var, eAstNode::var));
   bool success = true;
@@ -262,14 +278,14 @@ bool SymbolContext::sym_var(AstNode* var)
   else
   {
     var->var.decl_sym = add_decl(var->var.name, eStorageSpace::local, active_scope, var);
-    success = sym_expr(var->var.type)
-      && (var->var.init_expr ? sym_expr(var->var.init_expr) : true);
+    success = visit_expr(var->var.type)
+      && (var->var.init_expr ? visit_expr(var->var.init_expr) : true);
   }
 
   return success;
 }
 
-bool SymbolContext::sym_lit(AstNode* lit)
+bool SymbolContext::visit_lit(AstNode* lit)
 {
   assert(KIND(lit, eAstNode::lit));
   bool success = true;
@@ -312,7 +328,7 @@ bool SymbolContext::sym_lit(AstNode* lit)
   return success;
 }
 
-bool SymbolContext::sym_id(AstNode* id)
+bool SymbolContext::visit_id(AstNode* id)
 {
   assert(KIND(id, eAstNode::id));
   bool success = true;
@@ -324,28 +340,27 @@ bool SymbolContext::sym_id(AstNode* id)
   return success;
 }
 
-bool SymbolContext::sym_bin_expr(AstNode* bin_expr)
+bool SymbolContext::visit_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
   
-  success = sym_expr(bin_expr->bin_expr.left_operand)
-    && sym_expr(bin_expr->bin_expr.right_operand);
+  success = visit_expr(bin_expr->bin_expr.left_operand) && visit_expr(bin_expr->bin_expr.right_operand);
 
   return success;
 }
 
-bool SymbolContext::sym_unr_expr(AstNode* unr_expr)
+bool SymbolContext::visit_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
 
   bool success = true;
-  success = sym_expr(unr_expr->unr_expr.operand);
+  success = visit_expr(unr_expr->unr_expr.operand);
 
   return success;
 }
 
-bool SymbolContext::sym_actual_args(AstNode* args)
+bool SymbolContext::visit_actual_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -355,13 +370,13 @@ bool SymbolContext::sym_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    success = sym_expr(arg->call_arg.expr);
+    success = visit_expr(arg->call_arg.expr);
   }
 
   return success;
 }
 
-bool SymbolContext::sym_call(AstNode* call)
+bool SymbolContext::visit_call(AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
   bool success = true;
@@ -371,7 +386,7 @@ bool SymbolContext::sym_call(AstNode* call)
 
   if(call_expr->kind == eAstNode::id)
   {
-    if(success = sym_id(call_expr) && sym_actual_args(args))
+    if(success = visit_id(call_expr) && visit_actual_args(args))
     {
       call->call.param_scope = begin_scope(eScope::params, call);
       call->call.retvar = add_decl(gen_tempvar_name(gp_arena, "ret_"),
@@ -397,7 +412,7 @@ bool SymbolContext::sym_call(AstNode* call)
   return success;
 }
 
-bool SymbolContext::sym_index(AstNode* index)
+bool SymbolContext::visit_index(AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
   bool success = true;
@@ -405,7 +420,7 @@ bool SymbolContext::sym_index(AstNode* index)
   AstNode* array_expr = index->index.array_expr;
   if(array_expr->kind == eAstNode::id || array_expr->kind == eAstNode::index)
   {
-    success = sym_expr(array_expr) && sym_expr(index->index.i_expr);
+    success = visit_expr(array_expr) && visit_expr(index->index.i_expr);
   }
   else
     success = compile_error(gp_arena, array_expr->src_loc, "unsupported index expr");
@@ -413,16 +428,16 @@ bool SymbolContext::sym_index(AstNode* index)
   return success;
 }
 
-bool SymbolContext::sym_cast(AstNode* cast)
+bool SymbolContext::visit_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
 
   bool success = true;
-  success = sym_expr(cast->cast.to_type) && sym_expr(cast->cast.from_expr);
+  success = visit_expr(cast->cast.to_type) && visit_expr(cast->cast.from_expr);
   return success;
 }
 
-bool SymbolContext::sym_array(AstNode* array)
+bool SymbolContext::visit_array(AstNode* array)
 {
   assert(KIND(array, eAstNode::array));
   bool success = true;
@@ -444,26 +459,26 @@ bool SymbolContext::sym_array(AstNode* array)
   return success;
 }
 
-bool SymbolContext::sym_pointer(AstNode* pointer)
+bool SymbolContext::visit_pointer(AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode::pointer));
 
   bool success = true;
-  success = sym_expr(pointer->pointer.pointee);
+  success = visit_expr(pointer->pointer.pointee);
   return success;
 }
 
-bool SymbolContext::sym_assign(AstNode* assign)
+bool SymbolContext::visit_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode::assign));
 
   bool success = true;
-  success = sym_expr(assign->assign.dest_expr) && sym_expr(assign->assign.source_expr);
+  success = visit_expr(assign->assign.dest_expr) && visit_expr(assign->assign.source_expr);
   
   return success;
 }
 
-bool SymbolContext::sym_expr(AstNode* expr)
+bool SymbolContext::visit_expr(AstNode* expr)
 {
   bool success = true;
   
@@ -471,43 +486,43 @@ bool SymbolContext::sym_expr(AstNode* expr)
   {
     case eAstNode::cast:
     {
-      success = sym_cast(expr);
+      success = visit_cast(expr);
     }
     break;
     
     case eAstNode::bin_expr:
     {
-      success = sym_bin_expr(expr);
+      success = visit_bin_expr(expr);
     }
     break;
     
     case eAstNode::unr_expr:
     {
-      success = sym_unr_expr(expr);
+      success = visit_unr_expr(expr);
     }
     break;
     
     case eAstNode::id:
     {
-      success = sym_id(expr);
+      success = visit_id(expr);
     }
     break;
     
     case eAstNode::call:
     {
-      success = sym_call(expr);
+      success = visit_call(expr);
     }
     break;
 
     case eAstNode::array:
     {
-      success = sym_array(expr);
+      success = visit_array(expr);
     }
     break;
 
     case eAstNode::pointer:
     {
-      success = sym_pointer(expr);
+      success = visit_pointer(expr);
     }
     break;
 
@@ -516,19 +531,19 @@ bool SymbolContext::sym_expr(AstNode* expr)
 
     case eAstNode::lit:
     {
-      success = sym_lit(expr);
+      success = visit_lit(expr);
     }
     break;
     
     case eAstNode::index:
     {
-      success = sym_index(expr);
+      success = visit_index(expr);
     }
     break;
 
     case eAstNode::assign:
     {
-      success = sym_assign(expr);
+      success = visit_assign(expr);
     }
     break;
 
@@ -537,50 +552,50 @@ bool SymbolContext::sym_expr(AstNode* expr)
   return success;
 }
 
-bool SymbolContext::sym_if(AstNode* if_)
+bool SymbolContext::visit_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode::if_));
   bool success = true;
   
-  if(success = sym_expr(if_->if_.cond_expr) && sym_block_stmt(if_->if_.body))
+  if(success = visit_expr(if_->if_.cond_expr) && visit_block_stmt(if_->if_.body))
   {
     if(success && if_->if_.else_body)
     {
-      success = sym_block_stmt(if_->if_.else_body);
+      success = visit_block_stmt(if_->if_.else_body);
     }
   }
 
   return success;
 }
 
-bool SymbolContext::sym_do_while(AstNode* do_while)
+bool SymbolContext::visit_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
 
   do_while->do_while.scope = begin_nested_scope(eScope::while_, do_while);
-  success = sym_block_stmt(do_while->do_while.body) &&
-    sym_expr(do_while->do_while.cond_expr);
+  success = visit_block_stmt(do_while->do_while.body) &&
+    visit_expr(do_while->do_while.cond_expr);
   end_nested_scope();
 
   return success;
 }
 
-bool SymbolContext::sym_while(AstNode* while_)
+bool SymbolContext::visit_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode::while_));
   bool success = true;
   
-  if(success = sym_expr(while_->while_.cond_expr))
+  if(success = visit_expr(while_->while_.cond_expr))
   {
     while_->while_.scope = begin_nested_scope(eScope::while_, while_);
-    success = sym_block_stmt(while_->while_.body);
+    success = visit_block_stmt(while_->while_.body);
     end_nested_scope();
   }
   return success;
 }
 
-bool SymbolContext::sym_loop_ctrl(AstNode* stmt)
+bool SymbolContext::visit_loop_ctrl(AstNode* stmt)
 {
   bool success = true;
   
@@ -605,7 +620,7 @@ bool SymbolContext::sym_loop_ctrl(AstNode* stmt)
   return success;
 }
 
-bool SymbolContext::sym_return(AstNode* ret)
+bool SymbolContext::visit_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode::return_));
   bool success = true;
@@ -618,7 +633,7 @@ bool SymbolContext::sym_return(AstNode* ret)
     ret->ret.proc = proc_scope->ast_node;
     if(ret->ret.expr)
     {
-      success = sym_expr(ret->ret.expr);
+      success = visit_expr(ret->ret.expr);
     }
   }
   else
@@ -627,7 +642,7 @@ bool SymbolContext::sym_return(AstNode* ret)
   return success;
 }
 
-bool SymbolContext::sym_block_stmt(AstNode* stmt)
+bool SymbolContext::visit_block_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -635,45 +650,45 @@ bool SymbolContext::sym_block_stmt(AstNode* stmt)
   {
     case eAstNode::var:
     {
-      success = sym_var(stmt);
+      success = visit_var(stmt);
     }
     break;
     
     case eAstNode::if_:
     {
-      success = sym_if(stmt);
+      success = visit_if(stmt);
     }
     break;
     
     case eAstNode::do_while:
     {
-      success = sym_do_while(stmt);
+      success = visit_do_while(stmt);
     }
     break;
     
     case eAstNode::while_:
     {
-      success = sym_while(stmt);
+      success = visit_while(stmt);
     }
     break;
     
     case eAstNode::block:
     {
       stmt->block.scope = begin_nested_scope(eScope::block, stmt);
-      success = sym_block(stmt);
+      success = visit_block(stmt);
       end_nested_scope();
     }
     break;
     
     case eAstNode::assign:
     {
-      success = sym_assign(stmt);
+      success = visit_assign(stmt);
     }
     break;
     
     case eAstNode::cast:
     {
-      success = sym_cast(stmt);
+      success = visit_cast(stmt);
     }
     break;
     
@@ -683,19 +698,19 @@ bool SymbolContext::sym_block_stmt(AstNode* stmt)
     case eAstNode::call:
     case eAstNode::lit:
     {
-      success = sym_expr(stmt);
+      success = visit_expr(stmt);
     }
     break;
     
     case eAstNode::loop_ctrl:
     {
-      success = sym_loop_ctrl(stmt);
+      success = visit_loop_ctrl(stmt);
     }
     break;
     
     case eAstNode::return_:
     {
-      success = sym_return(stmt);
+      success = visit_return(stmt);
     }
     break;
     
@@ -705,7 +720,7 @@ bool SymbolContext::sym_block_stmt(AstNode* stmt)
     
     case eAstNode::index:
     {
-      success = sym_index(stmt);
+      success = visit_index(stmt);
     }
     break;
     
@@ -714,7 +729,7 @@ bool SymbolContext::sym_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool SymbolContext::sym_block(AstNode* block)
+bool SymbolContext::visit_block(AstNode* block)
 {
   assert(KIND(block, eAstNode::block));
   bool success = true;
@@ -724,7 +739,7 @@ bool SymbolContext::sym_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
-    success = sym_block_stmt(stmt);
+    success = visit_block_stmt(stmt);
   }
 
   return success;
@@ -735,7 +750,7 @@ bool AstNode_Proc::is_extern()
   return ((int)modifier & (int)eModifier::extern_) != 0;
 }
 
-bool SymbolContext::sym_proc_body(AstNode* proc)
+bool SymbolContext::visit_proc_body(AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
@@ -754,7 +769,7 @@ bool SymbolContext::sym_proc_body(AstNode* proc)
     if(body->kind == eAstNode::block)
     {
       body->block.scope = begin_scope(eScope::block, body);
-      success = sym_block(body);
+      success = visit_block(body);
       end_scope();
     }
     else if(body->kind == eAstNode::empty)
@@ -767,7 +782,7 @@ bool SymbolContext::sym_proc_body(AstNode* proc)
   return success;
 }
 
-bool SymbolContext::sym_formal_args(Scope* param_scope, AstNode* args)
+bool SymbolContext::visit_formal_args(Scope* param_scope, AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -777,13 +792,13 @@ bool SymbolContext::sym_formal_args(Scope* param_scope, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    success = sym_formal_arg(param_scope, arg);
+    success = visit_formal_arg(param_scope, arg);
   }
 
   return success;
 }
 
-bool SymbolContext::sym_module_proc(AstNode* proc)
+bool SymbolContext::visit_module_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
@@ -803,14 +818,14 @@ bool SymbolContext::sym_module_proc(AstNode* proc)
 
     if(proc->proc.is_extern())
     {
-      success = sym_formal_args(proc->proc.param_scope, proc->proc.args) && sym_expr(proc->proc.ret_type);
+      success = visit_formal_args(proc->proc.param_scope, proc->proc.args) && visit_expr(proc->proc.ret_type);
     }
     else
     {
       proc->proc.scope = begin_scope(eScope::proc, proc);
 
-      if(success = sym_formal_args(proc->proc.param_scope, proc->proc.args)
-         && sym_expr(proc->proc.ret_type) && sym_proc_body(proc))
+      if(success = visit_formal_args(proc->proc.param_scope, proc->proc.args)
+         && visit_expr(proc->proc.ret_type) && visit_proc_body(proc))
       {
         ;//ok
       }
@@ -824,7 +839,7 @@ bool SymbolContext::sym_module_proc(AstNode* proc)
   return success;
 }
 
-bool SymbolContext::sym_module_var(AstNode* module, AstNode* var)
+bool SymbolContext::visit_module_var(AstNode* module, AstNode* var)
 {
   assert(KIND(module, eAstNode::module));
   assert(KIND(var, eAstNode::var));
@@ -844,7 +859,7 @@ bool SymbolContext::sym_module_var(AstNode* module, AstNode* var)
   return success;
 }
 
-bool SymbolContext::sym_module(AstNode* module)
+bool SymbolContext::visit_module(AstNode* module)
 {
   assert(KIND(module, eAstNode::module));
   bool success = true;
@@ -861,13 +876,13 @@ bool SymbolContext::sym_module(AstNode* module)
     {
       case eAstNode::var:
       {
-        success = sym_module_var(module, stmt);
+        success = visit_module_var(module, stmt);
       }
       break;
       
       case eAstNode::proc:
       {
-        success = sym_module_proc(stmt);
+        success = visit_module_proc(stmt);
       }
       break;
       
@@ -887,6 +902,6 @@ bool SymbolContext::sym_module(AstNode* module)
 
 bool SymbolContext::process(AstNode* module)
 {
-  return sym_module(module);
+  return visit_module(module);
 }
 

@@ -63,7 +63,8 @@ struct MemoryArena
   void  dealloc();
   void* push_struct(int elem_size, int count);
   void  check_bounds(int elem_size, void* ptr);
-  Usage usage();
+  Usage get_usage();
+  void DEBUG_print_usage(char* tag);
 };
 
 struct String
@@ -486,7 +487,12 @@ struct Type
   bool  resolve(Type** resolved_type);
 };
 
-struct Typesys
+struct TypeContext_Set;
+struct TypeContext_Eval;
+struct TypeContext_Resolve;
+struct TypeContext_Check;
+
+struct TypeContext
 {
   struct TypePair
   {
@@ -513,106 +519,121 @@ struct Typesys
   Type* create_array_type(int size, Type* elem);
   Type* create_pointer_type(Type* pointee);
 
+  static TypeContext* create(MemoryArena* arena);
   void      init(MemoryArena* arena);
   Type*     type_subst(Type* type);
   TypePair* create_type_pair(Type* key, Type* value);
   TypePair* find_pair(Type* type);
   bool      process(AstNode* module);
+};
 
-  bool set_type_array(AstNode* array);
-  bool set_type_pointer(AstNode* pointer);
-  bool set_type_type(AstNode* type);
-  bool set_type_var(AstNode* var);
-  bool set_type_bin_expr(AstNode* bin_expr);
-  bool set_type_unr_expr(AstNode* unr_expr);
-  bool set_type_actual_arg(AstNode* call_arg);
-  bool set_type_id(AstNode* id);
-  bool set_type_actual_args(AstNode* args);
-  bool set_type_call(AstNode* call);
-  bool set_type_lit(AstNode* lit);
-  bool set_type_index(AstNode* index);
-  bool set_type_cast(AstNode* cast);
-  bool set_type_assign(AstNode* assign);
-  bool set_type_expr(AstNode* expr);
-  bool set_type_return(AstNode* ret);
-  bool set_type_if(AstNode* if_);
-  bool set_type_do_while(AstNode* do_while);
-  bool set_type_while(AstNode* while_);
-  bool set_type_block(AstNode* block);
-  bool set_type_block_stmt(AstNode* stmt);
-  bool set_type_formal_args(AstNode* args);
-  bool set_type_proc(AstNode* proc);
-  bool set_type_module_stmt(AstNode* stmt);
-  bool set_type_module(AstNode* module);
+struct TypeContext_Set : TypeContext
+{
+  int f;
 
-  bool eval_type_array(AstNode* array);
-  bool eval_type_pointer(AstNode* pointer);
-  bool eval_type_type(AstNode* type);
-  bool eval_type_cast(AstNode* cast);
-  bool eval_type_bin_expr(AstNode* bin_expr);
-  bool eval_type_id(AstNode* id);
-  bool eval_type_unr_expr(AstNode* unr_expr);
-  bool eval_type_var(AstNode* var);
-  bool eval_type_formal_args(AstNode* args);
-  bool eval_type_actual_args(AstNode* args);
-  bool eval_type_call(AstNode* call);
-  bool eval_type_index(AstNode* index);
-  bool eval_type_assign(AstNode* assign);
-  bool eval_type_expr(AstNode* expr);
-  bool eval_type_if(AstNode* if_);
-  bool eval_type_block(AstNode* block);
-  bool eval_type_do_while(AstNode* do_while);
-  bool eval_type_while(AstNode* while_);
-  bool eval_type_return(AstNode* ret);
-  bool eval_type_block_stmt(AstNode* stmt);
-  bool eval_type_proc(AstNode* proc);
-  bool eval_type_module_stmt(AstNode* stmt);
-  bool eval_type_module(AstNode* module);
+  bool visit_array(AstNode* array);
+  bool visit_pointer(AstNode* pointer);
+  bool visit_type(AstNode* type);
+  bool visit_var(AstNode* var);
+  bool visit_bin_expr(AstNode* bin_expr);
+  bool visit_unr_expr(AstNode* unr_expr);
+  bool visit_actual_arg(AstNode* call_arg);
+  bool visit_id(AstNode* id);
+  bool visit_actual_args(AstNode* args);
+  bool visit_call(AstNode* call);
+  bool visit_lit(AstNode* lit);
+  bool visit_index(AstNode* index);
+  bool visit_cast(AstNode* cast);
+  bool visit_assign(AstNode* assign);
+  bool visit_expr(AstNode* expr);
+  bool visit_return(AstNode* ret);
+  bool visit_if(AstNode* if_);
+  bool visit_do_while(AstNode* do_while);
+  bool visit_while(AstNode* while_);
+  bool visit_block(AstNode* block);
+  bool visit_block_stmt(AstNode* stmt);
+  bool visit_formal_args(AstNode* args);
+  bool visit_proc(AstNode* proc);
+  bool visit_module_stmt(AstNode* stmt);
+  bool visit_module(AstNode* module);
+};
 
-  bool resolve_type_var(AstNode* var);
-  bool resolve_type_lit(AstNode* lit);
-  bool resolve_type_formal_args(AstNode* args);
-  bool resolve_type_bin_expr(AstNode* bin_expr);
-  bool resolve_type_unr_expr(AstNode* unr_expr);
-  bool resolve_type_id(AstNode* id);
-  bool resolve_type_actual_args(AstNode* args);
-  bool resolve_type_call(AstNode* call);
-  bool resolve_type_index(AstNode* index);
-  bool resolve_type_cast(AstNode* cast);
-  bool resolve_type_assign(AstNode* assign);
-  bool resolve_type_expr(AstNode* expr);
-  bool resolve_type_block(AstNode* block);
-  bool resolve_type_return(AstNode* ret);
-  bool resolve_type_if(AstNode* if_);
-  bool resolve_type_do_while(AstNode* do_while);
-  bool resolve_type_while(AstNode* while_);
-  bool resolve_type_array(AstNode* array);
-  bool resolve_type_pointer(AstNode* pointer);
-  bool resolve_type_type(AstNode* type);
-  bool resolve_type_block_stmt(AstNode* stmt);
-  bool resolve_type_proc(AstNode* proc);
-  bool resolve_type_module_stmt(AstNode* stmt);
-  bool resolve_type_module(AstNode* module);
+struct TypeContext_Eval : TypeContext
+{
+  bool visit_array(AstNode* array);
+  bool visit_pointer(AstNode* pointer);
+  bool visit_type(AstNode* type);
+  bool visit_cast(AstNode* cast);
+  bool visit_bin_expr(AstNode* bin_expr);
+  bool visit_id(AstNode* id);
+  bool visit_unr_expr(AstNode* unr_expr);
+  bool visit_var(AstNode* var);
+  bool visit_formal_args(AstNode* args);
+  bool visit_actual_args(AstNode* args);
+  bool visit_call(AstNode* call);
+  bool visit_index(AstNode* index);
+  bool visit_assign(AstNode* assign);
+  bool visit_expr(AstNode* expr);
+  bool visit_if(AstNode* if_);
+  bool visit_block(AstNode* block);
+  bool visit_do_while(AstNode* do_while);
+  bool visit_while(AstNode* while_);
+  bool visit_return(AstNode* ret);
+  bool visit_block_stmt(AstNode* stmt);
+  bool visit_proc(AstNode* proc);
+  bool visit_module_stmt(AstNode* stmt);
+  bool visit_module(AstNode* module);
+};
 
-  bool check_types_var(AstNode* var);
-  bool check_types_formal_args(AstNode* args);
-  bool check_types_cast(AstNode* cast);
-  bool check_types_bin_expr(AstNode* bin_expr);
-  bool check_types_unr_expr(AstNode* unr_expr);
-  bool check_types_actual_args(AstNode* args);
-  bool check_types_call(AstNode* call);
-  bool check_types_index(AstNode* index);
-  bool check_types_assign(AstNode* assign);
-  bool check_types_expr(AstNode* expr);
-  bool check_types_return(AstNode* ret);
-  bool check_types_do_while(AstNode* do_while);
-  bool check_types_while(AstNode* while_);
-  bool check_types_if(AstNode* if_);
-  bool check_types_block(AstNode* block);
-  bool check_types_block_stmt(AstNode* stmt);
-  bool check_types_proc(AstNode* proc);
-  bool check_types_module_stmt(AstNode* stmt);
-  bool check_types_module(AstNode* module);
+struct TypeContext_Resolve : TypeContext
+{
+  bool visit_var(AstNode* var);
+  bool visit_lit(AstNode* lit);
+  bool visit_formal_args(AstNode* args);
+  bool visit_bin_expr(AstNode* bin_expr);
+  bool visit_unr_expr(AstNode* unr_expr);
+  bool visit_id(AstNode* id);
+  bool visit_actual_args(AstNode* args);
+  bool visit_call(AstNode* call);
+  bool visit_index(AstNode* index);
+  bool visit_cast(AstNode* cast);
+  bool visit_assign(AstNode* assign);
+  bool visit_expr(AstNode* expr);
+  bool visit_block(AstNode* block);
+  bool visit_return(AstNode* ret);
+  bool visit_if(AstNode* if_);
+  bool visit_do_while(AstNode* do_while);
+  bool visit_while(AstNode* while_);
+  bool visit_array(AstNode* array);
+  bool visit_pointer(AstNode* pointer);
+  bool visit_type(AstNode* type);
+  bool visit_block_stmt(AstNode* stmt);
+  bool visit_proc(AstNode* proc);
+  bool visit_module_stmt(AstNode* stmt);
+  bool visit_module(AstNode* module);
+};
+
+struct TypeContext_Check : TypeContext
+{
+  bool visit_var(AstNode* var);
+  bool visit_formal_args(AstNode* args);
+  bool visit_cast(AstNode* cast);
+  bool visit_bin_expr(AstNode* bin_expr);
+  bool visit_unr_expr(AstNode* unr_expr);
+  bool visit_actual_args(AstNode* args);
+  bool visit_call(AstNode* call);
+  bool visit_index(AstNode* index);
+  bool visit_assign(AstNode* assign);
+  bool visit_expr(AstNode* expr);
+  bool visit_return(AstNode* ret);
+  bool visit_do_while(AstNode* do_while);
+  bool visit_while(AstNode* while_);
+  bool visit_if(AstNode* if_);
+  bool visit_block(AstNode* block);
+  bool visit_block_stmt(AstNode* stmt);
+  bool visit_proc(AstNode* proc);
+  bool visit_module_stmt(AstNode* stmt);
+  bool visit_module(AstNode* module);
 };
 
 enum struct eIrOp
@@ -827,14 +848,14 @@ enum struct eX86Constant
   char_,
 };
 
-struct X86Operand_index
+struct X86Operand_Index
 {
   Type* type;
   struct X86Operand* base;
   struct X86Operand* offset;
 };
 
-struct X86Operand_constant
+struct X86Operand_Constant
 {
   eX86Constant kind;
 
@@ -854,8 +875,8 @@ struct X86Operand
   {
     char* id;
     X86Location* reg;
-    X86Operand_index index;
-    X86Operand_constant constant;
+    X86Operand_Index index;
+    X86Operand_Constant constant;
   };
 };
 
@@ -956,7 +977,7 @@ struct AstNode_NodeList
 {
   List node_list;
 
-  Type* make_product_type(Typesys* typesys);
+  Type* make_product_type(TypeContext* typesys);
 };
 
 struct AstNode_CallArg
@@ -1362,33 +1383,34 @@ struct SymbolContext
   Scope* begin_nested_scope(eScope kind, AstNode* ast_node);
   void   end_nested_scope();
   Symbol* add_decl(char* name, eStorageSpace storage_space, Scope* scope, AstNode* ast_node);
+  void init(MemoryArena* gp_arena, MemoryArena* sym_arena, TypeContext* type_context);
 
-  bool sym_lit(AstNode* lit);
-  bool sym_array(AstNode* array);
-  bool sym_expr(AstNode* expr);
-  bool sym_cast(AstNode* cast);
-  bool sym_index(AstNode* index);
-  bool sym_call(AstNode* call);
-  bool sym_actual_args(AstNode* args);
-  bool sym_unr_expr(AstNode* unr_expr);
-  bool sym_bin_expr(AstNode* bin_expr);
-  bool sym_id(AstNode* id);
-  bool sym_if(AstNode* if_);
-  bool sym_do_while(AstNode* do_while);
-  bool sym_while(AstNode* while_);
-  bool sym_loop_ctrl(AstNode* stmt);
-  bool sym_return(AstNode* ret);
-  bool sym_block_stmt(AstNode* stmt);
-  bool sym_block(AstNode* block);
-  bool sym_proc_body(AstNode* proc);
-  bool sym_formal_args(Scope* param_scope, AstNode* args);
-  bool sym_module_proc(AstNode* proc);
-  bool sym_module_var(AstNode* module, AstNode* var);
-  bool sym_module(AstNode* module);
-  bool sym_pointer(AstNode* pointer);
-  bool sym_assign(AstNode* assign);
-  bool sym_var(AstNode* var);
-  bool sym_formal_arg(Scope* proc_scope, AstNode* arg);
+  bool visit_lit(AstNode* lit);
+  bool visit_array(AstNode* array);
+  bool visit_expr(AstNode* expr);
+  bool visit_cast(AstNode* cast);
+  bool visit_index(AstNode* index);
+  bool visit_call(AstNode* call);
+  bool visit_actual_args(AstNode* args);
+  bool visit_unr_expr(AstNode* unr_expr);
+  bool visit_bin_expr(AstNode* bin_expr);
+  bool visit_id(AstNode* id);
+  bool visit_if(AstNode* if_);
+  bool visit_do_while(AstNode* do_while);
+  bool visit_while(AstNode* while_);
+  bool visit_loop_ctrl(AstNode* stmt);
+  bool visit_return(AstNode* ret);
+  bool visit_block_stmt(AstNode* stmt);
+  bool visit_block(AstNode* block);
+  bool visit_proc_body(AstNode* proc);
+  bool visit_formal_args(Scope* param_scope, AstNode* args);
+  bool visit_module_proc(AstNode* proc);
+  bool visit_module_var(AstNode* module, AstNode* var);
+  bool visit_module(AstNode* module);
+  bool visit_pointer(AstNode* pointer);
+  bool visit_assign(AstNode* assign);
+  bool visit_var(AstNode* var);
+  bool visit_formal_arg(Scope* proc_scope, AstNode* arg);
 
   bool process(AstNode* module);
 };
@@ -1426,37 +1448,38 @@ struct IrContext
   void emit_goto(Label* goto_label);
   void emit_call(Label* name, Scope* param_scope, Symbol* retvar, bool is_extern);
   void emit_return();
-  bool gen_bin_expr(Scope* scope, AstNode* bin_expr);
-  void gen_id(AstNode* id);
-  bool gen_unr_expr(Scope* scope, AstNode* unr_expr);
-  void gen_lit(Scope* scope, AstNode* lit);
-  bool gen_bool_unr_expr(Scope* scope, AstNode* unr_expr);
-  bool gen_actual_args(Scope* scope, AstNode* args);
-  void gen_call(Scope* scope, AstNode* call);
-  bool gen_index(Scope* scope, AstNode* index);
-  bool gen_index_with_offset(Scope* scope, AstNode* index);
-  bool gen_assign(Scope* scope, AstNode* assign);
-  bool gen_cast(Scope* scope, AstNode* cast);
-  bool gen_expr(Scope* scope, AstNode* expr);
-  bool gen_block(Scope* scope, AstNode* block);
-  bool gen_bool_bin_expr(Scope* scope, AstNode* bin_expr);
-  bool gen_bool_id(Scope* scope, AstNode* id);
-  bool gen_bool_call(Scope* scope, AstNode* call);
-  bool gen_bool_cast(Scope* scope, AstNode* cast);
-  void gen_bool_lit(Scope* scope, AstNode* lit);
-  bool gen_bool_expr(Scope* scope, AstNode* expr);
-  bool gen_do_while(Scope* scope, AstNode* do_while);
-  bool gen_while(Scope* scope, AstNode* while_);
-  bool gen_if(Scope* scope, AstNode* if_);
-  bool gen_return(Scope* scope, AstNode* ret);
-  bool gen_loop_ctrl(Scope* scope, AstNode* loop_ctrl);
-  bool gen_var(Scope* scope, AstNode* var);
-  bool gen_block_stmt(Scope* scope, AstNode* stmt);
-  void gen_formal_args(Scope* scope, AstNode* args);
-  bool gen_proc(Scope* scope, AstNode* proc);
-  void gen_module_var(Scope* scope, AstNode* var);
-  bool gen_module_stmt(Scope* scope, AstNode* stmt);
-  bool gen_module(AstNode* module);
+
+  bool visit_bin_expr(Scope* scope, AstNode* bin_expr);
+  void visit_id(AstNode* id);
+  bool visit_unr_expr(Scope* scope, AstNode* unr_expr);
+  void visit_lit(Scope* scope, AstNode* lit);
+  bool visit_bool_unr_expr(Scope* scope, AstNode* unr_expr);
+  bool visit_actual_args(Scope* scope, AstNode* args);
+  void visit_call(Scope* scope, AstNode* call);
+  bool visit_index(Scope* scope, AstNode* index);
+  bool visit_index_with_offset(Scope* scope, AstNode* index);
+  bool visit_assign(Scope* scope, AstNode* assign);
+  bool visit_cast(Scope* scope, AstNode* cast);
+  bool visit_expr(Scope* scope, AstNode* expr);
+  bool visit_block(Scope* scope, AstNode* block);
+  bool visit_bool_bin_expr(Scope* scope, AstNode* bin_expr);
+  bool visit_bool_id(Scope* scope, AstNode* id);
+  bool visit_bool_call(Scope* scope, AstNode* call);
+  bool visit_bool_cast(Scope* scope, AstNode* cast);
+  void visit_bool_lit(Scope* scope, AstNode* lit);
+  bool visit_bool_expr(Scope* scope, AstNode* expr);
+  bool visit_do_while(Scope* scope, AstNode* do_while);
+  bool visit_while(Scope* scope, AstNode* while_);
+  bool visit_if(Scope* scope, AstNode* if_);
+  bool visit_return(Scope* scope, AstNode* ret);
+  bool visit_loop_ctrl(Scope* scope, AstNode* loop_ctrl);
+  bool visit_var(Scope* scope, AstNode* var);
+  bool visit_block_stmt(Scope* scope, AstNode* stmt);
+  void visit_formal_args(Scope* scope, AstNode* args);
+  bool visit_proc(Scope* scope, AstNode* proc);
+  void visit_module_var(Scope* scope, AstNode* var);
+  bool visit_module_stmt(Scope* scope, AstNode* stmt);
+  bool visit_module(AstNode* module);
 
   void DEBUG_print_ir_op(String* text, eIrOp op);
   void DEBUG_print_ir_arg(String* text, IrArg* arg);
@@ -1464,16 +1487,17 @@ struct IrContext
   void DEBUG_print_basic_block(String* text, BasicBlock* bb);
   void DEBUG_print_ir_code(List* procs, char* file_path);
 
-  void reset_ir_context();
-  IrArg* ir_arg_new_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc);
-  IrArg* ir_arg_new_existing_object(Symbol* object);
+  void init(MemoryArena* gp_arena, MemoryArena* stmt_arena, TypeContext* type_context, SymbolContext* sym_context);
+  void reset();
+  IrArg* create_arg_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc);
+  IrArg* create_arg_existing_object(Symbol* object);
   void partition_basic_blocks_proc(AstNode* proc);
   void partition_basic_blocks_module(AstNode* module);
   Symbol* create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc);
   void alloc_data_object_incremental(Symbol* sym, Scope* scope);
   void alloc_scope_data_objects(Scope* scope);
   void alloc_data_object(Symbol* sym, Scope* scope);
-  void start_new_basic_block(List* leaders, int at_stmt_nr, IrStmt* stmt_array, int stmt_count);
+  void start_basic_block(List* leaders, int at_stmt_nr, IrStmt* stmt_array, int stmt_count);
   static eIrOp conv_operator_to_ir_op(eOperator op);
   Label* get_label_at(int stmt_nr);
   IrLeaderStmt* get_leader_stmt(List* leaders, int stmt_nr);
@@ -1483,7 +1507,7 @@ struct IrContext
   int get_proc_arg_size(AstNode* args);
   static void gen_label_name(MemoryArena* arena, Label* label);
   static char* new_tempvar_name(MemoryArena* arena, char* label);
-  static bool is_ir_cast_op(eIrOp ir_op);
+  static bool is_cast_op(eIrOp ir_op);
 };
 
 struct X86Context
@@ -1590,6 +1614,12 @@ struct X86Context
   void discard_unused_arg(IrArg* arg, X86Location* arg_loc);
   void discard_all_unused_args(IrStmt_Assign* assign);
   void save_all_registers(bool free_reg);
+  void write_data_bytes(String* text, uint8* p_data, int data_size);
+  void write_static_data_text(String* text, Scope* scope);
+  void init_registers();
+  void init(MemoryArena* gp_arena, MemoryArena* stmt_arena, MemoryArena* text_arena,
+            TypeContext* type_context, IrContext* ir_context, SymbolContext* sym_context);
+
   void gen_divmod_op(IrStmt_Assign* assign);
   void gen_index_source(IrStmt_Assign* assign);
   void gen_index_dest(IrStmt_Assign* assign);
@@ -1606,10 +1636,7 @@ struct X86Context
   void gen_basic_block(BasicBlock* bb);
   void gen_extern_proc(AstNode* proc);
   void gen_proc(AstNode* proc);
-  void init_registers();
   void gen_module(AstNode* module);
   void gen(AstNode* module);
-  void write_data_bytes(String* text, uint8* p_data, int data_size);
-  void write_static_data_text(String* text, Scope* scope);
 };
 

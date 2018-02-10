@@ -52,13 +52,6 @@ char* gen_tempvar_name(MemoryArena* arena, char* label)
   return str.cap();
 }
 
-
-void DEBUG_print_arena_usage(MemoryArena* arena, char* tag)
-{
-  MemoryArena::Usage usage = arena->usage();
-  Platform::printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
-}
-
 #if 0/*>>>*/
 void DEBUG_print_line(String* str, int indent_level, char* message, ...)
 {
@@ -148,8 +141,6 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
 }
 #endif/*<<<*/
 
-void add_object_to_memory(X86Context* context, Symbol* object);
-
 #include "lex.cpp"
 #include "syntax.cpp"
 #include "sym.cpp"
@@ -160,57 +151,17 @@ void add_object_to_memory(X86Context* context, Symbol* object);
 bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text, String** x86_text)
 {
   MemoryArena* gp_arena = MemoryArena::push(&arena, 2*MEGABYTE);
-  Typesys typesys = {};
-  typesys.init(MemoryArena::push(&arena, 2*MEGABYTE));
+  TypeContext* type_context = TypeContext::create(MemoryArena::push(&arena, 2*MEGABYTE));
 
   SymbolContext sym_context = {};
-  sym_context.basic_type_bool  = typesys.basic_type_bool;
-  sym_context.basic_type_int   = typesys.basic_type_int;
-  sym_context.basic_type_char  = typesys.basic_type_char;
-  sym_context.basic_type_float = typesys.basic_type_float;
-  sym_context.basic_type_void  = typesys.basic_type_void;
-  sym_context.basic_type_str   = typesys.basic_type_str;
-
-  sym_context.gp_arena = gp_arena;
-  sym_context.sym_arena = MemoryArena::push(&arena, 2*MEGABYTE);
-  sym_context.nesting_depth = -1;
-  sym_context.data_alignment = 4;
-  sym_context.scopes.init(sym_context.sym_arena, eList::scope);
+  sym_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_context);
 
   IrContext ir_context = {};
-  ir_context.basic_type_bool  = typesys.basic_type_bool;
-  ir_context.basic_type_int   = typesys.basic_type_int;
-  ir_context.basic_type_char  = typesys.basic_type_char;
-  ir_context.basic_type_float = typesys.basic_type_float;
-  ir_context.basic_type_void  = typesys.basic_type_void;
-  ir_context.basic_type_str   = typesys.basic_type_str;
-
-  ir_context.gp_arena = gp_arena;
-  ir_context.stmt_arena = MemoryArena::push(&arena, 2*MEGABYTE);
-  ir_context.stmt_array = (IrStmt*)ir_context.stmt_arena->base;
-  ir_context.stmt_count = 0;
-  ir_context.sym_context = &sym_context;
-  ir_context.label_list = List::create(ir_context.gp_arena, eList::ir_label);
-  ir_context.data_alignment = 4;
+  ir_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_context, &sym_context);
 
   X86Context x86_context = {};
-  x86_context.basic_type_bool  = typesys.basic_type_bool;
-  x86_context.basic_type_int   = typesys.basic_type_int;
-  x86_context.basic_type_char  = typesys.basic_type_char;
-  x86_context.basic_type_float = typesys.basic_type_float;
-  x86_context.basic_type_void  = typesys.basic_type_void;
-  x86_context.basic_type_str   = typesys.basic_type_str;
-
-  x86_context.gp_arena = gp_arena;
-  x86_context.stmt_arena = MemoryArena::push(&arena, 2*MEGABYTE);
-  x86_context.stmt_array = (X86Stmt*)x86_context.stmt_arena->base;
-  x86_context.machine_word_size = 4;
-  x86_context.data_alignment = 4;
-  x86_context.init_registers();
-  *x86_text = x86_context.text = String::create(MemoryArena::push(&arena, 2*MEGABYTE));
-
-  ir_context.x86_context = &x86_context;
-  sym_context.x86_context = &x86_context;
+  x86_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), MemoryArena::push(&arena, 2*MEGABYTE),
+                   type_context, &ir_context, &sym_context);
 
   Parser* parser = Parser::create(gp_arena);
   HFile* file = Platform::file_open(gp_arena, file_path);
@@ -223,16 +174,17 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
 
   AstNode* module = parser->module;
 
-  if(!(sym_context.process(module) && typesys.process(module)))
+  if(!(sym_context.process(module) && type_context->process(module)))
   {
     return false;
   }
 
+  /* FIXME: Nasty dependencies */
   ir_context.bool_true = sym_context.create_const_int(0, 1);
   ir_context.bool_false = sym_context.create_const_int(0, 0);
   x86_context.float_minus_one = sym_context.create_const_float(0, -1.0);
 
-  if(!ir_context.gen_module(module))
+  if(!ir_context.visit_module(module))
   {
     return false;
   }
@@ -241,6 +193,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_context.alloc_scope_data_objects(module->module.scope);
 
   x86_context.gen(module);
+  *x86_text = x86_context.text;
 
   return true;
 }

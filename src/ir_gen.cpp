@@ -1,13 +1,13 @@
 Label* Label::create(MemoryArena* arena)
 {
-  Label* label = mem_push_struct(arena, Label);
+  Label* label = push_struct(arena, Label);
   gen_label_name(arena, label);
   return label;
 }
 
 Label* Label::create_by_name(MemoryArena* arena, char* name)
 {
-  Label* label = mem_push_struct(arena, Label);
+  Label* label = push_struct(arena, Label);
   label->name = name;
   return label;
 }
@@ -155,19 +155,19 @@ Label* IrContext::get_label_at(int stmt_nr)
 
 void IrContext::emit_assign(eIrOp op, IrArg* arg1, IrArg* arg2, IrArg* result)
 {
-  IrStmt* stmt = mem_push_struct(stmt_arena, IrStmt);
+  IrStmt* stmt = push_struct(stmt_arena, IrStmt);
   stmt->kind = eIrStmt::assign;
   stmt->label = get_label_at(stmt_count);
 
   stmt->assign.op = op;
-  stmt->assign.arg1 = mem_push_struct(gp_arena, IrArg);
+  stmt->assign.arg1 = push_struct(gp_arena, IrArg);
   *stmt->assign.arg1 = *arg1;
   if(arg2)
   {
-    stmt->assign.arg2 = mem_push_struct(gp_arena, IrArg);
+    stmt->assign.arg2 = push_struct(gp_arena, IrArg);
     *stmt->assign.arg2 = *arg2;
   }
-  stmt->assign.result = mem_push_struct(gp_arena, IrArg);
+  stmt->assign.result = push_struct(gp_arena, IrArg);
   *stmt->assign.result = *result;
 
   stmt_count++;
@@ -200,7 +200,7 @@ void IrContext::emit_label(Label* label)
 
 void IrContext::emit_nop()
 {
-  IrStmt* stmt = mem_push_struct(stmt_arena, IrStmt);
+  IrStmt* stmt = push_struct(stmt_arena, IrStmt);
 
   *stmt = {};
   stmt->kind = eIrStmt::nop;
@@ -211,7 +211,7 @@ void IrContext::emit_nop()
 
 void IrContext::emit_cond_goto(eIrOp relop, IrArg* arg1, IrArg* arg2, Label* label)
 {
-  IrStmt* stmt = mem_push_struct(stmt_arena, IrStmt);
+  IrStmt* stmt = push_struct(stmt_arena, IrStmt);
   stmt->kind = eIrStmt::cond_goto;
   stmt->label = get_label_at(stmt_count);
 
@@ -225,7 +225,7 @@ void IrContext::emit_cond_goto(eIrOp relop, IrArg* arg1, IrArg* arg2, Label* lab
 
 void IrContext::emit_goto(Label* goto_label)
 {
-  IrStmt* stmt = mem_push_struct(stmt_arena, IrStmt);
+  IrStmt* stmt = push_struct(stmt_arena, IrStmt);
   stmt->kind = eIrStmt::goto_;
   stmt->label = get_label_at(stmt_count);
   stmt->goto_.goto_label = goto_label;
@@ -235,7 +235,7 @@ void IrContext::emit_goto(Label* goto_label)
 
 void IrContext::emit_call(Label* name, Scope* param_scope, Symbol* retvar, bool is_extern)
 {
-  IrStmt* stmt = mem_push_struct(stmt_arena, IrStmt);
+  IrStmt* stmt = push_struct(stmt_arena, IrStmt);
   stmt->kind = eIrStmt::call;
   stmt->label = get_label_at(stmt_count);
   stmt->call.name = name;
@@ -248,7 +248,7 @@ void IrContext::emit_call(Label* name, Scope* param_scope, Symbol* retvar, bool 
 
 void IrContext::emit_return()
 {
-  IrStmt* stmt = mem_push_struct(stmt_arena, IrStmt);
+  IrStmt* stmt = push_struct(stmt_arena, IrStmt);
   stmt->kind = eIrStmt::return_;
   stmt->label = get_label_at(stmt_count);
 
@@ -268,7 +268,7 @@ void IrContext::reset()
 
 IrArg* IrContext::create_arg_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc)
 {
-  IrArg* arg = mem_push_struct(gp_arena, IrArg);
+  IrArg* arg = push_struct(gp_arena, IrArg);
   arg->object = create_temp_object(scope, ty, src_loc);
 
   return arg;
@@ -276,7 +276,7 @@ IrArg* IrContext::create_arg_temp_object(Scope* scope, Type* ty, SourceLoc* src_
 
 IrArg* IrContext::create_arg_existing_object(Symbol* object)
 {
-  IrArg* arg = mem_push_struct(gp_arena, IrArg);
+  IrArg* arg = push_struct(gp_arena, IrArg);
   arg->object = object;
 
   return arg;
@@ -421,7 +421,7 @@ bool IrContext::visit_actual_args(Scope* scope, AstNode* args)
   int arg_count = args->args.node_list.count;
   if(arg_count > 0)
   {
-    IrArg** temp_places = mem_push_array(gp_arena, IrArg*, arg_count);
+    IrArg** temp_places = push_array(gp_arena, IrArg*, arg_count);
 
     int i = 0;
     for(ListItem* li = args->args.node_list.first;
@@ -1739,7 +1739,7 @@ IrLeaderStmt* IrContext::get_leader_stmt(List* leaders, int stmt_nr)
 
 IrLeaderStmt* IrContext::create_leader_stmt(MemoryArena* arena, int stmt_nr, IrStmt* stmt)
 {
-  IrLeaderStmt* new_elem = mem_push_struct(arena, IrLeaderStmt);
+  IrLeaderStmt* new_elem = push_struct(arena, IrLeaderStmt);
   new_elem->stmt_nr = stmt_nr;
   new_elem->stmt = stmt;
   Label* label = new_elem->label = stmt->label;
@@ -1874,12 +1874,12 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
       }
 
       IrLeaderStmt* leader = KIND(li, eList::ir_leader_stmt)->ir_leader_stmt;
-      BasicBlock* block = mem_push_struct(stmt_arena, BasicBlock);
+      BasicBlock* block = push_struct(stmt_arena, BasicBlock);
       basic_blocks->append(block, eList::basic_block);
       block->pred_list.init(stmt_arena, eList::basic_block);
       block->succ_list.init(stmt_arena, eList::basic_block);
       leader->block = block;
-      block->stmt_array = mem_push_array(stmt_arena, IrStmt*, next_stmt_nr - leader->stmt_nr);
+      block->stmt_array = push_array(stmt_arena, IrStmt*, next_stmt_nr - leader->stmt_nr);
       block->stmt_count = 0;
       block->label = leader->label;
 

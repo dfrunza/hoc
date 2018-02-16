@@ -106,7 +106,7 @@ void SymbolContext::init(MemoryArena* gp_arena, MemoryArena* sym_arena, TypeCont
 
 Symbol* SymbolContext::create_const(Type* ty, SourceLoc* src_loc)
 {
-  Symbol* sym = mem_push_struct(sym_arena, Symbol);
+  Symbol* sym = push_struct(sym_arena, Symbol);
 
   sym->kind = eSymbol::constant;
   sym->name = gen_tempvar_name(gp_arena, "const_");
@@ -169,7 +169,7 @@ Symbol* SymbolContext::create_const_float(SourceLoc* src_loc, float float_val)
 
 Symbol* IrContext::create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc)
 {
-  Symbol* sym = mem_push_struct(sym_context->sym_arena, Symbol);
+  Symbol* sym = push_struct(sym_context->sym_arena, Symbol);
 
   sym->name = gen_tempvar_name(gp_arena, "temp_");
   sym->src_loc = src_loc;
@@ -190,7 +190,7 @@ Symbol* IrContext::create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc
 
 Symbol* SymbolContext::add_decl(char* name, eStorageSpace storage_space, Scope* scope, AstNode* ast_node)
 {
-  Symbol* sym = mem_push_struct(sym_arena, Symbol);
+  Symbol* sym = push_struct(sym_arena, Symbol);
 
   sym->name = name;
   sym->src_loc = ast_node->src_loc;
@@ -210,7 +210,7 @@ Symbol* SymbolContext::add_decl(char* name, eStorageSpace storage_space, Scope* 
 
 Scope* SymbolContext::begin_scope(eScope kind, AstNode* ast_node)
 {
-  Scope* scope = mem_push_struct(sym_arena, Scope);
+  Scope* scope = push_struct(sym_arena, Scope);
 
   scope->kind = kind;
   scope->nesting_depth = nesting_depth;

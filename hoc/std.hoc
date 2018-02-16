@@ -119,6 +119,7 @@ void startup()
   heap_free = heap_base;
 
   main();
+  ExitProcess(0);
 }
 
 

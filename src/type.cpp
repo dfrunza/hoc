@@ -96,7 +96,7 @@ TypeContext* TypeContext::create(MemoryArena* arena)
                                    sizeof(TypeContext_Resolve),
                                    sizeof(TypeContext_Check));
 
-  TypeContext* context = (TypeContext*)arena->push_struct(struct_size, 1);
+  TypeContext* context = (TypeContext*)arena->push_struct_(struct_size, 1);
   context->init(arena);
 
   return context;
@@ -116,7 +116,7 @@ void TypeContext::init(MemoryArena* arena)
 
 Type* TypeContext::create_var_type(Type* var_type)
 {
-  Type* type = mem_push_struct(arena, Type);
+  Type* type = push_struct(arena, Type);
   type->kind = eType::var;
   type->var.type = var_type;
   type->set_width();
@@ -126,7 +126,7 @@ Type* TypeContext::create_var_type(Type* var_type)
 
 Type* TypeContext::create_basic_type(eBasicType kind)
 {
-  Type* type = mem_push_struct(arena, Type);
+  Type* type = push_struct(arena, Type);
   type->kind = eType::basic;
   type->basic.kind = kind;
   type->set_width();
@@ -136,7 +136,7 @@ Type* TypeContext::create_basic_type(eBasicType kind)
 
 Type* TypeContext::create_proc_type(Type* args, Type* ret)
 {
-  Type* type = mem_push_struct(arena, Type);
+  Type* type = push_struct(arena, Type);
   type->kind = eType::proc;
   type->proc.args = args;
   type->proc.ret = ret;
@@ -147,7 +147,7 @@ Type* TypeContext::create_proc_type(Type* args, Type* ret)
 
 Type* TypeContext::create_typevar()
 {
-  Type* type = mem_push_struct(arena, Type);
+  Type* type = push_struct(arena, Type);
   type->kind = eType::typevar;
   type->typevar.id = typevar_id++;
   type->width = 0;
@@ -157,7 +157,7 @@ Type* TypeContext::create_typevar()
 
 Type* TypeContext::create_product_type(Type* left, Type* right)
 {
-  Type* type = mem_push_struct(arena, Type);
+  Type* type = push_struct(arena, Type);
   type->kind = eType::product;
   type->product.left = left;
   type->product.right = right;
@@ -168,7 +168,7 @@ Type* TypeContext::create_product_type(Type* left, Type* right)
 
 Type* TypeContext::create_array_type(int size, Type* elem)
 {
-  Type* type = mem_push_struct(arena, Type);
+  Type* type = push_struct(arena, Type);
   type->kind = eType::array;
   type->array.size = size;
   type->array.elem = elem;
@@ -179,7 +179,7 @@ Type* TypeContext::create_array_type(int size, Type* elem)
 
 Type* TypeContext::create_pointer_type(Type* pointee)
 {
-  Type* type = mem_push_struct(arena, Type);
+  Type* type = push_struct(arena, Type);
   type->kind = eType::pointer;
   type->pointer.pointee = pointee;
   type->width = 0;
@@ -240,7 +240,7 @@ bool Type::equal(Type* type_b)
 
 Type* Type::copy(MemoryArena* arena)
 {
-  Type* copy = mem_push_struct(arena, Type);
+  Type* copy = push_struct(arena, Type);
   *copy = *this;
 
   return copy;
@@ -366,7 +366,7 @@ bool AstNode::resolve_types(MemoryArena* arena)
 
 TypeContext::TypePair* TypeContext::create_type_pair(Type* key, Type* value)
 {
-  TypePair* pair = mem_push_struct(arena, TypePair);
+  TypePair* pair = push_struct(arena, TypePair);
   pair->key = key;
   pair->value = value;
 

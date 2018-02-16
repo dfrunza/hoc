@@ -40,7 +40,7 @@ bool is_operator_logic(eOperator op)
 
 void gen_label_name(MemoryArena* arena, Label* label)
 {
-  label->name = mem_push_array(arena, char, 12);
+  label->name = push_array(arena, char, 12);
   Platform::sprintf(label->name, "L_%d", last_label_id++);
 }
 
@@ -164,7 +164,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
                    type_context, &ir_context, &sym_context);
 
   Parser* parser = Parser::create(gp_arena);
-  HFile* file = Platform::file_open(gp_arena, file_path);
+  PlatformFile* file = Platform::file_open(gp_arena, file_path);
   parser->set_input(hoc_text, file);
 
   if(!parser->parse_module())

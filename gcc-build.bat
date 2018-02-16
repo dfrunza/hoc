@@ -5,7 +5,7 @@
 gcc -v > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (
   ECHO Setting up the MINGW environment
-  SET "PATH=%PATH%;d:\mingw\bin\"
+  SET "PATH=%PATH%;c:\mingw\bin\"
 )
 gcc -v > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (

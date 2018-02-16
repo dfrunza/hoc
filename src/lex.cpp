@@ -54,7 +54,7 @@ char* Lexer::install_lexeme(char* begin_char, char* end_char)
 
   /* TODO: Search the lexeme, and if found, then return it. */
   int len = (int)(end_char - begin_char + 1);
-  char* lexeme = mem_push_array(arena, char, len + 1); // +NULL
+  char* lexeme = push_array(arena, char, len + 1); // +NULL
   Cstr::copy_substr(lexeme, begin_char, end_char);
   lexeme[len] = 0; // cap the string
   return lexeme;
@@ -100,7 +100,7 @@ char* Lexer::install_escaped_str(EscapedStr* estr)
 {
   assert(estr->begin <= estr->end);
 
-  char* lexeme = mem_push_array(arena, char, estr->len+1); /* +NULL */
+  char* lexeme = push_array(arena, char, estr->len+1); /* +NULL */
 
   if(estr->len > 0)
   {
@@ -412,7 +412,7 @@ char* Token::get_printstr()
 
 Lexer* Lexer::create(MemoryArena* arena)
 {
-  Lexer* lexer = mem_push_struct(arena, Lexer);
+  Lexer* lexer = push_struct(arena, Lexer);
   lexer->arena = arena;
 
   return lexer;
@@ -428,7 +428,7 @@ void Lexer::set_input(char* text, char* file_path)
      jump from the QuickFix window to the error line in the file. */
   src_loc.file_path = file_path;
 
-  last_state = mem_push_struct(arena, Lexer);
+  last_state = push_struct(arena, Lexer);
   *last_state = *this;
 }
 
@@ -465,7 +465,7 @@ bool Lexer::get_asm_text()
 {
   bool success = true;
   *last_state = *this;
-  mem_zero_struct(&token, Token);
+  zero_struct(&token, Token);
   src_loc.src_line = cursor;
   char c;
 
@@ -503,7 +503,7 @@ bool Lexer::get_next_token()
 {
   bool success = true;
   *last_state = *this;
-  mem_zero_struct(&token, Token);
+  zero_struct(&token, Token);
   src_loc.src_line = cursor;
   char c;
 
@@ -575,13 +575,13 @@ loop:
     if(is_float)
     {
       token.kind = eToken::float_val;
-      token.float_val = mem_push_struct(arena, float);
+      token.float_val = push_struct(arena, float);
       Platform::sscanf(digit_buf, "%f", token.float_val);
     }
     else
     {
       token.kind = eToken::int_val;
-      token.int_val = mem_push_struct(arena, int);
+      token.int_val = push_struct(arena, int);
       if(is_hex)
         Platform::sscanf(digit_buf, "%x", token.int_val);
       else

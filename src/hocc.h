@@ -33,12 +33,9 @@ struct Label;
 struct BasicBlock;
 struct X86Context;
 
-struct HFile
+struct PlatformFile
 {
-  struct Impl;
-
   char* path;
-  Impl* impl;
 };
 
 struct MemoryArena
@@ -61,7 +58,7 @@ struct MemoryArena
   static void         begin_temp_memory(MemoryArena** arena);
   static void         end_temp_memory(MemoryArena** arena);
   void  dealloc();
-  void* push_struct(int elem_size, int count);
+  void* push_struct_(int elem_size, int count);
   void  check_bounds(int elem_size, void* ptr);
   Usage get_usage();
   void DEBUG_print_usage(char* tag);
@@ -99,8 +96,8 @@ namespace Platform
   int    file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int alloc_extra);
   int    file_write_bytes(char* file_path, uint8* bytes, int count);
   char*  file_read_text(MemoryArena* arena, char* file_path);
-  HFile* file_open(MemoryArena* arena, char* filename);
-  bool   file_identity(HFile* file_A, HFile* file_B);
+  PlatformFile* file_open(MemoryArena* arena, char* filename);
+  bool   file_identity(PlatformFile* file_A, PlatformFile* file_B);
   char*  path_find_leaf(char* file_path);
   char*  path_make_leaf(char* file_path, bool with_extension);
   char*  path_make_dir(char* file_path);
@@ -339,7 +336,7 @@ struct ListItem
     IrLeaderStmt* ir_leader_stmt;
     Label*      ir_label;
     BasicBlock* basic_block;
-    HFile*      file;
+    PlatformFile*      file;
   };
 };
 
@@ -379,7 +376,7 @@ struct Scope
   int allocd_size; // aligned
   List decl_syms;
 
-  Scope* find(eScope kind);
+  Scope*  find(eScope kind);
   Symbol* lookup(char* name);
   Symbol* lookup_decl(char* name);
 };
@@ -487,11 +484,6 @@ struct Type
   bool  resolve(Type** resolved_type);
 };
 
-struct TypeContext_Set;
-struct TypeContext_Eval;
-struct TypeContext_Resolve;
-struct TypeContext_Check;
-
 struct TypeContext
 {
   struct TypePair
@@ -529,8 +521,6 @@ struct TypeContext
 
 struct TypeContext_Set : TypeContext
 {
-  int f;
-
   bool visit_array(AstNode* array);
   bool visit_pointer(AstNode* pointer);
   bool visit_type(AstNode* type);
@@ -1151,7 +1141,7 @@ struct AstNode_Module
 struct AstNode_Include
 {
   char* file_path;
-  HFile* file;
+  PlatformFile* file;
 };
 
 struct AstNode_Block
@@ -1231,19 +1221,19 @@ struct Parser
   SourceLoc* src_loc;
 
   AstNode* module;
-  HFile* file;
+  PlatformFile* file;
   List* includes;
 
   static char* get_operator_printstr(eOperator op);
   static Parser* create(MemoryArena* arena);
   Parser*    create_included();
-  void       set_input(char* text, HFile* file);
+  void       set_input(char* text, PlatformFile* file);
   bool       get_next_token();
   void       putback_token();
   SourceLoc* clone_source_loc();
   AstNode*   create_ast_node(eAstNode kind, SourceLoc* src_loc);
   bool       consume_semicolon();
-  AstNode*   find_include(HFile* file);
+  AstNode*   find_include(PlatformFile* file);
 
   bool parse_actual_args(AstNode* args);
   bool parse_rest_of_actual_args(AstNode* args);

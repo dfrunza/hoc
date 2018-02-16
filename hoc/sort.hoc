@@ -55,7 +55,7 @@ void quick_sort_recurs(int^ data, int i, int j)
   {
     int l = i;
     int r = j;
-    int pivot; pivot = data[pivot_index];
+    int pivot = data[pivot_index];
 
     while(l < r)
     {

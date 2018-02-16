@@ -47,9 +47,9 @@ void MemoryArena::check_bounds(int elem_size, void* ptr)
   assert((free + elem_size) < cap);
 }
 
-#define mem_zero_struct(VAR, TYPE) (mem_zero_(VAR, sizeof(TYPE)))
-#define mem_zero_array(VAR, TYPE) (mem_zero_(VAR, sizeof_array(VAR) * sizeof(TYPE)))
-void mem_zero_range(void* start, void* one_past_end)
+#define zero_struct(VAR, TYPE) (mem_zero_(VAR, sizeof(TYPE)))
+#define zero_array(VAR, TYPE) (mem_zero_(VAR, sizeof_array(VAR) * sizeof(TYPE)))
+void zero_range(void* start, void* one_past_end)
 {
   assert(one_past_end >= start);
   int len = (int)((uint8*)one_past_end - (uint8*)start);
@@ -60,7 +60,7 @@ MemoryArena* MemoryArena::create(int size)
 {
   void* raw_mem = Platform::alloc_memory(size + sizeof(MemoryArena));
   MemoryArena* arena = (MemoryArena*)raw_mem;
-  mem_zero_struct(arena, MemoryArena);
+  zero_struct(arena, MemoryArena);
   arena->base = (uint8*)arena + sizeof(MemoryArena);
   arena->free = arena->base;
   arena->cap = arena->free + size;
@@ -76,7 +76,7 @@ void MemoryArena::dealloc()
 
   if(DEBUG_zero_arena)
   {
-    mem_zero_range(free, cap);
+    zero_range(free, cap);
   }
 }
 
@@ -87,7 +87,7 @@ void MemoryArena::pop(MemoryArena** arena)
   MemoryArena* curr_arena = *arena;
   if(DEBUG_zero_arena)
   {
-    mem_zero_range(curr_arena->free, curr_arena->cap);
+    zero_range(curr_arena->free, curr_arena->cap);
   }
 }
 
@@ -98,18 +98,18 @@ MemoryArena* MemoryArena::push(MemoryArena** arena, int size)
   MemoryArena* prev_arena = *arena;
 
   MemoryArena* sub_arena = (MemoryArena*)prev_arena->free;
-  mem_zero_struct(sub_arena, MemoryArena);
+  zero_struct(sub_arena, MemoryArena);
   sub_arena->base =(uint8*)sub_arena + sizeof(MemoryArena);
   sub_arena->free = sub_arena->base;
   sub_arena->cap = sub_arena->base + size;
   assert(sub_arena->cap <= prev_arena->cap);
   if(DEBUG_zero_arena)
   {
-    mem_zero_range(sub_arena->base, sub_arena->cap);
+    zero_range(sub_arena->base, sub_arena->cap);
   }
 
   MemoryArena* new_arena = (MemoryArena*)sub_arena->cap;
-  mem_zero_struct(new_arena, MemoryArena);
+  zero_struct(new_arena, MemoryArena);
   new_arena->base = (uint8*)new_arena + sizeof(MemoryArena);
   new_arena->free = new_arena->base;
   new_arena->cap = prev_arena->cap;
@@ -126,7 +126,7 @@ void MemoryArena::begin_temp_memory(MemoryArena** arena)
   MemoryArena* prev_arena = *arena;
 
   MemoryArena* new_arena = (MemoryArena*)prev_arena->free;
-  mem_zero_struct(new_arena, MemoryArena);
+  zero_struct(new_arena, MemoryArena);
   new_arena->free = (uint8*)new_arena + sizeof(MemoryArena);
   new_arena->cap = prev_arena->cap;
   assert(new_arena->free < new_arena->cap);
@@ -140,10 +140,10 @@ void MemoryArena::end_temp_memory(MemoryArena** arena)
   MemoryArena::pop(arena);
 }
 
-#define mem_push_struct(ARENA, TYPE) ((TYPE*)(ARENA)->push_struct(sizeof(TYPE), 1))
-#define mem_push_array(ARENA, TYPE, COUNT) ((TYPE*)(ARENA)->push_struct(sizeof(TYPE), COUNT))
+#define push_struct(ARENA, TYPE) ((TYPE*)(ARENA)->push_struct_(sizeof(TYPE), 1))
+#define push_array(ARENA, TYPE, COUNT) ((TYPE*)(ARENA)->push_struct_(sizeof(TYPE), COUNT))
 
-void* MemoryArena::push_struct(int elem_size, int count)
+void* MemoryArena::push_struct_(int elem_size, int count)
 {
   assert(count > 0);
 
@@ -156,7 +156,7 @@ void* MemoryArena::push_struct(int elem_size, int count)
   }
   if(DEBUG_zero_struct)
   {
-    mem_zero_range(element, free);
+    zero_range(element, free);
   }
   return element;
 }
@@ -334,14 +334,14 @@ void String::init(MemoryArena* arena)
   assert(!arena->str);
 
   this->arena = arena;
-  head = mem_push_struct(arena, char);
+  head = push_struct(arena, char);
   end = head;
   arena->str = this;
 }
 
 String* String::create(MemoryArena* arena)
 {
-  String* str = mem_push_struct(arena, String);
+  String* str = push_struct(arena, String);
   str->init(arena);
 
   return str;
@@ -363,7 +363,7 @@ void String::append(char* cstr)
   int len = Cstr::len(cstr);
   if(len > 0)
   {
-    mem_push_array(arena, char, len); // will implicitly check arena bounds
+    push_array(arena, char, len); // will implicitly check arena bounds
     Cstr::copy(end, cstr);
     end = (char*)arena->free-1;
   }
@@ -537,7 +537,7 @@ bool error_(char* file, int line, char* message, ...)
 
 bool compile_error_va(MemoryArena* arena, char* file, int line, SourceLoc* src_loc, char* message, va_list args)
 {
-  char* filename_buf = mem_push_array(arena, char, Cstr::len(file));
+  char* filename_buf = push_array(arena, char, Cstr::len(file));
   Cstr::copy(filename_buf, file);
 
   if(src_loc && src_loc->line_nr >= 0)
@@ -586,7 +586,7 @@ void List::init(MemoryArena* arena, eList kind)
 
 List* List::create(MemoryArena* arena, eList kind)
 {
-  List* list = mem_push_struct(arena, List);
+  List* list = push_struct(arena, List);
   list->init(arena, kind);
   return list;
 }
@@ -642,7 +642,7 @@ void List::append_item(ListItem* item)
 void List::append(void* elem, eList kind)
 {
   assert(elem);
-  ListItem* item = mem_push_struct(arena, ListItem);
+  ListItem* item = push_struct(arena, ListItem);
   item->elem = elem;
   item->kind = kind;
   append_item(item);
@@ -670,7 +670,7 @@ void List::prepend_item(ListItem* item)
 
 void List::prepend(void* elem, eList kind)
 {
-  ListItem* item = mem_push_struct(arena, ListItem);
+  ListItem* item = push_struct(arena, ListItem);
   item->elem = elem;
   item->kind = kind;
   prepend_item(item);
@@ -750,7 +750,7 @@ void List::insert_item_before(ListItem* at_li, ListItem* new_li)
 void List::insert_before(ListItem* at_li, void* elem, eList kind)
 {
   assert(at_li);
-  ListItem* new_li = mem_push_struct(arena, ListItem);
+  ListItem* new_li = push_struct(arena, ListItem);
   new_li->elem = elem;
   new_li->kind = kind;
   insert_item_before(at_li, new_li);
@@ -780,7 +780,7 @@ void List::insert_item_after(ListItem* at_li, ListItem* new_li)
 void List::insert_after(ListItem* at_li, void* elem, eList kind)
 {
   assert(at_li);
-  ListItem* new_li = mem_push_struct(arena, ListItem);
+  ListItem* new_li = push_struct(arena, ListItem);
   new_li->elem = elem;
   new_li->kind = kind;
   insert_item_after(at_li, new_li);

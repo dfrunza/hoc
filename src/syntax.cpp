@@ -113,7 +113,7 @@ char* Parser::get_operator_printstr(eOperator op)
 
 AstNode* Parser::create_ast_node(eAstNode kind, SourceLoc* src_loc)
 {
-  AstNode* node = mem_push_struct(arena, AstNode);
+  AstNode* node = push_struct(arena, AstNode);
   node->src_loc = src_loc;
   node->kind = kind;
   return node;
@@ -121,14 +121,14 @@ AstNode* Parser::create_ast_node(eAstNode kind, SourceLoc* src_loc)
 
 SourceLoc* Parser::clone_source_loc()
 {
-  SourceLoc* clone = mem_push_struct(arena, SourceLoc);
+  SourceLoc* clone = push_struct(arena, SourceLoc);
   *clone = *src_loc;
   return clone;
 }
 
 Parser* Parser::create(MemoryArena* arena)
 {
-  Parser* parser = mem_push_struct(arena, Parser);
+  Parser* parser = push_struct(arena, Parser);
   parser->arena = arena;
   parser->includes = List::create(arena, eList::ast_node);
 
@@ -139,7 +139,7 @@ Parser* Parser::create(MemoryArena* arena)
   return parser;
 }
 
-void Parser::set_input(char* text, HFile* file)
+void Parser::set_input(char* text, PlatformFile* file)
 {
   this->file = file;
   lexer->set_input(text, file->path);
@@ -1709,7 +1709,7 @@ bool Parser::parse_module_var(char* name, eModifier modifier, AstNode* var_type,
   return success;
 }
 
-AstNode* Parser::find_include(HFile* file)
+AstNode* Parser::find_include(PlatformFile* file)
 {
   AstNode* include = 0;
 
@@ -1757,7 +1757,7 @@ bool Parser::parse_module_include(AstNode** node)
 
         if(success = get_next_token() && consume_semicolon())
         {
-          HFile* included_file = include->include.file = Platform::file_open(arena, include->include.file_path);
+          PlatformFile* included_file = include->include.file = Platform::file_open(arena, include->include.file_path);
           if(included_file)
           {
             AstNode* previous_include = find_include(included_file);

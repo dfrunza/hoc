@@ -11,8 +11,10 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-struct HFile::Impl
+struct WindowsFile
 {
+  PlatformFile platform_file;
+
   HANDLE handle;
   int id_low;
   int id_high;
@@ -89,7 +91,7 @@ namespace Platform
         {
           if(fseek(file, 0, SEEK_SET) == 0)
           {
-            *bytes = mem_push_array(arena, uint8, byte_count + alloc_extra);
+            *bytes = push_array(arena, uint8, byte_count + alloc_extra);
             fread(*bytes, (size_t)byte_count, 1, file);
             if(ferror(file))
               byte_count = -1;
@@ -147,35 +149,37 @@ namespace Platform
     return result;
   }
 
-  HFile* file_open(MemoryArena* arena, char* file_path)
+  PlatformFile* file_open(MemoryArena* arena, char* file_path)
   {
-    HFile* file = 0;
+    WindowsFile* file = 0;
 
     HANDLE handle = CreateFile(file_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if(handle != INVALID_HANDLE_VALUE)
     {
-      file = mem_push_struct(arena, HFile);
-      file->impl = mem_push_struct(arena, HFile::Impl);
-      file->impl->handle = handle;
-      file->path = file_path;
+      file = push_struct(arena, WindowsFile);
+      file->handle = handle;
+      file->platform_file.path = file_path;
 
-      BY_HANDLE_FILE_INFORMATION* info = mem_push_struct(arena, BY_HANDLE_FILE_INFORMATION);
+      BY_HANDLE_FILE_INFORMATION* info = push_struct(arena, BY_HANDLE_FILE_INFORMATION);
       if(GetFileInformationByHandle(handle, info))
       {
-        file->impl->volume_serial_no = info->dwVolumeSerialNumber;
-        file->impl->id_low = info->nFileIndexLow;
-        file->impl->id_high = info->nFileIndexHigh;
+        file->volume_serial_no = info->dwVolumeSerialNumber;
+        file->id_low = info->nFileIndexLow;
+        file->id_high = info->nFileIndexHigh;
       }
     }
 
-    return file;
+    return (PlatformFile*)file;
   }
 
-  bool file_identity(HFile* file_A, HFile* file_B)
+  bool file_identity(PlatformFile* file_A_arg, PlatformFile* file_B_arg)
   {
-    bool is_identity = (file_A->impl->volume_serial_no == file_B->impl->volume_serial_no)
-      && (file_A->impl->id_low == file_B->impl->id_low)
-      && (file_A->impl->id_high == file_B->impl->id_high);
+    WindowsFile* file_A = (WindowsFile*)file_A_arg;
+    WindowsFile* file_B = (WindowsFile*)file_B_arg;
+
+    bool is_identity = (file_A->volume_serial_no == file_B->volume_serial_no)
+      && (file_A->id_low == file_B->id_low)
+      && (file_A->id_high == file_B->id_high);
     return is_identity;
   }
 } // Platform::
@@ -197,7 +201,7 @@ OutFileNames;
 
 bool make_out_file_names(MemoryArena* arena, OutFileNames* out_files, char* src_file_path)
 {
-  char* leaf = mem_push_array(arena, char, Cstr::len(src_file_path));
+  char* leaf = push_array(arena, char, Cstr::len(src_file_path));
   Cstr::copy(leaf, src_file_path);
   leaf = Platform::path_make_leaf(leaf, false);
 

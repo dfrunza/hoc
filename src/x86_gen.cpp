@@ -659,7 +659,7 @@ void X86Context::print_stmt(String* text, X86Stmt* stmt)
 
 X86Stmt* X86Context::create_stmt(eX86Stmt opcode)
 {
-  X86Stmt* stmt = mem_push_struct(stmt_arena, X86Stmt);
+  X86Stmt* stmt = push_struct(stmt_arena, X86Stmt);
   stmt_count++;
   stmt->opcode = opcode;
   stmt->operand1 = stmt->operand2 = 0;
@@ -958,12 +958,12 @@ bool X86Context::is_single_occupant_register(X86Location* reg, Symbol* object)
 // X86 stack grows toward 0
 X86Operand* X86Context::make_index_operand(eX86Operand kind, Symbol* object)
 {
-  X86Operand* operand = mem_push_struct(gp_arena, X86Operand);
+  X86Operand* operand = push_struct(gp_arena, X86Operand);
   operand->kind = kind;
   operand->index.type = object->ty;
 
-  X86Operand* base = operand->index.base = mem_push_struct(gp_arena, X86Operand);
-  X86Operand* offset = operand->index.offset = mem_push_struct(gp_arena, X86Operand);
+  X86Operand* base = operand->index.base = push_struct(gp_arena, X86Operand);
+  X86Operand* offset = operand->index.offset = push_struct(gp_arena, X86Operand);
 
   offset->kind = eX86Operand::constant;
   struct X86Operand_Constant* constant = &offset->constant;
@@ -1019,7 +1019,7 @@ X86Operand* X86Context::make_register_operand(X86Location* reg)
 {
   assert(is_register_location(reg));
 
-  X86Operand* operand = mem_push_struct(gp_arena, X86Operand);
+  X86Operand* operand = push_struct(gp_arena, X86Operand);
   operand->kind = eX86Operand::register_;
   operand->reg = reg;
 
@@ -1028,7 +1028,7 @@ X86Operand* X86Context::make_register_operand(X86Location* reg)
 
 X86Operand* X86Context::make_int_constant_operand(int int_val)
 {
-  X86Operand* operand = mem_push_struct(gp_arena, X86Operand);
+  X86Operand* operand = push_struct(gp_arena, X86Operand);
   operand->kind = eX86Operand::constant;
 
   struct X86Operand_Constant* constant = &operand->constant;
@@ -1040,7 +1040,7 @@ X86Operand* X86Context::make_int_constant_operand(int int_val)
 
 X86Operand* X86Context::make_memory_operand(Type* type, X86Operand* base, X86Operand* offset)
 {
-  X86Operand* operand = mem_push_struct(gp_arena, X86Operand);
+  X86Operand* operand = push_struct(gp_arena, X86Operand);
   operand->kind = eX86Operand::memory;
 
   operand->index.type = type;
@@ -1067,7 +1067,7 @@ X86Operand* X86Context::make_object_memory_operand(Symbol* object)
     }
     else
     {
-      operand = mem_push_struct(gp_arena, X86Operand);
+      operand = push_struct(gp_arena, X86Operand);
       operand->kind = eX86Operand::constant;
 
       struct X86Operand_Constant* constant = &operand->constant;
@@ -1122,7 +1122,7 @@ X86Operand* X86Context::make_object_operand(Symbol* object)
 
 X86Operand* X86Context::make_id_operand(char* id)
 {
-  X86Operand* operand = mem_push_struct(gp_arena, X86Operand);
+  X86Operand* operand = push_struct(gp_arena, X86Operand);
   operand->kind = eX86Operand::id;
   operand->id = id;
   return operand;

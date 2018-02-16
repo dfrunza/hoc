@@ -1,2 +1,15 @@
+/*
 include "test-0_2.hoc";
+*/
+include "std.hoc";
+include "str.hoc";
+include "math.hoc";
+
+void main()
+{
+  [20]char in_buf;
+  int bytes_read = stdin_read(&in_buf, 20);
+  print_str(&in_buf);
+  print_int(bytes_read);
+}
 

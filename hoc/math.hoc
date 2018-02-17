@@ -140,7 +140,7 @@ float sqrt(float x)
 }
 
 /*
-   Integer log_b of n : the largest integer x such that
+   x = log_b(n) : the largest integer x such that
       pow(b, x) <= n
 */
 int floor_log_b(int b, float n)

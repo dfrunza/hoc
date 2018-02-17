@@ -686,7 +686,7 @@ void X86Context::new_object_location_entry(Symbol* object, X86Location* loc)
   occupants->append(object, eList::symbol);
 }
 
-void X86Context::delete_object_from_location(Symbol* object, X86Location* loc)
+void X86Context::remove_object_from_location(Symbol* object, X86Location* loc)
 {
   if(object->is_in_location(loc))
   {
@@ -818,7 +818,7 @@ void X86Context::clean_register(X86Location* loc)
       li = li->next)
   {
     Symbol* occupant = KIND(li, eList::symbol)->symbol;
-    delete_object_from_location(occupant, loc);
+    remove_object_from_location(occupant, loc);
   }
 }
 
@@ -841,9 +841,9 @@ void X86Context::set_exclusive_object_location(Symbol* object, X86Location* loc)
 {
   for(int i = 0; i < register_count; i++)
   {
-    delete_object_from_location(object, registers._[i]);
+    remove_object_from_location(object, registers._[i]);
   }
-  delete_object_from_location(object, &memory);
+  remove_object_from_location(object, &memory);
 
   add_object_to_location(object, loc);
 }
@@ -1404,7 +1404,7 @@ void X86Context::save_register(X86Location* reg, bool free_reg)
 
     if(free_reg)
     {
-      delete_object_from_location(object, reg);
+      remove_object_from_location(object, reg);
     }
 
     li = li_next;
@@ -1449,7 +1449,7 @@ void X86Context::discard_unused_arg(IrArg* arg, X86Location* arg_loc)
   if(is_register_location(arg_loc)
      && (arg->next_use == NextUse_None && !arg->is_live))
   {
-    delete_object_from_location(arg->object, arg_loc);
+    remove_object_from_location(arg->object, arg_loc);
   }
 }
 
@@ -1508,14 +1508,14 @@ void X86Context::gen_divmod_op(IrStmt_Assign* assign)
     x86_stmt = create_stmt(eX86Stmt::idiv);
     x86_stmt->operand1 = make_object_operand(arg2->object);
 
+    clean_register_all_sizes(dividend_loc);
+    clean_register_all_sizes(remainder_loc);
     if(assign->op == eIrOp::div)
     {
-      clean_register_all_sizes(dividend_loc);
       set_exclusive_object_location(result->object, dividend_loc);
     }
     else if(assign->op == eIrOp::mod)
     {
-      clean_register_all_sizes(remainder_loc);
       set_exclusive_object_location(result->object, remainder_loc);
     }
     else assert(0);
@@ -1732,7 +1732,7 @@ void X86Context::gen_bin_expr(IrStmt_Assign* assign)
        && is_single_occupant_register(arg1_loc, arg1->object)
        && (arg1->next_use == NextUse_None && !arg1->is_live))
     {
-      delete_object_from_location(arg1->object, arg1_loc);
+      remove_object_from_location(arg1->object, arg1_loc);
     }
     else
     {
@@ -1789,7 +1789,7 @@ void X86Context::gen_unr_expr(IrStmt_Assign* assign)
        && is_single_occupant_register(arg1_loc, arg1->object)
        && (arg1->next_use == NextUse_None && !arg1->is_live))
     {
-      delete_object_from_location(arg1->object, arg1_loc);
+      remove_object_from_location(arg1->object, arg1_loc);
     }
     else
     {

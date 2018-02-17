@@ -1407,6 +1407,8 @@ struct SymbolContext
 
 struct IrContext
 {
+#define IrContext_DEBUG_line_nr_gutter_width 10
+
   Type* basic_type_bool;
   Type* basic_type_int;
   Type* basic_type_char;
@@ -1568,7 +1570,7 @@ struct X86Context
   void print_stmt(String* text, X86Stmt* stmt);
   X86Stmt* create_stmt(eX86Stmt opcode);
   void new_object_location_entry(Symbol* object, X86Location* loc);
-  void delete_object_from_location(Symbol* object, X86Location* loc);
+  void remove_object_from_location(Symbol* object, X86Location* loc);
   void add_object_to_location(Symbol* object, X86Location* loc);
   void clean_register(X86Location* loc);
   void clean_register_all_sizes(X86Location* loc);

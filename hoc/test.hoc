@@ -7,9 +7,23 @@ include "math.hoc";
 
 void main()
 {
-  [20]char in_buf;
-  int bytes_read = stdin_read(&in_buf, 20);
-  print_str(&in_buf);
-  print_int(bytes_read);
+  int a = -10;
+  int b = 4;
+  int q = a / b;
+  int r = a mod b;
+  print_equation(a, b, q, r);
+}
+/*
+*/
+
+void print_equation(int a, int b, int q, int r)
+{
+  print_int(a);
+  print_str(&" = ");
+  print_int(q);
+  print_str(&" * ");
+  print_int(b);
+  print_str(&" + ");
+  print_int(r);
 }
 

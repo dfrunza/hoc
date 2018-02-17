@@ -1676,9 +1676,9 @@ void IrContext::DEBUG_print_basic_block(String* text, BasicBlock* bb)
     IrStmt* stmt = stmt_array[i];
     if(stmt->label)
     {
-      text->printfln("%5s:", stmt->label->name);
+      text->printfln("%10s:", stmt->label->name);
     }
-    text->printf("%5d: ", i);
+    text->printf("%10d: ", i);
     DEBUG_print_ir_stmt(text, stmt);
     text->println();
   }
@@ -1702,7 +1702,7 @@ void IrContext::DEBUG_print_ir_code(List* procs, char* file_path)
     }
     else
     {
-      text.printfln("%5s:", proc->proc.name);
+      text.printfln("%10s:", proc->proc.name);
 
       List* basic_blocks = proc->proc.basic_blocks;
       for(ListItem* li = basic_blocks->first;

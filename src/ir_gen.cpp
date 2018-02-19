@@ -13,14 +13,14 @@ Label* Label::create_by_name(MemoryArena* arena, char* name)
 }
 
 void IrContext::init(MemoryArena* gp_arena, MemoryArena* stmt_arena,
-                     TypeContext* type_context, SymbolContext* sym_context)
+                     TypePass* type_pass, SymbolContext* sym_context)
 {
-  basic_type_bool  = type_context->basic_type_bool;
-  basic_type_int   = type_context->basic_type_int;
-  basic_type_char  = type_context->basic_type_char;
-  basic_type_float = type_context->basic_type_float;
-  basic_type_void  = type_context->basic_type_void;
-  basic_type_str   = type_context->basic_type_str;
+  basic_type_bool  = type_pass->basic_type_bool;
+  basic_type_int   = type_pass->basic_type_int;
+  basic_type_char  = type_pass->basic_type_char;
+  basic_type_float = type_pass->basic_type_float;
+  basic_type_void  = type_pass->basic_type_void;
+  basic_type_str   = type_pass->basic_type_str;
 
   this->gp_arena = gp_arena;
   this->stmt_arena = stmt_arena;

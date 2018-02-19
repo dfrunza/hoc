@@ -151,17 +151,17 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
 bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text, String** x86_text)
 {
   MemoryArena* gp_arena = MemoryArena::push(&arena, 2*MEGABYTE);
-  TypeContext* type_context = TypeContext::create(MemoryArena::push(&arena, 2*MEGABYTE));
+  TypePass* type_pass = TypePass::create(MemoryArena::push(&arena, 2*MEGABYTE));
 
   SymbolContext sym_context = {};
-  sym_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_context);
+  sym_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_pass);
 
   IrContext ir_context = {};
-  ir_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_context, &sym_context);
+  ir_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_pass, &sym_context);
 
   X86Context x86_context = {};
   x86_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), MemoryArena::push(&arena, 2*MEGABYTE),
-                   type_context, &ir_context, &sym_context);
+                   type_pass, &ir_context, &sym_context);
 
   Parser* parser = Parser::create(gp_arena);
   PlatformFile* file = Platform::file_open(gp_arena, file_path);
@@ -174,7 +174,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
 
   AstNode* module = parser->module;
 
-  if(!(sym_context.process(module) && type_context->process(module)))
+  if(!(sym_context.process(module) && type_pass->process(module)))
   {
     return false;
   }

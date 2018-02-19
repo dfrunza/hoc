@@ -88,21 +88,21 @@ int maximum_of_int(int N, ...)
   return result;
 }
 
-TypeContext* TypeContext::create(MemoryArena* arena)
+TypePass* TypePass::create(MemoryArena* arena)
 {
   int struct_size = maximum_of_int(4,
-                                   sizeof(TypeContext_Set),
-                                   sizeof(TypeContext_Eval),
-                                   sizeof(TypeContext_Resolve),
-                                   sizeof(TypeContext_Check));
+                                   sizeof(TypePass_Set),
+                                   sizeof(TypePass_Eval),
+                                   sizeof(TypePass_Resolve),
+                                   sizeof(TypePass_Check));
 
-  TypeContext* context = (TypeContext*)arena->push_struct_(struct_size, 1);
+  TypePass* context = (TypePass*)arena->push_struct_(struct_size, 1);
   context->init(arena);
 
   return context;
 }
 
-void TypeContext::init(MemoryArena* arena)
+void TypePass::init(MemoryArena* arena)
 {
   this->arena = arena;
   basic_type_bool  = create_basic_type(eBasicType::bool_);
@@ -114,7 +114,7 @@ void TypeContext::init(MemoryArena* arena)
   subst_list = List::create(arena, eList::type_pair);
 }
 
-Type* TypeContext::create_var_type(Type* var_type)
+Type* TypePass::create_var_type(Type* var_type)
 {
   Type* type = push_struct(arena, Type);
   type->kind = eType::var;
@@ -124,7 +124,7 @@ Type* TypeContext::create_var_type(Type* var_type)
   return type;
 }
 
-Type* TypeContext::create_basic_type(eBasicType kind)
+Type* TypePass::create_basic_type(eBasicType kind)
 {
   Type* type = push_struct(arena, Type);
   type->kind = eType::basic;
@@ -134,7 +134,7 @@ Type* TypeContext::create_basic_type(eBasicType kind)
   return type;
 }
 
-Type* TypeContext::create_proc_type(Type* args, Type* ret)
+Type* TypePass::create_proc_type(Type* args, Type* ret)
 {
   Type* type = push_struct(arena, Type);
   type->kind = eType::proc;
@@ -145,7 +145,7 @@ Type* TypeContext::create_proc_type(Type* args, Type* ret)
   return type;
 }
 
-Type* TypeContext::create_typevar()
+Type* TypePass::create_typevar()
 {
   Type* type = push_struct(arena, Type);
   type->kind = eType::typevar;
@@ -155,7 +155,7 @@ Type* TypeContext::create_typevar()
   return type;
 }
 
-Type* TypeContext::create_product_type(Type* left, Type* right)
+Type* TypePass::create_product_type(Type* left, Type* right)
 {
   Type* type = push_struct(arena, Type);
   type->kind = eType::product;
@@ -166,7 +166,7 @@ Type* TypeContext::create_product_type(Type* left, Type* right)
   return type;
 }
 
-Type* TypeContext::create_array_type(int size, Type* elem)
+Type* TypePass::create_array_type(int size, Type* elem)
 {
   Type* type = push_struct(arena, Type);
   type->kind = eType::array;
@@ -177,7 +177,7 @@ Type* TypeContext::create_array_type(int size, Type* elem)
   return type;
 }
 
-Type* TypeContext::create_pointer_type(Type* pointee)
+Type* TypePass::create_pointer_type(Type* pointee)
 {
   Type* type = push_struct(arena, Type);
   type->kind = eType::pointer;
@@ -364,7 +364,7 @@ bool AstNode::resolve_types(MemoryArena* arena)
   return success;
 }
 
-TypeContext::TypePair* TypeContext::create_type_pair(Type* key, Type* value)
+TypePass::TypePair* TypePass::create_type_pair(Type* key, Type* value)
 {
   TypePair* pair = push_struct(arena, TypePair);
   pair->key = key;
@@ -373,7 +373,7 @@ TypeContext::TypePair* TypeContext::create_type_pair(Type* key, Type* value)
   return pair;
 }
 
-TypeContext::TypePair* TypeContext::find_pair(Type* type)
+TypePass::TypePair* TypePass::find_pair(Type* type)
 {
   TypePair* result = 0;
   for(ListItem* li = subst_list->first;
@@ -391,7 +391,7 @@ TypeContext::TypePair* TypeContext::find_pair(Type* type)
   return result;
 }
 
-Type* TypeContext::type_subst(Type* type)
+Type* TypePass::type_subst(Type* type)
 {
   type = type->get_repr_type();
   Type* subst = 0;
@@ -608,7 +608,7 @@ char* Type::get_printstr(MemoryArena* arena)
 //     SET TYPES
 //-----------------------------------------------------
 
-bool TypeContext_Set::visit_array(AstNode* array)
+bool TypePass_Set::visit_array(AstNode* array)
 {
   assert(KIND(array, eAstNode::array));
   bool success = true;
@@ -644,7 +644,7 @@ bool TypeContext_Set::visit_array(AstNode* array)
   return success;
 }
 
-bool TypeContext_Set::visit_pointer(AstNode* pointer)
+bool TypePass_Set::visit_pointer(AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode::pointer));
   bool success = true;
@@ -657,7 +657,7 @@ bool TypeContext_Set::visit_pointer(AstNode* pointer)
   return success;
 }
 
-bool TypeContext_Set::visit_type(AstNode* type)
+bool TypePass_Set::visit_type(AstNode* type)
 {
   bool success = true;
   
@@ -723,7 +723,7 @@ bool TypeContext_Set::visit_type(AstNode* type)
   return success;
 }
 
-bool TypeContext_Set::visit_var(AstNode* var)
+bool TypePass_Set::visit_var(AstNode* var)
 {
   assert(KIND(var, eAstNode::var));
   bool success = true;
@@ -743,7 +743,7 @@ bool TypeContext_Set::visit_var(AstNode* var)
   return success;
 }
 
-bool TypeContext_Set::visit_bin_expr(AstNode* bin_expr)
+bool TypePass_Set::visit_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
@@ -760,7 +760,7 @@ bool TypeContext_Set::visit_bin_expr(AstNode* bin_expr)
   return success;
 }
 
-bool TypeContext_Set::visit_unr_expr(AstNode* unr_expr)
+bool TypePass_Set::visit_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
   bool success = true;
@@ -775,7 +775,7 @@ bool TypeContext_Set::visit_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool TypeContext_Set::visit_actual_arg(AstNode* call_arg)
+bool TypePass_Set::visit_actual_arg(AstNode* call_arg)
 {
   assert(KIND(call_arg, eAstNode::call_arg));
   bool success = true;
@@ -790,7 +790,7 @@ bool TypeContext_Set::visit_actual_arg(AstNode* call_arg)
   return success;
 }
 
-bool TypeContext_Set::visit_id(AstNode* id)
+bool TypePass_Set::visit_id(AstNode* id)
 {
   assert(KIND(id, eAstNode::id));
   bool success = true;
@@ -801,7 +801,7 @@ bool TypeContext_Set::visit_id(AstNode* id)
   return success;
 }
 
-bool TypeContext_Set::visit_actual_args(AstNode* args)
+bool TypePass_Set::visit_actual_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -822,7 +822,7 @@ bool TypeContext_Set::visit_actual_args(AstNode* args)
   return success;
 }
 
-bool TypeContext_Set::visit_call(AstNode* call)
+bool TypePass_Set::visit_call(AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
   bool success = true;
@@ -843,7 +843,7 @@ bool TypeContext_Set::visit_call(AstNode* call)
   return success;
 }
 
-bool TypeContext_Set::visit_lit(AstNode* lit)
+bool TypePass_Set::visit_lit(AstNode* lit)
 {
   assert(KIND(lit, eAstNode::lit));
   bool success = true;
@@ -888,7 +888,7 @@ bool TypeContext_Set::visit_lit(AstNode* lit)
   return success;
 }
 
-bool TypeContext_Set::visit_index(AstNode* index)
+bool TypePass_Set::visit_index(AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
   bool success = true;
@@ -902,7 +902,7 @@ bool TypeContext_Set::visit_index(AstNode* index)
   return success;
 }
 
-bool TypeContext_Set::visit_cast(AstNode* cast)
+bool TypePass_Set::visit_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
   bool success = true;
@@ -918,7 +918,7 @@ bool TypeContext_Set::visit_cast(AstNode* cast)
   return success;
 }
 
-bool TypeContext_Set::visit_assign(AstNode* assign)
+bool TypePass_Set::visit_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode::assign));
   bool success = true;
@@ -933,7 +933,7 @@ bool TypeContext_Set::visit_assign(AstNode* assign)
   return success;
 }
 
-bool TypeContext_Set::visit_expr(AstNode* expr)
+bool TypePass_Set::visit_expr(AstNode* expr)
 {
   bool success = true;
   
@@ -1016,7 +1016,7 @@ bool TypeContext_Set::visit_expr(AstNode* expr)
   return success;
 }
 
-bool TypeContext_Set::visit_return(AstNode* ret)
+bool TypePass_Set::visit_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode::return_));
   bool success = true;
@@ -1038,7 +1038,7 @@ bool TypeContext_Set::visit_return(AstNode* ret)
   return success;
 }
 
-bool TypeContext_Set::visit_if(AstNode* if_)
+bool TypePass_Set::visit_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode::if_));
   bool success = true;
@@ -1062,7 +1062,7 @@ bool TypeContext_Set::visit_if(AstNode* if_)
   return success;
 }
 
-bool TypeContext_Set::visit_do_while(AstNode* do_while)
+bool TypePass_Set::visit_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
@@ -1077,7 +1077,7 @@ bool TypeContext_Set::visit_do_while(AstNode* do_while)
   return success;
 }
 
-bool TypeContext_Set::visit_while(AstNode* while_)
+bool TypePass_Set::visit_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode::while_));
   bool success = true;
@@ -1092,7 +1092,7 @@ bool TypeContext_Set::visit_while(AstNode* while_)
   return success;
 }
 
-bool TypeContext_Set::visit_block(AstNode* block)
+bool TypePass_Set::visit_block(AstNode* block)
 {
   assert(KIND(block, eAstNode::block));
   bool success = true;
@@ -1113,7 +1113,7 @@ bool TypeContext_Set::visit_block(AstNode* block)
   return success;
 }
 
-bool TypeContext_Set::visit_block_stmt(AstNode* stmt)
+bool TypePass_Set::visit_block_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -1201,7 +1201,7 @@ bool TypeContext_Set::visit_block_stmt(AstNode* stmt)
   return success;
 }
 
-Type* AstNode_NodeList::make_product_type(TypeContext* context)
+Type* AstNode_NodeList::make_product_type(TypePass* context)
 {
   Type* result = context->basic_type_void;
 
@@ -1220,7 +1220,7 @@ Type* AstNode_NodeList::make_product_type(TypeContext* context)
   return result;
 }
 
-bool TypeContext_Set::visit_formal_args(AstNode* args)
+bool TypePass_Set::visit_formal_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -1241,7 +1241,7 @@ bool TypeContext_Set::visit_formal_args(AstNode* args)
   return success;
 }
 
-bool TypeContext_Set::visit_proc(AstNode* proc)
+bool TypePass_Set::visit_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
@@ -1262,7 +1262,7 @@ bool TypeContext_Set::visit_proc(AstNode* proc)
   return success;
 }
 
-bool TypeContext_Set::visit_module_stmt(AstNode* stmt)
+bool TypePass_Set::visit_module_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -1292,7 +1292,7 @@ bool TypeContext_Set::visit_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypeContext_Set::visit_module(AstNode* module)
+bool TypePass_Set::visit_module(AstNode* module)
 {
   assert(KIND(module, eAstNode::module));
   bool success = true;
@@ -1313,7 +1313,7 @@ bool TypeContext_Set::visit_module(AstNode* module)
 //       EVAL TYPES
 //-----------------------------------------------------
 
-bool TypeContext_Eval::visit_array(AstNode* array)
+bool TypePass_Eval::visit_array(AstNode* array)
 {
   assert(KIND(array, eAstNode::array));
   bool success = true;
@@ -1322,7 +1322,7 @@ bool TypeContext_Eval::visit_array(AstNode* array)
   return success;
 }
 
-bool TypeContext_Eval::visit_pointer(AstNode* pointer)
+bool TypePass_Eval::visit_pointer(AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode::pointer));
 
@@ -1332,7 +1332,7 @@ bool TypeContext_Eval::visit_pointer(AstNode* pointer)
   return success;
 }
 
-bool TypeContext_Eval::visit_type(AstNode* type)
+bool TypePass_Eval::visit_type(AstNode* type)
 {
   bool success = true;
   
@@ -1360,7 +1360,7 @@ bool TypeContext_Eval::visit_type(AstNode* type)
   return success;
 }
 
-bool TypeContext_Eval::visit_cast(AstNode* cast)
+bool TypePass_Eval::visit_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
 
@@ -1370,7 +1370,7 @@ bool TypeContext_Eval::visit_cast(AstNode* cast)
   return success;
 }
 
-bool TypeContext_Eval::visit_bin_expr(AstNode* bin_expr)
+bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
@@ -1464,7 +1464,7 @@ bool TypeContext_Eval::visit_bin_expr(AstNode* bin_expr)
   return success;
 }
 
-bool TypeContext_Eval::visit_id(AstNode* id)
+bool TypePass_Eval::visit_id(AstNode* id)
 {
   assert(KIND(id, eAstNode::id));
   bool success = true;
@@ -1523,7 +1523,7 @@ bool TypeContext_Eval::visit_id(AstNode* id)
   return success;
 }
 
-bool TypeContext_Eval::visit_unr_expr(AstNode* unr_expr)
+bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
   bool success = true;
@@ -1581,7 +1581,7 @@ bool TypeContext_Eval::visit_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool TypeContext_Eval::visit_var(AstNode* var)
+bool TypePass_Eval::visit_var(AstNode* var)
 {
   assert(KIND(var, eAstNode::var));
   bool success = true;
@@ -1608,7 +1608,7 @@ bool TypeContext_Eval::visit_var(AstNode* var)
   return success;
 }
 
-bool TypeContext_Eval::visit_formal_args(AstNode* args)
+bool TypePass_Eval::visit_formal_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -1624,7 +1624,7 @@ bool TypeContext_Eval::visit_formal_args(AstNode* args)
   return success;
 }
 
-bool TypeContext_Eval::visit_actual_args(AstNode* args)
+bool TypePass_Eval::visit_actual_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -1640,7 +1640,7 @@ bool TypeContext_Eval::visit_actual_args(AstNode* args)
   return success;
 }
 
-bool TypeContext_Eval::visit_call(AstNode* call)
+bool TypePass_Eval::visit_call(AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
 
@@ -1650,7 +1650,7 @@ bool TypeContext_Eval::visit_call(AstNode* call)
   return success;
 }
 
-bool TypeContext_Eval::visit_index(AstNode* index)
+bool TypePass_Eval::visit_index(AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
 
@@ -1660,7 +1660,7 @@ bool TypeContext_Eval::visit_index(AstNode* index)
   return success;
 }
 
-bool TypeContext_Eval::visit_assign(AstNode* assign)
+bool TypePass_Eval::visit_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode::assign));
 
@@ -1670,7 +1670,7 @@ bool TypeContext_Eval::visit_assign(AstNode* assign)
   return success;
 }
 
-bool TypeContext_Eval::visit_expr(AstNode* expr)
+bool TypePass_Eval::visit_expr(AstNode* expr)
 {
   bool success = true;
   
@@ -1734,7 +1734,7 @@ bool TypeContext_Eval::visit_expr(AstNode* expr)
   return success;
 }
 
-bool TypeContext_Eval::visit_if(AstNode* if_)
+bool TypePass_Eval::visit_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode::if_));
   bool success = true;
@@ -1756,7 +1756,7 @@ bool TypeContext_Eval::visit_if(AstNode* if_)
   return success;
 }
 
-bool TypeContext_Eval::visit_block(AstNode* block)
+bool TypePass_Eval::visit_block(AstNode* block)
 {
   assert(KIND(block, eAstNode::block));
   bool success = true;
@@ -1772,7 +1772,7 @@ bool TypeContext_Eval::visit_block(AstNode* block)
   return success;
 }
 
-bool TypeContext_Eval::visit_do_while(AstNode* do_while)
+bool TypePass_Eval::visit_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
@@ -1788,7 +1788,7 @@ bool TypeContext_Eval::visit_do_while(AstNode* do_while)
   return success;
 }
 
-bool TypeContext_Eval::visit_while(AstNode* while_)
+bool TypePass_Eval::visit_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode::while_));
   bool success = true;
@@ -1805,7 +1805,7 @@ bool TypeContext_Eval::visit_while(AstNode* while_)
   return success;
 }
 
-bool TypeContext_Eval::visit_return(AstNode* ret)
+bool TypePass_Eval::visit_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode::return_));
   bool success = true;
@@ -1824,7 +1824,7 @@ bool TypeContext_Eval::visit_return(AstNode* ret)
   return success;
 }
 
-bool TypeContext_Eval::visit_block_stmt(AstNode* stmt)
+bool TypePass_Eval::visit_block_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -1910,7 +1910,7 @@ bool TypeContext_Eval::visit_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypeContext_Eval::visit_proc(AstNode* proc)
+bool TypePass_Eval::visit_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
@@ -1921,7 +1921,7 @@ bool TypeContext_Eval::visit_proc(AstNode* proc)
   return success;
 }
 
-bool TypeContext_Eval::visit_module_stmt(AstNode* stmt)
+bool TypePass_Eval::visit_module_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -1942,7 +1942,7 @@ bool TypeContext_Eval::visit_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypeContext_Eval::visit_module(AstNode* module)
+bool TypePass_Eval::visit_module(AstNode* module)
 {
   assert(KIND(module, eAstNode::module));
   bool success = true;
@@ -1961,7 +1961,7 @@ bool TypeContext_Eval::visit_module(AstNode* module)
 //       RESOLVE TYPES
 //-----------------------------------------------------
 
-bool TypeContext_Resolve::visit_var(AstNode* var)
+bool TypePass_Resolve::visit_var(AstNode* var)
 {
   assert(KIND(var, eAstNode::var));
   bool success = true;
@@ -1987,7 +1987,7 @@ bool TypeContext_Resolve::visit_var(AstNode* var)
   return success;
 }
 
-bool TypeContext_Resolve::visit_lit(AstNode* lit)
+bool TypePass_Resolve::visit_lit(AstNode* lit)
 {
   assert(KIND(lit, eAstNode::lit));
   bool success = true;
@@ -2000,7 +2000,7 @@ bool TypeContext_Resolve::visit_lit(AstNode* lit)
   return success;
 }
 
-bool TypeContext_Resolve::visit_formal_args(AstNode* args)
+bool TypePass_Resolve::visit_formal_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -2019,7 +2019,7 @@ bool TypeContext_Resolve::visit_formal_args(AstNode* args)
   return success;
 }
 
-bool TypeContext_Resolve::visit_bin_expr(AstNode* bin_expr)
+bool TypePass_Resolve::visit_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
@@ -2030,7 +2030,7 @@ bool TypeContext_Resolve::visit_bin_expr(AstNode* bin_expr)
   return success;
 }
 
-bool TypeContext_Resolve::visit_unr_expr(AstNode* unr_expr)
+bool TypePass_Resolve::visit_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
   bool success = true;
@@ -2068,7 +2068,7 @@ bool TypeContext_Resolve::visit_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool TypeContext_Resolve::visit_id(AstNode* id)
+bool TypePass_Resolve::visit_id(AstNode* id)
 {
   assert(KIND(id, eAstNode::id));
   bool success = true;
@@ -2077,7 +2077,7 @@ bool TypeContext_Resolve::visit_id(AstNode* id)
   return success;
 }
 
-bool TypeContext_Resolve::visit_actual_args(AstNode* args)
+bool TypePass_Resolve::visit_actual_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -2101,7 +2101,7 @@ bool TypeContext_Resolve::visit_actual_args(AstNode* args)
   return success;
 }
 
-bool TypeContext_Resolve::visit_call(AstNode* call)
+bool TypePass_Resolve::visit_call(AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
   assert(call->call.expr->kind == eAstNode::id);
@@ -2142,7 +2142,7 @@ bool TypeContext_Resolve::visit_call(AstNode* call)
   return success;
 }
 
-bool TypeContext_Resolve::visit_index(AstNode* index)
+bool TypePass_Resolve::visit_index(AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
   bool success = true;
@@ -2185,7 +2185,7 @@ bool TypeContext_Resolve::visit_index(AstNode* index)
   return success;
 }
 
-bool TypeContext_Resolve::visit_cast(AstNode* cast)
+bool TypePass_Resolve::visit_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
   bool success = true;
@@ -2196,7 +2196,7 @@ bool TypeContext_Resolve::visit_cast(AstNode* cast)
   return success;
 }
 
-bool TypeContext_Resolve::visit_assign(AstNode* assign)
+bool TypePass_Resolve::visit_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode::assign));
   bool success = true;
@@ -2207,7 +2207,7 @@ bool TypeContext_Resolve::visit_assign(AstNode* assign)
   return success;
 }
 
-bool TypeContext_Resolve::visit_expr(AstNode* expr)
+bool TypePass_Resolve::visit_expr(AstNode* expr)
 {
   bool success = true;
   
@@ -2275,7 +2275,7 @@ bool TypeContext_Resolve::visit_expr(AstNode* expr)
   return success;
 }
 
-bool TypeContext_Resolve::visit_block(AstNode* block)
+bool TypePass_Resolve::visit_block(AstNode* block)
 {
   assert(KIND(block, eAstNode::block));
   bool success = true;
@@ -2296,7 +2296,7 @@ bool TypeContext_Resolve::visit_block(AstNode* block)
   return success;
 }
 
-bool TypeContext_Resolve::visit_return(AstNode* ret)
+bool TypePass_Resolve::visit_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode::return_));
   bool success = true;
@@ -2314,7 +2314,7 @@ bool TypeContext_Resolve::visit_return(AstNode* ret)
   return success;
 }
 
-bool TypeContext_Resolve::visit_if(AstNode* if_)
+bool TypePass_Resolve::visit_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode::if_));
   bool success = true;
@@ -2335,7 +2335,7 @@ bool TypeContext_Resolve::visit_if(AstNode* if_)
   return success;
 }
 
-bool TypeContext_Resolve::visit_do_while(AstNode* do_while)
+bool TypePass_Resolve::visit_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
@@ -2346,7 +2346,7 @@ bool TypeContext_Resolve::visit_do_while(AstNode* do_while)
   return success;
 }
 
-bool TypeContext_Resolve::visit_while(AstNode* while_)
+bool TypePass_Resolve::visit_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode::while_));
   bool success = true;
@@ -2357,7 +2357,7 @@ bool TypeContext_Resolve::visit_while(AstNode* while_)
   return success;
 }
 
-bool TypeContext_Resolve::visit_array(AstNode* array)
+bool TypePass_Resolve::visit_array(AstNode* array)
 {
   assert(KIND(array, eAstNode::array));
   bool success = true;
@@ -2368,7 +2368,7 @@ bool TypeContext_Resolve::visit_array(AstNode* array)
   return success;
 }
 
-bool TypeContext_Resolve::visit_pointer(AstNode* pointer)
+bool TypePass_Resolve::visit_pointer(AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode::pointer));
   bool success = true;
@@ -2378,7 +2378,7 @@ bool TypeContext_Resolve::visit_pointer(AstNode* pointer)
   return success;
 }
 
-bool TypeContext_Resolve::visit_type(AstNode* type)
+bool TypePass_Resolve::visit_type(AstNode* type)
 {
   bool success = true;
   
@@ -2403,7 +2403,7 @@ bool TypeContext_Resolve::visit_type(AstNode* type)
   return success;
 }
 
-bool TypeContext_Resolve::visit_block_stmt(AstNode* stmt)
+bool TypePass_Resolve::visit_block_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -2489,7 +2489,7 @@ bool TypeContext_Resolve::visit_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypeContext_Resolve::visit_proc(AstNode* proc)
+bool TypePass_Resolve::visit_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
@@ -2504,7 +2504,7 @@ bool TypeContext_Resolve::visit_proc(AstNode* proc)
   return success;
 }
 
-bool TypeContext_Resolve::visit_module_stmt(AstNode* stmt)
+bool TypePass_Resolve::visit_module_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -2529,7 +2529,7 @@ bool TypeContext_Resolve::visit_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypeContext_Resolve::visit_module(AstNode* module)
+bool TypePass_Resolve::visit_module(AstNode* module)
 {
   assert(KIND(module, eAstNode::module));
   bool success = true;
@@ -2548,7 +2548,7 @@ bool TypeContext_Resolve::visit_module(AstNode* module)
 //          CHECK TYPES
 //-----------------------------------------------------
 
-bool TypeContext_Check::visit_var(AstNode* var)
+bool TypePass_Check::visit_var(AstNode* var)
 {
   assert(KIND(var, eAstNode::var));
   bool success = true;
@@ -2568,7 +2568,7 @@ bool TypeContext_Check::visit_var(AstNode* var)
   return success;
 }
 
-bool TypeContext_Check::visit_formal_args(AstNode* args)
+bool TypePass_Check::visit_formal_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -2584,7 +2584,7 @@ bool TypeContext_Check::visit_formal_args(AstNode* args)
   return success;
 }
 
-bool TypeContext_Check::visit_cast(AstNode* cast)
+bool TypePass_Check::visit_cast(AstNode* cast)
 {
   assert(KIND(cast, eAstNode::cast));
   bool success = true;
@@ -2642,7 +2642,7 @@ bool TypeContext_Check::visit_cast(AstNode* cast)
   return success;
 }
 
-bool TypeContext_Check::visit_bin_expr(AstNode* bin_expr)
+bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode::bin_expr));
   bool success = true;
@@ -2766,7 +2766,7 @@ bool TypeContext_Check::visit_bin_expr(AstNode* bin_expr)
   return success;
 }
 
-bool TypeContext_Check::visit_unr_expr(AstNode* unr_expr)
+bool TypePass_Check::visit_unr_expr(AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode::unr_expr));
   bool success = true;
@@ -2818,7 +2818,7 @@ bool TypeContext_Check::visit_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool TypeContext_Check::visit_actual_args(AstNode* args)
+bool TypePass_Check::visit_actual_args(AstNode* args)
 {
   assert(KIND(args, eAstNode::node_list));
   bool success = true;
@@ -2834,7 +2834,7 @@ bool TypeContext_Check::visit_actual_args(AstNode* args)
   return success;
 }
 
-bool TypeContext_Check::visit_call(AstNode* call)
+bool TypePass_Check::visit_call(AstNode* call)
 {
   assert(KIND(call, eAstNode::call));
 
@@ -2844,7 +2844,7 @@ bool TypeContext_Check::visit_call(AstNode* call)
   return success;
 }
 
-bool TypeContext_Check::visit_index(AstNode* index)
+bool TypePass_Check::visit_index(AstNode* index)
 {
   assert(KIND(index, eAstNode::index));
   bool success = true;
@@ -2859,7 +2859,7 @@ bool TypeContext_Check::visit_index(AstNode* index)
   return success;
 }
 
-bool TypeContext_Check::visit_assign(AstNode* assign)
+bool TypePass_Check::visit_assign(AstNode* assign)
 {
   assert(KIND(assign, eAstNode::assign));
   bool success = true;
@@ -2878,7 +2878,7 @@ bool TypeContext_Check::visit_assign(AstNode* assign)
   return success;
 }
 
-bool TypeContext_Check::visit_expr(AstNode* expr)
+bool TypePass_Check::visit_expr(AstNode* expr)
 {
   bool success = true;
   
@@ -2931,7 +2931,7 @@ bool TypeContext_Check::visit_expr(AstNode* expr)
   return success;
 }
 
-bool TypeContext_Check::visit_return(AstNode* ret)
+bool TypePass_Check::visit_return(AstNode* ret)
 {
   assert(KIND(ret, eAstNode::return_));
   bool success = true;
@@ -2944,7 +2944,7 @@ bool TypeContext_Check::visit_return(AstNode* ret)
   return success;
 }
 
-bool TypeContext_Check::visit_do_while(AstNode* do_while)
+bool TypePass_Check::visit_do_while(AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode::do_while));
   bool success = true;
@@ -2955,7 +2955,7 @@ bool TypeContext_Check::visit_do_while(AstNode* do_while)
   return success;
 }
 
-bool TypeContext_Check::visit_while(AstNode* while_)
+bool TypePass_Check::visit_while(AstNode* while_)
 {
   assert(KIND(while_, eAstNode::while_));
   bool success = true;
@@ -2965,7 +2965,7 @@ bool TypeContext_Check::visit_while(AstNode* while_)
   return success;
 }
 
-bool TypeContext_Check::visit_if(AstNode* if_)
+bool TypePass_Check::visit_if(AstNode* if_)
 {
   assert(KIND(if_, eAstNode::if_));
   bool success = true;
@@ -2976,7 +2976,7 @@ bool TypeContext_Check::visit_if(AstNode* if_)
   return success;
 }
 
-bool TypeContext_Check::visit_block(AstNode* block)
+bool TypePass_Check::visit_block(AstNode* block)
 {
   assert(KIND(block, eAstNode::block));
   bool success = true;
@@ -2992,7 +2992,7 @@ bool TypeContext_Check::visit_block(AstNode* block)
   return success;
 }
 
-bool TypeContext_Check::visit_block_stmt(AstNode* stmt)
+bool TypePass_Check::visit_block_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -3072,7 +3072,7 @@ bool TypeContext_Check::visit_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypeContext_Check::visit_proc(AstNode* proc)
+bool TypePass_Check::visit_proc(AstNode* proc)
 {
   assert(KIND(proc, eAstNode::proc));
   bool success = true;
@@ -3082,7 +3082,7 @@ bool TypeContext_Check::visit_proc(AstNode* proc)
   return success;
 }
 
-bool TypeContext_Check::visit_module_stmt(AstNode* stmt)
+bool TypePass_Check::visit_module_stmt(AstNode* stmt)
 {
   bool success = true;
   
@@ -3106,7 +3106,7 @@ bool TypeContext_Check::visit_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypeContext_Check::visit_module(AstNode* module)
+bool TypePass_Check::visit_module(AstNode* module)
 {
   assert(KIND(module, eAstNode::module));
   bool success = true;
@@ -3122,14 +3122,14 @@ bool TypeContext_Check::visit_module(AstNode* module)
   return success;
 }
 
-bool TypeContext::process(AstNode* module)
+bool TypePass::process(AstNode* module)
 {
   bool success = true;
 
-  TypeContext_Set* set = (TypeContext_Set*)this;
-  TypeContext_Eval* eval = (TypeContext_Eval*)this;
-  TypeContext_Resolve* resolve = (TypeContext_Resolve*)this;
-  TypeContext_Check* check = (TypeContext_Check*)this;
+  TypePass_Set* set = (TypePass_Set*)this;
+  TypePass_Eval* eval = (TypePass_Eval*)this;
+  TypePass_Resolve* resolve = (TypePass_Resolve*)this;
+  TypePass_Check* check = (TypePass_Check*)this;
 
   success = set->visit_module(module) && eval->visit_module(module)
     && resolve->visit_module(module) && check->visit_module(module);

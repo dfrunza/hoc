@@ -497,7 +497,7 @@ struct Type
   bool  resolve(Type** resolved_type);
 };
 
-struct TypeContext
+struct TypePass
 {
   struct TypePair
   {
@@ -524,7 +524,7 @@ struct TypeContext
   Type* create_array_type(int size, Type* elem);
   Type* create_pointer_type(Type* pointee);
 
-  static TypeContext* create(MemoryArena* arena);
+  static TypePass* create(MemoryArena* arena);
   void      init(MemoryArena* arena);
   Type*     type_subst(Type* type);
   TypePair* create_type_pair(Type* key, Type* value);
@@ -532,7 +532,7 @@ struct TypeContext
   bool      process(AstNode* module);
 };
 
-struct TypeContext_Set : TypeContext
+struct TypePass_Set : TypePass
 {
   bool visit_array(AstNode* array);
   bool visit_pointer(AstNode* pointer);
@@ -561,7 +561,7 @@ struct TypeContext_Set : TypeContext
   bool visit_module(AstNode* module);
 };
 
-struct TypeContext_Eval : TypeContext
+struct TypePass_Eval : TypePass
 {
   bool visit_array(AstNode* array);
   bool visit_pointer(AstNode* pointer);
@@ -588,7 +588,7 @@ struct TypeContext_Eval : TypeContext
   bool visit_module(AstNode* module);
 };
 
-struct TypeContext_Resolve : TypeContext
+struct TypePass_Resolve : TypePass
 {
   bool visit_var(AstNode* var);
   bool visit_lit(AstNode* lit);
@@ -616,7 +616,7 @@ struct TypeContext_Resolve : TypeContext
   bool visit_module(AstNode* module);
 };
 
-struct TypeContext_Check : TypeContext
+struct TypePass_Check : TypePass
 {
   bool visit_var(AstNode* var);
   bool visit_formal_args(AstNode* args);
@@ -980,7 +980,7 @@ struct AstNode_NodeList
 {
   List node_list;
 
-  Type* make_product_type(TypeContext* typesys);
+  Type* make_product_type(TypePass* type_pass);
 };
 
 struct AstNode_CallArg
@@ -1386,7 +1386,7 @@ struct SymbolContext
   Scope* begin_nested_scope(eScope kind, AstNode* ast_node);
   void   end_nested_scope();
   Symbol* add_decl(char* name, eStorageSpace storage_space, Scope* scope, AstNode* ast_node);
-  void init(MemoryArena* gp_arena, MemoryArena* sym_arena, TypeContext* type_context);
+  void init(MemoryArena* gp_arena, MemoryArena* sym_arena, TypePass* type_pass);
 
   bool visit_lit(AstNode* lit);
   bool visit_array(AstNode* array);
@@ -1492,7 +1492,7 @@ struct IrContext
   void DEBUG_print_basic_block(String* text, BasicBlock* bb);
   void DEBUG_print_ir_code(List* procs, char* file_path);
 
-  void init(MemoryArena* gp_arena, MemoryArena* stmt_arena, TypeContext* type_context, SymbolContext* sym_context);
+  void init(MemoryArena* gp_arena, MemoryArena* stmt_arena, TypePass* type_pass, SymbolContext* sym_context);
   void reset();
   IrArg* create_arg_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc);
   IrArg* create_arg_existing_object(Symbol* object);
@@ -1623,7 +1623,7 @@ struct X86Context
   void write_static_data_text(String* text, Scope* scope);
   void init_registers();
   void init(MemoryArena* gp_arena, MemoryArena* stmt_arena, MemoryArena* text_arena,
-            TypeContext* type_context, IrContext* ir_context, SymbolContext* sym_context);
+            TypePass* type_pass, IrContext* ir_context, SymbolContext* sym_context);
 
   void gen_divmod_op(IrStmt_Assign* assign);
   void gen_index_source(IrStmt_Assign* assign);

@@ -13,7 +13,7 @@ Label* Label::create_by_name(MemoryArena* arena, char* name)
 }
 
 void IrContext::init(MemoryArena* gp_arena, MemoryArena* stmt_arena,
-                     TypePass* type_pass, SymbolContext* sym_context)
+                     TypePass* type_pass, SymbolPass* sym_pass)
 {
   basic_type_bool  = type_pass->basic_type_bool;
   basic_type_int   = type_pass->basic_type_int;
@@ -26,7 +26,7 @@ void IrContext::init(MemoryArena* gp_arena, MemoryArena* stmt_arena,
   this->stmt_arena = stmt_arena;
   stmt_array = (IrStmt*)stmt_arena->base;
   stmt_count = 0;
-  this->sym_context = sym_context;
+  this->sym_pass = sym_pass;
   label_list = List::create(gp_arena, eList::ir_label);
   data_alignment = 4;
 }
@@ -524,7 +524,7 @@ bool IrContext::visit_index(Scope* scope, AstNode* index)
       Type* index_ty = index->ty;
       int size_val = KIND(index_ty, eType::array)->array.size;
 
-      Symbol* size_constant = sym_context->create_const_int(index->src_loc, size_val);
+      Symbol* size_constant = sym_pass->create_const_int(index->src_loc, size_val);
       IrArg* dim_size = create_arg_existing_object(size_constant);
 
       if(size_val > 0)
@@ -553,7 +553,7 @@ bool IrContext::visit_index_with_offset(Scope* scope, AstNode* index)
     assert(index->index.ndim == 1);
     int width_val = index->eval_ty->width;
 
-    Symbol* width_constant = sym_context->create_const_int(index->src_loc, width_val);
+    Symbol* width_constant = sym_pass->create_const_int(index->src_loc, width_val);
     IrArg* width = create_arg_existing_object(width_constant);
 
     emit_assign(eIrOp::mul, index->index.i_place, width, offset);

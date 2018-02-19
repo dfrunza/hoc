@@ -58,6 +58,11 @@ IF %ERRORLEVEL% NEQ 0 (
   GOTO :end
 )
 
+hocc %hoc_dir%\test-0_2.hoc
+IF %ERRORLEVEL% NEQ 0 (
+  GOTO :end
+)
+
 hocc %hoc_dir%\sloc.hoc
 IF %ERRORLEVEL% NEQ 0 (
   GOTO :end

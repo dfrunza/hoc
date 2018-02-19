@@ -1357,7 +1357,7 @@ struct Symbol
   bool is_in_location(X86Location* loc);
 };
 
-struct SymbolContext
+struct SymbolPass
 {
   Type* basic_type_bool;
   Type* basic_type_int;
@@ -1430,7 +1430,7 @@ struct IrContext
   Type* basic_type_str;
 
   MemoryArena* gp_arena;
-  SymbolContext* sym_context;
+  SymbolPass* sym_pass;
   X86Context* x86_context;
 
   MemoryArena* stmt_arena;
@@ -1492,7 +1492,7 @@ struct IrContext
   void DEBUG_print_basic_block(String* text, BasicBlock* bb);
   void DEBUG_print_ir_code(List* procs, char* file_path);
 
-  void init(MemoryArena* gp_arena, MemoryArena* stmt_arena, TypePass* type_pass, SymbolContext* sym_context);
+  void init(MemoryArena* gp_arena, MemoryArena* stmt_arena, TypePass* type_pass, SymbolPass* sym_pass);
   void reset();
   IrArg* create_arg_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc);
   IrArg* create_arg_existing_object(Symbol* object);
@@ -1623,7 +1623,7 @@ struct X86Context
   void write_static_data_text(String* text, Scope* scope);
   void init_registers();
   void init(MemoryArena* gp_arena, MemoryArena* stmt_arena, MemoryArena* text_arena,
-            TypePass* type_pass, IrContext* ir_context, SymbolContext* sym_context);
+            TypePass* type_pass, IrContext* ir_context, SymbolPass* sym_pass);
 
   void gen_divmod_op(IrStmt_Assign* assign);
   void gen_index_source(IrStmt_Assign* assign);

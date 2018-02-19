@@ -1,5 +1,5 @@
 void X86Context::init(MemoryArena* gp_arena, MemoryArena* stmt_arena, MemoryArena* text_arena,
-                      TypePass* type_pass, IrContext* ir_context, SymbolContext* sym_context)
+                      TypePass* type_pass, IrContext* ir_context, SymbolPass* sym_pass)
 {
   basic_type_bool  = type_pass->basic_type_bool;
   basic_type_int   = type_pass->basic_type_int;
@@ -17,7 +17,7 @@ void X86Context::init(MemoryArena* gp_arena, MemoryArena* stmt_arena, MemoryAren
   text = String::create(text_arena);
 
   ir_context->x86_context = this;
-  sym_context->x86_context = this;
+  sym_pass->x86_context = this;
 }
 
 void X86Context::init_registers()

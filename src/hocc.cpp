@@ -219,7 +219,7 @@ bool assemble(MemoryArena* arena, OutFileNames* out_files)
       /Fl     - generate listing
       /c      - assemble without linking
   */
-  str.format("ml.exe /Zi /Fl /Cx /nologo %s /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib", out_files->asm_file);
+  str.format("ml.exe /Zi /Cx /nologo %s /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib", out_files->asm_file);
   char* ml_args = str.cap();
 
   STARTUPINFOA ml_startup_info = {};

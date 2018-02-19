@@ -153,15 +153,15 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   MemoryArena* gp_arena = MemoryArena::push(&arena, 2*MEGABYTE);
   TypePass* type_pass = TypePass::create(MemoryArena::push(&arena, 2*MEGABYTE));
 
-  SymbolContext sym_context = {};
-  sym_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_pass);
+  SymbolPass sym_pass = {};
+  sym_pass.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_pass);
 
   IrContext ir_context = {};
-  ir_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_pass, &sym_context);
+  ir_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_pass, &sym_pass);
 
   X86Context x86_context = {};
   x86_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), MemoryArena::push(&arena, 2*MEGABYTE),
-                   type_pass, &ir_context, &sym_context);
+                   type_pass, &ir_context, &sym_pass);
 
   Parser* parser = Parser::create(gp_arena);
   PlatformFile* file = Platform::file_open(gp_arena, file_path);
@@ -174,15 +174,15 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
 
   AstNode* module = parser->module;
 
-  if(!(sym_context.process(module) && type_pass->process(module)))
+  if(!(sym_pass.process(module) && type_pass->process(module)))
   {
     return false;
   }
 
   /* FIXME: Nasty dependencies */
-  ir_context.bool_true = sym_context.create_const_int(0, 1);
-  ir_context.bool_false = sym_context.create_const_int(0, 0);
-  x86_context.float_minus_one = sym_context.create_const_float(0, -1.0);
+  ir_context.bool_true = sym_pass.create_const_int(0, 1);
+  ir_context.bool_false = sym_pass.create_const_int(0, 0);
+  x86_context.float_minus_one = sym_pass.create_const_float(0, -1.0);
 
   if(!ir_context.visit_module(module))
   {

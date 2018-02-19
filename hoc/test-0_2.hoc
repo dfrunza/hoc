@@ -32,7 +32,7 @@ void test_array_2dim()
     }
     while(j < 2);
 
-    print_str(&"\n");
+    print_nl();
     i = i + 1;
   }
   while(i < 4);
@@ -44,7 +44,7 @@ void print_numbers(int^ numbers, int len)
   while(i < len)
   {
     print_int(numbers[i]);
-    print_str(&"\n");
+    print_nl();
 
     i = i+1;
   }
@@ -72,9 +72,9 @@ int^ make_numbers(int how_many)
 void print_title(char^ title)
 {
   int len = str_len(title);
-  print_str(&"\n  ");
+  print_nl();
   print_str(title);
-  print_str(&"\n");
+  print_nl();
 
   int L = len + 4;
   int i = 0;
@@ -83,7 +83,7 @@ void print_title(char^ title)
     print_str(&"-");
     i = i + 1;
   }
-  print_str(&"\n");
+  print_nl();
 }
 
 void main()
@@ -91,13 +91,13 @@ void main()
   float x = -12.0;
   float y = 1.058;
   float z = x + y;
-  print_str(&"\n");
+  print_nl();
   print_float(x);
   print_str(&" + ");
   print_float(y);
   print_str(&" = ");
   print_float(z);
-  print_str(&"\n");
+  print_nl();
 
   int a = 7*7*5*3;
   int b = 7*3*11;
@@ -108,7 +108,7 @@ void main()
   print_int(b);
   print_str(&") = ");
   print_int(r);
-  print_str(&"\n");
+  print_nl();
 
   int nr_count = 15;
   int^ numbers = make_numbers(nr_count);

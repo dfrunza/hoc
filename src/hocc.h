@@ -121,6 +121,8 @@ struct SourceLoc
   char* file_path;
   int   line_nr;
   char* src_line;
+
+  SourceLoc* clone(MemoryArena* arena);
 };
 
 enum struct eToken
@@ -1242,7 +1244,7 @@ struct Parser
   bool       get_next_token();
   void       putback_token();
   SourceLoc* clone_source_loc();
-  AstNode*   create_ast_node(eAstNode kind, SourceLoc* src_loc);
+  AstNode*   create_ast_node(eAstNode kind);
   bool       consume_semicolon();
   AstNode*   find_include(PlatformFile* file);
 

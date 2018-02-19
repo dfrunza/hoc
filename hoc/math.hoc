@@ -175,27 +175,22 @@ int fp_bin_to_dec(float v, int^ significand, int^ exponent)
 {
   float v_abs = absf(v);
   int x = floor_log_b(10, v_abs) + 1;
-  exponent[0] = x;
-
-  float B_power_x = ipow(10.0, -x);
-  float v_prime = v_abs * B_power_x;
+  ^exponent = x;
 
   int k = 0;
-  float R = v_prime;
+  float R = v_abs * ipow(10.0, -x);
   float M = ipow(2.0, -23) / 2.0;
   int U;
 
-  bool run_loop = true;
-  while(run_loop)
+  do
   {
     k = k + 1;
     U = (int):(R * 10.0);
     R = (R * 10.0) - (float):U;
     M = M * 10.0;
     significand[k] = U;
-
-    run_loop = (R >= M) and (R <= (1.0 - M));
   }
+  while((R >= M) and (R <= (1.0 - M)));
 
   if(R <= 0.5)
     significand[k] = U;
@@ -204,4 +199,5 @@ int fp_bin_to_dec(float v, int^ significand, int^ exponent)
 
   return k;
 }
+
 

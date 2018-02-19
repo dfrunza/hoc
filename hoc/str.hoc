@@ -2,7 +2,7 @@ void assert(char^ message)
 {
   print_str(&"\nASSERT : ");
   print_str(message);
-  print_str(&"\n");
+  print_nl();
   ExitProcess(-1);
 }
 
@@ -21,6 +21,11 @@ void print_str(char^ str)
     /* The output is redirected to a file. */
     WriteFile(stdout, str, len, &chars_written_count, (void^):0);
   }
+}
+
+void print_nl()
+{
+  print_str(&"\n");
 }
 
 void print_int(int i)

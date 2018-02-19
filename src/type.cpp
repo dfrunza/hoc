@@ -1976,7 +1976,12 @@ bool TypeContext_Resolve::visit_var(AstNode* var)
     }
 
     Symbol* object = var->var.decl_sym;
-    assert(object->ty->width > 0);
+    assert(object->ty->width >= 0);
+
+    if(object->ty->width == 0)
+    {
+      success = compile_error(arena, var->src_loc, "variable of 0 size");
+    }
   }
 
   return success;

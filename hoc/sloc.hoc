@@ -170,7 +170,7 @@ bool sloc_error(char^ message)
 {
   print_str(&"\nERROR : ");
   print_str(message);
-  print_str(&"\n");
+  print_nl();
 
   return false;
 }
@@ -242,6 +242,6 @@ void DEBUG_print_int(char^ var_name, int value)
   print_str(var_name);
   print_str(&" = ");
   print_int(value);
-  print_str(&"\n");
+  print_nl();
 }
 

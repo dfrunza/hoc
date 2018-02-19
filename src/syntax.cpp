@@ -111,19 +111,24 @@ char* Parser::get_operator_printstr(eOperator op)
   return str;
 }
 
-AstNode* Parser::create_ast_node(eAstNode kind, SourceLoc* src_loc)
+AstNode* Parser::create_ast_node(eAstNode kind)
 {
   AstNode* node = push_struct(arena, AstNode);
-  node->src_loc = src_loc;
+  node->src_loc = src_loc->clone(arena);
   node->kind = kind;
   return node;
 }
 
-SourceLoc* Parser::clone_source_loc()
+SourceLoc* SourceLoc::clone(MemoryArena* arena)
 {
   SourceLoc* clone = push_struct(arena, SourceLoc);
-  *clone = *src_loc;
+  *clone = *this;
   return clone;
+}
+
+SourceLoc* Parser::clone_source_loc()
+{
+  return src_loc->clone(arena);
 }
 
 Parser* Parser::create(MemoryArena* arena)
@@ -216,7 +221,7 @@ bool Parser::parse_actual_args(AstNode* args)
   {
     if(expr)
     {
-      AstNode* call_arg = create_ast_node(eAstNode::call_arg, clone_source_loc());
+      AstNode* call_arg = create_ast_node(eAstNode::call_arg);
       call_arg->call_arg.expr = expr;
 
       args->args.node_list.append(call_arg, eList::ast_node);
@@ -233,9 +238,9 @@ bool Parser::parse_call(AstNode* left_node, AstNode** node)
 
   if(token->kind == eToken::open_parens)
   {
-    AstNode* call = *node = create_ast_node(eAstNode::call, clone_source_loc());
+    AstNode* call = *node = create_ast_node(eAstNode::call);
     call->call.expr = left_node;
-    AstNode* args = call->call.args = create_ast_node(eAstNode::node_list, clone_source_loc());
+    AstNode* args = call->call.args = create_ast_node(eAstNode::node_list);
     args->args.node_list.init(arena, eList::ast_node);
 
     if(success = get_next_token() && parse_actual_args(call->call.args))
@@ -261,7 +266,7 @@ bool Parser::parse_index_recursive(AstNode* left_node, AstNode** node, int* ndim
 
   if(token->kind == eToken::open_bracket)
   {
-    AstNode* index = *node = create_ast_node(eAstNode::index, clone_source_loc());
+    AstNode* index = *node = create_ast_node(eAstNode::index);
     index->index.array_expr = left_node;
     index->index.ndim = *ndim;
 
@@ -309,7 +314,7 @@ bool Parser::parse_rest_of_unr_expr(AstNode* left_node, AstNode** node)
     case eToken::dot:
     case eToken::arrow_right:
       {
-        AstNode* bin_expr = *node = create_ast_node(eAstNode::bin_expr, clone_source_loc());
+        AstNode* bin_expr = *node = create_ast_node(eAstNode::bin_expr);
         bin_expr->bin_expr.left_operand = left_node;
 
         switch(token->kind)
@@ -375,7 +380,7 @@ bool Parser::parse_rest_of_factor(AstNode* left_node, AstNode** node)
     case eToken::and_:
     case eToken::ampersand:
     {
-      AstNode* bin_expr = *node = create_ast_node(eAstNode::bin_expr, clone_source_loc());
+      AstNode* bin_expr = *node = create_ast_node(eAstNode::bin_expr);
       bin_expr->bin_expr.left_operand = left_node;
 
       switch(token->kind)
@@ -457,7 +462,7 @@ bool Parser::parse_rest_of_term(AstNode* left_node, AstNode** node)
     case eToken::angle_left_right:
     case eToken::or_:
       {
-        AstNode* bin_expr = *node = create_ast_node(eAstNode::bin_expr, clone_source_loc());
+        AstNode* bin_expr = *node = create_ast_node(eAstNode::bin_expr);
         bin_expr->bin_expr.left_operand = left_node;
 
         switch(token->kind)
@@ -559,7 +564,7 @@ bool Parser::parse_rest_of_assignment(AstNode* left_node, AstNode** node)
   {
     case eToken::eq:
       {
-        AstNode* assign = *node = create_ast_node(eAstNode::assign, clone_source_loc());
+        AstNode* assign = *node = create_ast_node(eAstNode::assign);
         assign->assign.dest_expr = left_node;
 
         AstNode* source_expr = 0;
@@ -590,7 +595,7 @@ bool Parser::parse_id(AstNode** node)
 
   if(token->kind == eToken::id)
   {
-    AstNode* id = *node = create_ast_node(eAstNode::id, clone_source_loc());
+    AstNode* id = *node = create_ast_node(eAstNode::id);
     id->id.name = token->lexeme;
     success = get_next_token();
   }
@@ -611,7 +616,7 @@ bool Parser::parse_basic_type(AstNode** node)
     case eToken::void_:
     case eToken::auto_:
     {
-      AstNode* basic_type = *node = create_ast_node(eAstNode::basic_type, clone_source_loc());
+      AstNode* basic_type = *node = create_ast_node(eAstNode::basic_type);
       switch(token->kind)
       {
         case eToken::int_:
@@ -661,7 +666,7 @@ bool Parser::parse_rest_of_cast(AstNode* left_node, AstNode** node)
   {
     case eToken::colon:
     {
-      AstNode* cast = *node = create_ast_node(eAstNode::cast, clone_source_loc());
+      AstNode* cast = *node = create_ast_node(eAstNode::cast);
       cast->cast.to_type = left_node;
 
       if(success = get_next_token() && parse_unr_expr(&cast->cast.from_expr))
@@ -724,7 +729,7 @@ bool Parser::parse_deref(AstNode** node)
   *node = 0;
   bool success = true;
 
-  AstNode* deref = *node = create_ast_node(eAstNode::unr_expr, clone_source_loc());
+  AstNode* deref = *node = create_ast_node(eAstNode::unr_expr);
   deref->unr_expr.op = eOperator::deref;
   if(success = get_next_token() && parse_rest_of_deref(&deref->unr_expr.operand))
   {
@@ -784,7 +789,7 @@ bool Parser::parse_array(AstNode** node)
 
   if(token->kind == eToken::open_bracket)
   {
-    AstNode* array = *node = create_ast_node(eAstNode::array, clone_source_loc());
+    AstNode* array = *node = create_ast_node(eAstNode::array);
     if(success = get_next_token() && parse_expr(&array->array.size_expr))
     {
       if(token->kind == eToken::close_bracket)
@@ -866,7 +871,7 @@ bool Parser::parse_pointer(AstNode* left_node, AstNode** node)
 
   if(token->kind == eToken::circumflex)
   {
-    AstNode* pointer = *node = create_ast_node(eAstNode::pointer, clone_source_loc());
+    AstNode* pointer = *node = create_ast_node(eAstNode::pointer);
     pointer->pointer.pointee = left_node;
 
     if((success = get_next_token()) && token->kind == eToken::circumflex)
@@ -900,7 +905,7 @@ bool Parser::parse_lit(AstNode** node)
   *node = 0;
   bool success = true;
 
-  AstNode* lit = *node = create_ast_node(eAstNode::lit, clone_source_loc());
+  AstNode* lit = *node = create_ast_node(eAstNode::lit);
 
   switch(token->kind)
   {
@@ -990,7 +995,7 @@ bool Parser::parse_formal_arg(AstNode** node)
     if(token->kind == eToken::id)
     {
       AstNode* type = *node;
-      AstNode* var = *node = create_ast_node(eAstNode::var, clone_source_loc());
+      AstNode* var = *node = create_ast_node(eAstNode::var);
       var->var.type = type;
       var->var.name = token->lexeme;
 
@@ -1014,7 +1019,7 @@ bool Parser::parse_unr_expr(AstNode** node)
     case eToken::ampersand:
     case eToken::minus:
       {
-        AstNode* unr_expr = *node = create_ast_node(eAstNode::unr_expr, clone_source_loc());
+        AstNode* unr_expr = *node = create_ast_node(eAstNode::unr_expr);
 
         switch(token->kind)
         {
@@ -1121,7 +1126,7 @@ bool Parser::parse_empty(AstNode** node)
   bool success = true;
   if(token->kind == eToken::semicolon)
   {
-    *node = create_ast_node(eAstNode::empty, clone_source_loc());
+    *node = create_ast_node(eAstNode::empty);
     success = get_next_token();
   }
   return success;
@@ -1133,7 +1138,7 @@ bool Parser::parse_block(AstNode** node)
   bool success = true;
   if(token->kind == eToken::open_brace)
   {
-    AstNode* block = *node = create_ast_node(eAstNode::block, clone_source_loc());
+    AstNode* block = *node = create_ast_node(eAstNode::block);
     block->block.nodes.init(arena, eList::ast_node);
     block->block.vars.init(arena, eList::ast_node);
     block->block.stmts.init(arena, eList::ast_node);
@@ -1168,7 +1173,7 @@ bool Parser::parse_if(AstNode** node)
   bool success = true;
   if(token->kind == eToken::if_)
   {
-    AstNode* if_ = *node = create_ast_node(eAstNode::if_, clone_source_loc());
+    AstNode* if_ = *node = create_ast_node(eAstNode::if_);
     if(success = get_next_token())
     {
       if(token->kind == eToken::open_parens)
@@ -1201,7 +1206,7 @@ bool Parser::parse_do_while(AstNode** node)
   bool success = true;
   if(token->kind == eToken::do_)
   {
-    AstNode* do_while = *node = create_ast_node(eAstNode::do_while, clone_source_loc());
+    AstNode* do_while = *node = create_ast_node(eAstNode::do_while);
     if(success = get_next_token() && parse_block_stmt(&do_while->do_while.body))
     {
       if(token->kind == eToken::while_)
@@ -1240,7 +1245,7 @@ bool Parser::parse_while(AstNode** node)
   bool success = true;
   if(token->kind == eToken::while_)
   {
-    AstNode* while_ = *node = create_ast_node(eAstNode::while_, clone_source_loc());
+    AstNode* while_ = *node = create_ast_node(eAstNode::while_);
     if(success = get_next_token())
     {
       if(token->kind == eToken::open_parens)
@@ -1274,7 +1279,7 @@ bool Parser::parse_return(AstNode** node)
 
   if(token->kind == eToken::return_)
   {
-    AstNode* ret = *node = create_ast_node(eAstNode::return_, clone_source_loc());
+    AstNode* ret = *node = create_ast_node(eAstNode::return_);
     AstNode* ret_expr = 0;
     if(success = get_next_token() && parse_expr(&ret_expr))
     {
@@ -1297,7 +1302,7 @@ bool Parser::parse_continue(AstNode** node)
 
   if(token->kind == eToken::continue_)
   {
-    AstNode* loop_ctrl = *node = create_ast_node(eAstNode::loop_ctrl, clone_source_loc());
+    AstNode* loop_ctrl = *node = create_ast_node(eAstNode::loop_ctrl);
     loop_ctrl->loop_ctrl.kind = eLoopCtrl::continue_;
     success = get_next_token();
   }
@@ -1311,7 +1316,7 @@ bool Parser::parse_break(AstNode** node)
 
   if(token->kind == eToken::break_)
   {
-    AstNode* loop_ctrl = *node = create_ast_node(eAstNode::loop_ctrl, clone_source_loc());
+    AstNode* loop_ctrl = *node = create_ast_node(eAstNode::loop_ctrl);
     loop_ctrl->loop_ctrl.kind = eLoopCtrl::break_;
     success = get_next_token();
   }
@@ -1325,7 +1330,7 @@ bool Parser::parse_block_var(char* name, eModifier modifier, AstNode* var_type, 
 
   if(token->kind == eToken::id)
   {
-    AstNode* var = *node = create_ast_node(eAstNode::var, clone_source_loc());
+    AstNode* var = *node = create_ast_node(eAstNode::var);
     var->var.type = var_type;
     var->var.name = token->lexeme;
 
@@ -1672,14 +1677,14 @@ bool Parser::parse_module_proc(char* name, eModifier modifier, AstNode* ret_type
 
   if(token->kind == eToken::open_parens)
   {
-    AstNode* proc = *node = create_ast_node(eAstNode::proc, clone_source_loc());
+    AstNode* proc = *node = create_ast_node(eAstNode::proc);
     proc->proc.ret_type = ret_type;
     proc->proc.name = name;
     proc->proc.modifier = modifier;
 
     if(success = get_next_token())
     {
-      AstNode* args = proc->proc.args = create_ast_node(eAstNode::node_list, clone_source_loc());
+      AstNode* args = proc->proc.args = create_ast_node(eAstNode::node_list);
       args->args.node_list.init(arena, eList::ast_node);
 
       if(success = parse_formal_args(proc->proc.args))
@@ -1701,7 +1706,7 @@ bool Parser::parse_module_var(char* name, eModifier modifier, AstNode* var_type,
 {
   bool success = true;
 
-  AstNode* var = *node = create_ast_node(eAstNode::var, clone_source_loc());
+  AstNode* var = *node = create_ast_node(eAstNode::var);
   var->var.type = var_type;
   var->var.name = name;
   var->var.modifier = modifier;
@@ -1742,7 +1747,7 @@ bool Parser::parse_module_include(AstNode** node)
   {
     if(success = get_next_token())
     {
-      AstNode* include = *node = create_ast_node(eAstNode::include, clone_source_loc());
+      AstNode* include = *node = create_ast_node(eAstNode::include);
       if(token->kind == eToken::str_val)
       {
         /* Make the full path to the included file, relative to the location of the current file. */
@@ -1915,13 +1920,14 @@ bool Parser::parse_module()
 
   if(success = get_next_token())
   {
-    module = create_ast_node(eAstNode::module, clone_source_loc());
+    module = create_ast_node(eAstNode::module);
     module->module.file_path = file->path;
     module->module.nodes.init(arena, eList::ast_node);
     module->module.procs.init(arena, eList::ast_node);
     module->module.vars.init(arena, eList::ast_node);
 
-    AstNode* include = create_ast_node(eAstNode::include, 0);
+    AstNode* include = create_ast_node(eAstNode::include);
+    include->src_loc = 0;
     include->include.file = file;
     include->include.file_path = file->path;
     includes->append(include, eList::ast_node);

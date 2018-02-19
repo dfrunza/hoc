@@ -7,6 +7,9 @@ include "math.hoc";
 
 void main()
 {
+  print_float(567.234);
+  print_nl();
+
   int a = -10;
   int b = 4;
   int q = a / b;

@@ -21,7 +21,7 @@ void fizzbuzz(int n)
       else
         print_int(i);
 
-      print_str(&"\n");
+      print_nl();
       i = i + 1;
     }
   }

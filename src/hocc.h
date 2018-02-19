@@ -74,12 +74,12 @@ struct String
   void  init(MemoryArena* arena);
   int   len();
   void  append(char* cstr);
-  int   printf_va(char* fmessage, va_list args);
-  int   printf(char* ftext, ...);
-  int   printfln(char* fline, ...);
-  void  println();
+  void  append_nl(char* cstr);
+  int   format_va(char* fmessage, va_list args);
+  int   format(char* ftext, ...);
+  int   format_nl(char* fline, ...);
+  void  nl();
   void  tidyup();
-  void  free();
   char* cap();
   bool  dump_to_file(char* file_path);
 };
@@ -98,12 +98,23 @@ namespace Platform
   char*  file_read_text(MemoryArena* arena, char* file_path);
   PlatformFile* file_open(MemoryArena* arena, char* filename);
   bool   file_identity(PlatformFile* file_A, PlatformFile* file_B);
-  char*  path_find_leaf(char* file_path);
-  char*  path_make_leaf(char* file_path, bool with_extension);
+  char*  path_find_file_name(char* file_path);
+  char*  path_make_file_name(char* file_path, bool with_extension);
   char*  path_make_dir(char* file_path);
 };
 
 #define KIND(VAR, KIND) (((VAR)->kind == KIND) ? (VAR) : 0)
+
+typedef struct
+{
+  char* title;
+  char* working_dir;
+  char* asm_file;
+  char* source_file;
+
+  bool make(MemoryArena* arena, char* src_file_path);
+}
+OutFileNames;
 
 struct SourceLoc
 {
@@ -1629,6 +1640,6 @@ struct X86Context
   void gen_extern_proc(AstNode* proc);
   void gen_proc(AstNode* proc);
   void gen_module(AstNode* module);
-  void gen(AstNode* module);
+  void gen(AstNode* module, char* title);
 };
 

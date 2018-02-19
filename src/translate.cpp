@@ -48,7 +48,7 @@ char* gen_tempvar_name(MemoryArena* arena, char* label)
 {
   String str = {};
   str.init(arena);
-  str.printf("%s%d", label, tempvar_id++);
+  str.format("%s%d", label, tempvar_id++);
   return str.cap();
 }
 
@@ -192,7 +192,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_context.partition_basic_blocks_module(module);
   ir_context.alloc_scope_data_objects(module->module.scope);
 
-  x86_context.gen(module);
+  x86_context.gen(module, title);
   *x86_text = x86_context.text;
 
   return true;

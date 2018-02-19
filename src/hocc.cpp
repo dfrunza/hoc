@@ -182,48 +182,75 @@ namespace Platform
   }
 } // Platform::
 
-typedef struct
+bool OutFileNames::make(MemoryArena* arena, char* src_file_path)
 {
-  char* name;
-  int len;
-}
-FileName;
-
-typedef struct
-{
-  char strings[4*80 + 4*10];
-  FileName h_asm;
-  FileName source;
-}
-OutFileNames;
-
-bool make_out_file_names(MemoryArena* arena, OutFileNames* out_files, char* src_file_path)
-{
-  char* leaf = push_array(arena, char, Cstr::len(src_file_path));
-  Cstr::copy(leaf, src_file_path);
-  leaf = Platform::path_make_leaf(leaf, false);
-
-  int leaf_len = Cstr::len(leaf);
-  assert(leaf_len > 0);
   bool success = true;
 
-  if(leaf_len <= 0 || leaf_len >= 81)
+  const int buf_len = 200;
+  working_dir = push_string(arena, buf_len);
+  int working_dir_len = GetCurrentDirectoryA(buf_len, working_dir);
+  if((working_dir_len > 0) && (working_dir_len < buf_len))
   {
-    return success = error("length of file name must be between 1..80 : '%s'", leaf);
+    String str = {};
+    str.init(arena);
+    str.append(src_file_path);
+    title = str.cap();
+    title = Platform::path_make_file_name(title, false);
+
+    str.init(arena);
+    str.format("%s\\%s.asm", working_dir, title);
+    asm_file = str.cap();
   }
-  char* str = out_files->strings;
-
-  sprintf(str, "%s.asm", leaf);
-  out_files->h_asm.name = str;
-  out_files->h_asm.len = Cstr::len(out_files->h_asm.name);
-  str = out_files->h_asm.name + out_files->h_asm.len + 1;
-
-  sprintf(str, "%s", leaf);
-  out_files->source.name = str;
-  out_files->source.len = Cstr::len(out_files->source.name);
-  str = out_files->source.name + out_files->source.len + 1;
+  else
+    success = error("working directory could not be retrieved");
 
   return success;
+}
+
+bool assemble(MemoryArena* arena, OutFileNames* out_files)
+{
+  bool success = true;
+
+  String str = {};
+  str.init(arena);
+  /*
+      /Cx     - preserve case in publics, externs
+      /Zi     - add symbolic debug info
+      /Fl     - generate listing
+      /c      - assemble without linking
+  */
+  str.format("ml.exe /Zi /Fl /Cx /nologo %s /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib", out_files->asm_file);
+  char* ml_args = str.cap();
+
+  STARTUPINFOA ml_startup_info = {};
+  ml_startup_info.cb = sizeof(STARTUPINFOA);
+  PROCESS_INFORMATION ml_proc_info = {};
+  if(CreateProcessA(0, ml_args, 0, 0, false, 0, 0, 0, &ml_startup_info, &ml_proc_info))
+  {
+    DWORD wait_code = WaitForSingleObject(ml_proc_info.hProcess, 60*1000);
+
+    if(wait_code == WAIT_OBJECT_0)
+    {
+      DWORD ml_exit_code = 0;
+      if(GetExitCodeProcess(ml_proc_info.hProcess, &ml_exit_code))
+      {
+        success = (ml_exit_code == 0);
+      }
+      else
+        success = error("could not retrieve ml.exe exit code");
+    }
+    else
+      success = error("WaitForSingleObject() : unexpected return code");
+  }
+  else
+    success = error("could not create ml.exe process");
+
+  return success;
+}
+
+int make_exit_code(bool success)
+{
+  return success ? 0 : -1;
 }
 
 int main(int argc, char* argv[])
@@ -232,56 +259,50 @@ int main(int argc, char* argv[])
 
   if(argc < 2)
   {
-    success = error("missing argument : input source file");
-    goto end;
+    success = error("missing argument : source file");
+    return make_exit_code(success);
   }
 
-  char* src_file_path;
-  src_file_path = argv[1];
+  char* src_file_path = argv[1];
 
-  MemoryArena* arena;
-  arena = MemoryArena::create(32*MEGABYTE);
+  MemoryArena* arena = MemoryArena::create(32*MEGABYTE);
 
-  char* hoc_text;
-  hoc_text = Platform::file_read_text(MemoryArena::push(&arena, 2*MEGABYTE), src_file_path);
+  char* hoc_text = Platform::file_read_text(MemoryArena::push(&arena, 2*MEGABYTE), src_file_path);
 
   if(hoc_text == 0)
   {
-    success = error("could not read source file `%s`", src_file_path);
-    goto end;
+    success = error("file could not be read : `%s`", src_file_path);
+    return make_exit_code(success);
   }
 
-  OutFileNames out_files;
-  out_files = {};
-  if(!make_out_file_names(arena, &out_files, src_file_path))
-  {
-    success = false;
-    goto end;
-  }
+  OutFileNames out_files = {};
+  out_files.make(arena, src_file_path);
 
-  String* x86_text;
-  x86_text = 0;
-  if(!translate(arena, out_files.source.name, src_file_path, hoc_text, &x86_text))
+  String* x86_text = 0;
+  if(!translate(arena, out_files.title, src_file_path, hoc_text, &x86_text))
   {
     success = error("program could not be translated");
-    goto end;
+    return make_exit_code(success);
   }
 
-  int x86_text_len;
-  x86_text_len = x86_text->len();
-  int bytes_written;
-  bytes_written = Platform::file_write_bytes(out_files.h_asm.name, (uint8*)x86_text->head, x86_text_len);
+  int x86_text_len = x86_text->len();
+  int bytes_written = Platform::file_write_bytes(out_files.asm_file, (uint8*)x86_text->head, x86_text_len);
   if(bytes_written != x86_text_len)
   {
-    success = error("number of bytes written not equal to text size : `%s`", out_files.h_asm.name);
-    goto end;
+    success = error("number of bytes written not equal to text size : `%s`", out_files.asm_file);
+    return make_exit_code(success);
+  }
+
+  if(!assemble(arena, &out_files))
+  {
+    success = error("program could not be assembled");
+    return make_exit_code(success);
   }
 
 #if 0
   getc(stdin);
 #endif
 
-end:
-  return success ? 0 : -1;
+  return make_exit_code(success);
 }
 

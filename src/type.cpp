@@ -555,7 +555,7 @@ void Type::append_printstr(String* str)
     {
       str->append("(");
       if(array.size >= 0)
-        str->printf("[%d]", array.size);
+        str->format("[%d]", array.size);
       else
         str->append("[]");
       array.elem->append_printstr(str);
@@ -588,7 +588,7 @@ void Type::append_printstr(String* str)
 
     case eType::typevar:
     {
-      str->printf("type_%d", typevar.id);
+      str->format("type_%d", typevar.id);
     }
     break;
 

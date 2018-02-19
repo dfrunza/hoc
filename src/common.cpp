@@ -142,6 +142,7 @@ void MemoryArena::end_temp_memory(MemoryArena** arena)
 
 #define push_struct(ARENA, TYPE) ((TYPE*)(ARENA)->push_struct_(sizeof(TYPE), 1))
 #define push_array(ARENA, TYPE, COUNT) ((TYPE*)(ARENA)->push_struct_(sizeof(TYPE), COUNT))
+#define push_string(ARENA, LEN) (char*)(ARENA)->push_struct_(sizeof(char), LEN+1)
 
 void* MemoryArena::push_struct_(int elem_size, int count)
 {
@@ -354,6 +355,12 @@ int String::len()
   return len;
 }
 
+void String::append_nl(char* cstr)
+{
+  append(cstr);
+  nl();
+}
+
 void String::append(char* cstr)
 {
   assert(head && end && arena);
@@ -369,7 +376,7 @@ void String::append(char* cstr)
   }
 }
 
-int String::printf_va(char* fmessage, va_list args)
+int String::format_va(char* fmessage, va_list args)
 {
   assert(head && end && arena);
   assert(head <= end);
@@ -383,23 +390,23 @@ int String::printf_va(char* fmessage, va_list args)
   return len;
 }
 
-int String::printf(char* ftext, ...)
+int String::format(char* ftext, ...)
 {
   va_list args;
   va_start(args, ftext);
 
-  int text_len = printf_va(ftext, args);
+  int text_len = format_va(ftext, args);
 
   va_end(args);
   return text_len;
 }
 
-int String::printfln(char* fline, ...)
+int String::format_nl(char* fline, ...)
 {
   va_list args;
   va_start(args, fline);
 
-  int text_len = printf_va(fline, args);
+  int text_len = format_va(fline, args);
 
   va_end(args);
 
@@ -409,7 +416,7 @@ int String::printfln(char* fline, ...)
   return text_len;
 }
 
-void String::println()
+void String::nl()
 {
   append("\n");
 }
@@ -429,15 +436,6 @@ void String::tidyup()
   }
 }
 
-void String::free()
-{
-  assert(head <= end);
-  assert(head <= end);
-  assert(end == (char*)arena->free-1);
-
-  arena->free = (uint8*)head;
-}
-
 char* String::cap()
 {
   *(end++) = 0;
@@ -446,10 +444,10 @@ char* String::cap()
   return head;
 }
 
-char* Platform::path_find_leaf(char* file_path)
+char* Platform::path_find_file_name(char* file_path)
 {
   char* p_char = file_path;
-  char* leaf = p_char;
+  char* name = p_char;
 
   /* get the file name part */
   while(p_char && *p_char)
@@ -461,34 +459,34 @@ char* Platform::path_find_leaf(char* file_path)
 
     if(*p_char == '\\')
     {
-      leaf = ++p_char;
+      name = ++p_char;
     }
   }
 
-  return leaf;
+  return name;
 }
 
-char* Platform::path_make_leaf(char* file_path, bool with_extension)
+char* Platform::path_make_file_name(char* file_path, bool with_extension)
 {
-  char* leaf = Platform::path_find_leaf(file_path);
+  char* name = Platform::path_find_file_name(file_path);
 
   /* remove the filename extension */
-  if(leaf && !with_extension)
+  if(name && !with_extension)
   {
-    char* p_char = leaf;
+    char* p_char = name;
     while(*p_char && *p_char != '.')
       p_char++;
     *p_char = '\0';
   }
 
-  return leaf;
+  return name;
 }
 
 char* Platform::path_make_dir(char* file_path)
 {
-  char* leaf = Platform::path_find_leaf(file_path);
-  if(leaf)
-    *leaf = '\0';
+  char* name = Platform::path_find_file_name(file_path);
+  if(name)
+    *name = '\0';
   return file_path;
 }
 
@@ -543,7 +541,7 @@ bool compile_error_va(MemoryArena* arena, char* file, int line, SourceLoc* src_l
   if(src_loc && src_loc->line_nr >= 0)
   {
     Platform::printf("%s:%d: (%s:%d) error : ", src_loc->file_path, src_loc->line_nr,
-                     Platform::path_make_leaf(filename_buf, false), line);
+                     Platform::path_make_file_name(filename_buf, false), line);
   }
   else
   {

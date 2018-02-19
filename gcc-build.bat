@@ -27,7 +27,6 @@ IF %ERRORLEVEL% NEQ 0 (
 SETLOCAL
 
 SET base_dir=%cd%
-SET hoc_file=test
 SET hoc_dir=%base_dir%\hoc
 SET src_dir=%base_dir%\src
 
@@ -56,19 +55,15 @@ IF %ERRORLEVEL% NEQ 0 (
   GOTO :end
 )
 
-:: NOTE: The full path to the .hoc source is needed in order for Vim QuickFix to work properly.
-ECHO %hoc_file%.hoc
-hocc %hoc_dir%\%hoc_file%.hoc > debug.txt
-
+hocc %hoc_dir%\test.hoc
 IF %ERRORLEVEL% NEQ 0 (
   GOTO :end
 )
 
-:: /Cx     - preserve case in publics, externs
-:: /Zi     - add symbolic debug info
-:: /Fl     - generate listing
-ml /nologo /Cx /Zi /Fl %hoc_file%.asm ^
-   /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib
+hocc %hoc_dir%\sloc.hoc
+IF %ERRORLEVEL% NEQ 0 (
+  GOTO :end
+)
 
 :end
 POPD

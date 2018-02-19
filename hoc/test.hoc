@@ -13,8 +13,6 @@ void main()
   int r = a mod b;
   print_equation(a, b, q, r);
 }
-/*
-*/
 
 void print_equation(int a, int b, int q, int r)
 {

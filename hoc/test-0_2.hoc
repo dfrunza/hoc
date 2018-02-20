@@ -59,7 +59,7 @@ int^ make_numbers(int how_many)
 
   while(i < how_many)
   {
-    if((i mod 2) == 0)
+    if((i % 2) == 0)
       numbers[i] = c1 * i;
     else
       numbers[i] = c2 * i;

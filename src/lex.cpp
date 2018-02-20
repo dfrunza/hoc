@@ -20,7 +20,6 @@ global_var Token keyword_list[] =
   {eToken::and_, "and"},
   {eToken::or_, "or"},
   {eToken::not_, "not"},
-  {eToken::mod, "mod"},
   {eToken::int_, "int"},
   {eToken::float_, "float"},
   {eToken::bool_, "bool"},
@@ -204,6 +203,10 @@ char* Token::get_printstr()
       result = "/";
     break;
 
+    case eToken::percent:
+      result = "%";
+    break;
+
     case eToken::back_slash:
       result = "\\";
     break;
@@ -360,10 +363,6 @@ char* Token::get_printstr()
 
     case eToken::not_:
       result = "not";
-    break;
-
-    case eToken::mod:
-      result = "mod";
     break;
 
     case eToken::int_:
@@ -751,11 +750,6 @@ loop:
     }
 #endif
   }
-  else if(c == 'ª')
-  {
-    token.kind = eToken::logic_not;
-    c = *(++cursor);
-  }
   else if(c == '+')
   {
     token.kind = eToken::plus;
@@ -769,6 +763,11 @@ loop:
   else if(c == '*')
   {
     token.kind = eToken::star;
+    ++cursor;
+  }
+  else if(c == '%')
+  {
+    token.kind = eToken::percent;
     ++cursor;
   }
   else if(c == '×')

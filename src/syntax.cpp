@@ -20,7 +20,7 @@ char* Parser::get_operator_printstr(eOperator op)
     break;
     
     case eOperator::mod:
-      str = "mod";
+      str = "%";
     break;
     
     case eOperator::neg:
@@ -28,10 +28,7 @@ char* Parser::get_operator_printstr(eOperator op)
     break;
     
     case eOperator::deref:
-#if 0
-    case eOperator::pointer:
-#endif
-    str = "^";
+      str = "^";
     break;
     
     case eOperator::address_of:
@@ -376,7 +373,7 @@ bool Parser::parse_rest_of_factor(AstNode* left_node, AstNode** node)
   {
     case eToken::star:
     case eToken::fwd_slash:
-    case eToken::mod:
+    case eToken::percent:
     case eToken::and_:
     case eToken::ampersand:
     {
@@ -393,7 +390,7 @@ bool Parser::parse_rest_of_factor(AstNode* left_node, AstNode** node)
           bin_expr->bin_expr.op = eOperator::div;
         break;
 
-        case eToken::mod:
+        case eToken::percent:
           bin_expr->bin_expr.op = eOperator::mod;
         break;
 

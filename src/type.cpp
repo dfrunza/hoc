@@ -2633,8 +2633,8 @@ bool TypePass_Check::visit_cast(AstNode* cast)
       }
       if(!success)
       {
-        compile_error(arena, cast->src_loc, "invalid cast `%s` <- `%s`",
-                      to_ty->get_printstr(arena), from_ty->get_printstr(arena));
+        compile_error(arena, cast->src_loc, "invalid cast `%s` -> `%s`",
+                      from_ty->get_printstr(arena), to_ty->get_printstr(arena));
       }
     }
   }

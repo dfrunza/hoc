@@ -167,7 +167,7 @@ enum struct eToken
   and_,
   or_,
   not_,
-  mod,
+  percent,
   unknown_char,
   end_of_input,
 

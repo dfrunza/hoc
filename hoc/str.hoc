@@ -109,14 +109,14 @@ char^ int_to_str(char^ buf, int buf_len, int i)
   }
 
   buf_i = buf_i - 1;
-  int remainder = i mod 10;
+  int remainder = i % 10;
   digit_to_char(buf, buf_i, remainder);
 
   while(i > remainder)
   {
     buf_i = buf_i - 1;
     i = (i - remainder) / 10;
-    remainder = i mod 10;
+    remainder = i % 10;
     digit_to_char(buf, buf_i, remainder);
   }
 

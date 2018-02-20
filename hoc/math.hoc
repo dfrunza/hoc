@@ -50,7 +50,7 @@ int gcd_recurs(int a, int b)
   if(b <> 0)
   {
     result = b;
-    int r = a mod b;
+    int r = a % b;
     if(r == 0)
       result = b;
     else

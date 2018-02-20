@@ -7,14 +7,13 @@ include "math.hoc";
 
 void main()
 {
-  print_float(sqrt(101.0));
-  print_nl();
-
-
+  int x = 0x123;
   int a = -10;
   int b = 4;
-  int q = a / b;
-  int r = a mod b;
+  int q;
+  int r;
+  q = a / b;
+  r = a % b;
   print_equation(a, b, q, r);
 }
 

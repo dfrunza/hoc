@@ -14,12 +14,12 @@ void print_str(char^ str)
   int console_mode = 0;
   if(GetConsoleMode(stdout, &console_mode))
   {
-    WriteConsoleA(stdout, str, len, &chars_written_count, (void^):0);
+    WriteConsoleA(stdout, str, len, &chars_written_count, (void^)cast 0);
   }
   else
   {
     /* The output is redirected to a file. */
-    WriteFile(stdout, str, len, &chars_written_count, (void^):0);
+    WriteFile(stdout, str, len, &chars_written_count, (void^)cast 0);
   }
 }
 
@@ -126,7 +126,7 @@ char^ int_to_str(char^ buf, int buf_len, int i)
     buf[buf_i] = '-';
   }
 
-  return buf + (char^):buf_i;
+  return buf + (char^)cast buf_i;
 }
 
 void init_intbuf(int^ buf, int len, int val)
@@ -199,7 +199,7 @@ void float_to_str(char^ buf, int buf_len, float f)
     while(^exponent_str <> '\0')
     {
       buf[pos] = ^exponent_str;
-      exponent_str = exponent_str + (char^):1;
+      exponent_str = exponent_str + (char^)cast 1;
       pos = pos + 1;
     }
   }

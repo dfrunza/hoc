@@ -195,6 +195,7 @@ enum struct eToken
   char_,
   void_,
   auto_,
+  cast,
 
   id,
   int_val,

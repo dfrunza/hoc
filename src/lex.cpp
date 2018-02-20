@@ -27,6 +27,7 @@ global_var Token keyword_list[] =
   {eToken::char_, "char"},
   {eToken::void_, "void"},
   {eToken::auto_, "auto"},
+  {eToken::cast, "cast"},
   {eToken::None, 0}, /* terminator */
 };
 
@@ -387,6 +388,10 @@ char* Token::get_printstr()
 
     case eToken::auto_:
       result = "auto";
+    break;
+
+    case eToken::cast:
+      result = "cast";
     break;
 
     case eToken::id:

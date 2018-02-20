@@ -13,7 +13,7 @@ IF %ERRORLEVEL% NEQ 0 (
   GOTO :early_exit
 )
 
-::SETLOCAL
+SETLOCAL
 
 SET base_dir=%cd%
 SET hoc_dir=%base_dir%\hoc

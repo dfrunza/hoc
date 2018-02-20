@@ -13,10 +13,10 @@ void main()
   bool success = true;
 
   sloc_file_buf_size = 1*MEGABYTE;
-  sloc_file_buf = (char^):alloc(sloc_file_buf_size);
+  sloc_file_buf = (char^)cast alloc(sloc_file_buf_size);
 
   sloc_line_buf_size = 1*KILOBYTE;
-  sloc_line_buf = (char^):alloc(sloc_line_buf_size);
+  sloc_line_buf = (char^)cast alloc(sloc_line_buf_size);
 
   int file_count = 0;
   char^^ files = make_file_list(&file_count);
@@ -42,7 +42,7 @@ void main()
 char^^ make_file_list(int^ count)
 {
   int max_file_count = 20;
-  char^^ files = (char^^):alloc(4*max_file_count);
+  char^^ files = (char^^)cast alloc(4*max_file_count);
   int f = 0;
 
   files[f] = &"../src/hocc.h";
@@ -121,7 +121,7 @@ bool sloc_read_file(char^ file_path, char^ file_buf, int^ file_size)
 {
   bool success = true;
 
-  int file_handle = CreateFileA(file_path, GENERIC_READ, FILE_SHARE_READ, (void^):0, OPEN_EXISTING,
+  int file_handle = CreateFileA(file_path, GENERIC_READ, FILE_SHARE_READ, (void^)cast 0, OPEN_EXISTING,
                                 FILE_ATTRIBUTE_NORMAL, 0);
   if(file_handle <> INVALID_HANDLE_VALUE)
   {
@@ -133,7 +133,7 @@ bool sloc_read_file(char^ file_path, char^ file_buf, int^ file_size)
     {
       int bytes_read = 0;
 
-      if(ReadFile(file_handle, file_buf, sloc_file_buf_size-1, &bytes_read, (void^):0))
+      if(ReadFile(file_handle, file_buf, sloc_file_buf_size-1, &bytes_read, (void^)cast 0))
       {
         if(bytes_read == ^file_size)
         {

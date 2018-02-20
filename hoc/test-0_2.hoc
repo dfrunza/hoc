@@ -55,7 +55,7 @@ int^ make_numbers(int how_many)
   int i = 0;
   int c1 = 17;
   int c2 = 31;
-  int^ numbers = (int^):alloc(how_many);
+  int^ numbers = (int^)cast alloc(how_many);
 
   while(i < how_many)
   {
@@ -72,7 +72,7 @@ int^ make_numbers(int how_many)
 void print_title(char^ title)
 {
   int len = str_len(title);
-  print_nl();
+  print_str(&"\n  ");
   print_str(title);
   print_nl();
 

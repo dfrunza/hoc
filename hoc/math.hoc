@@ -73,7 +73,7 @@ int gcd_iter(int a, int b)
 
 /*
    Greatest Common Divisor
- */
+*/
 int gcd(int a, int b)
 {
 
@@ -84,7 +84,7 @@ int gcd(int a, int b)
 
 /*
    Least Common Multiple
- */
+*/
 int lcm(int a, int b)
 {
   return abs(a * b)/gcd(a, b);
@@ -124,8 +124,7 @@ float sqrt_iter(float x, float g)
 
 /*
    Computes the largest number 'r' such that 'r^r <= x'
-FIXME: sqrt(100.0) gives a funky result.
- */
+*/
 float sqrt(float x)
 {
   float g = x;
@@ -153,7 +152,7 @@ int floor_log_b(int b, float n)
     while(n >= b_pow_x)
     {
       x = x + 1;
-      b_pow_x = ipow((float):b, x);
+      b_pow_x = ipow((float)cast b, x);
     }
     x = x - 1;
   }
@@ -161,7 +160,7 @@ int floor_log_b(int b, float n)
   {
     while(b_pow_x > n)
     {
-      b_pow_x = ipow((float):b, x);
+      b_pow_x = ipow((float)cast b, x);
       x = x - 1;
     }
     x = x + 1;
@@ -170,7 +169,10 @@ int floor_log_b(int b, float n)
   return x;
 }
 
-/* Returns the number of significand 10-base digits */
+/*
+   Converts a floating-point number in base-2 format to base-10 format.
+   Returns the number of significand base-10 digits.
+*/
 int fp_bin_to_dec(float v, int^ significand, int^ exponent)
 {
   float v_abs = absf(v);
@@ -185,8 +187,8 @@ int fp_bin_to_dec(float v, int^ significand, int^ exponent)
   do
   {
     k = k + 1;
-    U = (int):(R * 10.0);
-    R = (R * 10.0) - (float):U;
+    U = (int)cast (R * 10.0);
+    R = (R * 10.0) - (float)cast U;
     M = M * 10.0;
     significand[k] = U;
   }

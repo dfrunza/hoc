@@ -664,7 +664,7 @@ bool Parser::parse_rest_of_cast(AstNode* left_node, AstNode** node)
 #else
   switch(token->kind)
   {
-    case eToken::colon:
+    case eToken::cast:
     {
       AstNode* cast = *node = create_ast_node(eAstNode::cast);
       cast->cast.to_type = left_node;

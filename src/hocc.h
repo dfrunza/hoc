@@ -414,16 +414,6 @@ struct Type
     }
     typevar;
   };
-
-  bool  equal(Type* type_b);
-  int   set_width();
-  Type* copy(MemoryArena* arena);
-  Type* get_repr_type();
-  void  set_union(Type* type_b);
-  bool  unif(Type* type_b);
-  void  append_printstr(String* str);
-  char* get_printstr(MemoryArena* arena);
-  bool  resolve(Type** resolved_type);
 };
 
 struct TypePass
@@ -622,9 +612,6 @@ struct Label
   struct Label* primary;
   int stmt_nr;
   char* name;
-
-  static Label* create(MemoryArena* arena);
-  static Label* create_by_name(MemoryArena* arena, char* name);
 };
 
 typedef int NextUse;
@@ -1211,9 +1198,6 @@ struct Symbol
     X86Location* _[eX86Location_Count];
   }
   locations;
-
-  void init_locations();
-  bool is_in_location(X86Location* loc);
 };
 
 struct SymbolPass

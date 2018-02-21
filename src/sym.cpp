@@ -78,11 +78,11 @@ void IrContext::alloc_scope_data_objects(Scope* scope)
   }
 }
 
-void Symbol::init_locations()
+void init_object_locations(Symbol* obj)
 {
-  for(int i = 0; i < sizeof_array(locations._); i++)
+  for(int i = 0; i < sizeof_array(obj->locations._); i++)
   {
-    locations._[i] = 0;
+    obj->locations._[i] = 0;
   }
 }
 
@@ -116,7 +116,7 @@ Symbol* SymbolPass::create_const(Type* ty, SourceLoc* src_loc)
   sym->next_use = NextUse_None;
   sym->is_live_on_exit = true;
   sym->is_live = false;
-  sym->init_locations();
+  init_object_locations(sym);
 
   x86_context->add_object_to_memory(sym);
 
@@ -178,7 +178,7 @@ Symbol* IrContext::create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc
   sym->next_use = NextUse_None;
   sym->is_live_on_exit = false;
   sym->is_live = false;
-  sym->init_locations();
+  init_object_locations(sym);
 
   alloc_data_object_incremental(sym, scope);
   list_append(&scope->decl_syms, sym, eList_symbol);
@@ -199,7 +199,7 @@ Symbol* SymbolPass::add_decl(char* name, eStorageSpace storage_space, Scope* sco
   sym->next_use = NextUse_None;
   sym->is_live_on_exit = true;
   sym->is_live = true;
-  sym->init_locations();
+  init_object_locations(sym);
 
   list_append(&scope->decl_syms, sym, eList_symbol);
 

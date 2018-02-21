@@ -1,14 +1,7 @@
-Label* Label::create(MemoryArena* arena)
+Label* new_label(MemoryArena* arena)
 {
   Label* label = push_struct(arena, Label);
   gen_label_name(arena, label);
-  return label;
-}
-
-Label* Label::create_by_name(MemoryArena* arena, char* name)
-{
-  Label* label = push_struct(arena, Label);
-  label->name = name;
   return label;
 }
 
@@ -611,21 +604,21 @@ bool IrContext::visit_cast(Scope* scope, AstNode* cast)
   {
     cast->place = from_expr->place;
     
-    if(to_type->eval_ty->equal(from_expr->eval_ty) ||
+    if(type_eq(to_type->eval_ty, from_expr->eval_ty) ||
        ((to_type->eval_ty->kind == from_expr->eval_ty->kind) && (to_type->eval_ty->kind == eType_pointer)))
     {
       return success;
     }
     bool require_conv = true;
-    if(to_type->eval_ty->equal(basic_type_int))
+    if(type_eq(to_type->eval_ty, basic_type_int))
     {
-      // int <- pointer
+      // pointer -> int
       require_conv = from_expr->eval_ty->kind != eType_pointer;
     }
     else if(to_type->eval_ty->kind == eType_pointer)
     {
-      // pointer <- int
-      require_conv = !from_expr->eval_ty->equal(basic_type_int);
+      // int -> pointer
+      require_conv = !type_eq(from_expr->eval_ty, basic_type_int);
     }
     if(require_conv)
     {
@@ -633,47 +626,47 @@ bool IrContext::visit_cast(Scope* scope, AstNode* cast)
 
       eIrOp cast_op = eIrOp_None;
 
-      if(to_type->eval_ty->equal(basic_type_int))
+      if(type_eq(to_type->eval_ty, basic_type_int))
       {
-        if(from_expr->eval_ty->equal(basic_type_float))
+        if(type_eq(from_expr->eval_ty, basic_type_float))
         {
-          cast_op = eIrOp_ftoi; // int <- float
+          cast_op = eIrOp_ftoi; // float -> int 
         }
-        else if(from_expr->eval_ty->equal(basic_type_bool))
+        else if(type_eq(from_expr->eval_ty, basic_type_bool))
         {
-          cast_op = eIrOp_btoi; // int <- bool
+          cast_op = eIrOp_btoi; // bool -> int 
         }
-        else if(from_expr->eval_ty->equal(basic_type_char))
+        else if(type_eq(from_expr->eval_ty, basic_type_char))
         {
-          cast_op = eIrOp_ctoi; // int <- char
+          cast_op = eIrOp_ctoi; // char -> int 
         }
         else assert(0);
       }
-      else if(to_type->eval_ty->equal(basic_type_float))
+      else if(type_eq(to_type->eval_ty, basic_type_float))
       {
-        if(from_expr->eval_ty->equal(basic_type_int))
+        if(type_eq(from_expr->eval_ty, basic_type_int))
         {
-          cast_op = eIrOp_itof; // float <- int
+          cast_op = eIrOp_itof; // int -> float 
         }
         else assert(0);
       }
-      else if(to_type->eval_ty->equal(basic_type_char))
+      else if(type_eq(to_type->eval_ty, basic_type_char))
       {
-        if(from_expr->eval_ty->equal(basic_type_int))
+        if(type_eq(from_expr->eval_ty, basic_type_int))
         {
-          cast_op = eIrOp_itoc; // char <- int
+          cast_op = eIrOp_itoc; // int -> char 
         }
         else assert(0);
       }
-      else if(to_type->eval_ty->equal(basic_type_bool))
+      else if(type_eq(to_type->eval_ty, basic_type_bool))
       {
-        if(from_expr->eval_ty->equal(basic_type_int))
+        if(type_eq(from_expr->eval_ty, basic_type_int))
         {
-          cast_op = eIrOp_itob; // bool <- int
+          cast_op = eIrOp_itob; // int -> bool 
         }
         else if(from_expr->eval_ty->kind == eType_pointer)
         {
-          cast_op = eIrOp_itob; // bool <- pointer(T)
+          cast_op = eIrOp_itob; // pointer(T) -> bool 
         }
         else assert(0);
       }
@@ -695,9 +688,9 @@ bool IrContext::visit_expr(Scope* scope, AstNode* expr)
       eOperator op = expr->bin_expr.op;
       if(is_operator_relation(op) || is_operator_logic(op))
       {
-        expr->label_true = Label::create(gp_arena);
-        expr->label_false = Label::create(gp_arena);
-        expr->label_next = Label::create(gp_arena);
+        expr->label_true = new_label(gp_arena);
+        expr->label_false = new_label(gp_arena);
+        expr->label_next = new_label(gp_arena);
 
         Symbol* result_object = create_temp_object(scope, expr->eval_ty, expr->src_loc);
         result_object->is_live_on_exit = true;
@@ -725,9 +718,9 @@ bool IrContext::visit_expr(Scope* scope, AstNode* expr)
       eOperator op = expr->unr_expr.op;
       if(is_operator_relation(op) || is_operator_logic(op))
       {
-        expr->label_true = Label::create(gp_arena);
-        expr->label_false = Label::create(gp_arena);
-        expr->label_next = Label::create(gp_arena);
+        expr->label_true = new_label(gp_arena);
+        expr->label_false = new_label(gp_arena);
+        expr->label_next = new_label(gp_arena);
 
         Symbol* result_object = create_temp_object(scope,  expr->eval_ty, expr->src_loc);
         result_object->is_live_on_exit = true;
@@ -839,7 +832,7 @@ bool IrContext::visit_bool_bin_expr(Scope* scope, AstNode* bin_expr)
       assert(bin_expr->label_false);
 
       left_operand->label_true = bin_expr->label_true;
-      left_operand->label_false = Label::create(gp_arena);
+      left_operand->label_false = new_label(gp_arena);
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
       if(success = visit_bool_expr(scope, left_operand))
@@ -855,7 +848,7 @@ bool IrContext::visit_bool_bin_expr(Scope* scope, AstNode* bin_expr)
       assert(bin_expr->label_true);
       assert(bin_expr->label_false);
 
-      left_operand->label_true = Label::create(gp_arena);
+      left_operand->label_true = new_label(gp_arena);
       left_operand->label_false = bin_expr->label_false;
       right_operand->label_true = bin_expr->label_true;
       right_operand->label_false = bin_expr->label_false;
@@ -986,9 +979,9 @@ bool IrContext::visit_do_while(Scope* scope, AstNode* do_while)
   AstNode* cond_expr = do_while->do_while.cond_expr;
   AstNode* body = do_while->do_while.body;
   
-  do_while->label_begin = Label::create(gp_arena);
-  do_while->label_next = Label::create(gp_arena);
-  cond_expr->label_true = Label::create(gp_arena);
+  do_while->label_begin = new_label(gp_arena);
+  do_while->label_next = new_label(gp_arena);
+  cond_expr->label_true = new_label(gp_arena);
   cond_expr->label_false = do_while->label_next;
   
   emit_label(cond_expr->label_true);
@@ -1010,9 +1003,9 @@ bool IrContext::visit_while(Scope* scope, AstNode* while_)
   AstNode* cond_expr = while_->while_.cond_expr;
   AstNode* body = while_->while_.body;
   
-  while_->label_begin = Label::create(gp_arena);
-  while_->label_next = Label::create(gp_arena);
-  cond_expr->label_true = Label::create(gp_arena);
+  while_->label_begin = new_label(gp_arena);
+  while_->label_next = new_label(gp_arena);
+  cond_expr->label_true = new_label(gp_arena);
   cond_expr->label_false = while_->label_next;
   
   emit_label(while_->label_begin);
@@ -1036,11 +1029,11 @@ bool IrContext::visit_if(Scope* scope, AstNode* if_)
   AstNode* body = if_->if_.body;
   AstNode* else_body = if_->if_.else_body;
   
-  if_->label_next = Label::create(gp_arena);
+  if_->label_next = new_label(gp_arena);
   if(else_body)
   {
-    cond_expr->label_true = Label::create(gp_arena);
-    cond_expr->label_false = Label::create(gp_arena);
+    cond_expr->label_true = new_label(gp_arena);
+    cond_expr->label_false = new_label(gp_arena);
     body->label_next = if_->label_next;
     else_body->label_next = if_->label_next;
     
@@ -1055,7 +1048,7 @@ bool IrContext::visit_if(Scope* scope, AstNode* if_)
   }
   else
   {
-    cond_expr->label_true = Label::create(gp_arena);
+    cond_expr->label_true = new_label(gp_arena);
     cond_expr->label_false = if_->label_next;
     body->label_next = if_->label_next;
     
@@ -1243,7 +1236,7 @@ int IrContext::get_proc_arg_size(AstNode* args)
     AstNode* var = KIND(li, eList_ast_node)->ast_node;
     assert(KIND(var, eAstNode_var));
     Symbol* arg_object = var->var.decl_sym;
-    size += arg_object->ty->set_width();
+    size += set_type_width(arg_object->ty);
   }
 
   return size;
@@ -1278,8 +1271,8 @@ bool IrContext::visit_proc(Scope* scope, AstNode* proc)
     AstNode* body = proc->proc.body;
     assert(KIND(body, eAstNode_block));
 
-    proc->label_begin = Label::create(gp_arena);
-    proc->label_next = Label::create(gp_arena);
+    proc->label_begin = new_label(gp_arena);
+    proc->label_next = new_label(gp_arena);
 
     emit_label(proc->label_begin);
 
@@ -1478,21 +1471,21 @@ void IrContext::DEBUG_print_ir_arg(String* text, IrArg* arg)
     
     case eSymbol_constant:
     {
-      if(object->ty->equal(basic_type_int) || object->ty->equal(basic_type_bool))
+      if(type_eq(object->ty, basic_type_int) || type_eq(object->ty, basic_type_bool))
       {
         str_format(text, "%d", object->int_val);
       }
-      else if(object->ty->equal(basic_type_float))
+      else if(type_eq(object->ty, basic_type_float))
       {
         str_format(text, "%f", object->float_val);
       }
-      else if(object->ty->equal(basic_type_char))
+      else if(type_eq(object->ty, basic_type_char))
       {
         char buf[3] = {0};
         cstr_print_char(buf, object->char_val);
         str_format(text, "'%s'", buf);
       }
-      else if(object->ty->equal(basic_type_str))
+      else if(type_eq(object->ty, basic_type_str))
       {
         str_format(text, "\"%s\"", object->str_val);
       }

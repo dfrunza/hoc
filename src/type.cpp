@@ -96,7 +96,7 @@ TypePass* TypePass::create(MemoryArena* arena)
                                    sizeof(TypePass_Resolve),
                                    sizeof(TypePass_Check));
 
-  TypePass* context = (TypePass*)arena->push_struct_(struct_size, 1);
+  TypePass* context = (TypePass*)push_struct_(arena, struct_size, 1);
   context->init(arena);
 
   return context;

@@ -262,9 +262,9 @@ int main(int argc, char* argv[])
 
   char* src_file_path = argv[1];
 
-  MemoryArena* arena = MemoryArena::create(32*MEGABYTE);
+  MemoryArena* arena = new_arena(32*MEGABYTE);
 
-  char* hoc_text = platform_file_read_text(MemoryArena::push(&arena, 2*MEGABYTE), src_file_path);
+  char* hoc_text = platform_file_read_text(push_arena(&arena, 2*MEGABYTE), src_file_path);
 
   if(hoc_text == 0)
   {

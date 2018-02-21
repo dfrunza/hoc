@@ -1686,7 +1686,7 @@ void IrContext::DEBUG_print_basic_block(String* text, BasicBlock* bb)
 
 void IrContext::DEBUG_print_ir_code(List* procs, char* file_path)
 {
-  MemoryArena::begin_temp_memory(&gp_arena);
+  begin_temp_memory(&gp_arena);
   String text = {};
   text.init(gp_arena);
 
@@ -1716,7 +1716,7 @@ void IrContext::DEBUG_print_ir_code(List* procs, char* file_path)
   }
 
   text.dump_to_file(file_path);
-  MemoryArena::end_temp_memory(&gp_arena);
+  end_temp_memory(&gp_arena);
 }
 
 IrLeaderStmt* IrContext::get_leader_stmt(List* leaders, int stmt_nr)

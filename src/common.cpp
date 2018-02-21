@@ -51,24 +51,24 @@ void DEBUG_print_arena_usage(MemoryArena* arena, char* tag)
   platform_printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
 }
 
-#define struct_check_bounds(ARENA, TYPE, STRUCT) (ARENA)->check_bounds(sizeof(TYPE), STRUCT)
-#define arena_check_bounds(ARENA) (ARENA)->check_bounds(0, (ARENA)->free)
-void MemoryArena::check_bounds(int elem_size, void* ptr)
+#define check_struct_bounds(ARENA, TYPE, STRUCT) check_arena_bounds((ARENA), sizeof(TYPE), STRUCT)
+#define check_arena_bounds(ARENA) check_memory_bounds((ARENA), 0, (ARENA)->free)
+void check_memory_bounds(MemoryArena* arena, int elem_size, void* ptr)
 {
-  assert(base <= (uint8*)ptr);
-  assert((free + elem_size) < cap);
+  assert(arena->base <= (uint8*)ptr);
+  assert((arena->free + elem_size) < arena->cap);
 }
 
 #define zero_struct(VAR, TYPE) (mem_zero_(VAR, sizeof(TYPE)))
 #define zero_array(VAR, TYPE) (mem_zero_(VAR, sizeof_array(VAR) * sizeof(TYPE)))
-void zero_range(void* start, void* one_past_end)
+void mem_zero_range(void* start, void* one_past_end)
 {
   assert(one_past_end >= start);
   int len = (int)((uint8*)one_past_end - (uint8*)start);
   mem_zero_(start, len);
 }
 
-MemoryArena* MemoryArena::create(int size)
+MemoryArena* new_arena(int size)
 {
   void* raw_mem = platform_alloc_memory(size + sizeof(MemoryArena));
   MemoryArena* arena = (MemoryArena*)raw_mem;
@@ -80,30 +80,30 @@ MemoryArena* MemoryArena::create(int size)
   return arena;
 }
 
-void MemoryArena::dealloc()
+void dealloc_arena(MemoryArena* arena)
 {
-  base = (uint8*)this + sizeof(MemoryArena);
-  free = base;
-  assert(free < cap);
+  arena->base = (uint8*)arena + sizeof(MemoryArena);
+  arena->free = arena->base;
+  assert(arena->free < arena->cap);
 
   if(DEBUG_zero_arena)
   {
-    zero_range(free, cap);
+    mem_zero_range(arena->free, arena->cap);
   }
 }
 
-void MemoryArena::pop(MemoryArena** arena)
+void pop_arena(MemoryArena** arena)
 {
   *arena = (*arena)->prev_arena;
 
   MemoryArena* curr_arena = *arena;
   if(DEBUG_zero_arena)
   {
-    zero_range(curr_arena->free, curr_arena->cap);
+    mem_zero_range(curr_arena->free, curr_arena->cap);
   }
 }
 
-MemoryArena* MemoryArena::push(MemoryArena** arena, int size)
+MemoryArena* push_arena(MemoryArena** arena, int size)
 {
   assert(size > 0);
 
@@ -117,7 +117,7 @@ MemoryArena* MemoryArena::push(MemoryArena** arena, int size)
   assert(sub_arena->cap <= prev_arena->cap);
   if(DEBUG_zero_arena)
   {
-    zero_range(sub_arena->base, sub_arena->cap);
+    mem_zero_range(sub_arena->base, sub_arena->cap);
   }
 
   MemoryArena* new_arena = (MemoryArena*)sub_arena->cap;
@@ -133,7 +133,7 @@ MemoryArena* MemoryArena::push(MemoryArena** arena, int size)
   return sub_arena;
 }
 
-void MemoryArena::begin_temp_memory(MemoryArena** arena)
+void begin_temp_memory(MemoryArena** arena)
 {
   MemoryArena* prev_arena = *arena;
 
@@ -147,29 +147,30 @@ void MemoryArena::begin_temp_memory(MemoryArena** arena)
   *arena = new_arena;
 }
 
-void MemoryArena::end_temp_memory(MemoryArena** arena)
+void end_temp_memory(MemoryArena** arena)
 {
-  MemoryArena::pop(arena);
+  pop_arena(arena);
 }
 
-#define push_struct(ARENA, TYPE) ((TYPE*)(ARENA)->push_struct_(sizeof(TYPE), 1))
-#define push_array(ARENA, TYPE, COUNT) ((TYPE*)(ARENA)->push_struct_(sizeof(TYPE), COUNT))
-#define push_string(ARENA, LEN) (char*)(ARENA)->push_struct_(sizeof(char), LEN+1)
+#define push_struct(ARENA, TYPE) ((TYPE*)push_struct_((ARENA), sizeof(TYPE), 1))
+#define push_array(ARENA, TYPE, COUNT) ((TYPE*)push_struct_((ARENA), sizeof(TYPE), COUNT))
+#define push_string(ARENA, LEN) (char*)push_struct_((ARENA), sizeof(char), LEN+1)
 
-void* MemoryArena::push_struct_(int elem_size, int count)
+void* push_struct_(MemoryArena* arena, int elem_size, int count)
 {
   assert(count > 0);
 
-  void* element = free;
-  free = free + elem_size*count;
+  void* element = arena->free;
+  arena->free += elem_size*count;
 
   if(DEBUG_check_arena_bounds)
   {
-    arena_check_bounds(this);
+    check_arena_bounds(arena);
   }
+
   if(DEBUG_zero_struct)
   {
-    zero_range(element, free);
+    mem_zero_range(element, arena->free);
   }
   return element;
 }

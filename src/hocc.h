@@ -51,15 +51,6 @@ struct MemoryArena
   uint8* cap;
   struct MemoryArena* prev_arena;
   struct String* str;
-
-  static MemoryArena* create(int size);
-  static MemoryArena* push(MemoryArena** arena, int size);
-  static void         pop(MemoryArena** arena);
-  static void         begin_temp_memory(MemoryArena** arena);
-  static void         end_temp_memory(MemoryArena** arena);
-  void  dealloc();
-  void* push_struct_(int elem_size, int count);
-  void  check_bounds(int elem_size, void* ptr);
 };
 
 struct String

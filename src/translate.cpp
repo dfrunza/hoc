@@ -150,17 +150,17 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
 
 bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text, String** x86_text)
 {
-  MemoryArena* gp_arena = MemoryArena::push(&arena, 2*MEGABYTE);
-  TypePass* type_pass = TypePass::create(MemoryArena::push(&arena, 2*MEGABYTE));
+  MemoryArena* gp_arena = push_arena(&arena, 2*MEGABYTE);
+  TypePass* type_pass = TypePass::create(push_arena(&arena, 2*MEGABYTE));
 
   SymbolPass sym_pass = {};
-  sym_pass.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_pass);
+  sym_pass.init(gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass);
 
   IrContext ir_context = {};
-  ir_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), type_pass, &sym_pass);
+  ir_context.init(gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass, &sym_pass);
 
   X86Context x86_context = {};
-  x86_context.init(gp_arena, MemoryArena::push(&arena, 2*MEGABYTE), MemoryArena::push(&arena, 2*MEGABYTE),
+  x86_context.init(gp_arena, push_arena(&arena, 2*MEGABYTE), push_arena(&arena, 2*MEGABYTE),
                    type_pass, &ir_context, &sym_pass);
 
   Parser* parser = Parser::create(gp_arena);

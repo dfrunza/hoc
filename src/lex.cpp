@@ -48,7 +48,7 @@ Token* lookup_keyword(char* lexeme)
   return result;
 }
 
-char* lex_install_lexeme(Lexer* lex, char* begin_char, char* end_char)
+char* install_lexeme(Lexer* lex, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
 
@@ -422,7 +422,7 @@ Lexer* new_lexer(MemoryArena* arena)
   return lexer;
 }
 
-void lex_set_input(Lexer* lex, char* text, char* file_path)
+void set_lexer_input(Lexer* lex, char* text, char* file_path)
 {
   lex->text = text;
   lex->cursor = text;
@@ -436,12 +436,12 @@ void lex_set_input(Lexer* lex, char* text, char* file_path)
   *lex->last_state = *lex;
 }
 
-void lex_putback_token(Lexer* lex)
+void putback_token(Lexer* lex)
 {
   *lex = *lex->last_state;
 }
 
-Token* lex_get_prev_token(Lexer* lex)
+Token* get_prev_token(Lexer* lex)
 {
   if(lex->last_state)
     lex->token = lex->last_state->token;
@@ -486,7 +486,7 @@ bool lex_get_asm_text(Lexer* lex)
   if(c == '}')
   {
     char* end_char = lex->cursor - 1;
-    char* lexeme = lex_install_lexeme(lex, begin_char, end_char);
+    char* lexeme = install_lexeme(lex, begin_char, end_char);
 
     lex->token.kind = eToken_asm_text;
     lex->token.lexeme = lexeme;
@@ -503,7 +503,7 @@ bool lex_get_asm_text(Lexer* lex)
   return success;
 }
 
-bool lex_get_next_token(Lexer* lex)
+bool get_next_token(Lexer* lex)
 {
   bool success = true;
   *lex->last_state = *lex;
@@ -526,7 +526,7 @@ loop:
     }
 
     char* end_char = lex->cursor - 1;
-    char* lexeme = lex_install_lexeme(lex, begin_char, end_char);
+    char* lexeme = install_lexeme(lex, begin_char, end_char);
 
     lex->token.kind = eToken_id;
     lex->token.lexeme = lexeme;
@@ -574,7 +574,7 @@ loop:
       }
     }
     digit_buf[i] = '\0';
-    lex->token.lexeme = lex_install_lexeme(lex, digit_buf, digit_buf + i-1);
+    lex->token.lexeme = install_lexeme(lex, digit_buf, digit_buf + i-1);
 
     if(is_float)
     {

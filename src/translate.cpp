@@ -163,11 +163,11 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   x86_context.init(gp_arena, push_arena(&arena, 2*MEGABYTE), push_arena(&arena, 2*MEGABYTE),
                    type_pass, &ir_context, &sym_pass);
 
-  Parser* parser = Parser::create(gp_arena);
+  Parser* parser = new_parser(gp_arena);
   PlatformFile* file = platform_file_open(gp_arena, file_path);
-  parser->set_input(hoc_text, file);
+  set_parser_input(parser, hoc_text, file);
 
-  if(!parser->parse_module())
+  if(!parse_module(parser))
   {
     return false;
   }

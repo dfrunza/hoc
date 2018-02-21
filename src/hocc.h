@@ -87,8 +87,6 @@ struct SourceLoc
   char* file_path;
   int   line_nr;
   char* src_line;
-
-  SourceLoc* clone(MemoryArena* arena);
 };
 
 enum eToken
@@ -1157,68 +1155,6 @@ struct Parser
   AstNode* module;
   PlatformFile* file;
   List* includes;
-
-  static char* get_operator_printstr(eOperator op);
-  static Parser* create(MemoryArena* arena);
-  Parser*    create_included();
-  void       set_input(char* text, PlatformFile* file);
-  bool       get_next_token();
-  void       putback_token();
-  SourceLoc* clone_source_loc();
-  AstNode*   create_ast_node(eAstNode kind);
-  bool       consume_semicolon();
-  AstNode*   find_include(PlatformFile* file);
-
-  bool parse_actual_args(AstNode* args);
-  bool parse_rest_of_actual_args(AstNode* args);
-  bool parse_call(AstNode* left_node, AstNode** node);
-  bool parse_index_recursive(AstNode* left_node, AstNode** node, int* ndim);
-  bool parse_index(AstNode* left_node, AstNode** node);
-  bool parse_rest_of_unr_expr(AstNode* left_node, AstNode** node);
-  bool parse_factor(AstNode** node);
-  bool parse_rest_of_factor(AstNode* left_node, AstNode** node);
-  bool parse_term(AstNode** node);
-  bool parse_rest_of_term(AstNode* left_node, AstNode** node);
-  bool parse_assignment(AstNode** node);
-  bool parse_rest_of_assignment(AstNode* left_node, AstNode** node);
-  bool parse_id(AstNode** node);
-  bool parse_basic_type(AstNode** node);
-  bool parse_rest_of_cast(AstNode* left_node, AstNode** node);
-  bool parse_rest_of_deref(AstNode** node);
-  bool parse_deref(AstNode** node);
-  bool parse_rest_of_array(AstNode** node);
-  bool parse_array(AstNode** node);
-  bool parse_cast(AstNode** node);
-  bool parse_pointer(AstNode* left_node, AstNode** node);
-  bool parse_rest_of_selector(AstNode* left_node, AstNode** node);
-  bool parse_lit(AstNode** node);
-  bool parse_selector(AstNode** node);
-  bool parse_formal_arg(AstNode** node);
-  bool parse_unr_expr(AstNode** node);
-  bool parse_expr(AstNode** node);
-  bool parse_modifier(eModifier* modifier);
-  bool parse_rest_of_formal_args(AstNode* args);
-  bool parse_formal_args(AstNode* args);
-  bool parse_empty(AstNode** node);
-  bool parse_block(AstNode** node);
-  bool parse_else(AstNode** node);
-  bool parse_if(AstNode** node);
-  bool parse_do_while(AstNode** node);
-  bool parse_while(AstNode** node);
-  bool parse_return(AstNode** node);
-  bool parse_continue(AstNode** node);
-  bool parse_break(AstNode** node);
-  bool parse_block_var(char* name, eModifier modifier, AstNode* var_type, AstNode** node);
-  bool parse_block_stmt(AstNode** node);
-  bool parse_block_stmts(AstNode* block);
-  bool parse_proc_body(AstNode* proc);
-  bool parse_module_proc(char* name, eModifier modifier, AstNode* ret_type, AstNode** node);
-  bool parse_module_var(char* name, eModifier modifier, AstNode* var_type, AstNode** node);
-  bool parse_module_include(AstNode** node);
-  bool parse_module_stmt(AstNode** node);
-  bool parse_module_stmts(AstNode* module);
-  bool parse_module_body(AstNode* module);
-  bool parse_module();
 };
 
 enum eStorageSpace

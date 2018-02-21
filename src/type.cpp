@@ -2678,7 +2678,7 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
         else
         {
           success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  Parser::get_operator_printstr(op), operands_ty->get_printstr(arena));
+                                  get_operator_printstr(op), operands_ty->get_printstr(arena));
         }
       }
       break;
@@ -2693,7 +2693,7 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
         else
         {
           success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  Parser::get_operator_printstr(op), operands_ty->get_printstr(arena));
+                                  get_operator_printstr(op), operands_ty->get_printstr(arena));
         }
       }
       break;
@@ -2708,7 +2708,7 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
         }
         else
           success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  Parser::get_operator_printstr(op), operands_ty->get_printstr(arena));
+                                  get_operator_printstr(op), operands_ty->get_printstr(arena));
       }
       break;
       
@@ -2721,7 +2721,7 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
       }
       else
         success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                Parser::get_operator_printstr(op), operands_ty->get_printstr(arena));
+                                get_operator_printstr(op), operands_ty->get_printstr(arena));
       break;
       
       case eOperator_bit_shift_left:
@@ -2732,7 +2732,7 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
       }
       else
         success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                Parser::get_operator_printstr(op), operands_ty->get_printstr(arena));
+                                get_operator_printstr(op), operands_ty->get_printstr(arena));
       break;
       
       case eOperator_less:
@@ -2754,7 +2754,7 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
         else
         {
           success = compile_error(arena, bin_expr->src_loc, "type error: `%s` cannot be applied to `%s` operands",
-                                  Parser::get_operator_printstr(op), operands_ty->get_printstr(arena));
+                                  get_operator_printstr(op), operands_ty->get_printstr(arena));
         }
       }
       break;
@@ -2790,7 +2790,7 @@ bool TypePass_Check::visit_unr_expr(AstNode* unr_expr)
       }
       else
         success = compile_error(arena, unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                Parser::get_operator_printstr(op), operand_ty->get_printstr(arena));
+                                get_operator_printstr(op), operand_ty->get_printstr(arena));
       break;
       
       case eOperator_bit_not:
@@ -2800,7 +2800,7 @@ bool TypePass_Check::visit_unr_expr(AstNode* unr_expr)
       }
       else
         success = compile_error(arena, unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                Parser::get_operator_printstr(op), operand_ty->get_printstr(arena));
+                                get_operator_printstr(op), operand_ty->get_printstr(arena));
       break;
       
       case eOperator_neg:
@@ -2810,7 +2810,7 @@ bool TypePass_Check::visit_unr_expr(AstNode* unr_expr)
       }
       else
         success = compile_error(arena, unr_expr->src_loc, "type error: `%s` cannot be applied to `%s` operand",
-                                Parser::get_operator_printstr(op), operand_ty->get_printstr(arena));
+                                get_operator_printstr(op), operand_ty->get_printstr(arena));
       break;
     }
   }

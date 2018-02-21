@@ -14,7 +14,7 @@ void X86Context::init(MemoryArena* gp_arena, MemoryArena* stmt_arena, MemoryAren
   machine_word_size = 4;
   data_alignment = 4;
   init_registers();
-  text = String::create(text_arena);
+  text = str_new(text_arena);
 
   ir_context->x86_context = this;
   sym_pass->x86_context = this;
@@ -246,101 +246,101 @@ void X86Context::print_register(String* text, X86Location* reg)
   {
     /* 8-bit */
     case eX86Location::al:
-      text->append("al");
+      str_append(text, "al");
     break;
 
     case eX86Location::ah:
-      text->append("ah");
+      str_append(text, "ah");
     break;
 
     case eX86Location::bl:
-      text->append("bl");
+      str_append(text, "bl");
     break;
 
     case eX86Location::bh:
-      text->append("bh");
+      str_append(text, "bh");
     break;
 
     case eX86Location::cl:
-      text->append("cl");
+      str_append(text, "cl");
     break;
 
     case eX86Location::ch:
-      text->append("ch");
+      str_append(text, "ch");
     break;
 
     case eX86Location::dl:
-      text->append("dl");
+      str_append(text, "dl");
     break;
 
     case eX86Location::dh:
-      text->append("dh");
+      str_append(text, "dh");
     break;
 
     /* 32-bit */
     case eX86Location::eax:
-      text->append("eax");
+      str_append(text, "eax");
     break;
 
     case eX86Location::ebx:
-      text->append("ebx");
+      str_append(text, "ebx");
     break;
 
     case eX86Location::ecx:
-      text->append("ecx");
+      str_append(text, "ecx");
     break;
 
     case eX86Location::edx:
-      text->append("edx");
+      str_append(text, "edx");
     break;
 
     case eX86Location::ebp:
-      text->append("ebp");
+      str_append(text, "ebp");
     break;
 
     case eX86Location::esp:
-      text->append("esp");
+      str_append(text, "esp");
     break;
 
     case eX86Location::esi:
-      text->append("esi");
+      str_append(text, "esi");
     break;
 
     case eX86Location::edi:
-      text->append("edi");
+      str_append(text, "edi");
     break;
 
     /* xmm */
     case eX86Location::xmm0:
-      text->append("xmm0");
+      str_append(text, "xmm0");
     break;
 
     case eX86Location::xmm1:
-      text->append("xmm1");
+      str_append(text, "xmm1");
     break;
 
     case eX86Location::xmm2:
-      text->append("xmm2");
+      str_append(text, "xmm2");
     break;
 
     case eX86Location::xmm3:
-      text->append("xmm3");
+      str_append(text, "xmm3");
     break;
 
     case eX86Location::xmm4:
-      text->append("xmm4");
+      str_append(text, "xmm4");
     break;
 
     case eX86Location::xmm5:
-      text->append("xmm5");
+      str_append(text, "xmm5");
     break;
 
     case eX86Location::xmm6:
-      text->append("xmm6");
+      str_append(text, "xmm6");
     break;
 
     case eX86Location::xmm7:
-      text->append("xmm7");
+      str_append(text, "xmm7");
     break;
 
     default: assert(0);
@@ -374,11 +374,11 @@ void X86Context::print_operand(String* text, X86Operand* operand)
     {
       if(operand->kind == eX86Operand::memory)
       {
-        text->format("%s ptr [", make_type_directive(operand->index.type));
+        str_format(text, "%s ptr [", make_type_directive(operand->index.type));
       }
       else if(operand->kind == eX86Operand::address)
       {
-        text->append("[");
+        str_append(text, "[");
       }
       else assert(0);
 
@@ -399,10 +399,10 @@ void X86Context::print_operand(String* text, X86Operand* operand)
             sign = "";
           }
         }
-        text->format("%s", sign);
+        str_format(text, "%s", sign);
         print_operand(text, offset);
       }
-      text->append("]");
+      str_append(text, "]");
     }
     break;
 
@@ -418,7 +418,7 @@ void X86Context::print_operand(String* text, X86Operand* operand)
 
       if(constant->kind == eX86Constant::int_)
       {
-        text->format("%d", constant->int_val);
+        str_format(text, "%d", constant->int_val);
       }
       else if(constant->kind == eX86Constant::float_)
       {
@@ -431,14 +431,14 @@ void X86Context::print_operand(String* text, X86Operand* operand)
         union BitcastFtoI val = {0};
         val.float_val = constant->float_val;
 
-        text->format("0%xh", val.int_val);
+        str_format(text, "0%xh", val.int_val);
       }
       else if(constant->kind == eX86Constant::char_)
       {
         if(constant->char_val >= ' ' && constant->char_val <= '~')
-          text->format("'%c'", constant->char_val);
+          str_format(text, "'%c'", constant->char_val);
         else
-          text->format("%d", constant->char_val);
+          str_format(text, "%d", constant->char_val);
       }
       else assert(0);
     }
@@ -446,7 +446,7 @@ void X86Context::print_operand(String* text, X86Operand* operand)
 
     case eX86Operand::id:
     {
-      text->format("%s", operand->id);
+      str_format(text, "%s", operand->id);
     }
     break;
 
@@ -459,143 +459,143 @@ void X86Context::print_opcode(String* text, eX86Stmt opcode)
   switch(opcode)
   {
     case eX86Stmt::call:
-      text->append("call ");
+      str_append(text, "call ");
     break;
 
     case eX86Stmt::pop:
-      text->append("pop ");
+      str_append(text, "pop ");
     break;
 
     case eX86Stmt::push:
-      text->append("push ");
+      str_append(text, "push ");
     break;
 
     case eX86Stmt::lea:
-      text->append("lea ");
+      str_append(text, "lea ");
     break;
 
     /* integer ops */
     case eX86Stmt::mov:
-      text->append("mov ");
+      str_append(text, "mov ");
     break;
 
     case eX86Stmt::add:
-      text->append("add ");
+      str_append(text, "add ");
     break;
 
     case eX86Stmt::sub:
-      text->append("sub ");
+      str_append(text, "sub ");
     break;
 
     case eX86Stmt::imul:
-      text->append("imul ");
+      str_append(text, "imul ");
     break;
 
     case eX86Stmt::cdq:
-      text->append("cdq");
+      str_append(text, "cdq");
     break;
 
     case eX86Stmt::idiv:
-      text->append("idiv ");
+      str_append(text, "idiv ");
     break;
 
     case eX86Stmt::neg:
-      text->append("neg ");
+      str_append(text, "neg ");
     break;
 
     case eX86Stmt::cmp:
-      text->append("cmp ");
+      str_append(text, "cmp ");
     break;
 
     case eX86Stmt::or_:
-      text->append("or ");
+      str_append(text, "or ");
     break;
 
     case eX86Stmt::and_:
-      text->append("and ");
+      str_append(text, "and ");
     break;
 
     case eX86Stmt::not_:
-      text->append("not ");
+      str_append(text, "not ");
     break;
 
     /* integer jumps */
     case eX86Stmt::jz:
-      text->append("jz ");
+      str_append(text, "jz ");
     break;
 
     case eX86Stmt::jnz:
-      text->append("jnz ");
+      str_append(text, "jnz ");
     break;
 
     case eX86Stmt::jl:
-      text->append("jl ");
+      str_append(text, "jl ");
     break;
 
     case eX86Stmt::jle:
-      text->append("jle ");
+      str_append(text, "jle ");
     break;
 
     case eX86Stmt::jg:
-      text->append("jg ");
+      str_append(text, "jg ");
     break;
 
     case eX86Stmt::jge:
-      text->append("jge ");
+      str_append(text, "jge ");
     break;
 
     /* floating point ops */
     case eX86Stmt::movss:
-      text->append("movss ");
+      str_append(text, "movss ");
     break;
 
     case eX86Stmt::addss:
-      text->append("addss ");
+      str_append(text, "addss ");
     break;
 
     case eX86Stmt::subss:
-      text->append("subss ");
+      str_append(text, "subss ");
     break;
 
     case eX86Stmt::mulss:
-      text->append("mulss ");
+      str_append(text, "mulss ");
     break;
 
     case eX86Stmt::divss:
-      text->append("divss ");
+      str_append(text, "divss ");
     break;
 
     case eX86Stmt::ucomiss:
-      text->append("ucomiss ");
+      str_append(text, "ucomiss ");
     break;
 
     /* floating point jumps */
     case eX86Stmt::jb:
-      text->append("jb ");
+      str_append(text, "jb ");
     break;
 
     case eX86Stmt::jbe:
-      text->append("jbe ");
+      str_append(text, "jbe ");
     break;
 
     case eX86Stmt::ja:
-      text->append("ja ");
+      str_append(text, "ja ");
     break;
 
     case eX86Stmt::jae:
-      text->append("jae ");
+      str_append(text, "jae ");
     break;
 
     case eX86Stmt::je:
-      text->append("je ");
+      str_append(text, "je ");
     break;
 
     case eX86Stmt::jne:
-      text->append("jne ");
+      str_append(text, "jne ");
     break;
 
     case eX86Stmt::jmp:
-      text->append("jmp ");
+      str_append(text, "jmp ");
     break;
 
     case eX86Stmt::nop:
@@ -603,16 +603,16 @@ void X86Context::print_opcode(String* text, eX86Stmt opcode)
     break;
 
     case eX86Stmt::ret:
-      text->append("ret ");
+      str_append(text, "ret ");
     break;
 
     /* conversion ops */
     case eX86Stmt::cvtsi2ss:
-      text->append("cvtsi2ss ");
+      str_append(text, "cvtsi2ss ");
     break;
 
     case eX86Stmt::cvttss2si:
-      text->append("cvttss2si ");
+      str_append(text, "cvttss2si ");
     break;
 
     default: assert(0);
@@ -626,15 +626,15 @@ void X86Context::print_stmt(String* text, X86Stmt* stmt)
     case eX86Stmt::label:
     {
       print_operand(text, stmt->operand1);
-      text->append(":");
+      str_append(text, ":");
     }
     break;
 
     case eX86Stmt::extern_proc:
     {
-      text->append("extern ");
+      str_append(text, "extern ");
       print_operand(text, stmt->operand1);
-      text->append(":proc");
+      str_append(text, ":proc");
     }
     break;
 
@@ -648,13 +648,13 @@ void X86Context::print_stmt(String* text, X86Stmt* stmt)
 
       if(stmt->operand2)
       {
-        text->append(", ");
+        str_append(text, ", ");
         print_operand(text, stmt->operand2);
       }
     }
   }
 
-  text->nl();
+  str_nl(text);
 }
 
 X86Stmt* X86Context::create_stmt(eX86Stmt opcode)
@@ -2086,15 +2086,15 @@ void X86Context::write_data_bytes(String* text, uint8* p_data, int data_size)
   int i;
   for(i = 0; i < data_size - 1; i++)
   {
-    text->format("0%xh,", p_data[i]);
+    str_format(text, "0%xh,", p_data[i]);
   }
 
   if(data_size > 0)
   {
-    text->format("0%xh", p_data[i]);
+    str_format(text, "0%xh", p_data[i]);
   }
 
-  text->nl();
+  str_nl(text);
 }
 
 void X86Context::write_static_data_text(String* text, Scope* scope)
@@ -2108,19 +2108,19 @@ void X86Context::write_static_data_text(String* text, Scope* scope)
     {
       if(object->data)
       {
-        text->append("byte ");
+        str_append(text, "byte ");
 
         write_data_bytes(text, (uint8*)object->data, object->ty->width);
 
         int padding_size = object->allocd_size - object->ty->width;
         if(padding_size > 0)
         {
-          text->format_nl("byte %d dup(?)", padding_size);
+          str_format_nl(text, "byte %d dup(?)", padding_size);
         }
       }
       else
       {
-        text->format_nl("byte %d dup(?)", object->allocd_size);
+        str_format_nl(text, "byte %d dup(?)", object->allocd_size);
       }
     }
   }
@@ -2143,24 +2143,24 @@ void X86Context::gen(AstNode* module, char* title)
 {
   gen_module(module);
 
-  text->format_nl("title %s", title);
-  text->append_nl(".686");
-  text->append_nl(".xmm");
-  text->append_nl(".model flat, C");
-  text->format_nl(".stack %d", 1*MEGABYTE);
-  text->append_nl(".data");
-  text->append_nl("static_area label byte");
-  text->format_nl("align %d", data_alignment);
+  str_format_nl(text, "title %s", title);
+  str_append_nl(text, ".686");
+  str_append_nl(text, ".xmm");
+  str_append_nl(text, ".model flat, C");
+  str_format_nl(text, ".stack %d", 1*MEGABYTE);
+  str_append_nl(text, ".data");
+  str_append_nl(text, "static_area label byte");
+  str_format_nl(text, "align %d", data_alignment);
 
   write_static_data_text(text, module->module.scope);
 
-  text->append_nl(".code");
-  text->append_nl("public startup");
+  str_append_nl(text, ".code");
+  str_append_nl(text, "public startup");
 
   for(int i = 0; i < stmt_count; i++)
   {
     print_stmt(text, &stmt_array[i]);
   }
 
-  text->append_nl("end");
+  str_append_nl(text, "end");
 }

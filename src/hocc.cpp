@@ -189,14 +189,14 @@ bool OutFileNames::make(MemoryArena* arena, char* src_file_path)
   if((working_dir_len > 0) && (working_dir_len < buf_len))
   {
     String str = {};
-    str.init(arena);
-    str.append(src_file_path);
-    title = str.cap();
+    str_init(&str, arena);
+    str_append(&str, src_file_path);
+    title = str_cap(&str);
     title = platform_path_make_file_name(title, false);
 
-    str.init(arena);
-    str.format("%s\\%s.asm", working_dir, title);
-    asm_file = str.cap();
+    str_init(&str, arena);
+    str_format(&str, "%s\\%s.asm", working_dir, title);
+    asm_file = str_cap(&str);
   }
   else
     success = error("working directory could not be retrieved");
@@ -209,15 +209,15 @@ bool assemble(MemoryArena* arena, OutFileNames* out_files)
   bool success = true;
 
   String str = {};
-  str.init(arena);
+  str_init(&str, arena);
   /*
       /Cx     - preserve case in publics, externs
       /Zi     - add symbolic debug info
       /Fl     - generate listing
       /c      - assemble without linking
   */
-  str.format("ml.exe /Zi /Cx /nologo %s /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib", out_files->asm_file);
-  char* ml_args = str.cap();
+  str_format(&str, "ml.exe /Zi /Cx /nologo %s /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib", out_files->asm_file);
+  char* ml_args = str_cap(&str);
 
   STARTUPINFOA ml_startup_info = {};
   ml_startup_info.cb = sizeof(STARTUPINFOA);
@@ -282,7 +282,7 @@ int main(int argc, char* argv[])
     return make_exit_code(success);
   }
 
-  int x86_text_len = x86_text->len();
+  int x86_text_len = str_len(x86_text);
   int bytes_written = platform_file_write_bytes(out_files.asm_file, (uint8*)x86_text->head, x86_text_len);
   if(bytes_written != x86_text_len)
   {

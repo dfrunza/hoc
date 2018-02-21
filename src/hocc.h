@@ -58,19 +58,6 @@ struct String
   char* head;
   char* end;
   MemoryArena* arena;
-
-  static String* create(MemoryArena* arena);
-  void  init(MemoryArena* arena);
-  int   len();
-  void  append(char* cstr);
-  void  append_nl(char* cstr);
-  int   format_va(char* fmessage, va_list args);
-  int   format(char* ftext, ...);
-  int   format_nl(char* fline, ...);
-  void  nl();
-  void  tidyup();
-  char* cap();
-  bool  dump_to_file(char* file_path);
 };
 
 int platform_printf(char* format, ...);

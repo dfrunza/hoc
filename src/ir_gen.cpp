@@ -1266,10 +1266,10 @@ bool IrContext::visit_proc(Scope* scope, AstNode* proc)
     int arg_size = get_proc_arg_size(proc->proc.args);
     char* name = proc->proc.name;
     String decorated_label = {};
-    decorated_label.init(gp_arena);
-    decorated_label.format("%s@%d", name, arg_size);
+    str_init(&decorated_label, gp_arena);
+    str_format(&decorated_label, "%s@%d", name, arg_size);
 
-    label_name->name = decorated_label.cap();
+    label_name->name = str_cap(&decorated_label);
   }
   else
   {
@@ -1353,111 +1353,111 @@ void IrContext::DEBUG_print_ir_op(String* text, eIrOp op)
   switch(op)
   {
     case eIrOp::add:
-      text->append("+");
+      str_append(text, "+");
     break;
     
     case eIrOp::sub:
-      text->append("-");
+      str_append(text, "-");
     break;
     
     case eIrOp::mul:
-      text->append("*");
+      str_append(text, "*");
     break;
     
     case eIrOp::div:
-      text->append("/");
+      str_append(text, "/");
     break;
     
     case eIrOp::mod:
-      text->append("mod");
+      str_append(text, "mod");
     break;
     
     case eIrOp::neg:
-      text->append("-");
+      str_append(text, "-");
     break;
     
     case eIrOp::eq:
-      text->append("==");
+      str_append(text, "==");
     break;
     
     case eIrOp::not_eq_:
-      text->append("<>");
+      str_append(text, "<>");
     break;
     
     case eIrOp::less:
-      text->append("<");
+      str_append(text, "<");
     break;
     
     case eIrOp::less_eq:
-      text->append("<=");
+      str_append(text, "<=");
     break;
     
     case eIrOp::greater:
-      text->append(">");
+      str_append(text, ">");
     break;
     
     case eIrOp::greater_eq:
-      text->append(">=");
+      str_append(text, ">=");
     break;
     
     case eIrOp::logic_and:
-      text->append("and");
+      str_append(text, "and");
     break;
     
     case eIrOp::logic_or:
-      text->append("or");
+      str_append(text, "or");
     break;
     
     case eIrOp::logic_not:
-      text->append("not");
+      str_append(text, "not");
     break;
     
     case eIrOp::bit_and:
-      text->append("&");
+      str_append(text, "&");
     break;
     
     case eIrOp::bit_or:
-      text->append("|");
+      str_append(text, "|");
     break;
     
     case eIrOp::bit_xor:
-      text->append("~");
+      str_append(text, "~");
     break;
     
     case eIrOp::bit_not:
-      text->append("!");
+      str_append(text, "!");
     break;
     
     case eIrOp::bit_shift_left:
-      text->append("<<");
+      str_append(text, "<<");
     break;
     
     case eIrOp::bit_shift_right:
-      text->append(">>");
+      str_append(text, ">>");
     break;
     
     case eIrOp::itof:
-      text->append("itof");
+      str_append(text, "itof");
     break;
     
     case eIrOp::itoc:
-      text->append("itoc");
+      str_append(text, "itoc");
     break;
     
     case eIrOp::itob:
-      text->append("itob");
+      str_append(text, "itob");
     break;
     
     case eIrOp::ftoi:
-      text->append("ftoi");
+      str_append(text, "ftoi");
     break;
     
     case eIrOp::ctoi:
-      text->append("ctoi");
+      str_append(text, "ctoi");
     break;
     
     case eIrOp::btoi:
-      text->append("btoi");
+      str_append(text, "btoi");
     break;
     
     default: assert(0);
@@ -1472,7 +1472,7 @@ void IrContext::DEBUG_print_ir_arg(String* text, IrArg* arg)
   {
     case eSymbol::None:
     {
-      text->format("%s", arg->object->name);
+      str_format(text, "%s", arg->object->name);
     }
     break;
     
@@ -1480,21 +1480,21 @@ void IrContext::DEBUG_print_ir_arg(String* text, IrArg* arg)
     {
       if(object->ty->equal(basic_type_int) || object->ty->equal(basic_type_bool))
       {
-        text->format("%d", object->int_val);
+        str_format(text, "%d", object->int_val);
       }
       else if(object->ty->equal(basic_type_float))
       {
-        text->format("%f", object->float_val);
+        str_format(text, "%f", object->float_val);
       }
       else if(object->ty->equal(basic_type_char))
       {
         char buf[3] = {0};
         cstr_print_char(buf, object->char_val);
-        text->format("'%s'", buf);
+        str_format(text, "'%s'", buf);
       }
       else if(object->ty->equal(basic_type_str))
       {
-        text->format("\"%s\"", object->str_val);
+        str_format(text, "\"%s\"", object->str_val);
       }
       else assert(0);
     }
@@ -1517,7 +1517,7 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         case eIrOp::None:
         {
           DEBUG_print_ir_arg(text, assign->result);
-          text->append(" = ");
+          str_append(text, " = ");
           DEBUG_print_ir_arg(text, assign->arg1);
         }
         break;
@@ -1545,11 +1545,11 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         case eIrOp::bit_shift_right:
         {
           DEBUG_print_ir_arg(text, assign->result);
-          text->append(" = ");
+          str_append(text, " = ");
           DEBUG_print_ir_arg(text, assign->arg1);
-          text->append(" ");
+          str_append(text, " ");
           DEBUG_print_ir_op(text, assign->op);
-          text->append(" ");
+          str_append(text, " ");
           DEBUG_print_ir_arg(text, assign->arg2);
         }
         break;
@@ -1564,9 +1564,9 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         case eIrOp::btoi:
         {
           DEBUG_print_ir_arg(text, assign->result);
-          text->append(" = ");
+          str_append(text, " = ");
           DEBUG_print_ir_op(text, assign->op);
-          text->append(" ");
+          str_append(text, " ");
           DEBUG_print_ir_arg(text, assign->arg1);
         }
         break;
@@ -1574,9 +1574,9 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         case eIrOp::index_dest:
         {
           DEBUG_print_ir_arg(text, assign->result);
-          text->append("[");
+          str_append(text, "[");
           DEBUG_print_ir_arg(text, assign->arg2);
-          text->append("] = ");
+          str_append(text, "] = ");
           DEBUG_print_ir_arg(text, assign->arg1);
         }
         break;
@@ -1584,27 +1584,27 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         case eIrOp::index_source:
         {
           DEBUG_print_ir_arg(text, assign->result);
-          text->append(" = ");
+          str_append(text, " = ");
           DEBUG_print_ir_arg(text, assign->arg1);
-          text->append("[");
+          str_append(text, "[");
           DEBUG_print_ir_arg(text, assign->arg2);
-          text->append("]");
+          str_append(text, "]");
         }
         break;
 
         case eIrOp::address_of:
         {
           DEBUG_print_ir_arg(text, assign->result);
-          text->append(" = &");
+          str_append(text, " = &");
           DEBUG_print_ir_arg(text, assign->arg1);
         }
         break;
 
         case eIrOp::deref_dest:
         {
-          text->append("^");
+          str_append(text, "^");
           DEBUG_print_ir_arg(text, assign->result);
-          text->append(" = ");
+          str_append(text, " = ");
           DEBUG_print_ir_arg(text, assign->arg1);
         }
         break;
@@ -1612,7 +1612,7 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         case eIrOp::deref_source:
         {
           DEBUG_print_ir_arg(text, assign->result);
-          text->append(" = ^");
+          str_append(text, " = ^");
           DEBUG_print_ir_arg(text, assign->arg1);
         }
         break;
@@ -1625,45 +1625,45 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
     case eIrStmt::cond_goto:
     {
       IrStmt_CondGoto* cond_goto = &stmt->cond_goto;
-      text->append("if ");
+      str_append(text, "if ");
       DEBUG_print_ir_arg(text, cond_goto->arg1);
-      text->append(" ");
+      str_append(text, " ");
       DEBUG_print_ir_op(text, cond_goto->relop);
-      text->append(" ");
+      str_append(text, " ");
       DEBUG_print_ir_arg(text, cond_goto->arg2);
-      text->format(" goto %s", cond_goto->goto_label->name);
+      str_format(text, " goto %s", cond_goto->goto_label->name);
     }
     break;
     
     case eIrStmt::goto_:
     {
       IrStmt_Goto* goto_ = &stmt->goto_;
-      text->format("goto %s", goto_->goto_label->name);
+      str_format(text, "goto %s", goto_->goto_label->name);
     }
     break;
     
     case eIrStmt::call:
     {
       IrStmt_Call* call = &stmt->call;
-      text->format("call %s", call->name->name);
+      str_format(text, "call %s", call->name->name);
     }
     break;
     
     case eIrStmt::return_:
     {
-      text->append("return");
+      str_append(text, "return");
     }
     break;
     
     case eIrStmt::nop:
     {
-      text->append("nop");
+      str_append(text, "nop");
     }
     break;
     
     default:
     {
-      text->append("???");
+      str_append(text, "???");
     }
   }
 }
@@ -1676,11 +1676,11 @@ void IrContext::DEBUG_print_basic_block(String* text, BasicBlock* bb)
     IrStmt* stmt = stmt_array[i];
     if(stmt->label)
     {
-      text->format_nl("%10s:", stmt->label->name);
+      str_format_nl(text, "%10s:", stmt->label->name);
     }
-    text->format("%10d: ", i);
+    str_format(text, "%10d: ", i);
     DEBUG_print_ir_stmt(text, stmt);
-    text->nl();
+    str_nl(text);
   }
 }
 
@@ -1688,7 +1688,7 @@ void IrContext::DEBUG_print_ir_code(List* procs, char* file_path)
 {
   begin_temp_memory(&gp_arena);
   String text = {};
-  text.init(gp_arena);
+  str_init(&text, gp_arena);
 
   for(ListItem* li = procs->first;
       li;
@@ -1702,7 +1702,7 @@ void IrContext::DEBUG_print_ir_code(List* procs, char* file_path)
     }
     else
     {
-      text.format_nl("%10s:", proc->proc.name);
+      str_format_nl(&text, "%10s:", proc->proc.name);
 
       List* basic_blocks = proc->proc.basic_blocks;
       for(ListItem* li = basic_blocks->first;
@@ -1715,7 +1715,7 @@ void IrContext::DEBUG_print_ir_code(List* procs, char* file_path)
     }
   }
 
-  text.dump_to_file(file_path);
+  str_dump_to_file(&text, file_path);
   end_temp_memory(&gp_arena);
 }
 

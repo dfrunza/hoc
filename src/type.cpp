@@ -528,17 +528,17 @@ void Type::append_printstr(String* str)
     case eType::basic:
     {
       if(basic.kind == eBasicType::bool_)
-        str->append("bool");
+        str_append(str, "bool");
       else if(basic.kind == eBasicType::int_)
-        str->append("int");
+        str_append(str, "int");
       else if(basic.kind == eBasicType::float_)
-        str->append("float");
+        str_append(str, "float");
       else if(basic.kind == eBasicType::char_)
-        str->append("char");
+        str_append(str, "char");
       else if(basic.kind == eBasicType::void_)
-        str->append("void");
+        str_append(str, "void");
       else if(basic.kind == eBasicType::auto_)
-        str->append("auto");
+        str_append(str, "auto");
       else
         assert(0);
     }
@@ -547,26 +547,26 @@ void Type::append_printstr(String* str)
     case eType::pointer:
     {
       pointer.pointee->append_printstr(str);
-      str->append("^");
+      str_append(str, "^");
     }
     break;
 
     case eType::array:
     {
-      str->append("(");
+      str_append(str, "(");
       if(array.size >= 0)
-        str->format("[%d]", array.size);
+        str_format(str, "[%d]", array.size);
       else
-        str->append("[]");
+        str_append(str, "[]");
       array.elem->append_printstr(str);
-      str->append(")");
+      str_append(str, ")");
     }
     break;
 
     case eType::product:
     {
       product.left->append_printstr(str);
-      str->append(", ");
+      str_append(str, ", ");
       product.right->append_printstr(str);
     }
     break;
@@ -574,9 +574,9 @@ void Type::append_printstr(String* str)
     case eType::proc:
     {
       proc.ret->append_printstr(str);
-      str->append(" (");
+      str_append(str, " (");
       proc.args->append_printstr(str);
-      str->append(")");
+      str_append(str, ")");
     }
     break;
 
@@ -588,7 +588,7 @@ void Type::append_printstr(String* str)
 
     case eType::typevar:
     {
-      str->format("type_%d", typevar.id);
+      str_format(str, "type_%d", typevar.id);
     }
     break;
 
@@ -599,10 +599,10 @@ void Type::append_printstr(String* str)
 char* Type::get_printstr(MemoryArena* arena)
 {
   String str = {};
-  str.init(arena);
+  str_init(&str, arena);
   append_printstr(&str);
 
-  return str.cap();
+  return str_cap(&str);
 }
 
 //     SET TYPES

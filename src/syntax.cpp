@@ -1749,13 +1749,13 @@ bool Parser::parse_module_include(AstNode** node)
       {
         /* Make the full path to the included file, relative to the location of the current file. */
         String str = {};
-        str.init(arena);
-        str.append(src_loc->file_path);
+        str_init(&str, arena);
+        str_append(&str, src_loc->file_path);
         platform_path_make_dir(str.head);
-        str.tidyup();
-        str.append(token->str_val);
+        str_tidyup(&str);
+        str_append(&str, token->str_val);
 
-        include->include.file_path = str.cap();
+        include->include.file_path = str_cap(&str);
 
         if(success = get_next_token() && consume_semicolon())
         {

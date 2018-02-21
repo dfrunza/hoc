@@ -327,119 +327,126 @@ void cstr_print_char(char buf[3], char c)
 
 /* TODO: Check arena boundaries in the str_* functions */
 
-void String::init(MemoryArena* arena)
+void str_init(String* str, MemoryArena* arena)
 {
   // Two Strings cannot be both attached to the same Arena at the same time
   assert(!arena->str);
 
-  this->arena = arena;
-  head = push_struct(arena, char);
-  end = head;
-  arena->str = this;
+  str->arena = arena;
+  str->head = push_struct(arena, char);
+  str->end = str->head;
+  arena->str = str;
 }
 
-String* String::create(MemoryArena* arena)
+String* str_new(MemoryArena* arena)
 {
   String* str = push_struct(arena, String);
-  str->init(arena);
+  str_init(str, arena);
 
   return str;
 }
 
-int String::len()
+int str_len(String* str)
 {
-  assert(head <= end);
-  int len = (int)(end - head);
+  assert(str->head <= str->end);
+  int len = (int)(str->end - str->head);
   return len;
 }
 
-void String::append_nl(char* cstr)
+void str_append(String* str, char* cstr)
 {
-  append(cstr);
-  nl();
-}
-
-void String::append(char* cstr)
-{
-  assert(head && end && arena);
-  assert(head <= end);
-  assert(end == (char*)arena->free-1);
+  assert(str->head && str->end && str->arena);
+  assert(str->head <= str->end);
+  assert(str->end == (char*)str->arena->free-1);
 
   int len = cstr_len(cstr);
   if(len > 0)
   {
-    push_array(arena, char, len); // will implicitly check arena bounds
-    cstr_copy(end, cstr);
-    end = (char*)arena->free-1;
+    push_array(str->arena, char, len); // will implicitly check arena bounds
+    cstr_copy(str->end, cstr);
+    str->end = (char*)str->arena->free-1;
   }
 }
 
-int String::format_va(char* fmessage, va_list args)
+void str_nl(String* str)
 {
-  assert(head && end && arena);
-  assert(head <= end);
-  assert(end == (char*)arena->free-1);
+  str_append(str, "\n");
+}
 
-  int len = platform_sprintf_va(end, fmessage, args);
-  end += len;
-  assert(end < (char*)arena->cap);
-  arena->free = (uint8*)end+1;
+void str_append_nl(String* str, char* cstr)
+{
+  str_append(str, cstr);
+  str_nl(str);
+}
+
+int str_format_va(String* str, char* fmessage, va_list args)
+{
+  assert(str->head && str->end && str->arena);
+  assert(str->head <= str->end);
+  assert(str->end == (char*)str->arena->free-1);
+
+  int len = platform_sprintf_va(str->end, fmessage, args);
+  str->end += len;
+  assert(str->end < (char*)str->arena->cap);
+  str->arena->free = (uint8*)str->end+1;
 
   return len;
 }
 
-int String::format(char* ftext, ...)
+int str_format(String* str, char* ftext, ...)
 {
   va_list args;
   va_start(args, ftext);
 
-  int text_len = format_va(ftext, args);
+  int text_len = str_format_va(str, ftext, args);
 
   va_end(args);
   return text_len;
 }
 
-int String::format_nl(char* fline, ...)
+int str_format_nl(String* str, char* fline, ...)
 {
   va_list args;
   va_start(args, fline);
 
-  int text_len = format_va(fline, args);
+  int text_len = str_format_va(str, fline, args);
 
   va_end(args);
 
-  append("\n");
+  str_append(str, "\n");
   text_len++;
 
   return text_len;
 }
 
-void String::nl()
+void str_tidyup(String* str)
 {
-  append("\n");
-}
-
-void String::tidyup()
-{
-  assert(head <= end);
-  if(end > head)
+  assert(str->head <= str->end);
+  if(str->end > str->head)
   {
-    char* p_end = end - 1;
-    while(p_end >= head && *p_end)
+    char* p_end = str->end - 1;
+    while(p_end >= str->head && *p_end)
     {
       p_end--;
     }
-    end = p_end;
-    arena->free = (uint8*)end+1;
+    str->end = p_end;
+    str->arena->free = (uint8*)str->end+1;
   }
 }
 
-char* String::cap()
+char* str_cap(String* str)
 {
-  *(end++) = 0;
-  assert(end < (char*)arena->cap);
-  arena->str = 0;
-  return head;
+  *(str->end++) = 0;
+  assert(str->end < (char*)str->arena->cap);
+  str->arena->str = 0;
+  return str->head;
+}
+
+bool str_dump_to_file(String* str, char* file_path)
+{
+  int char_count = str_len(str);
+  int bytes_written = platform_file_write_bytes(file_path, (uint8*)str->head, char_count);
+  return (char_count == bytes_written);
 }
 
 char* platform_path_find_file_name(char* file_path)
@@ -563,13 +570,6 @@ bool compile_error_(MemoryArena* arena, char* file, int line, SourceLoc* src_loc
 
   va_end(args);
   return result;
-}
-
-bool String::dump_to_file(char* file_path)
-{
-  int char_count = len();
-  int bytes_written = platform_file_write_bytes(file_path, (uint8*)head, char_count);
-  return (char_count == bytes_written);
 }
 
 void List::init(MemoryArena* arena, eList kind)

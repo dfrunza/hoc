@@ -47,9 +47,9 @@ void gen_label_name(MemoryArena* arena, Label* label)
 char* gen_tempvar_name(MemoryArena* arena, char* label)
 {
   String str = {};
-  str.init(arena);
-  str.format("%s%d", label, tempvar_id++);
-  return str.cap();
+  str_init(&str, arena);
+  str_format(&str, "%s%d", label, tempvar_id++);
+  return str_cap(&str);
 }
 
 #if 0/*>>>*/

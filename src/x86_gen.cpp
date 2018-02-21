@@ -980,7 +980,7 @@ X86Operand* X86Context::make_index_operand(eX86Operand kind, Symbol* object)
     }
     break;
 
-    case eStorageSpace_static_:
+    case eStorageSpace_static:
     {
       base->kind = eX86Operand_id;
       base->id = "static_area";
@@ -2099,7 +2099,7 @@ void X86Context::write_static_data_text(String* text, Scope* scope)
       li = li->next)
   {
     Symbol* object = KIND(li, eList_symbol)->symbol;
-    if(object->storage_space == eStorageSpace_static_ && object->allocd_size > 0)
+    if(object->storage_space == eStorageSpace_static && object->allocd_size > 0)
     {
       if(object->data)
       {

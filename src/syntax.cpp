@@ -111,7 +111,7 @@ char* get_operator_printstr(eOperator op)
 SourceLoc* clone_source_loc(Parser* parser)
 {
   SourceLoc* clone = push_struct(parser->arena, SourceLoc);
-  *clone = *parser->src_loc;
+  *clone = parser->src_loc;
   return clone;
 }
 
@@ -129,9 +129,11 @@ Parser* new_parser(MemoryArena* arena)
   parser->arena = arena;
   parser->includes = list_new(arena, eList_ast_node);
 
-  Lexer* lexer = parser->lexer = new_lexer(arena);
+#if 0
+  Lexer* lexer = parser = new_lexer(arena);
   parser->token = &lexer->token;
   parser->src_loc = &lexer->src_loc;
+#endif
 
   return parser;
 }
@@ -139,7 +141,16 @@ Parser* new_parser(MemoryArena* arena)
 void set_parser_input(Parser* parser, char* text, PlatformFile* file)
 {
   parser->file = file;
-  set_lexer_input(parser->lexer, text, file->path);
+  parser->text = text;
+  parser->cursor = text;
+
+  parser->src_loc.line_nr = 1;
+  /* TODO: Compute the absolute path to the file, so that Vim could properly
+     jump from the QuickFix window to the error line in the file. */
+  parser->src_loc.file_path = file->path;
+
+  parser->last_state = push_struct(parser->arena, Parser);
+  *parser->last_state = *parser;
 }
 
 Parser* new_included_parser(Parser* enclosing_parser)
@@ -153,12 +164,12 @@ Parser* new_included_parser(Parser* enclosing_parser)
 bool consume_semicolon(Parser* parser)
 {
   bool success = true;
-  if(parser->token->kind == eToken_semicolon)
+  if(parser->token.kind == eToken_semicolon)
   {
-    success = get_next_token(parser->lexer);
+    success = get_next_token(parser);
   }
   else
-    success = compile_error(parser->arena, parser->src_loc, "`;` was expected at `%s`", get_token_printstr(parser->token));
+    success = compile_error(parser->arena, &parser->src_loc, "`;` was expected at `%s`", get_token_printstr(&parser->token));
 
   return success;
 }
@@ -187,7 +198,7 @@ bool parse_rest_of_actual_args(Parser* parser, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
-  if((parser->token->kind == eToken_comma) && (success = get_next_token(parser->lexer)))
+  if((parser->token.kind == eToken_comma) && (success = get_next_token(parser)))
   {
     success = parse_actual_args(parser, args);
   }
@@ -223,24 +234,24 @@ bool parse_call(Parser* parser, AstNode* left_node, AstNode** node)
   *node = left_node;
   bool success = true;
 
-  if(parser->token->kind == eToken_open_parens)
+  if(parser->token.kind == eToken_open_parens)
   {
     AstNode* call = *node = new_ast_node(parser, eAstNode_call);
     call->call.expr = left_node;
     AstNode* args = call->call.args = new_ast_node(parser, eAstNode_node_list);
     list_init(&args->args.node_list, parser->arena, eList_ast_node);
 
-    if(success = get_next_token(parser->lexer) && parse_actual_args(parser, call->call.args))
+    if(success = get_next_token(parser) && parse_actual_args(parser, call->call.args))
     {
-      if(parser->token->kind == eToken_close_parens)
+      if(parser->token.kind == eToken_close_parens)
       {
-        if(success = get_next_token(parser->lexer))
+        if(success = get_next_token(parser))
         {
           success = parse_rest_of_selector(parser, *node, node);
         }
       }
       else
-        success = compile_error(parser->arena, parser->src_loc, "`)` was expected at `%s`", get_token_printstr(parser->token));
+        success = compile_error(parser->arena, &parser->src_loc, "`)` was expected at `%s`", get_token_printstr(&parser->token));
     }
   }
   return success;
@@ -251,30 +262,30 @@ bool parse_index_recursive(Parser* parser, AstNode* left_node, AstNode** node, i
   *node = left_node;
   bool success = true;
 
-  if(parser->token->kind == eToken_open_bracket)
+  if(parser->token.kind == eToken_open_bracket)
   {
     AstNode* index = *node = new_ast_node(parser, eAstNode_index);
     index->index.array_expr = left_node;
     index->index.ndim = *ndim;
 
-    if(success = get_next_token(parser->lexer) && parse_expr(parser, &index->index.i_expr))
+    if(success = get_next_token(parser) && parse_expr(parser, &index->index.i_expr))
     {
-      if(parser->token->kind == eToken_close_bracket)
+      if(parser->token.kind == eToken_close_bracket)
       {
         if(index->index.i_expr)
         {
           *ndim = *ndim + 1;
-          if(success = get_next_token(parser->lexer) && parse_index_recursive(parser, *node, node, ndim))
+          if(success = get_next_token(parser) && parse_index_recursive(parser, *node, node, ndim))
           {
             index->index.ndim = *ndim - index->index.ndim;
           }
         }
         else
-          success = compile_error(parser->arena, parser->src_loc, "expression was expected at `%s`", get_token_printstr(parser->token));
+          success = compile_error(parser->arena, &parser->src_loc, "expression was expected at `%s`", get_token_printstr(&parser->token));
       }
       else
       {
-        success = compile_error(parser->arena, parser->src_loc, "`]` was expected at `%s`", get_token_printstr(parser->token));
+        success = compile_error(parser->arena, &parser->src_loc, "`]` was expected at `%s`", get_token_printstr(&parser->token));
       }
     }
   }
@@ -298,7 +309,7 @@ bool parse_rest_of_unr_expr(Parser* parser, AstNode* left_node, AstNode** node)
   *node = left_node;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_dot:
     case eToken_arrow_right:
@@ -306,7 +317,7 @@ bool parse_rest_of_unr_expr(Parser* parser, AstNode* left_node, AstNode** node)
         AstNode* bin_expr = *node = new_ast_node(parser, eAstNode_bin_expr);
         bin_expr->bin_expr.left_operand = left_node;
 
-        switch(parser->token->kind)
+        switch(parser->token.kind)
         {
           case eToken_dot:
             bin_expr->bin_expr.op = eOperator_selector;
@@ -321,7 +332,7 @@ bool parse_rest_of_unr_expr(Parser* parser, AstNode* left_node, AstNode** node)
         }
 
         AstNode* right_operand = 0;
-        if(success = get_next_token(parser->lexer) && parse_selector(parser, &right_operand))
+        if(success = get_next_token(parser) && parse_selector(parser, &right_operand))
         {
           if(right_operand)
           {
@@ -338,7 +349,7 @@ bool parse_rest_of_unr_expr(Parser* parser, AstNode* left_node, AstNode** node)
             }
           }
           else
-            success = compile_error(parser->arena, parser->src_loc, "operand was expected at `%s`", get_token_printstr(parser->token));
+            success = compile_error(parser->arena, &parser->src_loc, "operand was expected at `%s`", get_token_printstr(&parser->token));
         }
       }
       break;
@@ -363,7 +374,7 @@ bool parse_rest_of_factor(Parser* parser, AstNode* left_node, AstNode** node)
   *node = left_node;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_star:
     case eToken_fwd_slash:
@@ -374,7 +385,7 @@ bool parse_rest_of_factor(Parser* parser, AstNode* left_node, AstNode** node)
       AstNode* bin_expr = *node = new_ast_node(parser, eAstNode_bin_expr);
       bin_expr->bin_expr.left_operand = left_node;
 
-      switch(parser->token->kind)
+      switch(parser->token.kind)
       {
         case eToken_star:
           bin_expr->bin_expr.op = eOperator_mul;
@@ -401,7 +412,7 @@ bool parse_rest_of_factor(Parser* parser, AstNode* left_node, AstNode** node)
       }
 
       AstNode* right_operand = 0;
-      if(success = get_next_token(parser->lexer) && parse_factor(parser, &right_operand))
+      if(success = get_next_token(parser) && parse_factor(parser, &right_operand))
       {
         if(right_operand)
         {
@@ -414,7 +425,7 @@ bool parse_rest_of_factor(Parser* parser, AstNode* left_node, AstNode** node)
             success = compile_error(parser->arena, right_operand->src_loc, "invalid operand");
         }
         else
-          success = compile_error(parser->arena, parser->src_loc, "operand was expected at `%s`", get_token_printstr(parser->token));
+          success = compile_error(parser->arena, &parser->src_loc, "operand was expected at `%s`", get_token_printstr(&parser->token));
       }
     }
       break;
@@ -437,7 +448,7 @@ bool parse_rest_of_term(Parser* parser, AstNode* left_node, AstNode** node)
   *node = left_node;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_plus:
     case eToken_minus:
@@ -456,7 +467,7 @@ bool parse_rest_of_term(Parser* parser, AstNode* left_node, AstNode** node)
         AstNode* bin_expr = *node = new_ast_node(parser, eAstNode_bin_expr);
         bin_expr->bin_expr.left_operand = left_node;
 
-        switch(parser->token->kind)
+        switch(parser->token.kind)
         {
           case eToken_plus:
             bin_expr->bin_expr.op = eOperator_add;
@@ -515,7 +526,7 @@ bool parse_rest_of_term(Parser* parser, AstNode* left_node, AstNode** node)
         }
 
         AstNode* right_operand = 0;
-        if(success && (success = get_next_token(parser->lexer) && parse_term(parser, &right_operand)))
+        if(success && (success = get_next_token(parser) && parse_term(parser, &right_operand)))
         {
           if(right_operand)
           {
@@ -528,7 +539,7 @@ bool parse_rest_of_term(Parser* parser, AstNode* left_node, AstNode** node)
               success = compile_error(parser->arena, right_operand->src_loc, "invalid operand");
           }
           else
-            success = compile_error(parser->arena, parser->src_loc, "operand was expected at `%s`", get_token_printstr(parser->token));
+            success = compile_error(parser->arena, &parser->src_loc, "operand was expected at `%s`", get_token_printstr(&parser->token));
         }
       }
       break;
@@ -551,7 +562,7 @@ bool parse_rest_of_assignment(Parser* parser, AstNode* left_node, AstNode** node
   *node = left_node;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_eq:
       {
@@ -559,7 +570,7 @@ bool parse_rest_of_assignment(Parser* parser, AstNode* left_node, AstNode** node
         assign->assign.dest_expr = left_node;
 
         AstNode* source_expr = 0;
-        if(success = get_next_token(parser->lexer) && parse_expr(parser, &source_expr))
+        if(success = get_next_token(parser) && parse_expr(parser, &source_expr))
         {
           if(source_expr)
           {
@@ -571,7 +582,7 @@ bool parse_rest_of_assignment(Parser* parser, AstNode* left_node, AstNode** node
               success = compile_error(parser->arena, source_expr->src_loc, "invalid operand in assignment expression");
           }
           else
-            success = compile_error(parser->arena, parser->src_loc, "operand was expected at `%s`", get_token_printstr(parser->token));
+            success = compile_error(parser->arena, &parser->src_loc, "operand was expected at `%s`", get_token_printstr(&parser->token));
         }
       }
       break;
@@ -584,11 +595,11 @@ bool parse_id(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  if(parser->token->kind == eToken_id)
+  if(parser->token.kind == eToken_id)
   {
     AstNode* id = *node = new_ast_node(parser, eAstNode_id);
-    id->id.name = parser->token->lexeme;
-    success = get_next_token(parser->lexer);
+    id->id.name = parser->token.lexeme;
+    success = get_next_token(parser);
   }
   return success;
 }
@@ -598,7 +609,7 @@ bool parse_basic_type(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_int:
     case eToken_float:
@@ -608,7 +619,7 @@ bool parse_basic_type(Parser* parser, AstNode** node)
     case eToken_auto:
     {
       AstNode* basic_type = *node = new_ast_node(parser, eAstNode_basic_type);
-      switch(parser->token->kind)
+      switch(parser->token.kind)
       {
         case eToken_int:
           basic_type->basic_type.kind = eBasicType_int;
@@ -631,7 +642,7 @@ bool parse_basic_type(Parser* parser, AstNode** node)
         default:
           assert(0);
       }
-      success = get_next_token(parser->lexer);
+      success = get_next_token(parser);
     }
     break;
   }
@@ -653,18 +664,18 @@ bool parse_rest_of_cast(Parser* parser, AstNode* left_node, AstNode** node)
     cast->bin_expr.right_operand = right_node;
   }
 #else
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_cast:
     {
       AstNode* cast = *node = new_ast_node(parser, eAstNode_cast);
       cast->cast.to_type = left_node;
 
-      if(success = get_next_token(parser->lexer) && parse_unr_expr(parser, &cast->cast.from_expr))
+      if(success = get_next_token(parser) && parse_unr_expr(parser, &cast->cast.from_expr))
       {
         if(!cast->cast.from_expr)
         {
-          success = compile_error(parser->arena, parser->src_loc, "expression was expected at `%s`", get_token_printstr(parser->token));
+          success = compile_error(parser->arena, &parser->src_loc, "expression was expected at `%s`", get_token_printstr(&parser->token));
         }
       }
     }
@@ -681,7 +692,7 @@ bool parse_rest_of_deref(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_circumflex:
       success = parse_deref(parser, node);
@@ -702,14 +713,14 @@ bool parse_rest_of_deref(Parser* parser, AstNode** node)
 
     case eToken_open_parens:
     {
-      if(success = get_next_token(parser->lexer) && parse_expr(parser, node))
+      if(success = get_next_token(parser) && parse_expr(parser, node))
       {
-        if(parser->token->kind == eToken_close_parens)
+        if(parser->token.kind == eToken_close_parens)
         {
-          success = get_next_token(parser->lexer) && parse_rest_of_cast(parser, *node, node);
+          success = get_next_token(parser) && parse_rest_of_cast(parser, *node, node);
         }
         else
-          success = compile_error(parser->arena, parser->src_loc, "`)` was expected at `%s`", get_token_printstr(parser->token));
+          success = compile_error(parser->arena, &parser->src_loc, "`)` was expected at `%s`", get_token_printstr(&parser->token));
       }
     }
     break;
@@ -724,11 +735,11 @@ bool parse_deref(Parser* parser, AstNode** node)
 
   AstNode* deref = *node = new_ast_node(parser, eAstNode_unr_expr);
   deref->unr_expr.op = eOperator_deref;
-  if(success = get_next_token(parser->lexer) && parse_rest_of_deref(parser, &deref->unr_expr.operand))
+  if(success = get_next_token(parser) && parse_rest_of_deref(parser, &deref->unr_expr.operand))
   {
     if(!deref->unr_expr.operand)
     {
-      success = compile_error(parser->arena, parser->src_loc, "expression was expected at `%s`", get_token_printstr(parser->token));
+      success = compile_error(parser->arena, &parser->src_loc, "expression was expected at `%s`", get_token_printstr(&parser->token));
     }
   }
   return success;
@@ -742,14 +753,14 @@ bool parse_rest_of_array(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_open_bracket:
       success = parse_array(parser, node);
     break;
 
     case eToken_id:
-      success = compile_error(parser->arena, parser->src_loc, "unknown type id `%s`", get_token_printstr(parser->token));
+      success = compile_error(parser->arena, &parser->src_loc, "unknown type id `%s`", get_token_printstr(&parser->token));
     break;
 
     case eToken_void:
@@ -763,14 +774,14 @@ bool parse_rest_of_array(Parser* parser, AstNode** node)
 
     case eToken_open_parens:
     {
-      if(success = get_next_token(parser->lexer) && parse_array(parser, node) && parse_pointer(parser, *node, node))
+      if(success = get_next_token(parser) && parse_array(parser, node) && parse_pointer(parser, *node, node))
       {
-        if(parser->token->kind == eToken_close_parens)
+        if(parser->token.kind == eToken_close_parens)
         {
-          success = get_next_token(parser->lexer);
+          success = get_next_token(parser);
         }
         else
-          success = compile_error(parser->arena, parser->src_loc, "`)` was expected at `%s`", get_token_printstr(parser->token));
+          success = compile_error(parser->arena, &parser->src_loc, "`)` was expected at `%s`", get_token_printstr(&parser->token));
       }
     }
     break;
@@ -783,28 +794,28 @@ bool parse_array(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  if(parser->token->kind == eToken_open_bracket)
+  if(parser->token.kind == eToken_open_bracket)
   {
     AstNode* array = *node = new_ast_node(parser, eAstNode_array);
-    if(success = get_next_token(parser->lexer) && parse_expr(parser, &array->array.size_expr))
+    if(success = get_next_token(parser) && parse_expr(parser, &array->array.size_expr))
     {
-      if(parser->token->kind == eToken_close_bracket)
+      if(parser->token.kind == eToken_close_bracket)
       {
         if(array->array.size_expr)
         {
-          if(success = get_next_token(parser->lexer) && parse_rest_of_array(parser, &array->array.elem_expr))
+          if(success = get_next_token(parser) && parse_rest_of_array(parser, &array->array.elem_expr))
           {
             if(!array->array.elem_expr)
             {
-              success = compile_error(parser->arena, parser->src_loc,  "expression was expected at `%s`", get_token_printstr(parser->token));
+              success = compile_error(parser->arena, &parser->src_loc,  "expression was expected at `%s`", get_token_printstr(&parser->token));
             }
           }
         }
         else
-          success = compile_error(parser->arena, parser->src_loc, "expression was expected at `%s`", get_token_printstr(parser->token));
+          success = compile_error(parser->arena, &parser->src_loc, "expression was expected at `%s`", get_token_printstr(&parser->token));
       }
       else
-        success = compile_error(parser->arena, parser->src_loc,  "`]` was expected at `%s`", get_token_printstr(parser->token));
+        success = compile_error(parser->arena, &parser->src_loc,  "`]` was expected at `%s`", get_token_printstr(&parser->token));
     }
   }
   return success;
@@ -815,23 +826,23 @@ bool parse_cast(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_open_parens:
     {
-      if(success = get_next_token(parser->lexer) && parse_expr(parser, node))
+      if(success = get_next_token(parser) && parse_expr(parser, node))
       {
-        if(parser->token->kind == eToken_close_parens)
+        if(parser->token.kind == eToken_close_parens)
         {
           if(*node)
           {
-            success = get_next_token(parser->lexer) && parse_rest_of_cast(parser, *node, node);
+            success = get_next_token(parser) && parse_rest_of_cast(parser, *node, node);
           }
           else
-            success = compile_error(parser->arena, parser->src_loc, "expression was expected at `%s`", get_token_printstr(parser->token));
+            success = compile_error(parser->arena, &parser->src_loc, "expression was expected at `%s`", get_token_printstr(&parser->token));
         }
         else
-          success = compile_error(parser->arena, parser->src_loc, "`)` was expected at `%s`", get_token_printstr(parser->token));
+          success = compile_error(parser->arena, &parser->src_loc, "`)` was expected at `%s`", get_token_printstr(&parser->token));
       }
     }
     break;
@@ -865,12 +876,12 @@ bool parse_pointer(Parser* parser, AstNode* left_node, AstNode** node)
   *node = left_node;
   bool success = true;
 
-  if(parser->token->kind == eToken_circumflex)
+  if(parser->token.kind == eToken_circumflex)
   {
     AstNode* pointer = *node = new_ast_node(parser, eAstNode_pointer);
     pointer->pointer.pointee = left_node;
 
-    if((success = get_next_token(parser->lexer)) && parser->token->kind == eToken_circumflex)
+    if((success = get_next_token(parser)) && parser->token.kind == eToken_circumflex)
     {
       success = parse_pointer(parser, *node, node);
     }
@@ -883,7 +894,7 @@ bool parse_rest_of_selector(Parser* parser, AstNode* left_node, AstNode** node)
   *node = left_node;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_open_parens:
       success = parse_call(parser, left_node, node);
@@ -903,19 +914,19 @@ bool parse_lit(Parser* parser, AstNode** node)
 
   AstNode* lit = *node = new_ast_node(parser, eAstNode_lit);
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_int_val:
     {
       lit->lit.kind = eLiteral_int;
-      lit->lit.int_val = *parser->token->int_val;
+      lit->lit.int_val = *parser->token.int_val;
     }
     break;
 
     case eToken_float_val:
     {
       lit->lit.kind = eLiteral_float;
-      lit->lit.float_val = *parser->token->float_val;
+      lit->lit.float_val = *parser->token.float_val;
     }
     break;
 
@@ -923,28 +934,28 @@ bool parse_lit(Parser* parser, AstNode** node)
     case eToken_false:
     {
       lit->lit.kind = eLiteral_bool;
-      lit->lit.bool_val = (parser->token->kind == eToken_true ? 1 : 0);
+      lit->lit.bool_val = (parser->token.kind == eToken_true ? 1 : 0);
     }
     break;
 
     case eToken_char_val:
     {
       lit->lit.kind = eLiteral_char;
-      lit->lit.char_val = parser->token->char_val;
+      lit->lit.char_val = parser->token.char_val;
     }
     break;
 
     case eToken_str_val:
     {
       lit->lit.kind = eLiteral_str;
-      lit->lit.str_val = parser->token->str_val;
+      lit->lit.str_val = parser->token.str_val;
     }
     break;
 
     default: assert(0);
   }
 
-  success = get_next_token(parser->lexer);
+  success = get_next_token(parser);
 
   return success;
 }
@@ -954,7 +965,7 @@ bool parse_selector(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_true:
     case eToken_false:
@@ -988,17 +999,17 @@ bool parse_formal_arg(Parser* parser, AstNode** node)
 
   if((success = parse_expr(parser, node)) && *node)
   {
-    if(parser->token->kind == eToken_id)
+    if(parser->token.kind == eToken_id)
     {
       AstNode* type = *node;
       AstNode* var = *node = new_ast_node(parser, eAstNode_var);
       var->var.type = type;
-      var->var.name = parser->token->lexeme;
+      var->var.name = parser->token.lexeme;
 
-      success = get_next_token(parser->lexer);
+      success = get_next_token(parser);
     }
     else
-      success = compile_error(parser->arena, parser->src_loc, "identifier was expected at `%s`", get_token_printstr(parser->token));
+      success = compile_error(parser->arena, &parser->src_loc, "identifier was expected at `%s`", get_token_printstr(&parser->token));
   }
   return success;
 }
@@ -1008,7 +1019,7 @@ bool parse_unr_expr(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_exclam:
     case eToken_not:
@@ -1017,7 +1028,7 @@ bool parse_unr_expr(Parser* parser, AstNode** node)
       {
         AstNode* unr_expr = *node = new_ast_node(parser, eAstNode_unr_expr);
 
-        switch(parser->token->kind)
+        switch(parser->token.kind)
         {
           case eToken_exclam:
             unr_expr->unr_expr.op = eOperator_bit_not;
@@ -1035,11 +1046,11 @@ bool parse_unr_expr(Parser* parser, AstNode** node)
             assert(0);
         }
 
-        if(success && (success = get_next_token(parser->lexer) && parse_factor(parser, &unr_expr->unr_expr.operand)))
+        if(success && (success = get_next_token(parser) && parse_factor(parser, &unr_expr->unr_expr.operand)))
         {
           if(!unr_expr->unr_expr.operand)
           {
-            success = compile_error(parser->arena, parser->src_loc, "operand was expected at `%s`", get_token_printstr(parser->token));
+            success = compile_error(parser->arena, &parser->src_loc, "operand was expected at `%s`", get_token_printstr(&parser->token));
           }
         }
       }
@@ -1068,19 +1079,19 @@ bool parse_modifier(Parser* parser, eModifier* modifier)
   bool success = true;
   *modifier = eModifier_None;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_extern:
     {
       *modifier = eModifier_extern;
-      success = get_next_token(parser->lexer);
+      success = get_next_token(parser);
     }
     break;
 
     case eToken_const:
     {
       *modifier = eModifier_const;
-      success = get_next_token(parser->lexer);
+      success = get_next_token(parser);
     }
     break;
   }
@@ -1094,7 +1105,7 @@ bool parse_rest_of_formal_args(Parser* parser, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
-  if((parser->token->kind == eToken_comma) && (success = get_next_token(parser->lexer)))
+  if((parser->token.kind == eToken_comma) && (success = get_next_token(parser)))
   {
     success = parse_formal_args(parser, args);
   }
@@ -1122,10 +1133,10 @@ bool parse_empty(Parser* parser, AstNode** node)
 {
   *node = 0;
   bool success = true;
-  if(parser->token->kind == eToken_semicolon)
+  if(parser->token.kind == eToken_semicolon)
   {
     *node = new_ast_node(parser, eAstNode_empty);
-    success = get_next_token(parser->lexer);
+    success = get_next_token(parser);
   }
   return success;
 }
@@ -1136,21 +1147,21 @@ bool parse_block(Parser* parser, AstNode** node)
 {
   *node = 0;
   bool success = true;
-  if(parser->token->kind == eToken_open_brace)
+  if(parser->token.kind == eToken_open_brace)
   {
     AstNode* block = *node = new_ast_node(parser, eAstNode_block);
     list_init(&block->block.nodes, parser->arena, eList_ast_node);
     list_init(&block->block.vars, parser->arena, eList_ast_node);
     list_init(&block->block.stmts, parser->arena, eList_ast_node);
 
-    if(success = (get_next_token(parser->lexer) && parse_block_stmts(parser, block)))
+    if(success = (get_next_token(parser) && parse_block_stmts(parser, block)))
     {
-      if(parser->token->kind == eToken_close_brace)
+      if(parser->token.kind == eToken_close_brace)
       {
-        success = get_next_token(parser->lexer);
+        success = get_next_token(parser);
       }
       else
-        success = compile_error(parser->arena, parser->src_loc, "`}` was expected at `%s`", get_token_printstr(parser->token));
+        success = compile_error(parser->arena, &parser->src_loc, "`}` was expected at `%s`", get_token_printstr(&parser->token));
     }
   }
   return success;
@@ -1162,9 +1173,9 @@ bool parse_else(Parser* parser, AstNode** node)
 {
   *node = 0;
   bool success = true;
-  if(parser->token->kind == eToken_else)
+  if(parser->token.kind == eToken_else)
   {
-    success = get_next_token(parser->lexer) && parse_block_stmt(parser, node);
+    success = get_next_token(parser) && parse_block_stmt(parser, node);
   }
   return success;
 }
@@ -1173,30 +1184,30 @@ bool parse_if(Parser* parser, AstNode** node)
 {
   *node = 0;
   bool success = true;
-  if(parser->token->kind == eToken_if)
+  if(parser->token.kind == eToken_if)
   {
     AstNode* if_ = *node = new_ast_node(parser, eAstNode_if);
-    if(success = get_next_token(parser->lexer))
+    if(success = get_next_token(parser))
     {
-      if(parser->token->kind == eToken_open_parens)
+      if(parser->token.kind == eToken_open_parens)
       {
-        if(success = (get_next_token(parser->lexer) && parse_expr(parser, &if_->if_.cond_expr)))
+        if(success = (get_next_token(parser) && parse_expr(parser, &if_->if_.cond_expr)))
         {
           if(if_->if_.cond_expr)
           {
-            if(parser->token->kind == eToken_close_parens)
+            if(parser->token.kind == eToken_close_parens)
             {
-              success = get_next_token(parser->lexer) && parse_block_stmt(parser, &if_->if_.body) && parse_else(parser, &if_->if_.else_body);
+              success = get_next_token(parser) && parse_block_stmt(parser, &if_->if_.body) && parse_else(parser, &if_->if_.else_body);
             }
             else
-              success = compile_error(parser->arena, parser->src_loc, "`)` was expected at `%s`", get_token_printstr(parser->token));
+              success = compile_error(parser->arena, &parser->src_loc, "`)` was expected at `%s`", get_token_printstr(&parser->token));
           }
           else
-            success = compile_error(parser->arena, parser->src_loc, "expression was expected at `%s`", get_token_printstr(parser->token));
+            success = compile_error(parser->arena, &parser->src_loc, "expression was expected at `%s`", get_token_printstr(&parser->token));
         }
       }
       else
-        success = compile_error(parser->arena, parser->src_loc, "`(` was expected at `%s`", get_token_printstr(parser->token));
+        success = compile_error(parser->arena, &parser->src_loc, "`(` was expected at `%s`", get_token_printstr(&parser->token));
     }
   }
   return success;
@@ -1206,36 +1217,36 @@ bool parse_do_while(Parser* parser, AstNode** node)
 {
   *node = 0;
   bool success = true;
-  if(parser->token->kind == eToken_do)
+  if(parser->token.kind == eToken_do)
   {
     AstNode* do_while = *node = new_ast_node(parser, eAstNode_do_while);
-    if(success = get_next_token(parser->lexer) && parse_block_stmt(parser, &do_while->do_while.body))
+    if(success = get_next_token(parser) && parse_block_stmt(parser, &do_while->do_while.body))
     {
-      if(parser->token->kind == eToken_while)
+      if(parser->token.kind == eToken_while)
       {
-        if(success = get_next_token(parser->lexer))
+        if(success = get_next_token(parser))
         {
-          if(parser->token->kind == eToken_open_parens)
+          if(parser->token.kind == eToken_open_parens)
           {
-            if(success = get_next_token(parser->lexer) && parse_expr(parser, &do_while->do_while.cond_expr))
+            if(success = get_next_token(parser) && parse_expr(parser, &do_while->do_while.cond_expr))
             {
               if(do_while->do_while.cond_expr)
               {
-                if(parser->token->kind == eToken_close_parens)
-                  success = get_next_token(parser->lexer);
+                if(parser->token.kind == eToken_close_parens)
+                  success = get_next_token(parser);
                 else
-                  success = compile_error(parser->arena, parser->src_loc, "`)` was expected at `%s`", get_token_printstr(parser->token));
+                  success = compile_error(parser->arena, &parser->src_loc, "`)` was expected at `%s`", get_token_printstr(&parser->token));
               }
               else
-                success = compile_error(parser->arena, parser->src_loc, "expression was expected at `%s`", get_token_printstr(parser->token));
+                success = compile_error(parser->arena, &parser->src_loc, "expression was expected at `%s`", get_token_printstr(&parser->token));
             }
           }
           else
-            success = compile_error(parser->arena, parser->src_loc, "`(` was expected at `%s`", get_token_printstr(parser->token));
+            success = compile_error(parser->arena, &parser->src_loc, "`(` was expected at `%s`", get_token_printstr(&parser->token));
         }
       }
       else
-        success = compile_error(parser->arena, parser->src_loc, "`while` was expected at `%s`", get_token_printstr(parser->token));
+        success = compile_error(parser->arena, &parser->src_loc, "`while` was expected at `%s`", get_token_printstr(&parser->token));
     }
   }
   return success;
@@ -1245,30 +1256,30 @@ bool parse_while(Parser* parser, AstNode** node)
 {
   *node = 0;
   bool success = true;
-  if(parser->token->kind == eToken_while)
+  if(parser->token.kind == eToken_while)
   {
     AstNode* while_ = *node = new_ast_node(parser, eAstNode_while);
-    if(success = get_next_token(parser->lexer))
+    if(success = get_next_token(parser))
     {
-      if(parser->token->kind == eToken_open_parens)
+      if(parser->token.kind == eToken_open_parens)
       {
-        if(success = get_next_token(parser->lexer) && parse_expr(parser, &while_->while_.cond_expr))
+        if(success = get_next_token(parser) && parse_expr(parser, &while_->while_.cond_expr))
         {
           if(while_->while_.cond_expr)
           {
-            if(parser->token->kind == eToken_close_parens)
+            if(parser->token.kind == eToken_close_parens)
             {
-              success = get_next_token(parser->lexer) && parse_block_stmt(parser, &while_->while_.body);
+              success = get_next_token(parser) && parse_block_stmt(parser, &while_->while_.body);
             }
             else
-              success = compile_error(parser->arena, parser->src_loc, "`)` was expected at `%s`", get_token_printstr(parser->token));
+              success = compile_error(parser->arena, &parser->src_loc, "`)` was expected at `%s`", get_token_printstr(&parser->token));
           }
           else
-            success = compile_error(parser->arena, parser->src_loc, "expression was expected at `%s`", get_token_printstr(parser->token));
+            success = compile_error(parser->arena, &parser->src_loc, "expression was expected at `%s`", get_token_printstr(&parser->token));
         }
       }
       else
-        success = compile_error(parser->arena, parser->src_loc, "`(` was expected at `%s`", get_token_printstr(parser->token));
+        success = compile_error(parser->arena, &parser->src_loc, "`(` was expected at `%s`", get_token_printstr(&parser->token));
     }
   }
   return success;
@@ -1279,11 +1290,11 @@ bool parse_return(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  if(parser->token->kind == eToken_return)
+  if(parser->token.kind == eToken_return)
   {
     AstNode* ret = *node = new_ast_node(parser, eAstNode_return);
     AstNode* ret_expr = 0;
-    if(success = get_next_token(parser->lexer) && parse_expr(parser, &ret_expr))
+    if(success = get_next_token(parser) && parse_expr(parser, &ret_expr))
     {
       if(ret_expr)
       {
@@ -1302,11 +1313,11 @@ bool parse_continue(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  if(parser->token->kind == eToken_continue)
+  if(parser->token.kind == eToken_continue)
   {
     AstNode* loop_ctrl = *node = new_ast_node(parser, eAstNode_loop_ctrl);
     loop_ctrl->loop_ctrl.kind = eLoopCtrl_continue;
-    success = get_next_token(parser->lexer);
+    success = get_next_token(parser);
   }
   return success;
 }
@@ -1316,11 +1327,11 @@ bool parse_break(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  if(parser->token->kind == eToken_break)
+  if(parser->token.kind == eToken_break)
   {
     AstNode* loop_ctrl = *node = new_ast_node(parser, eAstNode_loop_ctrl);
     loop_ctrl->loop_ctrl.kind = eLoopCtrl_break;
-    success = get_next_token(parser->lexer);
+    success = get_next_token(parser);
   }
   return success;
 }
@@ -1330,17 +1341,17 @@ bool parse_block_var(Parser* parser, char* name, eModifier modifier, AstNode* va
   *node = 0;
   bool success = true;
 
-  if(parser->token->kind == eToken_id)
+  if(parser->token.kind == eToken_id)
   {
     AstNode* var = *node = new_ast_node(parser, eAstNode_var);
     var->var.type = var_type;
-    var->var.name = parser->token->lexeme;
+    var->var.name = parser->token.lexeme;
 
-    if(success = get_next_token(parser->lexer))
+    if(success = get_next_token(parser))
     {
-      if(parser->token->kind == eToken_eq)
+      if(parser->token.kind == eToken_eq)
       {
-        success = get_next_token(parser->lexer) && parse_expr(parser, &var->var.init_expr);
+        success = get_next_token(parser) && parse_expr(parser, &var->var.init_expr);
       }
     }
   }
@@ -1352,7 +1363,7 @@ bool parse_block_stmt(Parser* parser, AstNode** node)
 {
   *node = 0;
   bool success = true;
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_open_brace:
       success = parse_block(parser, node);
@@ -1394,9 +1405,9 @@ bool parse_block_stmt(Parser* parser, AstNode** node)
       {
         if(*node)
         {
-          if(parser->token->kind == eToken_id)
+          if(parser->token.kind == eToken_id)
           {
-            char* var_name = parser->token->lexeme;
+            char* var_name = parser->token.lexeme;
             success = parse_block_var(parser, var_name, modifier, *node, node) && consume_semicolon(parser);
           }
           else
@@ -1405,7 +1416,7 @@ bool parse_block_stmt(Parser* parser, AstNode** node)
           }
         }
         else if(modifier != eModifier_None)
-          success = compile_error(parser->arena, parser->src_loc, "statement was expected at `%s`", get_token_printstr(parser->token));
+          success = compile_error(parser->arena, &parser->src_loc, "statement was expected at `%s`", get_token_printstr(&parser->token));
       }
     }
     break;
@@ -1446,7 +1457,7 @@ bool parse_block_stmts(Parser* parser, AstNode* block)
 bool parse_proc_body(Parser* parser, AstNode* proc)
 {
   bool success = true;
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_open_brace:
       success = parse_block(parser, &proc->proc.body);
@@ -1457,7 +1468,7 @@ bool parse_proc_body(Parser* parser, AstNode* proc)
     break;
 
     default:
-      success = compile_error(parser->arena, parser->src_loc, "unexpected `%s`", get_token_printstr(parser->token));
+      success = compile_error(parser->arena, &parser->src_loc, "unexpected `%s`", get_token_printstr(&parser->token));
       break;
   }
   return success;
@@ -1677,26 +1688,26 @@ bool parse_module_proc(Parser* parser, char* name, eModifier modifier, AstNode* 
   *node = 0;
   bool success = true;
 
-  if(parser->token->kind == eToken_open_parens)
+  if(parser->token.kind == eToken_open_parens)
   {
     AstNode* proc = *node = new_ast_node(parser, eAstNode_proc);
     proc->proc.ret_type = ret_type;
     proc->proc.name = name;
     proc->proc.modifier = modifier;
 
-    if(success = get_next_token(parser->lexer))
+    if(success = get_next_token(parser))
     {
       AstNode* args = proc->proc.args = new_ast_node(parser, eAstNode_node_list);
       list_init(&args->args.node_list, parser->arena, eList_ast_node);
 
       if(success = parse_formal_args(parser, proc->proc.args))
       {
-        if(parser->token->kind == eToken_close_parens)
+        if(parser->token.kind == eToken_close_parens)
         {
-          success = get_next_token(parser->lexer) && parse_proc_body(parser, proc);
+          success = get_next_token(parser) && parse_proc_body(parser, proc);
         }
         else
-          success = compile_error(parser->arena, parser->src_loc, "`)` was expected at `%s`", get_token_printstr(parser->token));
+          success = compile_error(parser->arena, &parser->src_loc, "`)` was expected at `%s`", get_token_printstr(&parser->token));
       }
     }
   }
@@ -1747,24 +1758,24 @@ bool parse_module_include(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  if(parser->token->kind == eToken_include)
+  if(parser->token.kind == eToken_include)
   {
-    if(success = get_next_token(parser->lexer))
+    if(success = get_next_token(parser))
     {
       AstNode* include = *node = new_ast_node(parser, eAstNode_include);
-      if(parser->token->kind == eToken_str_val)
+      if(parser->token.kind == eToken_str_val)
       {
         /* Make the full path to the included file, relative to the location of the current file. */
         String str = {};
         str_init(&str, parser->arena);
-        str_append(&str, parser->src_loc->file_path);
+        str_append(&str, parser->src_loc.file_path);
         platform_path_make_dir(str.head);
         str_tidyup(&str);
-        str_append(&str, parser->token->str_val);
+        str_append(&str, parser->token.str_val);
 
         include->include.file_path = str_cap(&str);
 
-        if(success = get_next_token(parser->lexer) && consume_semicolon(parser))
+        if(success = get_next_token(parser) && consume_semicolon(parser))
         {
           PlatformFile* included_file = include->include.file = platform_file_open(parser->arena, include->include.file_path);
           if(included_file)
@@ -1797,15 +1808,15 @@ bool parse_module_include(Parser* parser, AstNode** node)
           }
           else
           {
-            putback_token(parser->lexer);
-            success = compile_error(parser->arena, parser->src_loc, "file `%s` could not be opened", include->include.file_path);
+            putback_token(parser);
+            success = compile_error(parser->arena, &parser->src_loc, "file `%s` could not be opened", include->include.file_path);
           }
         }
         else
-          success = compile_error(parser->arena, parser->src_loc, "could not read file `%s`", include->include.file_path);
+          success = compile_error(parser->arena, &parser->src_loc, "could not read file `%s`", include->include.file_path);
       }
       else
-        success = compile_error(parser->arena, parser->src_loc, "string literal was expected at `%s`", get_token_printstr(parser->token));
+        success = compile_error(parser->arena, &parser->src_loc, "string literal was expected at `%s`", get_token_printstr(&parser->token));
     }
   }
 
@@ -1817,7 +1828,7 @@ bool parse_module_stmt(Parser* parser, AstNode** node)
   *node = 0;
   bool success = true;
 
-  switch(parser->token->kind)
+  switch(parser->token.kind)
   {
     case eToken_include:
     {
@@ -1833,12 +1844,12 @@ bool parse_module_stmt(Parser* parser, AstNode** node)
       {
         if(*node)
         {
-          if(parser->token->kind == eToken_id)
+          if(parser->token.kind == eToken_id)
           {
-            char* name = parser->token->lexeme;
-            if(success = get_next_token(parser->lexer))
+            char* name = parser->token.lexeme;
+            if(success = get_next_token(parser))
             {
-              if(parser->token->kind == eToken_open_parens)
+              if(parser->token.kind == eToken_open_parens)
               {
                 success = parse_module_proc(parser, name, modifier, *node, node);
               }
@@ -1849,10 +1860,10 @@ bool parse_module_stmt(Parser* parser, AstNode** node)
             }
           }
           else
-            success = compile_error(parser->arena, parser->src_loc, "identifier was expected at `%s`", get_token_printstr(parser->token));
+            success = compile_error(parser->arena, &parser->src_loc, "identifier was expected at `%s`", get_token_printstr(&parser->token));
         }
         else if(modifier != eModifier_None)
-          success = compile_error(parser->arena, parser->src_loc, "statement was expected at `%s`", get_token_printstr(parser->token));
+          success = compile_error(parser->arena, &parser->src_loc, "statement was expected at `%s`", get_token_printstr(&parser->token));
       }
     }
     break;
@@ -1907,12 +1918,12 @@ bool parse_module_body(Parser* parser, AstNode* module)
 
   if(success = parse_module_stmts(parser, module))
   {
-    if(parser->token->kind == eToken_end_of_input)
+    if(parser->token.kind == eToken_end_of_input)
     {
       //TODO: reset the parser
     }
     else
-      success = compile_error(parser->arena, parser->src_loc, "`end-of-input` was expected at `%s`", get_token_printstr(parser->token));
+      success = compile_error(parser->arena, &parser->src_loc, "`end-of-input` was expected at `%s`", get_token_printstr(&parser->token));
   }
 
   return success;
@@ -1922,7 +1933,7 @@ bool parse_module(Parser* parser)
 {
   bool success = true;
 
-  if(success = get_next_token(parser->lexer))
+  if(success = get_next_token(parser))
   {
     AstNode* module = parser->module = new_ast_node(parser, eAstNode_module);
     module->module.file_path = parser->file->path;

@@ -1148,10 +1148,12 @@ struct AstNode
 struct Parser
 {
   MemoryArena* arena;
-  Lexer* lexer;
-  Token* token;
-  SourceLoc* src_loc;
-
+  Token token;
+  SourceLoc src_loc;
+  char* text;
+  char* cursor;
+  struct Parser* last_state;
+  
   AstNode* module;
   PlatformFile* file;
   List* includes;
@@ -1164,7 +1166,7 @@ enum eStorageSpace
   eStorageSpace_local, // vars and temps
   eStorageSpace_actual_param, // params (actual args and retvar) at the call site
   eStorageSpace_formal_param, // params to proc 
-  eStorageSpace_static_, // module-level vars
+  eStorageSpace_static, // module-level vars
 };
 
 enum eSymbol

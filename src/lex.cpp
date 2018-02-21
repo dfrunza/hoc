@@ -48,13 +48,13 @@ Token* lookup_keyword(char* lexeme)
   return result;
 }
 
-char* install_lexeme(Lexer* lex, char* begin_char, char* end_char)
+char* install_lexeme(Parser* parser, char* begin_char, char* end_char)
 {
   assert(end_char >= begin_char);
 
   /* TODO: Search the lexeme, and if found, then return it. */
   int len = (int)(end_char - begin_char + 1);
-  char* lexeme = push_array(lex->arena, char, len + 1); // +NULL
+  char* lexeme = push_array(parser->arena, char, len + 1); // +NULL
   cstr_copy_substr(lexeme, begin_char, end_char);
   lexeme[len] = 0; // cap the string
   return lexeme;
@@ -66,12 +66,12 @@ bool is_valid_escape_char(char c)
     c == '\"' || c == '\'' || c == '\\';
 }
 
-bool lex_escaped_string(Lexer* lex, char* file, int line, EscapedStr* estr)
+bool lex_escaped_string(Parser* parser, char* file, int line, EscapedStr* estr)
 {
   bool success = true;
   estr->len = 0;
-  estr->end = lex->cursor;
-  estr->begin = lex->cursor;
+  estr->end = parser->cursor;
+  estr->begin = parser->cursor;
 
   /* find the closing `"` and count the length of the escaped string at the same time */
   char c = *(++estr->end);
@@ -81,7 +81,7 @@ bool lex_escaped_string(Lexer* lex, char* file, int line, EscapedStr* estr)
     {
       c = *(++estr->end);
       if(!is_valid_escape_char(c))
-        success = compile_error_(lex->arena, file, line, &lex->src_loc, "invalid escape char `%c`", c);
+        success = compile_error_(parser->arena, file, line, &parser->src_loc, "invalid escape char `%c`", c);
     }
     estr->len++;
     c = *(++estr->end);
@@ -89,18 +89,18 @@ bool lex_escaped_string(Lexer* lex, char* file, int line, EscapedStr* estr)
   if(success)
   {
     if(*estr->end != estr->quote)
-      success = compile_error_(lex->arena, file, line, &lex->src_loc, 
+      success = compile_error_(parser->arena, file, line, &parser->src_loc, 
                                 "malformed string literal, missing the closing `%c`", estr->quote);
   }
   assert((estr->end - estr->begin) >= 1);
   return success;
 }
 
-char* lex_install_escaped_str(Lexer* lex, EscapedStr* estr)
+char* lex_install_escaped_str(Parser* parser, EscapedStr* estr)
 {
   assert(estr->begin <= estr->end);
 
-  char* lexeme = push_array(lex->arena, char, estr->len+1); /* +NULL */
+  char* lexeme = push_array(parser->arena, char, estr->len+1); /* +NULL */
 
   if(estr->len > 0)
   {
@@ -414,126 +414,128 @@ char* get_token_printstr(Token* token)
   return result;
 }
 
-Lexer* new_lexer(MemoryArena* arena)
+#if 0
+Parser* new_lexer(MemoryArena* arena)
 {
-  Lexer* lexer = push_struct(arena, Lexer);
+  Parser* lexer = push_struct(arena, Parser);
   lexer->arena = arena;
 
   return lexer;
 }
 
-void set_lexer_input(Lexer* lex, char* text, char* file_path)
+void set_lexer_input(Parser* parser, char* text, char* file_path)
 {
-  lex->text = text;
-  lex->cursor = text;
+  parser->text = text;
+  parser->cursor = text;
 
-  lex->src_loc.line_nr = 1;
+  parser->src_loc.line_nr = 1;
   /* TODO: Compute the absolute path to the file, so that Vim could properly
      jump from the QuickFix window to the error line in the file. */
-  lex->src_loc.file_path = file_path;
+  parser->src_loc.file_path = file_path;
 
-  lex->last_state = push_struct(lex->arena, Lexer);
-  *lex->last_state = *lex;
+  parser->last_state = push_struct(parser->arena, Parser);
+  *parser->last_state = *parser;
+}
+#endif
+
+void putback_token(Parser* parser)
+{
+  *parser = *parser->last_state;
 }
 
-void putback_token(Lexer* lex)
+Token* get_prev_token(Parser* parser)
 {
-  *lex = *lex->last_state;
-}
-
-Token* get_prev_token(Lexer* lex)
-{
-  if(lex->last_state)
-    lex->token = lex->last_state->token;
-  return &lex->token;
+  if(parser->last_state)
+    parser->token = parser->last_state->token;
+  return &parser->token;
 }
 
 /* Returns the first non-whitepace char. */
-char lex_skip_whitespace(Lexer* lex, char* whitechars)
+char lex_skip_whitespace(Parser* parser, char* whitechars)
 {
-  char c = *lex->cursor;
+  char c = *parser->cursor;
 
   while(cstr_contains_char(whitechars, c))
   {
     if(c == '\n')
     {
-      lex->src_loc.line_nr++;
-      lex->src_loc.src_line = lex->cursor;
+      parser->src_loc.line_nr++;
+      parser->src_loc.src_line = parser->cursor;
     }
-    c = *(++lex->cursor);
+    c = *(++parser->cursor);
   }
   return c;
 }
 
-bool lex_get_asm_text(Lexer* lex)
+bool lex_get_asm_text(Parser* parser)
 {
   bool success = true;
-  *lex->last_state = *lex;
-  zero_struct(&lex->token, Token);
-  lex->src_loc.src_line = lex->cursor;
+  *parser->last_state = *parser;
+  zero_struct(&parser->token, Token);
+  parser->src_loc.src_line = parser->cursor;
   char c;
 
-  lex_skip_whitespace(lex, " \r\n\t");
-  char* begin_char = lex->cursor;
+  lex_skip_whitespace(parser, " \r\n\t");
+  char* begin_char = parser->cursor;
 
   c = *begin_char;
   while(c != '\0' && c != '}')
   {
-    c = *(++lex->cursor);
-    c = lex_skip_whitespace(lex, " \r\n\t");
+    c = *(++parser->cursor);
+    c = lex_skip_whitespace(parser, " \r\n\t");
   }
 
   if(c == '}')
   {
-    char* end_char = lex->cursor - 1;
-    char* lexeme = install_lexeme(lex, begin_char, end_char);
+    char* end_char = parser->cursor - 1;
+    char* lexeme = install_lexeme(parser, begin_char, end_char);
 
-    lex->token.kind = eToken_asm_text;
-    lex->token.lexeme = lexeme;
+    parser->token.kind = eToken_asm_text;
+    parser->token.lexeme = lexeme;
   }
   else if(c == '\0')
   {
-    lex->token.kind = eToken_end_of_input;
+    parser->token.kind = eToken_end_of_input;
   }
   else
   {
-    lex->token.kind = eToken_unknown_char;
-    lex->token.char_val = c;
+    parser->token.kind = eToken_unknown_char;
+    parser->token.char_val = c;
   }
   return success;
 }
 
-bool get_next_token(Lexer* lex)
+bool get_next_token(Parser* parser)
 {
   bool success = true;
-  *lex->last_state = *lex;
-  zero_struct(&lex->token, Token);
-  lex->src_loc.src_line = lex->cursor;
+  *parser->last_state = *parser;
+  zero_struct(&parser->token, Token);
+  parser->src_loc.src_line = parser->cursor;
   char c;
 
 loop:
-  lex_skip_whitespace(lex, " \r\n\t");
-  c = *lex->cursor;
+  lex_skip_whitespace(parser, " \r\n\t");
+  c = *parser->cursor;
 
   if(cstr_is_letter(c) || c == '_')
   {
-    char* begin_char = lex->cursor;
-    c = *(++lex->cursor);
+    char* begin_char = parser->cursor;
+    c = *(++parser->cursor);
 
     while(cstr_is_letter(c) || cstr_is_dec_digit(c) || c == '_')
     {
-      c = *(++lex->cursor);
+      c = *(++parser->cursor);
     }
 
-    char* end_char = lex->cursor - 1;
-    char* lexeme = install_lexeme(lex, begin_char, end_char);
+    char* end_char = parser->cursor - 1;
+    char* lexeme = install_lexeme(parser, begin_char, end_char);
 
-    lex->token.kind = eToken_id;
-    lex->token.lexeme = lexeme;
+    parser->token.kind = eToken_id;
+    parser->token.lexeme = lexeme;
     Token* keyword = lookup_keyword(lexeme);
     if(keyword)
     {
-      lex->token.kind = keyword->kind;
+      parser->token.kind = keyword->kind;
     }
   }
   else if(cstr_is_dec_digit(c))
@@ -544,18 +546,18 @@ loop:
 
     int i = 0;
     digit_buf[i++] = c;
-    c = *(++lex->cursor);
+    c = *(++parser->cursor);
 
     if(c == 'x') // hexadecimal
     {
       is_hex = true;
-      c = *(++lex->cursor);
+      c = *(++parser->cursor);
 
       for(; i < sizeof_array(digit_buf)-1 && cstr_is_hex_digit(c);
           i++)
       {
         digit_buf[i] = c;
-        c = *(++lex->cursor);
+        c = *(++parser->cursor);
       }
     }
     else if(cstr_is_dec_digit(c) || c == '.')
@@ -570,72 +572,72 @@ loop:
             break;
           is_float = true;
         }
-        c = *(++lex->cursor);
+        c = *(++parser->cursor);
       }
     }
     digit_buf[i] = '\0';
-    lex->token.lexeme = install_lexeme(lex, digit_buf, digit_buf + i-1);
+    parser->token.lexeme = install_lexeme(parser, digit_buf, digit_buf + i-1);
 
     if(is_float)
     {
-      lex->token.kind = eToken_float_val;
-      lex->token.float_val = push_struct(lex->arena, float);
-      platform_sscanf(digit_buf, "%f", lex->token.float_val);
+      parser->token.kind = eToken_float_val;
+      parser->token.float_val = push_struct(parser->arena, float);
+      platform_sscanf(digit_buf, "%f", parser->token.float_val);
     }
     else
     {
-      lex->token.kind = eToken_int_val;
-      lex->token.int_val = push_struct(lex->arena, int);
+      parser->token.kind = eToken_int_val;
+      parser->token.int_val = push_struct(parser->arena, int);
       if(is_hex)
-        platform_sscanf(digit_buf, "%x", lex->token.int_val);
+        platform_sscanf(digit_buf, "%x", parser->token.int_val);
       else
-        platform_sscanf(digit_buf, "%d", lex->token.int_val);
+        platform_sscanf(digit_buf, "%d", parser->token.int_val);
     }
   }
   else if(c == '-')
   {
-    lex->token.kind = eToken_minus;
-    c = *(++lex->cursor);
+    parser->token.kind = eToken_minus;
+    c = *(++parser->cursor);
     if(c == '-')
     {
-      lex->token.kind = eToken_minus_minus;
-      ++lex->cursor;
+      parser->token.kind = eToken_minus_minus;
+      ++parser->cursor;
     }
     else if(c == '>')
     {
-      lex->token.kind = eToken_arrow_right;
-      ++lex->cursor;
+      parser->token.kind = eToken_arrow_right;
+      ++parser->cursor;
     }
   }
   else if(c == '<')
   {
-    lex->token.kind = eToken_angle_left;
-    c = *(++lex->cursor);
+    parser->token.kind = eToken_angle_left;
+    c = *(++parser->cursor);
     if(c == '=')
     {
-      lex->token.kind = eToken_angle_left_eq;
-      ++lex->cursor;
+      parser->token.kind = eToken_angle_left_eq;
+      ++parser->cursor;
     }
     else if(c == '<')
     {
-      lex->token.kind = eToken_angle_left_left;
-      ++lex->cursor;
+      parser->token.kind = eToken_angle_left_left;
+      ++parser->cursor;
     }
     else if(c == '>')
     {
-      lex->token.kind = eToken_angle_left_right;
-      ++lex->cursor;
+      parser->token.kind = eToken_angle_left_right;
+      ++parser->cursor;
     }
   }
   else if(c == '&')
   {
-    lex->token.kind = eToken_ampersand;
-    c = *(++lex->cursor);
+    parser->token.kind = eToken_ampersand;
+    c = *(++parser->cursor);
   }
   else if(c == '/')
   {
     /* multi-line comments */
-    char* fwd_cursor = lex->cursor;
+    char* fwd_cursor = parser->cursor;
 
     c = *(++fwd_cursor);
     if(c == '*')
@@ -648,8 +650,8 @@ loop:
         {
           if(c == '\n')
           {
-            lex->src_loc.line_nr++;
-            lex->src_loc.src_line = lex->cursor;
+            parser->src_loc.line_nr++;
+            parser->src_loc.src_line = parser->cursor;
           }
           c = *(++fwd_cursor);
         }
@@ -661,13 +663,13 @@ loop:
         } else if(c == '\0')
           break;
       }
-      lex->cursor = ++fwd_cursor;
+      parser->cursor = ++fwd_cursor;
       goto loop;
     }
     else
     {
-      lex->token.kind = eToken_fwd_slash;
-      ++lex->cursor;
+      parser->token.kind = eToken_fwd_slash;
+      ++parser->cursor;
     }
   }
   else if(c == '"')
@@ -676,11 +678,11 @@ loop:
     EscapedStr estr = {0};
     estr.quote = '"';
 
-    if(success = lex_escaped_string(lex, __FILE__, __LINE__, &estr))
+    if(success = lex_escaped_string(parser, __FILE__, __LINE__, &estr))
     {
-      lex->token.str_val = lex_install_escaped_str(lex, &estr);;
-      lex->token.kind = eToken_str_val;
-      lex->cursor = ++estr.end;
+      parser->token.str_val = lex_install_escaped_str(parser, &estr);;
+      parser->token.kind = eToken_str_val;
+      parser->cursor = ++estr.end;
     }
   }
   else if(c == '\'')
@@ -689,59 +691,59 @@ loop:
     EscapedStr estr = {0};
     estr.quote = '\'';
 
-    if(success = lex_escaped_string(lex, __FILE__, __LINE__, &estr))
+    if(success = lex_escaped_string(parser, __FILE__, __LINE__, &estr))
     {
-      char* lexeme = lex_install_escaped_str(lex, &estr);
+      char* lexeme = lex_install_escaped_str(parser, &estr);
 
       if(estr.len != 1)
-        success = compile_error(lex->arena, &lex->src_loc, "invalid char literal '%s'", lexeme);
+        success = compile_error(parser->arena, &parser->src_loc, "invalid char literal '%s'", lexeme);
       else
       {
-        lex->token.char_val = *lexeme;
-        lex->token.kind = eToken_char_val;
-        lex->cursor = ++estr.end;
+        parser->token.char_val = *lexeme;
+        parser->token.kind = eToken_char_val;
+        parser->cursor = ++estr.end;
       }
     }
   }
   else if(c == '=')
   {
-    lex->token.kind = eToken_eq;
-    c = *(++lex->cursor);
+    parser->token.kind = eToken_eq;
+    c = *(++parser->cursor);
     if(c == '=')
     {
-      lex->token.kind = eToken_eq_eq;
-      ++lex->cursor;
+      parser->token.kind = eToken_eq_eq;
+      ++parser->cursor;
     }
   }
   else if(c == '>')
   {
-    lex->token.kind = eToken_angle_right;
-    c = *(++lex->cursor);
+    parser->token.kind = eToken_angle_right;
+    c = *(++parser->cursor);
     if(c == '=')
     {
-      lex->token.kind = eToken_angle_right_eq;
-      ++lex->cursor;
+      parser->token.kind = eToken_angle_right_eq;
+      ++parser->cursor;
     }
     else if(c == '>')
     {
-      lex->token.kind = eToken_angle_right_right;
-      ++lex->cursor;
+      parser->token.kind = eToken_angle_right_right;
+      ++parser->cursor;
     }
   }
   else if(c == '|')
   {
-    lex->token.kind = eToken_pipe;
-    c = *(++lex->cursor);
+    parser->token.kind = eToken_pipe;
+    c = *(++parser->cursor);
   }
   else if(c == '~')
   {
-    lex->token.kind = eToken_tilde;
-    c = *(++lex->cursor);
+    parser->token.kind = eToken_tilde;
+    c = *(++parser->cursor);
   }
   else if(c == '!')
   {
-    lex->token.kind = eToken_exclam;
-    c = *(++lex->cursor);
+    parser->token.kind = eToken_exclam;
+    c = *(++parser->cursor);
 #if 0
     if(c == '=')
     {
@@ -752,97 +754,97 @@ loop:
   }
   else if(c == '+')
   {
-    lex->token.kind = eToken_plus;
-    c = *(++lex->cursor);
+    parser->token.kind = eToken_plus;
+    c = *(++parser->cursor);
     if(c == '+')
     {
-      lex->token.kind = eToken_plus_plus;
-      ++lex->cursor;
+      parser->token.kind = eToken_plus_plus;
+      ++parser->cursor;
     }
   }
   else if(c == '*')
   {
-    lex->token.kind = eToken_star;
-    ++lex->cursor;
+    parser->token.kind = eToken_star;
+    ++parser->cursor;
   }
   else if(c == '%')
   {
-    lex->token.kind = eToken_percent;
-    ++lex->cursor;
+    parser->token.kind = eToken_percent;
+    ++parser->cursor;
   }
   else if(c == '×')
   {
-    lex->token.kind = eToken_mul;
-    c = *(++lex->cursor);
+    parser->token.kind = eToken_mul;
+    c = *(++parser->cursor);
   }
   else if(c == '^')
   {
-    lex->token.kind = eToken_circumflex;
-    ++lex->cursor;
+    parser->token.kind = eToken_circumflex;
+    ++parser->cursor;
   }
   else if(c == '\\')
   {
-    lex->token.kind = eToken_back_slash;
-    ++lex->cursor;
+    parser->token.kind = eToken_back_slash;
+    ++parser->cursor;
   }
   else if(c == '.')
   {
-    lex->token.kind = eToken_dot;
-    ++lex->cursor;
+    parser->token.kind = eToken_dot;
+    ++parser->cursor;
   }
   else if(c == '}')
   {
-    lex->token.kind = eToken_close_brace;
-    ++lex->cursor;
+    parser->token.kind = eToken_close_brace;
+    ++parser->cursor;
   }
   else if(c == '{')
   {
-    lex->token.kind = eToken_open_brace;
-    ++lex->cursor;
+    parser->token.kind = eToken_open_brace;
+    ++parser->cursor;
   }
   else if(c == '(')
   {
-    lex->token.kind = eToken_open_parens;
-    ++lex->cursor;
+    parser->token.kind = eToken_open_parens;
+    ++parser->cursor;
   }
   else if(c == ')')
   {
-    lex->token.kind = eToken_close_parens;
-    ++lex->cursor;
+    parser->token.kind = eToken_close_parens;
+    ++parser->cursor;
   }
   else if(c == ';')
   {
-    lex->token.kind = eToken_semicolon;
-    ++lex->cursor;
+    parser->token.kind = eToken_semicolon;
+    ++parser->cursor;
   }
   else if(c == ',')
   {
-    lex->token.kind = eToken_comma;
-    ++lex->cursor;
+    parser->token.kind = eToken_comma;
+    ++parser->cursor;
   }
   else if(c == ':')
   {
-    lex->token.kind = eToken_colon;
-    ++lex->cursor;
+    parser->token.kind = eToken_colon;
+    ++parser->cursor;
   }
   else if(c == '[')
   {
-    lex->token.kind = eToken_open_bracket;
-    ++lex->cursor;
+    parser->token.kind = eToken_open_bracket;
+    ++parser->cursor;
   }
   else if(c == ']')
   {
-    lex->token.kind = eToken_close_bracket;
-    ++lex->cursor;
+    parser->token.kind = eToken_close_bracket;
+    ++parser->cursor;
   }
   else if(c == '\0')
   {
-    lex->token.kind = eToken_end_of_input;
+    parser->token.kind = eToken_end_of_input;
   }
   else
   {
-    lex->token.kind = eToken_unknown_char;
-    lex->token.char_val = c;
+    parser->token.kind = eToken_unknown_char;
+    parser->token.char_val = c;
   }
   return success;
 }

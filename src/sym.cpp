@@ -112,7 +112,7 @@ Symbol* SymbolPass::create_const(Type* ty, SourceLoc* src_loc)
   sym->ty = ty;
   sym->scope = 0;
   sym->order_nr = 0;
-  sym->storage_space = eStorageSpace_static_;
+  sym->storage_space = eStorageSpace_static;
   sym->next_use = NextUse_None;
   sym->is_live_on_exit = true;
   sym->is_live = false;
@@ -851,7 +851,7 @@ bool SymbolPass::visit_module_var(AstNode* module, AstNode* var)
   }
   else
   {
-    var->var.decl_sym = add_decl(var->var.name, eStorageSpace_static_, active_scope, var);
+    var->var.decl_sym = add_decl(var->var.name, eStorageSpace_static, active_scope, var);
   }
 
   return success;

@@ -60,6 +60,8 @@ struct String
   MemoryArena* arena;
 };
 
+void add_object_to_memory(X86Context* x86_ctx, Symbol* object);
+
 int platform_printf(char* format, ...);
 void* platform_alloc_memory(int size);
 int platform_sprintf_va(char* buffer, char* format, va_list args);
@@ -1418,55 +1420,6 @@ struct X86Context
 
   Symbol* float_minus_one;
   String* text;
-
-  static void print_register(String* text, X86Location* reg);
-  char* make_type_directive(Type* type);
-  void print_operand(String* text, X86Operand* operand);
-  void print_opcode(String* text, eX86Stmt opcode);
-  void print_stmt(String* text, X86Stmt* stmt);
-  X86Stmt* create_stmt(eX86Stmt opcode);
-  void new_object_location_entry(Symbol* object, X86Location* loc);
-  void remove_object_from_location(Symbol* object, X86Location* loc);
-  void add_object_to_location(Symbol* object, X86Location* loc);
-  void clean_register(X86Location* loc);
-  void clean_register_all_sizes(X86Location* loc);
-  void set_exclusive_object_location(Symbol* object, X86Location* loc);
-  bool is_register_location(X86Location* loc);
-  bool is_memory_location(X86Location* loc);
-  bool type_fits_into_register(Type* type, X86Location* reg);
-  X86Location* find_free_register(Type* type);
-  X86Location* lookup_object_location(Symbol* object);
-  bool is_object_in_register(Symbol* object);
-  bool is_single_occupant_register(X86Location* reg, Symbol* object);
-  X86Operand* make_index_operand(eX86Operand kind, Symbol* object);
-  X86Operand* make_register_operand(X86Location* reg);
-  X86Operand* make_int_constant_operand(int int_val);
-  X86Operand* make_memory_operand(Type* type, X86Operand* base, X86Operand* offset);
-  X86Operand* make_object_address_operand(Symbol* object);
-  X86Operand* make_object_memory_operand(Symbol* object);
-  X86Operand* make_object_operand(Symbol* object);
-  X86Operand* make_id_operand(char* id);
-  void emit_mov(Type* type, X86Operand* dest_operand, X86Operand* source_operand);
-  void load_object_value(Symbol* object, X86Location* dest_loc);
-  void load_object_address(Symbol* object, X86Location* dest_loc);
-  void load_object(Symbol* object, X86Location* dest_loc);
-  void store_object(Symbol* object);
-  eX86Stmt conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type);
-  X86Location* get_first_fit_register(Type* type);
-  X86Location* find_least_used_register(Type* type);
-  void add_object_to_memory(Symbol* object);
-  void save_object_to_memory(Symbol* object);
-  void save_register(X86Location* reg, bool free_reg);
-  void save_register_all_sizes(X86Location* loc, bool free_reg);
-  X86Location* get_best_available_register(Type* type);
-  void discard_unused_arg(IrArg* arg, X86Location* arg_loc);
-  void discard_all_unused_args(IrStmt_Assign* assign);
-  void save_all_registers(bool free_reg);
-  void write_data_bytes(String* text, uint8* p_data, int data_size);
-  void write_static_data_text(String* text, Scope* scope);
-  void init_registers();
-  void init(MemoryArena* gp_arena, MemoryArena* stmt_arena, MemoryArena* text_arena,
-            TypePass* type_pass, IrContext* ir_context, SymbolPass* sym_pass);
 
   void gen_divmod_op(IrStmt_Assign* assign);
   void gen_index_source(IrStmt_Assign* assign);

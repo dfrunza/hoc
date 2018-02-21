@@ -1115,7 +1115,7 @@ bool IrContext::visit_var(Scope* scope, AstNode* var)
 
   Symbol* object = var->var.decl_sym;
   alloc_data_object_incremental(object, scope);
-  x86_context->add_object_to_memory(object);
+  add_object_to_memory(x86_context, object);
   var->place = create_arg_existing_object(object);
 
   AstNode* init_expr = var->var.init_expr;
@@ -1220,7 +1220,7 @@ void IrContext::visit_formal_args(Scope* scope, AstNode* args)
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     Symbol* arg_object = KIND(arg, eAstNode_var)->var.decl_sym;
     alloc_data_object(arg_object, scope);
-    x86_context->add_object_to_memory(arg_object);
+    add_object_to_memory(x86_context, arg_object);
   }
 }
 
@@ -1294,7 +1294,7 @@ void IrContext::visit_module_var(Scope* scope, AstNode* var)
   assert(KIND(var, eAstNode_var));
 
   Symbol* object = var->var.decl_sym;
-  x86_context->add_object_to_memory(object);
+  add_object_to_memory(x86_context, object);
 }
 
 bool IrContext::visit_module_stmt(Scope* scope, AstNode* stmt)

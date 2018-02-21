@@ -160,7 +160,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   ir_context.init(gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass, &sym_pass);
 
   X86Context x86_context = {};
-  x86_context.init(gp_arena, push_arena(&arena, 2*MEGABYTE), push_arena(&arena, 2*MEGABYTE),
+  init_x86_context(&x86_context, gp_arena, push_arena(&arena, 2*MEGABYTE), push_arena(&arena, 2*MEGABYTE),
                    type_pass, &ir_context, &sym_pass);
 
   Parser* parser = new_parser(gp_arena);

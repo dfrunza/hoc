@@ -118,7 +118,7 @@ Symbol* SymbolPass::create_const(Type* ty, SourceLoc* src_loc)
   sym->is_live = false;
   init_object_locations(sym);
 
-  x86_context->add_object_to_memory(sym);
+  add_object_to_memory(x86_context, sym);
 
   return sym;
 }

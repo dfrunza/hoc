@@ -134,7 +134,7 @@ Parser* Parser::create(MemoryArena* arena)
   parser->arena = arena;
   parser->includes = List::create(arena, eList_ast_node);
 
-  Lexer* lexer = parser->lexer = Lexer::create(arena);
+  Lexer* lexer = parser->lexer = new_lexer(arena);
   parser->token = &lexer->token;
   parser->src_loc = &lexer->src_loc;
 
@@ -144,18 +144,18 @@ Parser* Parser::create(MemoryArena* arena)
 void Parser::set_input(char* text, PlatformFile* file)
 {
   this->file = file;
-  lexer->set_input(text, file->path);
+  lex_set_input(lexer, text, file->path);
 }
 
 bool Parser::get_next_token()
 {
-  bool result = lexer->get_next_token();
+  bool result = lex_get_next_token(lexer);
   return result;
 }
 
 void Parser::putback_token()
 {
-  lexer->putback_token();
+  lex_putback_token(lexer);
 }
 
 Parser* Parser::create_included()
@@ -174,7 +174,7 @@ bool Parser::consume_semicolon()
     success = get_next_token();
   }
   else
-    success = compile_error(arena, src_loc, "`;` was expected at `%s`", token->get_printstr());
+    success = compile_error(arena, src_loc, "`;` was expected at `%s`", get_token_printstr(token));
 
   return success;
 }
@@ -250,7 +250,7 @@ bool Parser::parse_call(AstNode* left_node, AstNode** node)
         }
       }
       else
-        success = compile_error(arena, src_loc, "`)` was expected at `%s`", token->get_printstr());
+        success = compile_error(arena, src_loc, "`)` was expected at `%s`", get_token_printstr(token));
     }
   }
   return success;
@@ -280,11 +280,11 @@ bool Parser::parse_index_recursive(AstNode* left_node, AstNode** node, int* ndim
           }
         }
         else
-          success = compile_error(arena, src_loc, "expression was expected at `%s`", token->get_printstr());
+          success = compile_error(arena, src_loc, "expression was expected at `%s`", get_token_printstr(token));
       }
       else
       {
-        success = compile_error(arena, src_loc, "`]` was expected at `%s`", token->get_printstr());
+        success = compile_error(arena, src_loc, "`]` was expected at `%s`", get_token_printstr(token));
       }
     }
   }
@@ -346,7 +346,7 @@ bool Parser::parse_rest_of_unr_expr(AstNode* left_node, AstNode** node)
             }
           }
           else
-            success = compile_error(arena, src_loc, "operand was expected at `%s`", token->get_printstr());
+            success = compile_error(arena, src_loc, "operand was expected at `%s`", get_token_printstr(token));
         }
       }
       break;
@@ -420,7 +420,7 @@ bool Parser::parse_rest_of_factor(AstNode* left_node, AstNode** node)
             success = compile_error(arena, right_operand->src_loc, "invalid operand");
         }
         else
-          success = compile_error(arena, src_loc, "operand was expected at `%s`", token->get_printstr());
+          success = compile_error(arena, src_loc, "operand was expected at `%s`", get_token_printstr(token));
       }
     }
       break;
@@ -534,7 +534,7 @@ bool Parser::parse_rest_of_term(AstNode* left_node, AstNode** node)
               success = compile_error(arena, right_operand->src_loc, "invalid operand");
           }
           else
-            success = compile_error(arena, src_loc, "operand was expected at `%s`", token->get_printstr());
+            success = compile_error(arena, src_loc, "operand was expected at `%s`", get_token_printstr(token));
         }
       }
       break;
@@ -577,7 +577,7 @@ bool Parser::parse_rest_of_assignment(AstNode* left_node, AstNode** node)
               success = compile_error(arena, source_expr->src_loc, "invalid operand in assignment expression");
           }
           else
-            success = compile_error(arena, src_loc, "operand was expected at `%s`", token->get_printstr());
+            success = compile_error(arena, src_loc, "operand was expected at `%s`", get_token_printstr(token));
         }
       }
       break;
@@ -670,7 +670,7 @@ bool Parser::parse_rest_of_cast(AstNode* left_node, AstNode** node)
       {
         if(!cast->cast.from_expr)
         {
-          success = compile_error(arena, src_loc, "expression was expected at `%s`", token->get_printstr());
+          success = compile_error(arena, src_loc, "expression was expected at `%s`", get_token_printstr(token));
         }
       }
     }
@@ -713,7 +713,7 @@ bool Parser::parse_rest_of_deref(AstNode** node)
           success = get_next_token() && parse_rest_of_cast(*node, node);
         }
         else
-          success = compile_error(arena, src_loc, "`)` was expected at `%s`", token->get_printstr());
+          success = compile_error(arena, src_loc, "`)` was expected at `%s`", get_token_printstr(token));
       }
     }
     break;
@@ -732,7 +732,7 @@ bool Parser::parse_deref(AstNode** node)
   {
     if(!deref->unr_expr.operand)
     {
-      success = compile_error(arena, src_loc, "expression was expected at `%s`", token->get_printstr());
+      success = compile_error(arena, src_loc, "expression was expected at `%s`", get_token_printstr(token));
     }
   }
   return success;
@@ -750,7 +750,7 @@ bool Parser::parse_rest_of_array(AstNode** node)
     break;
 
     case eToken_id:
-      success = compile_error(arena, src_loc, "unknown type id `%s`", token->get_printstr());
+      success = compile_error(arena, src_loc, "unknown type id `%s`", get_token_printstr(token));
     break;
 
     case eToken_void:
@@ -771,7 +771,7 @@ bool Parser::parse_rest_of_array(AstNode** node)
           success = get_next_token();
         }
         else
-          success = compile_error(arena, src_loc, "`)` was expected at `%s`", token->get_printstr());
+          success = compile_error(arena, src_loc, "`)` was expected at `%s`", get_token_printstr(token));
       }
     }
     break;
@@ -797,15 +797,15 @@ bool Parser::parse_array(AstNode** node)
           {
             if(!array->array.elem_expr)
             {
-              success = compile_error(arena, src_loc,  "expression was expected at `%s`", token->get_printstr());
+              success = compile_error(arena, src_loc,  "expression was expected at `%s`", get_token_printstr(token));
             }
           }
         }
         else
-          success = compile_error(arena, src_loc, "expression was expected at `%s`", token->get_printstr());
+          success = compile_error(arena, src_loc, "expression was expected at `%s`", get_token_printstr(token));
       }
       else
-        success = compile_error(arena, src_loc,  "`]` was expected at `%s`", token->get_printstr());
+        success = compile_error(arena, src_loc,  "`]` was expected at `%s`", get_token_printstr(token));
     }
   }
   return success;
@@ -829,10 +829,10 @@ bool Parser::parse_cast(AstNode** node)
             success = get_next_token() && parse_rest_of_cast(*node, node);
           }
           else
-            success = compile_error(arena, src_loc, "expression was expected at `%s`", token->get_printstr());
+            success = compile_error(arena, src_loc, "expression was expected at `%s`", get_token_printstr(token));
         }
         else
-          success = compile_error(arena, src_loc, "`)` was expected at `%s`", token->get_printstr());
+          success = compile_error(arena, src_loc, "`)` was expected at `%s`", get_token_printstr(token));
       }
     }
     break;
@@ -999,7 +999,7 @@ bool Parser::parse_formal_arg(AstNode** node)
       success = get_next_token();
     }
     else
-      success = compile_error(arena, src_loc, "identifier was expected at `%s`", token->get_printstr());
+      success = compile_error(arena, src_loc, "identifier was expected at `%s`", get_token_printstr(token));
   }
   return success;
 }
@@ -1040,7 +1040,7 @@ bool Parser::parse_unr_expr(AstNode** node)
         {
           if(!unr_expr->unr_expr.operand)
           {
-            success = compile_error(arena, src_loc, "operand was expected at `%s`", token->get_printstr());
+            success = compile_error(arena, src_loc, "operand was expected at `%s`", get_token_printstr(token));
           }
         }
       }
@@ -1147,7 +1147,7 @@ bool Parser::parse_block(AstNode** node)
         success = get_next_token();
       }
       else
-        success = compile_error(arena, src_loc, "`}` was expected at `%s`", token->get_printstr());
+        success = compile_error(arena, src_loc, "`}` was expected at `%s`", get_token_printstr(token));
     }
   }
   return success;
@@ -1184,14 +1184,14 @@ bool Parser::parse_if(AstNode** node)
               success = get_next_token() && parse_block_stmt(&if_->if_.body) && parse_else(&if_->if_.else_body);
             }
             else
-              success = compile_error(arena, src_loc, "`)` was expected at `%s`", token->get_printstr());
+              success = compile_error(arena, src_loc, "`)` was expected at `%s`", get_token_printstr(token));
           }
           else
-            success = compile_error(arena, src_loc, "expression was expected at `%s`", token->get_printstr());
+            success = compile_error(arena, src_loc, "expression was expected at `%s`", get_token_printstr(token));
         }
       }
       else
-        success = compile_error(arena, src_loc, "`(` was expected at `%s`", token->get_printstr());
+        success = compile_error(arena, src_loc, "`(` was expected at `%s`", get_token_printstr(token));
     }
   }
   return success;
@@ -1219,18 +1219,18 @@ bool Parser::parse_do_while(AstNode** node)
                 if(token->kind == eToken_close_parens)
                   success = get_next_token();
                 else
-                  success = compile_error(arena, src_loc, "`)` was expected at `%s`", token->get_printstr());
+                  success = compile_error(arena, src_loc, "`)` was expected at `%s`", get_token_printstr(token));
               }
               else
-                success = compile_error(arena, src_loc, "expression was expected at `%s`", token->get_printstr());
+                success = compile_error(arena, src_loc, "expression was expected at `%s`", get_token_printstr(token));
             }
           }
           else
-            success = compile_error(arena, src_loc, "`(` was expected at `%s`", token->get_printstr());
+            success = compile_error(arena, src_loc, "`(` was expected at `%s`", get_token_printstr(token));
         }
       }
       else
-        success = compile_error(arena, src_loc, "`while` was expected at `%s`", token->get_printstr());
+        success = compile_error(arena, src_loc, "`while` was expected at `%s`", get_token_printstr(token));
     }
   }
   return success;
@@ -1256,14 +1256,14 @@ bool Parser::parse_while(AstNode** node)
               success = get_next_token() && parse_block_stmt(&while_->while_.body);
             }
             else
-              success = compile_error(arena, src_loc, "`)` was expected at `%s`", token->get_printstr());
+              success = compile_error(arena, src_loc, "`)` was expected at `%s`", get_token_printstr(token));
           }
           else
-            success = compile_error(arena, src_loc, "expression was expected at `%s`", token->get_printstr());
+            success = compile_error(arena, src_loc, "expression was expected at `%s`", get_token_printstr(token));
         }
       }
       else
-        success = compile_error(arena, src_loc, "`(` was expected at `%s`", token->get_printstr());
+        success = compile_error(arena, src_loc, "`(` was expected at `%s`", get_token_printstr(token));
     }
   }
   return success;
@@ -1400,7 +1400,7 @@ bool Parser::parse_block_stmt(AstNode** node)
           }
         }
         else if(modifier != eModifier_None)
-          success = compile_error(arena, src_loc, "statement was expected at `%s`", token->get_printstr());
+          success = compile_error(arena, src_loc, "statement was expected at `%s`", get_token_printstr(token));
       }
     }
     break;
@@ -1452,7 +1452,7 @@ bool Parser::parse_proc_body(AstNode* proc)
     break;
 
     default:
-      success = compile_error(arena, src_loc, "unexpected `%s`", token->get_printstr());
+      success = compile_error(arena, src_loc, "unexpected `%s`", get_token_printstr(token));
       break;
   }
   return success;
@@ -1659,7 +1659,7 @@ bool parse_asm_block(Parser* parser, AstNode** node)
           success = get_next_token(parser);
         }
         else
-          success = compile_error(parser->arena, &parser->src_loc, "`}` was expected at `%s`", parser->token->get_printstr());
+          success = compile_error(parser->arena, &parser->src_loc, "`}` was expected at `%s`", parser->get_token_printstr(token));
       }
     }
   }
@@ -1691,7 +1691,7 @@ bool Parser::parse_module_proc(char* name, eModifier modifier, AstNode* ret_type
           success = get_next_token() && parse_proc_body(proc);
         }
         else
-          success = compile_error(arena, src_loc, "`)` was expected at `%s`", token->get_printstr());
+          success = compile_error(arena, src_loc, "`)` was expected at `%s`", get_token_printstr(token));
       }
     }
   }
@@ -1798,7 +1798,7 @@ bool Parser::parse_module_include(AstNode** node)
           success = compile_error(arena, src_loc, "could not read file `%s`", include->include.file_path);
       }
       else
-        success = compile_error(arena, src_loc, "string literal was expected at `%s`", token->get_printstr());
+        success = compile_error(arena, src_loc, "string literal was expected at `%s`", get_token_printstr(token));
     }
   }
 
@@ -1842,10 +1842,10 @@ bool Parser::parse_module_stmt(AstNode** node)
             }
           }
           else
-            success = compile_error(arena, src_loc, "identifier was expected at `%s`", token->get_printstr());
+            success = compile_error(arena, src_loc, "identifier was expected at `%s`", get_token_printstr(token));
         }
         else if(modifier != eModifier_None)
-          success = compile_error(arena, src_loc, "statement was expected at `%s`", token->get_printstr());
+          success = compile_error(arena, src_loc, "statement was expected at `%s`", get_token_printstr(token));
       }
     }
     break;
@@ -1905,7 +1905,7 @@ bool Parser::parse_module_body(AstNode* module)
       //TODO: reset the parser
     }
     else
-      success = compile_error(arena, src_loc, "`end-of-input` was expected at `%s`", token->get_printstr());
+      success = compile_error(arena, src_loc, "`end-of-input` was expected at `%s`", get_token_printstr(token));
   }
 
   return success;

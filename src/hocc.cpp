@@ -11,8 +11,10 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-struct WindowsFile : PlatformFile
+struct WindowsFile
 {
+  PlatformFile platform_file;
+
   HANDLE handle;
   int id_low;
   int id_high;
@@ -154,7 +156,7 @@ PlatformFile* platform_file_open(MemoryArena* arena, char* file_path)
   {
     file = push_struct(arena, WindowsFile);
     file->handle = handle;
-    file->path = file_path;
+    file->platform_file.path = file_path;
 
     BY_HANDLE_FILE_INFORMATION* info = push_struct(arena, BY_HANDLE_FILE_INFORMATION);
     if(GetFileInformationByHandle(handle, info))

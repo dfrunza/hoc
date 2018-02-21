@@ -185,40 +185,25 @@ struct Token
     char char_val;
     char* str_val;
   };
-
-  char* get_printstr();
 };
+
+typedef struct
+{
+  char quote;
+  int len;
+  char* begin;
+  char* end;
+}
+EscapedStr;
 
 struct Lexer
 {
-  typedef struct
-  {
-    char quote;
-    int len;
-    char* begin;
-    char* end;
-  }
-  EscapedStr;
-
   MemoryArena* arena;
   struct Lexer* last_state;
   Token token;
   char* text;
   char* cursor;
   SourceLoc src_loc;
-
-  static Lexer* create(MemoryArena* arena);
-  Token* lookup_keyword(char* lexeme);
-  bool   get_next_token();
-  Token* get_prev_token();
-  void   putback_token();
-  char   skip_whitespace(char* whitechars);
-  bool   get_asm_text();
-  void   set_input(char* text, char* file_path);
-  char*  install_lexeme(char* begin_char, char* end_char);
-  static bool is_valid_escape_char(char c);
-  bool   escaped_string(char* file, int line, EscapedStr* estr);
-  char*  install_escaped_str(EscapedStr* estr);
 };
 
 enum eOperator

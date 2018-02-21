@@ -27,7 +27,7 @@ void IrContext::init(MemoryArena* gp_arena, MemoryArena* stmt_arena,
   stmt_array = (IrStmt*)stmt_arena->base;
   stmt_count = 0;
   this->sym_pass = sym_pass;
-  label_list = List::create(gp_arena, eList::ir_label);
+  label_list = List::create(gp_arena, eList_ir_label);
   data_alignment = 4;
 }
 
@@ -37,12 +37,12 @@ bool IrContext::is_cast_op(eIrOp ir_op)
 
   switch(ir_op)
   {
-    case eIrOp::itof:
-    case eIrOp::itoc:
-    case eIrOp::itob:
-    case eIrOp::ftoi:
-    case eIrOp::ctoi:
-    case eIrOp::btoi:
+    case eIrOp_itof:
+    case eIrOp_itoc:
+    case eIrOp_itob:
+    case eIrOp_ftoi:
+    case eIrOp_ctoi:
+    case eIrOp_btoi:
       is_conv = true;
     break;
   }
@@ -52,83 +52,83 @@ bool IrContext::is_cast_op(eIrOp ir_op)
 
 eIrOp IrContext::conv_operator_to_ir_op(eOperator op)
 {
-  eIrOp ir_op = eIrOp::None;
+  eIrOp ir_op = eIrOp_None;
   switch(op)
   {
-    case eOperator::add:
-      ir_op = eIrOp::add;
+    case eOperator_add:
+      ir_op = eIrOp_add;
     break;
     
-    case eOperator::sub:
-      ir_op = eIrOp::sub;
+    case eOperator_sub:
+      ir_op = eIrOp_sub;
     break;
     
-    case eOperator::mul:
-      ir_op = eIrOp::mul;
+    case eOperator_mul:
+      ir_op = eIrOp_mul;
     break;
     
-    case eOperator::div:
-      ir_op = eIrOp::div;
+    case eOperator_div:
+      ir_op = eIrOp_div;
     break;
 
-    case eOperator::mod:
-      ir_op = eIrOp::mod;
+    case eOperator_mod:
+      ir_op = eIrOp_mod;
     break;
     
-    case eOperator::neg:
-      ir_op = eIrOp::neg;
+    case eOperator_neg:
+      ir_op = eIrOp_neg;
     break;
     
-    case eOperator::bit_and:
-      ir_op = eIrOp::bit_and;
+    case eOperator_bit_and:
+      ir_op = eIrOp_bit_and;
     break;
     
-    case eOperator::bit_or:
-      ir_op = eIrOp::bit_or;
+    case eOperator_bit_or:
+      ir_op = eIrOp_bit_or;
     break;
     
-    case eOperator::bit_xor:
-      ir_op = eIrOp::bit_xor;
+    case eOperator_bit_xor:
+      ir_op = eIrOp_bit_xor;
     break;
     
-    case eOperator::bit_shift_left:
-      ir_op = eIrOp::bit_shift_left;
+    case eOperator_bit_shift_left:
+      ir_op = eIrOp_bit_shift_left;
     break;
     
-    case eOperator::bit_shift_right:
-      ir_op = eIrOp::bit_shift_right;
+    case eOperator_bit_shift_right:
+      ir_op = eIrOp_bit_shift_right;
     break;
     
-    case eOperator::less:
-      ir_op = eIrOp::less;
+    case eOperator_less:
+      ir_op = eIrOp_less;
     break;
     
-    case eOperator::less_eq:
-      ir_op = eIrOp::less_eq;
+    case eOperator_less_eq:
+      ir_op = eIrOp_less_eq;
     break;
     
-    case eOperator::greater:
-      ir_op = eIrOp::greater;
+    case eOperator_greater:
+      ir_op = eIrOp_greater;
     break;
     
-    case eOperator::greater_eq:
-      ir_op = eIrOp::greater_eq;
+    case eOperator_greater_eq:
+      ir_op = eIrOp_greater_eq;
     break;
     
-    case eOperator::eq:
-      ir_op = eIrOp::eq;
+    case eOperator_eq:
+      ir_op = eIrOp_eq;
     break;
     
-    case eOperator::not_eq_:
-      ir_op = eIrOp::not_eq_;
+    case eOperator_not_eq:
+      ir_op = eIrOp_not_eq;
     break;
     
-    case eOperator::address_of:
-      ir_op = eIrOp::address_of;
+    case eOperator_address_of:
+      ir_op = eIrOp_address_of;
     break;
 
-    case eOperator::deref:
-      ir_op = eIrOp::deref_source;
+    case eOperator_deref:
+      ir_op = eIrOp_deref_source;
     break;
 
     default: assert(0);
@@ -144,7 +144,7 @@ Label* IrContext::get_label_at(int stmt_nr)
       li;
       li = li->next)
   {
-    label = KIND(li, eList::ir_label)->ir_label;
+    label = KIND(li, eList_ir_label)->ir_label;
     if(label->stmt_nr == stmt_nr)
       break;
     label = 0;
@@ -156,7 +156,7 @@ Label* IrContext::get_label_at(int stmt_nr)
 void IrContext::emit_assign(eIrOp op, IrArg* arg1, IrArg* arg2, IrArg* result)
 {
   IrStmt* stmt = push_struct(stmt_arena, IrStmt);
-  stmt->kind = eIrStmt::assign;
+  stmt->kind = eIrStmt_assign;
   stmt->label = get_label_at(stmt_count);
 
   stmt->assign.op = op;
@@ -182,7 +182,7 @@ void IrContext::emit_label(Label* label)
       li;
       li = li->prev)
   {
-    prim_label = KIND(li, eList::ir_label)->ir_label;
+    prim_label = KIND(li, eList_ir_label)->ir_label;
     if(prim_label->stmt_nr == label->stmt_nr)
       break;
     prim_label = 0;
@@ -194,7 +194,7 @@ void IrContext::emit_label(Label* label)
   }
   else
   {
-    label_list->append(label, eList::ir_label);
+    label_list->append(label, eList_ir_label);
   }
 }
 
@@ -203,7 +203,7 @@ void IrContext::emit_nop()
   IrStmt* stmt = push_struct(stmt_arena, IrStmt);
 
   *stmt = {};
-  stmt->kind = eIrStmt::nop;
+  stmt->kind = eIrStmt_nop;
   stmt->label = get_label_at(stmt_count);
 
   stmt_count++;
@@ -212,7 +212,7 @@ void IrContext::emit_nop()
 void IrContext::emit_cond_goto(eIrOp relop, IrArg* arg1, IrArg* arg2, Label* label)
 {
   IrStmt* stmt = push_struct(stmt_arena, IrStmt);
-  stmt->kind = eIrStmt::cond_goto;
+  stmt->kind = eIrStmt_cond_goto;
   stmt->label = get_label_at(stmt_count);
 
   stmt->cond_goto.relop = relop;
@@ -226,7 +226,7 @@ void IrContext::emit_cond_goto(eIrOp relop, IrArg* arg1, IrArg* arg2, Label* lab
 void IrContext::emit_goto(Label* goto_label)
 {
   IrStmt* stmt = push_struct(stmt_arena, IrStmt);
-  stmt->kind = eIrStmt::goto_;
+  stmt->kind = eIrStmt_goto;
   stmt->label = get_label_at(stmt_count);
   stmt->goto_.goto_label = goto_label;
 
@@ -236,7 +236,7 @@ void IrContext::emit_goto(Label* goto_label)
 void IrContext::emit_call(Label* name, Scope* param_scope, Symbol* retvar, bool is_extern)
 {
   IrStmt* stmt = push_struct(stmt_arena, IrStmt);
-  stmt->kind = eIrStmt::call;
+  stmt->kind = eIrStmt_call;
   stmt->label = get_label_at(stmt_count);
   stmt->call.name = name;
   stmt->call.param_scope = param_scope;
@@ -249,7 +249,7 @@ void IrContext::emit_call(Label* name, Scope* param_scope, Symbol* retvar, bool 
 void IrContext::emit_return()
 {
   IrStmt* stmt = push_struct(stmt_arena, IrStmt);
-  stmt->kind = eIrStmt::return_;
+  stmt->kind = eIrStmt_return;
   stmt->label = get_label_at(stmt_count);
 
   stmt_count++;
@@ -284,7 +284,7 @@ IrArg* IrContext::create_arg_existing_object(Symbol* object)
 
 bool IrContext::visit_bin_expr(Scope* scope, AstNode* bin_expr)
 {
-  assert(KIND(bin_expr, eAstNode::bin_expr));
+  assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
   
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
@@ -293,22 +293,22 @@ bool IrContext::visit_bin_expr(Scope* scope, AstNode* bin_expr)
   
   switch(op)
   {
-    case eOperator::add:
-    case eOperator::sub:
-    case eOperator::mul:
-    case eOperator::div:
-    case eOperator::mod:
-    case eOperator::bit_and:
-    case eOperator::bit_or:
-    case eOperator::bit_xor:
-    case eOperator::bit_shift_left:
-    case eOperator::bit_shift_right:
-    case eOperator::less:
-    case eOperator::less_eq:
-    case eOperator::greater:
-    case eOperator::greater_eq:
-    case eOperator::eq:
-    case eOperator::not_eq_:
+    case eOperator_add:
+    case eOperator_sub:
+    case eOperator_mul:
+    case eOperator_div:
+    case eOperator_mod:
+    case eOperator_bit_and:
+    case eOperator_bit_or:
+    case eOperator_bit_xor:
+    case eOperator_bit_shift_left:
+    case eOperator_bit_shift_right:
+    case eOperator_less:
+    case eOperator_less_eq:
+    case eOperator_greater:
+    case eOperator_greater_eq:
+    case eOperator_eq:
+    case eOperator_not_eq:
     {
       if(success = visit_expr(scope, left_operand) && visit_expr(scope, right_operand))
       {
@@ -327,13 +327,13 @@ bool IrContext::visit_bin_expr(Scope* scope, AstNode* bin_expr)
 
 void IrContext::visit_id(AstNode* id)
 {
-  assert(KIND(id, eAstNode::id));
+  assert(KIND(id, eAstNode_id));
   id->place = create_arg_existing_object(id->id.decl_sym);
 }
 
 bool IrContext::visit_unr_expr(Scope* scope, AstNode* unr_expr)
 {
-  assert(KIND(unr_expr, eAstNode::unr_expr));
+  assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
   
   AstNode* operand = unr_expr->unr_expr.operand;
@@ -341,7 +341,7 @@ bool IrContext::visit_unr_expr(Scope* scope, AstNode* unr_expr)
   
   switch(op)
   {
-    case eOperator::neg:
+    case eOperator_neg:
     {
       if(success = visit_expr(scope, operand))
       {
@@ -351,13 +351,13 @@ bool IrContext::visit_unr_expr(Scope* scope, AstNode* unr_expr)
     }
     break;
     
-    case eOperator::logic_not:
+    case eOperator_logic_not:
     {
       fail("todo");
     }
     break;
 
-    case eOperator::address_of:
+    case eOperator_address_of:
     {
       if(success = visit_expr(scope, operand))
       {
@@ -367,7 +367,7 @@ bool IrContext::visit_unr_expr(Scope* scope, AstNode* unr_expr)
     }
     break;
 
-    case eOperator::deref:
+    case eOperator_deref:
     {
       if(success = visit_expr(scope, operand))
       {
@@ -385,14 +385,14 @@ bool IrContext::visit_unr_expr(Scope* scope, AstNode* unr_expr)
 
 void IrContext::visit_lit(Scope* scope, AstNode* lit)
 {
-  assert(KIND(lit, eAstNode::lit));
+  assert(KIND(lit, eAstNode_lit));
   
   lit->place = create_arg_existing_object(lit->lit.constant);
 }
 
 bool IrContext::visit_bool_unr_expr(Scope* scope, AstNode* unr_expr)
 {
-  assert(KIND(unr_expr, eAstNode::unr_expr));
+  assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
   
   AstNode* operand = unr_expr->unr_expr.operand;
@@ -400,7 +400,7 @@ bool IrContext::visit_bool_unr_expr(Scope* scope, AstNode* unr_expr)
   
   switch(op)
   {
-    case eOperator::logic_not:
+    case eOperator_logic_not:
     {
       operand->label_true = unr_expr->label_false;
       operand->label_false = unr_expr->label_true;
@@ -415,7 +415,7 @@ bool IrContext::visit_bool_unr_expr(Scope* scope, AstNode* unr_expr)
 
 bool IrContext::visit_actual_args(Scope* scope, AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   bool success = true;
 
   int arg_count = args->args.node_list.count;
@@ -428,14 +428,14 @@ bool IrContext::visit_actual_args(Scope* scope, AstNode* args)
         li && success;
         li = li->next, i++)
     {
-      AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+      AstNode* arg = KIND(li, eList_ast_node)->ast_node;
       AstNode* expr = arg->call_arg.expr;
 
       if(success = visit_expr(scope, expr))
       {
         temp_places[i] = create_arg_temp_object(scope, expr->eval_ty, expr->src_loc);
 
-        emit_assign(eIrOp::None, expr->place, 0, temp_places[i]);
+        emit_assign(eIrOp_None, expr->place, 0, temp_places[i]);
       }
     }
 
@@ -444,10 +444,10 @@ bool IrContext::visit_actual_args(Scope* scope, AstNode* args)
         li;
         li = li->next, i++)
     {
-      AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+      AstNode* arg = KIND(li, eList_ast_node)->ast_node;
 
       arg->place = create_arg_existing_object(arg->call_arg.param);
-      emit_assign(eIrOp::None, temp_places[i], 0, arg->place);
+      emit_assign(eIrOp_None, temp_places[i], 0, arg->place);
     }
   }
 
@@ -456,13 +456,13 @@ bool IrContext::visit_actual_args(Scope* scope, AstNode* args)
 
 void IrContext::visit_call(Scope* scope, AstNode* call)
 {
-  assert(KIND(call, eAstNode::call));
+  assert(KIND(call, eAstNode_call));
   AstNode* proc = call->call.proc;
   
   call->place = create_arg_existing_object(call->call.retvar);
 
   AstNode* args = call->call.args;
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   visit_actual_args(scope, args);
 
   if(proc->proc.is_extern())
@@ -473,7 +473,7 @@ void IrContext::visit_call(Scope* scope, AstNode* call)
         li;
         li = li->prev)
     {
-      AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+      AstNode* arg = KIND(li, eList_ast_node)->ast_node;
       alloc_data_object(arg->call_arg.param, call->call.param_scope);
     }
 
@@ -486,7 +486,7 @@ void IrContext::visit_call(Scope* scope, AstNode* call)
         li;
         li = li->next)
     {
-      AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+      AstNode* arg = KIND(li, eList_ast_node)->ast_node;
       alloc_data_object(arg->call_arg.param, call->call.param_scope);
     }
     alloc_data_object(call->call.retvar, call->call.param_scope);
@@ -497,13 +497,13 @@ void IrContext::visit_call(Scope* scope, AstNode* call)
 
 bool IrContext::visit_index(Scope* scope, AstNode* index)
 {
-  assert(KIND(index, eAstNode::index));
+  assert(KIND(index, eAstNode_index));
   bool success = true;
 
   AstNode* array_expr = index->index.array_expr;
   AstNode* i_expr = index->index.i_expr;
 
-  if(array_expr->kind == eAstNode::id)
+  if(array_expr->kind == eAstNode_id)
   {
     visit_id(array_expr);
     index->index.place = array_expr->place;
@@ -513,7 +513,7 @@ bool IrContext::visit_index(Scope* scope, AstNode* index)
       index->index.i_place = i_expr->place;
     }
   }
-  else if(array_expr->kind == eAstNode::index)
+  else if(array_expr->kind == eAstNode_index)
   {
     if(success = visit_index(scope, array_expr) && visit_expr(scope, i_expr))
     {
@@ -522,15 +522,15 @@ bool IrContext::visit_index(Scope* scope, AstNode* index)
       IrArg* offset = index->index.i_place = create_arg_temp_object(scope, basic_type_int, index->src_loc);
 
       Type* index_ty = index->ty;
-      int size_val = KIND(index_ty, eType::array)->array.size;
+      int size_val = KIND(index_ty, eType_array)->array.size;
 
       Symbol* size_constant = sym_pass->create_const_int(index->src_loc, size_val);
       IrArg* dim_size = create_arg_existing_object(size_constant);
 
       if(size_val > 0)
       {
-        emit_assign(eIrOp::mul, array_expr->index.i_place, dim_size, offset);
-        emit_assign(eIrOp::add, offset, i_expr->place, offset);
+        emit_assign(eIrOp_mul, array_expr->index.i_place, dim_size, offset);
+        emit_assign(eIrOp_add, offset, i_expr->place, offset);
       }
       else
         success = compile_error(gp_arena, i_expr->src_loc, "array dim size <= 0");
@@ -543,7 +543,7 @@ bool IrContext::visit_index(Scope* scope, AstNode* index)
 
 bool IrContext::visit_index_with_offset(Scope* scope, AstNode* index)
 {
-  assert(KIND(index, eAstNode::index));
+  assert(KIND(index, eAstNode_index));
   bool success = true;
 
   if(success = visit_index(scope, index))
@@ -556,7 +556,7 @@ bool IrContext::visit_index_with_offset(Scope* scope, AstNode* index)
     Symbol* width_constant = sym_pass->create_const_int(index->src_loc, width_val);
     IrArg* width = create_arg_existing_object(width_constant);
 
-    emit_assign(eIrOp::mul, index->index.i_place, width, offset);
+    emit_assign(eIrOp_mul, index->index.i_place, width, offset);
   }
 
   return success;
@@ -564,34 +564,34 @@ bool IrContext::visit_index_with_offset(Scope* scope, AstNode* index)
 
 bool IrContext::visit_assign(Scope* scope, AstNode* assign)
 {
-  assert(KIND(assign, eAstNode::assign));
+  assert(KIND(assign, eAstNode_assign));
   bool success = true;
   
   AstNode* dest_expr = assign->assign.dest_expr;
   AstNode* source_expr = assign->assign.source_expr;
   
-  if(dest_expr->kind == eAstNode::id)
+  if(dest_expr->kind == eAstNode_id)
   {
     if(success = visit_expr(scope, dest_expr) && visit_expr(scope, source_expr))
     {
-      emit_assign(eIrOp::None, source_expr->place, 0, dest_expr->place);
+      emit_assign(eIrOp_None, source_expr->place, 0, dest_expr->place);
     }
   }
-  else if(dest_expr->kind == eAstNode::index)
+  else if(dest_expr->kind == eAstNode_index)
   {
     if(success = visit_index_with_offset(scope, dest_expr) && visit_expr(scope, source_expr))
     {
       dest_expr->place = dest_expr->index.place;
-      emit_assign(eIrOp::index_dest, source_expr->place, dest_expr->index.offset, dest_expr->index.place);
+      emit_assign(eIrOp_index_dest, source_expr->place, dest_expr->index.offset, dest_expr->index.place);
     }
   }
-  else if(dest_expr->kind == eAstNode::unr_expr && dest_expr->unr_expr.op == eOperator::deref)
+  else if(dest_expr->kind == eAstNode_unr_expr && dest_expr->unr_expr.op == eOperator_deref)
   {
     AstNode* operand = dest_expr->unr_expr.operand;
     if(success = visit_expr(scope, operand) && visit_expr(scope, source_expr))
     {
       dest_expr->place = operand->place;
-      emit_assign(eIrOp::deref_dest, source_expr->place, 0, dest_expr->place);
+      emit_assign(eIrOp_deref_dest, source_expr->place, 0, dest_expr->place);
     }
   }
   else
@@ -602,7 +602,7 @@ bool IrContext::visit_assign(Scope* scope, AstNode* assign)
 
 bool IrContext::visit_cast(Scope* scope, AstNode* cast)
 {
-  assert(KIND(cast, eAstNode::cast));
+  assert(KIND(cast, eAstNode_cast));
   bool success = true;
   AstNode* to_type = cast->cast.to_type;
   AstNode* from_expr = cast->cast.from_expr;
@@ -612,7 +612,7 @@ bool IrContext::visit_cast(Scope* scope, AstNode* cast)
     cast->place = from_expr->place;
     
     if(to_type->eval_ty->equal(from_expr->eval_ty) ||
-       ((to_type->eval_ty->kind == from_expr->eval_ty->kind) && (to_type->eval_ty->kind == eType::pointer)))
+       ((to_type->eval_ty->kind == from_expr->eval_ty->kind) && (to_type->eval_ty->kind == eType_pointer)))
     {
       return success;
     }
@@ -620,9 +620,9 @@ bool IrContext::visit_cast(Scope* scope, AstNode* cast)
     if(to_type->eval_ty->equal(basic_type_int))
     {
       // int <- pointer
-      require_conv = from_expr->eval_ty->kind != eType::pointer;
+      require_conv = from_expr->eval_ty->kind != eType_pointer;
     }
-    else if(to_type->eval_ty->kind == eType::pointer)
+    else if(to_type->eval_ty->kind == eType_pointer)
     {
       // pointer <- int
       require_conv = !from_expr->eval_ty->equal(basic_type_int);
@@ -631,21 +631,21 @@ bool IrContext::visit_cast(Scope* scope, AstNode* cast)
     {
       cast->place = create_arg_temp_object(scope, cast->eval_ty, cast->src_loc);
 
-      eIrOp cast_op = eIrOp::None;
+      eIrOp cast_op = eIrOp_None;
 
       if(to_type->eval_ty->equal(basic_type_int))
       {
         if(from_expr->eval_ty->equal(basic_type_float))
         {
-          cast_op = eIrOp::ftoi; // int <- float
+          cast_op = eIrOp_ftoi; // int <- float
         }
         else if(from_expr->eval_ty->equal(basic_type_bool))
         {
-          cast_op = eIrOp::btoi; // int <- bool
+          cast_op = eIrOp_btoi; // int <- bool
         }
         else if(from_expr->eval_ty->equal(basic_type_char))
         {
-          cast_op = eIrOp::ctoi; // int <- char
+          cast_op = eIrOp_ctoi; // int <- char
         }
         else assert(0);
       }
@@ -653,7 +653,7 @@ bool IrContext::visit_cast(Scope* scope, AstNode* cast)
       {
         if(from_expr->eval_ty->equal(basic_type_int))
         {
-          cast_op = eIrOp::itof; // float <- int
+          cast_op = eIrOp_itof; // float <- int
         }
         else assert(0);
       }
@@ -661,7 +661,7 @@ bool IrContext::visit_cast(Scope* scope, AstNode* cast)
       {
         if(from_expr->eval_ty->equal(basic_type_int))
         {
-          cast_op = eIrOp::itoc; // char <- int
+          cast_op = eIrOp_itoc; // char <- int
         }
         else assert(0);
       }
@@ -669,11 +669,11 @@ bool IrContext::visit_cast(Scope* scope, AstNode* cast)
       {
         if(from_expr->eval_ty->equal(basic_type_int))
         {
-          cast_op = eIrOp::itob; // bool <- int
+          cast_op = eIrOp_itob; // bool <- int
         }
-        else if(from_expr->eval_ty->kind == eType::pointer)
+        else if(from_expr->eval_ty->kind == eType_pointer)
         {
-          cast_op = eIrOp::itob; // bool <- pointer(T)
+          cast_op = eIrOp_itob; // bool <- pointer(T)
         }
         else assert(0);
       }
@@ -690,7 +690,7 @@ bool IrContext::visit_expr(Scope* scope, AstNode* expr)
 
   switch(expr->kind)
   {
-    case eAstNode::bin_expr:
+    case eAstNode_bin_expr:
     {
       eOperator op = expr->bin_expr.op;
       if(is_operator_relation(op) || is_operator_logic(op))
@@ -707,10 +707,10 @@ bool IrContext::visit_expr(Scope* scope, AstNode* expr)
         visit_bool_expr(scope, expr);
         
         emit_label(expr->label_true);
-        emit_assign(eIrOp::None, create_arg_existing_object(bool_true), 0, expr->place);
+        emit_assign(eIrOp_None, create_arg_existing_object(bool_true), 0, expr->place);
         emit_goto(expr->label_next);
         emit_label(expr->label_false);
-        emit_assign(eIrOp::None, create_arg_existing_object(bool_false), 0, expr->place);
+        emit_assign(eIrOp_None, create_arg_existing_object(bool_false), 0, expr->place);
         emit_label(expr->label_next);
       }
       else
@@ -720,7 +720,7 @@ bool IrContext::visit_expr(Scope* scope, AstNode* expr)
     }
     break;
     
-    case eAstNode::unr_expr:
+    case eAstNode_unr_expr:
     {
       eOperator op = expr->unr_expr.op;
       if(is_operator_relation(op) || is_operator_logic(op))
@@ -737,10 +737,10 @@ bool IrContext::visit_expr(Scope* scope, AstNode* expr)
         visit_bool_unr_expr(scope, expr);
 
         emit_label(expr->label_true);
-        emit_assign(eIrOp::None, create_arg_existing_object(bool_true), 0, expr->place);
+        emit_assign(eIrOp_None, create_arg_existing_object(bool_true), 0, expr->place);
         emit_goto(expr->label_next);
         emit_label(expr->label_false);
-        emit_assign(eIrOp::None, create_arg_existing_object(bool_false), 0, expr->place);
+        emit_assign(eIrOp_None, create_arg_existing_object(bool_false), 0, expr->place);
         emit_label(expr->label_next);
       }
       else
@@ -750,36 +750,36 @@ bool IrContext::visit_expr(Scope* scope, AstNode* expr)
     }
     break;
     
-    case eAstNode::id:
+    case eAstNode_id:
     {
       visit_id(expr);
     }
     break;
     
-    case eAstNode::lit:
+    case eAstNode_lit:
     {
       visit_lit(scope, expr);
     }
     break;
     
-    case eAstNode::call:
+    case eAstNode_call:
     {
       visit_call(scope, expr);
     }
     break;
     
-    case eAstNode::index:
+    case eAstNode_index:
     {
       if(success = visit_index_with_offset(scope, expr))
       {
         expr->place = create_arg_temp_object(scope, expr->eval_ty, expr->src_loc);
 
-        emit_assign(eIrOp::index_source, expr->index.place, expr->index.offset, expr->place);
+        emit_assign(eIrOp_index_source, expr->index.place, expr->index.offset, expr->place);
       }
     }
     break;
     
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       visit_cast(scope, expr);
     }
@@ -793,14 +793,14 @@ bool IrContext::visit_expr(Scope* scope, AstNode* expr)
 
 bool IrContext::visit_block(Scope* scope, AstNode* block)
 {
-  assert(KIND(block, eAstNode::block));
+  assert(KIND(block, eAstNode_block));
   bool success = true;
   
   for(ListItem* li = block->block.nodes.first;
       li;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     visit_block_stmt(scope, stmt);
   }
 
@@ -809,7 +809,7 @@ bool IrContext::visit_block(Scope* scope, AstNode* block)
 
 bool IrContext::visit_bool_bin_expr(Scope* scope, AstNode* bin_expr)
 {
-  assert(KIND(bin_expr, eAstNode::bin_expr));
+  assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
   
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
@@ -818,12 +818,12 @@ bool IrContext::visit_bool_bin_expr(Scope* scope, AstNode* bin_expr)
   
   switch(op)
   {
-    case eOperator::eq:
-    case eOperator::not_eq_:
-    case eOperator::less:
-    case eOperator::less_eq:
-    case eOperator::greater:
-    case eOperator::greater_eq:
+    case eOperator_eq:
+    case eOperator_not_eq:
+    case eOperator_less:
+    case eOperator_less_eq:
+    case eOperator_greater:
+    case eOperator_greater_eq:
     {
       if(success = visit_expr(scope, left_operand) && visit_expr(scope, right_operand))
       {
@@ -833,7 +833,7 @@ bool IrContext::visit_bool_bin_expr(Scope* scope, AstNode* bin_expr)
     }
     break;
     
-    case eOperator::logic_or:
+    case eOperator_logic_or:
     {
       assert(bin_expr->label_true);
       assert(bin_expr->label_false);
@@ -850,7 +850,7 @@ bool IrContext::visit_bool_bin_expr(Scope* scope, AstNode* bin_expr)
     }
     break;
     
-    case eOperator::logic_and:
+    case eOperator_logic_and:
     {
       assert(bin_expr->label_true);
       assert(bin_expr->label_false);
@@ -875,12 +875,12 @@ bool IrContext::visit_bool_bin_expr(Scope* scope, AstNode* bin_expr)
 
 bool IrContext::visit_bool_id(Scope* scope, AstNode* id)
 {
-  assert(KIND(id, eAstNode::id));
+  assert(KIND(id, eAstNode_id));
   bool success = true;
 
   if(success = visit_expr(scope, id))
   {
-    emit_cond_goto(eIrOp::not_eq_, id->place,
+    emit_cond_goto(eIrOp_not_eq, id->place,
                       create_arg_existing_object(bool_false), id->label_true);
     emit_goto(id->label_false);
   }
@@ -890,12 +890,12 @@ bool IrContext::visit_bool_id(Scope* scope, AstNode* id)
 
 bool IrContext::visit_bool_call(Scope* scope, AstNode* call)
 {
-  assert(KIND(call, eAstNode::call));
+  assert(KIND(call, eAstNode_call));
   bool success = true;
 
   if(success = visit_expr(scope, call))
   {
-    emit_cond_goto(eIrOp::not_eq_, call->place, create_arg_existing_object(bool_false), call->label_true);
+    emit_cond_goto(eIrOp_not_eq, call->place, create_arg_existing_object(bool_false), call->label_true);
     emit_goto(call->label_false);
   }
 
@@ -904,12 +904,12 @@ bool IrContext::visit_bool_call(Scope* scope, AstNode* call)
 
 bool IrContext::visit_bool_cast(Scope* scope, AstNode* cast)
 {
-  assert(KIND(cast, eAstNode::cast));
+  assert(KIND(cast, eAstNode_cast));
   bool success = true;
 
   if(success = visit_cast(scope, cast))
   {
-    emit_cond_goto(eIrOp::not_eq_, cast->place, create_arg_existing_object(bool_false), cast->label_true);
+    emit_cond_goto(eIrOp_not_eq, cast->place, create_arg_existing_object(bool_false), cast->label_true);
     emit_goto(cast->label_false);
   }
 
@@ -918,7 +918,7 @@ bool IrContext::visit_bool_cast(Scope* scope, AstNode* cast)
 
 void IrContext::visit_bool_lit(Scope* scope, AstNode* lit)
 {
-  assert(KIND(lit, eAstNode::lit));
+  assert(KIND(lit, eAstNode_lit));
 
   if(lit->lit.bool_val)
   {
@@ -936,37 +936,37 @@ bool IrContext::visit_bool_expr(Scope* scope, AstNode* expr)
 
   switch(expr->kind)
   {
-    case eAstNode::id:
+    case eAstNode_id:
     {
       success = visit_bool_id(scope, expr);
     }
     break;
     
-    case eAstNode::lit:
+    case eAstNode_lit:
     {
       visit_bool_lit(scope, expr);
     }
     break;
     
-    case eAstNode::bin_expr:
+    case eAstNode_bin_expr:
     {
       success = visit_bool_bin_expr(scope, expr);
     }
     break;
     
-    case eAstNode::unr_expr:
+    case eAstNode_unr_expr:
     {
       success = visit_bool_unr_expr(scope, expr);
     }
     break;
     
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       success = visit_bool_cast(scope, expr);
     }
     break;
 
-    case eAstNode::call:
+    case eAstNode_call:
     {
       success = visit_bool_call(scope, expr);
     }
@@ -980,7 +980,7 @@ bool IrContext::visit_bool_expr(Scope* scope, AstNode* expr)
 
 bool IrContext::visit_do_while(Scope* scope, AstNode* do_while)
 {
-  assert(KIND(do_while, eAstNode::do_while));
+  assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
   AstNode* cond_expr = do_while->do_while.cond_expr;
@@ -1004,7 +1004,7 @@ bool IrContext::visit_do_while(Scope* scope, AstNode* do_while)
 
 bool IrContext::visit_while(Scope* scope, AstNode* while_)
 {
-  assert(KIND(while_, eAstNode::while_));
+  assert(KIND(while_, eAstNode_while));
   bool success = true;
   
   AstNode* cond_expr = while_->while_.cond_expr;
@@ -1029,7 +1029,7 @@ bool IrContext::visit_while(Scope* scope, AstNode* while_)
 
 bool IrContext::visit_if(Scope* scope, AstNode* if_)
 {
-  assert(KIND(if_, eAstNode::if_));
+  assert(KIND(if_, eAstNode_if));
   bool success = true;
   
   AstNode* cond_expr = if_->if_.cond_expr;
@@ -1075,7 +1075,7 @@ bool IrContext::visit_if(Scope* scope, AstNode* if_)
 
 bool IrContext::visit_return(Scope* scope, AstNode* ret)
 {
-  assert(KIND(ret, eAstNode::return_));
+  assert(KIND(ret, eAstNode_return));
   bool success = true;
 
   AstNode* ret_expr = ret->ret.expr;
@@ -1087,7 +1087,7 @@ bool IrContext::visit_return(Scope* scope, AstNode* ret)
     {
       IrArg* retvar = create_arg_existing_object(proc->proc.retvar);
 
-      emit_assign(eIrOp::None, ret_expr->place, 0, retvar);
+      emit_assign(eIrOp_None, ret_expr->place, 0, retvar);
     }
   }
 
@@ -1098,15 +1098,15 @@ bool IrContext::visit_return(Scope* scope, AstNode* ret)
 
 bool IrContext::visit_loop_ctrl(Scope* scope, AstNode* loop_ctrl)
 {
-  assert(KIND(loop_ctrl, eAstNode::loop_ctrl));
+  assert(KIND(loop_ctrl, eAstNode_loop_ctrl));
   bool success = true;
 
   AstNode* loop = loop_ctrl->loop_ctrl.loop;
-  if(loop_ctrl->loop_ctrl.kind == eLoopCtrl::break_)
+  if(loop_ctrl->loop_ctrl.kind == eLoopCtrl_break)
   {
     emit_goto(loop->label_next);
   }
-  else if(loop_ctrl->loop_ctrl.kind == eLoopCtrl::continue_)
+  else if(loop_ctrl->loop_ctrl.kind == eLoopCtrl_continue)
   {
     emit_goto(loop->label_begin);
   }
@@ -1118,7 +1118,7 @@ bool IrContext::visit_loop_ctrl(Scope* scope, AstNode* loop_ctrl)
 bool IrContext::visit_var(Scope* scope, AstNode* var)
 {
   bool success = true;
-  assert(KIND(var, eAstNode::var));
+  assert(KIND(var, eAstNode_var));
 
   Symbol* object = var->var.decl_sym;
   alloc_data_object_incremental(object, scope);
@@ -1130,7 +1130,7 @@ bool IrContext::visit_var(Scope* scope, AstNode* var)
   {
     if(success = visit_expr(scope, init_expr))
     {
-      emit_assign(eIrOp::None, init_expr->place, 0, var->place);
+      emit_assign(eIrOp_None, init_expr->place, 0, var->place);
     }
   }
 
@@ -1143,69 +1143,69 @@ bool IrContext::visit_block_stmt(Scope* scope, AstNode* stmt)
   
   switch(stmt->kind)
   {
-    case eAstNode::assign:
+    case eAstNode_assign:
     {
       success = visit_assign(scope, stmt);
     }
     break;
     
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       success = visit_cast(scope, stmt);
     }
     break;
     
-    case eAstNode::bin_expr:
-    case eAstNode::unr_expr:
-    case eAstNode::id:
-    case eAstNode::call:
-    case eAstNode::index:
-    case eAstNode::lit:
+    case eAstNode_bin_expr:
+    case eAstNode_unr_expr:
+    case eAstNode_id:
+    case eAstNode_call:
+    case eAstNode_index:
+    case eAstNode_lit:
     {
       success = visit_expr(scope, stmt);
     }
     break;
     
-    case eAstNode::block:
+    case eAstNode_block:
     {
       success = visit_block(stmt->block.scope, stmt);
     }
     break;
     
-    case eAstNode::if_:
+    case eAstNode_if:
     {
       success = visit_if(scope, stmt);
     }
     break;
     
-    case eAstNode::do_while:
+    case eAstNode_do_while:
     {
       success = visit_do_while(scope, stmt);
     }
     break;
     
-    case eAstNode::while_:
+    case eAstNode_while:
     {
       success = visit_while(scope, stmt);
     }
     break;
     
-    case eAstNode::var:
+    case eAstNode_var:
     {
       success = visit_var(scope, stmt);
     }
     break;
     
-    case eAstNode::return_:
+    case eAstNode_return:
     {
       success = visit_return(scope, stmt);
     }
     break;
     
-    case eAstNode::empty:
+    case eAstNode_empty:
     break;
 
-    case eAstNode::loop_ctrl:
+    case eAstNode_loop_ctrl:
     {
       success = visit_loop_ctrl(scope, stmt);
     }
@@ -1219,13 +1219,13 @@ bool IrContext::visit_block_stmt(Scope* scope, AstNode* stmt)
 
 void IrContext::visit_formal_args(Scope* scope, AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   for(ListItem* li = args->args.node_list.first;
       li;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
-    Symbol* arg_object = KIND(arg, eAstNode::var)->var.decl_sym;
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    Symbol* arg_object = KIND(arg, eAstNode_var)->var.decl_sym;
     alloc_data_object(arg_object, scope);
     x86_context->add_object_to_memory(arg_object);
   }
@@ -1233,15 +1233,15 @@ void IrContext::visit_formal_args(Scope* scope, AstNode* args)
 
 int IrContext::get_proc_arg_size(AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   int size = 0;
 
   for(ListItem* li = args->args.node_list.first;
       li;
       li = li->next)
   {
-    AstNode* var = KIND(li, eList::ast_node)->ast_node;
-    assert(KIND(var, eAstNode::var));
+    AstNode* var = KIND(li, eList_ast_node)->ast_node;
+    assert(KIND(var, eAstNode_var));
     Symbol* arg_object = var->var.decl_sym;
     size += arg_object->ty->set_width();
   }
@@ -1251,7 +1251,7 @@ int IrContext::get_proc_arg_size(AstNode* args)
 
 bool IrContext::visit_proc(Scope* scope, AstNode* proc)
 {
-  assert(KIND(proc, eAstNode::proc));
+  assert(KIND(proc, eAstNode_proc));
   bool success = true;
   
   proc->place = create_arg_existing_object(proc->proc.retvar);
@@ -1276,7 +1276,7 @@ bool IrContext::visit_proc(Scope* scope, AstNode* proc)
     label_name->name = proc->proc.name;
 
     AstNode* body = proc->proc.body;
-    assert(KIND(body, eAstNode::block));
+    assert(KIND(body, eAstNode_block));
 
     proc->label_begin = Label::create(gp_arena);
     proc->label_next = Label::create(gp_arena);
@@ -1298,7 +1298,7 @@ bool IrContext::visit_proc(Scope* scope, AstNode* proc)
 
 void IrContext::visit_module_var(Scope* scope, AstNode* var)
 {
-  assert(KIND(var, eAstNode::var));
+  assert(KIND(var, eAstNode_var));
 
   Symbol* object = var->var.decl_sym;
   x86_context->add_object_to_memory(object);
@@ -1310,7 +1310,7 @@ bool IrContext::visit_module_stmt(Scope* scope, AstNode* stmt)
 
   switch(stmt->kind)
   {
-    case eAstNode::proc:
+    case eAstNode_proc:
     {
       if(success = visit_proc(scope, stmt))
       {
@@ -1322,7 +1322,7 @@ bool IrContext::visit_module_stmt(Scope* scope, AstNode* stmt)
     }
     break;
     
-    case eAstNode::var:
+    case eAstNode_var:
       visit_module_var(scope, stmt);
     break;
     
@@ -1334,14 +1334,14 @@ bool IrContext::visit_module_stmt(Scope* scope, AstNode* stmt)
 
 bool IrContext::visit_module(AstNode* module)
 {
-  assert(KIND(module, eAstNode::module));
+  assert(KIND(module, eAstNode_module));
   bool success = true;
   
   for(ListItem* li = module->module.nodes.first;
       li;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = visit_module_stmt(module->module.scope, stmt);
   }
 
@@ -1352,111 +1352,111 @@ void IrContext::DEBUG_print_ir_op(String* text, eIrOp op)
 {
   switch(op)
   {
-    case eIrOp::add:
+    case eIrOp_add:
       str_append(text, "+");
     break;
     
-    case eIrOp::sub:
+    case eIrOp_sub:
       str_append(text, "-");
     break;
     
-    case eIrOp::mul:
+    case eIrOp_mul:
       str_append(text, "*");
     break;
     
-    case eIrOp::div:
+    case eIrOp_div:
       str_append(text, "/");
     break;
     
-    case eIrOp::mod:
+    case eIrOp_mod:
       str_append(text, "mod");
     break;
     
-    case eIrOp::neg:
+    case eIrOp_neg:
       str_append(text, "-");
     break;
     
-    case eIrOp::eq:
+    case eIrOp_eq:
       str_append(text, "==");
     break;
     
-    case eIrOp::not_eq_:
+    case eIrOp_not_eq:
       str_append(text, "<>");
     break;
     
-    case eIrOp::less:
+    case eIrOp_less:
       str_append(text, "<");
     break;
     
-    case eIrOp::less_eq:
+    case eIrOp_less_eq:
       str_append(text, "<=");
     break;
     
-    case eIrOp::greater:
+    case eIrOp_greater:
       str_append(text, ">");
     break;
     
-    case eIrOp::greater_eq:
+    case eIrOp_greater_eq:
       str_append(text, ">=");
     break;
     
-    case eIrOp::logic_and:
+    case eIrOp_logic_and:
       str_append(text, "and");
     break;
     
-    case eIrOp::logic_or:
+    case eIrOp_logic_or:
       str_append(text, "or");
     break;
     
-    case eIrOp::logic_not:
+    case eIrOp_logic_not:
       str_append(text, "not");
     break;
     
-    case eIrOp::bit_and:
+    case eIrOp_bit_and:
       str_append(text, "&");
     break;
     
-    case eIrOp::bit_or:
+    case eIrOp_bit_or:
       str_append(text, "|");
     break;
     
-    case eIrOp::bit_xor:
+    case eIrOp_bit_xor:
       str_append(text, "~");
     break;
     
-    case eIrOp::bit_not:
+    case eIrOp_bit_not:
       str_append(text, "!");
     break;
     
-    case eIrOp::bit_shift_left:
+    case eIrOp_bit_shift_left:
       str_append(text, "<<");
     break;
     
-    case eIrOp::bit_shift_right:
+    case eIrOp_bit_shift_right:
       str_append(text, ">>");
     break;
     
-    case eIrOp::itof:
+    case eIrOp_itof:
       str_append(text, "itof");
     break;
     
-    case eIrOp::itoc:
+    case eIrOp_itoc:
       str_append(text, "itoc");
     break;
     
-    case eIrOp::itob:
+    case eIrOp_itob:
       str_append(text, "itob");
     break;
     
-    case eIrOp::ftoi:
+    case eIrOp_ftoi:
       str_append(text, "ftoi");
     break;
     
-    case eIrOp::ctoi:
+    case eIrOp_ctoi:
       str_append(text, "ctoi");
     break;
     
-    case eIrOp::btoi:
+    case eIrOp_btoi:
       str_append(text, "btoi");
     break;
     
@@ -1470,13 +1470,13 @@ void IrContext::DEBUG_print_ir_arg(String* text, IrArg* arg)
 
   switch(object->kind)
   {
-    case eSymbol::None:
+    case eSymbol_None:
     {
       str_format(text, "%s", arg->object->name);
     }
     break;
     
-    case eSymbol::constant:
+    case eSymbol_constant:
     {
       if(object->ty->equal(basic_type_int) || object->ty->equal(basic_type_bool))
       {
@@ -1508,13 +1508,13 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
 {
   switch(stmt->kind)
   {
-    case eIrStmt::assign:
+    case eIrStmt_assign:
     {
       IrStmt_Assign* assign = &stmt->assign;
 
       switch(assign->op)
       {
-        case eIrOp::None:
+        case eIrOp_None:
         {
           DEBUG_print_ir_arg(text, assign->result);
           str_append(text, " = ");
@@ -1523,26 +1523,26 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         break;
         
         /* bin_ops */
-        case eIrOp::add:
-        case eIrOp::sub:
-        case eIrOp::mul:
-        case eIrOp::div:
-        case eIrOp::mod:
-        case eIrOp::eq:
-        case eIrOp::not_eq_:
-        case eIrOp::less:
-        case eIrOp::less_eq:
-        case eIrOp::greater:
-        case eIrOp::greater_eq:
-        case eIrOp::logic_and:
-        case eIrOp::logic_or:
-        case eIrOp::logic_not:
-        case eIrOp::bit_and:
-        case eIrOp::bit_or:
-        case eIrOp::bit_xor:
-        case eIrOp::bit_not:
-        case eIrOp::bit_shift_left:
-        case eIrOp::bit_shift_right:
+        case eIrOp_add:
+        case eIrOp_sub:
+        case eIrOp_mul:
+        case eIrOp_div:
+        case eIrOp_mod:
+        case eIrOp_eq:
+        case eIrOp_not_eq:
+        case eIrOp_less:
+        case eIrOp_less_eq:
+        case eIrOp_greater:
+        case eIrOp_greater_eq:
+        case eIrOp_logic_and:
+        case eIrOp_logic_or:
+        case eIrOp_logic_not:
+        case eIrOp_bit_and:
+        case eIrOp_bit_or:
+        case eIrOp_bit_xor:
+        case eIrOp_bit_not:
+        case eIrOp_bit_shift_left:
+        case eIrOp_bit_shift_right:
         {
           DEBUG_print_ir_arg(text, assign->result);
           str_append(text, " = ");
@@ -1555,13 +1555,13 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         break;
         
         /* unr_ops */
-        case eIrOp::neg:
-        case eIrOp::itof:
-        case eIrOp::itoc:
-        case eIrOp::itob:
-        case eIrOp::ftoi:
-        case eIrOp::ctoi:
-        case eIrOp::btoi:
+        case eIrOp_neg:
+        case eIrOp_itof:
+        case eIrOp_itoc:
+        case eIrOp_itob:
+        case eIrOp_ftoi:
+        case eIrOp_ctoi:
+        case eIrOp_btoi:
         {
           DEBUG_print_ir_arg(text, assign->result);
           str_append(text, " = ");
@@ -1571,7 +1571,7 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         }
         break;
         
-        case eIrOp::index_dest:
+        case eIrOp_index_dest:
         {
           DEBUG_print_ir_arg(text, assign->result);
           str_append(text, "[");
@@ -1581,7 +1581,7 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         }
         break;
         
-        case eIrOp::index_source:
+        case eIrOp_index_source:
         {
           DEBUG_print_ir_arg(text, assign->result);
           str_append(text, " = ");
@@ -1592,7 +1592,7 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         }
         break;
 
-        case eIrOp::address_of:
+        case eIrOp_address_of:
         {
           DEBUG_print_ir_arg(text, assign->result);
           str_append(text, " = &");
@@ -1600,7 +1600,7 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         }
         break;
 
-        case eIrOp::deref_dest:
+        case eIrOp_deref_dest:
         {
           str_append(text, "^");
           DEBUG_print_ir_arg(text, assign->result);
@@ -1609,7 +1609,7 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
         }
         break;
 
-        case eIrOp::deref_source:
+        case eIrOp_deref_source:
         {
           DEBUG_print_ir_arg(text, assign->result);
           str_append(text, " = ^");
@@ -1622,7 +1622,7 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
     }
     break;
     
-    case eIrStmt::cond_goto:
+    case eIrStmt_cond_goto:
     {
       IrStmt_CondGoto* cond_goto = &stmt->cond_goto;
       str_append(text, "if ");
@@ -1635,27 +1635,27 @@ void IrContext::DEBUG_print_ir_stmt(String* text, IrStmt* stmt)
     }
     break;
     
-    case eIrStmt::goto_:
+    case eIrStmt_goto:
     {
       IrStmt_Goto* goto_ = &stmt->goto_;
       str_format(text, "goto %s", goto_->goto_label->name);
     }
     break;
     
-    case eIrStmt::call:
+    case eIrStmt_call:
     {
       IrStmt_Call* call = &stmt->call;
       str_format(text, "call %s", call->name->name);
     }
     break;
     
-    case eIrStmt::return_:
+    case eIrStmt_return:
     {
       str_append(text, "return");
     }
     break;
     
-    case eIrStmt::nop:
+    case eIrStmt_nop:
     {
       str_append(text, "nop");
     }
@@ -1694,7 +1694,7 @@ void IrContext::DEBUG_print_ir_code(List* procs, char* file_path)
       li;
       li = li->next)
   {
-    AstNode* proc = KIND(li, eList::ast_node)->ast_node;
+    AstNode* proc = KIND(li, eList_ast_node)->ast_node;
 
     if(proc->proc.is_extern())
     {
@@ -1709,7 +1709,7 @@ void IrContext::DEBUG_print_ir_code(List* procs, char* file_path)
           li;
           li = li->next)
       {
-        BasicBlock* bb = KIND(li, eList::basic_block)->basic_block;
+        BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
         DEBUG_print_basic_block(&text, bb);
       }
     }
@@ -1727,7 +1727,7 @@ IrLeaderStmt* IrContext::get_leader_stmt(List* leaders, int stmt_nr)
       li;
       li = li->next)
   {
-    leader = KIND(li, eList::ir_leader_stmt)->ir_leader_stmt;
+    leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
     if(stmt_nr == leader->stmt_nr)
       break;
 
@@ -1758,12 +1758,12 @@ void IrContext::insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
   ListItem* li = leaders->first;
   assert(li);
 
-  IrLeaderStmt* leader = KIND(li, eList::ir_leader_stmt)->ir_leader_stmt;
+  IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
   assert(leader->stmt_nr == 0);
 
   for(; li; li = li->next)
   {
-    leader = KIND(li, eList::ir_leader_stmt)->ir_leader_stmt;
+    leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
     if(leader->stmt_nr >= stmt_nr)
     {
       break;
@@ -1775,12 +1775,12 @@ void IrContext::insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
   {
     if(leader->stmt_nr > stmt_nr)
     {
-      leaders->insert_before(li, create_leader_stmt(leaders->arena, stmt_nr, stmt), eList::ir_leader_stmt);
+      leaders->insert_before(li, create_leader_stmt(leaders->arena, stmt_nr, stmt), eList_ir_leader_stmt);
     }
   }
   else
   {
-    leaders->append(create_leader_stmt(leaders->arena, stmt_nr, stmt), eList::ir_leader_stmt);
+    leaders->append(create_leader_stmt(leaders->arena, stmt_nr, stmt), eList_ir_leader_stmt);
   }
 }
 
@@ -1811,7 +1811,7 @@ Label* IrContext::normalize_jump_target_labels(IrStmt* stmt)
 {
   Label* target_label = 0;
 
-  if(stmt->kind == eIrStmt::cond_goto)
+  if(stmt->kind == eIrStmt_cond_goto)
   {
     IrStmt_CondGoto* cond_goto = &stmt->cond_goto;
     target_label = cond_goto->goto_label;
@@ -1821,7 +1821,7 @@ Label* IrContext::normalize_jump_target_labels(IrStmt* stmt)
       target_label = cond_goto->goto_label;
     }
   }
-  else if(stmt->kind == eIrStmt::goto_)
+  else if(stmt->kind == eIrStmt_goto)
   {
     IrStmt_Goto* goto_ = &stmt->goto_;
     target_label = goto_->goto_label;
@@ -1839,18 +1839,18 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
 {
   if(proc->proc.ir_stmt_count > 0)
   {
-    List* leaders = List::create(gp_arena, eList::ir_leader_stmt);
+    List* leaders = List::create(gp_arena, eList_ir_leader_stmt);
 
     IrStmt* stmt_array = proc->proc.ir_stmt_array;
     int stmt_count = proc->proc.ir_stmt_count;
 
     IrStmt* stmt = &stmt_array[0];
-    leaders->append(create_leader_stmt(leaders->arena, 0, stmt), eList::ir_leader_stmt);
+    leaders->append(create_leader_stmt(leaders->arena, 0, stmt), eList_ir_leader_stmt);
     
     for(int i = 0; i < proc->proc.ir_stmt_count; i++)
     {
       stmt = &stmt_array[i];
-      if(stmt->kind == eIrStmt::cond_goto || stmt->kind == eIrStmt::goto_)
+      if(stmt->kind == eIrStmt_cond_goto || stmt->kind == eIrStmt_goto)
       {
         start_basic_block(leaders, i+1, stmt_array, stmt_count);
         Label* target_label = normalize_jump_target_labels(stmt);
@@ -1860,7 +1860,7 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
 
     //------//
     
-    List* basic_blocks = proc->proc.basic_blocks = List::create(stmt_arena, eList::basic_block);
+    List* basic_blocks = proc->proc.basic_blocks = List::create(stmt_arena, eList_basic_block);
 
     for(ListItem* li = leaders->first;
         li;
@@ -1869,15 +1869,15 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
       int next_stmt_nr = proc->proc.ir_stmt_count;
       if(li->next)
       {
-        IrLeaderStmt* leader_next = KIND(li->next, eList::ir_leader_stmt)->ir_leader_stmt;
+        IrLeaderStmt* leader_next = KIND(li->next, eList_ir_leader_stmt)->ir_leader_stmt;
         next_stmt_nr = leader_next->stmt_nr;
       }
 
-      IrLeaderStmt* leader = KIND(li, eList::ir_leader_stmt)->ir_leader_stmt;
+      IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
       BasicBlock* block = push_struct(stmt_arena, BasicBlock);
-      basic_blocks->append(block, eList::basic_block);
-      block->pred_list.init(stmt_arena, eList::basic_block);
-      block->succ_list.init(stmt_arena, eList::basic_block);
+      basic_blocks->append(block, eList_basic_block);
+      block->pred_list.init(stmt_arena, eList_basic_block);
+      block->succ_list.init(stmt_arena, eList_basic_block);
       leader->block = block;
       block->stmt_array = push_array(stmt_arena, IrStmt*, next_stmt_nr - leader->stmt_nr);
       block->stmt_count = 0;
@@ -1899,20 +1899,20 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
       BasicBlock* bb_next = 0;
       if(li->next)
       {
-        bb_next = KIND(li->next, eList::basic_block)->basic_block;
+        bb_next = KIND(li->next, eList_basic_block)->basic_block;
       }
 
-      BasicBlock* bb = KIND(li, eList::basic_block)->basic_block;
+      BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
       IrStmt* last_stmt = bb->stmt_array[bb->stmt_count - 1];
 
-      if(last_stmt->kind == eIrStmt::goto_ || last_stmt->kind == eIrStmt::cond_goto)
+      if(last_stmt->kind == eIrStmt_goto || last_stmt->kind == eIrStmt_cond_goto)
       {
         Label* goto_label = 0;
-        if(last_stmt->kind == eIrStmt::cond_goto)
+        if(last_stmt->kind == eIrStmt_cond_goto)
         {
           goto_label = last_stmt->cond_goto.goto_label;
         }
-        else if(last_stmt->kind == eIrStmt::goto_)
+        else if(last_stmt->kind == eIrStmt_goto)
         {
           goto_label = last_stmt->goto_.goto_label;
         }
@@ -1921,19 +1921,19 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
         int stmt_nr = goto_label->stmt_nr;
         IrLeaderStmt* leader = get_leader_stmt(leaders, stmt_nr);
 
-        bb->succ_list.append(leader->block, eList::basic_block);
-        leader->block->pred_list.append(bb, eList::basic_block);
+        bb->succ_list.append(leader->block, eList_basic_block);
+        leader->block->pred_list.append(bb, eList_basic_block);
 
-        if(last_stmt->kind != eIrStmt::goto_)
+        if(last_stmt->kind != eIrStmt_goto)
         {
-          bb->succ_list.append(bb_next, eList::basic_block);
-          bb_next->pred_list.append(bb, eList::basic_block);
+          bb->succ_list.append(bb_next, eList_basic_block);
+          bb_next->pred_list.append(bb, eList_basic_block);
         }
       }
       else if(bb_next)
       {
-        bb->succ_list.append(bb_next, eList::basic_block);
-        bb_next->pred_list.append(bb, eList::basic_block);
+        bb->succ_list.append(bb_next, eList_basic_block);
+        bb_next->pred_list.append(bb, eList_basic_block);
       }
       
       // next-use information
@@ -1941,7 +1941,7 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
       {
         IrStmt* stmt = bb->stmt_array[i];
 
-        if(stmt->kind == eIrStmt::assign)
+        if(stmt->kind == eIrStmt_assign)
         {
           IrArg* result = stmt->assign.result;
           IrArg* arg1 = stmt->assign.arg1;
@@ -1961,7 +1961,7 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
 
           //-----
 
-          if(stmt->assign.op == eIrOp::index_dest || stmt->assign.op == eIrOp::deref_dest)
+          if(stmt->assign.op == eIrOp_index_dest || stmt->assign.op == eIrOp_deref_dest)
           {
             result->object->is_live = true;
             result->object->next_use = i;
@@ -1993,7 +1993,7 @@ void IrContext::partition_basic_blocks_module(AstNode* module)
       li;
       li = li->next)
   {
-    AstNode* proc = KIND(li, eList::ast_node)->ast_node;
+    AstNode* proc = KIND(li, eList_ast_node)->ast_node;
 
     partition_basic_blocks_proc(proc);
   }

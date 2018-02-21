@@ -9,12 +9,12 @@ bool is_operator_relation(eOperator op)
 
   switch(op)
   {
-    case eOperator::eq:
-    case eOperator::not_eq_:
-    case eOperator::less:
-    case eOperator::less_eq:
-    case eOperator::greater:
-    case eOperator::greater_eq:
+    case eOperator_eq:
+    case eOperator_not_eq:
+    case eOperator_less:
+    case eOperator_less_eq:
+    case eOperator_greater:
+    case eOperator_greater_eq:
       is_relop = true;
     break;
   }
@@ -28,9 +28,9 @@ bool is_operator_logic(eOperator op)
 
   switch(op)
   {
-    case eOperator::logic_and:
-    case eOperator::logic_or:
-    case eOperator::logic_not:
+    case eOperator_logic_and:
+    case eOperator_logic_or:
+    case eOperator_logic_not:
       is_logic = true;
     break;
   }

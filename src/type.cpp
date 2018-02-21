@@ -2,43 +2,43 @@ int Type::set_width()
 {
   switch(kind)
   {
-    case eType::array:
+    case eType_array:
     {
       width = array.size * array.elem->set_width();
     }
     break;
     
-    case eType::product:
+    case eType_product:
     {
       width = product.left->set_width() + product.right->set_width();
     }
     break;
     
-    case eType::proc:
+    case eType_proc:
     {
       width = proc.ret->set_width() + proc.args->set_width();
     }
     break;
     
-    case eType::basic:
+    case eType_basic:
     {
       switch(basic.kind)
       {
-        case eBasicType::int_:
-        case eBasicType::float_:
-        case eBasicType::bool_:
+        case eBasicType_int:
+        case eBasicType_float:
+        case eBasicType_bool:
         {
           width = 4;
         }
         break;
         
-        case eBasicType::char_:
+        case eBasicType_char:
         {
           width = 1;
         }
         break;
         
-        case eBasicType::void_:
+        case eBasicType_void:
         {
           width = 0;
         }
@@ -49,13 +49,13 @@ int Type::set_width()
     }
     break;
     
-    case eType::pointer:
+    case eType_pointer:
     {
       width = 4;
     }
     break;
     
-    case eType::var:
+    case eType_var:
     {
       width = var.type->set_width();
     }
@@ -105,19 +105,19 @@ TypePass* TypePass::create(MemoryArena* arena)
 void TypePass::init(MemoryArena* arena)
 {
   this->arena = arena;
-  basic_type_bool  = create_basic_type(eBasicType::bool_);
-  basic_type_int   = create_basic_type(eBasicType::int_);
-  basic_type_char  = create_basic_type(eBasicType::char_);
-  basic_type_float = create_basic_type(eBasicType::float_);
-  basic_type_void  = create_basic_type(eBasicType::void_);
+  basic_type_bool  = create_basic_type(eBasicType_bool);
+  basic_type_int   = create_basic_type(eBasicType_int);
+  basic_type_char  = create_basic_type(eBasicType_char);
+  basic_type_float = create_basic_type(eBasicType_float);
+  basic_type_void  = create_basic_type(eBasicType_void);
   basic_type_str   = create_array_type(0, basic_type_char);
-  subst_list = List::create(arena, eList::type_pair);
+  subst_list = List::create(arena, eList_type_pair);
 }
 
 Type* TypePass::create_var_type(Type* var_type)
 {
   Type* type = push_struct(arena, Type);
-  type->kind = eType::var;
+  type->kind = eType_var;
   type->var.type = var_type;
   type->set_width();
 
@@ -127,7 +127,7 @@ Type* TypePass::create_var_type(Type* var_type)
 Type* TypePass::create_basic_type(eBasicType kind)
 {
   Type* type = push_struct(arena, Type);
-  type->kind = eType::basic;
+  type->kind = eType_basic;
   type->basic.kind = kind;
   type->set_width();
 
@@ -137,7 +137,7 @@ Type* TypePass::create_basic_type(eBasicType kind)
 Type* TypePass::create_proc_type(Type* args, Type* ret)
 {
   Type* type = push_struct(arena, Type);
-  type->kind = eType::proc;
+  type->kind = eType_proc;
   type->proc.args = args;
   type->proc.ret = ret;
   type->width = 0;
@@ -148,7 +148,7 @@ Type* TypePass::create_proc_type(Type* args, Type* ret)
 Type* TypePass::create_typevar()
 {
   Type* type = push_struct(arena, Type);
-  type->kind = eType::typevar;
+  type->kind = eType_typevar;
   type->typevar.id = typevar_id++;
   type->width = 0;
 
@@ -158,7 +158,7 @@ Type* TypePass::create_typevar()
 Type* TypePass::create_product_type(Type* left, Type* right)
 {
   Type* type = push_struct(arena, Type);
-  type->kind = eType::product;
+  type->kind = eType_product;
   type->product.left = left;
   type->product.right = right;
   type->width = 0;
@@ -169,7 +169,7 @@ Type* TypePass::create_product_type(Type* left, Type* right)
 Type* TypePass::create_array_type(int size, Type* elem)
 {
   Type* type = push_struct(arena, Type);
-  type->kind = eType::array;
+  type->kind = eType_array;
   type->array.size = size;
   type->array.elem = elem;
   type->width = 0;
@@ -180,7 +180,7 @@ Type* TypePass::create_array_type(int size, Type* elem)
 Type* TypePass::create_pointer_type(Type* pointee)
 {
   Type* type = push_struct(arena, Type);
-  type->kind = eType::pointer;
+  type->kind = eType_pointer;
   type->pointer.pointee = pointee;
   type->width = 0;
 
@@ -191,42 +191,42 @@ bool Type::equal(Type* type_b)
 {
   bool are_equal = false;
   
-  if((kind != eType::typevar) && (type_b->kind == kind))
+  if((kind != eType_typevar) && (type_b->kind == kind))
   {
     switch(kind)
     {
-      case eType::basic:
+      case eType_basic:
       {
         are_equal = (basic.kind == type_b->basic.kind);
       }
       break;
       
-      case eType::proc:
+      case eType_proc:
       {
         are_equal = proc.args->equal(type_b->proc.args)
           && proc.ret->equal(type_b->proc.ret);
       }
       break;
       
-      case eType::pointer:
+      case eType_pointer:
       {
         are_equal = pointer.pointee->equal(type_b->pointer.pointee);
       }
       break;
       
-      case eType::product:
+      case eType_product:
       {
         are_equal = product.left->equal(type_b->product.right);
       }
       break;
       
-      case eType::array:
+      case eType_array:
       {
         are_equal = array.elem->equal(type_b->array.elem);
       }
       break;
       
-      case eType::var:
+      case eType_var:
       {
         are_equal = var.type->equal(type_b->var.type);
       }
@@ -259,7 +259,7 @@ Type* Type::get_repr_type()
 
 void Type::set_union(Type* type_b)
 {
-  if(kind == eType::typevar)
+  if(kind == eType_typevar)
   {
     repr_type = type_b;
   }
@@ -281,7 +281,7 @@ bool Type::unif(Type* type_b)
   }
   else
   {
-    if(repr_type_a->kind == eType::typevar || repr_type_b->kind == eType::typevar)
+    if(repr_type_a->kind == eType_typevar || repr_type_b->kind == eType_typevar)
     {
       repr_type_a->set_union(repr_type_b);
       success = true;
@@ -292,7 +292,7 @@ bool Type::unif(Type* type_b)
       {
         success = true;
       }
-      else if(repr_type_a->kind == eType::basic)
+      else if(repr_type_a->kind == eType_basic)
       {
         success = (repr_type_a->basic.kind == repr_type_b->basic.kind);
       }
@@ -303,33 +303,33 @@ bool Type::unif(Type* type_b)
         
         switch(repr_type_a->kind)
         {
-          case eType::proc:
+          case eType_proc:
           {
             success = repr_type_a->proc.args->unif(repr_type_b->proc.args)
               && repr_type_a->proc.ret->unif(repr_type_b->proc.ret);
           }
           break;
           
-          case eType::product:
+          case eType_product:
           {
             success = repr_type_a->product.left->unif(repr_type_b->product.left)
               && repr_type_a->product.right->unif(repr_type_b->product.right);
           }
           break;
           
-          case eType::pointer:
+          case eType_pointer:
           {
             success = repr_type_a->pointer.pointee->unif(repr_type_b->pointer.pointee);
           }
           break;
           
-          case eType::array:
+          case eType_array:
           {
             success = repr_type_a->array.elem->unif(repr_type_b->array.elem);
           }
           break;
           
-          case eType::var:
+          case eType_var:
           {
             success = repr_type_a->var.type->unif(repr_type_b->var.type);
           }
@@ -406,43 +406,43 @@ Type* TypePass::type_subst(Type* type)
     subst = type->copy(arena);
     
     pair = create_type_pair(type, subst);
-    subst_list->append(pair, eList::type_pair);
+    subst_list->append(pair, eList_type_pair);
     
     switch(subst->kind)
     {
-      case eType::typevar:
+      case eType_typevar:
       {
         subst->typevar.id = typevar_id++;
       }
       break;
       
-      case eType::proc:
+      case eType_proc:
       {
         subst->proc.args = type_subst(subst->proc.args);
         subst->proc.ret = type_subst(subst->proc.ret);
       }
       break;
       
-      case eType::product:
+      case eType_product:
       {
         subst->product.left = type_subst(subst->product.left);
         subst->product.right = type_subst(subst->product.right);
       }
       break;
       
-      case eType::pointer:
+      case eType_pointer:
       {
         subst->pointer.pointee = type_subst(subst->pointer.pointee);
       }
       break;
       
-      case eType::array:
+      case eType_array:
       {
         subst->array.elem = type_subst(subst->array.elem);
       }
       break;
       
-      case eType::var:
+      case eType_var:
       {
         subst->var.type = type_subst(subst->var.type);
       }
@@ -463,10 +463,10 @@ bool Type::resolve(Type** resolved_type)
 
   switch(kind)
   {
-    case eType::typevar:
+    case eType_typevar:
     {
       type = get_repr_type();
-      if(type->kind == eType::typevar)
+      if(type->kind == eType_typevar)
       {
         success = false;
       }
@@ -477,34 +477,34 @@ bool Type::resolve(Type** resolved_type)
     }
     break;
     
-    case eType::basic:
+    case eType_basic:
     break; // ok
     
-    case eType::proc:
+    case eType_proc:
     {
       success = proc.args->resolve(&proc.args) && proc.ret->resolve(&proc.ret);
     }
     break;
     
-    case eType::product:
+    case eType_product:
     {
       success = product.left->resolve(&product.left) && product.right->resolve(&product.right);
     }
     break;
     
-    case eType::pointer:
+    case eType_pointer:
     {
       success = pointer.pointee->resolve(&pointer.pointee);
     }
     break;
     
-    case eType::array:
+    case eType_array:
     {
       success = array.elem->resolve(&array.elem);
     }
     break;
     
-    case eType::var:
+    case eType_var:
     {
       success = var.type->resolve(&var.type);
     }
@@ -525,33 +525,33 @@ void Type::append_printstr(String* str)
 {
   switch(kind)
   {
-    case eType::basic:
+    case eType_basic:
     {
-      if(basic.kind == eBasicType::bool_)
+      if(basic.kind == eBasicType_bool)
         str_append(str, "bool");
-      else if(basic.kind == eBasicType::int_)
+      else if(basic.kind == eBasicType_int)
         str_append(str, "int");
-      else if(basic.kind == eBasicType::float_)
+      else if(basic.kind == eBasicType_float)
         str_append(str, "float");
-      else if(basic.kind == eBasicType::char_)
+      else if(basic.kind == eBasicType_char)
         str_append(str, "char");
-      else if(basic.kind == eBasicType::void_)
+      else if(basic.kind == eBasicType_void)
         str_append(str, "void");
-      else if(basic.kind == eBasicType::auto_)
+      else if(basic.kind == eBasicType_auto)
         str_append(str, "auto");
       else
         assert(0);
     }
     break;
 
-    case eType::pointer:
+    case eType_pointer:
     {
       pointer.pointee->append_printstr(str);
       str_append(str, "^");
     }
     break;
 
-    case eType::array:
+    case eType_array:
     {
       str_append(str, "(");
       if(array.size >= 0)
@@ -563,7 +563,7 @@ void Type::append_printstr(String* str)
     }
     break;
 
-    case eType::product:
+    case eType_product:
     {
       product.left->append_printstr(str);
       str_append(str, ", ");
@@ -571,7 +571,7 @@ void Type::append_printstr(String* str)
     }
     break;
 
-    case eType::proc:
+    case eType_proc:
     {
       proc.ret->append_printstr(str);
       str_append(str, " (");
@@ -580,13 +580,13 @@ void Type::append_printstr(String* str)
     }
     break;
 
-    case eType::var:
+    case eType_var:
     {
       var.type->append_printstr(str);
     }
     break;
 
-    case eType::typevar:
+    case eType_typevar:
     {
       str_format(str, "type_%d", typevar.id);
     }
@@ -610,14 +610,14 @@ char* Type::get_printstr(MemoryArena* arena)
 
 bool TypePass_Set::visit_array(AstNode* array)
 {
-  assert(KIND(array, eAstNode::array));
+  assert(KIND(array, eAstNode_array));
   bool success = true;
   
   if(success = visit_expr(array->array.size_expr) && visit_type(array->array.elem_expr))
   {
     int size = 0;
     AstNode* size_expr = array->array.size_expr;
-    if(size_expr->kind == eAstNode::lit && size_expr->lit.kind == eLiteral::int_)
+    if(size_expr->kind == eAstNode_lit && size_expr->lit.kind == eLiteral_int)
     {
       size = size_expr->lit.int_val;
       if(size <= 0)
@@ -632,7 +632,7 @@ bool TypePass_Set::visit_array(AstNode* array)
       array->array.size = size;
 
       AstNode* elem_expr = array->array.elem_expr;
-      if(elem_expr->kind == eAstNode::array)
+      if(elem_expr->kind == eAstNode_array)
       {
         array->array.ndim += elem_expr->array.ndim;
       }
@@ -646,7 +646,7 @@ bool TypePass_Set::visit_array(AstNode* array)
 
 bool TypePass_Set::visit_pointer(AstNode* pointer)
 {
-  assert(KIND(pointer, eAstNode::pointer));
+  assert(KIND(pointer, eAstNode_pointer));
   bool success = true;
   
   AstNode* pointee = pointer->pointer.pointee;
@@ -663,48 +663,48 @@ bool TypePass_Set::visit_type(AstNode* type)
   
   switch(type->kind)
   {
-    case eAstNode::pointer:
+    case eAstNode_pointer:
       success = visit_pointer(type);
     break;
     
-    case eAstNode::array:
+    case eAstNode_array:
       success = visit_array(type);
     break;
     
-    case eAstNode::basic_type:
+    case eAstNode_basic_type:
     switch(type->basic_type.kind)
     {
-      case eBasicType::int_:
+      case eBasicType_int:
       {
         type->ty = type->eval_ty = basic_type_int;
       }
       break;
       
-      case eBasicType::float_:
+      case eBasicType_float:
       {
         type->ty = type->eval_ty = basic_type_float;
       }
       break;
       
-      case eBasicType::bool_:
+      case eBasicType_bool:
       {
         type->ty = type->eval_ty = basic_type_bool;
       }
       break;
       
-      case eBasicType::char_:
+      case eBasicType_char:
       {
         type->ty = type->eval_ty = basic_type_char;
       }
       break;
       
-      case eBasicType::void_:
+      case eBasicType_void:
       {
         type->ty = type->eval_ty = basic_type_void;
       }
       break;
       
-      case eBasicType::auto_:
+      case eBasicType_auto:
       {
         type->ty = type->eval_ty = create_typevar();
       }
@@ -725,7 +725,7 @@ bool TypePass_Set::visit_type(AstNode* type)
 
 bool TypePass_Set::visit_var(AstNode* var)
 {
-  assert(KIND(var, eAstNode::var));
+  assert(KIND(var, eAstNode_var));
   bool success = true;
   
   AstNode* type = var->var.type;
@@ -745,7 +745,7 @@ bool TypePass_Set::visit_var(AstNode* var)
 
 bool TypePass_Set::visit_bin_expr(AstNode* bin_expr)
 {
-  assert(KIND(bin_expr, eAstNode::bin_expr));
+  assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
   
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
@@ -762,7 +762,7 @@ bool TypePass_Set::visit_bin_expr(AstNode* bin_expr)
 
 bool TypePass_Set::visit_unr_expr(AstNode* unr_expr)
 {
-  assert(KIND(unr_expr, eAstNode::unr_expr));
+  assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
   
   AstNode* operand = unr_expr->unr_expr.operand;
@@ -777,7 +777,7 @@ bool TypePass_Set::visit_unr_expr(AstNode* unr_expr)
 
 bool TypePass_Set::visit_actual_arg(AstNode* call_arg)
 {
-  assert(KIND(call_arg, eAstNode::call_arg));
+  assert(KIND(call_arg, eAstNode_call_arg));
   bool success = true;
 
   AstNode* expr = call_arg->call_arg.expr;
@@ -792,7 +792,7 @@ bool TypePass_Set::visit_actual_arg(AstNode* call_arg)
 
 bool TypePass_Set::visit_id(AstNode* id)
 {
-  assert(KIND(id, eAstNode::id));
+  assert(KIND(id, eAstNode_id));
   bool success = true;
 
   id->ty = create_typevar();
@@ -803,14 +803,14 @@ bool TypePass_Set::visit_id(AstNode* id)
 
 bool TypePass_Set::visit_actual_args(AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
   for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = visit_expr(arg);
   }
 
@@ -824,12 +824,12 @@ bool TypePass_Set::visit_actual_args(AstNode* args)
 
 bool TypePass_Set::visit_call(AstNode* call)
 {
-  assert(KIND(call, eAstNode::call));
+  assert(KIND(call, eAstNode_call));
   bool success = true;
   
   AstNode* call_expr = call->call.expr;
   AstNode* args = call->call.args;
-  if(call_expr->kind == eAstNode::id)
+  if(call_expr->kind == eAstNode_id)
   {
     if(success = visit_id(call_expr) && visit_actual_args(args))
     {
@@ -845,37 +845,37 @@ bool TypePass_Set::visit_call(AstNode* call)
 
 bool TypePass_Set::visit_lit(AstNode* lit)
 {
-  assert(KIND(lit, eAstNode::lit));
+  assert(KIND(lit, eAstNode_lit));
   bool success = true;
   
   Type* ty = 0;
   switch(lit->lit.kind)
   {
-    case eLiteral::int_:
+    case eLiteral_int:
     {
       ty = basic_type_int;
     }
     break;
     
-    case eLiteral::float_:
+    case eLiteral_float:
     {
       ty = basic_type_float;
     }
     break;
     
-    case eLiteral::char_:
+    case eLiteral_char:
     {
       ty = basic_type_char;
     }
     break;
     
-    case eLiteral::bool_:
+    case eLiteral_bool:
     {
       ty = basic_type_bool;
     }
     break;
 
-    case eLiteral::str:
+    case eLiteral_str:
     {
       ty = create_array_type(cstr_len(lit->lit.str_val)+1, basic_type_char);
     }
@@ -890,7 +890,7 @@ bool TypePass_Set::visit_lit(AstNode* lit)
 
 bool TypePass_Set::visit_index(AstNode* index)
 {
-  assert(KIND(index, eAstNode::index));
+  assert(KIND(index, eAstNode_index));
   bool success = true;
   
   if(success = visit_expr(index->index.array_expr) && visit_expr(index->index.i_expr))
@@ -904,7 +904,7 @@ bool TypePass_Set::visit_index(AstNode* index)
 
 bool TypePass_Set::visit_cast(AstNode* cast)
 {
-  assert(KIND(cast, eAstNode::cast));
+  assert(KIND(cast, eAstNode_cast));
   bool success = true;
 
   AstNode* to_type = cast->cast.to_type;
@@ -920,7 +920,7 @@ bool TypePass_Set::visit_cast(AstNode* cast)
 
 bool TypePass_Set::visit_assign(AstNode* assign)
 {
-  assert(KIND(assign, eAstNode::assign));
+  assert(KIND(assign, eAstNode_assign));
   bool success = true;
   
   AstNode* dest_expr = assign->assign.dest_expr;
@@ -939,73 +939,73 @@ bool TypePass_Set::visit_expr(AstNode* expr)
   
   switch(expr->kind)
   {
-    case eAstNode::pointer:
+    case eAstNode_pointer:
     {
       success = visit_pointer(expr);
     }
     break;
     
-    case eAstNode::array:
+    case eAstNode_array:
     {
       success = visit_array(expr);
     }
     break;
     
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       success = visit_cast(expr);
     }
     break;
     
-    case eAstNode::bin_expr:
+    case eAstNode_bin_expr:
     {
       success = visit_bin_expr(expr);
     }
     break;
     
-    case eAstNode::unr_expr:
+    case eAstNode_unr_expr:
     {
       success = visit_unr_expr(expr);
     }
     break;
     
-    case eAstNode::id:
+    case eAstNode_id:
     {
       success = visit_id(expr);
     }
     break;
     
-    case eAstNode::call:
+    case eAstNode_call:
     {
       success = visit_call(expr);
     }
     break;
     
-    case eAstNode::lit:
+    case eAstNode_lit:
     {
       success = visit_lit(expr);
     }
     break;
     
-    case eAstNode::basic_type:
+    case eAstNode_basic_type:
     {
       success = visit_type(expr);
     }
     break;
     
-    case eAstNode::index:
+    case eAstNode_index:
     {
       success = visit_index(expr);
     }
     break;
 
-    case eAstNode::call_arg:
+    case eAstNode_call_arg:
     {
       success = visit_actual_arg(expr);
     }
     break;
 
-    case eAstNode::assign:
+    case eAstNode_assign:
     {
       success = visit_assign(expr);
     }
@@ -1018,7 +1018,7 @@ bool TypePass_Set::visit_expr(AstNode* expr)
 
 bool TypePass_Set::visit_return(AstNode* ret)
 {
-  assert(KIND(ret, eAstNode::return_));
+  assert(KIND(ret, eAstNode_return));
   bool success = true;
   
   if(ret->ret.expr)
@@ -1040,7 +1040,7 @@ bool TypePass_Set::visit_return(AstNode* ret)
 
 bool TypePass_Set::visit_if(AstNode* if_)
 {
-  assert(KIND(if_, eAstNode::if_));
+  assert(KIND(if_, eAstNode_if));
   bool success = true;
   
   if(success = visit_expr(if_->if_.cond_expr))
@@ -1064,7 +1064,7 @@ bool TypePass_Set::visit_if(AstNode* if_)
 
 bool TypePass_Set::visit_do_while(AstNode* do_while)
 {
-  assert(KIND(do_while, eAstNode::do_while));
+  assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
   AstNode* body = do_while->do_while.body;
@@ -1079,7 +1079,7 @@ bool TypePass_Set::visit_do_while(AstNode* do_while)
 
 bool TypePass_Set::visit_while(AstNode* while_)
 {
-  assert(KIND(while_, eAstNode::while_));
+  assert(KIND(while_, eAstNode_while));
   bool success = true;
   
   AstNode* body = while_->while_.body;
@@ -1094,14 +1094,14 @@ bool TypePass_Set::visit_while(AstNode* while_)
 
 bool TypePass_Set::visit_block(AstNode* block)
 {
-  assert(KIND(block, eAstNode::block));
+  assert(KIND(block, eAstNode_block));
   bool success = true;
   
   for(ListItem* li = block->block.nodes.first;
       li && success;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = visit_block_stmt(stmt);
   }
 
@@ -1119,77 +1119,77 @@ bool TypePass_Set::visit_block_stmt(AstNode* stmt)
   
   switch(stmt->kind)
   {
-    case eAstNode::var:
+    case eAstNode_var:
     {
       success = visit_var(stmt);
     }
     break;
     
-    case eAstNode::block:
+    case eAstNode_block:
     {
       success = visit_block(stmt);
     }
     break;
     
-    case eAstNode::assign:
+    case eAstNode_assign:
     {
       success = visit_assign(stmt);
     }
     break;
     
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       success = visit_cast(stmt);
     }
     break;
     
-    case eAstNode::bin_expr:
-    case eAstNode::unr_expr:
-    case eAstNode::id:
-    case eAstNode::call:
-    case eAstNode::lit:
+    case eAstNode_bin_expr:
+    case eAstNode_unr_expr:
+    case eAstNode_id:
+    case eAstNode_call:
+    case eAstNode_lit:
     {
       success = visit_expr(stmt);
     }
     break;
     
-    case eAstNode::loop_ctrl:
-    case eAstNode::empty:
+    case eAstNode_loop_ctrl:
+    case eAstNode_empty:
     {
       stmt->ty = stmt->eval_ty = basic_type_void;
     }
     break;
     
-    case eAstNode::basic_type:
+    case eAstNode_basic_type:
     {
       success = visit_type(stmt);
     }
     break;
-    case eAstNode::return_:
+    case eAstNode_return:
     {
       success = visit_return(stmt);
     }
     break;
 
-    case eAstNode::if_:
+    case eAstNode_if:
     {
       success = visit_if(stmt);
     }
     break;
 
-    case eAstNode::do_while:
+    case eAstNode_do_while:
     {
       success = visit_do_while(stmt);
     }
     break;
 
-    case eAstNode::while_:
+    case eAstNode_while:
     {
       success = visit_while(stmt);
     }
     break;
 
-    case eAstNode::index:
+    case eAstNode_index:
     {
       success = visit_index(stmt);
     }
@@ -1208,11 +1208,11 @@ Type* AstNode_NodeList::make_product_type(TypePass* context)
   ListItem* li = node_list.first;
   if(li)
   {
-    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     result = arg->eval_ty;
     for(li = li->next; li; li = li->next)
     {
-      AstNode* next_arg = KIND(li, eList::ast_node)->ast_node;
+      AstNode* next_arg = KIND(li, eList_ast_node)->ast_node;
       result = context->create_product_type(result, next_arg->eval_ty);
     }
   }
@@ -1222,14 +1222,14 @@ Type* AstNode_NodeList::make_product_type(TypePass* context)
 
 bool TypePass_Set::visit_formal_args(AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
   for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = visit_var(arg);
   }
 
@@ -1243,7 +1243,7 @@ bool TypePass_Set::visit_formal_args(AstNode* args)
 
 bool TypePass_Set::visit_proc(AstNode* proc)
 {
-  assert(KIND(proc, eAstNode::proc));
+  assert(KIND(proc, eAstNode_proc));
   bool success = true;
   
   AstNode* ret_type = proc->proc.ret_type;
@@ -1268,19 +1268,19 @@ bool TypePass_Set::visit_module_stmt(AstNode* stmt)
   
   switch(stmt->kind)
   {
-    case eAstNode::proc:
+    case eAstNode_proc:
     {
       success = visit_proc(stmt);
     }
     break;
 
-    case eAstNode::var:
+    case eAstNode_var:
     {
       success = visit_var(stmt);
     }
     break;
 
-    case eAstNode::include:
+    case eAstNode_include:
     {
       stmt->ty = stmt->eval_ty = basic_type_void;
     }
@@ -1294,7 +1294,7 @@ bool TypePass_Set::visit_module_stmt(AstNode* stmt)
 
 bool TypePass_Set::visit_module(AstNode* module)
 {
-  assert(KIND(module, eAstNode::module));
+  assert(KIND(module, eAstNode_module));
   bool success = true;
   
   module->ty = module->eval_ty = basic_type_void;
@@ -1303,7 +1303,7 @@ bool TypePass_Set::visit_module(AstNode* module)
       li && success;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = visit_module_stmt(stmt);
   }
 
@@ -1315,7 +1315,7 @@ bool TypePass_Set::visit_module(AstNode* module)
 
 bool TypePass_Eval::visit_array(AstNode* array)
 {
-  assert(KIND(array, eAstNode::array));
+  assert(KIND(array, eAstNode_array));
   bool success = true;
   
   success = visit_expr(array->array.size_expr) && visit_type(array->array.elem_expr);
@@ -1324,7 +1324,7 @@ bool TypePass_Eval::visit_array(AstNode* array)
 
 bool TypePass_Eval::visit_pointer(AstNode* pointer)
 {
-  assert(KIND(pointer, eAstNode::pointer));
+  assert(KIND(pointer, eAstNode_pointer));
 
   bool success = true;
   success = visit_expr(pointer->pointer.pointee);
@@ -1338,19 +1338,19 @@ bool TypePass_Eval::visit_type(AstNode* type)
   
   switch(type->kind)
   {
-    case eAstNode::pointer:
+    case eAstNode_pointer:
     {
       success = visit_pointer(type);
     }
     break;
 
-    case eAstNode::array:
+    case eAstNode_array:
     {
       success = visit_array(type);
     }
     break;
 
-    case eAstNode::basic_type:
+    case eAstNode_basic_type:
     {
       breakpoint();
     }
@@ -1362,7 +1362,7 @@ bool TypePass_Eval::visit_type(AstNode* type)
 
 bool TypePass_Eval::visit_cast(AstNode* cast)
 {
-  assert(KIND(cast, eAstNode::cast));
+  assert(KIND(cast, eAstNode_cast));
 
   bool success = true;
   success = visit_type(cast->cast.to_type) && visit_expr(cast->cast.from_expr);
@@ -1372,7 +1372,7 @@ bool TypePass_Eval::visit_cast(AstNode* cast)
 
 bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
 {
-  assert(KIND(bin_expr, eAstNode::bin_expr));
+  assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
   
   AstNode* left_operand = bin_expr->bin_expr.left_operand;
@@ -1383,9 +1383,9 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
   {
     switch(op)
     {
-      case eOperator::bit_and:
-      case eOperator::bit_or:
-      case eOperator::bit_xor:
+      case eOperator_bit_and:
+      case eOperator_bit_or:
+      case eOperator_bit_xor:
       {
         if(left_operand->eval_ty->unif(basic_type_int)
            && right_operand->eval_ty->unif(basic_type_int)
@@ -1398,8 +1398,8 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
       }
       break;
       
-      case eOperator::bit_shift_left:
-      case eOperator::bit_shift_right:
+      case eOperator_bit_shift_left:
+      case eOperator_bit_shift_right:
       {
         if(left_operand->eval_ty->unif(basic_type_int)
            && right_operand->eval_ty->unif(basic_type_char)
@@ -1418,15 +1418,15 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
         {
           switch(bin_expr->bin_expr.op)
           {
-            case eOperator::less:
-            case eOperator::less_eq:
-            case eOperator::greater:
-            case eOperator::greater_eq:
-            case eOperator::eq:
-            case eOperator::not_eq_:
-            case eOperator::logic_and:
-            case eOperator::logic_or:
-            case eOperator::logic_not:
+            case eOperator_less:
+            case eOperator_less_eq:
+            case eOperator_greater:
+            case eOperator_greater_eq:
+            case eOperator_eq:
+            case eOperator_not_eq:
+            case eOperator_logic_and:
+            case eOperator_logic_or:
+            case eOperator_logic_not:
             {
               if(!bin_expr->eval_ty->unif(basic_type_bool))
               {
@@ -1453,7 +1453,7 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
 
     if(success)
     {
-      Type* bin_expr_ty = KIND(bin_expr->ty, eType::proc);
+      Type* bin_expr_ty = KIND(bin_expr->ty, eType_proc);
       if(!bin_expr_ty->proc.ret->unif(bin_expr->eval_ty))
       {
         success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
@@ -1466,7 +1466,7 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
 
 bool TypePass_Eval::visit_id(AstNode* id)
 {
-  assert(KIND(id, eAstNode::id));
+  assert(KIND(id, eAstNode_id));
   bool success = true;
   
   if(!id->id.decl_sym)
@@ -1488,7 +1488,7 @@ bool TypePass_Eval::visit_id(AstNode* id)
     {
       switch(decl_ast->ty->kind)
       {
-        case eType::var:
+        case eType_var:
           {
             if((id->id.decl_sym->scope == id->id.scope) && (id->id.decl_sym->order_nr > id->id.order_nr))
             {
@@ -1504,7 +1504,7 @@ bool TypePass_Eval::visit_id(AstNode* id)
           }
         break;
         
-        case eType::proc:
+        case eType_proc:
         {
           if(!decl_ast->ty->proc.ret->unif(id->eval_ty))
           {
@@ -1525,7 +1525,7 @@ bool TypePass_Eval::visit_id(AstNode* id)
 
 bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
 {
-  assert(KIND(unr_expr, eAstNode::unr_expr));
+  assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
   
   AstNode* operand = unr_expr->unr_expr.operand;
@@ -1535,16 +1535,16 @@ bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
   {
     switch(op)
     {
-      case eOperator::neg:
-      case eOperator::logic_not:
-      case eOperator::bit_not:
+      case eOperator_neg:
+      case eOperator_logic_not:
+      case eOperator_bit_not:
       if(!unr_expr->eval_ty->unif(operand->eval_ty))
       {
         success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
       }
       break;
       
-      case eOperator::deref:
+      case eOperator_deref:
       {
         Type* pointee_ty = create_typevar();
         if(operand->eval_ty->unif(create_pointer_type(pointee_ty)))
@@ -1559,7 +1559,7 @@ bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
       }
       break;
       
-      case eOperator::address_of:
+      case eOperator_address_of:
       {
         ; // skip
       }
@@ -1570,7 +1570,7 @@ bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
 
     if(success)
     {
-      Type* unr_expr_ty = KIND(unr_expr->ty, eType::proc);
+      Type* unr_expr_ty = KIND(unr_expr->ty, eType_proc);
       if(!unr_expr_ty->proc.ret->unif(unr_expr->eval_ty))
       {
         success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
@@ -1583,7 +1583,7 @@ bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
 
 bool TypePass_Eval::visit_var(AstNode* var)
 {
-  assert(KIND(var, eAstNode::var));
+  assert(KIND(var, eAstNode_var));
   bool success = true;
   
   if(var->ty->var.type->unif(var->eval_ty))
@@ -1610,14 +1610,14 @@ bool TypePass_Eval::visit_var(AstNode* var)
 
 bool TypePass_Eval::visit_formal_args(AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
   for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = visit_var(arg);
   }
 
@@ -1626,14 +1626,14 @@ bool TypePass_Eval::visit_formal_args(AstNode* args)
 
 bool TypePass_Eval::visit_actual_args(AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
   for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = visit_expr(arg->call_arg.expr);
   }
 
@@ -1642,7 +1642,7 @@ bool TypePass_Eval::visit_actual_args(AstNode* args)
 
 bool TypePass_Eval::visit_call(AstNode* call)
 {
-  assert(KIND(call, eAstNode::call));
+  assert(KIND(call, eAstNode_call));
 
   bool success = true;
   success = visit_id(call->call.expr) && visit_actual_args(call->call.args);
@@ -1652,7 +1652,7 @@ bool TypePass_Eval::visit_call(AstNode* call)
 
 bool TypePass_Eval::visit_index(AstNode* index)
 {
-  assert(KIND(index, eAstNode::index));
+  assert(KIND(index, eAstNode_index));
 
   bool success = true;
   success = visit_expr(index->index.array_expr) && visit_expr(index->index.i_expr);
@@ -1662,7 +1662,7 @@ bool TypePass_Eval::visit_index(AstNode* index)
 
 bool TypePass_Eval::visit_assign(AstNode* assign)
 {
-  assert(KIND(assign, eAstNode::assign));
+  assert(KIND(assign, eAstNode_assign));
 
   bool success = true;
   success = visit_expr(assign->assign.dest_expr) && visit_expr(assign->assign.source_expr);
@@ -1676,54 +1676,54 @@ bool TypePass_Eval::visit_expr(AstNode* expr)
   
   switch(expr->kind)
   {
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       success = visit_cast(expr);
     }
     break;
     
-    case eAstNode::bin_expr:
+    case eAstNode_bin_expr:
     {
       success = visit_bin_expr(expr);
     }
     break;
     
-    case eAstNode::unr_expr:
+    case eAstNode_unr_expr:
     {
       success = visit_unr_expr(expr);
     }
     break;
     
-    case eAstNode::id:
+    case eAstNode_id:
     {
       success = visit_id(expr);
     }
     break;
     
-    case eAstNode::call:
+    case eAstNode_call:
     {
       success = visit_call(expr);
     }
     break;
     
-    case eAstNode::index:
+    case eAstNode_index:
     {
       success = visit_index(expr);
     }
     break;
     
-    case eAstNode::lit:
+    case eAstNode_lit:
     break;
 
-    case eAstNode::basic_type:
-    case eAstNode::pointer:
-    case eAstNode::array:
+    case eAstNode_basic_type:
+    case eAstNode_pointer:
+    case eAstNode_array:
     {
       success = visit_type(expr);
     }
     break;
 
-    case eAstNode::assign:
+    case eAstNode_assign:
     {
       success = visit_assign(expr);
     }
@@ -1736,7 +1736,7 @@ bool TypePass_Eval::visit_expr(AstNode* expr)
 
 bool TypePass_Eval::visit_if(AstNode* if_)
 {
-  assert(KIND(if_, eAstNode::if_));
+  assert(KIND(if_, eAstNode_if));
   bool success = true;
   
   AstNode* cond_expr = if_->if_.cond_expr;
@@ -1758,14 +1758,14 @@ bool TypePass_Eval::visit_if(AstNode* if_)
 
 bool TypePass_Eval::visit_block(AstNode* block)
 {
-  assert(KIND(block, eAstNode::block));
+  assert(KIND(block, eAstNode_block));
   bool success = true;
   
   for(ListItem* li = block->block.nodes.first;
       li && success;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = visit_block_stmt(stmt);
   }
 
@@ -1774,7 +1774,7 @@ bool TypePass_Eval::visit_block(AstNode* block)
 
 bool TypePass_Eval::visit_do_while(AstNode* do_while)
 {
-  assert(KIND(do_while, eAstNode::do_while));
+  assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
   AstNode* cond_expr = do_while->do_while.cond_expr;
@@ -1790,7 +1790,7 @@ bool TypePass_Eval::visit_do_while(AstNode* do_while)
 
 bool TypePass_Eval::visit_while(AstNode* while_)
 {
-  assert(KIND(while_, eAstNode::while_));
+  assert(KIND(while_, eAstNode_while));
   bool success = true;
   
   AstNode* cond_expr = while_->while_.cond_expr;
@@ -1807,14 +1807,14 @@ bool TypePass_Eval::visit_while(AstNode* while_)
 
 bool TypePass_Eval::visit_return(AstNode* ret)
 {
-  assert(KIND(ret, eAstNode::return_));
+  assert(KIND(ret, eAstNode_return));
   bool success = true;
   
   AstNode* ret_expr = ret->ret.expr;
   if(ret_expr && (success = visit_expr(ret_expr)))
   {
     AstNode* proc = ret->ret.proc;
-    Type* proc_ty = KIND(proc->ty, eType::proc);
+    Type* proc_ty = KIND(proc->ty, eType_proc);
     if(!ret_expr->eval_ty->unif(proc_ty->proc.ret))
     {
       success = compile_error(arena, ret->src_loc, "type error (return)");
@@ -1830,75 +1830,75 @@ bool TypePass_Eval::visit_block_stmt(AstNode* stmt)
   
   switch(stmt->kind)
   {
-    case eAstNode::assign:
+    case eAstNode_assign:
     {
       success = visit_assign(stmt);
     }
     break;
     
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       success = visit_cast(stmt);
     }
     break;
     
-    case eAstNode::bin_expr:
-    case eAstNode::unr_expr:
-    case eAstNode::id:
-    case eAstNode::call:
-    case eAstNode::lit:
+    case eAstNode_bin_expr:
+    case eAstNode_unr_expr:
+    case eAstNode_id:
+    case eAstNode_call:
+    case eAstNode_lit:
     {
       success = visit_expr(stmt);
     }
     break;
     
-    case eAstNode::if_:
+    case eAstNode_if:
     {
       success = visit_if(stmt);
     }
     break;
     
-    case eAstNode::do_while:
+    case eAstNode_do_while:
     {
       success = visit_do_while(stmt);
     }
     break;
     
-    case eAstNode::while_:
+    case eAstNode_while:
     {
       success = visit_while(stmt);
     }
     break;
     
-    case eAstNode::block:
+    case eAstNode_block:
     {
       success = visit_block(stmt);
     }
     break;
     
-    case eAstNode::return_:
+    case eAstNode_return:
     {
       success = visit_return(stmt);
     }
     break;
     
-    case eAstNode::var:
+    case eAstNode_var:
     {
       success = visit_var(stmt);
     }
     break;
 
-    case eAstNode::loop_ctrl:
-    case eAstNode::empty:
+    case eAstNode_loop_ctrl:
+    case eAstNode_empty:
     break;
     
-    case eAstNode::basic_type:
+    case eAstNode_basic_type:
     {
       success = visit_type(stmt);
     }
     break;
     
-    case eAstNode::index:
+    case eAstNode_index:
     {
       success = visit_index(stmt);
     }
@@ -1912,7 +1912,7 @@ bool TypePass_Eval::visit_block_stmt(AstNode* stmt)
 
 bool TypePass_Eval::visit_proc(AstNode* proc)
 {
-  assert(KIND(proc, eAstNode::proc));
+  assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
   success = visit_formal_args(proc->proc.args) && visit_block_stmt(proc->proc.body)
@@ -1927,14 +1927,14 @@ bool TypePass_Eval::visit_module_stmt(AstNode* stmt)
   
   switch(stmt->kind)
   {
-    case eAstNode::proc:
+    case eAstNode_proc:
     {
       success = visit_proc(stmt);
     }
     break;
 
-    case eAstNode::var:
-    case eAstNode::include:
+    case eAstNode_var:
+    case eAstNode_include:
     break;
 
     default: assert(0);
@@ -1944,14 +1944,14 @@ bool TypePass_Eval::visit_module_stmt(AstNode* stmt)
 
 bool TypePass_Eval::visit_module(AstNode* module)
 {
-  assert(KIND(module, eAstNode::module));
+  assert(KIND(module, eAstNode_module));
   bool success = true;
   
   for(ListItem* li = module->module.nodes.first;
       li && success;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = visit_module_stmt(stmt);
   }
 
@@ -1963,7 +1963,7 @@ bool TypePass_Eval::visit_module(AstNode* module)
 
 bool TypePass_Resolve::visit_var(AstNode* var)
 {
-  assert(KIND(var, eAstNode::var));
+  assert(KIND(var, eAstNode_var));
   bool success = true;
   
   if(success = var->resolve_types(arena))
@@ -1989,7 +1989,7 @@ bool TypePass_Resolve::visit_var(AstNode* var)
 
 bool TypePass_Resolve::visit_lit(AstNode* lit)
 {
-  assert(KIND(lit, eAstNode::lit));
+  assert(KIND(lit, eAstNode_lit));
   bool success = true;
 
   if(success = lit->resolve_types(arena))
@@ -2002,14 +2002,14 @@ bool TypePass_Resolve::visit_lit(AstNode* lit)
 
 bool TypePass_Resolve::visit_formal_args(AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
   for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = visit_var(arg);
   }
   if(success)
@@ -2021,7 +2021,7 @@ bool TypePass_Resolve::visit_formal_args(AstNode* args)
 
 bool TypePass_Resolve::visit_bin_expr(AstNode* bin_expr)
 {
-  assert(KIND(bin_expr, eAstNode::bin_expr));
+  assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
 
   success = visit_expr(bin_expr->bin_expr.left_operand) &&
@@ -2032,7 +2032,7 @@ bool TypePass_Resolve::visit_bin_expr(AstNode* bin_expr)
 
 bool TypePass_Resolve::visit_unr_expr(AstNode* unr_expr)
 {
-  assert(KIND(unr_expr, eAstNode::unr_expr));
+  assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
 
   if(success = visit_expr(unr_expr->unr_expr.operand))
@@ -2040,9 +2040,9 @@ bool TypePass_Resolve::visit_unr_expr(AstNode* unr_expr)
     AstNode* operand = unr_expr->unr_expr.operand;
     eOperator op = unr_expr->unr_expr.op;
 
-    if(op == eOperator::address_of)
+    if(op == eOperator_address_of)
     {
-      if(operand->eval_ty->kind == eType::array)
+      if(operand->eval_ty->kind == eType_array)
       {
         // ptr(array(T)) = ptr(T)
         Type* operand_ty = operand->eval_ty;
@@ -2070,7 +2070,7 @@ bool TypePass_Resolve::visit_unr_expr(AstNode* unr_expr)
 
 bool TypePass_Resolve::visit_id(AstNode* id)
 {
-  assert(KIND(id, eAstNode::id));
+  assert(KIND(id, eAstNode_id));
   bool success = true;
 
   success = id->resolve_types(arena);
@@ -2079,14 +2079,14 @@ bool TypePass_Resolve::visit_id(AstNode* id)
 
 bool TypePass_Resolve::visit_actual_args(AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
   for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     if(success = visit_expr(arg->call_arg.expr))
     {
       arg->eval_ty = arg->call_arg.expr->eval_ty;
@@ -2103,25 +2103,25 @@ bool TypePass_Resolve::visit_actual_args(AstNode* args)
 
 bool TypePass_Resolve::visit_call(AstNode* call)
 {
-  assert(KIND(call, eAstNode::call));
-  assert(call->call.expr->kind == eAstNode::id);
+  assert(KIND(call, eAstNode_call));
+  assert(call->call.expr->kind == eAstNode_id);
 
   bool success = true;
 
   if(success = visit_id(call->call.expr) && visit_actual_args(call->call.args))
   {
     AstNode* args = call->call.args;
-    assert(KIND(args, eAstNode::node_list));
+    assert(KIND(args, eAstNode_node_list));
     for(ListItem* li = args->args.node_list.first;
         li;
         li = li->next)
     {
-      AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+      AstNode* arg = KIND(li, eList_ast_node)->ast_node;
       arg->call_arg.param->ty = arg->eval_ty;
     }
 
-    AstNode* proc = call->call.proc = KIND(call->call.expr, eAstNode::id)->id.decl_ast;
-    if(proc->ty->kind == eType::proc)
+    AstNode* proc = call->call.proc = KIND(call->call.expr, eAstNode_id)->id.decl_ast;
+    if(proc->ty->kind == eType_proc)
     {
       if(!proc->ty->unif(call->ty))
       {
@@ -2144,7 +2144,7 @@ bool TypePass_Resolve::visit_call(AstNode* call)
 
 bool TypePass_Resolve::visit_index(AstNode* index)
 {
-  assert(KIND(index, eAstNode::index));
+  assert(KIND(index, eAstNode_index));
   bool success = true;
 
   AstNode* array_expr = index->index.array_expr;
@@ -2156,14 +2156,14 @@ bool TypePass_Resolve::visit_index(AstNode* index)
     {
       Type* array_ty = array_expr->eval_ty;
 
-      if(array_ty->kind == eType::array)
+      if(array_ty->kind == eType_array)
       {
         if(!array_ty->array.elem->unif(index->eval_ty))
         {
           success = compile_error(arena, index->src_loc, "type error (index)");
         }
       }
-      else if(array_ty->kind == eType::pointer)
+      else if(array_ty->kind == eType_pointer)
       {
         if(!array_ty->pointer.pointee->unif(index->eval_ty))
         {
@@ -2187,7 +2187,7 @@ bool TypePass_Resolve::visit_index(AstNode* index)
 
 bool TypePass_Resolve::visit_cast(AstNode* cast)
 {
-  assert(KIND(cast, eAstNode::cast));
+  assert(KIND(cast, eAstNode_cast));
   bool success = true;
 
   success = visit_type(cast->cast.to_type) && visit_expr(cast->cast.from_expr) &&
@@ -2198,7 +2198,7 @@ bool TypePass_Resolve::visit_cast(AstNode* cast)
 
 bool TypePass_Resolve::visit_assign(AstNode* assign)
 {
-  assert(KIND(assign, eAstNode::assign));
+  assert(KIND(assign, eAstNode_assign));
   bool success = true;
 
   success = visit_expr(assign->assign.dest_expr) && visit_expr(assign->assign.source_expr) &&
@@ -2213,57 +2213,57 @@ bool TypePass_Resolve::visit_expr(AstNode* expr)
   
   switch(expr->kind)
   {
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       success = visit_cast(expr);
     }
     break;
     
-    case eAstNode::bin_expr:
+    case eAstNode_bin_expr:
     {
       success = visit_bin_expr(expr);
     }
     break;
     
-    case eAstNode::unr_expr:
+    case eAstNode_unr_expr:
     {
       success = visit_unr_expr(expr);
     }
     break;
     
-    case eAstNode::id:
+    case eAstNode_id:
     {
       success = visit_id(expr);
     }
     break;
     
-    case eAstNode::call:
+    case eAstNode_call:
     {
       success = visit_call(expr);
     }
     break;
     
-    case eAstNode::lit:
+    case eAstNode_lit:
     {
       success = visit_lit(expr);
     }
     break;
 
-    case eAstNode::basic_type:
-    case eAstNode::pointer:
-    case eAstNode::array:
+    case eAstNode_basic_type:
+    case eAstNode_pointer:
+    case eAstNode_array:
     {
       success = visit_type(expr);
     }
     break;
     
-    case eAstNode::index:
+    case eAstNode_index:
     {
       success = visit_index(expr);
     }
     break;
 
-    case eAstNode::assign:
+    case eAstNode_assign:
     {
       success = visit_assign(expr);
     }
@@ -2277,14 +2277,14 @@ bool TypePass_Resolve::visit_expr(AstNode* expr)
 
 bool TypePass_Resolve::visit_block(AstNode* block)
 {
-  assert(KIND(block, eAstNode::block));
+  assert(KIND(block, eAstNode_block));
   bool success = true;
   
   for(ListItem* li = block->block.nodes.first;
       li && success;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = visit_block_stmt(stmt);
   }
 
@@ -2298,7 +2298,7 @@ bool TypePass_Resolve::visit_block(AstNode* block)
 
 bool TypePass_Resolve::visit_return(AstNode* ret)
 {
-  assert(KIND(ret, eAstNode::return_));
+  assert(KIND(ret, eAstNode_return));
   bool success = true;
 
   if(ret->ret.expr)
@@ -2316,7 +2316,7 @@ bool TypePass_Resolve::visit_return(AstNode* ret)
 
 bool TypePass_Resolve::visit_if(AstNode* if_)
 {
-  assert(KIND(if_, eAstNode::if_));
+  assert(KIND(if_, eAstNode_if));
   bool success = true;
 
   if(success = visit_expr(if_->if_.cond_expr) && visit_block_stmt(if_->if_.body))
@@ -2337,7 +2337,7 @@ bool TypePass_Resolve::visit_if(AstNode* if_)
 
 bool TypePass_Resolve::visit_do_while(AstNode* do_while)
 {
-  assert(KIND(do_while, eAstNode::do_while));
+  assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
   success = visit_block_stmt(do_while->do_while.body) && visit_expr(do_while->do_while.cond_expr) &&
@@ -2348,7 +2348,7 @@ bool TypePass_Resolve::visit_do_while(AstNode* do_while)
 
 bool TypePass_Resolve::visit_while(AstNode* while_)
 {
-  assert(KIND(while_, eAstNode::while_));
+  assert(KIND(while_, eAstNode_while));
   bool success = true;
 
   success = visit_expr(while_->while_.cond_expr) && visit_block_stmt(while_->while_.body) &&
@@ -2359,7 +2359,7 @@ bool TypePass_Resolve::visit_while(AstNode* while_)
 
 bool TypePass_Resolve::visit_array(AstNode* array)
 {
-  assert(KIND(array, eAstNode::array));
+  assert(KIND(array, eAstNode_array));
   bool success = true;
   
   success = visit_expr(array->array.size_expr) &&
@@ -2370,7 +2370,7 @@ bool TypePass_Resolve::visit_array(AstNode* array)
 
 bool TypePass_Resolve::visit_pointer(AstNode* pointer)
 {
-  assert(KIND(pointer, eAstNode::pointer));
+  assert(KIND(pointer, eAstNode_pointer));
   bool success = true;
   
   success = visit_expr(pointer->pointer.pointee) && pointer->resolve_types(arena);
@@ -2384,19 +2384,19 @@ bool TypePass_Resolve::visit_type(AstNode* type)
   
   switch(type->kind)
   {
-    case eAstNode::pointer:
+    case eAstNode_pointer:
     {
       success = visit_pointer(type);
     }
     break;
 
-    case eAstNode::array:
+    case eAstNode_array:
     {
       success = visit_array(type);
     }
     break;
 
-    case eAstNode::basic_type:
+    case eAstNode_basic_type:
     break;
   }
 
@@ -2409,75 +2409,75 @@ bool TypePass_Resolve::visit_block_stmt(AstNode* stmt)
   
   switch(stmt->kind)
   {
-    case eAstNode::assign:
+    case eAstNode_assign:
     {
       success = visit_assign(stmt);
     }
     break;
     
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       success = visit_cast(stmt);
     }
     break;
     
-    case eAstNode::bin_expr:
-    case eAstNode::unr_expr:
-    case eAstNode::id:
-    case eAstNode::call:
-    case eAstNode::lit:
+    case eAstNode_bin_expr:
+    case eAstNode_unr_expr:
+    case eAstNode_id:
+    case eAstNode_call:
+    case eAstNode_lit:
     {
       success = visit_expr(stmt);
     }
     break;
     
-    case eAstNode::block:
+    case eAstNode_block:
     {
       success = visit_block(stmt);
     }
     break;
     
-    case eAstNode::var:
+    case eAstNode_var:
     {
       success = visit_var(stmt);
     }
     break;
     
-    case eAstNode::return_:
+    case eAstNode_return:
     {
       success = visit_return(stmt);
     }
     break;
     
-    case eAstNode::if_:
+    case eAstNode_if:
     {
       success = visit_if(stmt);
     }
     break;
     
-    case eAstNode::do_while:
+    case eAstNode_do_while:
     {
       success = visit_do_while(stmt);
     }
     break;
     
-    case eAstNode::while_:
+    case eAstNode_while:
     {
       success = visit_while(stmt);
     }
     break;
     
-    case eAstNode::loop_ctrl:
-    case eAstNode::empty:
+    case eAstNode_loop_ctrl:
+    case eAstNode_empty:
     break;
     
-    case eAstNode::basic_type:
+    case eAstNode_basic_type:
     {
       success = visit_type(stmt);
     }
     break;
     
-    case eAstNode::index:
+    case eAstNode_index:
     {
       success = visit_index(stmt);
     }
@@ -2491,7 +2491,7 @@ bool TypePass_Resolve::visit_block_stmt(AstNode* stmt)
 
 bool TypePass_Resolve::visit_proc(AstNode* proc)
 {
-  assert(KIND(proc, eAstNode::proc));
+  assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
   if(success = visit_formal_args(proc->proc.args) && visit_type(proc->proc.ret_type)
@@ -2510,17 +2510,17 @@ bool TypePass_Resolve::visit_module_stmt(AstNode* stmt)
   
   switch(stmt->kind)
   {
-    case eAstNode::proc:
+    case eAstNode_proc:
     {
       success = visit_proc(stmt);
     }
     break;
     
-    case eAstNode::var:
+    case eAstNode_var:
     {
       success = visit_var(stmt);
     }
-    case eAstNode::include:
+    case eAstNode_include:
     break;
     
     default: assert(0);
@@ -2531,14 +2531,14 @@ bool TypePass_Resolve::visit_module_stmt(AstNode* stmt)
 
 bool TypePass_Resolve::visit_module(AstNode* module)
 {
-  assert(KIND(module, eAstNode::module));
+  assert(KIND(module, eAstNode_module));
   bool success = true;
   
   for(ListItem* li = module->module.nodes.first;
       li && success;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = visit_module_stmt(stmt);
   }
 
@@ -2550,7 +2550,7 @@ bool TypePass_Resolve::visit_module(AstNode* module)
 
 bool TypePass_Check::visit_var(AstNode* var)
 {
-  assert(KIND(var, eAstNode::var));
+  assert(KIND(var, eAstNode_var));
   bool success = true;
   
   if(var->eval_ty->equal(basic_type_void))
@@ -2570,14 +2570,14 @@ bool TypePass_Check::visit_var(AstNode* var)
 
 bool TypePass_Check::visit_formal_args(AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
   for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = visit_var(arg);
   }
 
@@ -2586,7 +2586,7 @@ bool TypePass_Check::visit_formal_args(AstNode* args)
 
 bool TypePass_Check::visit_cast(AstNode* cast)
 {
-  assert(KIND(cast, eAstNode::cast));
+  assert(KIND(cast, eAstNode_cast));
   bool success = true;
   
   AstNode* from_expr = cast->cast.from_expr;
@@ -2607,7 +2607,7 @@ bool TypePass_Check::visit_cast(AstNode* cast)
         success = from_ty->equal(basic_type_float) ||
           from_ty->equal(basic_type_bool) ||
           from_ty->equal(basic_type_char) ||
-          (from_ty->kind == eType::pointer);
+          (from_ty->kind == eType_pointer);
       }
       else if(to_ty->equal(basic_type_char))
       {
@@ -2623,12 +2623,12 @@ bool TypePass_Check::visit_cast(AstNode* cast)
       {
         // bool <- int | pointer(T)
         success = from_ty->equal(basic_type_int) ||
-          (from_ty->kind == eType::pointer);
+          (from_ty->kind == eType_pointer);
       }
-      else if(to_ty->kind == eType::pointer)
+      else if(to_ty->kind == eType_pointer)
       {
         // pointer(T) <- pointer(P) | int
-        success = (from_ty->kind == eType::pointer) ||
+        success = (from_ty->kind == eType_pointer) ||
           from_ty->equal(basic_type_int);
       }
       if(!success)
@@ -2644,7 +2644,7 @@ bool TypePass_Check::visit_cast(AstNode* cast)
 
 bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
 {
-  assert(KIND(bin_expr, eAstNode::bin_expr));
+  assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
   
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
@@ -2653,24 +2653,24 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
   
   if(success = visit_expr(left_operand) && visit_expr(right_operand))
   {
-    Type* expr_ty = KIND(bin_expr->ty, eType::proc);
+    Type* expr_ty = KIND(bin_expr->ty, eType_proc);
     Type* operands_ty = expr_ty->proc.args;
-    assert(KIND(operands_ty, eType::product));
+    assert(KIND(operands_ty, eType_product));
     Type* left_ty = operands_ty->product.left;
     Type* right_ty = operands_ty->product.right;
     Type* ret_ty = expr_ty->proc.ret;
     
     switch(op)
     {
-      case eOperator::add:
-      case eOperator::sub:
-      case eOperator::mul:
-      case eOperator::div:
+      case eOperator_add:
+      case eOperator_sub:
+      case eOperator_mul:
+      case eOperator_div:
       {
         if(ret_ty->equal(basic_type_int)
            || ret_ty->equal(basic_type_float)
            || ret_ty->equal(basic_type_char)
-           || (ret_ty->kind == eType::pointer))
+           || (ret_ty->kind == eType_pointer))
         {
           ;//ok
           assert(ret_ty->equal(left_ty) && left_ty->equal(right_ty));
@@ -2683,7 +2683,7 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
       }
       break;
       
-      case eOperator::mod:
+      case eOperator_mod:
       {
         if(ret_ty->equal(basic_type_int))
         {
@@ -2698,8 +2698,8 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
       }
       break;
       
-      case eOperator::logic_and:
-      case eOperator::logic_or:
+      case eOperator_logic_and:
+      case eOperator_logic_or:
       {
         if(left_ty->equal(basic_type_bool) && left_ty->equal(right_ty))
         {
@@ -2712,9 +2712,9 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
       }
       break;
       
-      case eOperator::bit_and:
-      case eOperator::bit_or:
-      case eOperator::bit_xor:
+      case eOperator_bit_and:
+      case eOperator_bit_or:
+      case eOperator_bit_xor:
       if(left_ty->equal(basic_type_int) && right_ty->equal(basic_type_int))
       {
         ;//ok
@@ -2724,8 +2724,8 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
                                 Parser::get_operator_printstr(op), operands_ty->get_printstr(arena));
       break;
       
-      case eOperator::bit_shift_left:
-      case eOperator::bit_shift_right:
+      case eOperator_bit_shift_left:
+      case eOperator_bit_shift_right:
       if(left_ty->equal(basic_type_int) && right_ty->equal(basic_type_char))
       {
         ;//ok
@@ -2735,17 +2735,17 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
                                 Parser::get_operator_printstr(op), operands_ty->get_printstr(arena));
       break;
       
-      case eOperator::less:
-      case eOperator::less_eq:
-      case eOperator::greater:
-      case eOperator::greater_eq:
-      case eOperator::eq:
-      case eOperator::not_eq_:
+      case eOperator_less:
+      case eOperator_less_eq:
+      case eOperator_greater:
+      case eOperator_greater_eq:
+      case eOperator_eq:
+      case eOperator_not_eq:
       {
         if((left_ty->equal(basic_type_int) ||
             left_ty->equal(basic_type_char) ||
             left_ty->equal(basic_type_float) ||
-            (left_ty->kind == eType::pointer)) &&
+            (left_ty->kind == eType_pointer)) &&
            left_ty->equal(right_ty))
         {
           ;//ok
@@ -2768,7 +2768,7 @@ bool TypePass_Check::visit_bin_expr(AstNode* bin_expr)
 
 bool TypePass_Check::visit_unr_expr(AstNode* unr_expr)
 {
-  assert(KIND(unr_expr, eAstNode::unr_expr));
+  assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
   
   AstNode* operand = unr_expr->unr_expr.operand;
@@ -2776,13 +2776,13 @@ bool TypePass_Check::visit_unr_expr(AstNode* unr_expr)
   
   if(success = visit_expr(operand))
   {
-    Type* expr_ty = KIND(unr_expr->ty, eType::proc);
+    Type* expr_ty = KIND(unr_expr->ty, eType_proc);
     Type* operand_ty = expr_ty->proc.args;
     Type* ret_ty = expr_ty->proc.ret;
     
     switch(op)
     {
-      case eOperator::logic_not:
+      case eOperator_logic_not:
       if(operand_ty->equal(basic_type_bool))
       {
         ;//ok
@@ -2793,7 +2793,7 @@ bool TypePass_Check::visit_unr_expr(AstNode* unr_expr)
                                 Parser::get_operator_printstr(op), operand_ty->get_printstr(arena));
       break;
       
-      case eOperator::bit_not:
+      case eOperator_bit_not:
       if(operand_ty->equal(basic_type_int))
       {
         ;//ok
@@ -2803,7 +2803,7 @@ bool TypePass_Check::visit_unr_expr(AstNode* unr_expr)
                                 Parser::get_operator_printstr(op), operand_ty->get_printstr(arena));
       break;
       
-      case eOperator::neg:
+      case eOperator_neg:
       if(operand_ty->equal(basic_type_int) || operand_ty->equal(basic_type_float))
       {
         ;//ok
@@ -2820,14 +2820,14 @@ bool TypePass_Check::visit_unr_expr(AstNode* unr_expr)
 
 bool TypePass_Check::visit_actual_args(AstNode* args)
 {
-  assert(KIND(args, eAstNode::node_list));
+  assert(KIND(args, eAstNode_node_list));
   bool success = true;
   
   for(ListItem* li = args->args.node_list.first;
       li && success;
       li = li->next)
   {
-    AstNode* arg = KIND(li, eList::ast_node)->ast_node;
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
     success = visit_expr(arg->call_arg.expr);
   }
 
@@ -2836,7 +2836,7 @@ bool TypePass_Check::visit_actual_args(AstNode* args)
 
 bool TypePass_Check::visit_call(AstNode* call)
 {
-  assert(KIND(call, eAstNode::call));
+  assert(KIND(call, eAstNode_call));
 
   bool success = true;
   success = visit_actual_args(call->call.args);
@@ -2846,7 +2846,7 @@ bool TypePass_Check::visit_call(AstNode* call)
 
 bool TypePass_Check::visit_index(AstNode* index)
 {
-  assert(KIND(index, eAstNode::index));
+  assert(KIND(index, eAstNode_index));
   bool success = true;
   
   if(index->eval_ty->width > 0)
@@ -2861,7 +2861,7 @@ bool TypePass_Check::visit_index(AstNode* index)
 
 bool TypePass_Check::visit_assign(AstNode* assign)
 {
-  assert(KIND(assign, eAstNode::assign));
+  assert(KIND(assign, eAstNode_assign));
   bool success = true;
   
   AstNode* dest_expr = assign->assign.dest_expr;
@@ -2884,42 +2884,42 @@ bool TypePass_Check::visit_expr(AstNode* expr)
   
   switch(expr->kind)
   {
-    case eAstNode::assign:
+    case eAstNode_assign:
     {
       success = visit_assign(expr);
     }
     break;
     
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       success = visit_cast(expr);
     }
     break;
     
-    case eAstNode::bin_expr:
+    case eAstNode_bin_expr:
     {
       success = visit_bin_expr(expr);
     }
     break;
     
-    case eAstNode::unr_expr:
+    case eAstNode_unr_expr:
     {
       success = visit_unr_expr(expr);
     }
     break;
     
-    case eAstNode::call:
+    case eAstNode_call:
     {
       success = visit_call(expr);
     }
     break;
     
-    case eAstNode::id:
-    case eAstNode::lit:
-    case eAstNode::basic_type:
+    case eAstNode_id:
+    case eAstNode_lit:
+    case eAstNode_basic_type:
     break;
     
-    case eAstNode::index:
+    case eAstNode_index:
     {
       success = visit_index(expr);
     }
@@ -2933,7 +2933,7 @@ bool TypePass_Check::visit_expr(AstNode* expr)
 
 bool TypePass_Check::visit_return(AstNode* ret)
 {
-  assert(KIND(ret, eAstNode::return_));
+  assert(KIND(ret, eAstNode_return));
   bool success = true;
 
   if(ret->ret.expr)
@@ -2946,7 +2946,7 @@ bool TypePass_Check::visit_return(AstNode* ret)
 
 bool TypePass_Check::visit_do_while(AstNode* do_while)
 {
-  assert(KIND(do_while, eAstNode::do_while));
+  assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
   success = visit_block_stmt(do_while->do_while.body)
@@ -2957,7 +2957,7 @@ bool TypePass_Check::visit_do_while(AstNode* do_while)
 
 bool TypePass_Check::visit_while(AstNode* while_)
 {
-  assert(KIND(while_, eAstNode::while_));
+  assert(KIND(while_, eAstNode_while));
   bool success = true;
 
   success = visit_expr(while_->while_.cond_expr)
@@ -2967,7 +2967,7 @@ bool TypePass_Check::visit_while(AstNode* while_)
 
 bool TypePass_Check::visit_if(AstNode* if_)
 {
-  assert(KIND(if_, eAstNode::if_));
+  assert(KIND(if_, eAstNode_if));
   bool success = true;
   
   success = visit_expr(if_->if_.cond_expr) && visit_block_stmt(if_->if_.body) &&
@@ -2978,14 +2978,14 @@ bool TypePass_Check::visit_if(AstNode* if_)
 
 bool TypePass_Check::visit_block(AstNode* block)
 {
-  assert(KIND(block, eAstNode::block));
+  assert(KIND(block, eAstNode_block));
   bool success = true;
   
   for(ListItem* li = block->block.nodes.first;
       li && success;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = visit_block_stmt(stmt);
   }
 
@@ -2998,69 +2998,69 @@ bool TypePass_Check::visit_block_stmt(AstNode* stmt)
   
   switch(stmt->kind)
   {
-    case eAstNode::assign:
+    case eAstNode_assign:
     {
       success = visit_assign(stmt);
     }
     break;
     
-    case eAstNode::cast:
+    case eAstNode_cast:
     {
       success = visit_cast(stmt);
     }
     break;
     
-    case eAstNode::bin_expr:
-    case eAstNode::unr_expr:
-    case eAstNode::id:
-    case eAstNode::call:
-    case eAstNode::lit:
+    case eAstNode_bin_expr:
+    case eAstNode_unr_expr:
+    case eAstNode_id:
+    case eAstNode_call:
+    case eAstNode_lit:
     {
       success = visit_expr(stmt);
     }
     break;
     
-    case eAstNode::return_:
+    case eAstNode_return:
     {
       success = visit_return(stmt);
     }
     break;
     
-    case eAstNode::if_:
+    case eAstNode_if:
     {
       success = visit_if(stmt);
     }
     break;
     
-    case eAstNode::do_while:
+    case eAstNode_do_while:
     {
       success = visit_do_while(stmt);
     }
     break;
     
-    case eAstNode::while_:
+    case eAstNode_while:
     {
       success = visit_while(stmt);
     }
     break;
     
-    case eAstNode::block:
+    case eAstNode_block:
     {
       success = visit_block(stmt);
     }
     break;
     
-    case eAstNode::var:
+    case eAstNode_var:
     {
       success = visit_var(stmt);
     }
     break;
     
-    case eAstNode::loop_ctrl:
-    case eAstNode::empty:
+    case eAstNode_loop_ctrl:
+    case eAstNode_empty:
     break;
     
-    case eAstNode::index:
+    case eAstNode_index:
     {
       success = visit_index(stmt);
     }
@@ -3074,7 +3074,7 @@ bool TypePass_Check::visit_block_stmt(AstNode* stmt)
 
 bool TypePass_Check::visit_proc(AstNode* proc)
 {
-  assert(KIND(proc, eAstNode::proc));
+  assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
   success = visit_formal_args(proc->proc.args) && visit_block_stmt(proc->proc.body);
@@ -3088,13 +3088,13 @@ bool TypePass_Check::visit_module_stmt(AstNode* stmt)
   
   switch(stmt->kind)
   {
-    case eAstNode::proc:
+    case eAstNode_proc:
     {
       success = visit_proc(stmt);
     }
     break;
     
-    case eAstNode::var:
+    case eAstNode_var:
     {
       success = visit_var(stmt);
     }
@@ -3108,14 +3108,14 @@ bool TypePass_Check::visit_module_stmt(AstNode* stmt)
 
 bool TypePass_Check::visit_module(AstNode* module)
 {
-  assert(KIND(module, eAstNode::module));
+  assert(KIND(module, eAstNode_module));
   bool success = true;
   
   for(ListItem* li = module->module.nodes.first;
       li && success;
       li = li->next)
   {
-    AstNode* stmt = KIND(li, eList::ast_node)->ast_node;
+    AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
     success = visit_module_stmt(stmt);
   }
 

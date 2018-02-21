@@ -1,33 +1,33 @@
 global_var Token keyword_list[] =
 {
-  {eToken::asm_, "asm"},
-  {eToken::if_, "if"},
-  {eToken::else_, "else"},
-  {eToken::do_, "do"},
-  {eToken::while_, "while"},
-  {eToken::return_, "return"},
-  {eToken::break_, "break"},
-  {eToken::continue_, "continue"},
-  {eToken::goto_, "goto"},
-  {eToken::include, "include"},
-  {eToken::true_, "true"},
-  {eToken::false_, "false"},
-  {eToken::struct_, "struct"},
-  {eToken::union_, "union"},
-  {eToken::enum_, "enum"},
-  {eToken::extern_, "extern"},
-  {eToken::const_, "const"},
-  {eToken::and_, "and"},
-  {eToken::or_, "or"},
-  {eToken::not_, "not"},
-  {eToken::int_, "int"},
-  {eToken::float_, "float"},
-  {eToken::bool_, "bool"},
-  {eToken::char_, "char"},
-  {eToken::void_, "void"},
-  {eToken::auto_, "auto"},
-  {eToken::cast, "cast"},
-  {eToken::None, 0}, /* terminator */
+  {eToken_asm, "asm"},
+  {eToken_if, "if"},
+  {eToken_else, "else"},
+  {eToken_do, "do"},
+  {eToken_while, "while"},
+  {eToken_return, "return"},
+  {eToken_break, "break"},
+  {eToken_continue, "continue"},
+  {eToken_goto, "goto"},
+  {eToken_include, "include"},
+  {eToken_true, "true"},
+  {eToken_false, "false"},
+  {eToken_struct, "struct"},
+  {eToken_union, "union"},
+  {eToken_enum, "enum"},
+  {eToken_extern, "extern"},
+  {eToken_const, "const"},
+  {eToken_and, "and"},
+  {eToken_or, "or"},
+  {eToken_not, "not"},
+  {eToken_int, "int"},
+  {eToken_float, "float"},
+  {eToken_bool, "bool"},
+  {eToken_char, "char"},
+  {eToken_void, "void"},
+  {eToken_auto, "auto"},
+  {eToken_cast, "cast"},
+  {eToken_None, 0}, /* terminator */
 };
 
 Token* Lexer::lookup_keyword(char* lexeme)
@@ -36,7 +36,7 @@ Token* Lexer::lookup_keyword(char* lexeme)
   Token* token;
 
   for(int i = 0;
-      (token = &keyword_list[i])->kind != eToken::None;
+      (token = &keyword_list[i])->kind != eToken_None;
       token = &keyword_list[++i])
   {
     if(cstr_match(lexeme, token->lexeme))
@@ -148,263 +148,263 @@ char* Token::get_printstr()
 
   switch(kind)
   {
-    case eToken::dot:
+    case eToken_dot:
       result = ".";
     break;
 
-    case eToken::arrow_right:
+    case eToken_arrow_right:
       result = "->";
     break;
 
-    case eToken::open_bracket:
+    case eToken_open_bracket:
       result = "[";
     break;
 
-    case eToken::close_bracket:
+    case eToken_close_bracket:
       result = "]";
     break;
 
-    case eToken::open_parens:
+    case eToken_open_parens:
       result = "(";
     break;
 
-    case eToken::close_parens:
+    case eToken_close_parens:
       result = ")";
     break;
 
-    case eToken::open_brace:
+    case eToken_open_brace:
       result = "{";
     break;
-    case eToken::close_brace:
+    case eToken_close_brace:
       result = "}";
     break;
 
-    case eToken::semicolon:
+    case eToken_semicolon:
       result = ";";
     break;
 
-    case eToken::colon:
+    case eToken_colon:
       result = ":";
     break;
 
-    case eToken::comma:
+    case eToken_comma:
       result = ",";
     break;
 
-    case eToken::star:
+    case eToken_star:
       result = "*";
     break;
 
-    case eToken::mul:
+    case eToken_mul:
       result = "×";
     break;
 
-    case eToken::fwd_slash:
+    case eToken_fwd_slash:
       result = "/";
     break;
 
-    case eToken::percent:
+    case eToken_percent:
       result = "%";
     break;
 
-    case eToken::back_slash:
+    case eToken_back_slash:
       result = "\\";
     break;
 
-    case eToken::plus:
+    case eToken_plus:
       result = "+";
     break;
 
-    case eToken::plus_plus:
+    case eToken_plus_plus:
       result = "++";
     break;
 
-    case eToken::minus:
+    case eToken_minus:
       result = "-";
     break;
 
-    case eToken::minus_minus:
+    case eToken_minus_minus:
       result = "--";
     break;
 
-    case eToken::exclam:
+    case eToken_exclam:
       result = "!";
     break;
 
 #if 0
-    case eToken::exclam_eq:
+    case eToken_exclam_eq:
       result = "!=";
       break;
 
 #endif
-    case eToken::eq:
+    case eToken_eq:
       result = "=";
     break;
 
-    case eToken::eq_eq:
+    case eToken_eq_eq:
       result = "==";
     break;
 
-    case eToken::angle_right:
+    case eToken_angle_right:
       result = ">";
     break;
 
-    case eToken::angle_right_eq:
+    case eToken_angle_right_eq:
       result = ">=";
     break;
 
-    case eToken::angle_right_right:
+    case eToken_angle_right_right:
       result = ">>";
     break;
 
-    case eToken::angle_left:
+    case eToken_angle_left:
       result = "<";
     break;
 
-    case eToken::angle_left_eq:
+    case eToken_angle_left_eq:
       result = "<=";
     break;
 
-    case eToken::angle_left_left:
+    case eToken_angle_left_left:
       result = "<<";
     break;
 
-    case eToken::ampersand:
+    case eToken_ampersand:
       result = "&";
     break;
 
-    case eToken::pipe:
+    case eToken_pipe:
       result = "|";
     break;
 
-    case eToken::tilde:
+    case eToken_tilde:
       result = "~";
     break;
 
-    case eToken::circumflex:
+    case eToken_circumflex:
       result = "^";
     break;
 
-    case eToken::end_of_input:
+    case eToken_end_of_input:
       result = "end-of-input";
     break;
 
-    case eToken::if_:
+    case eToken_if:
       result = "if";
     break;
 
-    case eToken::else_:
+    case eToken_else:
       result = "else";
     break;
 
-    case eToken::do_:
+    case eToken_do:
       result = "do";
     break;
 
-    case eToken::while_:
+    case eToken_while:
       result = "while";
     break;
 
-    case eToken::struct_:
+    case eToken_struct:
       result = "struct";
     break;
 
-    case eToken::union_:
+    case eToken_union:
       result = "union";
     break;
 
-    case eToken::return_:
+    case eToken_return:
       result = "return";
     break;
 
-    case eToken::break_:
+    case eToken_break:
       result = "break";
     break;
 
-    case eToken::continue_:
+    case eToken_continue:
       result = "continue";
     break;
 
-    case eToken::include:
+    case eToken_include:
       result = "include";
     break;
 
-    case eToken::enum_:
+    case eToken_enum:
       result = "enum";
     break;
 
-    case eToken::goto_:
+    case eToken_goto:
       result = "goto";
     break;
 
-    case eToken::true_:
+    case eToken_true:
       result = "true";
     break;
 
-    case eToken::false_:
+    case eToken_false:
       result = "false";
     break;
 
-    case eToken::extern_:
+    case eToken_extern:
       result = "extern";
     break;
 
-    case eToken::const_:
+    case eToken_const:
       result = "const";
     break;
 
-    case eToken::and_:
+    case eToken_and:
       result = "and";
     break;
 
-    case eToken::or_:
+    case eToken_or:
       result = "or";
     break;
 
-    case eToken::not_:
+    case eToken_not:
       result = "not";
     break;
 
-    case eToken::int_:
+    case eToken_int:
       result = "int";
     break;
 
-    case eToken::float_:
+    case eToken_float:
       result = "float";
     break;
 
-    case eToken::bool_:
+    case eToken_bool:
       result = "bool";
     break;
 
-    case eToken::char_:
+    case eToken_char:
       result = "char";
     break;
 
-    case eToken::void_:
+    case eToken_void:
       result = "void";
     break;
 
-    case eToken::auto_:
+    case eToken_auto:
       result = "auto";
     break;
 
-    case eToken::cast:
+    case eToken_cast:
       result = "cast";
     break;
 
-    case eToken::id:
-    case eToken::int_val:
-    case eToken::float_val:
+    case eToken_id:
+    case eToken_int_val:
+    case eToken_float_val:
       result = lexeme;
     break;
 
-    case eToken::str_val:
+    case eToken_str_val:
       result = str_val; // TODO: Substitute non-printable chars
     break;
 
-    case eToken::char_val:
-    case eToken::unknown_char:
+    case eToken_char_val:
+    case eToken_unknown_char:
       cstr_print_char(result = char_print_buf, char_val);
     break;
 
@@ -488,16 +488,16 @@ bool Lexer::get_asm_text()
     char* end_char = cursor - 1;
     char* lexeme = install_lexeme(begin_char, end_char);
 
-    token.kind = eToken::asm_text;
+    token.kind = eToken_asm_text;
     token.lexeme = lexeme;
   }
   else if(c == '\0')
   {
-    token.kind = eToken::end_of_input;
+    token.kind = eToken_end_of_input;
   }
   else
   {
-    token.kind = eToken::unknown_char;
+    token.kind = eToken_unknown_char;
     token.char_val = c;
   }
   return success;
@@ -528,7 +528,7 @@ loop:
     char* end_char = cursor - 1;
     char* lexeme = install_lexeme(begin_char, end_char);
 
-    token.kind = eToken::id;
+    token.kind = eToken_id;
     token.lexeme = lexeme;
     Token* keyword = lookup_keyword(lexeme);
     if(keyword)
@@ -578,13 +578,13 @@ loop:
 
     if(is_float)
     {
-      token.kind = eToken::float_val;
+      token.kind = eToken_float_val;
       token.float_val = push_struct(arena, float);
       platform_sscanf(digit_buf, "%f", token.float_val);
     }
     else
     {
-      token.kind = eToken::int_val;
+      token.kind = eToken_int_val;
       token.int_val = push_struct(arena, int);
       if(is_hex)
         platform_sscanf(digit_buf, "%x", token.int_val);
@@ -594,42 +594,42 @@ loop:
   }
   else if(c == '-')
   {
-    token.kind = eToken::minus;
+    token.kind = eToken_minus;
     c = *(++cursor);
     if(c == '-')
     {
-      token.kind = eToken::minus_minus;
+      token.kind = eToken_minus_minus;
       ++cursor;
     }
     else if(c == '>')
     {
-      token.kind = eToken::arrow_right;
+      token.kind = eToken_arrow_right;
       ++cursor;
     }
   }
   else if(c == '<')
   {
-    token.kind = eToken::angle_left;
+    token.kind = eToken_angle_left;
     c = *(++cursor);
     if(c == '=')
     {
-      token.kind = eToken::angle_left_eq;
+      token.kind = eToken_angle_left_eq;
       ++cursor;
     }
     else if(c == '<')
     {
-      token.kind = eToken::angle_left_left;
+      token.kind = eToken_angle_left_left;
       ++cursor;
     }
     else if(c == '>')
     {
-      token.kind = eToken::angle_left_right;
+      token.kind = eToken_angle_left_right;
       ++cursor;
     }
   }
   else if(c == '&')
   {
-    token.kind = eToken::ampersand;
+    token.kind = eToken_ampersand;
     c = *(++cursor);
   }
   else if(c == '/')
@@ -666,7 +666,7 @@ loop:
     }
     else
     {
-      token.kind = eToken::fwd_slash;
+      token.kind = eToken_fwd_slash;
       ++cursor;
     }
   }
@@ -679,7 +679,7 @@ loop:
     if(success = escaped_string(__FILE__, __LINE__, &estr))
     {
       token.str_val = install_escaped_str(&estr);;
-      token.kind = eToken::str_val;
+      token.kind = eToken_str_val;
       cursor = ++estr.end;
     }
   }
@@ -698,150 +698,150 @@ loop:
       else
       {
         token.char_val = *lexeme;
-        token.kind = eToken::char_val;
+        token.kind = eToken_char_val;
         cursor = ++estr.end;
       }
     }
   }
   else if(c == '=')
   {
-    token.kind = eToken::eq;
+    token.kind = eToken_eq;
     c = *(++cursor);
     if(c == '=')
     {
-      token.kind = eToken::eq_eq;
+      token.kind = eToken_eq_eq;
       ++cursor;
     }
   }
   else if(c == '>')
   {
-    token.kind = eToken::angle_right;
+    token.kind = eToken_angle_right;
     c = *(++cursor);
     if(c == '=')
     {
-      token.kind = eToken::angle_right_eq;
+      token.kind = eToken_angle_right_eq;
       ++cursor;
     }
     else if(c == '>')
     {
-      token.kind = eToken::angle_right_right;
+      token.kind = eToken_angle_right_right;
       ++cursor;
     }
   }
   else if(c == '|')
   {
-    token.kind = eToken::pipe;
+    token.kind = eToken_pipe;
     c = *(++cursor);
   }
   else if(c == '~')
   {
-    token.kind = eToken::tilde;
+    token.kind = eToken_tilde;
     c = *(++cursor);
   }
   else if(c == '!')
   {
-    token.kind = eToken::exclam;
+    token.kind = eToken_exclam;
     c = *(++cursor);
 #if 0
     if(c == '=')
     {
-      token.kind = eToken::exclam_eq;
+      token.kind = eToken_exclam_eq;
       ++cursor;
     }
 #endif
   }
   else if(c == '+')
   {
-    token.kind = eToken::plus;
+    token.kind = eToken_plus;
     c = *(++cursor);
     if(c == '+')
     {
-      token.kind = eToken::plus_plus;
+      token.kind = eToken_plus_plus;
       ++cursor;
     }
   }
   else if(c == '*')
   {
-    token.kind = eToken::star;
+    token.kind = eToken_star;
     ++cursor;
   }
   else if(c == '%')
   {
-    token.kind = eToken::percent;
+    token.kind = eToken_percent;
     ++cursor;
   }
   else if(c == '×')
   {
-    token.kind = eToken::mul;
+    token.kind = eToken_mul;
     c = *(++cursor);
   }
   else if(c == '^')
   {
-    token.kind = eToken::circumflex;
+    token.kind = eToken_circumflex;
     ++cursor;
   }
   else if(c == '\\')
   {
-    token.kind = eToken::back_slash;
+    token.kind = eToken_back_slash;
     ++cursor;
   }
   else if(c == '.')
   {
-    token.kind = eToken::dot;
+    token.kind = eToken_dot;
     ++cursor;
   }
   else if(c == '}')
   {
-    token.kind = eToken::close_brace;
+    token.kind = eToken_close_brace;
     ++cursor;
   }
   else if(c == '{')
   {
-    token.kind = eToken::open_brace;
+    token.kind = eToken_open_brace;
     ++cursor;
   }
   else if(c == '(')
   {
-    token.kind = eToken::open_parens;
+    token.kind = eToken_open_parens;
     ++cursor;
   }
   else if(c == ')')
   {
-    token.kind = eToken::close_parens;
+    token.kind = eToken_close_parens;
     ++cursor;
   }
   else if(c == ';')
   {
-    token.kind = eToken::semicolon;
+    token.kind = eToken_semicolon;
     ++cursor;
   }
   else if(c == ',')
   {
-    token.kind = eToken::comma;
+    token.kind = eToken_comma;
     ++cursor;
   }
   else if(c == ':')
   {
-    token.kind = eToken::colon;
+    token.kind = eToken_colon;
     ++cursor;
   }
   else if(c == '[')
   {
-    token.kind = eToken::open_bracket;
+    token.kind = eToken_open_bracket;
     ++cursor;
   }
   else if(c == ']')
   {
-    token.kind = eToken::close_bracket;
+    token.kind = eToken_close_bracket;
     ++cursor;
   }
   else if(c == '\0')
   {
-    token.kind = eToken::end_of_input;
+    token.kind = eToken_end_of_input;
   }
   else
   {
-    token.kind = eToken::unknown_char;
+    token.kind = eToken_unknown_char;
     token.char_val = c;
   }
   return success;

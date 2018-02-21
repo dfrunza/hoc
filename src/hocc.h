@@ -79,8 +79,6 @@ typedef struct
   char* working_dir;
   char* asm_file;
   char* source_file;
-
-  bool make(MemoryArena* arena, char* src_file_path);
 }
 OutFileNames;
 
@@ -93,86 +91,86 @@ struct SourceLoc
   SourceLoc* clone(MemoryArena* arena);
 };
 
-enum struct eToken
+enum eToken
 {
-  None,
+  eToken_None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
-  dot,
-  arrow_right,
-  open_bracket,
-  close_bracket,
-  open_parens,
-  close_parens,
-  open_brace,
-  close_brace,
-  semicolon,
-  colon,
-  comma,
-  star,
-  fwd_slash,
-  back_slash,
-  plus,
-  plus_plus,
-  minus,
-  minus_minus,
-  mul,
-  exclam,
+  eToken_dot,
+  eToken_arrow_right,
+  eToken_open_bracket,
+  eToken_close_bracket,
+  eToken_open_parens,
+  eToken_close_parens,
+  eToken_open_brace,
+  eToken_close_brace,
+  eToken_semicolon,
+  eToken_colon,
+  eToken_comma,
+  eToken_star,
+  eToken_fwd_slash,
+  eToken_back_slash,
+  eToken_plus,
+  eToken_plus_plus,
+  eToken_minus,
+  eToken_minus_minus,
+  eToken_mul,
+  eToken_exclam,
 //  eToken_exclam_eq,
-  logic_not,
-  eq,
-  eq_eq,
-  angle_right,
-  angle_right_eq,
-  angle_right_right,
-  angle_left,
-  angle_left_eq,
-  angle_left_left,
-  angle_left_right,
-  ampersand,
-  pipe,
-  tilde,
-  circumflex,
-  and_,
-  or_,
-  not_,
-  percent,
-  unknown_char,
-  end_of_input,
+  eToken_logic_not,
+  eToken_eq,
+  eToken_eq_eq,
+  eToken_angle_right,
+  eToken_angle_right_eq,
+  eToken_angle_right_right,
+  eToken_angle_left,
+  eToken_angle_left_eq,
+  eToken_angle_left_left,
+  eToken_angle_left_right,
+  eToken_ampersand,
+  eToken_pipe,
+  eToken_tilde,
+  eToken_circumflex,
+  eToken_and,
+  eToken_or,
+  eToken_not,
+  eToken_percent,
+  eToken_unknown_char,
+  eToken_end_of_input,
 
-  asm_,
-  if_,
-  else_,
-  do_,
-  while_,
-  proc_,
-  struct_,
-  union_,
-  return_,
-  break_,
-  continue_,
-  goto_,
-  include,
-  enum_,
-  true_,
-  false_,
-  extern_,
-  const_,
-  int_,
-  float_,
-  bool_,
-  char_,
-  void_,
-  auto_,
-  cast,
+  eToken_asm,
+  eToken_if,
+  eToken_else,
+  eToken_do,
+  eToken_while,
+  eToken_proc,
+  eToken_struct,
+  eToken_union,
+  eToken_return,
+  eToken_break,
+  eToken_continue,
+  eToken_goto,
+  eToken_include,
+  eToken_enum,
+  eToken_true,
+  eToken_false,
+  eToken_extern,
+  eToken_const,
+  eToken_int,
+  eToken_float,
+  eToken_bool,
+  eToken_char,
+  eToken_void,
+  eToken_auto,
+  eToken_cast,
 
-  id,
-  int_val,
-  float_val,
-  str_val,
-  char_val,
-  asm_text,
+  eToken_id,
+  eToken_int_val,
+  eToken_float_val,
+  eToken_str_val,
+  eToken_char_val,
+  eToken_asm_text,
 
-  Count,
+  eToken_Count,
 };
 
 struct Token
@@ -223,82 +221,82 @@ struct Lexer
   char*  install_escaped_str(EscapedStr* estr);
 };
 
-enum struct eOperator
+enum eOperator
 {
-  None,
+  eOperator_None,
 
   /* arithmetic ops */
-  add,
-  sub,
-  mul,
-  div,
-  mod,
-  neg,
+  eOperator_add,
+  eOperator_sub,
+  eOperator_mul,
+  eOperator_div,
+  eOperator_mod,
+  eOperator_neg,
 
   /* relational ops */
-  eq,
-  not_eq_,
-  less,
-  less_eq,
-  greater,
-  greater_eq,
+  eOperator_eq,
+  eOperator_not_eq,
+  eOperator_less,
+  eOperator_less_eq,
+  eOperator_greater,
+  eOperator_greater_eq,
 
   /* logical ops */
-  logic_and,
-  logic_or,
-  logic_not,
+  eOperator_logic_and,
+  eOperator_logic_or,
+  eOperator_logic_not,
 
   /* bit ops */
-  bit_and,
-  bit_or,
-  bit_xor,
-  bit_not,
-  bit_shift_left,
-  bit_shift_right,
+  eOperator_bit_and,
+  eOperator_bit_or,
+  eOperator_bit_xor,
+  eOperator_bit_not,
+  eOperator_bit_shift_left,
+  eOperator_bit_shift_right,
 
   /* misc */
-  deref,
-  address_of,
-  selector,
-  indirect_selector,
+  eOperator_deref,
+  eOperator_address_of,
+  eOperator_selector,
+  eOperator_indirect_selector,
 
-  Count,
+  eOperator_Count,
 };
 
-enum struct eLiteral
+enum eLiteral
 {
-  None,
-  int_,
-  float_,
-  bool_,
-  char_,
-  str,
+  eLiteral_None,
+  eLiteral_int,
+  eLiteral_float,
+  eLiteral_bool,
+  eLiteral_char,
+  eLiteral_str,
 };
 
-enum struct eScope
+enum eScope
 {
-  None,
-  module,
-  proc,
-  args,
-  params,
-  while_,
-  block,
-  struct_,
+  eScope_None,
+  eScope_module,
+  eScope_proc,
+  eScope_args,
+  eScope_params,
+  eScope_while,
+  eScope_block,
+  eScope_struct,
 };
 
-enum struct eList
+enum eList
 {
-  None,
-  ast_node,
-  symbol,
-  scope,
-  type_pair,
-  ir_stmt,
-  ir_leader_stmt,
-  ir_label,
-  basic_block,
-  file,
+  eList_None,
+  eList_ast_node,
+  eList_symbol,
+  eList_scope,
+  eList_type_pair,
+  eList_ir_stmt,
+  eList_ir_leader_stmt,
+  eList_ir_label,
+  eList_basic_block,
+  eList_file,
 };
 
 struct ListItem
@@ -318,7 +316,7 @@ struct ListItem
     IrLeaderStmt* ir_leader_stmt;
     Label*      ir_label;
     BasicBlock* basic_block;
-    PlatformFile*      file;
+    PlatformFile* file;
   };
 };
 
@@ -363,41 +361,41 @@ struct Scope
   Symbol* lookup_decl(char* name);
 };
 
-enum struct eLoopCtrl
+enum eLoopCtrl
 {
-  None,
-  break_,
-  continue_,
+  eLoopCtrl_None,
+  eLoopCtrl_break,
+  eLoopCtrl_continue,
 };
 
-enum struct eModifier
+enum eModifier
 {
-  None,
-  extern_,
-  const_,
+  eModifier_None,
+  eModifier_extern,
+  eModifier_const,
 };
 
-enum struct eType
+enum eType
 {
-  None,
-  typevar,
-  basic,
-  proc,
-  var,
-  product,
-  pointer,
-  array,
+  eType_None,
+  eType_typevar,
+  eType_basic,
+  eType_proc,
+  eType_var,
+  eType_product,
+  eType_pointer,
+  eType_array,
 };
 
-enum struct eBasicType
+enum eBasicType
 {
-  None,
-  void_,
-  int_,
-  float_,
-  char_,
-  bool_,
-  auto_,
+  eBasicType_None,
+  eBasicType_void,
+  eBasicType_int,
+  eBasicType_float,
+  eBasicType_char,
+  eBasicType_bool,
+  eBasicType_auto,
 };
 
 struct Type_Var
@@ -608,53 +606,53 @@ struct TypePass_Check : TypePass
   bool visit_module(AstNode* module);
 };
 
-enum struct eIrOp
+enum eIrOp
 {
-  None,
+  eIrOp_None,
 
   /* arith ops */
-  add,
-  sub,
-  mul,
-  div,
-  mod,
-  neg,
+  eIrOp_add,
+  eIrOp_sub,
+  eIrOp_mul,
+  eIrOp_div,
+  eIrOp_mod,
+  eIrOp_neg,
 
   /* bit ops */
-  bit_and,
-  bit_or,
-  bit_xor,
-  bit_not,
-  bit_shift_left,
-  bit_shift_right,
+  eIrOp_bit_and,
+  eIrOp_bit_or,
+  eIrOp_bit_xor,
+  eIrOp_bit_not,
+  eIrOp_bit_shift_left,
+  eIrOp_bit_shift_right,
 
   /* relational ops */
-  eq,
-  not_eq_,
-  less,
-  less_eq,
-  greater,
-  greater_eq,
-  logic_and,
-  logic_or,
-  logic_not,
+  eIrOp_eq,
+  eIrOp_not_eq,
+  eIrOp_less,
+  eIrOp_less_eq,
+  eIrOp_greater,
+  eIrOp_greater_eq,
+  eIrOp_logic_and,
+  eIrOp_logic_or,
+  eIrOp_logic_not,
 
   /* conv ops */
-  itof,
-  itoc,
-  itob,
-  ftoi,
-  ctoi,
-  btoi,
+  eIrOp_itof,
+  eIrOp_itoc,
+  eIrOp_itob,
+  eIrOp_ftoi,
+  eIrOp_ctoi,
+  eIrOp_btoi,
 
   // op | arg1 | arg2 | result
-  index_source,  // result = arg1[arg2]
-  index_dest,    // result[arg2] = arg1
-  deref_source,  // result = *arg1
-  deref_dest,    // *result = arg1
-  address_of,    // result = &arg1
+  eIrOp_index_source,  // result = arg1[arg2]
+  eIrOp_index_dest,    // result[arg2] = arg1
+  eIrOp_deref_source,  // result = *arg1
+  eIrOp_deref_dest,    // *result = arg1
+  eIrOp_address_of,    // result = &arg1
 
-  param,
+  eIrOp_param,
 };
 
 struct Label
@@ -669,40 +667,40 @@ struct Label
 
 typedef int NextUse;
 
-enum struct eX86Location
+enum eX86Location
 {
-  None,
+  eX86Location_None,
 
-  eax,
-  ebx,
-  ecx,
-  edx,
-  esi,
-  edi,
+  eX86Location_eax,
+  eX86Location_ebx,
+  eX86Location_ecx,
+  eX86Location_edx,
+  eX86Location_esi,
+  eX86Location_edi,
 
-  al,
-  ah,
-  bl,
-  bh,
-  cl,
-  ch,
-  dl,
-  dh,
+  eX86Location_al,
+  eX86Location_ah,
+  eX86Location_bl,
+  eX86Location_bh,
+  eX86Location_cl,
+  eX86Location_ch,
+  eX86Location_dl,
+  eX86Location_dh,
 
-  memory,
-  ebp,
-  esp,
+  eX86Location_memory,
+  eX86Location_ebp,
+  eX86Location_esp,
 
-  xmm0,
-  xmm1,
-  xmm2,
-  xmm3,
-  xmm4,
-  xmm5,
-  xmm6,
-  xmm7,
+  eX86Location_xmm0,
+  eX86Location_xmm1,
+  eX86Location_xmm2,
+  eX86Location_xmm3,
+  eX86Location_xmm4,
+  eX86Location_xmm5,
+  eX86Location_xmm6,
+  eX86Location_xmm7,
 
-  Count,
+  eX86Location_Count,
 };
 
 struct X86Location
@@ -728,15 +726,15 @@ struct IrArg
   Symbol* object;
 };
 
-enum struct eIrStmt
+enum eIrStmt
 {
-  None,
-  assign,
-  goto_,
-  cond_goto,
-  call,
-  return_,
-  nop,
+  eIrStmt_None,
+  eIrStmt_assign,
+  eIrStmt_goto,
+  eIrStmt_cond_goto,
+  eIrStmt_call,
+  eIrStmt_return,
+  eIrStmt_nop,
 };
 
 struct IrStmt_Assign
@@ -802,22 +800,22 @@ struct IrLeaderStmt
   Label* label;
 };
 
-enum struct eX86Operand
+enum eX86Operand
 {
-  None,
-  id,
-  constant,
-  register_,
-  memory,
-  address,
+  eX86Operand_None,
+  eX86Operand_id,
+  eX86Operand_constant,
+  eX86Operand_register,
+  eX86Operand_memory,
+  eX86Operand_address,
 };
 
-enum struct eX86Constant
+enum eX86Constant
 {
-  None,
-  int_,
-  float_,
-  char_,
+  eX86Constant_None,
+  eX86Constant_int,
+  eX86Constant_float,
+  eX86Constant_char,
 };
 
 struct X86Operand_Index
@@ -852,56 +850,56 @@ struct X86Operand
   };
 };
 
-enum struct eX86Stmt
+enum eX86Stmt
 {
-  None,
-  call,
-  pop,
-  push,
-  lea,
-  cdq,
+  eX86Stmt_None,
+  eX86Stmt_call,
+  eX86Stmt_pop,
+  eX86Stmt_push,
+  eX86Stmt_lea,
+  eX86Stmt_cdq,
 
-  mov,
-  add,
-  sub,
-  imul,
-  idiv,
-  neg,
-  or_,
-  and_,
-  not_,
+  eX86Stmt_mov,
+  eX86Stmt_add,
+  eX86Stmt_sub,
+  eX86Stmt_imul,
+  eX86Stmt_idiv,
+  eX86Stmt_neg,
+  eX86Stmt_or,
+  eX86Stmt_and,
+  eX86Stmt_not,
 
-  jz,
-  jnz,
-  jl,
-  jle,
-  jg,
-  jge,
-  jmp,
+  eX86Stmt_jz,
+  eX86Stmt_jnz,
+  eX86Stmt_jl,
+  eX86Stmt_jle,
+  eX86Stmt_jg,
+  eX86Stmt_jge,
+  eX86Stmt_jmp,
 
-  cmp,
-  ucomiss,  // floating point cmp
+  eX86Stmt_cmp,
+  eX86Stmt_ucomiss,  // floating point cmp
 
-  movss,
-  addss,
-  subss,
-  mulss,
-  divss,
+  eX86Stmt_movss,
+  eX86Stmt_addss,
+  eX86Stmt_subss,
+  eX86Stmt_mulss,
+  eX86Stmt_divss,
 
-  jb,
-  jbe,
-  ja,
-  jae,
-  je,
-  jne,
+  eX86Stmt_jb,
+  eX86Stmt_jbe,
+  eX86Stmt_ja,
+  eX86Stmt_jae,
+  eX86Stmt_je,
+  eX86Stmt_jne,
 
-  cvtsi2ss,
-  cvttss2si,
+  eX86Stmt_cvtsi2ss,
+  eX86Stmt_cvttss2si,
 
-  nop,
-  label,
-  extern_proc,
-  ret,
+  eX86Stmt_nop,
+  eX86Stmt_label,
+  eX86Stmt_extern_proc,
+  eX86Stmt_ret,
 };
 
 struct X86Stmt
@@ -911,38 +909,38 @@ struct X86Stmt
   X86Operand* operand2;
 };
 
-enum struct eAstNode
+enum eAstNode
 {
-  None,
-  id,
-  asm_block,
-  bin_expr,
-  unr_expr,
-  module,
-  include,
-  block,
-  stmt,
-  var,
-  proc,
-  call,
-  basic_type,
-  lit,
-  return_,
-  if_,
-  while_,
-  do_while,
-  loop_ctrl,
-  enum_decl,
-  struct_decl,
-  union_decl,
-  empty,
-  node_list,
-  array,
-  index,
-  pointer,
-  assign,
-  cast,
-  call_arg,
+  eAstNode_None,
+  eAstNode_id,
+  eAstNode_asm_block,
+  eAstNode_bin_expr,
+  eAstNode_unr_expr,
+  eAstNode_module,
+  eAstNode_include,
+  eAstNode_block,
+  eAstNode_stmt,
+  eAstNode_var,
+  eAstNode_proc,
+  eAstNode_call,
+  eAstNode_basic_type,
+  eAstNode_lit,
+  eAstNode_return,
+  eAstNode_if,
+  eAstNode_while,
+  eAstNode_do_while,
+  eAstNode_loop_ctrl,
+  eAstNode_enum_decl,
+  eAstNode_struct_decl,
+  eAstNode_union_decl,
+  eAstNode_empty,
+  eAstNode_node_list,
+  eAstNode_array,
+  eAstNode_index,
+  eAstNode_pointer,
+  eAstNode_assign,
+  eAstNode_cast,
+  eAstNode_call_arg,
 };
 
 struct AstNode_NodeList
@@ -1269,20 +1267,20 @@ struct Parser
   bool parse_module();
 };
 
-enum struct eStorageSpace
+enum eStorageSpace
 {
-  None,
-  constant,
-  local, // vars and temps
-  actual_param, // params (actual args and retvar) at the call site
-  formal_param, // params to proc 
-  static_, // module-level vars
+  eStorageSpace_None,
+  eStorageSpace_constant,
+  eStorageSpace_local, // vars and temps
+  eStorageSpace_actual_param, // params (actual args and retvar) at the call site
+  eStorageSpace_formal_param, // params to proc 
+  eStorageSpace_static_, // module-level vars
 };
 
-enum struct eSymbol
+enum eSymbol
 {
-  None,
-  constant,
+  eSymbol_None,
+  eSymbol_constant,
 };
 
 //FIXME: Discriminate symbols by kind : var, proc, etc.
@@ -1318,7 +1316,7 @@ struct Symbol
   // natvis
   struct Symbol_Locations
   {
-    X86Location* _[(int)eX86Location::Count];
+    X86Location* _[eX86Location_Count];
   }
   locations;
 

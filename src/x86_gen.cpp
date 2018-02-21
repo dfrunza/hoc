@@ -27,215 +27,215 @@ void X86Context::init_registers()
   /* eax */
   X86Location* loc = &eax;
   *loc = {};
-  loc->kind = eX86Location::eax;
+  loc->kind = eX86Location_eax;
   loc->type = basic_type_int;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* al */
   X86Location* subloc = &al;
   *subloc = {};
   loc->subloc[0] = subloc;
   subloc->parent = loc;
-  subloc->kind = eX86Location::al;
+  subloc->kind = eX86Location_al;
   subloc->type = basic_type_char;
   registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
+  subloc->occupants.init(gp_arena, eList_symbol);
 
   /* ah */
   subloc = &ah;
   *subloc = {};
   loc->subloc[1] = subloc;
   subloc->parent = loc;
-  subloc->kind = eX86Location::ah;
+  subloc->kind = eX86Location_ah;
   subloc->type = basic_type_char;
   registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
+  subloc->occupants.init(gp_arena, eList_symbol);
 
   /* ebx */
   loc = &ebx;
   *loc = {};
-  loc->kind = eX86Location::ebx;
+  loc->kind = eX86Location_ebx;
   loc->type = basic_type_int;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* bl */
   subloc = &bl;
   *subloc = {};
   loc->subloc[0] = subloc;
   subloc->parent = loc;
-  subloc->kind = eX86Location::bl;
+  subloc->kind = eX86Location_bl;
   subloc->type = basic_type_char;
   registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
+  subloc->occupants.init(gp_arena, eList_symbol);
 
   /* bh */
   subloc = &bh;
   *subloc = {};
   loc->subloc[1] = subloc;
   subloc->parent = loc;
-  subloc->kind = eX86Location::bh;
+  subloc->kind = eX86Location_bh;
   subloc->type = basic_type_char;
   registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
+  subloc->occupants.init(gp_arena, eList_symbol);
 
   /* ecx */
   loc = &ecx;
   *loc = {};
-  loc->kind = eX86Location::ecx;
+  loc->kind = eX86Location_ecx;
   loc->type = basic_type_int;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* cl */
   subloc = &cl;
   *subloc = {};
   loc->subloc[0] = subloc;
   subloc->parent = loc;
-  subloc->kind = eX86Location::cl;
+  subloc->kind = eX86Location_cl;
   subloc->type = basic_type_char;
   registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
+  subloc->occupants.init(gp_arena, eList_symbol);
 
   /* ch */
   subloc = &ch;
   *subloc = {};
   loc->subloc[1] = subloc;
   subloc->parent = loc;
-  subloc->kind = eX86Location::ch;
+  subloc->kind = eX86Location_ch;
   subloc->type = basic_type_char;
   registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
+  subloc->occupants.init(gp_arena, eList_symbol);
 
   /* edx */
   loc = &edx;
   *loc = {};
-  loc->kind = eX86Location::edx;
+  loc->kind = eX86Location_edx;
   loc->type = basic_type_int;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* dl */
   subloc = &dl;
   *subloc = {};
   loc->subloc[0] = subloc;
   subloc->parent = loc;
-  subloc->kind = eX86Location::dl;
+  subloc->kind = eX86Location_dl;
   subloc->type = basic_type_char;
   registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
+  subloc->occupants.init(gp_arena, eList_symbol);
 
   /* dh */
   subloc = &dh;
   *subloc = {};
   loc->subloc[1] = subloc;
   subloc->parent = loc;
-  subloc->kind = eX86Location::dh;
+  subloc->kind = eX86Location_dh;
   subloc->type = basic_type_char;
   registers._[register_count++] = subloc;
-  subloc->occupants.init(gp_arena, eList::symbol);
+  subloc->occupants.init(gp_arena, eList_symbol);
 
   /* esi */
   loc = &esi;
   *loc = {};
-  loc->kind = eX86Location::esi;
+  loc->kind = eX86Location_esi;
   loc->type = basic_type_int;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* edi */
   loc = &edi;
   *loc = {};
-  loc->kind = eX86Location::edi;
+  loc->kind = eX86Location_edi;
   loc->type = basic_type_int;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* memory */
   loc = &memory;
   *loc = {};
-  loc->kind = eX86Location::memory;
+  loc->kind = eX86Location_memory;
   loc->type = basic_type_void;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* ebp */
   loc = &ebp;
   *loc = {};
-  loc->kind = eX86Location::ebp;
+  loc->kind = eX86Location_ebp;
   loc->type = basic_type_int;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* esp */
   loc = &esp;
   *loc = {};
-  loc->kind = eX86Location::esp;
+  loc->kind = eX86Location_esp;
   loc->type = basic_type_int;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* xmm0 */
   loc = &xmm0;
   *loc = {};
-  loc->kind = eX86Location::xmm0;
+  loc->kind = eX86Location_xmm0;
   loc->type = basic_type_float;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* xmm1 */
   loc = &xmm1;
   *loc = {};
-  loc->kind = eX86Location::xmm1;
+  loc->kind = eX86Location_xmm1;
   loc->type = basic_type_float;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* xmm2 */
   loc = &xmm2;
   *loc = {};
-  loc->kind = eX86Location::xmm2;
+  loc->kind = eX86Location_xmm2;
   loc->type = basic_type_float;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* xmm3 */
   loc = &xmm3;
   *loc = {};
-  loc->kind = eX86Location::xmm3;
+  loc->kind = eX86Location_xmm3;
   loc->type = basic_type_float;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* xmm4 */
   loc = &xmm4;
   *loc = {};
-  loc->kind = eX86Location::xmm4;
+  loc->kind = eX86Location_xmm4;
   loc->type = basic_type_float;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* xmm5 */
   loc = &xmm5;
   *loc = {};
-  loc->kind = eX86Location::xmm5;
+  loc->kind = eX86Location_xmm5;
   loc->type = basic_type_float;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* xmm6 */
   loc = &xmm6;
   *loc = {};
-  loc->kind = eX86Location::xmm6;
+  loc->kind = eX86Location_xmm6;
   loc->type = basic_type_float;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   /* xmm7 */
   loc = &xmm7;
   *loc = {};
-  loc->kind = eX86Location::xmm7;
+  loc->kind = eX86Location_xmm7;
   loc->type = basic_type_float;
   registers._[register_count++] = loc;
-  loc->occupants.init(gp_arena, eList::symbol);
+  loc->occupants.init(gp_arena, eList_symbol);
 
   assert(register_count <= sizeof_array(registers._));
 }
@@ -245,101 +245,101 @@ void X86Context::print_register(String* text, X86Location* reg)
   switch(reg->kind)
   {
     /* 8-bit */
-    case eX86Location::al:
+    case eX86Location_al:
       str_append(text, "al");
     break;
 
-    case eX86Location::ah:
+    case eX86Location_ah:
       str_append(text, "ah");
     break;
 
-    case eX86Location::bl:
+    case eX86Location_bl:
       str_append(text, "bl");
     break;
 
-    case eX86Location::bh:
+    case eX86Location_bh:
       str_append(text, "bh");
     break;
 
-    case eX86Location::cl:
+    case eX86Location_cl:
       str_append(text, "cl");
     break;
 
-    case eX86Location::ch:
+    case eX86Location_ch:
       str_append(text, "ch");
     break;
 
-    case eX86Location::dl:
+    case eX86Location_dl:
       str_append(text, "dl");
     break;
 
-    case eX86Location::dh:
+    case eX86Location_dh:
       str_append(text, "dh");
     break;
 
     /* 32-bit */
-    case eX86Location::eax:
+    case eX86Location_eax:
       str_append(text, "eax");
     break;
 
-    case eX86Location::ebx:
+    case eX86Location_ebx:
       str_append(text, "ebx");
     break;
 
-    case eX86Location::ecx:
+    case eX86Location_ecx:
       str_append(text, "ecx");
     break;
 
-    case eX86Location::edx:
+    case eX86Location_edx:
       str_append(text, "edx");
     break;
 
-    case eX86Location::ebp:
+    case eX86Location_ebp:
       str_append(text, "ebp");
     break;
 
-    case eX86Location::esp:
+    case eX86Location_esp:
       str_append(text, "esp");
     break;
 
-    case eX86Location::esi:
+    case eX86Location_esi:
       str_append(text, "esi");
     break;
 
-    case eX86Location::edi:
+    case eX86Location_edi:
       str_append(text, "edi");
     break;
 
     /* xmm */
-    case eX86Location::xmm0:
+    case eX86Location_xmm0:
       str_append(text, "xmm0");
     break;
 
-    case eX86Location::xmm1:
+    case eX86Location_xmm1:
       str_append(text, "xmm1");
     break;
 
-    case eX86Location::xmm2:
+    case eX86Location_xmm2:
       str_append(text, "xmm2");
     break;
 
-    case eX86Location::xmm3:
+    case eX86Location_xmm3:
       str_append(text, "xmm3");
     break;
 
-    case eX86Location::xmm4:
+    case eX86Location_xmm4:
       str_append(text, "xmm4");
     break;
 
-    case eX86Location::xmm5:
+    case eX86Location_xmm5:
       str_append(text, "xmm5");
     break;
 
-    case eX86Location::xmm6:
+    case eX86Location_xmm6:
       str_append(text, "xmm6");
     break;
 
-    case eX86Location::xmm7:
+    case eX86Location_xmm7:
       str_append(text, "xmm7");
     break;
 
@@ -356,7 +356,7 @@ char* X86Context::make_type_directive(Type* type)
     directv = "byte";
   }
   else if(type->equal(basic_type_int) || type->equal(basic_type_float)
-          || type->equal(basic_type_bool) || (type->kind == eType::pointer) || (type->kind == eType::array))
+          || type->equal(basic_type_bool) || (type->kind == eType_pointer) || (type->kind == eType_array))
   {
     directv = "dword";
   }
@@ -369,14 +369,14 @@ void X86Context::print_operand(String* text, X86Operand* operand)
 {
   switch(operand->kind)
   {
-    case eX86Operand::memory:
-    case eX86Operand::address:
+    case eX86Operand_memory:
+    case eX86Operand_address:
     {
-      if(operand->kind == eX86Operand::memory)
+      if(operand->kind == eX86Operand_memory)
       {
         str_format(text, "%s ptr [", make_type_directive(operand->index.type));
       }
-      else if(operand->kind == eX86Operand::address)
+      else if(operand->kind == eX86Operand_address)
       {
         str_append(text, "[");
       }
@@ -389,10 +389,10 @@ void X86Context::print_operand(String* text, X86Operand* operand)
       if(offset)
       {
         char* sign = "+";
-        if(offset->kind == eX86Operand::constant)
+        if(offset->kind == eX86Operand_constant)
         {
           struct X86Operand_Constant* constant = &offset->constant;
-          assert(constant->kind == eX86Constant::int_);
+          assert(constant->kind == eX86Constant_int);
 
           if(constant->int_val < 0)
           {
@@ -406,21 +406,21 @@ void X86Context::print_operand(String* text, X86Operand* operand)
     }
     break;
 
-    case eX86Operand::register_:
+    case eX86Operand_register:
     {
       print_register(text, operand->reg);
     }
     break;
 
-    case eX86Operand::constant:
+    case eX86Operand_constant:
     {
       struct X86Operand_Constant* constant = &operand->constant;
 
-      if(constant->kind == eX86Constant::int_)
+      if(constant->kind == eX86Constant_int)
       {
         str_format(text, "%d", constant->int_val);
       }
-      else if(constant->kind == eX86Constant::float_)
+      else if(constant->kind == eX86Constant_float)
       {
         union BitcastFtoI
         {
@@ -433,7 +433,7 @@ void X86Context::print_operand(String* text, X86Operand* operand)
 
         str_format(text, "0%xh", val.int_val);
       }
-      else if(constant->kind == eX86Constant::char_)
+      else if(constant->kind == eX86Constant_char)
       {
         if(constant->char_val >= ' ' && constant->char_val <= '~')
           str_format(text, "'%c'", constant->char_val);
@@ -444,7 +444,7 @@ void X86Context::print_operand(String* text, X86Operand* operand)
     }
     break;
 
-    case eX86Operand::id:
+    case eX86Operand_id:
     {
       str_format(text, "%s", operand->id);
     }
@@ -458,160 +458,160 @@ void X86Context::print_opcode(String* text, eX86Stmt opcode)
 {
   switch(opcode)
   {
-    case eX86Stmt::call:
+    case eX86Stmt_call:
       str_append(text, "call ");
     break;
 
-    case eX86Stmt::pop:
+    case eX86Stmt_pop:
       str_append(text, "pop ");
     break;
 
-    case eX86Stmt::push:
+    case eX86Stmt_push:
       str_append(text, "push ");
     break;
 
-    case eX86Stmt::lea:
+    case eX86Stmt_lea:
       str_append(text, "lea ");
     break;
 
     /* integer ops */
-    case eX86Stmt::mov:
+    case eX86Stmt_mov:
       str_append(text, "mov ");
     break;
 
-    case eX86Stmt::add:
+    case eX86Stmt_add:
       str_append(text, "add ");
     break;
 
-    case eX86Stmt::sub:
+    case eX86Stmt_sub:
       str_append(text, "sub ");
     break;
 
-    case eX86Stmt::imul:
+    case eX86Stmt_imul:
       str_append(text, "imul ");
     break;
 
-    case eX86Stmt::cdq:
+    case eX86Stmt_cdq:
       str_append(text, "cdq");
     break;
 
-    case eX86Stmt::idiv:
+    case eX86Stmt_idiv:
       str_append(text, "idiv ");
     break;
 
-    case eX86Stmt::neg:
+    case eX86Stmt_neg:
       str_append(text, "neg ");
     break;
 
-    case eX86Stmt::cmp:
+    case eX86Stmt_cmp:
       str_append(text, "cmp ");
     break;
 
-    case eX86Stmt::or_:
+    case eX86Stmt_or:
       str_append(text, "or ");
     break;
 
-    case eX86Stmt::and_:
+    case eX86Stmt_and:
       str_append(text, "and ");
     break;
 
-    case eX86Stmt::not_:
+    case eX86Stmt_not:
       str_append(text, "not ");
     break;
 
     /* integer jumps */
-    case eX86Stmt::jz:
+    case eX86Stmt_jz:
       str_append(text, "jz ");
     break;
 
-    case eX86Stmt::jnz:
+    case eX86Stmt_jnz:
       str_append(text, "jnz ");
     break;
 
-    case eX86Stmt::jl:
+    case eX86Stmt_jl:
       str_append(text, "jl ");
     break;
 
-    case eX86Stmt::jle:
+    case eX86Stmt_jle:
       str_append(text, "jle ");
     break;
 
-    case eX86Stmt::jg:
+    case eX86Stmt_jg:
       str_append(text, "jg ");
     break;
 
-    case eX86Stmt::jge:
+    case eX86Stmt_jge:
       str_append(text, "jge ");
     break;
 
     /* floating point ops */
-    case eX86Stmt::movss:
+    case eX86Stmt_movss:
       str_append(text, "movss ");
     break;
 
-    case eX86Stmt::addss:
+    case eX86Stmt_addss:
       str_append(text, "addss ");
     break;
 
-    case eX86Stmt::subss:
+    case eX86Stmt_subss:
       str_append(text, "subss ");
     break;
 
-    case eX86Stmt::mulss:
+    case eX86Stmt_mulss:
       str_append(text, "mulss ");
     break;
 
-    case eX86Stmt::divss:
+    case eX86Stmt_divss:
       str_append(text, "divss ");
     break;
 
-    case eX86Stmt::ucomiss:
+    case eX86Stmt_ucomiss:
       str_append(text, "ucomiss ");
     break;
 
     /* floating point jumps */
-    case eX86Stmt::jb:
+    case eX86Stmt_jb:
       str_append(text, "jb ");
     break;
 
-    case eX86Stmt::jbe:
+    case eX86Stmt_jbe:
       str_append(text, "jbe ");
     break;
 
-    case eX86Stmt::ja:
+    case eX86Stmt_ja:
       str_append(text, "ja ");
     break;
 
-    case eX86Stmt::jae:
+    case eX86Stmt_jae:
       str_append(text, "jae ");
     break;
 
-    case eX86Stmt::je:
+    case eX86Stmt_je:
       str_append(text, "je ");
     break;
 
-    case eX86Stmt::jne:
+    case eX86Stmt_jne:
       str_append(text, "jne ");
     break;
 
-    case eX86Stmt::jmp:
+    case eX86Stmt_jmp:
       str_append(text, "jmp ");
     break;
 
-    case eX86Stmt::nop:
+    case eX86Stmt_nop:
       //str_printfln("nop");
     break;
 
-    case eX86Stmt::ret:
+    case eX86Stmt_ret:
       str_append(text, "ret ");
     break;
 
     /* conversion ops */
-    case eX86Stmt::cvtsi2ss:
+    case eX86Stmt_cvtsi2ss:
       str_append(text, "cvtsi2ss ");
     break;
 
-    case eX86Stmt::cvttss2si:
+    case eX86Stmt_cvttss2si:
       str_append(text, "cvttss2si ");
     break;
 
@@ -623,14 +623,14 @@ void X86Context::print_stmt(String* text, X86Stmt* stmt)
 {
   switch(stmt->opcode)
   {
-    case eX86Stmt::label:
+    case eX86Stmt_label:
     {
       print_operand(text, stmt->operand1);
       str_append(text, ":");
     }
     break;
 
-    case eX86Stmt::extern_proc:
+    case eX86Stmt_extern_proc:
     {
       str_append(text, "extern ");
       print_operand(text, stmt->operand1);
@@ -669,35 +669,35 @@ X86Stmt* X86Context::create_stmt(eX86Stmt opcode)
 
 bool Symbol::is_in_location(X86Location* loc)
 {
-  return (locations._[(int)loc->kind] != 0);
+  return (locations._[loc->kind] != 0);
 }
 
 void X86Context::new_object_location_entry(Symbol* object, X86Location* loc)
 {
-  object->locations._[(int)loc->kind] = loc;
+  object->locations._[loc->kind] = loc;
 
   List* occupants = &loc->occupants;
   for(ListItem* li = occupants->first;
       li;
       li = li->next)
   {
-    assert(object != KIND(li, eList::symbol)->symbol);
+    assert(object != KIND(li, eList_symbol)->symbol);
   }
-  occupants->append(object, eList::symbol);
+  occupants->append(object, eList_symbol);
 }
 
 void X86Context::remove_object_from_location(Symbol* object, X86Location* loc)
 {
   if(object->is_in_location(loc))
   {
-    object->locations._[(int)loc->kind] = 0;
+    object->locations._[loc->kind] = 0;
 
     List* occupants = &loc->occupants;
     ListItem* li = occupants->first;
 
     for(; li; li = li->next)
     {
-      if(object == KIND(li, eList::symbol)->symbol)
+      if(object == KIND(li, eList_symbol)->symbol)
         break;
     }
     if(li)
@@ -715,7 +715,7 @@ void X86Context::add_object_to_location(Symbol* object, X86Location* loc)
     ListItem* li = occupants->first;
     for(; li; li = li->next)
     {
-      if(object == KIND(li, eList::symbol)->symbol)
+      if(object == KIND(li, eList_symbol)->symbol)
         break;
     }
     assert(li);
@@ -817,7 +817,7 @@ void X86Context::clean_register(X86Location* loc)
       li;
       li = li->next)
   {
-    Symbol* occupant = KIND(li, eList::symbol)->symbol;
+    Symbol* occupant = KIND(li, eList_symbol)->symbol;
     remove_object_from_location(occupant, loc);
   }
 }
@@ -876,7 +876,7 @@ bool X86Context::type_fits_into_register(Type* type, X86Location* reg)
   bool result = false;
 
   if(type->equal(basic_type_bool)
-     || type->kind == eType::pointer || type->kind == eType::array)
+     || type->kind == eType_pointer || type->kind == eType_array)
   {
     result = reg->type->equal(basic_type_int);
   }
@@ -919,7 +919,7 @@ X86Location* X86Context::lookup_object_location(Symbol* object)
 
   if(!loc)
   {
-    loc = object->locations._[(int)eX86Location::memory];
+    loc = object->locations._[eX86Location_memory];
   }
 
   return loc;
@@ -948,7 +948,7 @@ bool X86Context::is_single_occupant_register(X86Location* reg, Symbol* object)
   List* occupants = &reg->occupants;
   if(occupants->count == 1)
   {
-    Symbol* single_object = KIND(occupants->first, eList::symbol)->symbol;
+    Symbol* single_object = KIND(occupants->first, eList_symbol)->symbol;
     result = (single_object == object);
   }
 
@@ -965,42 +965,42 @@ X86Operand* X86Context::make_index_operand(eX86Operand kind, Symbol* object)
   X86Operand* base = operand->index.base = push_struct(gp_arena, X86Operand);
   X86Operand* offset = operand->index.offset = push_struct(gp_arena, X86Operand);
 
-  offset->kind = eX86Operand::constant;
+  offset->kind = eX86Operand_constant;
   struct X86Operand_Constant* constant = &offset->constant;
-  constant->kind = eX86Constant::int_;
+  constant->kind = eX86Constant_int;
 
   switch(object->storage_space)
   {
-    case eStorageSpace::local:
+    case eStorageSpace_local:
     {
-      base->kind = eX86Operand::register_;
+      base->kind = eX86Operand_register;
       base->reg = &ebp;
 
       constant->int_val = -(object->data_loc + object->allocd_size);
     }
     break;
 
-    case eStorageSpace::static_:
+    case eStorageSpace_static_:
     {
-      base->kind = eX86Operand::id;
+      base->kind = eX86Operand_id;
       base->id = "static_area";
 
       constant->int_val = object->data_loc;
     }
     break;
 
-    case eStorageSpace::actual_param:
+    case eStorageSpace_actual_param:
     {
-      base->kind = eX86Operand::register_;
+      base->kind = eX86Operand_register;
       base->reg = &esp;
 
       constant->int_val = -(object->data_loc + object->allocd_size);
     }
     break;
 
-    case eStorageSpace::formal_param:
+    case eStorageSpace_formal_param:
     {
-      base->kind = eX86Operand::register_;
+      base->kind = eX86Operand_register;
       base->reg = &ebp;
 
       int scope_allocd_size = object->scope->allocd_size;
@@ -1020,7 +1020,7 @@ X86Operand* X86Context::make_register_operand(X86Location* reg)
   assert(is_register_location(reg));
 
   X86Operand* operand = push_struct(gp_arena, X86Operand);
-  operand->kind = eX86Operand::register_;
+  operand->kind = eX86Operand_register;
   operand->reg = reg;
 
   return operand;
@@ -1029,10 +1029,10 @@ X86Operand* X86Context::make_register_operand(X86Location* reg)
 X86Operand* X86Context::make_int_constant_operand(int int_val)
 {
   X86Operand* operand = push_struct(gp_arena, X86Operand);
-  operand->kind = eX86Operand::constant;
+  operand->kind = eX86Operand_constant;
 
   struct X86Operand_Constant* constant = &operand->constant;
-  constant->kind = eX86Constant::int_;
+  constant->kind = eX86Constant_int;
   constant->int_val = int_val;
 
   return operand;
@@ -1041,7 +1041,7 @@ X86Operand* X86Context::make_int_constant_operand(int int_val)
 X86Operand* X86Context::make_memory_operand(Type* type, X86Operand* base, X86Operand* offset)
 {
   X86Operand* operand = push_struct(gp_arena, X86Operand);
-  operand->kind = eX86Operand::memory;
+  operand->kind = eX86Operand_memory;
 
   operand->index.type = type;
   operand->index.base = base;
@@ -1052,14 +1052,14 @@ X86Operand* X86Context::make_memory_operand(Type* type, X86Operand* base, X86Ope
 
 X86Operand* X86Context::make_object_address_operand(Symbol* object)
 {
-  return make_index_operand(eX86Operand::address, object);
+  return make_index_operand(eX86Operand_address, object);
 }
 
 X86Operand* X86Context::make_object_memory_operand(Symbol* object)
 {
   X86Operand* operand = 0;
 
-  if(object->kind == eSymbol::constant)
+  if(object->kind == eSymbol_constant)
   {
     if(object->ty->equal(basic_type_str))
     {
@@ -1068,27 +1068,27 @@ X86Operand* X86Context::make_object_memory_operand(Symbol* object)
     else
     {
       operand = push_struct(gp_arena, X86Operand);
-      operand->kind = eX86Operand::constant;
+      operand->kind = eX86Operand_constant;
 
       struct X86Operand_Constant* constant = &operand->constant;
 
       if(object->ty->equal(basic_type_int))
       {
-        constant->kind = eX86Constant::int_;
+        constant->kind = eX86Constant_int;
         constant->int_val = object->int_val;
       }
       else if(object->ty->equal(basic_type_float))
       {
-        operand = make_index_operand(eX86Operand::memory, object);
+        operand = make_index_operand(eX86Operand_memory, object);
       }
       else if(object->ty->equal(basic_type_char))
       {
-        constant->kind = eX86Constant::char_;
+        constant->kind = eX86Constant_char;
         constant->char_val = object->char_val;
       }
       else if(object->ty->equal(basic_type_bool))
       {
-        constant->kind = eX86Constant::int_;
+        constant->kind = eX86Constant_int;
         constant->int_val = object->int_val;
       }
       else assert(0);
@@ -1096,7 +1096,7 @@ X86Operand* X86Context::make_object_memory_operand(Symbol* object)
   }
   else
   {
-    operand = make_index_operand(eX86Operand::memory, object);
+    operand = make_index_operand(eX86Operand_memory, object);
   }
 
   return operand;
@@ -1123,24 +1123,24 @@ X86Operand* X86Context::make_object_operand(Symbol* object)
 X86Operand* X86Context::make_id_operand(char* id)
 {
   X86Operand* operand = push_struct(gp_arena, X86Operand);
-  operand->kind = eX86Operand::id;
+  operand->kind = eX86Operand_id;
   operand->id = id;
   return operand;
 }
 
 void X86Context::emit_mov(Type* type, X86Operand* dest_operand, X86Operand* source_operand)
 {
-  eX86Stmt mov_op = eX86Stmt::None;
+  eX86Stmt mov_op = eX86Stmt_None;
 
   if(type->equal(basic_type_int) || type->equal(basic_type_bool)
      || type->equal(basic_type_char)
-     || (type->kind == eType::pointer) || (type->kind == eType::array))
+     || (type->kind == eType_pointer) || (type->kind == eType_array))
   {
-    mov_op = eX86Stmt::mov;
+    mov_op = eX86Stmt_mov;
   }
   else if(type->equal(basic_type_float))
   {
-    mov_op = eX86Stmt::movss;
+    mov_op = eX86Stmt_movss;
   }
 
   X86Stmt* mov_stmt = create_stmt(mov_op);
@@ -1164,7 +1164,7 @@ void X86Context::load_object_address(Symbol* object, X86Location* dest_loc)
 
   if(!object->is_in_location(dest_loc))
   {
-    X86Stmt* stmt = create_stmt(eX86Stmt::lea);
+    X86Stmt* stmt = create_stmt(eX86Stmt_lea);
 
     stmt->operand1 = make_register_operand(dest_loc);
     stmt->operand2 = make_object_address_operand(object);
@@ -1175,7 +1175,7 @@ void X86Context::load_object(Symbol* object, X86Location* dest_loc)
 {
   assert(is_register_location(dest_loc));
 
-  if(object->ty->kind == eType::array)
+  if(object->ty->kind == eType_array)
   {
     load_object_address(object, dest_loc);
   }
@@ -1189,7 +1189,7 @@ void X86Context::load_object(Symbol* object, X86Location* dest_loc)
 
 void X86Context::store_object(Symbol* object)
 {
-  if(!object->is_in_location(&memory) && (object->ty->kind != eType::array))
+  if(!object->is_in_location(&memory) && (object->ty->kind != eType_array))
   {
     X86Location* object_loc = lookup_object_location(object);
 
@@ -1199,72 +1199,72 @@ void X86Context::store_object(Symbol* object)
 
 eX86Stmt X86Context::conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
 {
-  eX86Stmt x86_opcode = eX86Stmt::None;
+  eX86Stmt x86_opcode = eX86Stmt_None;
 
   if(type->equal(basic_type_int) || type->equal(basic_type_bool)
      || type->equal(basic_type_char)
-     || (type->kind == eType::pointer) || (type->kind == eType::array))
+     || (type->kind == eType_pointer) || (type->kind == eType_array))
   {
     switch(ir_op)
     {
-      case eIrOp::add:
-        x86_opcode = eX86Stmt::add;
+      case eIrOp_add:
+        x86_opcode = eX86Stmt_add;
       break;
 
-      case eIrOp::sub:
-        x86_opcode = eX86Stmt::sub;
+      case eIrOp_sub:
+        x86_opcode = eX86Stmt_sub;
       break;
 
-      case eIrOp::mul:
-        x86_opcode = eX86Stmt::imul;
+      case eIrOp_mul:
+        x86_opcode = eX86Stmt_imul;
       break;
 
-      case eIrOp::div:
-        x86_opcode = eX86Stmt::idiv;
+      case eIrOp_div:
+        x86_opcode = eX86Stmt_idiv;
       break;
 
-      case eIrOp::less:
-        x86_opcode = eX86Stmt::jl;
+      case eIrOp_less:
+        x86_opcode = eX86Stmt_jl;
       break;
 
-      case eIrOp::less_eq:
-        x86_opcode = eX86Stmt::jle;
+      case eIrOp_less_eq:
+        x86_opcode = eX86Stmt_jle;
       break;
 
-      case eIrOp::greater:
-        x86_opcode = eX86Stmt::jg;
+      case eIrOp_greater:
+        x86_opcode = eX86Stmt_jg;
       break;
 
-      case eIrOp::greater_eq:
-        x86_opcode = eX86Stmt::jge;
+      case eIrOp_greater_eq:
+        x86_opcode = eX86Stmt_jge;
       break;
 
-      case eIrOp::eq:
-        x86_opcode = eX86Stmt::jz;
+      case eIrOp_eq:
+        x86_opcode = eX86Stmt_jz;
       break;
 
-      case eIrOp::not_eq_:
-        x86_opcode = eX86Stmt::jnz;
+      case eIrOp_not_eq:
+        x86_opcode = eX86Stmt_jnz;
       break;
 
-      case eIrOp::neg:
-        x86_opcode = eX86Stmt::neg;
+      case eIrOp_neg:
+        x86_opcode = eX86Stmt_neg;
       break;
 
-      case eIrOp::ftoi:
-        x86_opcode = eX86Stmt::cvttss2si;
+      case eIrOp_ftoi:
+        x86_opcode = eX86Stmt_cvttss2si;
       break;
 
-      case eIrOp::bit_or:
-        x86_opcode = eX86Stmt::or_;
+      case eIrOp_bit_or:
+        x86_opcode = eX86Stmt_or;
       break;
 
-      case eIrOp::bit_and:
-        x86_opcode = eX86Stmt::and_;
+      case eIrOp_bit_and:
+        x86_opcode = eX86Stmt_and;
       break;
 
-      case eIrOp::bit_not:
-        x86_opcode = eX86Stmt::not_;
+      case eIrOp_bit_not:
+        x86_opcode = eX86Stmt_not;
       break;
 
       default: assert(0);
@@ -1274,48 +1274,48 @@ eX86Stmt X86Context::conv_ir_op_to_x86_opcode(eIrOp ir_op, Type* type)
   {
     switch(ir_op)
     {
-      case eIrOp::add:
-        x86_opcode = eX86Stmt::addss;
+      case eIrOp_add:
+        x86_opcode = eX86Stmt_addss;
       break;
 
-      case eIrOp::sub:
-        x86_opcode = eX86Stmt::subss;
+      case eIrOp_sub:
+        x86_opcode = eX86Stmt_subss;
       break;
 
-      case eIrOp::mul:
-        x86_opcode = eX86Stmt::mulss;
+      case eIrOp_mul:
+        x86_opcode = eX86Stmt_mulss;
       break;
 
-      case eIrOp::div:
-        x86_opcode = eX86Stmt::divss;
+      case eIrOp_div:
+        x86_opcode = eX86Stmt_divss;
       break;
 
-      case eIrOp::less:
-        x86_opcode = eX86Stmt::jb;
+      case eIrOp_less:
+        x86_opcode = eX86Stmt_jb;
       break;
 
-      case eIrOp::less_eq:
-        x86_opcode = eX86Stmt::jbe;
+      case eIrOp_less_eq:
+        x86_opcode = eX86Stmt_jbe;
       break;
 
-      case eIrOp::greater:
-        x86_opcode = eX86Stmt::ja;
+      case eIrOp_greater:
+        x86_opcode = eX86Stmt_ja;
       break;
 
-      case eIrOp::greater_eq:
-        x86_opcode = eX86Stmt::jae;
+      case eIrOp_greater_eq:
+        x86_opcode = eX86Stmt_jae;
       break;
 
-      case eIrOp::eq:
-        x86_opcode = eX86Stmt::je;
+      case eIrOp_eq:
+        x86_opcode = eX86Stmt_je;
       break;
 
-      case eIrOp::not_eq_:
-        x86_opcode = eX86Stmt::jne;
+      case eIrOp_not_eq:
+        x86_opcode = eX86Stmt_jne;
       break;
 
-      case eIrOp::itof:
-        x86_opcode = eX86Stmt::cvtsi2ss;
+      case eIrOp_itof:
+        x86_opcode = eX86Stmt_cvtsi2ss;
       break;
 
       default: assert(0);
@@ -1362,7 +1362,7 @@ X86Location* X86Context::find_least_used_register(Type* type)
           li;
           li = li->next)
       {
-        Symbol* object = KIND(li, eList::symbol)->symbol;
+        Symbol* object = KIND(li, eList_symbol)->symbol;
 
         if(!object->is_live || object->next_use >= next_use)
         {
@@ -1396,7 +1396,7 @@ void X86Context::save_register(X86Location* reg, bool free_reg)
   {
     ListItem* li_next = li->next;
 
-    Symbol* object = KIND(li, eList::symbol)->symbol;
+    Symbol* object = KIND(li, eList_symbol)->symbol;
     if(object->is_live)
     {
       save_object_to_memory(object);
@@ -1480,7 +1480,7 @@ void X86Context::gen_divmod_op(IrStmt_Assign* assign)
   IrArg* arg1 = assign->arg1;
   IrArg* arg2 = assign->arg2;
 
-  assert(assign->op == eIrOp::div || assign->op == eIrOp::mod);
+  assert(assign->op == eIrOp_div || assign->op == eIrOp_mod);
 
   if(arg1->object->ty->equal(basic_type_int))
   {
@@ -1496,7 +1496,7 @@ void X86Context::gen_divmod_op(IrStmt_Assign* assign)
       load_object(arg1->object, dividend_loc);
     }
 
-    X86Stmt* x86_stmt = create_stmt(eX86Stmt::cdq);
+    X86Stmt* x86_stmt = create_stmt(eX86Stmt_cdq);
 
     X86Location* arg2_loc = lookup_object_location(arg2->object);
     if(!is_register_location(arg2_loc))
@@ -1505,16 +1505,16 @@ void X86Context::gen_divmod_op(IrStmt_Assign* assign)
       load_object(arg2->object, arg2_loc);
     }
 
-    x86_stmt = create_stmt(eX86Stmt::idiv);
+    x86_stmt = create_stmt(eX86Stmt_idiv);
     x86_stmt->operand1 = make_object_operand(arg2->object);
 
     clean_register_all_sizes(dividend_loc);
     clean_register_all_sizes(remainder_loc);
-    if(assign->op == eIrOp::div)
+    if(assign->op == eIrOp_div)
     {
       set_exclusive_object_location(result->object, dividend_loc);
     }
-    else if(assign->op == eIrOp::mod)
+    else if(assign->op == eIrOp_mod)
     {
       set_exclusive_object_location(result->object, remainder_loc);
     }
@@ -1711,13 +1711,13 @@ void X86Context::gen_bin_expr(IrStmt_Assign* assign)
 
   if((result->object->ty->equal(basic_type_int)
       || result->object->ty->equal(basic_type_char))
-     && (assign->op == eIrOp::div || assign->op == eIrOp::mod))
+     && (assign->op == eIrOp_div || assign->op == eIrOp_mod))
   {
-    if(assign->op == eIrOp::mod)
+    if(assign->op == eIrOp_mod)
     {
       gen_divmod_op(assign);
     }
-    else if(assign->op == eIrOp::div)
+    else if(assign->op == eIrOp_div)
     {
       gen_divmod_op(assign);
     }
@@ -1763,8 +1763,8 @@ void X86Context::gen_unr_expr(IrStmt_Assign* assign)
     switch(assign->op)
     {
       /* converting ops */
-      case eIrOp::itof:
-      case eIrOp::ftoi:
+      case eIrOp_itof:
+      case eIrOp_ftoi:
       {
         result_loc = get_best_available_register(result->object->ty);
 
@@ -1775,8 +1775,8 @@ void X86Context::gen_unr_expr(IrStmt_Assign* assign)
       break;
 
       /* non-converting ops */
-      case eIrOp::itob:
-      case eIrOp::btoi:
+      case eIrOp_itob:
+      case eIrOp_btoi:
       break;
 
       default:
@@ -1797,9 +1797,9 @@ void X86Context::gen_unr_expr(IrStmt_Assign* assign)
       load_object(arg1->object, result_loc);
     }
 
-    if(assign->op == eIrOp::neg && arg1->object->ty->equal(basic_type_float))
+    if(assign->op == eIrOp_neg && arg1->object->ty->equal(basic_type_float))
     {
-      X86Stmt* x86_stmt = create_stmt(eX86Stmt::mulss);
+      X86Stmt* x86_stmt = create_stmt(eX86Stmt_mulss);
       x86_stmt->operand1 = make_register_operand(result_loc);
       x86_stmt->operand2 = make_object_operand(float_minus_one);
     }
@@ -1816,20 +1816,20 @@ void X86Context::gen_unr_expr(IrStmt_Assign* assign)
 
 void X86Context::gen_assign(IrStmt_Assign* assign)
 {
-  if(assign->op != eIrOp::None)
+  if(assign->op != eIrOp_None)
   {
     if(assign->arg2)
     {
       switch(assign->op)
       {
-        case eIrOp::index_source:
+        case eIrOp_index_source:
         {
           // result = arg1[arg2]
           gen_index_source(assign);
         }
         break;
 
-        case eIrOp::index_dest:
+        case eIrOp_index_dest:
         {
           // result[arg2] = arg1
           gen_index_dest(assign);
@@ -1847,21 +1847,21 @@ void X86Context::gen_assign(IrStmt_Assign* assign)
     {
       switch(assign->op)
       {
-        case eIrOp::deref_source:
+        case eIrOp_deref_source:
         {
           // result = ^arg1
           gen_deref_source(assign);
         }
         break;
 
-        case eIrOp::deref_dest:
+        case eIrOp_deref_dest:
         {
           // ^result = arg1
           gen_deref_dest(assign);
         }
         break;
 
-        case eIrOp::address_of:
+        case eIrOp_address_of:
         {
           // result = &arg1
           gen_address_of(assign);
@@ -1896,7 +1896,7 @@ void X86Context::gen_goto(IrStmt_Goto* goto_)
 {
   save_all_registers(false);
 
-  X86Stmt* jump_stmt = create_stmt(eX86Stmt::jmp);
+  X86Stmt* jump_stmt = create_stmt(eX86Stmt_jmp);
   jump_stmt->operand1 = make_id_operand(goto_->goto_label->name);
 }
 
@@ -1919,11 +1919,11 @@ void X86Context::gen_cond_goto(IrStmt_CondGoto* cond_goto)
     || arg1->object->ty->equal(basic_type_char)
     || arg1->object->ty->equal(basic_type_bool))
   {
-    cmp_stmt = create_stmt(eX86Stmt::cmp);
+    cmp_stmt = create_stmt(eX86Stmt_cmp);
   }
   else if(arg1->object->ty->equal(basic_type_float))
   {
-    cmp_stmt = create_stmt(eX86Stmt::ucomiss);
+    cmp_stmt = create_stmt(eX86Stmt_ucomiss);
   }
   else assert(0);
 
@@ -1939,18 +1939,18 @@ void X86Context::gen_call(IrStmt_Call* call)
   save_all_registers(true);
 
   /* sub esp, #param_size */
-  X86Stmt* stmt = create_stmt(eX86Stmt::sub);
+  X86Stmt* stmt = create_stmt(eX86Stmt_sub);
   stmt->operand1 = make_register_operand(&esp);
   stmt->operand2 = make_int_constant_operand(call->param_scope->allocd_size);
 
   /* call #proc_name */
-  stmt = create_stmt(eX86Stmt::call);
+  stmt = create_stmt(eX86Stmt_call);
   stmt->operand1 = make_id_operand(call->name->name);
 
   if(call->is_extern)
   {
     /* add esp, #retvar_size */
-    stmt = create_stmt(eX86Stmt::add);
+    stmt = create_stmt(eX86Stmt_add);
     stmt->operand1 = make_register_operand(&esp);
     stmt->operand2 = make_int_constant_operand(call->retvar->allocd_size);
 
@@ -1963,7 +1963,7 @@ void X86Context::gen_call(IrStmt_Call* call)
   else
   {
     /* add esp, #param_size */
-    stmt = create_stmt(eX86Stmt::add);
+    stmt = create_stmt(eX86Stmt_add);
     stmt->operand1 = make_register_operand(&esp);
     stmt->operand2 = make_int_constant_operand(call->param_scope->allocd_size);
 
@@ -1975,7 +1975,7 @@ void X86Context::gen_basic_block(BasicBlock* bb)
 {
   if(bb->label)
   {
-    X86Stmt* label_stmt = create_stmt(eX86Stmt::label);
+    X86Stmt* label_stmt = create_stmt(eX86Stmt_label);
     label_stmt->operand1 = make_id_operand(bb->label->name);
   }
 
@@ -1985,34 +1985,34 @@ void X86Context::gen_basic_block(BasicBlock* bb)
 
     switch(ir_stmt->kind)
     {
-      case eIrStmt::assign:
+      case eIrStmt_assign:
       {
         gen_assign(&ir_stmt->assign);
       }
       break;
 
-      case eIrStmt::goto_:
+      case eIrStmt_goto:
       {
         // goto L
         gen_goto(&ir_stmt->goto_);
       }
       break;
 
-      case eIrStmt::cond_goto:
+      case eIrStmt_cond_goto:
       {
         // if arg1 relop arg2 goto L
         gen_cond_goto(&ir_stmt->cond_goto);
       }
       break;
 
-      case eIrStmt::call:
+      case eIrStmt_call:
       {
         gen_call(&ir_stmt->call);
       }
       break;
 
-      case eIrStmt::return_:
-      case eIrStmt::nop:
+      case eIrStmt_return:
+      case eIrStmt_nop:
       break;
 
       default: assert(0);
@@ -2023,7 +2023,7 @@ void X86Context::gen_basic_block(BasicBlock* bb)
 void X86Context::gen_extern_proc(AstNode* proc)
 {
   /* extern #proc_name:proc */
-  X86Stmt* stmt = create_stmt(eX86Stmt::extern_proc);
+  X86Stmt* stmt = create_stmt(eX86Stmt_extern_proc);
   Label* label_name = &proc->proc.label_name;
   stmt->operand1 = make_id_operand(label_name->name);
 }
@@ -2037,20 +2037,20 @@ void X86Context::gen_proc(AstNode* proc)
   else
   {
     /* #proc_name: */
-    X86Stmt* stmt = create_stmt(eX86Stmt::label);
+    X86Stmt* stmt = create_stmt(eX86Stmt_label);
     stmt->operand1 = make_id_operand(proc->proc.name);
 
     /* push ebp */
-    stmt = create_stmt(eX86Stmt::push);
+    stmt = create_stmt(eX86Stmt_push);
     stmt->operand1 = make_register_operand(&ebp);
 
     /* mov ebp, esp */
-    stmt = create_stmt(eX86Stmt::mov);
+    stmt = create_stmt(eX86Stmt_mov);
     stmt->operand1 = make_register_operand(&ebp);
     stmt->operand2 = make_register_operand(&esp);
 
     /* sub esp, #frame_size */
-    stmt = create_stmt(eX86Stmt::sub);
+    stmt = create_stmt(eX86Stmt_sub);
     stmt->operand1 = make_register_operand(&esp);
     Scope* proc_scope = proc->proc.scope;
     stmt->operand2 = make_int_constant_operand(proc_scope->allocd_size);
@@ -2061,23 +2061,23 @@ void X86Context::gen_proc(AstNode* proc)
         li;
         li = li->next)
     {
-      BasicBlock* bb = KIND(li, eList::basic_block)->basic_block;
+      BasicBlock* bb = KIND(li, eList_basic_block)->basic_block;
 
       gen_basic_block(bb);
       save_all_registers(true);
     }
 
     /* mov esp, ebp */
-    stmt = create_stmt(eX86Stmt::mov);
+    stmt = create_stmt(eX86Stmt_mov);
     stmt->operand1 = make_register_operand(&esp);
     stmt->operand2 = make_register_operand(&ebp);
 
     /* pop ebp */
-    stmt = create_stmt(eX86Stmt::pop);
+    stmt = create_stmt(eX86Stmt_pop);
     stmt->operand1 = make_register_operand(&ebp);
 
     /* ret */
-    create_stmt(eX86Stmt::ret);
+    create_stmt(eX86Stmt_ret);
   }
 }
 
@@ -2103,8 +2103,8 @@ void X86Context::write_static_data_text(String* text, Scope* scope)
       li;
       li = li->next)
   {
-    Symbol* object = KIND(li, eList::symbol)->symbol;
-    if(object->storage_space == eStorageSpace::static_ && object->allocd_size > 0)
+    Symbol* object = KIND(li, eList_symbol)->symbol;
+    if(object->storage_space == eStorageSpace_static_ && object->allocd_size > 0)
     {
       if(object->data)
       {
@@ -2133,7 +2133,7 @@ void X86Context::gen_module(AstNode* module)
       li;
       li = li->next)
   {
-    AstNode* proc = KIND(li, eList::ast_node)->ast_node;
+    AstNode* proc = KIND(li, eList_ast_node)->ast_node;
 
     gen_proc(proc);
   }

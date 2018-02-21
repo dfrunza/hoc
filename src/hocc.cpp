@@ -179,24 +179,24 @@ bool platform_file_identity(PlatformFile* file_A_arg, PlatformFile* file_B_arg)
   return is_identity;
 }
 
-bool OutFileNames::make(MemoryArena* arena, char* src_file_path)
+bool make_out_file_names(OutFileNames* out_files, MemoryArena* arena, char* src_file_path)
 {
   bool success = true;
 
   const int buf_len = 200;
-  working_dir = push_string(arena, buf_len);
-  int working_dir_len = GetCurrentDirectoryA(buf_len, working_dir);
+  out_files->working_dir = push_string(arena, buf_len);
+  int working_dir_len = GetCurrentDirectoryA(buf_len, out_files->working_dir);
   if((working_dir_len > 0) && (working_dir_len < buf_len))
   {
     String str = {};
     str_init(&str, arena);
     str_append(&str, src_file_path);
-    title = str_cap(&str);
-    title = platform_path_make_file_name(title, false);
+    out_files->title = str_cap(&str);
+    out_files->title = platform_path_make_file_name(out_files->title, false);
 
     str_init(&str, arena);
-    str_format(&str, "%s\\%s.asm", working_dir, title);
-    asm_file = str_cap(&str);
+    str_format(&str, "%s\\%s.asm", out_files->working_dir, out_files->title);
+    out_files->asm_file = str_cap(&str);
   }
   else
     success = error("working directory could not be retrieved");
@@ -273,7 +273,7 @@ int main(int argc, char* argv[])
   }
 
   OutFileNames out_files = {};
-  out_files.make(arena, src_file_path);
+  make_out_file_names(&out_files, arena, src_file_path);
 
   String* x86_text = 0;
   if(!translate(arena, out_files.title, src_file_path, hoc_text, &x86_text))

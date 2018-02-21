@@ -1720,7 +1720,7 @@ AstNode* Parser::find_include(PlatformFile* file)
       li = li->next)
   {
     include = KIND(li, eList::ast_node)->ast_node;
-    if(Platform::file_identity(file, include->include.file))
+    if(platform_file_identity(file, include->include.file))
       break;
     include = 0;
   }
@@ -1751,7 +1751,7 @@ bool Parser::parse_module_include(AstNode** node)
         String str = {};
         str.init(arena);
         str.append(src_loc->file_path);
-        Platform::path_make_dir(str.head);
+        platform_path_make_dir(str.head);
         str.tidyup();
         str.append(token->str_val);
 
@@ -1759,7 +1759,7 @@ bool Parser::parse_module_include(AstNode** node)
 
         if(success = get_next_token() && consume_semicolon())
         {
-          PlatformFile* included_file = include->include.file = Platform::file_open(arena, include->include.file_path);
+          PlatformFile* included_file = include->include.file = platform_file_open(arena, include->include.file_path);
           if(included_file)
           {
             AstNode* previous_include = find_include(included_file);
@@ -1767,7 +1767,7 @@ bool Parser::parse_module_include(AstNode** node)
             {
               includes->append(include, eList::ast_node);
 
-              char* hoc_text = Platform::file_read_text(arena, included_file->path);
+              char* hoc_text = platform_file_read_text(arena, included_file->path);
               if(hoc_text)
               {
                 Parser* included_parser = create_included();

@@ -12,12 +12,12 @@ void assert_(char* message, char* file, int line)
 {
   if(DEBUG_enabled)
   {
-    Platform::printf("%s:%d: ", file, line);
+    platform_printf("%s:%d: ", file, line);
     if(!message || message[0] == '\0')
     {
       message = "";
     }
-    Platform::printf("assert(%s)\n", message);
+    platform_printf("assert(%s)\n", message);
 
     *(int*)0 = 0;
   }
@@ -33,10 +33,22 @@ void mem_zero_(void* mem, int len)
   }
 }
 
-void MemoryArena::DEBUG_print_usage(char* tag)
+MemoryArenaUsage arena_get_usage(MemoryArena* arena)
 {
-  MemoryArena::Usage usage = get_usage();
-  Platform::printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
+  MemoryArenaUsage usage = {0};
+#if 0
+  uint8* base = (uint8*)this + sizeof(MemoryArena);
+#endif
+  assert(arena->cap > arena->base);
+  usage.total_avail = (int)(arena->cap - arena->base);
+  usage.in_use = (arena->free - arena->base) / (double)usage.total_avail;
+  return usage;
+}
+
+void DEBUG_print_arena_usage(MemoryArena* arena, char* tag)
+{
+  MemoryArenaUsage usage = arena_get_usage(arena);
+  platform_printf("in_use(`%s`) : %.2f%%\n", tag, usage.in_use*100);
 }
 
 #define struct_check_bounds(ARENA, TYPE, STRUCT) (ARENA)->check_bounds(sizeof(TYPE), STRUCT)
@@ -58,7 +70,7 @@ void zero_range(void* start, void* one_past_end)
 
 MemoryArena* MemoryArena::create(int size)
 {
-  void* raw_mem = Platform::alloc_memory(size + sizeof(MemoryArena));
+  void* raw_mem = platform_alloc_memory(size + sizeof(MemoryArena));
   MemoryArena* arena = (MemoryArena*)raw_mem;
   zero_struct(arena, MemoryArena);
   arena->base = (uint8*)arena + sizeof(MemoryArena);
@@ -160,18 +172,6 @@ void* MemoryArena::push_struct_(int elem_size, int count)
     zero_range(element, free);
   }
   return element;
-}
-
-MemoryArena::Usage MemoryArena::get_usage()
-{
-  MemoryArena::Usage usage = {0};
-#if 0
-  uint8* base = (uint8*)this + sizeof(MemoryArena);
-#endif
-  assert(cap > base);
-  usage.total_avail = (int)(cap - base);
-  usage.in_use = (free - base) / (double)usage.total_avail;
-  return usage;
 }
 
 int bitpos(int k)
@@ -382,7 +382,7 @@ int String::format_va(char* fmessage, va_list args)
   assert(head <= end);
   assert(end == (char*)arena->free-1);
 
-  int len = Platform::sprintf_va(end, fmessage, args);
+  int len = platform_sprintf_va(end, fmessage, args);
   end += len;
   assert(end < (char*)arena->cap);
   arena->free = (uint8*)end+1;
@@ -444,7 +444,7 @@ char* String::cap()
   return head;
 }
 
-char* Platform::path_find_file_name(char* file_path)
+char* platform_path_find_file_name(char* file_path)
 {
   char* p_char = file_path;
   char* name = p_char;
@@ -466,9 +466,9 @@ char* Platform::path_find_file_name(char* file_path)
   return name;
 }
 
-char* Platform::path_make_file_name(char* file_path, bool with_extension)
+char* platform_path_make_file_name(char* file_path, bool with_extension)
 {
-  char* name = Platform::path_find_file_name(file_path);
+  char* name = platform_path_find_file_name(file_path);
 
   /* remove the filename extension */
   if(name && !with_extension)
@@ -482,9 +482,9 @@ char* Platform::path_make_file_name(char* file_path, bool with_extension)
   return name;
 }
 
-char* Platform::path_make_dir(char* file_path)
+char* platform_path_make_dir(char* file_path)
 {
-  char* name = Platform::path_find_file_name(file_path);
+  char* name = platform_path_find_file_name(file_path);
   if(name)
     *name = '\0';
   return file_path;
@@ -493,7 +493,7 @@ char* Platform::path_make_dir(char* file_path)
 #define fail(MESSAGE, ...) fail_(__FILE__, __LINE__, (MESSAGE), ## __VA_ARGS__)
 void fail_(char* file, int line, char* message, ...)
 {
-  Platform::printf("%s:%d: fail : ", file, line);
+  platform_printf("%s:%d: fail : ", file, line);
 
   if(!message || message[0] == '\0')
   {
@@ -503,18 +503,18 @@ void fail_(char* file, int line, char* message, ...)
   va_list args;
   va_start(args, message);
 
-  Platform::printf_va(message, args);
+  platform_printf_va(message, args);
 
   va_end(args);
 
-  Platform::printf("\n");
+  platform_printf("\n");
   *(int*)0 = 0;
 }
 
 #define error(MESSAGE, ...) error_(__FILE__, __LINE__, (MESSAGE), ## __VA_ARGS__)
 bool error_(char* file, int line, char* message, ...)
 {
-  Platform::printf("%s:%d: error : ", file, line);
+  platform_printf("%s:%d: error : ", file, line);
 
   if(!message || message[0] == '\0')
   {
@@ -524,11 +524,11 @@ bool error_(char* file, int line, char* message, ...)
   va_list args;
   va_start(args, message);
 
-  Platform::printf_va(message, args);
+  platform_printf_va(message, args);
 
   va_end(args);
 
-  Platform::printf("\n");
+  platform_printf("\n");
 
   return false;
 }
@@ -540,17 +540,17 @@ bool compile_error_va(MemoryArena* arena, char* file, int line, SourceLoc* src_l
 
   if(src_loc && src_loc->line_nr >= 0)
   {
-    Platform::printf("%s:%d: (%s:%d) error : ", src_loc->file_path, src_loc->line_nr,
-                     Platform::path_make_file_name(filename_buf, false), line);
+    platform_printf("%s:%d: (%s:%d) error : ", src_loc->file_path, src_loc->line_nr,
+                     platform_path_make_file_name(filename_buf, false), line);
   }
   else
   {
-    Platform::printf("%s:%d: error : ", file, line);
+    platform_printf("%s:%d: error : ", file, line);
   }
 
-  Platform::printf_va(message, args);
+  platform_printf_va(message, args);
 
-  Platform::printf("\n");
+  platform_printf("\n");
 
   return false;
 }
@@ -570,7 +570,7 @@ bool compile_error_(MemoryArena* arena, char* file, int line, SourceLoc* src_loc
 bool String::dump_to_file(char* file_path)
 {
   int char_count = len();
-  int bytes_written = Platform::file_write_bytes(file_path, (uint8*)head, char_count);
+  int bytes_written = platform_file_write_bytes(file_path, (uint8*)head, char_count);
   return (char_count == bytes_written);
 }
 

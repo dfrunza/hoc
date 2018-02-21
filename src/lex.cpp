@@ -580,16 +580,16 @@ loop:
     {
       token.kind = eToken::float_val;
       token.float_val = push_struct(arena, float);
-      Platform::sscanf(digit_buf, "%f", token.float_val);
+      platform_sscanf(digit_buf, "%f", token.float_val);
     }
     else
     {
       token.kind = eToken::int_val;
       token.int_val = push_struct(arena, int);
       if(is_hex)
-        Platform::sscanf(digit_buf, "%x", token.int_val);
+        platform_sscanf(digit_buf, "%x", token.int_val);
       else
-        Platform::sscanf(digit_buf, "%d", token.int_val);
+        platform_sscanf(digit_buf, "%d", token.int_val);
     }
   }
   else if(c == '-')

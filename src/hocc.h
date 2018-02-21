@@ -38,14 +38,14 @@ struct PlatformFile
   char* path;
 };
 
+struct MemoryArenaUsage
+{
+  int total_avail;
+  double in_use;
+};
+
 struct MemoryArena
 {
-  struct Usage
-  {
-    int total_avail;
-    double in_use;
-  };
-
   uint8* base;
   uint8* free;
   uint8* cap;
@@ -60,8 +60,6 @@ struct MemoryArena
   void  dealloc();
   void* push_struct_(int elem_size, int count);
   void  check_bounds(int elem_size, void* ptr);
-  Usage get_usage();
-  void DEBUG_print_usage(char* tag);
 };
 
 struct String
@@ -84,24 +82,16 @@ struct String
   bool  dump_to_file(char* file_path);
 };
 
-namespace Platform
-{
-  void*  alloc_memory(int size);
-  int    printf(char* format, ...);
-  int    printf_va(char* format, va_list args);
-  int    sprintf(char* buffer, char* format, ...);
-  int    sprintf_va(char* buffer, char* format, va_list args);
-  int    sscanf(char* buffer, char* format, ...);
-  int    stdin_read(char* buf, int buf_size);
-  int    file_read_bytes(MemoryArena* arena, uint8** bytes, char* file_path, int alloc_extra);
-  int    file_write_bytes(char* file_path, uint8* bytes, int count);
-  char*  file_read_text(MemoryArena* arena, char* file_path);
-  PlatformFile* file_open(MemoryArena* arena, char* filename);
-  bool   file_identity(PlatformFile* file_A, PlatformFile* file_B);
-  char*  path_find_file_name(char* file_path);
-  char*  path_make_file_name(char* file_path, bool with_extension);
-  char*  path_make_dir(char* file_path);
-};
+int platform_printf(char* format, ...);
+void* platform_alloc_memory(int size);
+int platform_sprintf_va(char* buffer, char* format, va_list args);
+int platform_printf_va(char* format, va_list args);
+int platform_file_write_bytes(char* file_path, uint8* bytes, int count);
+int platform_sprintf(char* buffer, char* format, ...);
+int platform_sscanf(char* buffer, char* format, ...);
+bool platform_file_identity(PlatformFile* file_A_arg, PlatformFile* file_B_arg);
+PlatformFile* platform_file_open(MemoryArena* arena, char* file_path);
+char* platform_file_read_text(MemoryArena* arena, char* file_path);
 
 #define KIND(VAR, KIND) (((VAR)->kind == KIND) ? (VAR) : 0)
 

@@ -7,24 +7,6 @@ include "math.hoc";
 
 void main()
 {
-  int x = 0x123;
-  int a = -10;
-  int b = 4;
-  int q;
-  int r;
-  q = a / b;
-  r = a % b;
-  print_equation(a, b, q, r);
-}
-
-void print_equation(int a, int b, int q, int r)
-{
-  print_int(a);
-  print_str(&" = ");
-  print_int(q);
-  print_str(&" * ");
-  print_int(b);
-  print_str(&" + ");
-  print_int(r);
+  print_float(0.33403126);
 }
 

@@ -877,7 +877,7 @@ bool TypePass_Set::visit_lit(AstNode* lit)
 
     case eLiteral::str:
     {
-      ty = create_array_type(Cstr::len(lit->lit.str_val)+1, basic_type_char);
+      ty = create_array_type(cstr_len(lit->lit.str_val)+1, basic_type_char);
     }
     break;
     

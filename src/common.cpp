@@ -186,147 +186,144 @@ int bitpos(int k)
   return (k & 1) ? pos : 0;
 }
 
-namespace Cstr
+bool cstr_is_letter(char c)
 {
-  bool is_letter(char c)
+  return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
+}
+
+bool cstr_is_dec_digit(char c)
+{
+  return '0' <= c && c <= '9';
+}
+
+bool cstr_is_hex_digit(char c)
+{
+  return ('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
+}
+
+bool cstr_to_int(char* str, int* integer)
+{
+  bool negative = false;
+
+  if(*str == '-')
   {
-    return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
+    negative = true;
+    str++;
   }
 
-  bool is_dec_digit(char c)
+  char c = *str++;
+  if(cstr_is_dec_digit(c))
   {
-    return '0' <= c && c <= '9';
-  }
+    int result = (int)(c - '0');
 
-  bool is_hex_digit(char c)
-  {
-    return ('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
-  }
-
-  bool to_int(char* str, int* integer)
-  {
-    bool negative = false;
-
-    if(*str == '-')
+    for(c = *str++; c != '\0'; c = *str++)
     {
-      negative = true;
-      str++;
-    }
-
-    char c = *str++;
-    if(is_dec_digit(c))
-    {
-      int result = (int)(c - '0');
-
-      for(c = *str++; c != '\0'; c = *str++)
+      if(cstr_is_dec_digit(c))
       {
-        if(is_dec_digit(c))
-        {
-          int digit = (int)(c - '0');
-          result = result*10 + digit;
-        }
-        else
-          return false;
+        int digit = (int)(c - '0');
+        result = result*10 + digit;
       }
-
-      if(negative)
-        result = -result;
-      *integer = result;
-    } else
-      return false;
-
-    return true;
-  }
-
-  bool contains_char(char* str, char c)
-  {
-    bool result = false;
-    while(*str && !result)
-    {
-      result = (*str == c);
-      str++;
+      else
+        return false;
     }
-    return result;
-  }
 
-  bool start_with(char* str, char* prefix)
+    if(negative)
+      result = -result;
+    *integer = result;
+  } else
+    return false;
+
+  return true;
+}
+
+bool cstr_contains_char(char* str, char c)
+{
+  bool result = false;
+  while(*str && !result)
   {
-    while(*str == *prefix)
-    {
-      str++;
-      prefix++;
-      if(*prefix == '\0')
-        break;
-    }
-    bool result = (*prefix == '\0');
-    return result;
+    result = (*str == c);
+    str++;
   }
+  return result;
+}
 
-  bool match(char* str_a, char* str_b)
+bool cstr_start_with(char* str, char* prefix)
+{
+  while(*str == *prefix)
   {
-    while(*str_a == *str_b)
-    {
-      str_a++;
-      str_b++;
-      if(*str_a == '\0')
-        break;
-    }
-    bool result = (*str_a == *str_b);
-    return result;
+    str++;
+    prefix++;
+    if(*prefix == '\0')
+      break;
   }
+  bool result = (*prefix == '\0');
+  return result;
+}
 
-  int len(char* str)
+bool cstr_match(char* str_a, char* str_b)
+{
+  while(*str_a == *str_b)
   {
-    int len = 0;
-    while(*str++ != 0)
-      len++;
-    return len;
+    str_a++;
+    str_b++;
+    if(*str_a == '\0')
+      break;
   }
+  bool result = (*str_a == *str_b);
+  return result;
+}
 
-  char* copy(char* dest_str, char* src_str)
-  {
-    do
-      *dest_str++ = *src_str++;
-    while(*src_str);
-    return dest_str;
-  }
+int cstr_len(char* str)
+{
+  int len = 0;
+  while(*str++ != 0)
+    len++;
+  return len;
+}
 
-  void append(char* dest_str, char* src_str)
-  {
-    while(*dest_str)
-      dest_str++;
+char* cstr_copy(char* dest_str, char* src_str)
+{
+  do
+    *dest_str++ = *src_str++;
+  while(*src_str);
+  return dest_str;
+}
 
-    do
-      *dest_str++ = *src_str++;
-    while(*src_str);
-    *dest_str = '\0';
-  }
+void cstr_append(char* dest_str, char* src_str)
+{
+  while(*dest_str)
+    dest_str++;
 
-  void copy_substr(char* dest_str, char* begin_char, char* end_char)
-  {
-    char* src_str = begin_char;
+  do
+    *dest_str++ = *src_str++;
+  while(*src_str);
+  *dest_str = '\0';
+}
 
-    do
-      *dest_str++ = *src_str++;
-    while(src_str <= end_char);
-  }
+void cstr_copy_substr(char* dest_str, char* begin_char, char* end_char)
+{
+  char* src_str = begin_char;
 
-  void print_char(char buf[3], char c)
-  {
-    if(c == '\0')
-      copy(buf, "\\0");
-    else if(c == '\t')
-      copy(buf, "\\t");
-    else if(c == '\n')
-      copy(buf, "\\n");
-    else if(c == '\r')
-      copy(buf, "\\r");
-    else if(c == '\'')
-      copy(buf, "\\'");
-    else
-      *buf = c;
-  }
-} // Cstr::
+  do
+    *dest_str++ = *src_str++;
+  while(src_str <= end_char);
+}
+
+void cstr_print_char(char buf[3], char c)
+{
+  if(c == '\0')
+    cstr_copy(buf, "\\0");
+  else if(c == '\t')
+    cstr_copy(buf, "\\t");
+  else if(c == '\n')
+    cstr_copy(buf, "\\n");
+  else if(c == '\r')
+    cstr_copy(buf, "\\r");
+  else if(c == '\'')
+    cstr_copy(buf, "\\'");
+  else
+    *buf = c;
+}
 
 /* TODO: Check arena boundaries in the str_* functions */
 
@@ -368,11 +365,11 @@ void String::append(char* cstr)
   assert(head <= end);
   assert(end == (char*)arena->free-1);
 
-  int len = Cstr::len(cstr);
+  int len = cstr_len(cstr);
   if(len > 0)
   {
     push_array(arena, char, len); // will implicitly check arena bounds
-    Cstr::copy(end, cstr);
+    cstr_copy(end, cstr);
     end = (char*)arena->free-1;
   }
 }
@@ -536,8 +533,8 @@ bool error_(char* file, int line, char* message, ...)
 
 bool compile_error_va(MemoryArena* arena, char* file, int line, SourceLoc* src_loc, char* message, va_list args)
 {
-  char* filename_buf = push_array(arena, char, Cstr::len(file));
-  Cstr::copy(filename_buf, file);
+  char* filename_buf = push_array(arena, char, cstr_len(file));
+  cstr_copy(filename_buf, file);
 
   if(src_loc && src_loc->line_nr >= 0)
   {

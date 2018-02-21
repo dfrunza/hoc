@@ -39,7 +39,7 @@ Token* Lexer::lookup_keyword(char* lexeme)
       (token = &keyword_list[i])->kind != eToken::None;
       token = &keyword_list[++i])
   {
-    if(Cstr::match(lexeme, token->lexeme))
+    if(cstr_match(lexeme, token->lexeme))
     {
       result = token;
       break;
@@ -55,7 +55,7 @@ char* Lexer::install_lexeme(char* begin_char, char* end_char)
   /* TODO: Search the lexeme, and if found, then return it. */
   int len = (int)(end_char - begin_char + 1);
   char* lexeme = push_array(arena, char, len + 1); // +NULL
-  Cstr::copy_substr(lexeme, begin_char, end_char);
+  cstr_copy_substr(lexeme, begin_char, end_char);
   lexeme[len] = 0; // cap the string
   return lexeme;
 }
@@ -405,7 +405,7 @@ char* Token::get_printstr()
 
     case eToken::char_val:
     case eToken::unknown_char:
-      Cstr::print_char(result = char_print_buf, char_val);
+      cstr_print_char(result = char_print_buf, char_val);
     break;
 
     default:
@@ -453,7 +453,7 @@ char Lexer::skip_whitespace(char* whitechars)
 {
   char c = *cursor;
 
-  while(Cstr::contains_char(whitechars, c))
+  while(cstr_contains_char(whitechars, c))
   {
     if(c == '\n')
     {
@@ -515,12 +515,12 @@ loop:
   skip_whitespace(" \r\n\t");
   c = *cursor;
 
-  if(Cstr::is_letter(c) || c == '_')
+  if(cstr_is_letter(c) || c == '_')
   {
     char* begin_char = cursor;
     c = *(++cursor);
 
-    while(Cstr::is_letter(c) || Cstr::is_dec_digit(c) || c == '_')
+    while(cstr_is_letter(c) || cstr_is_dec_digit(c) || c == '_')
     {
       c = *(++cursor);
     }
@@ -536,7 +536,7 @@ loop:
       token.kind = keyword->kind;
     }
   }
-  else if(Cstr::is_dec_digit(c))
+  else if(cstr_is_dec_digit(c))
   {
     char digit_buf[32] = {0};
     bool is_float = false;
@@ -551,16 +551,16 @@ loop:
       is_hex = true;
       c = *(++cursor);
 
-      for(; i < sizeof_array(digit_buf)-1 && Cstr::is_hex_digit(c);
+      for(; i < sizeof_array(digit_buf)-1 && cstr_is_hex_digit(c);
           i++)
       {
         digit_buf[i] = c;
         c = *(++cursor);
       }
     }
-    else if(Cstr::is_dec_digit(c) || c == '.')
+    else if(cstr_is_dec_digit(c) || c == '.')
     {
-      for(; i < sizeof_array(digit_buf)-1 && ((Cstr::is_dec_digit(c) || c == '.'));
+      for(; i < sizeof_array(digit_buf)-1 && ((cstr_is_dec_digit(c) || c == '.'));
           i++)
       {
         digit_buf[i] = c;

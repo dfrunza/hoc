@@ -19,7 +19,7 @@ Symbol* Scope::lookup(char* name)
   while(li)
   {
     Symbol* symbol = KIND(li, eList::symbol)->symbol;
-    if(Cstr::match(symbol->name, name))
+    if(cstr_match(symbol->name, name))
     {
       result = symbol;
       break;

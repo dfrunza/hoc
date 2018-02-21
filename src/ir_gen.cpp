@@ -1489,7 +1489,7 @@ void IrContext::DEBUG_print_ir_arg(String* text, IrArg* arg)
       else if(object->ty->equal(basic_type_char))
       {
         char buf[3] = {0};
-        Cstr::print_char(buf, object->char_val);
+        cstr_print_char(buf, object->char_val);
         text->format("'%s'", buf);
       }
       else if(object->ty->equal(basic_type_str))

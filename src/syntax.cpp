@@ -179,10 +179,10 @@ bool Parser::consume_semicolon()
   return success;
 }
 
-bool AstNode::is_valid_expr_operand()
+bool is_ast_node_valid_expr_operand(AstNode* node)
 {
   bool valid = false;
-  switch(kind)
+  switch(node->kind)
   {
     case eAstNode_lit:
     case eAstNode_id:
@@ -411,7 +411,7 @@ bool Parser::parse_rest_of_factor(AstNode* left_node, AstNode** node)
       {
         if(right_operand)
         {
-          if(right_operand->is_valid_expr_operand())
+          if(is_ast_node_valid_expr_operand(right_operand))
           {
             bin_expr->bin_expr.right_operand = right_operand;
             success = parse_rest_of_factor(*node, node); // left-associativity
@@ -525,7 +525,7 @@ bool Parser::parse_rest_of_term(AstNode* left_node, AstNode** node)
         {
           if(right_operand)
           {
-            if(right_operand->is_valid_expr_operand())
+            if(is_ast_node_valid_expr_operand(right_operand))
             {
               bin_expr->bin_expr.right_operand = right_operand;
               success = parse_rest_of_term(*node, node); // left-associativity
@@ -569,7 +569,7 @@ bool Parser::parse_rest_of_assignment(AstNode* left_node, AstNode** node)
         {
           if(source_expr)
           {
-            if(source_expr->is_valid_expr_operand())
+            if(is_ast_node_valid_expr_operand(source_expr))
             {
               assign->assign.source_expr = source_expr;
             }
@@ -1282,7 +1282,7 @@ bool Parser::parse_return(AstNode** node)
     {
       if(ret_expr)
       {
-        if(ret_expr->is_valid_expr_operand())
+        if(is_ast_node_valid_expr_operand(ret_expr))
           ret->ret.expr = ret_expr;
         else
           success = compile_error(arena, ret_expr->src_loc, "invalid return expression");
@@ -1728,11 +1728,11 @@ AstNode* Parser::find_include(PlatformFile* file)
   return include;
 }
 
-void AstNode_Module::merge(AstNode_Module* merged_module)
+void merge_module(AstNode* main_module, AstNode* merged_module)
 {
-  list_join(&nodes, &merged_module->nodes);
-  list_join(&procs, &merged_module->procs);
-  list_join(&vars, &merged_module->vars);
+  list_join(&main_module->module.nodes, &merged_module->module.nodes);
+  list_join(&main_module->module.procs, &merged_module->module.procs);
+  list_join(&main_module->module.vars, &merged_module->module.vars);
 }
 
 bool Parser::parse_module_include(AstNode** node)
@@ -1775,7 +1775,7 @@ bool Parser::parse_module_include(AstNode** node)
 
                 if(success = included_parser->parse_module())
                 {
-                  module->module.merge(&included_parser->module->module);
+                  merge_module(module, included_parser->module);
                 }
               }
             }

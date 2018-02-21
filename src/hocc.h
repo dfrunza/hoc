@@ -324,10 +324,6 @@ struct Scope
   int sym_count;
   int allocd_size; // aligned
   List decl_syms;
-
-  Scope*  find(eScope kind);
-  Symbol* lookup(char* name);
-  Symbol* lookup_decl(char* name);
 };
 
 enum eLoopCtrl
@@ -367,44 +363,6 @@ enum eBasicType
   eBasicType_auto,
 };
 
-struct Type_Var
-{
-  Type* type;
-};
-
-struct Type_Basic
-{
-  eBasicType kind;
-};
-
-struct Type_Pointer
-{
-  Type* pointee;
-};
-
-struct Type_Proc
-{
-  Type* args;
-  Type* ret;
-};
-
-struct Type_Product
-{
-  Type* left;
-  Type* right;
-};
-
-struct Type_Array
-{
-  int size;
-  Type* elem;
-};
-
-struct Type_Typevar
-{
-  int id;
-};
-
 struct Type
 {
   eType kind;
@@ -413,13 +371,50 @@ struct Type
 
   union
   {
-    Type_Var     var;
-    Type_Basic   basic;
-    Type_Pointer pointer;
-    Type_Proc    proc;
-    Type_Product product;
-    Type_Array   array;
-    Type_Typevar typevar;
+    struct
+    {
+      Type* type;
+    }
+    var;
+
+    struct
+    {
+      eBasicType kind;
+    }
+    basic;
+
+    struct
+    {
+      Type* pointee;
+    }
+    pointer;
+
+    struct
+    {
+      Type* args;
+      Type* ret;
+    }
+    proc;
+
+    struct
+    {
+      Type* left;
+      Type* right;
+    }
+    product;
+
+    struct
+    {
+      int size;
+      Type* elem;
+    }
+    array;
+
+    struct Type_Typevar
+    {
+      int id;
+    }
+    typevar;
   };
 
   bool  equal(Type* type_b);
@@ -912,207 +907,6 @@ enum eAstNode
   eAstNode_call_arg,
 };
 
-struct AstNode_NodeList
-{
-  List node_list;
-
-  Type* make_product_type(TypePass* type_pass);
-};
-
-struct AstNode_CallArg
-{
-  AstNode* expr;
-  Symbol* param;
-};
-
-struct AstNode_Cast
-{
-  AstNode* from_expr;
-  AstNode* to_type;
-};
-
-struct AstNode_Assign
-{
-  AstNode* dest_expr;
-  AstNode* source_expr;
-};
-
-struct AstNode_Pointer
-{
-  AstNode* pointee;
-};
-
-struct AstNode_Array
-{
-  AstNode* size_expr;
-  AstNode* elem_expr;
-  int size;
-  int ndim;
-};
-
-struct AstNode_Index
-{
-  AstNode* array_expr;
-  AstNode* i_expr;
-  IrArg* place;   // L.place
-  IrArg* offset;  // L.offset
-  IrArg* i_place; // Elist.place
-  int ndim;
-};
-
-struct AstNode_BasicType
-{
-  eBasicType kind;
-};
-
-struct AstNode_Id
-{
-  char* name;
-  AstNode* decl_ast;
-  int order_nr;
-  Scope* scope;
-  Symbol* decl_sym;
-};
-
-struct AstNode_BinExpr
-{
-  AstNode* left_operand;
-  AstNode* right_operand;
-  eOperator op;
-};
-
-struct AstNode_UnrExpr
-{
-  AstNode* operand;
-  eOperator op;
-};
-
-struct AstNode_Call
-{
-  AstNode* expr;
-  AstNode* args;
-  AstNode* proc;
-
-  Scope* param_scope;
-  Symbol* retvar;
-};
-
-struct AstNode_Return
-{
-  AstNode* expr;
-  AstNode* proc;
-  int nesting_depth;
-};
-
-struct AstNode_LoopCtrl
-{
-  eLoopCtrl kind;
-  AstNode* loop;
-  int nesting_depth;
-};
-
-struct AstNode_If
-{
-  AstNode* cond_expr;
-  AstNode* body;
-  AstNode* else_body;
-};
-
-struct AstNode_While
-{
-  AstNode* cond_expr;
-  AstNode* body;
-  Scope* scope;
-};
-
-struct AstNode_Proc
-{
-  char* name;
-  AstNode* args;
-  AstNode* ret_type;
-  AstNode* body;
-  eModifier modifier;
-
-  Scope* scope;
-  Scope* param_scope;
-  Symbol* decl_sym;
-  Symbol* retvar;
-
-  // If the proc is external, then this is the decorated name.
-  Label label_name;
-
-  IrStmt* ir_stmt_array;
-  int ir_stmt_count;
-  List* basic_blocks;
-
-  bool is_extern();
-};
-
-struct AstNode_Str
-{
-  char* str_val;
-};
-
-struct AstNode_Lit
-{
-  eLiteral kind;
-  union
-  {
-    int int_val;
-    float float_val;
-    bool bool_val;
-    char char_val;
-    char* str_val;
-  };
-  Symbol* constant;
-};
-
-struct AstNode_Var
-{
-  char* name;
-  AstNode* type;
-  AstNode* init_expr;
-  Symbol* decl_sym;
-  eModifier modifier;
-};
-
-struct AstNode_Module
-{
-  char* file_path;
-  List nodes;
-  List procs;
-  List vars;
-  Scope* scope;
-
-  void merge(AstNode_Module* merged_module);
-};
-
-struct AstNode_Include
-{
-  char* file_path;
-  PlatformFile* file;
-};
-
-struct AstNode_Block
-{
-  Scope* scope;
-  List nodes;
-  List vars;
-  List stmts;
-};
-
-struct AstNode_Struct
-{
-  char* name;
-  AstNode* id;
-  List* members;
-};
-
-struct AstNode_Asm
-{
-  char* asm_text;
-};
-
 struct AstNode
 {
   eAstNode   kind;
@@ -1128,38 +922,229 @@ struct AstNode
 
   union
   {
-    AstNode_NodeList  args;
-    AstNode_CallArg   call_arg;
-    AstNode_Cast      cast;
-    AstNode_Assign    assign;
-    AstNode_Pointer   pointer;
-    AstNode_Array     array;
-    AstNode_Index     index;
-    AstNode_BasicType basic_type;
-    AstNode_Id        id;
-    AstNode_BinExpr   bin_expr;
-    AstNode_UnrExpr   unr_expr;
-    AstNode_Call      call;
-    AstNode_Return    ret;
-    AstNode_LoopCtrl  loop_ctrl;
-    AstNode_If        if_;
-    AstNode_While     while_;
-    AstNode_While     do_while;
-    AstNode_Proc      proc;
-    AstNode_Str       str;
-    AstNode_Lit       lit;
-    AstNode_Var       var;
-    AstNode_Module    module;
-    AstNode_Include   include;
-    AstNode_Block     block;
-    AstNode_Struct    enum_decl;
-    AstNode_Struct    union_decl;
-    AstNode_Struct    struct_decl;
-    AstNode_Asm       asm_block;
-  };
+    struct
+    {
+      List node_list;
+    }
+    args;
 
-  bool resolve_types(MemoryArena* arena);
-  bool is_valid_expr_operand();
+    struct
+    {
+      AstNode* expr;
+      Symbol* param;
+    }
+    call_arg;
+
+    struct
+    {
+      AstNode* from_expr;
+      AstNode* to_type;
+    }
+    cast;
+
+    struct
+    {
+      AstNode* dest_expr;
+      AstNode* source_expr;
+    }
+    assign;
+
+    struct
+    {
+      AstNode* pointee;
+    }
+    pointer;
+
+    struct
+    {
+      AstNode* size_expr;
+      AstNode* elem_expr;
+      int size;
+      int ndim;
+    }
+    array;
+
+    struct
+    {
+      AstNode* array_expr;
+      AstNode* i_expr;
+      IrArg* place;   // L.place
+      IrArg* offset;  // L.offset
+      IrArg* i_place; // Elist.place
+      int ndim;
+    }
+    index;
+
+    struct
+    {
+      eBasicType kind;
+    }
+    basic_type;
+
+    struct
+    {
+      char* name;
+      AstNode* decl_ast;
+      int order_nr;
+      Scope* scope;
+      Symbol* decl_sym;
+    }
+    id;
+
+    struct
+    {
+      AstNode* left_operand;
+      AstNode* right_operand;
+      eOperator op;
+    }
+    bin_expr;
+
+    struct
+    {
+      AstNode* operand;
+      eOperator op;
+    }
+    unr_expr;
+
+    struct
+    {
+      AstNode* expr;
+      AstNode* args;
+      AstNode* proc;
+
+      Scope* param_scope;
+      Symbol* retvar;
+    }
+    call;
+
+    struct
+    {
+      AstNode* expr;
+      AstNode* proc;
+      int nesting_depth;
+    }
+    ret;
+
+    struct
+    {
+      eLoopCtrl kind;
+      AstNode* loop;
+      int nesting_depth;
+    }
+    loop_ctrl;
+
+    struct
+    {
+      AstNode* cond_expr;
+      AstNode* body;
+      AstNode* else_body;
+    }
+    if_;
+
+    struct
+    {
+      AstNode* cond_expr;
+      AstNode* body;
+      Scope* scope;
+    }
+    while_,
+    do_while;
+
+    struct
+    {
+      char* name;
+      AstNode* args;
+      AstNode* ret_type;
+      AstNode* body;
+      eModifier modifier;
+
+      Scope* scope;
+      Scope* param_scope;
+      Symbol* decl_sym;
+      Symbol* retvar;
+
+      // If the proc is external, then this is the decorated name.
+      Label label_name;
+
+      IrStmt* ir_stmt_array;
+      int ir_stmt_count;
+      List* basic_blocks;
+    }
+    proc;
+
+    struct
+    {
+      char* str_val;
+    }
+    str;
+
+    struct
+    {
+      eLiteral kind;
+      union
+      {
+        int int_val;
+        float float_val;
+        bool bool_val;
+        char char_val;
+        char* str_val;
+      };
+      Symbol* constant;
+    }
+    lit;
+
+    struct
+    {
+      char* name;
+      AstNode* type;
+      AstNode* init_expr;
+      Symbol* decl_sym;
+      eModifier modifier;
+    }
+    var;
+
+    struct
+    {
+      char* file_path;
+      List nodes;
+      List procs;
+      List vars;
+      Scope* scope;
+    }
+    module;
+
+    struct
+    {
+      char* file_path;
+      PlatformFile* file;
+    }
+    include;
+
+    struct
+    {
+      Scope* scope;
+      List nodes;
+      List vars;
+      List stmts;
+    }
+    block;
+
+    struct
+    {
+      char* name;
+      AstNode* id;
+      List* members;
+    }
+    enum_decl,
+    union_decl,
+    struct_decl;
+
+    struct
+    {
+      char* asm_text;
+    }
+    asm_block;
+  };
 };
 
 struct Parser

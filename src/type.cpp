@@ -344,22 +344,22 @@ bool Type::unif(Type* type_b)
   return success;
 }
 
-bool AstNode::resolve_types(MemoryArena* arena)
+bool AstNode_resolve_types(AstNode* node, MemoryArena* arena)
 {
   bool success = true;
   
-  if(success = ty->resolve(&ty))
+  if(success = node->ty->resolve(&node->ty))
   {
-    ty->set_width();
-    if(success = eval_ty->resolve(&eval_ty))
+    node->ty->set_width();
+    if(success = node->eval_ty->resolve(&node->eval_ty))
     {
-      eval_ty->set_width();
+      node->eval_ty->set_width();
     }
     else
-      success = compile_error(arena, src_loc, "type error (unresolved type)");
+      success = compile_error(arena, node->src_loc, "type error (unresolved type)");
   }
   else
-    success = compile_error(arena, src_loc, "type error (unresolved type)");
+    success = compile_error(arena, node->src_loc, "type error (unresolved type)");
   
   return success;
 }
@@ -801,6 +801,25 @@ bool TypePass_Set::visit_id(AstNode* id)
   return success;
 }
 
+Type* make_args_product_type(TypePass* context, AstNode* args)
+{
+  Type* result = context->basic_type_void;
+
+  ListItem* li = args->args.node_list.first;
+  if(li)
+  {
+    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
+    result = arg->eval_ty;
+    for(li = li->next; li; li = li->next)
+    {
+      AstNode* next_arg = KIND(li, eList_ast_node)->ast_node;
+      result = context->create_product_type(result, next_arg->eval_ty);
+    }
+  }
+
+  return result;
+}
+
 bool TypePass_Set::visit_actual_args(AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
@@ -816,7 +835,7 @@ bool TypePass_Set::visit_actual_args(AstNode* args)
 
   if(success)
   {
-    args->ty = args->eval_ty = args->args.make_product_type(this);
+    args->ty = args->eval_ty = make_args_product_type(this, args);
   }
 
   return success;
@@ -1201,25 +1220,6 @@ bool TypePass_Set::visit_block_stmt(AstNode* stmt)
   return success;
 }
 
-Type* AstNode_NodeList::make_product_type(TypePass* context)
-{
-  Type* result = context->basic_type_void;
-
-  ListItem* li = node_list.first;
-  if(li)
-  {
-    AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    result = arg->eval_ty;
-    for(li = li->next; li; li = li->next)
-    {
-      AstNode* next_arg = KIND(li, eList_ast_node)->ast_node;
-      result = context->create_product_type(result, next_arg->eval_ty);
-    }
-  }
-
-  return result;
-}
-
 bool TypePass_Set::visit_formal_args(AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
@@ -1235,7 +1235,7 @@ bool TypePass_Set::visit_formal_args(AstNode* args)
 
   if(success)
   {
-    args->ty = args->eval_ty = args->args.make_product_type(this);
+    args->ty = args->eval_ty = make_args_product_type(this, args);
   }
 
   return success;
@@ -1253,7 +1253,7 @@ bool TypePass_Set::visit_proc(AstNode* proc)
     proc->ty = create_proc_type(args->eval_ty, ret_type->eval_ty);
     proc->eval_ty = basic_type_void;
     
-    if(!proc->proc.is_extern())
+    if(!is_extern_proc(proc))
     {
       success = visit_block(proc->proc.body);
     }
@@ -1472,7 +1472,7 @@ bool TypePass_Eval::visit_id(AstNode* id)
   if(!id->id.decl_sym)
   {
     assert(!id->id.decl_ast);
-    id->id.decl_sym = id->id.scope->lookup_decl(id->id.name);
+    id->id.decl_sym = lookup_decl_symbol(id->id.scope, id->id.name);
     if(id->id.decl_sym)
     {
       id->id.decl_ast = id->id.decl_sym->ast_node;
@@ -1966,7 +1966,7 @@ bool TypePass_Resolve::visit_var(AstNode* var)
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
-  if(success = var->resolve_types(arena))
+  if(success = AstNode_resolve_types(var, arena))
   {
     var->var.decl_sym->ty = var->eval_ty;
 
@@ -1992,7 +1992,7 @@ bool TypePass_Resolve::visit_lit(AstNode* lit)
   assert(KIND(lit, eAstNode_lit));
   bool success = true;
 
-  if(success = lit->resolve_types(arena))
+  if(success = AstNode_resolve_types(lit, arena))
   {
     lit->lit.constant->ty = lit->eval_ty;
   }
@@ -2014,7 +2014,7 @@ bool TypePass_Resolve::visit_formal_args(AstNode* args)
   }
   if(success)
   {
-    success = args->resolve_types(arena);
+    success = AstNode_resolve_types(args, arena);
   }
   return success;
 }
@@ -2025,7 +2025,7 @@ bool TypePass_Resolve::visit_bin_expr(AstNode* bin_expr)
   bool success = true;
 
   success = visit_expr(bin_expr->bin_expr.left_operand) &&
-    visit_expr(bin_expr->bin_expr.right_operand) && bin_expr->resolve_types(arena);
+    visit_expr(bin_expr->bin_expr.right_operand) && AstNode_resolve_types(bin_expr, arena);
 
   return success;
 }
@@ -2062,7 +2062,7 @@ bool TypePass_Resolve::visit_unr_expr(AstNode* unr_expr)
   
   if(success)
   {
-    success = unr_expr->resolve_types(arena);
+    success = AstNode_resolve_types(unr_expr, arena);
   }
 
   return success;
@@ -2073,7 +2073,7 @@ bool TypePass_Resolve::visit_id(AstNode* id)
   assert(KIND(id, eAstNode_id));
   bool success = true;
 
-  success = id->resolve_types(arena);
+  success = AstNode_resolve_types(id, arena);
   return success;
 }
 
@@ -2095,7 +2095,7 @@ bool TypePass_Resolve::visit_actual_args(AstNode* args)
 
   if(success)
   {
-    success = args->resolve_types(arena);
+    success = AstNode_resolve_types(args, arena);
   }
 
   return success;
@@ -2134,7 +2134,7 @@ bool TypePass_Resolve::visit_call(AstNode* call)
     }
   }
 
-  if(success && (success = call->resolve_types(arena)))
+  if(success && (success = AstNode_resolve_types(call, arena)))
   {
     call->call.retvar->ty = call->eval_ty;
   }
@@ -2179,7 +2179,7 @@ bool TypePass_Resolve::visit_index(AstNode* index)
 
   if(success)
   {
-    success = index->resolve_types(arena);
+    success = AstNode_resolve_types(index, arena);
   }
 
   return success;
@@ -2191,7 +2191,7 @@ bool TypePass_Resolve::visit_cast(AstNode* cast)
   bool success = true;
 
   success = visit_type(cast->cast.to_type) && visit_expr(cast->cast.from_expr) &&
-    cast->resolve_types(arena);
+    AstNode_resolve_types(cast, arena);
 
   return success;
 }
@@ -2202,7 +2202,7 @@ bool TypePass_Resolve::visit_assign(AstNode* assign)
   bool success = true;
 
   success = visit_expr(assign->assign.dest_expr) && visit_expr(assign->assign.source_expr) &&
-    assign->resolve_types(arena);
+    AstNode_resolve_types(assign, arena);
 
   return success;
 }
@@ -2290,7 +2290,7 @@ bool TypePass_Resolve::visit_block(AstNode* block)
 
   if(success)
   {
-    success = block->resolve_types(arena);
+    success = AstNode_resolve_types(block, arena);
   }
 
   return success;
@@ -2308,7 +2308,7 @@ bool TypePass_Resolve::visit_return(AstNode* ret)
 
   if(success)
   {
-    success = ret->resolve_types(arena);
+    success = AstNode_resolve_types(ret, arena);
   }
 
   return success;
@@ -2328,7 +2328,7 @@ bool TypePass_Resolve::visit_if(AstNode* if_)
 
     if(success)
     {
-      success = if_->resolve_types(arena);
+      success = AstNode_resolve_types(if_, arena);
     }
   }
 
@@ -2341,7 +2341,7 @@ bool TypePass_Resolve::visit_do_while(AstNode* do_while)
   bool success = true;
 
   success = visit_block_stmt(do_while->do_while.body) && visit_expr(do_while->do_while.cond_expr) &&
-    do_while->resolve_types(arena);
+    AstNode_resolve_types(do_while, arena);
 
   return success;
 }
@@ -2352,7 +2352,7 @@ bool TypePass_Resolve::visit_while(AstNode* while_)
   bool success = true;
 
   success = visit_expr(while_->while_.cond_expr) && visit_block_stmt(while_->while_.body) &&
-    while_->resolve_types(arena);
+    AstNode_resolve_types(while_, arena);
 
   return success;
 }
@@ -2363,7 +2363,7 @@ bool TypePass_Resolve::visit_array(AstNode* array)
   bool success = true;
   
   success = visit_expr(array->array.size_expr) &&
-    visit_type(array->array.elem_expr) && array->resolve_types(arena);
+    visit_type(array->array.elem_expr) && AstNode_resolve_types(array, arena);
 
   return success;
 }
@@ -2373,7 +2373,7 @@ bool TypePass_Resolve::visit_pointer(AstNode* pointer)
   assert(KIND(pointer, eAstNode_pointer));
   bool success = true;
   
-  success = visit_expr(pointer->pointer.pointee) && pointer->resolve_types(arena);
+  success = visit_expr(pointer->pointer.pointee) && AstNode_resolve_types(pointer, arena);
 
   return success;
 }
@@ -2495,7 +2495,7 @@ bool TypePass_Resolve::visit_proc(AstNode* proc)
   bool success = true;
 
   if(success = visit_formal_args(proc->proc.args) && visit_type(proc->proc.ret_type)
-     && visit_block_stmt(proc->proc.body) && proc->resolve_types(arena))
+     && visit_block_stmt(proc->proc.body) && AstNode_resolve_types(proc, arena))
   {
     proc->proc.decl_sym->ty = proc->eval_ty;
     proc->proc.retvar->ty = proc->proc.ret_type->eval_ty;

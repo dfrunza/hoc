@@ -465,7 +465,7 @@ void IrContext::visit_call(Scope* scope, AstNode* call)
   assert(KIND(args, eAstNode_node_list));
   visit_actual_args(scope, args);
 
-  if(proc->proc.is_extern())
+  if(is_extern_proc(proc))
   {
     // right-to-left (stdcall)
     alloc_data_object(call->call.retvar, call->call.param_scope);
@@ -1261,7 +1261,7 @@ bool IrContext::visit_proc(Scope* scope, AstNode* proc)
   Label* label_name = &proc->proc.label_name;
   label_name->stmt_nr = 0;
 
-  if(proc->proc.is_extern())
+  if(is_extern_proc(proc))
   {
     int arg_size = get_proc_arg_size(proc->proc.args);
     char* name = proc->proc.name;
@@ -1696,7 +1696,7 @@ void IrContext::DEBUG_print_ir_code(List* procs, char* file_path)
   {
     AstNode* proc = KIND(li, eList_ast_node)->ast_node;
 
-    if(proc->proc.is_extern())
+    if(is_extern_proc(proc))
     {
       ;//ok
     }

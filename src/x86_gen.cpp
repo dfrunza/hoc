@@ -2020,19 +2020,14 @@ void X86Context::gen_basic_block(BasicBlock* bb)
   }
 }
 
-void X86Context::gen_extern_proc(AstNode* proc)
-{
-  /* extern #proc_name:proc */
-  X86Stmt* stmt = create_stmt(eX86Stmt_extern_proc);
-  Label* label_name = &proc->proc.label_name;
-  stmt->operand1 = make_id_operand(label_name->name);
-}
-
 void X86Context::gen_proc(AstNode* proc)
 {
-  if(proc->proc.is_extern())
+  if(is_extern_proc(proc))
   {
-    gen_extern_proc(proc);
+    /* extern #proc_name:proc */
+    X86Stmt* stmt = create_stmt(eX86Stmt_extern_proc);
+    Label* label_name = &proc->proc.label_name;
+    stmt->operand1 = make_id_operand(label_name->name);
   }
   else
   {

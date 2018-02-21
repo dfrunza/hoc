@@ -1,6 +1,5 @@
-Scope* Scope::find(eScope kind)
+Scope* find_scope(Scope* scope, eScope kind)
 {
-  Scope* scope = this;
   while(scope)
   {
     if(scope->kind == kind)
@@ -11,11 +10,11 @@ Scope* Scope::find(eScope kind)
   return scope;
 }
 
-Symbol* Scope::lookup(char* name)
+Symbol* lookup_symbol(Scope* scope, char* name)
 {
   Symbol* result = 0;
 
-  ListItem* li = decl_syms.last;
+  ListItem* li = scope->decl_syms.last;
   while(li)
   {
     Symbol* symbol = KIND(li, eList_symbol)->symbol;
@@ -30,14 +29,13 @@ Symbol* Scope::lookup(char* name)
   return result;
 }
 
-Symbol* Scope::lookup_decl(char* name)
+Symbol* lookup_decl_symbol(Scope* scope, char* name)
 {
   Symbol* result = 0;
-  Scope* scope = this;
 
   while(!result && scope)
   {
-    result = scope->lookup(name);
+    result = lookup_symbol(scope, name);
     scope = scope->encl_scope;
   }
 
@@ -248,7 +246,7 @@ bool SymbolPass::visit_formal_arg(Scope* proc_scope, AstNode* arg)
   assert(KIND(arg, eAstNode_var));
   bool success = true;
   
-  Symbol* decl_sym = proc_scope->lookup_decl(arg->var.name);
+  Symbol* decl_sym = lookup_decl_symbol(proc_scope, arg->var.name);
   if(decl_sym && (decl_sym->scope == proc_scope))
   {
     success = compile_error(gp_arena, arg->src_loc, "formal arg `%s` has already been declared", arg->var.name);
@@ -268,8 +266,8 @@ bool SymbolPass::visit_var(AstNode* var)
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
-  Symbol* decl_sym = active_scope->lookup_decl(var->var.name);
-  Scope* preamble_scope = active_scope->find(eScope_args);
+  Symbol* decl_sym = lookup_decl_symbol(active_scope, var->var.name);
+  Scope* preamble_scope = find_scope(active_scope, eScope_args);
   if(decl_sym && (decl_sym->scope == active_scope || decl_sym->scope == preamble_scope))
   {
     success = compile_error(gp_arena, var->src_loc, "name `%s` already declared", var->var.name);
@@ -599,7 +597,7 @@ bool SymbolPass::visit_loop_ctrl(AstNode* stmt)
 {
   bool success = true;
   
-  Scope* loop_scope = active_scope->find(eScope_while);
+  Scope* loop_scope = find_scope(active_scope, eScope_while);
   if(loop_scope)
   {
     stmt->loop_ctrl.loop = loop_scope->ast_node;
@@ -625,7 +623,7 @@ bool SymbolPass::visit_return(AstNode* ret)
   assert(KIND(ret, eAstNode_return));
   bool success = true;
   
-  Scope* proc_scope = active_scope->find(eScope_proc);
+  Scope* proc_scope = find_scope(active_scope, eScope_proc);
   if(proc_scope)
   {
     assert(KIND(proc_scope->ast_node, eAstNode_proc));
@@ -745,9 +743,9 @@ bool SymbolPass::visit_block(AstNode* block)
   return success;
 }
 
-bool AstNode_Proc::is_extern()
+bool is_extern_proc(AstNode* proc)
 {
-  return (modifier & eModifier_extern) != 0;
+  return (proc->proc.modifier & eModifier_extern) != 0;
 }
 
 bool SymbolPass::visit_proc_body(AstNode* proc)
@@ -757,7 +755,7 @@ bool SymbolPass::visit_proc_body(AstNode* proc)
 
   AstNode* body = proc->proc.body;
 
-  if(proc->proc.is_extern())
+  if(is_extern_proc(proc))
   {
     if(body->kind != eAstNode_empty)
     {
@@ -803,7 +801,7 @@ bool SymbolPass::visit_module_proc(AstNode* proc)
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
   
-  Symbol* decl_sym = active_scope->lookup_decl(proc->proc.name);
+  Symbol* decl_sym = lookup_decl_symbol(active_scope, proc->proc.name);
   if(decl_sym && (decl_sym->scope == active_scope))
   {
     success = compile_error(gp_arena, proc->src_loc, "name `%s` has already been declared", proc->proc.name);
@@ -816,7 +814,7 @@ bool SymbolPass::visit_module_proc(AstNode* proc)
     proc->proc.retvar = add_decl(gen_tempvar_name(gp_arena, "ret_"),
                                  eStorageSpace_formal_param, proc->proc.param_scope, proc->proc.ret_type);
 
-    if(proc->proc.is_extern())
+    if(is_extern_proc(proc))
     {
       success = visit_formal_args(proc->proc.param_scope, proc->proc.args) && visit_expr(proc->proc.ret_type);
     }
@@ -845,7 +843,7 @@ bool SymbolPass::visit_module_var(AstNode* module, AstNode* var)
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
-  Symbol* decl_sym = active_scope->lookup_decl(var->var.name);
+  Symbol* decl_sym = lookup_decl_symbol(active_scope, var->var.name);
   if(decl_sym && (decl_sym->scope == active_scope))
   {
     success = compile_error(gp_arena, var->src_loc, "name `%s` already declared", var->var.name);

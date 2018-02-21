@@ -572,22 +572,22 @@ bool compile_error_(MemoryArena* arena, char* file, int line, SourceLoc* src_loc
   return result;
 }
 
-void List::init(MemoryArena* arena, eList kind)
+void list_init(List* list, MemoryArena* arena, eList kind)
 {
-  this->kind = kind;
-  this->arena = arena;
-  first = last = 0;
-  count = 0;
+  list->kind = kind;
+  list->arena = arena;
+  list->first = list->last = 0;
+  list->count = 0;
 }
 
-List* List::create(MemoryArena* arena, eList kind)
+List* list_new(MemoryArena* arena, eList kind)
 {
   List* list = push_struct(arena, List);
-  list->init(arena, kind);
+  list_init(list, arena, kind);
   return list;
 }
 
-void List::remove_item(ListItem* item)
+void list_remove_item(List* list, ListItem* item)
 {
   if(item->prev)
   {
@@ -596,118 +596,120 @@ void List::remove_item(ListItem* item)
       item->next->prev = item->prev;
   }
 
-  if(item == first && item == last)
-    first = last = 0;
-  else if(item == first)
+  if(item == list->first && item == list->last)
   {
-    first = item->next;
-    if(first)
-      first->prev = 0;
+    list->first = list->last = 0;
   }
-  else if(item == last)
+  else if(item == list->first)
   {
-    last = item->prev;
-    if(last)
-      last->next = 0;
+    list->first = item->next;
+    if(list->first)
+      list->first->prev = 0;
+  }
+  else if(item == list->last)
+  {
+    list->last = item->prev;
+    if(list->last)
+      list->last->next = 0;
   }
   item->next = item->prev = 0;
 
-  count--;
+  list->count--;
 }
 
-void List::append_item(ListItem* item)
+void list_append_item(List* list, ListItem* item)
 {
-  assert(kind == item->kind);
+  assert(list->kind == item->kind);
 
-  if(last)
+  if(list->last)
   {
-    item->prev = last;
+    item->prev = list->last;
     item->next = 0;
-    last->next = item;
-    last = item;
+    list->last->next = item;
+    list->last = item;
   }
   else
   {
-    first = last = item;
+    list->first = list->last = item;
     item->next = item->prev = 0;
   }
 
-  count++;
+  list->count++;
 }
 
-void List::append(void* elem, eList kind)
+void list_append(List* list, void* elem, eList kind)
 {
   assert(elem);
-  ListItem* item = push_struct(arena, ListItem);
+  ListItem* item = push_struct(list->arena, ListItem);
   item->elem = elem;
   item->kind = kind;
-  append_item(item);
+  list_append_item(list, item);
 }
 
-void List::prepend_item(ListItem* item)
+void list_prepend_item(List* list, ListItem* item)
 {
-  assert(kind == item->kind);
+  assert(list->kind == item->kind);
 
-  if(first)
+  if(list->first)
   {
-    item->next = first;
+    item->next = list->first;
     item->prev = 0;
-    first->prev = item;
-    first = item;
+    list->first->prev = item;
+    list->first = item;
   }
   else
   {
-    first = last = item;
+    list->first = list->last = item;
     item->next = item->prev = 0;
   }
 
-  count++;
+  list->count++;
 }
 
-void List::prepend(void* elem, eList kind)
+void list_prepend(List* list, void* elem, eList kind)
 {
-  ListItem* item = push_struct(arena, ListItem);
+  ListItem* item = push_struct(list->arena, ListItem);
   item->elem = elem;
   item->kind = kind;
-  prepend_item(item);
+  list_prepend_item(list, item);
 }
 
-void List::replace_item_at(List* list_b, ListItem* at_b_item)
+void list_replace_item_at(List* list_A, List* list_B, ListItem* at_b_item)
 {
   ListItem* prev_b_item = at_b_item->prev;
   ListItem* next_b_item = at_b_item->next;
 
-  if(first)
+  if(list_A->first)
   {
     if(prev_b_item)
-      prev_b_item->next = first;
+      prev_b_item->next = list_A->first;
     else
-      list_b->first = first;
+      list_B->first = list_A->first;
   }
   else
   {
     if(prev_b_item)
       prev_b_item->next = next_b_item;
     else
-      list_b->first = next_b_item;
+      list_B->first = next_b_item;
   }
 
   if(next_b_item)
   {
-    next_b_item->prev = last;
-    if(last)
-      last->next = next_b_item;
+    next_b_item->prev = list_A->last;
+    if(list_A->last)
+      list_A->last->next = next_b_item;
   }
   else
-    list_b->last = last;
+    list_B->last = list_A->last;
 
-  list_b->count += count - 1;
+  list_B->count += list_A->count - 1;
 }
 
-void List::join(List* list_b)
+void list_join(List* list_A, List* list_B)
 {
-  ListItem* last_a_item = last;
-  ListItem* first_b_item = list_b->first;
+  ListItem* last_a_item = list_A->last;
+  ListItem* first_b_item = list_B->first;
 
   if(last_a_item)
     last_a_item->next = first_b_item;
@@ -715,15 +717,15 @@ void List::join(List* list_b)
   if(first_b_item)
     first_b_item->prev = last_a_item;
 
-  if(!first)
-    first = list_b->first;
+  if(!list_A->first)
+    list_A->first = list_B->first;
 
-  last = list_b->last;
+  list_A->last = list_B->last;
 
-  count += list_b->count;
+  list_A->count += list_B->count;
 }
 
-void List::insert_item_before(ListItem* at_li, ListItem* new_li)
+void list_insert_item_before(List* list, ListItem* at_li, ListItem* new_li)
 {
   assert(at_li);
   if(at_li->prev)
@@ -731,29 +733,29 @@ void List::insert_item_before(ListItem* at_li, ListItem* new_li)
     at_li->prev->next = new_li;
   }
 
-  if(at_li == first)
+  if(at_li == list->first)
   {
-    first = new_li;
+    list->first = new_li;
   }
 
   new_li->next = at_li;
   new_li->prev = at_li->prev;
   at_li->prev = new_li;
 
-  count++;
+  list->count++;
 }
 
-void List::insert_before(ListItem* at_li, void* elem, eList kind)
+void list_insert_before(List* list, ListItem* at_li, void* elem, eList kind)
 {
   assert(at_li);
-  ListItem* new_li = push_struct(arena, ListItem);
+  ListItem* new_li = push_struct(list->arena, ListItem);
   new_li->elem = elem;
   new_li->kind = kind;
-  insert_item_before(at_li, new_li);
+  list_insert_item_before(list, at_li, new_li);
 }
 
 /* FIXME: Not tested!! */
-void List::insert_item_after(ListItem* at_li, ListItem* new_li)
+void list_insert_item_after(List* list, ListItem* at_li, ListItem* new_li)
 {
   assert(at_li);
   if(at_li->next)
@@ -761,41 +763,41 @@ void List::insert_item_after(ListItem* at_li, ListItem* new_li)
     at_li->next->prev = new_li;
   }
 
-  if(at_li == last)
+  if(at_li == list->last)
   {
-    last = new_li;
+    list->last = new_li;
   }
 
   new_li->prev = at_li;
   new_li->next = at_li->next;
   at_li->next = new_li;
 
-  count++;
+  list->count++;
 }
 
-void List::insert_after(ListItem* at_li, void* elem, eList kind)
+void list_insert_after(List* list, ListItem* at_li, void* elem, eList kind)
 {
   assert(at_li);
-  ListItem* new_li = push_struct(arena, ListItem);
+  ListItem* new_li = push_struct(list->arena, ListItem);
   new_li->elem = elem;
   new_li->kind = kind;
-  insert_item_after(at_li, new_li);
+  list_insert_item_after(list, at_li, new_li);
 }
 
-ListItem* List::remove_first_item()
+ListItem* list_remove_first_item(List* list)
 {
   ListItem* result = 0;
-  if(first)
+  if(list->first)
   {
-    result = first;
-    first = first->next;
-    count--;
+    result = list->first;
+    list->first = list->first->next;
+    list->count--;
   }
   return result;
 }
 
-void List::clear()
+void list_clear(List* list)
 {
-  first = last = 0;
-  count = 0;
+  list->first = list->last = 0;
+  list->count = 0;
 }

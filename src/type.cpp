@@ -111,7 +111,7 @@ void TypePass::init(MemoryArena* arena)
   basic_type_float = create_basic_type(eBasicType_float);
   basic_type_void  = create_basic_type(eBasicType_void);
   basic_type_str   = create_array_type(0, basic_type_char);
-  subst_list = List::create(arena, eList_type_pair);
+  subst_list = list_new(arena, eList_type_pair);
 }
 
 Type* TypePass::create_var_type(Type* var_type)
@@ -406,7 +406,7 @@ Type* TypePass::type_subst(Type* type)
     subst = type->copy(arena);
     
     pair = create_type_pair(type, subst);
-    subst_list->append(pair, eList_type_pair);
+    list_append(subst_list, pair, eList_type_pair);
     
     switch(subst->kind)
     {

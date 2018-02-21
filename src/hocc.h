@@ -312,22 +312,6 @@ struct List
   ListItem* first;
   ListItem* last;
   int count;
-
-  static List* create(MemoryArena* arena, eList kind);
-  void init(MemoryArena* arena, eList kind);
-  void append(void* elem, eList kind);
-  void append_item(ListItem* item);
-  void remove_item(ListItem* item);
-  void prepend_item(ListItem* item);
-  void prepend(void* elem, eList kind);
-  void replace_item_at(List* list_b, ListItem* at_b_item);
-  void join(List* list_b);
-  void insert_item_before(ListItem* at_li, ListItem* new_li);
-  void insert_before(ListItem* at_li, void* elem, eList kind);
-  void insert_item_after(ListItem* at_li, ListItem* new_li);
-  void insert_after(ListItem* at_li, void* elem, eList kind);
-  void clear();
-  ListItem* remove_first_item();
 };
 
 struct Scope

@@ -101,7 +101,7 @@ void SymbolPass::init(MemoryArena* gp_arena, MemoryArena* sym_arena, TypePass* t
   this->sym_arena = sym_arena;
   nesting_depth = -1;
   data_alignment = 4;
-  scopes.init(sym_arena, eList_scope);
+  list_init(&scopes, sym_arena, eList_scope);
 }
 
 Symbol* SymbolPass::create_const(Type* ty, SourceLoc* src_loc)
@@ -150,7 +150,7 @@ Symbol* SymbolPass::create_const_str(SourceLoc* src_loc, char* str_val)
   const_object->data = const_object->str_val;
 
   const_object->scope = module_scope;
-  module_scope->decl_syms.append(const_object, eList_symbol);
+  list_append(&module_scope->decl_syms, const_object, eList_symbol);
 
   return const_object;
 }
@@ -162,7 +162,7 @@ Symbol* SymbolPass::create_const_float(SourceLoc* src_loc, float float_val)
   const_object->data = &const_object->float_val;
 
   const_object->scope = module_scope;
-  module_scope->decl_syms.append(const_object, eList_symbol);
+  list_append(&module_scope->decl_syms, const_object, eList_symbol);
 
   return const_object;
 }
@@ -183,7 +183,7 @@ Symbol* IrContext::create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc
   sym->init_locations();
 
   alloc_data_object_incremental(sym, scope);
-  scope->decl_syms.append(sym, eList_symbol);
+  list_append(&scope->decl_syms, sym, eList_symbol);
 
   return sym;
 }
@@ -203,7 +203,7 @@ Symbol* SymbolPass::add_decl(char* name, eStorageSpace storage_space, Scope* sco
   sym->is_live = true;
   sym->init_locations();
 
-  scope->decl_syms.append(sym, eList_symbol);
+  list_append(&scope->decl_syms, sym, eList_symbol);
 
   return sym;
 }
@@ -218,9 +218,9 @@ Scope* SymbolPass::begin_scope(eScope kind, AstNode* ast_node)
   scope->allocd_size = 0;
   scope->encl_scope = active_scope;
   scope->ast_node = ast_node;
-  scope->decl_syms.init(gp_arena, eList_symbol);
+  list_init(&scope->decl_syms, gp_arena, eList_symbol);
   active_scope = scope;
-  scopes.append(scope, eList_scope);
+  list_append(&scopes, scope, eList_scope);
 
   return scope;
 }

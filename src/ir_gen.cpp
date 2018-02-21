@@ -27,7 +27,7 @@ void IrContext::init(MemoryArena* gp_arena, MemoryArena* stmt_arena,
   stmt_array = (IrStmt*)stmt_arena->base;
   stmt_count = 0;
   this->sym_pass = sym_pass;
-  label_list = List::create(gp_arena, eList_ir_label);
+  label_list = list_new(gp_arena, eList_ir_label);
   data_alignment = 4;
 }
 
@@ -194,7 +194,7 @@ void IrContext::emit_label(Label* label)
   }
   else
   {
-    label_list->append(label, eList_ir_label);
+    list_append(label_list, label, eList_ir_label);
   }
 }
 
@@ -263,7 +263,7 @@ void IrContext::reset()
   current_alloc_offset = 0;
 
   /*XXX: 'label_list' storage is a good candidate for begin_temp_memory()/end_temp_memory() pattern of allocation. */
-  label_list->clear();
+  list_clear(label_list);
 }
 
 IrArg* IrContext::create_arg_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc)
@@ -1775,12 +1775,12 @@ void IrContext::insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt)
   {
     if(leader->stmt_nr > stmt_nr)
     {
-      leaders->insert_before(li, create_leader_stmt(leaders->arena, stmt_nr, stmt), eList_ir_leader_stmt);
+      list_insert_before(leaders, li, create_leader_stmt(leaders->arena, stmt_nr, stmt), eList_ir_leader_stmt);
     }
   }
   else
   {
-    leaders->append(create_leader_stmt(leaders->arena, stmt_nr, stmt), eList_ir_leader_stmt);
+    list_append(leaders, create_leader_stmt(leaders->arena, stmt_nr, stmt), eList_ir_leader_stmt);
   }
 }
 
@@ -1839,13 +1839,13 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
 {
   if(proc->proc.ir_stmt_count > 0)
   {
-    List* leaders = List::create(gp_arena, eList_ir_leader_stmt);
+    List* leaders = list_new(gp_arena, eList_ir_leader_stmt);
 
     IrStmt* stmt_array = proc->proc.ir_stmt_array;
     int stmt_count = proc->proc.ir_stmt_count;
 
     IrStmt* stmt = &stmt_array[0];
-    leaders->append(create_leader_stmt(leaders->arena, 0, stmt), eList_ir_leader_stmt);
+    list_append(leaders, create_leader_stmt(leaders->arena, 0, stmt), eList_ir_leader_stmt);
     
     for(int i = 0; i < proc->proc.ir_stmt_count; i++)
     {
@@ -1860,7 +1860,7 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
 
     //------//
     
-    List* basic_blocks = proc->proc.basic_blocks = List::create(stmt_arena, eList_basic_block);
+    List* basic_blocks = proc->proc.basic_blocks = list_new(stmt_arena, eList_basic_block);
 
     for(ListItem* li = leaders->first;
         li;
@@ -1875,9 +1875,9 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
 
       IrLeaderStmt* leader = KIND(li, eList_ir_leader_stmt)->ir_leader_stmt;
       BasicBlock* block = push_struct(stmt_arena, BasicBlock);
-      basic_blocks->append(block, eList_basic_block);
-      block->pred_list.init(stmt_arena, eList_basic_block);
-      block->succ_list.init(stmt_arena, eList_basic_block);
+      list_append(basic_blocks, block, eList_basic_block);
+      list_init(&block->pred_list, stmt_arena, eList_basic_block);
+      list_init(&block->succ_list, stmt_arena, eList_basic_block);
       leader->block = block;
       block->stmt_array = push_array(stmt_arena, IrStmt*, next_stmt_nr - leader->stmt_nr);
       block->stmt_count = 0;
@@ -1921,19 +1921,19 @@ void IrContext::partition_basic_blocks_proc(AstNode* proc)
         int stmt_nr = goto_label->stmt_nr;
         IrLeaderStmt* leader = get_leader_stmt(leaders, stmt_nr);
 
-        bb->succ_list.append(leader->block, eList_basic_block);
-        leader->block->pred_list.append(bb, eList_basic_block);
+        list_append(&bb->succ_list, leader->block, eList_basic_block);
+        list_append(&leader->block->pred_list, bb, eList_basic_block);
 
         if(last_stmt->kind != eIrStmt_goto)
         {
-          bb->succ_list.append(bb_next, eList_basic_block);
-          bb_next->pred_list.append(bb, eList_basic_block);
+          list_append(&bb->succ_list, bb_next, eList_basic_block);
+          list_append(&bb_next->pred_list, bb, eList_basic_block);
         }
       }
       else if(bb_next)
       {
-        bb->succ_list.append(bb_next, eList_basic_block);
-        bb_next->pred_list.append(bb, eList_basic_block);
+        list_append(&bb->succ_list, bb_next, eList_basic_block);
+        list_append(&bb_next->pred_list, bb, eList_basic_block);
       }
       
       // next-use information

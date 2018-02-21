@@ -132,7 +132,7 @@ Parser* Parser::create(MemoryArena* arena)
 {
   Parser* parser = push_struct(arena, Parser);
   parser->arena = arena;
-  parser->includes = List::create(arena, eList_ast_node);
+  parser->includes = list_new(arena, eList_ast_node);
 
   Lexer* lexer = parser->lexer = new_lexer(arena);
   parser->token = &lexer->token;
@@ -221,7 +221,7 @@ bool Parser::parse_actual_args(AstNode* args)
       AstNode* call_arg = create_ast_node(eAstNode_call_arg);
       call_arg->call_arg.expr = expr;
 
-      args->args.node_list.append(call_arg, eList_ast_node);
+      list_append(&args->args.node_list, call_arg, eList_ast_node);
       success = parse_rest_of_actual_args(args);
     }
   }
@@ -238,7 +238,7 @@ bool Parser::parse_call(AstNode* left_node, AstNode** node)
     AstNode* call = *node = create_ast_node(eAstNode_call);
     call->call.expr = left_node;
     AstNode* args = call->call.args = create_ast_node(eAstNode_node_list);
-    args->args.node_list.init(arena, eList_ast_node);
+    list_init(&args->args.node_list, arena, eList_ast_node);
 
     if(success = get_next_token() && parse_actual_args(call->call.args))
     {
@@ -1110,7 +1110,7 @@ bool Parser::parse_formal_args(AstNode* args)
   {
     if(arg)
     {
-      args->args.node_list.append(arg, eList_ast_node);
+      list_append(&args->args.node_list, arg, eList_ast_node);
       success = parse_rest_of_formal_args(args);
     }
   }
@@ -1136,9 +1136,9 @@ bool Parser::parse_block(AstNode** node)
   if(token->kind == eToken_open_brace)
   {
     AstNode* block = *node = create_ast_node(eAstNode_block);
-    block->block.nodes.init(arena, eList_ast_node);
-    block->block.vars.init(arena, eList_ast_node);
-    block->block.stmts.init(arena, eList_ast_node);
+    list_init(&block->block.nodes, arena, eList_ast_node);
+    list_init(&block->block.vars, arena, eList_ast_node);
+    list_init(&block->block.stmts, arena, eList_ast_node);
 
     if(success = (get_next_token() && parse_block_stmts(block)))
     {
@@ -1418,18 +1418,18 @@ bool Parser::parse_block_stmts(AstNode* block)
   {
     if(stmt)
     {
-      block->block.nodes.append(stmt, eList_ast_node);
+      list_append(&block->block.nodes, stmt, eList_ast_node);
       switch(stmt->kind)
       {
         case eAstNode_var:
-          block->block.vars.append(stmt, eList_ast_node);
+          list_append(&block->block.vars, stmt, eList_ast_node);
         break;
 
         case eAstNode_empty:
         break;
 
         default:
-          block->block.stmts.append(stmt, eList_ast_node);
+          list_append(&block->block.stmts, stmt, eList_ast_node);
         break;
       }
       success = parse_block_stmts(block);
@@ -1682,7 +1682,7 @@ bool Parser::parse_module_proc(char* name, eModifier modifier, AstNode* ret_type
     if(success = get_next_token())
     {
       AstNode* args = proc->proc.args = create_ast_node(eAstNode_node_list);
-      args->args.node_list.init(arena, eList_ast_node);
+      list_init(&args->args.node_list, arena, eList_ast_node);
 
       if(success = parse_formal_args(proc->proc.args))
       {
@@ -1730,9 +1730,9 @@ AstNode* Parser::find_include(PlatformFile* file)
 
 void AstNode_Module::merge(AstNode_Module* merged_module)
 {
-  nodes.join(&merged_module->nodes);
-  procs.join(&merged_module->procs);
-  vars.join(&merged_module->vars);
+  list_join(&nodes, &merged_module->nodes);
+  list_join(&procs, &merged_module->procs);
+  list_join(&vars, &merged_module->vars);
 }
 
 bool Parser::parse_module_include(AstNode** node)
@@ -1765,7 +1765,7 @@ bool Parser::parse_module_include(AstNode** node)
             AstNode* previous_include = find_include(included_file);
             if(!previous_include)
             {
-              includes->append(include, eList_ast_node);
+              list_append(includes, include, eList_ast_node);
 
               char* hoc_text = platform_file_read_text(arena, included_file->path);
               if(hoc_text)
@@ -1867,15 +1867,15 @@ bool Parser::parse_module_stmts(AstNode* module)
       {
         case eAstNode_proc:
         {
-          module->module.nodes.append(stmt, eList_ast_node);
-          module->module.procs.append(stmt, eList_ast_node);
+          list_append(&module->module.nodes, stmt, eList_ast_node);
+          list_append(&module->module.procs, stmt, eList_ast_node);
         }
         break;
 
         case eAstNode_var:
         {
-          module->module.nodes.append(stmt, eList_ast_node);
-          module->module.vars.append(stmt, eList_ast_node);
+          list_append(&module->module.nodes, stmt, eList_ast_node);
+          list_append(&module->module.vars, stmt, eList_ast_node);
         }
         break;
           
@@ -1919,15 +1919,15 @@ bool Parser::parse_module()
   {
     module = create_ast_node(eAstNode_module);
     module->module.file_path = file->path;
-    module->module.nodes.init(arena, eList_ast_node);
-    module->module.procs.init(arena, eList_ast_node);
-    module->module.vars.init(arena, eList_ast_node);
+    list_init(&module->module.nodes, arena, eList_ast_node);
+    list_init(&module->module.procs, arena, eList_ast_node);
+    list_init(&module->module.vars, arena, eList_ast_node);
 
     AstNode* include = create_ast_node(eAstNode_include);
     include->src_loc = 0;
     include->include.file = file;
     include->include.file_path = file->path;
-    includes->append(include, eList_ast_node);
+    list_append(includes, include, eList_ast_node);
 
     success = parse_module_body(module);;
   }

@@ -420,12 +420,6 @@ struct Type
 
 struct TypePass
 {
-  struct TypePair
-  {
-    Type* key;
-    Type* value;
-  };
-
   MemoryArena* arena;
   List* subst_list;
   int typevar_id = 1;
@@ -436,21 +430,6 @@ struct TypePass
   Type* basic_type_float;
   Type* basic_type_void;
   Type* basic_type_str;
-
-  Type* create_var_type(Type* var_type);
-  Type* create_basic_type(eBasicType kind);
-  Type* create_proc_type(Type* args, Type* ret);
-  Type* create_typevar();
-  Type* create_product_type(Type* left, Type* right);
-  Type* create_array_type(int size, Type* elem);
-  Type* create_pointer_type(Type* pointee);
-
-  static TypePass* create(MemoryArena* arena);
-  void      init(MemoryArena* arena);
-  Type*     type_subst(Type* type);
-  TypePair* create_type_pair(Type* key, Type* value);
-  TypePair* find_pair(Type* type);
-  bool      process(AstNode* module);
 };
 
 struct TypePass_Set : TypePass

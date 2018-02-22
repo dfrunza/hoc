@@ -151,7 +151,7 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
 bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text, String** x86_text)
 {
   MemoryArena* gp_arena = push_arena(&arena, 2*MEGABYTE);
-  TypePass* type_pass = TypePass::create(push_arena(&arena, 2*MEGABYTE));
+  TypePass* type_pass = new_type_pass(push_arena(&arena, 2*MEGABYTE));
 
   SymbolPass sym_pass = {};
   sym_pass.init(gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass);
@@ -174,7 +174,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
 
   AstNode* module = parser->module;
 
-  if(!(sym_pass.process(module) && type_pass->process(module)))
+  if(!(sym_pass.process(module) && run_type_pass(type_pass, module)))
   {
     return false;
   }

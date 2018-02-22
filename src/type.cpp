@@ -88,35 +88,9 @@ int maximum_of_int(int N, ...)
   return result;
 }
 
-TypePass* TypePass::create(MemoryArena* arena)
+Type* new_var_type(TypePass* pass, Type* var_type)
 {
-  int struct_size = maximum_of_int(4,
-                                   sizeof(TypePass_Set),
-                                   sizeof(TypePass_Eval),
-                                   sizeof(TypePass_Resolve),
-                                   sizeof(TypePass_Check));
-
-  TypePass* context = (TypePass*)push_struct_(arena, struct_size, 1);
-  context->init(arena);
-
-  return context;
-}
-
-void TypePass::init(MemoryArena* arena)
-{
-  this->arena = arena;
-  basic_type_bool  = create_basic_type(eBasicType_bool);
-  basic_type_int   = create_basic_type(eBasicType_int);
-  basic_type_char  = create_basic_type(eBasicType_char);
-  basic_type_float = create_basic_type(eBasicType_float);
-  basic_type_void  = create_basic_type(eBasicType_void);
-  basic_type_str   = create_array_type(0, basic_type_char);
-  subst_list = list_new(arena, eList_type_pair);
-}
-
-Type* TypePass::create_var_type(Type* var_type)
-{
-  Type* type = push_struct(arena, Type);
+  Type* type = push_struct(pass->arena, Type);
   type->kind = eType_var;
   type->var.type = var_type;
   set_type_width(type);
@@ -124,9 +98,9 @@ Type* TypePass::create_var_type(Type* var_type)
   return type;
 }
 
-Type* TypePass::create_basic_type(eBasicType kind)
+Type* new_basic_type(TypePass* pass, eBasicType kind)
 {
-  Type* type = push_struct(arena, Type);
+  Type* type = push_struct(pass->arena, Type);
   type->kind = eType_basic;
   type->basic.kind = kind;
   set_type_width(type);
@@ -134,9 +108,9 @@ Type* TypePass::create_basic_type(eBasicType kind)
   return type;
 }
 
-Type* TypePass::create_proc_type(Type* args, Type* ret)
+Type* new_proc_type(TypePass* pass, Type* args, Type* ret)
 {
-  Type* type = push_struct(arena, Type);
+  Type* type = push_struct(pass->arena, Type);
   type->kind = eType_proc;
   type->proc.args = args;
   type->proc.ret = ret;
@@ -145,19 +119,19 @@ Type* TypePass::create_proc_type(Type* args, Type* ret)
   return type;
 }
 
-Type* TypePass::create_typevar()
+Type* new_typevar(TypePass* pass)
 {
-  Type* type = push_struct(arena, Type);
+  Type* type = push_struct(pass->arena, Type);
   type->kind = eType_typevar;
-  type->typevar.id = typevar_id++;
+  type->typevar.id = pass->typevar_id++;
   type->width = 0;
 
   return type;
 }
 
-Type* TypePass::create_product_type(Type* left, Type* right)
+Type* new_product_type(TypePass* pass, Type* left, Type* right)
 {
-  Type* type = push_struct(arena, Type);
+  Type* type = push_struct(pass->arena, Type);
   type->kind = eType_product;
   type->product.left = left;
   type->product.right = right;
@@ -166,9 +140,9 @@ Type* TypePass::create_product_type(Type* left, Type* right)
   return type;
 }
 
-Type* TypePass::create_array_type(int size, Type* elem)
+Type* new_array_type(TypePass* pass, int size, Type* elem)
 {
-  Type* type = push_struct(arena, Type);
+  Type* type = push_struct(pass->arena, Type);
   type->kind = eType_array;
   type->array.size = size;
   type->array.elem = elem;
@@ -177,14 +151,36 @@ Type* TypePass::create_array_type(int size, Type* elem)
   return type;
 }
 
-Type* TypePass::create_pointer_type(Type* pointee)
+Type* new_pointer_type(TypePass* pass, Type* pointee)
 {
-  Type* type = push_struct(arena, Type);
+  Type* type = push_struct(pass->arena, Type);
   type->kind = eType_pointer;
   type->pointer.pointee = pointee;
   type->width = 0;
 
   return type;
+}
+
+TypePass* new_type_pass(MemoryArena* arena)
+{
+  int struct_size = maximum_of_int(4,
+                                   sizeof(TypePass_Set),
+                                   sizeof(TypePass_Eval),
+                                   sizeof(TypePass_Resolve),
+                                   sizeof(TypePass_Check));
+
+  TypePass* pass = (TypePass*)push_struct_(arena, struct_size, 1);
+
+  pass->arena = arena;
+  pass->basic_type_bool  = new_basic_type(pass, eBasicType_bool);
+  pass->basic_type_int   = new_basic_type(pass, eBasicType_int);
+  pass->basic_type_char  = new_basic_type(pass, eBasicType_char);
+  pass->basic_type_float = new_basic_type(pass, eBasicType_float);
+  pass->basic_type_void  = new_basic_type(pass, eBasicType_void);
+  pass->basic_type_str   = new_array_type(pass, 0, pass->basic_type_char);
+  pass->subst_list = list_new(arena, eList_type_pair);
+
+  return pass;
 }
 
 bool type_eq(Type* type_A, Type* type_B)
@@ -344,19 +340,25 @@ bool type_unif(Type* type_A, Type* type_B)
   return success;
 }
 
-TypePass::TypePair* TypePass::create_type_pair(Type* key, Type* value)
+struct TypePair
 {
-  TypePair* pair = push_struct(arena, TypePair);
+  Type* key;
+  Type* value;
+};
+
+TypePair* new_type_pair(TypePass* pass, Type* key, Type* value)
+{
+  TypePair* pair = push_struct(pass->arena, TypePair);
   pair->key = key;
   pair->value = value;
 
   return pair;
 }
 
-TypePass::TypePair* TypePass::find_pair(Type* type)
+TypePair* find_type_pair(TypePass* pass, Type* type)
 {
   TypePair* result = 0;
-  for(ListItem* li = subst_list->first;
+  for(ListItem* li = pass->subst_list->first;
       li;
       li = li->next)
   {
@@ -371,60 +373,60 @@ TypePass::TypePair* TypePass::find_pair(Type* type)
   return result;
 }
 
-Type* TypePass::type_subst(Type* type)
+Type* type_subst(TypePass* pass, Type* type)
 {
   type = get_repr_type(type);
   Type* subst = 0;
   
-  TypePair* pair = find_pair(type);
+  TypePair* pair = find_type_pair(pass, type);
   if(pair)
   {
     subst = pair->value;
   }
   else
   {
-    subst = clone_type(type, arena);
+    subst = clone_type(type, pass->arena);
     
-    pair = create_type_pair(type, subst);
-    list_append(subst_list, pair, eList_type_pair);
+    pair = new_type_pair(pass, type, subst);
+    list_append(pass->subst_list, pair, eList_type_pair);
     
     switch(subst->kind)
     {
       case eType_typevar:
       {
-        subst->typevar.id = typevar_id++;
+        subst->typevar.id = pass->typevar_id++;
       }
       break;
       
       case eType_proc:
       {
-        subst->proc.args = type_subst(subst->proc.args);
-        subst->proc.ret = type_subst(subst->proc.ret);
+        subst->proc.args = type_subst(pass, subst->proc.args);
+        subst->proc.ret = type_subst(pass, subst->proc.ret);
       }
       break;
       
       case eType_product:
       {
-        subst->product.left = type_subst(subst->product.left);
-        subst->product.right = type_subst(subst->product.right);
+        subst->product.left = type_subst(pass, subst->product.left);
+        subst->product.right = type_subst(pass, subst->product.right);
       }
       break;
       
       case eType_pointer:
       {
-        subst->pointer.pointee = type_subst(subst->pointer.pointee);
+        subst->pointer.pointee = type_subst(pass, subst->pointer.pointee);
       }
       break;
       
       case eType_array:
       {
-        subst->array.elem = type_subst(subst->array.elem);
+        subst->array.elem = type_subst(pass, subst->array.elem);
       }
       break;
       
       case eType_var:
       {
-        subst->var.type = type_subst(subst->var.type);
+        subst->var.type = type_subst(pass, subst->var.type);
       }
       break;
       
@@ -649,7 +651,7 @@ bool TypePass_Set::visit_array(AstNode* array)
         array->array.ndim += elem_expr->array.ndim;
       }
       
-      array->ty = array->eval_ty = create_array_type(array->array.size, elem_expr->ty);
+      array->ty = array->eval_ty = new_array_type(this, array->array.size, elem_expr->ty);
     }
   }
 
@@ -664,7 +666,7 @@ bool TypePass_Set::visit_pointer(AstNode* pointer)
   AstNode* pointee = pointer->pointer.pointee;
   if(success = visit_type(pointee))
   {
-    pointer->ty = pointer->eval_ty = create_pointer_type(pointee->ty);
+    pointer->ty = pointer->eval_ty = new_pointer_type(this, pointee->ty);
   }
   return success;
 }
@@ -718,7 +720,7 @@ bool TypePass_Set::visit_type(AstNode* type)
       
       case eBasicType_auto:
       {
-        type->ty = type->eval_ty = create_typevar();
+        type->ty = type->eval_ty = new_typevar(this);
       }
       break;
       
@@ -743,7 +745,7 @@ bool TypePass_Set::visit_var(AstNode* var)
   AstNode* type = var->var.type;
   if(success = visit_type(type))
   {
-    var->ty = create_var_type(type->ty);
+    var->ty = new_var_type(this, type->ty);
     var->eval_ty = type->ty;
 
     if(var->var.init_expr)
@@ -765,8 +767,8 @@ bool TypePass_Set::visit_bin_expr(AstNode* bin_expr)
   
   if(success = visit_expr(left_operand) && visit_expr(right_operand))
   {
-    bin_expr->eval_ty = create_typevar();
-    bin_expr->ty = create_proc_type(create_product_type(left_operand->eval_ty, right_operand->eval_ty), bin_expr->eval_ty);
+    bin_expr->eval_ty = new_typevar(this);
+    bin_expr->ty = new_proc_type(this, new_product_type(this, left_operand->eval_ty, right_operand->eval_ty), bin_expr->eval_ty);
   }
 
   return success;
@@ -780,8 +782,8 @@ bool TypePass_Set::visit_unr_expr(AstNode* unr_expr)
   AstNode* operand = unr_expr->unr_expr.operand;
   if(success = visit_expr(operand))
   {
-    unr_expr->eval_ty = create_typevar();
-    unr_expr->ty = create_proc_type(operand->eval_ty, unr_expr->eval_ty);
+    unr_expr->eval_ty = new_typevar(this);
+    unr_expr->ty = new_proc_type(this, operand->eval_ty, unr_expr->eval_ty);
   }
 
   return success;
@@ -807,15 +809,15 @@ bool TypePass_Set::visit_id(AstNode* id)
   assert(KIND(id, eAstNode_id));
   bool success = true;
 
-  id->ty = create_typevar();
-  id->eval_ty = create_typevar();
+  id->ty = new_typevar(this);
+  id->eval_ty = new_typevar(this);
 
   return success;
 }
 
-Type* make_args_product_type(TypePass* context, AstNode* args)
+Type* make_args_product_type(TypePass* pass, AstNode* args)
 {
-  Type* result = context->basic_type_void;
+  Type* result = pass->basic_type_void;
 
   ListItem* li = args->args.node_list.first;
   if(li)
@@ -825,7 +827,7 @@ Type* make_args_product_type(TypePass* context, AstNode* args)
     for(li = li->next; li; li = li->next)
     {
       AstNode* next_arg = KIND(li, eList_ast_node)->ast_node;
-      result = context->create_product_type(result, next_arg->eval_ty);
+      result = new_product_type(pass, result, next_arg->eval_ty);
     }
   }
 
@@ -864,8 +866,8 @@ bool TypePass_Set::visit_call(AstNode* call)
   {
     if(success = visit_id(call_expr) && visit_actual_args(args))
     {
-      call->eval_ty = create_typevar();
-      call->ty = create_proc_type(args->ty, call->eval_ty);
+      call->eval_ty = new_typevar(this);
+      call->ty = new_proc_type(this, args->ty, call->eval_ty);
     }
   }
   else
@@ -908,7 +910,7 @@ bool TypePass_Set::visit_lit(AstNode* lit)
 
     case eLiteral_str:
     {
-      ty = create_array_type(cstr_len(lit->lit.str_val)+1, basic_type_char);
+      ty = new_array_type(this, cstr_len(lit->lit.str_val)+1, basic_type_char);
     }
     break;
     
@@ -927,7 +929,7 @@ bool TypePass_Set::visit_index(AstNode* index)
   if(success = visit_expr(index->index.array_expr) && visit_expr(index->index.i_expr))
   {
     index->ty = index->index.array_expr->eval_ty;
-    index->eval_ty = create_typevar();
+    index->eval_ty = new_typevar(this);
   }
 
   return success;
@@ -943,7 +945,7 @@ bool TypePass_Set::visit_cast(AstNode* cast)
   if(success = visit_type(to_type) && visit_expr(from_expr))
   {
     cast->eval_ty = to_type->eval_ty;
-    cast->ty = create_product_type(from_expr->eval_ty, cast->eval_ty);
+    cast->ty = new_product_type(this, from_expr->eval_ty, cast->eval_ty);
   }
 
   return success;
@@ -1262,7 +1264,7 @@ bool TypePass_Set::visit_proc(AstNode* proc)
   AstNode* args = proc->proc.args;
   if(success = visit_formal_args(args) && visit_type(ret_type))
   {
-    proc->ty = create_proc_type(args->eval_ty, ret_type->eval_ty);
+    proc->ty = new_proc_type(this, args->eval_ty, ret_type->eval_ty);
     proc->eval_ty = basic_type_void;
     
     if(!is_extern_proc(proc))
@@ -1558,8 +1560,8 @@ bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
       
       case eOperator_deref:
       {
-        Type* pointee_ty = create_typevar();
-        if(type_unif(operand->eval_ty, create_pointer_type(pointee_ty)))
+        Type* pointee_ty = new_typevar(this);
+        if(type_unif(operand->eval_ty, new_pointer_type(this, pointee_ty)))
         {
           if(!type_unif(unr_expr->eval_ty, pointee_ty))
           {
@@ -2058,11 +2060,11 @@ bool TypePass_Resolve::visit_unr_expr(AstNode* unr_expr)
       {
         // ptr(array(T)) = ptr(T)
         Type* operand_ty = operand->eval_ty;
-        success = type_unif(unr_expr->eval_ty, create_pointer_type(operand_ty->array.elem));
+        success = type_unif(unr_expr->eval_ty, new_pointer_type(this, operand_ty->array.elem));
       }
       else
       {
-        success = type_unif(unr_expr->eval_ty, create_pointer_type(operand->eval_ty));
+        success = type_unif(unr_expr->eval_ty, new_pointer_type(this, operand->eval_ty));
       }
 
       if(!success)
@@ -3134,14 +3136,14 @@ bool TypePass_Check::visit_module(AstNode* module)
   return success;
 }
 
-bool TypePass::process(AstNode* module)
+bool run_type_pass(TypePass* pass, AstNode* module)
 {
   bool success = true;
 
-  TypePass_Set* set = (TypePass_Set*)this;
-  TypePass_Eval* eval = (TypePass_Eval*)this;
-  TypePass_Resolve* resolve = (TypePass_Resolve*)this;
-  TypePass_Check* check = (TypePass_Check*)this;
+  TypePass_Set* set = (TypePass_Set*)pass;
+  TypePass_Eval* eval = (TypePass_Eval*)pass;
+  TypePass_Resolve* resolve = (TypePass_Resolve*)pass;
+  TypePass_Check* check = (TypePass_Check*)pass;
 
   success = set->visit_module(module) && eval->visit_module(module)
     && resolve->visit_module(module) && check->visit_module(module);

@@ -86,28 +86,28 @@ void init_object_locations(Symbol* obj)
   }
 }
 
-void SymbolPass::init(MemoryArena* gp_arena, MemoryArena* sym_arena, TypePass* type_pass)
+void init_symbol_pass(SymbolPass* pass, MemoryArena* gp_arena, MemoryArena* sym_arena, TypePass* type_pass)
 {
-  basic_type_bool  = type_pass->basic_type_bool;
-  basic_type_int   = type_pass->basic_type_int;
-  basic_type_char  = type_pass->basic_type_char;
-  basic_type_float = type_pass->basic_type_float;
-  basic_type_void  = type_pass->basic_type_void;
-  basic_type_str   = type_pass->basic_type_str;
+  pass->basic_type_bool  = type_pass->basic_type_bool;
+  pass->basic_type_int   = type_pass->basic_type_int;
+  pass->basic_type_char  = type_pass->basic_type_char;
+  pass->basic_type_float = type_pass->basic_type_float;
+  pass->basic_type_void  = type_pass->basic_type_void;
+  pass->basic_type_str   = type_pass->basic_type_str;
 
-  this->gp_arena = gp_arena;
-  this->sym_arena = sym_arena;
-  nesting_depth = -1;
-  data_alignment = 4;
-  list_init(&scopes, sym_arena, eList_scope);
+  pass->gp_arena = gp_arena;
+  pass->sym_arena = sym_arena;
+  pass->nesting_depth = -1;
+  pass->data_alignment = 4;
+  list_init(&pass->scopes, pass->sym_arena, eList_scope);
 }
 
-Symbol* SymbolPass::create_const(Type* ty, SourceLoc* src_loc)
+Symbol* new_const_object(SymbolPass* pass, Type* ty, SourceLoc* src_loc)
 {
-  Symbol* sym = push_struct(sym_arena, Symbol);
+  Symbol* sym = push_struct(pass->sym_arena, Symbol);
 
   sym->kind = eSymbol_constant;
-  sym->name = gen_tempvar_name(gp_arena, "const_");
+  sym->name = gen_tempvar_name(pass->gp_arena, "const_");
   sym->src_loc = src_loc;
   sym->ty = ty;
   sym->scope = 0;
@@ -118,49 +118,49 @@ Symbol* SymbolPass::create_const(Type* ty, SourceLoc* src_loc)
   sym->is_live = false;
   init_object_locations(sym);
 
-  add_object_to_memory(x86_context, sym);
+  add_object_to_memory(pass->x86_context, sym);
 
   return sym;
 }
 
-Symbol* SymbolPass::create_const_int(SourceLoc* src_loc, int int_val)
+Symbol* new_const_int_object(SymbolPass* pass, SourceLoc* src_loc, int int_val)
 {
-  Symbol* const_object = create_const(basic_type_int, src_loc);
+  Symbol* const_object = new_const_object(pass, pass->basic_type_int, src_loc);
   const_object->int_val = int_val;
   const_object->data = &const_object->int_val;
 
   return const_object;
 }
 
-Symbol* SymbolPass::create_const_char(SourceLoc* src_loc, char char_val)
+Symbol* new_const_char_object(SymbolPass* pass, SourceLoc* src_loc, char char_val)
 {
-  Symbol* const_object = create_const(basic_type_char, src_loc);
+  Symbol* const_object = new_const_object(pass, pass->basic_type_char, src_loc);
   const_object->char_val = char_val;
   const_object->data = &const_object->char_val;
 
   return const_object;
 }
 
-Symbol* SymbolPass::create_const_str(SourceLoc* src_loc, char* str_val)
+Symbol* new_const_str_object(SymbolPass* pass, SourceLoc* src_loc, char* str_val)
 {
-  Symbol* const_object = create_const(basic_type_str, src_loc);
+  Symbol* const_object = new_const_object(pass, pass->basic_type_str, src_loc);
   const_object->str_val = str_val;
   const_object->data = const_object->str_val;
 
-  const_object->scope = module_scope;
-  list_append(&module_scope->decl_syms, const_object, eList_symbol);
+  const_object->scope = pass->module_scope;
+  list_append(&pass->module_scope->decl_syms, const_object, eList_symbol);
 
   return const_object;
 }
 
-Symbol* SymbolPass::create_const_float(SourceLoc* src_loc, float float_val)
+Symbol* new_const_float_object(SymbolPass* pass, SourceLoc* src_loc, float float_val)
 {
-  Symbol* const_object = create_const(basic_type_float, src_loc);
+  Symbol* const_object = new_const_object(pass, pass->basic_type_float, src_loc);
   const_object->float_val = float_val;
   const_object->data = &const_object->float_val;
 
-  const_object->scope = module_scope;
-  list_append(&module_scope->decl_syms, const_object, eList_symbol);
+  const_object->scope = pass->module_scope;
+  list_append(&pass->module_scope->decl_syms, const_object, eList_symbol);
 
   return const_object;
 }
@@ -186,9 +186,9 @@ Symbol* IrContext::create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc
   return sym;
 }
 
-Symbol* SymbolPass::add_decl(char* name, eStorageSpace storage_space, Scope* scope, AstNode* ast_node)
+Symbol* add_decl_symbol(SymbolPass* pass, char* name, eStorageSpace storage_space, Scope* scope, AstNode* ast_node)
 {
-  Symbol* sym = push_struct(sym_arena, Symbol);
+  Symbol* sym = push_struct(pass->sym_arena, Symbol);
 
   sym->name = name;
   sym->src_loc = ast_node->src_loc;
@@ -206,42 +206,44 @@ Symbol* SymbolPass::add_decl(char* name, eStorageSpace storage_space, Scope* sco
   return sym;
 }
 
-Scope* SymbolPass::begin_scope(eScope kind, AstNode* ast_node)
+Scope* begin_scope(SymbolPass* pass, eScope kind, AstNode* ast_node)
 {
-  Scope* scope = push_struct(sym_arena, Scope);
+  Scope* scope = push_struct(pass->sym_arena, Scope);
 
   scope->kind = kind;
-  scope->nesting_depth = nesting_depth;
+  scope->nesting_depth = pass->nesting_depth;
   scope->sym_count = 0;
   scope->allocd_size = 0;
-  scope->encl_scope = active_scope;
+  scope->encl_scope = pass->active_scope;
   scope->ast_node = ast_node;
-  list_init(&scope->decl_syms, gp_arena, eList_symbol);
-  active_scope = scope;
-  list_append(&scopes, scope, eList_scope);
+  list_init(&scope->decl_syms, pass->gp_arena, eList_symbol);
+  pass->active_scope = scope;
+  list_append(&pass->scopes, scope, eList_scope);
 
   return scope;
 }
 
-void SymbolPass::end_scope()
+void end_scope(SymbolPass* pass)
 {
-  Scope* scope = active_scope;
-  active_scope = scope->encl_scope;
+  Scope* scope = pass->active_scope;
+  pass->active_scope = scope->encl_scope;
 }
 
-Scope* SymbolPass::begin_nested_scope(eScope kind, AstNode* ast_node)
+Scope* begin_nested_scope(SymbolPass* pass, eScope kind, AstNode* ast_node)
 {
-  nesting_depth++;
-  return begin_scope(kind, ast_node);
+  pass->nesting_depth++;
+  return begin_scope(pass, kind, ast_node);
 }
 
-void SymbolPass::end_nested_scope()
+void end_nested_scope(SymbolPass* pass)
 {
-  end_scope();
-  nesting_depth--;
+  end_scope(pass);
+  pass->nesting_depth--;
 }
 
-bool SymbolPass::visit_formal_arg(Scope* proc_scope, AstNode* arg)
+bool SymbolPass_visit_expr(SymbolPass* pass, AstNode* expr);
+
+bool SymbolPass_visit_formal_arg(SymbolPass* pass, Scope* proc_scope, AstNode* arg)
 {
   assert(KIND(arg, eAstNode_var));
   bool success = true;
@@ -249,41 +251,41 @@ bool SymbolPass::visit_formal_arg(Scope* proc_scope, AstNode* arg)
   Symbol* decl_sym = lookup_decl_symbol(proc_scope, arg->var.name);
   if(decl_sym && (decl_sym->scope == proc_scope))
   {
-    success = compile_error(gp_arena, arg->src_loc, "formal arg `%s` has already been declared", arg->var.name);
-    compile_error(gp_arena, decl_sym->src_loc, "see the declaration of `%s`", arg->var.name);
+    success = compile_error(pass->gp_arena, arg->src_loc, "formal arg `%s` has already been declared", arg->var.name);
+    compile_error(pass->gp_arena, decl_sym->src_loc, "see the declaration of `%s`", arg->var.name);
   }
   else
   {
-    arg->var.decl_sym = add_decl(arg->var.name, eStorageSpace_formal_param, proc_scope, arg);
-    success = visit_expr(arg->var.type);
+    arg->var.decl_sym = add_decl_symbol(pass, arg->var.name, eStorageSpace_formal_param, proc_scope, arg);
+    success = SymbolPass_visit_expr(pass, arg->var.type);
   }
 
   return success;
 }
 
-bool SymbolPass::visit_var(AstNode* var)
+bool SymbolPass_visit_var(SymbolPass* pass, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
-  Symbol* decl_sym = lookup_decl_symbol(active_scope, var->var.name);
-  Scope* preamble_scope = find_scope(active_scope, eScope_args);
-  if(decl_sym && (decl_sym->scope == active_scope || decl_sym->scope == preamble_scope))
+  Symbol* decl_sym = lookup_decl_symbol(pass->active_scope, var->var.name);
+  Scope* preamble_scope = find_scope(pass->active_scope, eScope_args);
+  if(decl_sym && (decl_sym->scope == pass->active_scope || decl_sym->scope == preamble_scope))
   {
-    success = compile_error(gp_arena, var->src_loc, "name `%s` already declared", var->var.name);
-    compile_error(gp_arena, decl_sym->src_loc, "see declaration of `%s`", var->var.name);
+    success = compile_error(pass->gp_arena, var->src_loc, "name `%s` already declared", var->var.name);
+    compile_error(pass->gp_arena, decl_sym->src_loc, "see declaration of `%s`", var->var.name);
   }
   else
   {
-    var->var.decl_sym = add_decl(var->var.name, eStorageSpace_local, active_scope, var);
-    success = visit_expr(var->var.type)
-      && (var->var.init_expr ? visit_expr(var->var.init_expr) : true);
+    var->var.decl_sym = add_decl_symbol(pass, var->var.name, eStorageSpace_local, pass->active_scope, var);
+    success = SymbolPass_visit_expr(pass, var->var.type)
+      && (var->var.init_expr ? SymbolPass_visit_expr(pass, var->var.init_expr) : true);
   }
 
   return success;
 }
 
-bool SymbolPass::visit_lit(AstNode* lit)
+bool SymbolPass_visit_lit(SymbolPass* pass, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
   bool success = true;
@@ -292,31 +294,31 @@ bool SymbolPass::visit_lit(AstNode* lit)
   {
     case eLiteral_int:
     {
-      lit->lit.constant = create_const_int(lit->src_loc, lit->lit.int_val);
+      lit->lit.constant = new_const_int_object(pass, lit->src_loc, lit->lit.int_val);
     }
     break;
 
     case eLiteral_float:
     {
-      lit->lit.constant = create_const_float(lit->src_loc, lit->lit.float_val);
+      lit->lit.constant = new_const_float_object(pass, lit->src_loc, lit->lit.float_val);
     }
     break;
 
     case eLiteral_bool:
     {
-      lit->lit.constant = create_const_int(lit->src_loc, (int)lit->lit.bool_val);
+      lit->lit.constant = new_const_int_object(pass, lit->src_loc, (int)lit->lit.bool_val);
     }
     break;
 
     case eLiteral_char:
     {
-      lit->lit.constant = create_const_char(lit->src_loc, lit->lit.char_val);
+      lit->lit.constant = new_const_char_object(pass, lit->src_loc, lit->lit.char_val);
     }
     break;
     
     case eLiteral_str:
     {
-      lit->lit.constant = create_const_str(lit->src_loc, lit->lit.str_val);
+      lit->lit.constant = new_const_str_object(pass, lit->src_loc, lit->lit.str_val);
     }
     break;
 
@@ -326,39 +328,39 @@ bool SymbolPass::visit_lit(AstNode* lit)
   return success;
 }
 
-bool SymbolPass::visit_id(AstNode* id)
+bool SymbolPass_visit_id(SymbolPass* pass, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   bool success = true;
 
-  Scope* scope = active_scope;
+  Scope* scope = pass->active_scope;
   id->id.scope = scope;
   id->id.order_nr = scope->sym_count++;
 
   return success;
 }
 
-bool SymbolPass::visit_bin_expr(AstNode* bin_expr)
+bool SymbolPass_visit_bin_expr(SymbolPass* pass, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
   
-  success = visit_expr(bin_expr->bin_expr.left_operand) && visit_expr(bin_expr->bin_expr.right_operand);
+  success = SymbolPass_visit_expr(pass, bin_expr->bin_expr.left_operand) && SymbolPass_visit_expr(pass, bin_expr->bin_expr.right_operand);
 
   return success;
 }
 
-bool SymbolPass::visit_unr_expr(AstNode* unr_expr)
+bool SymbolPass_visit_unr_expr(SymbolPass* pass, AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode_unr_expr));
 
   bool success = true;
-  success = visit_expr(unr_expr->unr_expr.operand);
+  success = SymbolPass_visit_expr(pass, unr_expr->unr_expr.operand);
 
   return success;
 }
 
-bool SymbolPass::visit_actual_args(AstNode* args)
+bool SymbolPass_visit_actual_args(SymbolPass* pass, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -368,13 +370,13 @@ bool SymbolPass::visit_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = visit_expr(arg->call_arg.expr);
+    success = SymbolPass_visit_expr(pass, arg->call_arg.expr);
   }
 
   return success;
 }
 
-bool SymbolPass::visit_call(AstNode* call)
+bool SymbolPass_visit_call(SymbolPass* pass, AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
   bool success = true;
@@ -384,10 +386,10 @@ bool SymbolPass::visit_call(AstNode* call)
 
   if(call_expr->kind == eAstNode_id)
   {
-    if(success = visit_id(call_expr) && visit_actual_args(args))
+    if(success = SymbolPass_visit_id(pass, call_expr) && SymbolPass_visit_actual_args(pass, args))
     {
-      call->call.param_scope = begin_scope(eScope_params, call);
-      call->call.retvar = add_decl(gen_tempvar_name(gp_arena, "ret_"),
+      call->call.param_scope = begin_scope(pass, eScope_params, call);
+      call->call.retvar = add_decl_symbol(pass, gen_tempvar_name(pass->gp_arena, "ret_"),
                                    eStorageSpace_actual_param, call->call.param_scope, call);
 
       for(ListItem* li = args->args.node_list.first;
@@ -395,22 +397,22 @@ bool SymbolPass::visit_call(AstNode* call)
           li = li->next)
       {
         AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-        arg->call_arg.param = add_decl(gen_tempvar_name(gp_arena, "param_"),
+        arg->call_arg.param = add_decl_symbol(pass, gen_tempvar_name(pass->gp_arena, "param_"),
                                        eStorageSpace_actual_param, call->call.param_scope, arg);
       }
 
-      end_scope();
+      end_scope(pass);
     }
   }
   else
   {
-    success = compile_error(gp_arena, call_expr->src_loc, "unsupported call expression");
+    success = compile_error(pass->gp_arena, call_expr->src_loc, "unsupported call expression");
   }
 
   return success;
 }
 
-bool SymbolPass::visit_index(AstNode* index)
+bool SymbolPass_visit_index(SymbolPass* pass, AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
   bool success = true;
@@ -418,24 +420,24 @@ bool SymbolPass::visit_index(AstNode* index)
   AstNode* array_expr = index->index.array_expr;
   if(array_expr->kind == eAstNode_id || array_expr->kind == eAstNode_index)
   {
-    success = visit_expr(array_expr) && visit_expr(index->index.i_expr);
+    success = SymbolPass_visit_expr(pass, array_expr) && SymbolPass_visit_expr(pass, index->index.i_expr);
   }
   else
-    success = compile_error(gp_arena, array_expr->src_loc, "unsupported index expr");
+    success = compile_error(pass->gp_arena, array_expr->src_loc, "unsupported index expr");
 
   return success;
 }
 
-bool SymbolPass::visit_cast(AstNode* cast)
+bool SymbolPass_visit_cast(SymbolPass* pass, AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
 
   bool success = true;
-  success = visit_expr(cast->cast.to_type) && visit_expr(cast->cast.from_expr);
+  success = SymbolPass_visit_expr(pass, cast->cast.to_type) && SymbolPass_visit_expr(pass, cast->cast.from_expr);
   return success;
 }
 
-bool SymbolPass::visit_array(AstNode* array)
+bool SymbolPass_visit_array(SymbolPass* pass, AstNode* array)
 {
   assert(KIND(array, eAstNode_array));
   bool success = true;
@@ -446,37 +448,37 @@ bool SymbolPass::visit_array(AstNode* array)
     int size_val = size_expr->lit.int_val;
     if(size_val > 0)
     {
-      size_expr->lit.constant = create_const_int(size_expr->src_loc, size_val);
+      size_expr->lit.constant = new_const_int_object(pass, size_expr->src_loc, size_val);
     }
     else if(size_val == 0)
-      success = compile_error(gp_arena, size_expr->src_loc, "array of 0 size");
+      success = compile_error(pass->gp_arena, size_expr->src_loc, "array of 0 size");
   }
   else
-    success = compile_error(gp_arena, size_expr->src_loc, "unsupported size expr"); 
+    success = compile_error(pass->gp_arena, size_expr->src_loc, "unsupported size expr"); 
 
   return success;
 }
 
-bool SymbolPass::visit_pointer(AstNode* pointer)
+bool SymbolPass_visit_pointer(SymbolPass* pass, AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode_pointer));
 
   bool success = true;
-  success = visit_expr(pointer->pointer.pointee);
+  success = SymbolPass_visit_expr(pass, pointer->pointer.pointee);
   return success;
 }
 
-bool SymbolPass::visit_assign(AstNode* assign)
+bool SymbolPass_visit_assign(SymbolPass* pass, AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
 
   bool success = true;
-  success = visit_expr(assign->assign.dest_expr) && visit_expr(assign->assign.source_expr);
+  success = SymbolPass_visit_expr(pass, assign->assign.dest_expr) && SymbolPass_visit_expr(pass, assign->assign.source_expr);
   
   return success;
 }
 
-bool SymbolPass::visit_expr(AstNode* expr)
+bool SymbolPass_visit_expr(SymbolPass* pass, AstNode* expr)
 {
   bool success = true;
   
@@ -484,43 +486,43 @@ bool SymbolPass::visit_expr(AstNode* expr)
   {
     case eAstNode_cast:
     {
-      success = visit_cast(expr);
+      success = SymbolPass_visit_cast(pass, expr);
     }
     break;
     
     case eAstNode_bin_expr:
     {
-      success = visit_bin_expr(expr);
+      success = SymbolPass_visit_bin_expr(pass, expr);
     }
     break;
     
     case eAstNode_unr_expr:
     {
-      success = visit_unr_expr(expr);
+      success = SymbolPass_visit_unr_expr(pass, expr);
     }
     break;
     
     case eAstNode_id:
     {
-      success = visit_id(expr);
+      success = SymbolPass_visit_id(pass, expr);
     }
     break;
     
     case eAstNode_call:
     {
-      success = visit_call(expr);
+      success = SymbolPass_visit_call(pass, expr);
     }
     break;
 
     case eAstNode_array:
     {
-      success = visit_array(expr);
+      success = SymbolPass_visit_array(pass, expr);
     }
     break;
 
     case eAstNode_pointer:
     {
-      success = visit_pointer(expr);
+      success = SymbolPass_visit_pointer(pass, expr);
     }
     break;
 
@@ -529,19 +531,19 @@ bool SymbolPass::visit_expr(AstNode* expr)
 
     case eAstNode_lit:
     {
-      success = visit_lit(expr);
+      success = SymbolPass_visit_lit(pass, expr);
     }
     break;
     
     case eAstNode_index:
     {
-      success = visit_index(expr);
+      success = SymbolPass_visit_index(pass, expr);
     }
     break;
 
     case eAstNode_assign:
     {
-      success = visit_assign(expr);
+      success = SymbolPass_visit_assign(pass, expr);
     }
     break;
 
@@ -550,54 +552,56 @@ bool SymbolPass::visit_expr(AstNode* expr)
   return success;
 }
 
-bool SymbolPass::visit_if(AstNode* if_)
+bool SymbolPass_visit_block_stmt(SymbolPass* pass, AstNode* stmt);
+
+bool SymbolPass_visit_if(SymbolPass* pass, AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
   bool success = true;
   
-  if(success = visit_expr(if_->if_.cond_expr) && visit_block_stmt(if_->if_.body))
+  if(success = SymbolPass_visit_expr(pass, if_->if_.cond_expr) && SymbolPass_visit_block_stmt(pass, if_->if_.body))
   {
     if(success && if_->if_.else_body)
     {
-      success = visit_block_stmt(if_->if_.else_body);
+      success = SymbolPass_visit_block_stmt(pass, if_->if_.else_body);
     }
   }
 
   return success;
 }
 
-bool SymbolPass::visit_do_while(AstNode* do_while)
+bool SymbolPass_visit_do_while(SymbolPass* pass, AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
-  do_while->do_while.scope = begin_nested_scope(eScope_while, do_while);
-  success = visit_block_stmt(do_while->do_while.body) &&
-    visit_expr(do_while->do_while.cond_expr);
-  end_nested_scope();
+  do_while->do_while.scope = begin_nested_scope(pass, eScope_while, do_while);
+  success = SymbolPass_visit_block_stmt(pass, do_while->do_while.body) &&
+    SymbolPass_visit_expr(pass, do_while->do_while.cond_expr);
+  end_nested_scope(pass);
 
   return success;
 }
 
-bool SymbolPass::visit_while(AstNode* while_)
+bool SymbolPass_visit_while(SymbolPass* pass, AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
   
-  if(success = visit_expr(while_->while_.cond_expr))
+  if(success = SymbolPass_visit_expr(pass, while_->while_.cond_expr))
   {
-    while_->while_.scope = begin_nested_scope(eScope_while, while_);
-    success = visit_block_stmt(while_->while_.body);
-    end_nested_scope();
+    while_->while_.scope = begin_nested_scope(pass, eScope_while, while_);
+    success = SymbolPass_visit_block_stmt(pass, while_->while_.body);
+    end_nested_scope(pass);
   }
   return success;
 }
 
-bool SymbolPass::visit_loop_ctrl(AstNode* stmt)
+bool SymbolPass_visit_loop_ctrl(SymbolPass* pass, AstNode* stmt)
 {
   bool success = true;
   
-  Scope* loop_scope = find_scope(active_scope, eScope_while);
+  Scope* loop_scope = find_scope(pass->active_scope, eScope_while);
   if(loop_scope)
   {
     stmt->loop_ctrl.loop = loop_scope->ast_node;
@@ -612,18 +616,18 @@ bool SymbolPass::visit_loop_ctrl(AstNode* stmt)
     else
       assert(0);
 
-    success = compile_error(gp_arena, stmt->src_loc, "unexpected `%s`", keyword);
+    success = compile_error(pass->gp_arena, stmt->src_loc, "unexpected `%s`", keyword);
   }
 
   return success;
 }
 
-bool SymbolPass::visit_return(AstNode* ret)
+bool SymbolPass_visit_return(SymbolPass* pass, AstNode* ret)
 {
   assert(KIND(ret, eAstNode_return));
   bool success = true;
   
-  Scope* proc_scope = find_scope(active_scope, eScope_proc);
+  Scope* proc_scope = find_scope(pass->active_scope, eScope_proc);
   if(proc_scope)
   {
     assert(KIND(proc_scope->ast_node, eAstNode_proc));
@@ -631,16 +635,18 @@ bool SymbolPass::visit_return(AstNode* ret)
     ret->ret.proc = proc_scope->ast_node;
     if(ret->ret.expr)
     {
-      success = visit_expr(ret->ret.expr);
+      success = SymbolPass_visit_expr(pass, ret->ret.expr);
     }
   }
   else
-    success = compile_error(gp_arena, ret->src_loc, "unexpected `return`");
+    success = compile_error(pass->gp_arena, ret->src_loc, "unexpected `return`");
 
   return success;
 }
 
-bool SymbolPass::visit_block_stmt(AstNode* stmt)
+bool SymbolPass_visit_block(SymbolPass* pass, AstNode* block);
+
+bool SymbolPass_visit_block_stmt(SymbolPass* pass, AstNode* stmt)
 {
   bool success = true;
   
@@ -648,45 +654,45 @@ bool SymbolPass::visit_block_stmt(AstNode* stmt)
   {
     case eAstNode_var:
     {
-      success = visit_var(stmt);
+      success = SymbolPass_visit_var(pass, stmt);
     }
     break;
     
     case eAstNode_if:
     {
-      success = visit_if(stmt);
+      success = SymbolPass_visit_if(pass, stmt);
     }
     break;
     
     case eAstNode_do_while:
     {
-      success = visit_do_while(stmt);
+      success = SymbolPass_visit_do_while(pass, stmt);
     }
     break;
     
     case eAstNode_while:
     {
-      success = visit_while(stmt);
+      success = SymbolPass_visit_while(pass, stmt);
     }
     break;
     
     case eAstNode_block:
     {
-      stmt->block.scope = begin_nested_scope(eScope_block, stmt);
-      success = visit_block(stmt);
-      end_nested_scope();
+      stmt->block.scope = begin_nested_scope(pass, eScope_block, stmt);
+      success = SymbolPass_visit_block(pass, stmt);
+      end_nested_scope(pass);
     }
     break;
     
     case eAstNode_assign:
     {
-      success = visit_assign(stmt);
+      success = SymbolPass_visit_assign(pass, stmt);
     }
     break;
     
     case eAstNode_cast:
     {
-      success = visit_cast(stmt);
+      success = SymbolPass_visit_cast(pass, stmt);
     }
     break;
     
@@ -696,19 +702,19 @@ bool SymbolPass::visit_block_stmt(AstNode* stmt)
     case eAstNode_call:
     case eAstNode_lit:
     {
-      success = visit_expr(stmt);
+      success = SymbolPass_visit_expr(pass, stmt);
     }
     break;
     
     case eAstNode_loop_ctrl:
     {
-      success = visit_loop_ctrl(stmt);
+      success = SymbolPass_visit_loop_ctrl(pass, stmt);
     }
     break;
     
     case eAstNode_return:
     {
-      success = visit_return(stmt);
+      success = SymbolPass_visit_return(pass, stmt);
     }
     break;
     
@@ -718,7 +724,7 @@ bool SymbolPass::visit_block_stmt(AstNode* stmt)
     
     case eAstNode_index:
     {
-      success = visit_index(stmt);
+      success = SymbolPass_visit_index(pass, stmt);
     }
     break;
     
@@ -727,7 +733,7 @@ bool SymbolPass::visit_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool SymbolPass::visit_block(AstNode* block)
+bool SymbolPass_visit_block(SymbolPass* pass, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -737,7 +743,7 @@ bool SymbolPass::visit_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = visit_block_stmt(stmt);
+    success = SymbolPass_visit_block_stmt(pass, stmt);
   }
 
   return success;
@@ -748,7 +754,7 @@ bool is_extern_proc(AstNode* proc)
   return (proc->proc.modifier & eModifier_extern) != 0;
 }
 
-bool SymbolPass::visit_proc_body(AstNode* proc)
+bool SymbolPass_visit_proc_body(SymbolPass* pass, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
@@ -759,20 +765,20 @@ bool SymbolPass::visit_proc_body(AstNode* proc)
   {
     if(body->kind != eAstNode_empty)
     {
-      success = compile_error(gp_arena, proc->src_loc, "`extern` proc `%s` must not define a body", proc->proc.name);
+      success = compile_error(pass->gp_arena, proc->src_loc, "`extern` proc `%s` must not define a body", proc->proc.name);
     }
   }
   else
   {
     if(body->kind == eAstNode_block)
     {
-      body->block.scope = begin_scope(eScope_block, body);
-      success = visit_block(body);
-      end_scope();
+      body->block.scope = begin_scope(pass, eScope_block, body);
+      success = SymbolPass_visit_block(pass, body);
+      end_scope(pass);
     }
     else if(body->kind == eAstNode_empty)
     {
-      success = compile_error(gp_arena, proc->src_loc, "proc `%s` must define a body", proc->proc.name);
+      success = compile_error(pass->gp_arena, proc->src_loc, "proc `%s` must define a body", proc->proc.name);
     }
     else assert(0);
   }
@@ -780,7 +786,7 @@ bool SymbolPass::visit_proc_body(AstNode* proc)
   return success;
 }
 
-bool SymbolPass::visit_formal_args(Scope* param_scope, AstNode* args)
+bool SymbolPass_visit_formal_args(SymbolPass* pass, Scope* param_scope, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -790,80 +796,80 @@ bool SymbolPass::visit_formal_args(Scope* param_scope, AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = visit_formal_arg(param_scope, arg);
+    success = SymbolPass_visit_formal_arg(pass, param_scope, arg);
   }
 
   return success;
 }
 
-bool SymbolPass::visit_module_proc(AstNode* proc)
+bool SymbolPass_visit_module_proc(SymbolPass* pass, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
   
-  Symbol* decl_sym = lookup_decl_symbol(active_scope, proc->proc.name);
-  if(decl_sym && (decl_sym->scope == active_scope))
+  Symbol* decl_sym = lookup_decl_symbol(pass->active_scope, proc->proc.name);
+  if(decl_sym && (decl_sym->scope == pass->active_scope))
   {
-    success = compile_error(gp_arena, proc->src_loc, "name `%s` has already been declared", proc->proc.name);
-    compile_error(gp_arena, decl_sym->src_loc, "see the declaration of `%s`", proc->proc.name);
+    success = compile_error(pass->gp_arena, proc->src_loc, "name `%s` has already been declared", proc->proc.name);
+    compile_error(pass->gp_arena, decl_sym->src_loc, "see the declaration of `%s`", proc->proc.name);
   }
   else
   {
-    proc->proc.decl_sym = add_decl(proc->proc.name, eStorageSpace_None, active_scope, proc);
-    proc->proc.param_scope = begin_nested_scope(eScope_args, proc);
-    proc->proc.retvar = add_decl(gen_tempvar_name(gp_arena, "ret_"),
+    proc->proc.decl_sym = add_decl_symbol(pass, proc->proc.name, eStorageSpace_None, pass->active_scope, proc);
+    proc->proc.param_scope = begin_nested_scope(pass, eScope_args, proc);
+    proc->proc.retvar = add_decl_symbol(pass, gen_tempvar_name(pass->gp_arena, "ret_"),
                                  eStorageSpace_formal_param, proc->proc.param_scope, proc->proc.ret_type);
 
     if(is_extern_proc(proc))
     {
-      success = visit_formal_args(proc->proc.param_scope, proc->proc.args) && visit_expr(proc->proc.ret_type);
+      success = SymbolPass_visit_formal_args(pass, proc->proc.param_scope, proc->proc.args) && SymbolPass_visit_expr(pass, proc->proc.ret_type);
     }
     else
     {
-      proc->proc.scope = begin_scope(eScope_proc, proc);
+      proc->proc.scope = begin_scope(pass, eScope_proc, proc);
 
-      if(success = visit_formal_args(proc->proc.param_scope, proc->proc.args)
-         && visit_expr(proc->proc.ret_type) && visit_proc_body(proc))
+      if(success = SymbolPass_visit_formal_args(pass, proc->proc.param_scope, proc->proc.args)
+         && SymbolPass_visit_expr(pass, proc->proc.ret_type) && SymbolPass_visit_proc_body(pass, proc))
       {
         ;//ok
       }
 
-      end_scope();
+      end_scope(pass);
     }
 
-    end_nested_scope();
+    end_nested_scope(pass);
   }
 
   return success;
 }
 
-bool SymbolPass::visit_module_var(AstNode* module, AstNode* var)
+bool SymbolPass_visit_module_var(SymbolPass* pass, AstNode* module, AstNode* var)
 {
   assert(KIND(module, eAstNode_module));
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
-  Symbol* decl_sym = lookup_decl_symbol(active_scope, var->var.name);
-  if(decl_sym && (decl_sym->scope == active_scope))
+  Symbol* decl_sym = lookup_decl_symbol(pass->active_scope, var->var.name);
+  if(decl_sym && (decl_sym->scope == pass->active_scope))
   {
-    success = compile_error(gp_arena, var->src_loc, "name `%s` already declared", var->var.name);
-    compile_error(gp_arena, decl_sym->src_loc, "see declaration of `%s`", var->var.name);
+    success = compile_error(pass->gp_arena, var->src_loc, "name `%s` already declared", var->var.name);
+    compile_error(pass->gp_arena, decl_sym->src_loc, "see declaration of `%s`", var->var.name);
   }
   else
   {
-    var->var.decl_sym = add_decl(var->var.name, eStorageSpace_static, active_scope, var);
+    var->var.decl_sym = add_decl_symbol(pass, var->var.name, eStorageSpace_static, pass->active_scope, var);
   }
 
   return success;
 }
 
-bool SymbolPass::visit_module(AstNode* module)
+bool SymbolPass_visit_module(SymbolPass* pass, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
   
-  module->module.scope = begin_nested_scope(eScope_module, module);
-  module_scope = module->module.scope;
+  module->module.scope = begin_nested_scope(pass, eScope_module, module);
+  pass->module_scope = module->module.scope;
   
   for(ListItem* li = module->module.nodes.first;
       li && success;
@@ -874,13 +880,13 @@ bool SymbolPass::visit_module(AstNode* module)
     {
       case eAstNode_var:
       {
-        success = visit_module_var(module, stmt);
+        success = SymbolPass_visit_module_var(pass, module, stmt);
       }
       break;
       
       case eAstNode_proc:
       {
-        success = visit_module_proc(stmt);
+        success = SymbolPass_visit_module_proc(pass, stmt);
       }
       break;
       
@@ -890,16 +896,11 @@ bool SymbolPass::visit_module(AstNode* module)
       default: assert(0);
     }
   }
-  end_nested_scope();
+  end_nested_scope(pass);
 
-  assert(active_scope == 0);
-  assert(nesting_depth == -1);
+  assert(pass->active_scope == 0);
+  assert(pass->nesting_depth == -1);
 
   return success;
-}
-
-bool SymbolPass::process(AstNode* module)
-{
-  return visit_module(module);
 }
 

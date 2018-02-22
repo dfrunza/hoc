@@ -154,7 +154,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   TypePass* type_pass = new_type_pass(push_arena(&arena, 2*MEGABYTE));
 
   SymbolPass sym_pass = {};
-  sym_pass.init(gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass);
+  init_symbol_pass(&sym_pass, gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass);
 
   IrContext ir_context = {};
   ir_context.init(gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass, &sym_pass);
@@ -174,15 +174,15 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
 
   AstNode* module = parser->module;
 
-  if(!(sym_pass.process(module) && run_type_pass(type_pass, module)))
+  if(!(SymbolPass_visit_module(&sym_pass, module) && run_type_pass(type_pass, module)))
   {
     return false;
   }
 
   /* FIXME: Nasty dependencies */
-  ir_context.bool_true = sym_pass.create_const_int(0, 1);
-  ir_context.bool_false = sym_pass.create_const_int(0, 0);
-  x86_context.float_minus_one = sym_pass.create_const_float(0, -1.0);
+  ir_context.bool_true = new_const_int_object(&sym_pass, 0, 1);
+  ir_context.bool_false = new_const_int_object(&sym_pass, 0, 0);
+  x86_context.float_minus_one = new_const_float_object(&sym_pass, 0, -1.0);
 
   if(!ir_context.visit_module(module))
   {

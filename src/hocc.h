@@ -1091,54 +1091,10 @@ struct SymbolPass
   int nesting_depth;
   int data_alignment;
   X86Context* x86_context;
-
-  Symbol* create_const(Type* ty, SourceLoc* src_loc);
-  Symbol* create_const_int(SourceLoc* src_loc, int int_val);
-  Symbol* create_const_char(SourceLoc* src_loc, char char_val);
-  Symbol* create_const_str(SourceLoc* src_loc, char* str_val);
-  Symbol* create_const_float(SourceLoc* src_loc, float float_val);
-
-  Scope* begin_scope(eScope kind, AstNode* ast_node);
-  void   end_scope();
-  Scope* begin_nested_scope(eScope kind, AstNode* ast_node);
-  void   end_nested_scope();
-  Symbol* add_decl(char* name, eStorageSpace storage_space, Scope* scope, AstNode* ast_node);
-  void init(MemoryArena* gp_arena, MemoryArena* sym_arena, TypePass* type_pass);
-
-  bool visit_lit(AstNode* lit);
-  bool visit_array(AstNode* array);
-  bool visit_expr(AstNode* expr);
-  bool visit_cast(AstNode* cast);
-  bool visit_index(AstNode* index);
-  bool visit_call(AstNode* call);
-  bool visit_actual_args(AstNode* args);
-  bool visit_unr_expr(AstNode* unr_expr);
-  bool visit_bin_expr(AstNode* bin_expr);
-  bool visit_id(AstNode* id);
-  bool visit_if(AstNode* if_);
-  bool visit_do_while(AstNode* do_while);
-  bool visit_while(AstNode* while_);
-  bool visit_loop_ctrl(AstNode* stmt);
-  bool visit_return(AstNode* ret);
-  bool visit_block_stmt(AstNode* stmt);
-  bool visit_block(AstNode* block);
-  bool visit_proc_body(AstNode* proc);
-  bool visit_formal_args(Scope* param_scope, AstNode* args);
-  bool visit_module_proc(AstNode* proc);
-  bool visit_module_var(AstNode* module, AstNode* var);
-  bool visit_module(AstNode* module);
-  bool visit_pointer(AstNode* pointer);
-  bool visit_assign(AstNode* assign);
-  bool visit_var(AstNode* var);
-  bool visit_formal_arg(Scope* proc_scope, AstNode* arg);
-
-  bool process(AstNode* module);
 };
 
 struct IrContext
 {
-#define IrContext_DEBUG_line_nr_gutter_width 10
-
   Type* basic_type_bool;
   Type* basic_type_int;
   Type* basic_type_char;

@@ -517,7 +517,7 @@ bool IrContext::visit_index(Scope* scope, AstNode* index)
       Type* index_ty = index->ty;
       int size_val = KIND(index_ty, eType_array)->array.size;
 
-      Symbol* size_constant = sym_pass->create_const_int(index->src_loc, size_val);
+      Symbol* size_constant = new_const_int_object(this->sym_pass, index->src_loc, size_val);
       IrArg* dim_size = create_arg_existing_object(size_constant);
 
       if(size_val > 0)
@@ -546,7 +546,7 @@ bool IrContext::visit_index_with_offset(Scope* scope, AstNode* index)
     assert(index->index.ndim == 1);
     int width_val = index->eval_ty->width;
 
-    Symbol* width_constant = sym_pass->create_const_int(index->src_loc, width_val);
+    Symbol* width_constant = new_const_int_object(sym_pass, index->src_loc, width_val);
     IrArg* width = create_arg_existing_object(width_constant);
 
     emit_assign(eIrOp_mul, index->index.i_place, width, offset);

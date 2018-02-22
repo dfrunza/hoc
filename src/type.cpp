@@ -163,8 +163,7 @@ Type* new_pointer_type(TypePass* pass, Type* pointee)
 
 TypePass* new_type_pass(MemoryArena* arena)
 {
-  int struct_size = maximum_of_int(3,
-                                   sizeof(TypePass_Eval),
+  int struct_size = maximum_of_int(2,
                                    sizeof(TypePass_Resolve),
                                    sizeof(TypePass_Check));
 
@@ -1331,26 +1330,29 @@ bool SetTypePass_visit_module(TypePass* pass, AstNode* module)
 //       EVAL TYPES
 //-----------------------------------------------------
 
-bool TypePass_Eval::visit_array(AstNode* array)
+bool EvalTypePass_visit_expr(TypePass* pass, AstNode* expr);
+bool EvalTypePass_visit_type(TypePass* pass, AstNode* type);
+
+bool EvalTypePass_visit_array(TypePass* pass, AstNode* array)
 {
   assert(KIND(array, eAstNode_array));
   bool success = true;
   
-  success = visit_expr(array->array.size_expr) && visit_type(array->array.elem_expr);
+  success = EvalTypePass_visit_expr(pass, array->array.size_expr) && EvalTypePass_visit_type(pass, array->array.elem_expr);
   return success;
 }
 
-bool TypePass_Eval::visit_pointer(AstNode* pointer)
+bool EvalTypePass_visit_pointer(TypePass* pass, AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode_pointer));
 
   bool success = true;
-  success = visit_expr(pointer->pointer.pointee);
+  success = EvalTypePass_visit_expr(pass, pointer->pointer.pointee);
 
   return success;
 }
 
-bool TypePass_Eval::visit_type(AstNode* type)
+bool EvalTypePass_visit_type(TypePass* pass, AstNode* type)
 {
   bool success = true;
   
@@ -1358,37 +1360,34 @@ bool TypePass_Eval::visit_type(AstNode* type)
   {
     case eAstNode_pointer:
     {
-      success = visit_pointer(type);
+      success = EvalTypePass_visit_pointer(pass, type);
     }
     break;
 
     case eAstNode_array:
     {
-      success = visit_array(type);
+      success = EvalTypePass_visit_array(pass, type);
     }
     break;
 
     case eAstNode_basic_type:
-    {
-      breakpoint();
-    }
     break;
   }
 
   return success;
 }
 
-bool TypePass_Eval::visit_cast(AstNode* cast)
+bool EvalTypePass_visit_cast(TypePass* pass, AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
 
   bool success = true;
-  success = visit_type(cast->cast.to_type) && visit_expr(cast->cast.from_expr);
+  success = EvalTypePass_visit_type(pass, cast->cast.to_type) && EvalTypePass_visit_expr(pass, cast->cast.from_expr);
 
   return success;
 }
 
-bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
+bool EvalTypePass_visit_bin_expr(TypePass* pass, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
@@ -1397,7 +1396,7 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
   AstNode* right_operand = bin_expr->bin_expr.right_operand;
   eOperator op = bin_expr->bin_expr.op;
   
-  if(success = visit_expr(left_operand) && visit_expr(right_operand))
+  if(success = EvalTypePass_visit_expr(pass, left_operand) && EvalTypePass_visit_expr(pass, right_operand))
   {
     switch(op)
     {
@@ -1405,28 +1404,28 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
       case eOperator_bit_or:
       case eOperator_bit_xor:
       {
-        if(type_unif(left_operand->eval_ty, basic_type_int)
-           && type_unif(right_operand->eval_ty, basic_type_int)
-           && type_unif(bin_expr->eval_ty, basic_type_int))
+        if(type_unif(left_operand->eval_ty, pass->basic_type_int)
+           && type_unif(right_operand->eval_ty, pass->basic_type_int)
+           && type_unif(bin_expr->eval_ty, pass->basic_type_int))
         {
           ;//ok
         }
         else
-          success = compile_error(arena, bin_expr->src_loc, "type error (bitwise op)");
+          success = compile_error(pass->arena, bin_expr->src_loc, "type error (bitwise op)");
       }
       break;
       
       case eOperator_bit_shift_left:
       case eOperator_bit_shift_right:
       {
-        if(type_unif(left_operand->eval_ty, basic_type_int)
-           && type_unif(right_operand->eval_ty, basic_type_char)
-           && type_unif(bin_expr->eval_ty, basic_type_int))
+        if(type_unif(left_operand->eval_ty, pass->basic_type_int)
+           && type_unif(right_operand->eval_ty, pass->basic_type_char)
+           && type_unif(bin_expr->eval_ty, pass->basic_type_int))
         {
           ;//ok
         }
         else
-          success = compile_error(arena, bin_expr->src_loc, "type error (bitwise op)");
+          success = compile_error(pass->arena, bin_expr->src_loc, "type error (bitwise op)");
       }
       break;
       
@@ -1446,9 +1445,9 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
             case eOperator_logic_or:
             case eOperator_logic_not:
             {
-              if(!type_unif(bin_expr->eval_ty, basic_type_bool))
+              if(!type_unif(bin_expr->eval_ty, pass->basic_type_bool))
               {
-                success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
+                success = compile_error(pass->arena, bin_expr->src_loc, "type error (bin expr)");
               }
             }
             break;
@@ -1457,14 +1456,14 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
             {
               if(!type_unif(bin_expr->eval_ty, left_operand->eval_ty))
               {
-                success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
+                success = compile_error(pass->arena, bin_expr->src_loc, "type error (bin expr)");
               }
             }
             break;
           }
         }
         else
-          success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
+          success = compile_error(pass->arena, bin_expr->src_loc, "type error (bin expr)");
       }
       break;
     }
@@ -1474,7 +1473,7 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
       Type* bin_expr_ty = KIND(bin_expr->ty, eType_proc);
       if(!type_unif(bin_expr_ty->proc.ret, bin_expr->eval_ty))
       {
-        success = compile_error(arena, bin_expr->src_loc, "type error (bin expr)");
+        success = compile_error(pass->arena, bin_expr->src_loc, "type error (bin expr)");
       }
     }
   }
@@ -1482,7 +1481,7 @@ bool TypePass_Eval::visit_bin_expr(AstNode* bin_expr)
   return success;
 }
 
-bool TypePass_Eval::visit_id(AstNode* id)
+bool EvalTypePass_visit_id(TypePass* pass, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   bool success = true;
@@ -1496,7 +1495,7 @@ bool TypePass_Eval::visit_id(AstNode* id)
       id->id.decl_ast = id->id.decl_sym->ast_node;
     }
     else
-      success = compile_error(arena, id->src_loc, "unknown id `%s`", id->id.name);
+      success = compile_error(pass->arena, id->src_loc, "unknown id `%s`", id->id.name);
   }
 
   if(success)
@@ -1510,13 +1509,13 @@ bool TypePass_Eval::visit_id(AstNode* id)
           {
             if((id->id.decl_sym->scope == id->id.scope) && (id->id.decl_sym->order_nr > id->id.order_nr))
             {
-              success = compile_error(arena, id->src_loc, "var `%s` must be declared before its use", id->id.name);
+              success = compile_error(pass->arena, id->src_loc, "var `%s` must be declared before its use", id->id.name);
             }
             else
             {
               if(!type_unif(decl_ast->ty->var.type, id->eval_ty))
               {
-                success = compile_error(arena, id->src_loc, "type error (var id)");
+                success = compile_error(pass->arena, id->src_loc, "type error (var id)");
               }
             }
           }
@@ -1526,7 +1525,7 @@ bool TypePass_Eval::visit_id(AstNode* id)
         {
           if(!type_unif(decl_ast->ty->proc.ret, id->eval_ty))
           {
-            success = compile_error(arena, id->src_loc, "type error (proc id)");
+            success = compile_error(pass->arena, id->src_loc, "type error (proc id)");
           }
         }
         break;
@@ -1535,13 +1534,13 @@ bool TypePass_Eval::visit_id(AstNode* id)
       }
     }
     else
-      success = compile_error(arena, id->src_loc, "type error (id)");
+      success = compile_error(pass->arena, id->src_loc, "type error (id)");
   }
 
   return success;
 }
 
-bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
+bool EvalTypePass_visit_unr_expr(TypePass* pass, AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
@@ -1549,7 +1548,7 @@ bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
   AstNode* operand = unr_expr->unr_expr.operand;
   eOperator op = unr_expr->unr_expr.op;
   
-  if(success = visit_expr(operand))
+  if(success = EvalTypePass_visit_expr(pass, operand))
   {
     switch(op)
     {
@@ -1558,22 +1557,22 @@ bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
       case eOperator_bit_not:
       if(!type_unif(unr_expr->eval_ty, operand->eval_ty))
       {
-        success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
+        success = compile_error(pass->arena, unr_expr->src_loc, "type error (unr expr)");
       }
       break;
       
       case eOperator_deref:
       {
-        Type* pointee_ty = new_typevar(this);
-        if(type_unif(operand->eval_ty, new_pointer_type(this, pointee_ty)))
+        Type* pointee_ty = new_typevar(pass);
+        if(type_unif(operand->eval_ty, new_pointer_type(pass, pointee_ty)))
         {
           if(!type_unif(unr_expr->eval_ty, pointee_ty))
           {
-            success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
+            success = compile_error(pass->arena, unr_expr->src_loc, "type error (unr expr)");
           }
         }
         else
-          success = compile_error(arena, operand->src_loc, "pointer type expected");
+          success = compile_error(pass->arena, operand->src_loc, "pointer type expected");
       }
       break;
       
@@ -1591,7 +1590,7 @@ bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
       Type* unr_expr_ty = KIND(unr_expr->ty, eType_proc);
       if(!type_unif(unr_expr_ty->proc.ret, unr_expr->eval_ty))
       {
-        success = compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
+        success = compile_error(pass->arena, unr_expr->src_loc, "type error (unr expr)");
       }
     }
   }
@@ -1599,7 +1598,7 @@ bool TypePass_Eval::visit_unr_expr(AstNode* unr_expr)
   return success;
 }
 
-bool TypePass_Eval::visit_var(AstNode* var)
+bool EvalTypePass_visit_var(TypePass* pass, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
   bool success = true;
@@ -1609,24 +1608,24 @@ bool TypePass_Eval::visit_var(AstNode* var)
     AstNode* init_expr = var->var.init_expr;
     if(init_expr)
     {
-      if(success = visit_expr(init_expr))
+      if(success = EvalTypePass_visit_expr(pass, init_expr))
       {
         if(!type_unif(var->eval_ty, init_expr->eval_ty))
         {
-          success = compile_error(arena, var->src_loc, "type error (var init expr)");
+          success = compile_error(pass->arena, var->src_loc, "type error (var init expr)");
         }
       }
     }
   }
   else
   {
-    success = compile_error(arena, var->src_loc, "type error (var)");
+    success = compile_error(pass->arena, var->src_loc, "type error (var)");
   }
 
   return success;
 }
 
-bool TypePass_Eval::visit_formal_args(AstNode* args)
+bool EvalTypePass_visit_formal_args(TypePass* pass, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -1636,13 +1635,13 @@ bool TypePass_Eval::visit_formal_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = visit_var(arg);
+    success = EvalTypePass_visit_var(pass, arg);
   }
 
   return success;
 }
 
-bool TypePass_Eval::visit_actual_args(AstNode* args)
+bool EvalTypePass_visit_actual_args(TypePass* pass, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -1652,43 +1651,43 @@ bool TypePass_Eval::visit_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = visit_expr(arg->call_arg.expr);
+    success = EvalTypePass_visit_expr(pass, arg->call_arg.expr);
   }
 
   return success;
 }
 
-bool TypePass_Eval::visit_call(AstNode* call)
+bool EvalTypePass_visit_call(TypePass* pass, AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
 
   bool success = true;
-  success = visit_id(call->call.expr) && visit_actual_args(call->call.args);
+  success = EvalTypePass_visit_id(pass, call->call.expr) && EvalTypePass_visit_actual_args(pass, call->call.args);
 
   return success;
 }
 
-bool TypePass_Eval::visit_index(AstNode* index)
+bool EvalTypePass_visit_index(TypePass* pass, AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
 
   bool success = true;
-  success = visit_expr(index->index.array_expr) && visit_expr(index->index.i_expr);
+  success = EvalTypePass_visit_expr(pass, index->index.array_expr) && EvalTypePass_visit_expr(pass, index->index.i_expr);
 
   return success;
 }
 
-bool TypePass_Eval::visit_assign(AstNode* assign)
+bool EvalTypePass_visit_assign(TypePass* pass, AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
 
   bool success = true;
-  success = visit_expr(assign->assign.dest_expr) && visit_expr(assign->assign.source_expr);
+  success = EvalTypePass_visit_expr(pass, assign->assign.dest_expr) && EvalTypePass_visit_expr(pass, assign->assign.source_expr);
 
   return success;
 }
 
-bool TypePass_Eval::visit_expr(AstNode* expr)
+bool EvalTypePass_visit_expr(TypePass* pass, AstNode* expr)
 {
   bool success = true;
   
@@ -1696,37 +1695,37 @@ bool TypePass_Eval::visit_expr(AstNode* expr)
   {
     case eAstNode_cast:
     {
-      success = visit_cast(expr);
+      success = EvalTypePass_visit_cast(pass, expr);
     }
     break;
     
     case eAstNode_bin_expr:
     {
-      success = visit_bin_expr(expr);
+      success = EvalTypePass_visit_bin_expr(pass, expr);
     }
     break;
     
     case eAstNode_unr_expr:
     {
-      success = visit_unr_expr(expr);
+      success = EvalTypePass_visit_unr_expr(pass, expr);
     }
     break;
     
     case eAstNode_id:
     {
-      success = visit_id(expr);
+      success = EvalTypePass_visit_id(pass, expr);
     }
     break;
     
     case eAstNode_call:
     {
-      success = visit_call(expr);
+      success = EvalTypePass_visit_call(pass, expr);
     }
     break;
     
     case eAstNode_index:
     {
-      success = visit_index(expr);
+      success = EvalTypePass_visit_index(pass, expr);
     }
     break;
     
@@ -1737,13 +1736,13 @@ bool TypePass_Eval::visit_expr(AstNode* expr)
     case eAstNode_pointer:
     case eAstNode_array:
     {
-      success = visit_type(expr);
+      success = EvalTypePass_visit_type(pass, expr);
     }
     break;
 
     case eAstNode_assign:
     {
-      success = visit_assign(expr);
+      success = EvalTypePass_visit_assign(pass, expr);
     }
     break;
     
@@ -1752,7 +1751,9 @@ bool TypePass_Eval::visit_expr(AstNode* expr)
   return success;
 }
 
-bool TypePass_Eval::visit_if(AstNode* if_)
+bool EvalTypePass_visit_block_stmt(TypePass* pass, AstNode* stmt);
+
+bool EvalTypePass_visit_if(TypePass* pass, AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
   bool success = true;
@@ -1761,20 +1762,20 @@ bool TypePass_Eval::visit_if(AstNode* if_)
   AstNode* body = if_->if_.body;
   AstNode* else_body = if_->if_.else_body;
   
-  if(success = visit_expr(cond_expr) &&
-     visit_block_stmt(body) &&
-     (else_body ? visit_block_stmt(else_body) : true))
+  if(success = EvalTypePass_visit_expr(pass, cond_expr) &&
+     EvalTypePass_visit_block_stmt(pass, body) &&
+     (else_body ? EvalTypePass_visit_block_stmt(pass, else_body) : true))
   {
-    if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+    if(!type_unif(cond_expr->eval_ty, pass->basic_type_bool))
     {
-      success = compile_error(arena, cond_expr->src_loc, "bool expression was expected");
+      success = compile_error(pass->arena, cond_expr->src_loc, "bool expression was expected");
     }
   }
 
   return success;
 }
 
-bool TypePass_Eval::visit_block(AstNode* block)
+bool EvalTypePass_visit_block(TypePass* pass, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -1784,65 +1785,65 @@ bool TypePass_Eval::visit_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = visit_block_stmt(stmt);
+    success = EvalTypePass_visit_block_stmt(pass, stmt);
   }
 
   return success;
 }
 
-bool TypePass_Eval::visit_do_while(AstNode* do_while)
+bool EvalTypePass_visit_do_while(TypePass* pass, AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
   AstNode* cond_expr = do_while->do_while.cond_expr;
-  if(success = visit_block_stmt(do_while->do_while.body) && visit_expr(cond_expr))
+  if(success = EvalTypePass_visit_block_stmt(pass, do_while->do_while.body) && EvalTypePass_visit_expr(pass, cond_expr))
   {
-    if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+    if(!type_unif(cond_expr->eval_ty, pass->basic_type_bool))
     {
-      success = compile_error(arena, cond_expr->src_loc, "bool expression was expected");
+      success = compile_error(pass->arena, cond_expr->src_loc, "bool expression was expected");
     }
   }
   return success;
 }
 
-bool TypePass_Eval::visit_while(AstNode* while_)
+bool EvalTypePass_visit_while(TypePass* pass, AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
   
   AstNode* cond_expr = while_->while_.cond_expr;
-  if(success = visit_expr(cond_expr) && visit_block_stmt(while_->while_.body))
+  if(success = EvalTypePass_visit_expr(pass, cond_expr) && EvalTypePass_visit_block_stmt(pass, while_->while_.body))
   {
-    if(!type_unif(cond_expr->eval_ty, basic_type_bool))
+    if(!type_unif(cond_expr->eval_ty, pass->basic_type_bool))
     {
-      success = compile_error(arena, cond_expr->src_loc, "bool expression was expected");
+      success = compile_error(pass->arena, cond_expr->src_loc, "bool expression was expected");
     }
   }
 
   return success;
 }
 
-bool TypePass_Eval::visit_return(AstNode* ret)
+bool EvalTypePass_visit_return(TypePass* pass, AstNode* ret)
 {
   assert(KIND(ret, eAstNode_return));
   bool success = true;
   
   AstNode* ret_expr = ret->ret.expr;
-  if(ret_expr && (success = visit_expr(ret_expr)))
+  if(ret_expr && (success = EvalTypePass_visit_expr(pass, ret_expr)))
   {
     AstNode* proc = ret->ret.proc;
     Type* proc_ty = KIND(proc->ty, eType_proc);
     if(!type_unif(ret_expr->eval_ty, proc_ty->proc.ret))
     {
-      success = compile_error(arena, ret->src_loc, "type error (return)");
+      success = compile_error(pass->arena, ret->src_loc, "type error (return)");
     }
   }
 
   return success;
 }
 
-bool TypePass_Eval::visit_block_stmt(AstNode* stmt)
+bool EvalTypePass_visit_block_stmt(TypePass* pass, AstNode* stmt)
 {
   bool success = true;
   
@@ -1850,13 +1851,13 @@ bool TypePass_Eval::visit_block_stmt(AstNode* stmt)
   {
     case eAstNode_assign:
     {
-      success = visit_assign(stmt);
+      success = EvalTypePass_visit_assign(pass, stmt);
     }
     break;
     
     case eAstNode_cast:
     {
-      success = visit_cast(stmt);
+      success = EvalTypePass_visit_cast(pass, stmt);
     }
     break;
     
@@ -1866,43 +1867,43 @@ bool TypePass_Eval::visit_block_stmt(AstNode* stmt)
     case eAstNode_call:
     case eAstNode_lit:
     {
-      success = visit_expr(stmt);
+      success = EvalTypePass_visit_expr(pass, stmt);
     }
     break;
     
     case eAstNode_if:
     {
-      success = visit_if(stmt);
+      success = EvalTypePass_visit_if(pass, stmt);
     }
     break;
     
     case eAstNode_do_while:
     {
-      success = visit_do_while(stmt);
+      success = EvalTypePass_visit_do_while(pass, stmt);
     }
     break;
     
     case eAstNode_while:
     {
-      success = visit_while(stmt);
+      success = EvalTypePass_visit_while(pass, stmt);
     }
     break;
     
     case eAstNode_block:
     {
-      success = visit_block(stmt);
+      success = EvalTypePass_visit_block(pass, stmt);
     }
     break;
     
     case eAstNode_return:
     {
-      success = visit_return(stmt);
+      success = EvalTypePass_visit_return(pass, stmt);
     }
     break;
     
     case eAstNode_var:
     {
-      success = visit_var(stmt);
+      success = EvalTypePass_visit_var(pass, stmt);
     }
     break;
 
@@ -1912,13 +1913,13 @@ bool TypePass_Eval::visit_block_stmt(AstNode* stmt)
     
     case eAstNode_basic_type:
     {
-      success = visit_type(stmt);
+      success = EvalTypePass_visit_type(pass, stmt);
     }
     break;
     
     case eAstNode_index:
     {
-      success = visit_index(stmt);
+      success = EvalTypePass_visit_index(pass, stmt);
     }
     break;
     
@@ -1928,18 +1929,18 @@ bool TypePass_Eval::visit_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypePass_Eval::visit_proc(AstNode* proc)
+bool EvalTypePass_visit_proc(TypePass* pass, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
-  success = visit_formal_args(proc->proc.args) && visit_block_stmt(proc->proc.body)
-    && visit_type(proc->proc.ret_type);
+  success = EvalTypePass_visit_formal_args(pass, proc->proc.args) && EvalTypePass_visit_block_stmt(pass, proc->proc.body)
+    && EvalTypePass_visit_type(pass, proc->proc.ret_type);
 
   return success;
 }
 
-bool TypePass_Eval::visit_module_stmt(AstNode* stmt)
+bool EvalTypePass_visit_module_stmt(TypePass* pass, AstNode* stmt)
 {
   bool success = true;
   
@@ -1947,7 +1948,7 @@ bool TypePass_Eval::visit_module_stmt(AstNode* stmt)
   {
     case eAstNode_proc:
     {
-      success = visit_proc(stmt);
+      success = EvalTypePass_visit_proc(pass, stmt);
     }
     break;
 
@@ -1960,7 +1961,7 @@ bool TypePass_Eval::visit_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypePass_Eval::visit_module(AstNode* module)
+bool EvalTypePass_visit_module(TypePass* pass, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
@@ -1970,7 +1971,7 @@ bool TypePass_Eval::visit_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = visit_module_stmt(stmt);
+    success = EvalTypePass_visit_module_stmt(pass, stmt);
   }
 
   return success;
@@ -3144,11 +3145,10 @@ bool run_type_pass(TypePass* pass, AstNode* module)
 {
   bool success = true;
 
-  TypePass_Eval* eval = (TypePass_Eval*)pass;
   TypePass_Resolve* resolve = (TypePass_Resolve*)pass;
   TypePass_Check* check = (TypePass_Check*)pass;
 
-  success = SetTypePass_visit_module(pass, module) && eval->visit_module(module)
+  success = SetTypePass_visit_module(pass, module) && EvalTypePass_visit_module(pass, module)
     && resolve->visit_module(module) && check->visit_module(module);
 
   return success;

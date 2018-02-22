@@ -1093,7 +1093,7 @@ struct SymbolPass
   X86Context* x86_context;
 };
 
-struct IrContext
+struct IrPass
 {
   Type* basic_type_bool;
   Type* basic_type_int;
@@ -1118,74 +1118,6 @@ struct IrContext
   Symbol* bool_false;
 
   int current_alloc_offset;
-
-  void emit_assign(eIrOp op, IrArg* arg1, IrArg* arg2, IrArg* result);
-  void emit_label(Label* label);
-  void emit_nop();
-  void emit_cond_goto(eIrOp relop, IrArg* arg1, IrArg* arg2, Label* label);
-  void emit_goto(Label* goto_label);
-  void emit_call(Label* name, Scope* param_scope, Symbol* retvar, bool is_extern);
-  void emit_return();
-
-  bool visit_bin_expr(Scope* scope, AstNode* bin_expr);
-  void visit_id(AstNode* id);
-  bool visit_unr_expr(Scope* scope, AstNode* unr_expr);
-  void visit_lit(Scope* scope, AstNode* lit);
-  bool visit_bool_unr_expr(Scope* scope, AstNode* unr_expr);
-  bool visit_actual_args(Scope* scope, AstNode* args);
-  void visit_call(Scope* scope, AstNode* call);
-  bool visit_index(Scope* scope, AstNode* index);
-  bool visit_index_with_offset(Scope* scope, AstNode* index);
-  bool visit_assign(Scope* scope, AstNode* assign);
-  bool visit_cast(Scope* scope, AstNode* cast);
-  bool visit_expr(Scope* scope, AstNode* expr);
-  bool visit_block(Scope* scope, AstNode* block);
-  bool visit_bool_bin_expr(Scope* scope, AstNode* bin_expr);
-  bool visit_bool_id(Scope* scope, AstNode* id);
-  bool visit_bool_call(Scope* scope, AstNode* call);
-  bool visit_bool_cast(Scope* scope, AstNode* cast);
-  void visit_bool_lit(Scope* scope, AstNode* lit);
-  bool visit_bool_expr(Scope* scope, AstNode* expr);
-  bool visit_do_while(Scope* scope, AstNode* do_while);
-  bool visit_while(Scope* scope, AstNode* while_);
-  bool visit_if(Scope* scope, AstNode* if_);
-  bool visit_return(Scope* scope, AstNode* ret);
-  bool visit_loop_ctrl(Scope* scope, AstNode* loop_ctrl);
-  bool visit_var(Scope* scope, AstNode* var);
-  bool visit_block_stmt(Scope* scope, AstNode* stmt);
-  void visit_formal_args(Scope* scope, AstNode* args);
-  bool visit_proc(Scope* scope, AstNode* proc);
-  void visit_module_var(Scope* scope, AstNode* var);
-  bool visit_module_stmt(Scope* scope, AstNode* stmt);
-  bool visit_module(AstNode* module);
-
-  void DEBUG_print_ir_op(String* text, eIrOp op);
-  void DEBUG_print_ir_arg(String* text, IrArg* arg);
-  void DEBUG_print_ir_stmt(String* text, IrStmt* stmt);
-  void DEBUG_print_basic_block(String* text, BasicBlock* bb);
-  void DEBUG_print_ir_code(List* procs, char* file_path);
-
-  void init(MemoryArena* gp_arena, MemoryArena* stmt_arena, TypePass* type_pass, SymbolPass* sym_pass);
-  void reset();
-  IrArg* create_arg_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc);
-  IrArg* create_arg_existing_object(Symbol* object);
-  void partition_basic_blocks_proc(AstNode* proc);
-  void partition_basic_blocks_module(AstNode* module);
-  Symbol* create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc);
-  void alloc_data_object_incremental(Symbol* sym, Scope* scope);
-  void alloc_scope_data_objects(Scope* scope);
-  void alloc_data_object(Symbol* sym, Scope* scope);
-  void start_basic_block(List* leaders, int at_stmt_nr, IrStmt* stmt_array, int stmt_count);
-  static eIrOp conv_operator_to_ir_op(eOperator op);
-  Label* get_label_at(int stmt_nr);
-  IrLeaderStmt* get_leader_stmt(List* leaders, int stmt_nr);
-  IrLeaderStmt* create_leader_stmt(MemoryArena* arena, int stmt_nr, IrStmt* stmt);
-  void insert_leader_stmt(List* leaders, int stmt_nr, IrStmt* stmt);
-  Label* normalize_jump_target_labels(IrStmt* stmt);
-  int get_proc_arg_size(AstNode* args);
-  static void gen_label_name(MemoryArena* arena, Label* label);
-  static char* new_tempvar_name(MemoryArena* arena, char* label);
-  static bool is_cast_op(eIrOp ir_op);
 };
 
 struct X86Context

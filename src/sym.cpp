@@ -42,39 +42,40 @@ Symbol* lookup_decl_symbol(Scope* scope, char* name)
   return result;
 }
 
-void IrContext::alloc_data_object(Symbol* sym, Scope* scope)
+void alloc_data_object(IrPass* pass, Symbol* sym, Scope* scope)
 {
   sym->data_loc = scope->allocd_size;
+
   sym->allocd_size = sym->ty->width;
-  if((sym->allocd_size & (data_alignment-1)) != 0)
+  if((sym->allocd_size & (pass->data_alignment-1)) != 0)
   {
-    sym->allocd_size = (sym->allocd_size + data_alignment) & ~(data_alignment-1);
+    sym->allocd_size = (sym->allocd_size + pass->data_alignment) & ~(pass->data_alignment-1);
   }
   scope->allocd_size += sym->allocd_size;
 }
 
-void IrContext::alloc_data_object_incremental(Symbol* sym, Scope* scope)
+void alloc_data_object_incremental(IrPass* pass, Symbol* sym, Scope* scope)
 {
-  sym->data_loc = current_alloc_offset;
+  sym->data_loc = pass->current_alloc_offset;
 
   sym->allocd_size = sym->ty->width;
-  if((sym->allocd_size & (data_alignment-1)) != 0)
+  if((sym->allocd_size & (pass->data_alignment-1)) != 0)
   {
-    sym->allocd_size = (sym->allocd_size + data_alignment) & ~(data_alignment-1);
+    sym->allocd_size = (sym->allocd_size + pass->data_alignment) & ~(pass->data_alignment-1);
   }
-
   scope->allocd_size += sym->allocd_size;
-  current_alloc_offset += sym->allocd_size;
+
+  pass->current_alloc_offset += sym->allocd_size;
 }
 
-void IrContext::alloc_scope_data_objects(Scope* scope)
+void alloc_scope_data_objects(IrPass* pass, Scope* scope)
 {
   for(ListItem* li = scope->decl_syms.first;
       li;
       li = li->next)
   {
     Symbol* object = KIND(li, eList_symbol)->symbol;
-    alloc_data_object(object, scope);
+    alloc_data_object(pass, object, scope);
   }
 }
 
@@ -165,11 +166,11 @@ Symbol* new_const_float_object(SymbolPass* pass, SourceLoc* src_loc, float float
   return const_object;
 }
 
-Symbol* IrContext::create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc)
+Symbol* new_temp_object(IrPass* pass, Scope* scope, Type* ty, SourceLoc* src_loc)
 {
-  Symbol* sym = push_struct(sym_pass->sym_arena, Symbol);
+  Symbol* sym = push_struct(pass->sym_pass->sym_arena, Symbol);
 
-  sym->name = gen_tempvar_name(gp_arena, "temp_");
+  sym->name = gen_tempvar_name(pass->gp_arena, "temp_");
   sym->src_loc = src_loc;
   sym->ty = ty;
   sym->scope = scope;
@@ -180,7 +181,7 @@ Symbol* IrContext::create_temp_object(Scope* scope, Type* ty, SourceLoc* src_loc
   sym->is_live = false;
   init_object_locations(sym);
 
-  alloc_data_object_incremental(sym, scope);
+  alloc_data_object_incremental(pass, sym, scope);
   list_append(&scope->decl_syms, sym, eList_symbol);
 
   return sym;

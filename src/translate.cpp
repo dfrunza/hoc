@@ -156,12 +156,12 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   SymbolPass sym_pass = {};
   init_symbol_pass(&sym_pass, gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass);
 
-  IrContext ir_context = {};
-  ir_context.init(gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass, &sym_pass);
+  IrPass ir_pass = {};
+  init_ir_pass(&ir_pass, gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass, &sym_pass);
 
   X86Context x86_context = {};
   init_x86_context(&x86_context, gp_arena, push_arena(&arena, 2*MEGABYTE), push_arena(&arena, 2*MEGABYTE),
-                   type_pass, &ir_context, &sym_pass);
+                   type_pass, &ir_pass, &sym_pass);
 
   Parser* parser = new_parser(gp_arena);
   PlatformFile* file = platform_file_open(gp_arena, file_path);
@@ -180,17 +180,17 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   }
 
   /* FIXME: Nasty dependencies */
-  ir_context.bool_true = new_const_int_object(&sym_pass, 0, 1);
-  ir_context.bool_false = new_const_int_object(&sym_pass, 0, 0);
+  ir_pass.bool_true = new_const_int_object(&sym_pass, 0, 1);
+  ir_pass.bool_false = new_const_int_object(&sym_pass, 0, 0);
   x86_context.float_minus_one = new_const_float_object(&sym_pass, 0, -1.0);
 
-  if(!ir_context.visit_module(module))
+  if(!IrPass_visit_module(&ir_pass, module))
   {
     return false;
   }
 
-  ir_context.partition_basic_blocks_module(module);
-  ir_context.alloc_scope_data_objects(module->module.scope);
+  partition_basic_blocks_module(&ir_pass, module, title);
+  alloc_scope_data_objects(&ir_pass, module->module.scope);
 
   x86_context.gen(module, title);
   *x86_text = x86_context.text;

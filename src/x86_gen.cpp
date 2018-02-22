@@ -219,7 +219,7 @@ void init_x86_registers(X86Context* x86_ctx)
 }
 
 void init_x86_context(X86Context* x86_ctx, MemoryArena* gp_arena, MemoryArena* stmt_arena, MemoryArena* text_arena,
-                      TypePass* type_pass, IrContext* ir_context, SymbolPass* sym_pass)
+                      TypePass* type_pass, IrPass* ir_context, SymbolPass* sym_pass)
 {
   x86_ctx->basic_type_bool  = type_pass->basic_type_bool;
   x86_ctx->basic_type_int   = type_pass->basic_type_int;
@@ -1758,7 +1758,7 @@ void X86Context::gen_unr_expr(IrStmt_Assign* assign)
   X86Location* arg1_loc = lookup_object_location(this, arg1->object);
   X86Location* result_loc = arg1_loc;
 
-  if(IrContext::is_cast_op(assign->op))
+  if(is_cast_ir_op(assign->op))
   {
     switch(assign->op)
     {
@@ -1886,7 +1886,7 @@ void X86Context::gen_assign(IrStmt_Assign* assign)
   // The update must be done *here*, so that when the next statement is processed,
   // a particular object will have the live-info of the previous last statement it appeared in.
   // As a bonus, the objects of 'result', 'arg1' and 'arg2' are automatically excluded from the find_least_used_register() search function.
-  assign->update_object_live_info();
+  update_object_live_info(assign);
 
   discard_all_unused_args(this, assign);
 }

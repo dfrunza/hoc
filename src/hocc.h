@@ -432,35 +432,6 @@ struct TypePass
   Type* basic_type_str;
 };
 
-struct TypePass_Set : TypePass
-{
-  bool visit_array(AstNode* array);
-  bool visit_pointer(AstNode* pointer);
-  bool visit_type(AstNode* type);
-  bool visit_var(AstNode* var);
-  bool visit_bin_expr(AstNode* bin_expr);
-  bool visit_unr_expr(AstNode* unr_expr);
-  bool visit_actual_arg(AstNode* call_arg);
-  bool visit_id(AstNode* id);
-  bool visit_actual_args(AstNode* args);
-  bool visit_call(AstNode* call);
-  bool visit_lit(AstNode* lit);
-  bool visit_index(AstNode* index);
-  bool visit_cast(AstNode* cast);
-  bool visit_assign(AstNode* assign);
-  bool visit_expr(AstNode* expr);
-  bool visit_return(AstNode* ret);
-  bool visit_if(AstNode* if_);
-  bool visit_do_while(AstNode* do_while);
-  bool visit_while(AstNode* while_);
-  bool visit_block(AstNode* block);
-  bool visit_block_stmt(AstNode* stmt);
-  bool visit_formal_args(AstNode* args);
-  bool visit_proc(AstNode* proc);
-  bool visit_module_stmt(AstNode* stmt);
-  bool visit_module(AstNode* module);
-};
-
 struct TypePass_Eval : TypePass
 {
   bool visit_array(AstNode* array);

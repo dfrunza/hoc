@@ -2,6 +2,7 @@ typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
 
+typedef int bool;
 typedef char int8;
 typedef short int16;
 typedef int int32;
@@ -18,47 +19,53 @@ typedef double float64;
 #define local_persist static
 #define global_var static
 #define internal static
+#define true 1
+#define false 0
 
-struct String;
-struct List;
-struct Type;
-struct AstNode;
-struct Symbol;
-struct Scope;
-struct TypePair;
-struct IrStmt;
-struct IrArg;
-struct IrLeaderStmt;
-struct Label;
-struct BasicBlock;
-struct X86Context;
+typedef struct String String;
+typedef struct List List;
+typedef struct Type Type;
+typedef struct AstNode AstNode;
+typedef struct Symbol Symbol;
+typedef struct Scope Scope;
+typedef struct TypePair TypePair;
+typedef struct IrStmt IrStmt;
+typedef struct IrArg IrArg;
+typedef struct IrLeaderStmt IrLeaderStmt;
+typedef struct Label Label;
+typedef struct BasicBlock BasicBlock;
+typedef struct X86Context X86Context;
 
-struct PlatformFile
+typedef struct
 {
   char* path;
-};
+}
+PlatformFile;
 
-struct MemoryArenaUsage
+typedef struct 
 {
   int total_avail;
   double in_use;
-};
+}
+MemoryArenaUsage;
 
-struct MemoryArena
+typedef struct MemoryArena
 {
   uint8* base;
   uint8* free;
   uint8* cap;
   struct MemoryArena* prev_arena;
   struct String* str;
-};
+}
+MemoryArena;
 
-struct String
+typedef struct String
 {
   char* head;
   char* end;
   MemoryArena* arena;
-};
+}
+String;
 
 void add_object_to_memory(X86Context* x86_ctx, Symbol* object);
 
@@ -84,14 +91,15 @@ typedef struct
 }
 OutFileNames;
 
-struct SourceLoc
+typedef struct 
 {
   char* file_path;
   int   line_nr;
   char* src_line;
-};
+}
+SourceLoc;
 
-enum eToken
+typedef enum
 {
   eToken_None,
   /* 'Simple' tokens must be listed at the beginning of the enum */
@@ -171,9 +179,10 @@ enum eToken
   eToken_asm_text,
 
   eToken_Count,
-};
+}
+eToken;
 
-struct Token
+typedef struct
 {
   eToken kind;
   char* lexeme;
@@ -185,7 +194,8 @@ struct Token
     char char_val;
     char* str_val;
   };
-};
+}
+Token;
 
 typedef struct
 {
@@ -196,7 +206,7 @@ typedef struct
 }
 EscapedStr;
 
-struct Lexer
+typedef struct 
 {
   MemoryArena* arena;
   struct Lexer* last_state;
@@ -204,9 +214,10 @@ struct Lexer
   char* text;
   char* cursor;
   SourceLoc src_loc;
-};
+}
+Lexer;
 
-enum eOperator
+typedef enum 
 {
   eOperator_None,
 
@@ -246,9 +257,10 @@ enum eOperator
   eOperator_indirect_selector,
 
   eOperator_Count,
-};
+}
+eOperator;
 
-enum eLiteral
+typedef enum 
 {
   eLiteral_None,
   eLiteral_int,
@@ -256,9 +268,10 @@ enum eLiteral
   eLiteral_bool,
   eLiteral_char,
   eLiteral_str,
-};
+}
+eLiteral;
 
-enum eScope
+typedef enum 
 {
   eScope_None,
   eScope_module,
@@ -268,9 +281,10 @@ enum eScope
   eScope_while,
   eScope_block,
   eScope_struct,
-};
+}
+eScope;
 
-enum eList
+typedef enum 
 {
   eList_None,
   eList_ast_node,
@@ -282,9 +296,10 @@ enum eList
   eList_ir_label,
   eList_basic_block,
   eList_file,
-};
+}
+eList;
 
-struct ListItem
+typedef struct ListItem
 {
   eList kind;
   struct ListItem* next;
@@ -303,18 +318,20 @@ struct ListItem
     BasicBlock* basic_block;
     PlatformFile* file;
   };
-};
+}
+ListItem;
 
-struct List
+typedef struct List
 {
   eList kind;
   MemoryArena* arena;
   ListItem* first;
   ListItem* last;
   int count;
-};
+}
+List;
 
-struct Scope
+typedef struct Scope
 {
   eScope kind;
 
@@ -324,23 +341,26 @@ struct Scope
   int sym_count;
   int allocd_size; // aligned
   List decl_syms;
-};
+}
+Scope;
 
-enum eLoopCtrl
+typedef enum 
 {
   eLoopCtrl_None,
   eLoopCtrl_break,
   eLoopCtrl_continue,
-};
+}
+eLoopCtrl;
 
-enum eModifier
+typedef enum 
 {
   eModifier_None,
   eModifier_extern,
   eModifier_const,
-};
+}
+eModifier;
 
-enum eType
+typedef enum 
 {
   eType_None,
   eType_typevar,
@@ -350,9 +370,10 @@ enum eType
   eType_product,
   eType_pointer,
   eType_array,
-};
+}
+eType;
 
-enum eBasicType
+typedef enum 
 {
   eBasicType_None,
   eBasicType_void,
@@ -361,9 +382,10 @@ enum eBasicType
   eBasicType_char,
   eBasicType_bool,
   eBasicType_auto,
-};
+}
+eBasicType;
 
-struct Type
+typedef struct Type
 {
   eType kind;
   Type* repr_type; // representative member of the set of equivalent types
@@ -416,13 +438,14 @@ struct Type
     }
     typevar;
   };
-};
+}
+Type;
 
-struct TypePass
+typedef struct 
 {
   MemoryArena* arena;
   List* subst_list;
-  int typevar_id = 1;
+  int typevar_id;
 
   Type* basic_type_bool;
   Type* basic_type_int;
@@ -430,9 +453,10 @@ struct TypePass
   Type* basic_type_float;
   Type* basic_type_void;
   Type* basic_type_str;
-};
+}
+TypePass;
 
-enum eIrOp
+typedef enum 
 {
   eIrOp_None,
 
@@ -479,18 +503,20 @@ enum eIrOp
   eIrOp_address_of,    // result = &arg1
 
   eIrOp_param,
-};
+}
+eIrOp;
 
-struct Label
+typedef struct Label
 {
   struct Label* primary;
   int stmt_nr;
   char* name;
-};
+}
+Label;
 
 typedef int NextUse;
 
-enum eX86Location
+typedef enum 
 {
   eX86Location_None,
 
@@ -524,9 +550,10 @@ enum eX86Location
   eX86Location_xmm7,
 
   eX86Location_Count,
-};
+}
+eX86Location;
 
-struct X86Location
+typedef struct X86Location
 {
   eX86Location kind;
   Type* type;
@@ -535,21 +562,18 @@ struct X86Location
   struct X86Location* subloc[2];
 
   List occupants;
+}
+X86Location;
 
-  X86Location* get_top();
-  bool is_free();
-  bool is_parent_free();
-  bool is_subloc_free();
-};
-
-struct IrArg
+typedef struct IrArg
 {
   bool is_live;
   NextUse next_use;
   Symbol* object;
-};
+}
+IrArg;
 
-enum eIrStmt
+typedef enum 
 {
   eIrStmt_None,
   eIrStmt_assign,
@@ -558,41 +582,44 @@ enum eIrStmt
   eIrStmt_call,
   eIrStmt_return,
   eIrStmt_nop,
-};
+}
+eIrStmt;
 
-struct IrStmt_Assign
+typedef struct 
 {
   eIrOp op;
   IrArg* arg1;
   IrArg* arg2;
   IrArg* result;
+}
+IrStmt_Assign;
 
-  void update_object_live_info();
-};
-
-struct IrStmt_CondGoto
+typedef struct 
 {
   eIrOp relop;
   IrArg* arg1;
   IrArg* arg2;
   Label* goto_label;
-};
+}
+IrStmt_CondGoto;
 
-struct IrStmt_Goto
+typedef struct 
 {
   Label* goto_label;
-};
+}
+IrStmt_Goto;
 
-struct IrStmt_Call
+typedef struct 
 {
   Label* name;
   Scope* param_scope;
   Symbol* retvar;
   int arg_count;
   bool is_extern;
-};
+}
+IrStmt_Call;
 
-struct IrStmt
+typedef struct IrStmt
 {
   eIrStmt kind;
   Label* label;
@@ -604,26 +631,29 @@ struct IrStmt
     IrStmt_CondGoto cond_goto;
     IrStmt_Call     call;
   };
-};
+}
+IrStmt;
 
-struct BasicBlock
+typedef struct BasicBlock
 {
   Label* label;
   IrStmt** stmt_array;
   int stmt_count;
   List pred_list;
   List succ_list;
-};
+}
+BasicBlock;
 
-struct IrLeaderStmt
+typedef struct IrLeaderStmt
 {
   int stmt_nr;
   BasicBlock* block;
   IrStmt* stmt;
   Label* label;
-};
+}
+IrLeaderStmt;
 
-enum eX86Operand
+typedef enum 
 {
   eX86Operand_None,
   eX86Operand_id,
@@ -631,24 +661,27 @@ enum eX86Operand
   eX86Operand_register,
   eX86Operand_memory,
   eX86Operand_address,
-};
+}
+eX86Operand;
 
-enum eX86Constant
+typedef enum 
 {
   eX86Constant_None,
   eX86Constant_int,
   eX86Constant_float,
   eX86Constant_char,
-};
+}
+eX86Constant;
 
-struct X86Operand_Index
+typedef struct 
 {
   Type* type;
   struct X86Operand* base;
   struct X86Operand* offset;
-};
+}
+X86Operand_Index;
 
-struct X86Operand_Constant
+typedef struct X86Operand_Constant
 {
   eX86Constant kind;
 
@@ -658,9 +691,10 @@ struct X86Operand_Constant
     float float_val;
     char char_val;
   };
-};
+}
+X86Operand_Constant;
 
-struct X86Operand
+typedef struct X86Operand
 {
   eX86Operand kind;
 
@@ -671,9 +705,10 @@ struct X86Operand
     X86Operand_Index index;
     X86Operand_Constant constant;
   };
-};
+}
+X86Operand;
 
-enum eX86Stmt
+typedef enum 
 {
   eX86Stmt_None,
   eX86Stmt_call,
@@ -723,16 +758,18 @@ enum eX86Stmt
   eX86Stmt_label,
   eX86Stmt_extern_proc,
   eX86Stmt_ret,
-};
+}
+eX86Stmt;
 
-struct X86Stmt
+typedef struct 
 {
   eX86Stmt opcode;
   X86Operand* operand1;
   X86Operand* operand2;
-};
+}
+X86Stmt;
 
-enum eAstNode
+typedef enum 
 {
   eAstNode_None,
   eAstNode_id,
@@ -764,9 +801,10 @@ enum eAstNode
   eAstNode_assign,
   eAstNode_cast,
   eAstNode_call_arg,
-};
+}
+eAstNode;
 
-struct AstNode
+typedef struct AstNode
 {
   eAstNode   kind;
   SourceLoc* src_loc;
@@ -1004,9 +1042,10 @@ struct AstNode
     }
     asm_block;
   };
-};
+}
+AstNode;
 
-struct Parser
+typedef struct Parser
 {
   MemoryArena* arena;
   Token token;
@@ -1018,9 +1057,10 @@ struct Parser
   AstNode* module;
   PlatformFile* file;
   List* includes;
-};
+}
+Parser;
 
-enum eStorageSpace
+typedef enum 
 {
   eStorageSpace_None,
   eStorageSpace_constant,
@@ -1028,17 +1068,19 @@ enum eStorageSpace
   eStorageSpace_actual_param, // params (actual args and retvar) at the call site
   eStorageSpace_formal_param, // params to proc 
   eStorageSpace_static, // module-level vars
-};
+}
+eStorageSpace;
 
-enum eSymbol
+typedef enum 
 {
   eSymbol_None,
   eSymbol_constant,
-};
+}
+eSymbol;
 
 //FIXME: Discriminate symbols by kind : var, proc, etc.
 //The proc symbol needs to have a ref to the retvar symbol and to the args.
-struct Symbol
+typedef struct Symbol
 {
   eSymbol kind;
 
@@ -1072,9 +1114,10 @@ struct Symbol
     X86Location* _[eX86Location_Count];
   }
   locations;
-};
+}
+Symbol;
 
-struct SymbolPass
+typedef struct 
 {
   Type* basic_type_bool;
   Type* basic_type_int;
@@ -1091,9 +1134,10 @@ struct SymbolPass
   int nesting_depth;
   int data_alignment;
   X86Context* x86_context;
-};
+}
+SymbolPass;
 
-struct IrPass
+typedef struct 
 {
   Type* basic_type_bool;
   Type* basic_type_int;
@@ -1118,9 +1162,10 @@ struct IrPass
   Symbol* bool_false;
 
   int current_alloc_offset;
-};
+}
+IrPass;
 
-struct X86Context
+typedef struct X86Context
 {
   Type* basic_type_bool;
   Type* basic_type_int;
@@ -1180,24 +1225,6 @@ struct X86Context
 
   Symbol* float_minus_one;
   String* text;
-
-  void gen_divmod_op(IrStmt_Assign* assign);
-  void gen_index_source(IrStmt_Assign* assign);
-  void gen_index_dest(IrStmt_Assign* assign);
-  void gen_deref_source(IrStmt_Assign* assign);
-  void gen_deref_dest(IrStmt_Assign *assign);
-  void gen_equal(IrStmt_Assign* assign);
-  void gen_address_of(IrStmt_Assign* assign);
-  void gen_bin_expr(IrStmt_Assign* assign);
-  void gen_unr_expr(IrStmt_Assign* assign);
-  void gen_assign(IrStmt_Assign* assign);
-  void gen_goto(IrStmt_Goto* goto_);
-  void gen_cond_goto(IrStmt_CondGoto* cond_goto);
-  void gen_call(IrStmt_Call* call);
-  void gen_basic_block(BasicBlock* bb);
-  void gen_extern_proc(AstNode* proc);
-  void gen_proc(AstNode* proc);
-  void gen_module(AstNode* module);
-  void gen(AstNode* module, char* title);
-};
+}
+X86Context;
 

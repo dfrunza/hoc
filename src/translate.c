@@ -46,7 +46,7 @@ void gen_label_name(MemoryArena* arena, Label* label)
 
 char* gen_tempvar_name(MemoryArena* arena, char* label)
 {
-  String str = {};
+  String str = {0};
   str_init(&str, arena);
   str_format(&str, "%s%d", label, tempvar_id++);
   return str_cap(&str);
@@ -141,26 +141,26 @@ void DEBUG_print_ast_nodes(String* str, int indent_level, char* tag, List* nodes
 }
 #endif/*<<<*/
 
-#include "lex.cpp"
-#include "syntax.cpp"
-#include "sym.cpp"
-#include "type.cpp"
-#include "ir_gen.cpp"
-#include "x86_gen.cpp"
+#include "lex.c"
+#include "syntax.c"
+#include "sym.c"
+#include "type.c"
+#include "ir_gen.c"
+#include "x86_gen.c"
 
 bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text, String** x86_text)
 {
   MemoryArena* gp_arena = push_arena(&arena, 2*MEGABYTE);
   TypePass* type_pass = new_type_pass(push_arena(&arena, 2*MEGABYTE));
 
-  SymbolPass sym_pass = {};
+  SymbolPass sym_pass = {0};
   init_symbol_pass(&sym_pass, gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass);
 
-  IrPass ir_pass = {};
+  IrPass ir_pass = {0};
   init_ir_pass(&ir_pass, gp_arena, push_arena(&arena, 2*MEGABYTE), type_pass, &sym_pass);
 
-  X86Context x86_context = {};
-  init_x86_context(&x86_context, gp_arena, push_arena(&arena, 2*MEGABYTE), push_arena(&arena, 2*MEGABYTE),
+  X86Context x86_ctx = {0};
+  init_x86_context(&x86_ctx, gp_arena, push_arena(&arena, 2*MEGABYTE), push_arena(&arena, 2*MEGABYTE),
                    type_pass, &ir_pass, &sym_pass);
 
   Parser* parser = new_parser(gp_arena);
@@ -182,7 +182,7 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   /* FIXME: Nasty dependencies */
   ir_pass.bool_true = new_const_int_object(&sym_pass, 0, 1);
   ir_pass.bool_false = new_const_int_object(&sym_pass, 0, 0);
-  x86_context.float_minus_one = new_const_float_object(&sym_pass, 0, -1.0);
+  x86_ctx.float_minus_one = new_const_float_object(&sym_pass, 0, -1.0);
 
   if(!IrPass_visit_module(&ir_pass, module))
   {
@@ -192,8 +192,8 @@ bool translate(MemoryArena* arena, char* title, char* file_path, char* hoc_text,
   partition_basic_blocks_module(&ir_pass, module, title);
   alloc_scope_data_objects(&ir_pass, module->module.scope);
 
-  x86_context.gen(module, title);
-  *x86_text = x86_context.text;
+  cgen(&x86_ctx, module, title);
+  *x86_text = x86_ctx.text;
 
   return true;
 }

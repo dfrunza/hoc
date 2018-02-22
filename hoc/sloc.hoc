@@ -48,31 +48,31 @@ char^^ make_file_list(int^ count)
   files[f] = &"../src/hocc.h";
   f = f + 1;
 
-  files[f] = &"../src/common.cpp";
+  files[f] = &"../src/common.c";
   f = f + 1;
 
-  files[f] = &"../src/hocc.cpp";
+  files[f] = &"../src/hocc.c";
   f = f + 1;
 
-  files[f] = &"../src/ir_gen.cpp";
+  files[f] = &"../src/ir_gen.c";
   f = f + 1;
 
-  files[f] = &"../src/lex.cpp";
+  files[f] = &"../src/lex.c";
   f = f + 1;
 
-  files[f] = &"../src/sym.cpp";
+  files[f] = &"../src/sym.c";
   f = f + 1;
 
-  files[f] = &"../src/syntax.cpp";
+  files[f] = &"../src/syntax.c";
   f = f + 1;
 
-  files[f] = &"../src/translate.cpp";
+  files[f] = &"../src/translate.c";
   f = f + 1;
 
-  files[f] = &"../src/type.cpp";
+  files[f] = &"../src/type.c";
   f = f + 1;
 
-  files[f] = &"../src/x86_gen.cpp";
+  files[f] = &"../src/x86_gen.c";
   f = f + 1;
 
   if(f < max_file_count)

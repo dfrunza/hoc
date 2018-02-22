@@ -173,6 +173,7 @@ TypePass* new_type_pass(MemoryArena* arena)
   pass->basic_type_void  = new_basic_type(pass, eBasicType_void);
   pass->basic_type_str   = new_array_type(pass, 0, pass->basic_type_char);
   pass->subst_list = list_new(arena, eList_type_pair);
+  pass->typevar_id = 1;
 
   return pass;
 }
@@ -606,7 +607,7 @@ void make_type_printstr(Type* type, String* str)
 
 char* get_type_printstr(Type* type, MemoryArena* arena)
 {
-  String str = {};
+  String str = {0};
   str_init(&str, arena);
   make_type_printstr(type, &str);
 

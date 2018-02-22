@@ -195,7 +195,7 @@ void emit_nop(IrPass* pass)
 {
   IrStmt* stmt = push_struct(pass->stmt_arena, IrStmt);
 
-  *stmt = {};
+  zero_struct(stmt, IrStmt);
   stmt->kind = eIrStmt_nop;
   stmt->label = get_label_at(pass, pass->stmt_count);
 
@@ -1264,7 +1264,7 @@ bool IrPass_visit_proc(IrPass* pass, Scope* scope, AstNode* proc)
   {
     int arg_size = get_proc_arg_size(pass, proc->proc.args);
     char* name = proc->proc.name;
-    String decorated_label = {};
+    String decorated_label = {0};
     str_init(&decorated_label, pass->gp_arena);
     str_format(&decorated_label, "%s@%d", name, arg_size);
 
@@ -1686,7 +1686,7 @@ void DEBUG_print_basic_block(IrPass* pass, String* text, BasicBlock* bb)
 void DEBUG_print_ir_code(IrPass* pass, List* procs, char* title)
 {
   begin_temp_memory(&pass->gp_arena);
-  String text = {};
+  String text = {0};
   str_init(&text, pass->gp_arena);
 
   str_format(&text, "%s.ir", title);

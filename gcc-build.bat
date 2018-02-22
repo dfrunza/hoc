@@ -49,7 +49,9 @@ IF NOT EXIST .\bin (
 )
 PUSHD .\bin
 
-g++ %C_flags% %src_dir%\hocc.cpp -lkernel32 -o hocc.exe
+::..\ctime -begin hocc.ctm
+gcc %C_flags% %src_dir%\hocc.c -lkernel32 -o hocc.exe
+::..\ctime -end hocc.ctm
 
 IF %ERRORLEVEL% NEQ 0 (
   GOTO :end

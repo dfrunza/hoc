@@ -1766,7 +1766,7 @@ bool parse_module_include(Parser* parser, AstNode** node)
       if(parser->token.kind == eToken_str_val)
       {
         /* Make the full path to the included file, relative to the location of the current file. */
-        String str = {};
+        String str = {0};
         str_init(&str, parser->arena);
         str_append(&str, parser->src_loc.file_path);
         platform_path_make_dir(str.head);

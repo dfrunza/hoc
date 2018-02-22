@@ -47,7 +47,9 @@ IF NOT EXIST .\bin (
 )
 PUSHD .\bin
 
-cl %C_flags% %src_dir%\hocc.cpp /link %L_flags%
+::..\ctime -begin hocc.ctm
+cl %C_flags% %src_dir%\hocc.c /link %L_flags%
+::..\ctime -end hocc.ctm
 
 IF %ERRORLEVEL% NEQ 0 (
   GOTO :end

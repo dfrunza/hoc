@@ -1,8 +1,8 @@
 #include <stdarg.h>
 
 #include "hocc.h"
-#include "common.cpp"
-#include "translate.cpp"
+#include "common.c"
+#include "translate.c"
 
 #include <stdio.h>
 #undef UNICODE
@@ -11,7 +11,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-struct WindowsFile
+typedef struct WindowsFile
 {
   PlatformFile platform_file;
 
@@ -19,7 +19,8 @@ struct WindowsFile
   int id_low;
   int id_high;
   int volume_serial_no;
-};
+}
+WindowsFile;
 
 void* platform_alloc_memory(int size)
 {
@@ -110,7 +111,7 @@ int platform_sscanf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
-  int result = ::vsscanf(buffer, format, args);
+  int result = vsscanf(buffer, format, args);
   va_end(args);
 
   return result;
@@ -118,14 +119,14 @@ int platform_sscanf(char* buffer, char* format, ...)
 
 int platform_sprintf_va(char* buffer, char* format, va_list args)
 {
-  return ::vsprintf(buffer, format, args);
+  return vsprintf(buffer, format, args);
 }
 
 int platform_sprintf(char* buffer, char* format, ...)
 {
   va_list args;
   va_start(args, format);
-  int result = ::vsprintf(buffer, format, args);
+  int result = vsprintf(buffer, format, args);
   va_end(args);
 
   return result;
@@ -133,14 +134,14 @@ int platform_sprintf(char* buffer, char* format, ...)
 
 int platform_printf_va(char* format, va_list args)
 {
-  return ::vprintf(format, args);
+  return vprintf(format, args);
 }
 
 int platform_printf(char* format, ...)
 {
   va_list args;
   va_start(args, format);
-  int result = ::vfprintf(stdout, format, args);
+  int result = vfprintf(stdout, format, args);
   va_end(args);
 
   fflush(stdout);
@@ -190,7 +191,7 @@ bool make_out_file_names(OutFileNames* out_files, MemoryArena* arena, char* src_
   int working_dir_len = GetCurrentDirectoryA(buf_len, out_files->working_dir);
   if((working_dir_len > 0) && (working_dir_len < buf_len))
   {
-    String str = {};
+    String str = {0};
     str_init(&str, arena);
     str_append(&str, src_file_path);
     out_files->title = str_cap(&str);
@@ -210,7 +211,7 @@ bool assemble(MemoryArena* arena, OutFileNames* out_files)
 {
   bool success = true;
 
-  String str = {};
+  String str = {0};
   str_init(&str, arena);
   /*
       /Cx     - preserve case in publics, externs
@@ -221,9 +222,9 @@ bool assemble(MemoryArena* arena, OutFileNames* out_files)
   str_format(&str, "ml.exe /Zi /Cx /nologo %s /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib", out_files->asm_file);
   char* ml_args = str_cap(&str);
 
-  STARTUPINFOA ml_startup_info = {};
+  STARTUPINFOA ml_startup_info = {0};
   ml_startup_info.cb = sizeof(STARTUPINFOA);
-  PROCESS_INFORMATION ml_proc_info = {};
+  PROCESS_INFORMATION ml_proc_info = {0};
   if(CreateProcessA(0, ml_args, 0, 0, false, 0, 0, 0, &ml_startup_info, &ml_proc_info))
   {
     DWORD wait_code = WaitForSingleObject(ml_proc_info.hProcess, 60*1000);
@@ -274,7 +275,7 @@ int main(int argc, char* argv[])
     return make_exit_code(success);
   }
 
-  OutFileNames out_files = {};
+  OutFileNames out_files = {0};
   make_out_file_names(&out_files, arena, src_file_path);
 
   String* x86_text = 0;

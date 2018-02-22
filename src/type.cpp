@@ -163,8 +163,7 @@ Type* new_pointer_type(TypePass* pass, Type* pointee)
 
 TypePass* new_type_pass(MemoryArena* arena)
 {
-  int struct_size = maximum_of_int(2,
-                                   sizeof(TypePass_Resolve),
+  int struct_size = maximum_of_int(1,
                                    sizeof(TypePass_Check));
 
   TypePass* pass = (TypePass*)push_struct_(arena, struct_size, 1);
@@ -499,7 +498,7 @@ bool resolve_type(Type* type, Type** resolved_type)
   return success;
 }
 
-bool AstNode_resolve_types(AstNode* node, MemoryArena* arena)
+bool resolve_ast_node_type(AstNode* node, MemoryArena* arena)
 {
   bool success = true;
   
@@ -1980,18 +1979,20 @@ bool EvalTypePass_visit_module(TypePass* pass, AstNode* module)
 //       RESOLVE TYPES
 //-----------------------------------------------------
 
-bool TypePass_Resolve::visit_var(AstNode* var)
+bool ResolveTypePass_visit_expr(TypePass* pass, AstNode* expr);
+
+bool ResolveTypePass_visit_var(TypePass* pass, AstNode* var)
 {
   assert(KIND(var, eAstNode_var));
   bool success = true;
   
-  if(success = AstNode_resolve_types(var, arena))
+  if(success = resolve_ast_node_type(var, pass->arena))
   {
     var->var.decl_sym->ty = var->eval_ty;
 
     if(var->var.init_expr)
     {
-      success = visit_expr(var->var.init_expr);
+      success = ResolveTypePass_visit_expr(pass, var->var.init_expr);
     }
 
     Symbol* object = var->var.decl_sym;
@@ -1999,19 +2000,19 @@ bool TypePass_Resolve::visit_var(AstNode* var)
 
     if(object->ty->width == 0)
     {
-      success = compile_error(arena, var->src_loc, "variable of 0 size");
+      success = compile_error(pass->arena, var->src_loc, "variable of 0 size");
     }
   }
 
   return success;
 }
 
-bool TypePass_Resolve::visit_lit(AstNode* lit)
+bool ResolveTypePass_visit_lit(TypePass* pass, AstNode* lit)
 {
   assert(KIND(lit, eAstNode_lit));
   bool success = true;
 
-  if(success = AstNode_resolve_types(lit, arena))
+  if(success = resolve_ast_node_type(lit, pass->arena))
   {
     lit->lit.constant->ty = lit->eval_ty;
   }
@@ -2019,7 +2020,7 @@ bool TypePass_Resolve::visit_lit(AstNode* lit)
   return success;
 }
 
-bool TypePass_Resolve::visit_formal_args(AstNode* args)
+bool ResolveTypePass_visit_formal_args(TypePass* pass, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -2029,32 +2030,32 @@ bool TypePass_Resolve::visit_formal_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    success = visit_var(arg);
+    success = ResolveTypePass_visit_var(pass, arg);
   }
   if(success)
   {
-    success = AstNode_resolve_types(args, arena);
+    success = resolve_ast_node_type(args, pass->arena);
   }
   return success;
 }
 
-bool TypePass_Resolve::visit_bin_expr(AstNode* bin_expr)
+bool ResolveTypePass_visit_bin_expr(TypePass* pass, AstNode* bin_expr)
 {
   assert(KIND(bin_expr, eAstNode_bin_expr));
   bool success = true;
 
-  success = visit_expr(bin_expr->bin_expr.left_operand) &&
-    visit_expr(bin_expr->bin_expr.right_operand) && AstNode_resolve_types(bin_expr, arena);
+  success = ResolveTypePass_visit_expr(pass, bin_expr->bin_expr.left_operand) &&
+    ResolveTypePass_visit_expr(pass, bin_expr->bin_expr.right_operand) && resolve_ast_node_type(bin_expr, pass->arena);
 
   return success;
 }
 
-bool TypePass_Resolve::visit_unr_expr(AstNode* unr_expr)
+bool ResolveTypePass_visit_unr_expr(TypePass* pass, AstNode* unr_expr)
 {
   assert(KIND(unr_expr, eAstNode_unr_expr));
   bool success = true;
 
-  if(success = visit_expr(unr_expr->unr_expr.operand))
+  if(success = ResolveTypePass_visit_expr(pass, unr_expr->unr_expr.operand))
   {
     AstNode* operand = unr_expr->unr_expr.operand;
     eOperator op = unr_expr->unr_expr.op;
@@ -2065,38 +2066,38 @@ bool TypePass_Resolve::visit_unr_expr(AstNode* unr_expr)
       {
         // ptr(array(T)) = ptr(T)
         Type* operand_ty = operand->eval_ty;
-        success = type_unif(unr_expr->eval_ty, new_pointer_type(this, operand_ty->array.elem));
+        success = type_unif(unr_expr->eval_ty, new_pointer_type(pass, operand_ty->array.elem));
       }
       else
       {
-        success = type_unif(unr_expr->eval_ty, new_pointer_type(this, operand->eval_ty));
+        success = type_unif(unr_expr->eval_ty, new_pointer_type(pass, operand->eval_ty));
       }
 
       if(!success)
       {
-        compile_error(arena, unr_expr->src_loc, "type error (unr expr)");
+        compile_error(pass->arena, unr_expr->src_loc, "type error (unr expr)");
       }
     }
   }
   
   if(success)
   {
-    success = AstNode_resolve_types(unr_expr, arena);
+    success = resolve_ast_node_type(unr_expr, pass->arena);
   }
 
   return success;
 }
 
-bool TypePass_Resolve::visit_id(AstNode* id)
+bool ResolveTypePass_visit_id(TypePass* pass, AstNode* id)
 {
   assert(KIND(id, eAstNode_id));
   bool success = true;
 
-  success = AstNode_resolve_types(id, arena);
+  success = resolve_ast_node_type(id, pass->arena);
   return success;
 }
 
-bool TypePass_Resolve::visit_actual_args(AstNode* args)
+bool ResolveTypePass_visit_actual_args(TypePass* pass, AstNode* args)
 {
   assert(KIND(args, eAstNode_node_list));
   bool success = true;
@@ -2106,7 +2107,7 @@ bool TypePass_Resolve::visit_actual_args(AstNode* args)
       li = li->next)
   {
     AstNode* arg = KIND(li, eList_ast_node)->ast_node;
-    if(success = visit_expr(arg->call_arg.expr))
+    if(success = ResolveTypePass_visit_expr(pass, arg->call_arg.expr))
     {
       arg->eval_ty = arg->call_arg.expr->eval_ty;
     }
@@ -2114,20 +2115,20 @@ bool TypePass_Resolve::visit_actual_args(AstNode* args)
 
   if(success)
   {
-    success = AstNode_resolve_types(args, arena);
+    success = resolve_ast_node_type(args, pass->arena);
   }
 
   return success;
 }
 
-bool TypePass_Resolve::visit_call(AstNode* call)
+bool ResolveTypePass_visit_call(TypePass* pass, AstNode* call)
 {
   assert(KIND(call, eAstNode_call));
   assert(call->call.expr->kind == eAstNode_id);
 
   bool success = true;
 
-  if(success = visit_id(call->call.expr) && visit_actual_args(call->call.args))
+  if(success = ResolveTypePass_visit_id(pass, call->call.expr) && ResolveTypePass_visit_actual_args(pass, call->call.args))
   {
     AstNode* args = call->call.args;
     assert(KIND(args, eAstNode_node_list));
@@ -2144,16 +2145,16 @@ bool TypePass_Resolve::visit_call(AstNode* call)
     {
       if(!type_unif(proc->ty, call->ty))
       {
-        success = compile_error(arena, call->src_loc, "type error (call argument types)");
+        success = compile_error(pass->arena, call->src_loc, "type error (call argument types)");
       }
     }
     else
     {
-      success = compile_error(arena, call->src_loc, "type error (call)");
+      success = compile_error(pass->arena, call->src_loc, "type error (call)");
     }
   }
 
-  if(success && (success = AstNode_resolve_types(call, arena)))
+  if(success && (success = resolve_ast_node_type(call, pass->arena)))
   {
     call->call.retvar->ty = call->eval_ty;
   }
@@ -2161,7 +2162,7 @@ bool TypePass_Resolve::visit_call(AstNode* call)
   return success;
 }
 
-bool TypePass_Resolve::visit_index(AstNode* index)
+bool ResolveTypePass_visit_index(TypePass* pass, AstNode* index)
 {
   assert(KIND(index, eAstNode_index));
   bool success = true;
@@ -2169,9 +2170,9 @@ bool TypePass_Resolve::visit_index(AstNode* index)
   AstNode* array_expr = index->index.array_expr;
   AstNode* i_expr = index->index.i_expr;
 
-  if(success = visit_expr(array_expr) && visit_expr(i_expr))
+  if(success = ResolveTypePass_visit_expr(pass, array_expr) && ResolveTypePass_visit_expr(pass, i_expr))
   {
-    if(type_unif(i_expr->eval_ty, basic_type_int))
+    if(type_unif(i_expr->eval_ty, pass->basic_type_int))
     {
       Type* array_ty = array_expr->eval_ty;
 
@@ -2179,54 +2180,56 @@ bool TypePass_Resolve::visit_index(AstNode* index)
       {
         if(!type_unif(array_ty->array.elem, index->eval_ty))
         {
-          success = compile_error(arena, index->src_loc, "type error (index)");
+          success = compile_error(pass->arena, index->src_loc, "type error (index)");
         }
       }
       else if(array_ty->kind == eType_pointer)
       {
         if(!type_unif(array_ty->pointer.pointee, index->eval_ty))
         {
-          success = compile_error(arena, index->src_loc, "type error (index)");
+          success = compile_error(pass->arena, index->src_loc, "type error (index)");
         }
       }
       else
-        success = compile_error(arena, index->src_loc, "type error (index)");
+        success = compile_error(pass->arena, index->src_loc, "type error (index)");
     }
     else
-      success = compile_error(arena, index->src_loc, "type error (index)");
+      success = compile_error(pass->arena, index->src_loc, "type error (index)");
   }
 
   if(success)
   {
-    success = AstNode_resolve_types(index, arena);
+    success = resolve_ast_node_type(index, pass->arena);
   }
 
   return success;
 }
 
-bool TypePass_Resolve::visit_cast(AstNode* cast)
+bool ResolveTypePass_visit_type(TypePass* pass, AstNode* type);
+
+bool ResolveTypePass_visit_cast(TypePass* pass, AstNode* cast)
 {
   assert(KIND(cast, eAstNode_cast));
   bool success = true;
 
-  success = visit_type(cast->cast.to_type) && visit_expr(cast->cast.from_expr) &&
-    AstNode_resolve_types(cast, arena);
+  success = ResolveTypePass_visit_type(pass, cast->cast.to_type) && ResolveTypePass_visit_expr(pass, cast->cast.from_expr) &&
+    resolve_ast_node_type(cast, pass->arena);
 
   return success;
 }
 
-bool TypePass_Resolve::visit_assign(AstNode* assign)
+bool ResolveTypePass_visit_assign(TypePass* pass, AstNode* assign)
 {
   assert(KIND(assign, eAstNode_assign));
   bool success = true;
 
-  success = visit_expr(assign->assign.dest_expr) && visit_expr(assign->assign.source_expr) &&
-    AstNode_resolve_types(assign, arena);
+  success = ResolveTypePass_visit_expr(pass, assign->assign.dest_expr) && ResolveTypePass_visit_expr(pass, assign->assign.source_expr) &&
+    resolve_ast_node_type(assign, pass->arena);
 
   return success;
 }
 
-bool TypePass_Resolve::visit_expr(AstNode* expr)
+bool ResolveTypePass_visit_expr(TypePass* pass, AstNode* expr)
 {
   bool success = true;
   
@@ -2234,37 +2237,37 @@ bool TypePass_Resolve::visit_expr(AstNode* expr)
   {
     case eAstNode_cast:
     {
-      success = visit_cast(expr);
+      success = ResolveTypePass_visit_cast(pass, expr);
     }
     break;
     
     case eAstNode_bin_expr:
     {
-      success = visit_bin_expr(expr);
+      success = ResolveTypePass_visit_bin_expr(pass, expr);
     }
     break;
     
     case eAstNode_unr_expr:
     {
-      success = visit_unr_expr(expr);
+      success = ResolveTypePass_visit_unr_expr(pass, expr);
     }
     break;
     
     case eAstNode_id:
     {
-      success = visit_id(expr);
+      success = ResolveTypePass_visit_id(pass, expr);
     }
     break;
     
     case eAstNode_call:
     {
-      success = visit_call(expr);
+      success = ResolveTypePass_visit_call(pass, expr);
     }
     break;
     
     case eAstNode_lit:
     {
-      success = visit_lit(expr);
+      success = ResolveTypePass_visit_lit(pass, expr);
     }
     break;
 
@@ -2272,19 +2275,19 @@ bool TypePass_Resolve::visit_expr(AstNode* expr)
     case eAstNode_pointer:
     case eAstNode_array:
     {
-      success = visit_type(expr);
+      success = ResolveTypePass_visit_type(pass, expr);
     }
     break;
     
     case eAstNode_index:
     {
-      success = visit_index(expr);
+      success = ResolveTypePass_visit_index(pass, expr);
     }
     break;
 
     case eAstNode_assign:
     {
-      success = visit_assign(expr);
+      success = ResolveTypePass_visit_assign(pass, expr);
     }
     break;
     
@@ -2294,7 +2297,9 @@ bool TypePass_Resolve::visit_expr(AstNode* expr)
   return success;
 }
 
-bool TypePass_Resolve::visit_block(AstNode* block)
+bool ResolveTypePass_visit_block_stmt(TypePass* pass, AstNode* stmt);
+
+bool ResolveTypePass_visit_block(TypePass* pass, AstNode* block)
 {
   assert(KIND(block, eAstNode_block));
   bool success = true;
@@ -2304,100 +2309,100 @@ bool TypePass_Resolve::visit_block(AstNode* block)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = visit_block_stmt(stmt);
+    success = ResolveTypePass_visit_block_stmt(pass, stmt);
   }
 
   if(success)
   {
-    success = AstNode_resolve_types(block, arena);
+    success = resolve_ast_node_type(block, pass->arena);
   }
 
   return success;
 }
 
-bool TypePass_Resolve::visit_return(AstNode* ret)
+bool ResolveTypePass_visit_return(TypePass* pass, AstNode* ret)
 {
   assert(KIND(ret, eAstNode_return));
   bool success = true;
 
   if(ret->ret.expr)
   {
-    success = visit_expr(ret->ret.expr);
+    success = ResolveTypePass_visit_expr(pass, ret->ret.expr);
   }
 
   if(success)
   {
-    success = AstNode_resolve_types(ret, arena);
+    success = resolve_ast_node_type(ret, pass->arena);
   }
 
   return success;
 }
 
-bool TypePass_Resolve::visit_if(AstNode* if_)
+bool ResolveTypePass_visit_if(TypePass* pass, AstNode* if_)
 {
   assert(KIND(if_, eAstNode_if));
   bool success = true;
 
-  if(success = visit_expr(if_->if_.cond_expr) && visit_block_stmt(if_->if_.body))
+  if(success = ResolveTypePass_visit_expr(pass, if_->if_.cond_expr) && ResolveTypePass_visit_block_stmt(pass, if_->if_.body))
   {
     if(if_->if_.else_body)
     {
-      success = visit_block_stmt(if_->if_.else_body);
+      success = ResolveTypePass_visit_block_stmt(pass, if_->if_.else_body);
     }
 
     if(success)
     {
-      success = AstNode_resolve_types(if_, arena);
+      success = resolve_ast_node_type(if_, pass->arena);
     }
   }
 
   return success;
 }
 
-bool TypePass_Resolve::visit_do_while(AstNode* do_while)
+bool ResolveTypePass_visit_do_while(TypePass* pass, AstNode* do_while)
 {
   assert(KIND(do_while, eAstNode_do_while));
   bool success = true;
 
-  success = visit_block_stmt(do_while->do_while.body) && visit_expr(do_while->do_while.cond_expr) &&
-    AstNode_resolve_types(do_while, arena);
+  success = ResolveTypePass_visit_block_stmt(pass, do_while->do_while.body) && ResolveTypePass_visit_expr(pass, do_while->do_while.cond_expr) &&
+    resolve_ast_node_type(do_while, pass->arena);
 
   return success;
 }
 
-bool TypePass_Resolve::visit_while(AstNode* while_)
+bool ResolveTypePass_visit_while(TypePass* pass, AstNode* while_)
 {
   assert(KIND(while_, eAstNode_while));
   bool success = true;
 
-  success = visit_expr(while_->while_.cond_expr) && visit_block_stmt(while_->while_.body) &&
-    AstNode_resolve_types(while_, arena);
+  success = ResolveTypePass_visit_expr(pass, while_->while_.cond_expr) && ResolveTypePass_visit_block_stmt(pass, while_->while_.body) &&
+    resolve_ast_node_type(while_, pass->arena);
 
   return success;
 }
 
-bool TypePass_Resolve::visit_array(AstNode* array)
+bool ResolveTypePass_visit_array(TypePass* pass, AstNode* array)
 {
   assert(KIND(array, eAstNode_array));
   bool success = true;
   
-  success = visit_expr(array->array.size_expr) &&
-    visit_type(array->array.elem_expr) && AstNode_resolve_types(array, arena);
+  success = ResolveTypePass_visit_expr(pass, array->array.size_expr) &&
+    ResolveTypePass_visit_type(pass, array->array.elem_expr) && resolve_ast_node_type(array, pass->arena);
 
   return success;
 }
 
-bool TypePass_Resolve::visit_pointer(AstNode* pointer)
+bool ResolveTypePass_visit_pointer(TypePass* pass, AstNode* pointer)
 {
   assert(KIND(pointer, eAstNode_pointer));
   bool success = true;
   
-  success = visit_expr(pointer->pointer.pointee) && AstNode_resolve_types(pointer, arena);
+  success = ResolveTypePass_visit_expr(pass, pointer->pointer.pointee) && resolve_ast_node_type(pointer, pass->arena);
 
   return success;
 }
 
-bool TypePass_Resolve::visit_type(AstNode* type)
+bool ResolveTypePass_visit_type(TypePass* pass, AstNode* type)
 {
   bool success = true;
   
@@ -2405,13 +2410,13 @@ bool TypePass_Resolve::visit_type(AstNode* type)
   {
     case eAstNode_pointer:
     {
-      success = visit_pointer(type);
+      success = ResolveTypePass_visit_pointer(pass, type);
     }
     break;
 
     case eAstNode_array:
     {
-      success = visit_array(type);
+      success = ResolveTypePass_visit_array(pass, type);
     }
     break;
 
@@ -2422,7 +2427,7 @@ bool TypePass_Resolve::visit_type(AstNode* type)
   return success;
 }
 
-bool TypePass_Resolve::visit_block_stmt(AstNode* stmt)
+bool ResolveTypePass_visit_block_stmt(TypePass* pass, AstNode* stmt)
 {
   bool success = true;
   
@@ -2430,13 +2435,13 @@ bool TypePass_Resolve::visit_block_stmt(AstNode* stmt)
   {
     case eAstNode_assign:
     {
-      success = visit_assign(stmt);
+      success = ResolveTypePass_visit_assign(pass, stmt);
     }
     break;
     
     case eAstNode_cast:
     {
-      success = visit_cast(stmt);
+      success = ResolveTypePass_visit_cast(pass, stmt);
     }
     break;
     
@@ -2446,43 +2451,43 @@ bool TypePass_Resolve::visit_block_stmt(AstNode* stmt)
     case eAstNode_call:
     case eAstNode_lit:
     {
-      success = visit_expr(stmt);
+      success = ResolveTypePass_visit_expr(pass, stmt);
     }
     break;
     
     case eAstNode_block:
     {
-      success = visit_block(stmt);
+      success = ResolveTypePass_visit_block(pass, stmt);
     }
     break;
     
     case eAstNode_var:
     {
-      success = visit_var(stmt);
+      success = ResolveTypePass_visit_var(pass, stmt);
     }
     break;
     
     case eAstNode_return:
     {
-      success = visit_return(stmt);
+      success = ResolveTypePass_visit_return(pass, stmt);
     }
     break;
     
     case eAstNode_if:
     {
-      success = visit_if(stmt);
+      success = ResolveTypePass_visit_if(pass, stmt);
     }
     break;
     
     case eAstNode_do_while:
     {
-      success = visit_do_while(stmt);
+      success = ResolveTypePass_visit_do_while(pass, stmt);
     }
     break;
     
     case eAstNode_while:
     {
-      success = visit_while(stmt);
+      success = ResolveTypePass_visit_while(pass, stmt);
     }
     break;
     
@@ -2492,13 +2497,13 @@ bool TypePass_Resolve::visit_block_stmt(AstNode* stmt)
     
     case eAstNode_basic_type:
     {
-      success = visit_type(stmt);
+      success = ResolveTypePass_visit_type(pass, stmt);
     }
     break;
     
     case eAstNode_index:
     {
-      success = visit_index(stmt);
+      success = ResolveTypePass_visit_index(pass, stmt);
     }
     break;
     
@@ -2508,13 +2513,13 @@ bool TypePass_Resolve::visit_block_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypePass_Resolve::visit_proc(AstNode* proc)
+bool ResolveTypePass_visit_proc(TypePass* pass, AstNode* proc)
 {
   assert(KIND(proc, eAstNode_proc));
   bool success = true;
 
-  if(success = visit_formal_args(proc->proc.args) && visit_type(proc->proc.ret_type)
-     && visit_block_stmt(proc->proc.body) && AstNode_resolve_types(proc, arena))
+  if(success = ResolveTypePass_visit_formal_args(pass, proc->proc.args) && ResolveTypePass_visit_type(pass, proc->proc.ret_type)
+     && ResolveTypePass_visit_block_stmt(pass, proc->proc.body) && resolve_ast_node_type(proc, pass->arena))
   {
     proc->proc.decl_sym->ty = proc->eval_ty;
     proc->proc.retvar->ty = proc->proc.ret_type->eval_ty;
@@ -2523,7 +2528,7 @@ bool TypePass_Resolve::visit_proc(AstNode* proc)
   return success;
 }
 
-bool TypePass_Resolve::visit_module_stmt(AstNode* stmt)
+bool ResolveTypePass_visit_module_stmt(TypePass* pass, AstNode* stmt)
 {
   bool success = true;
   
@@ -2531,13 +2536,13 @@ bool TypePass_Resolve::visit_module_stmt(AstNode* stmt)
   {
     case eAstNode_proc:
     {
-      success = visit_proc(stmt);
+      success = ResolveTypePass_visit_proc(pass, stmt);
     }
     break;
     
     case eAstNode_var:
     {
-      success = visit_var(stmt);
+      success = ResolveTypePass_visit_var(pass, stmt);
     }
     case eAstNode_include:
     break;
@@ -2548,7 +2553,7 @@ bool TypePass_Resolve::visit_module_stmt(AstNode* stmt)
   return success;
 }
 
-bool TypePass_Resolve::visit_module(AstNode* module)
+bool ResolveTypePass_visit_module(TypePass* pass, AstNode* module)
 {
   assert(KIND(module, eAstNode_module));
   bool success = true;
@@ -2558,7 +2563,7 @@ bool TypePass_Resolve::visit_module(AstNode* module)
       li = li->next)
   {
     AstNode* stmt = KIND(li, eList_ast_node)->ast_node;
-    success = visit_module_stmt(stmt);
+    success = ResolveTypePass_visit_module_stmt(pass, stmt);
   }
 
   return success;
@@ -3145,11 +3150,10 @@ bool run_type_pass(TypePass* pass, AstNode* module)
 {
   bool success = true;
 
-  TypePass_Resolve* resolve = (TypePass_Resolve*)pass;
   TypePass_Check* check = (TypePass_Check*)pass;
 
   success = SetTypePass_visit_module(pass, module) && EvalTypePass_visit_module(pass, module)
-    && resolve->visit_module(module) && check->visit_module(module);
+    && ResolveTypePass_visit_module(pass, module) && check->visit_module(module);
 
   return success;
 }

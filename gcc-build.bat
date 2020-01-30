@@ -2,25 +2,25 @@
 :: --------------------
 @ECHO off
 
-gcc -v > NUL 2>&1
+gcc.exe -v > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (
-  ECHO Setting up the MINGW environment
-  SET "PATH=%PATH%;c:\mingw\bin\"
+  ECHO Setting up the PATH to gcc.exe
+  SET "PATH=%PATH%;C:\Program Files\CodeBlocks\MinGW\bin"
 )
-gcc -v > NUL 2>&1
+gcc.exe -v > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (
-  ECHO MINGW environment is not functional
+  ECHO gcc.exe not available
   GOTO :early_exit
 )
 
-ml > NUL 2>&1
+ml.exe > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (
-  ECHO Setting up the MSVC environment
-  call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86 > NUL 2>&1
+  ECHO Setting up the PATH to ml.exe
+  SET "PATH=%PATH%;C:\Program Files\MASM 6.15;C:\Program Files\Microsoft Visual Studio 8\VC\bin;C:\Program Files\Microsoft Visual Studio 8\Common7\IDE;"
 )
-ml > NUL 2>&1
+ml.exe > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (
-  ECHO MSVC environment is not functional
+  ECHO ml.exe not available
   GOTO :early_exit
 )
 
@@ -40,7 +40,7 @@ SET src_dir=%base_dir%\src
 
 :: -Wno-write-strings      - ISO C++ forbids converting a string constant to 'char*'
 
-SET C_flags=-g -ggdb -Winline -Wno-write-strings
+SET C_flags=-g -ggdb -std=c99 -Winline -Wno-write-strings
 SET L_flags=
 
 IF NOT EXIST .\bin (

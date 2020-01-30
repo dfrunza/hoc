@@ -200,10 +200,42 @@ bool make_out_file_names(OutFileNames* out_files, MemoryArena* arena, char* src_
     str_init(&str, arena);
     str_format(&str, "%s\\%s.asm", out_files->working_dir, out_files->title);
     out_files->asm_file = str_cap(&str);
+
+    str_init(&str, arena);
+    str_format(&str, "%s\\%s.obj", out_files->working_dir, out_files->title);
+    out_files->obj_file = str_cap(&str);
   }
   else
     success = error("working directory could not be retrieved");
 
+  return success;
+}
+
+bool run_process(char* process_cmd)
+{
+  bool success = true;
+  STARTUPINFOA process_startup_info = {0};
+  process_startup_info.cb = sizeof(STARTUPINFOA);
+  PROCESS_INFORMATION process_info = {0};
+  if(CreateProcessA(0, process_cmd, 0, 0, false, 0, 0, 0, &process_startup_info, &process_info))
+  {
+    DWORD wait_code = WaitForSingleObject(process_info.hProcess, 60*1000);
+
+    if(wait_code == WAIT_OBJECT_0)
+    {
+      DWORD ml_exit_code = 0;
+      if(GetExitCodeProcess(process_info.hProcess, &ml_exit_code))
+      {
+        success = (ml_exit_code == 0);
+      }
+      else
+        success = error("could not retrieve process exit code");
+    }
+    else
+      success = error("WaitForSingleObject() : unexpected return code");
+  }
+  else
+    success = error("could not create process");
   return success;
 }
 
@@ -219,32 +251,16 @@ bool assemble(MemoryArena* arena, OutFileNames* out_files)
       /Fl     - generate listing
       /c      - assemble without linking
   */
-  str_format(&str, "ml.exe /Zi /Cx /nologo %s /link /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib", out_files->asm_file);
-  char* ml_args = str_cap(&str);
-
-  STARTUPINFOA ml_startup_info = {0};
-  ml_startup_info.cb = sizeof(STARTUPINFOA);
-  PROCESS_INFORMATION ml_proc_info = {0};
-  if(CreateProcessA(0, ml_args, 0, 0, false, 0, 0, 0, &ml_startup_info, &ml_proc_info))
-  {
-    DWORD wait_code = WaitForSingleObject(ml_proc_info.hProcess, 60*1000);
-
-    if(wait_code == WAIT_OBJECT_0)
-    {
-      DWORD ml_exit_code = 0;
-      if(GetExitCodeProcess(ml_proc_info.hProcess, &ml_exit_code))
-      {
-        success = (ml_exit_code == 0);
-      }
-      else
-        success = error("could not retrieve ml.exe exit code");
-    }
-    else
-      success = error("WaitForSingleObject() : unexpected return code");
+  str_format(&str, "ml.exe /c /Zi /Cx /nologo %s", out_files->asm_file);
+  char* ml_cmd = str_cap(&str);
+  success = run_process(ml_cmd);
+  if (success) {
+    String str = {0};
+    str_init(&str, arena);
+    str_format(&str, "link.exe /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib %s", out_files->obj_file);
+    char* link_cmd = str_cap(&str);
+    success = run_process(link_cmd);
   }
-  else
-    success = error("could not create ml.exe process");
-
   return success;
 }
 

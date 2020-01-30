@@ -87,6 +87,7 @@ typedef struct
   char* title;
   char* working_dir;
   char* asm_file;
+  char* obj_file;
   char* source_file;
 }
 OutFileNames;

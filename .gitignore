@@ -29,5 +29,5 @@ _ReSharper*/
 #Nuget packages folder
 packages/
 
-stuff/
 bin/
+.vimprj/

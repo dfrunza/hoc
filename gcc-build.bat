@@ -1,23 +1,11 @@
-::        GCC
-:: --------------------
 @ECHO off
 
-gcc.exe -v > NUL 2>&1
-IF %ERRORLEVEL% NEQ 0 (
-  ECHO Setting up the PATH to gcc.exe
-  SET "PATH=%PATH%;C:\Program Files\CodeBlocks\MinGW\bin"
-)
 gcc.exe -v > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (
   ECHO gcc.exe not available
   GOTO :early_exit
 )
 
-ml.exe > NUL 2>&1
-IF %ERRORLEVEL% NEQ 0 (
-  ECHO Setting up the PATH to ml.exe
-  SET "PATH=%PATH%;C:\Program Files\MASM 6.15;C:\Program Files\Microsoft Visual Studio 8\VC\bin;C:\Program Files\Microsoft Visual Studio 8\Common7\IDE;"
-)
 ml.exe > NUL 2>&1
 IF %ERRORLEVEL% NEQ 0 (
   ECHO ml.exe not available

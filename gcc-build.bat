@@ -32,9 +32,7 @@ SET C_flags=-g -ggdb -std=c99 -Winline -Wno-write-strings
 SET L_flags=
 
 IF NOT EXIST .\bin (
-  ECHO Creating the .\bin directory
   mkdir .\bin
-  copy kernel32.lib .\bin
 )
 PUSHD .\bin
 

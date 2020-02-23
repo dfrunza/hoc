@@ -257,7 +257,7 @@ bool assemble(MemoryArena* arena, OutFileNames* out_files)
   if (success) {
     String str = {0};
     str_init(&str, arena);
-    str_format(&str, "link.exe /nologo /subsystem:console /incremental:no /entry:startup kernel32.lib %s", out_files->obj_file);
+    str_format(&str, "link.exe /nologo /subsystem:console /incremental:no /entry:startup ..\\kernel32.lib %s", out_files->obj_file);
     char* link_cmd = str_cap(&str);
     success = run_process(link_cmd);
   }
